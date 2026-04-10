@@ -1,0 +1,54 @@
+{
+  "name": "步骤 1: 测试登录",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775682390829,
+  "stop": 1775682390834,
+  "duration": 5,
+  "uuid": "31203137-f2f9-45f5-b990-196e5cade0b7",
+  "historyId": "11_5",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 415",
+    "trace": "<!doctype html>\n<html lang=en>\n<title>415 Unsupported Media Type</title>\n<h1>Unsupported Media Type</h1>\n<p>Did not attempt to load JSON data because the request Content-Type was not &#39;application/json&#39;.</p>\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 测试1"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 11"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "http://127.0.0.1:5000/api/login"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_1.txt",
+      "body": "API: POST http://127.0.0.1:5000/api/login\n状态码: 415\n耗时: 5ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 415\n响应: <!doctype html>\n<html lang=en>\n<title>415 Unsupported Media Type</title>\n<h1>Unsupported Media Type</h1>\n<p>Did not attempt to load JSON data because the request Content-Type was not &#39;application/json&#39;.</p>\n"
+    }
+  ]
+}

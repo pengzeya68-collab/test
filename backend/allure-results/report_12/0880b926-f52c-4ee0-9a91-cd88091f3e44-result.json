@@ -1,0 +1,54 @@
+{
+  "name": "步骤 1: DDT批量创建用户",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775704571041,
+  "stop": 1775704571542,
+  "duration": 501,
+  "uuid": "0880b926-f52c-4ee0-9a91-cd88091f3e44",
+  "historyId": "12_7",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 401",
+    "trace": "{\"error\":\"missing_api_key\",\"message\":\"The x-api-key header is required for this endpoint.\",\"hint\":\"Create a free key at app.reqres.in and send it as x-api-key.\",\"next_steps\":[\"Go to app.reqres.in/api-keys to get your key\",\"Add header: x-api-key: <your_key>\",\"For app user endpoints, use Authorization: Bearer <session_token> instead\"],\"docs_url\":\"https://app.reqres.in/docs#authentication\",\"example_curl\":\"curl -H \\\"x-api-key: YOUR_API_KEY\\\" https://api.reqres.in/api/collections\",\"_meta\":{\"powered_by\":\"ReqRes\",\"docs_url\":\"https://app.reqres.in/documentation\",\"upgrade_url\":\"https://app.reqres.in/upgrade\",\"example_url\":\"https://app.reqres.in/examples/notes-app\",\"variant\":\"v1_a\",\"message\":\"API key invalid or revoked. Create a new key in API Keys.\",\"cta\":{\"label\":\"Get a key\",\"url\":\"https://app.reqres.in/api-keys\"},\"context\":\"invalid_key\"}}"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 高并发用户创建测试"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 12"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "https://reqres.in/api/users"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_1.txt",
+      "body": "API: POST https://reqres.in/api/users\n状态码: 401\n耗时: 501ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 401\n响应: {\"error\":\"missing_api_key\",\"message\":\"The x-api-key header is required for this endpoint.\",\"hint\":\"Create a free key at app.reqres.in and send it as x-api-key.\",\"next_steps\":[\"Go to app.reqres.in/api-keys to get your key\",\"Add header: x-api-key: <your_key>\",\"For app user endpoints, use Authorization: Bearer <session_token> instead\"],\"docs_url\":\"https://app.reqres.in/docs#authentication\",\"example_curl\":\"curl -H \\\"x-api-key: YOUR_API_KEY\\\" https://api.reqres.in/api/collections\",\"_meta\":{\"powered_by\":\"ReqRes\",\"docs_url\":\"https://app.reqres.in/documentation\",\"upgrade_url\":\"https://app.reqres.in/upgrade\",\"example_url\":\"https://app.reqres.in/examples/notes-app\",\"variant\":\"v1_a\",\"message\":\"API key invalid or revoked. Create a new key in API Keys.\",\"cta\":{\"label\":\"Get a key\",\"url\":\"https://app.reqres.in/api-keys\"},\"context\":\"invalid_key\"}}"
+    }
+  ]
+}

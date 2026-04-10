@@ -1,69 +1,273 @@
 <template>
-  <div class="register">
-    <el-row justify="center" align="middle" style="height: 100%;">
-      <el-col :span="8">
-        <el-card class="register-card">
-          <template #header>
-            <h2 style="text-align: center; margin: 0;">用户注册</h2>
-          </template>
-          <el-form ref="registerFormRef" :model="registerForm" label-width="80px">
-            <el-form-item label="用户名" prop="username" :rules="[{ required: true, message: '请输入用户名' }]">
-              <el-input v-model="registerForm.username" placeholder="请输入用户名" />
-            </el-form-item>
-            <el-form-item label="邮箱" prop="email" :rules="[{ required: true, message: '请输入邮箱' }, { type: 'email', message: '请输入有效的邮箱地址' }]">
-              <el-input v-model="registerForm.email" placeholder="请输入邮箱" />
-            </el-form-item>
-            <el-form-item label="密码" prop="password" :rules="[{ required: true, message: '请输入密码' }, { min: 6, message: '密码长度不能少于6位' }]">
-              <el-input v-model="registerForm.password" type="password" placeholder="请输入密码" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" style="width: 100%;" @click="handleRegister">注册</el-button>
-            </el-form-item>
-            <div style="text-align: center;">
-              <span>已有账号？</span>
-              <el-button type="text" @click="$router.push('/login')">立即登录</el-button>
-            </div>
-          </el-form>
-        </el-card>
-      </el-col>
-    </el-row>
+  <div class="register-container">
+    <div class="register-card">
+      <div class="register-header">
+        <h1 class="title">创建账号</h1>
+        <p class="subtitle">加入TestMaster，开启测试工程师成长之路</p>
+      </div>
+      
+      <el-form 
+        ref="registerFormRef" 
+        :model="registerForm" 
+        label-width="0"
+        class="register-form"
+        @submit.prevent="handleRegister"
+      >
+        <el-form-item
+          prop="username"
+          :rules="[
+            { required: true, message: '请输入用户名', trigger: 'blur' },
+            { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' }
+          ]"
+        >
+          <el-input 
+          v-model="registerForm.username" 
+          placeholder="用户名" 
+          size="large"
+          >
+            <template #prefix>
+              <el-icon><User /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+        
+        <el-form-item
+          prop="email"
+          :rules="[
+            { required: true, message: '请输入邮箱', trigger: 'blur' },
+            { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+          ]"
+        >
+          <el-input 
+          v-model="registerForm.email" 
+          placeholder="邮箱" 
+          size="large"
+          >
+            <template #prefix>
+              <el-icon><Message /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item
+          prop="phone"
+          :rules="[
+            { required: true, message: '请输入手机号', trigger: 'blur' },
+            { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
+          ]"
+        >
+          <el-input 
+            v-model="registerForm.phone" 
+            placeholder="手机号" 
+            size="large"
+          >
+            <template #prefix>
+              <el-icon><Phone /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+        
+        <el-form-item
+          prop="password"
+          :rules="[
+            { required: true, message: '请输入密码', trigger: 'blur' },
+            { min: 6, max: 32, message: '密码长度在 6 到 32 个字符', trigger: 'blur' }
+          ]"
+        >
+          <el-input 
+            v-model="registerForm.password" 
+            type="password" 
+            placeholder="密码" 
+            size="large"
+          >
+            <template #prefix>
+              <el-icon><Lock /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+        
+        <el-form-item
+          prop="confirmPassword"
+          :rules="[
+            { required: true, message: '请确认密码', trigger: 'blur' },
+            { validator: validateConfirmPassword, trigger: 'blur' }
+          ]"
+        >
+          <el-input 
+            v-model="registerForm.confirmPassword" 
+            type="password" 
+            placeholder="确认密码" 
+            size="large"
+            :disabled="!registerForm.password"
+            @keyup.enter="handleRegister"
+          >
+            <template #prefix>
+              <el-icon><Lock /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+        
+        <el-form-item>
+          <el-button 
+            type="primary" 
+            size="large" 
+            :loading="loading"
+            @click="handleRegister"
+            style="width: 100%;"
+          >
+            注册
+          </el-button>
+        </el-form-item>
+      </el-form>
+      
+      <div class="register-footer">
+        <span>已有账号？</span>
+        <el-link type="primary" @click="goToLogin">立即登录</el-link>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, toRefs } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { User, Lock, Message, Phone } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
 const router = useRouter()
-const registerFormRef = ref()
-const registerForm = reactive({
+const registerFormRef = ref(null)
+const loading = ref(false)
+
+const registerForm = ref({
   username: '',
   email: '',
-  password: ''
+  phone: '',
+  password: '',
+  confirmPassword: ''
 })
 
-const handleRegister = async () => {
-  try {
-    const res = await request.post('/register', registerForm)
-    localStorage.setItem('token', res.access_token)
-    localStorage.setItem('user', JSON.stringify(res.user))
-    ElMessage.success('注册成功')
-    router.push('/')
-  } catch (error) {
-    console.error('Registration failed:', error)
+const codeCountdown = ref(0)
+
+const sendCode = () => {
+  if (!registerForm.value.phone) {
+    ElMessage.warning('请先输入手机号')
+    return
   }
+  if (!/^1[3-9]\d{9}$/.test(registerForm.value.phone)) {
+    ElMessage.warning('请输入正确的手机号')
+    return
+  }
+  
+  // 模拟发送验证码
+  ElMessage.success('验证码已发送')
+  codeCountdown.value = 60
+  const timer = setInterval(() => {
+    codeCountdown.value--
+    if (codeCountdown.value <= 0) {
+      clearInterval(timer)
+    }
+  }, 1000)
+}
+
+const validateConfirmPassword = (rule, value, callback) => {
+  if (value !== registerForm.value.password) {
+    callback(new Error('两次输入的密码不一致'))
+  } else {
+    callback()
+  }
+}
+
+const handleRegister = async () => {
+  if (!registerFormRef.value) return
+  
+  await registerFormRef.value.validate(async (valid) => {
+    if (valid) {
+      loading.value = true
+      try {
+        const res = await request.post('/register', {
+          username: registerForm.value.username,
+          email: registerForm.value.email,
+          phone: registerForm.value.phone,
+          password: registerForm.value.password
+        })
+        
+        // 保存token和用户信息
+        localStorage.setItem('token', res.data.access_token)
+        localStorage.setItem('user', JSON.stringify(res.data.user))
+        
+        ElMessage.success('注册成功！')
+        
+        // 跳转到首页
+        router.push('/')
+      } catch (error) {
+        console.error('注册失败:', error)
+      } finally {
+        loading.value = false
+      }
+    }
+  })
+}
+
+const goToLogin = () => {
+  router.push('/login')
 }
 </script>
 
 <style scoped>
-.register {
-  height: 100%;
-  background-color: #f5f7fa;
+.register-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
 }
 
 .register-card {
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  background: white;
+  border-radius: 16px;
+  padding: 48px;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 20px 60px 0 rgba(0, 0, 0, 0.3);
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: bold;
+  color: #303133;
+  margin: 0 0 10px 0;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #909399;
+  margin: 0;
+}
+
+.register-form {
+  margin-bottom: 24px;
+}
+
+.register-footer {
+  text-align: center;
+  font-size: 14px;
+  color: #606266;
+}
+
+@media (max-width: 768px) {
+  .register-card {
+    padding: 32px 24px;
+  }
+  
+  .title {
+    font-size: 24px;
+  }
 }
 </style>

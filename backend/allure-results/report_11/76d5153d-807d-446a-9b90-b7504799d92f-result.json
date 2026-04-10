@@ -1,0 +1,54 @@
+{
+  "name": "步骤 1: 获取邮编信息（提取“国家”）",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1775689511736,
+  "stop": 1775689511825,
+  "duration": 89,
+  "uuid": "76d5153d-807d-446a-9b90-b7504799d92f",
+  "historyId": "11_5",
+  "statusDetails": {
+    "message": "",
+    "trace": "{\"country\": \"United States\", \"country abbreviation\": \"US\", \"post code\": \"90210\", \"places\": [{\"place name\": \"Beverly Hills\", \"longitude\": \"-118.4065\", \"latitude\": \"34.0901\", \"state\": \"California\", \"state abbreviation\": \"CA\"}]}"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 测试"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 11"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "https://api.zippopotam.us/us/90210"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_1.txt",
+      "body": "API: GET https://api.zippopotam.us/us/90210\n状态码: 200\n耗时: 89ms\n错误: 无错误\n响应: {\"country\": \"United States\", \"country abbreviation\": \"US\", \"post code\": \"90210\", \"places\": [{\"place name\": \"Beverly Hills\", \"longitude\": \"-118.4065\", \"latitude\": \"34.0901\", \"state\": \"California\", \"state abbreviation\": \"CA\"}]}"
+    }
+  ]
+}

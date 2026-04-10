@@ -1,308 +1,471 @@
 <template>
   <div class="exercises">
-    <el-page-header @back="goBack" content="练习题库"></el-page-header>
-    <el-divider></el-divider>
-
-    <!-- 筛选区 -->
-    <el-card style="margin-bottom: 20px;">
-      <el-row gutter="20">
-        <el-col :span="6">
-          <el-select v-model="filters.difficulty" placeholder="难度筛选" clearable @change="fetchExercises">
-            <el-option label="全部" value="" />
-            <el-option label="初级" value="beginner" />
-            <el-option label="中级" value="intermediate" />
-            <el-option label="高级" value="advanced" />
+    <div class="container">
+      <!-- 顶部筛选 -->
+      <div class="filter-bar">
+        <h1 class="page-title">习题库</h1>
+        <div class="filters">
+          <el-select 
+            v-model="currentModule" 
+            placeholder="功能模块" 
+            style="width: 140px;"
+          >
+            <el-option label="全部模块" value="" />
+            <el-option label="普通习题" value="normal" />
+            <el-option label="自动化测试" value="automation" />
+            <el-option label="接口测试" value="api" />
           </el-select>
-        </el-col>
-        <el-col :span="6">
-          <el-select v-model="filters.language" placeholder="语言筛选" clearable @change="fetchExercises">
+          <el-radio-group v-model="currentStage">
+            <el-radio-button :label="1">阶段1</el-radio-button>
+            <el-radio-button :label="2">阶段2</el-radio-button>
+            <el-radio-button :label="3">阶段3</el-radio-button>
+            <el-radio-button :label="4">阶段4</el-radio-button>
+            <el-radio-button :label="5">阶段5</el-radio-button>
+          </el-radio-group>
+          <el-select 
+            v-model="currentDifficulty" 
+            placeholder="难度筛选" 
+            style="width: 120px;"
+          >
             <el-option label="全部" value="" />
-            <el-option label="Python" value="Python" />
-            <el-option label="JavaScript" value="JavaScript" />
-            <el-option label="Java" value="Java" />
-            <el-option label="C++" value="C++" />
+            <el-option label="简单" value="easy" />
+            <el-option label="中等" value="medium" />
+            <el-option label="困难" value="hard" />
           </el-select>
-        </el-col>
-        <el-col :span="6">
-          <el-select v-model="filters.status" placeholder="状态筛选" clearable @change="fetchExercises">
-            <el-option label="全部" value="" />
-            <el-option label="未完成" value="uncompleted" />
-            <el-option label="已完成" value="completed" />
-          </el-select>
-        </el-col>
-        <el-col :span="6">
-          <el-input v-model="filters.keyword" placeholder="搜索题目" clearable @keyup.enter="fetchExercises">
-            <template #append>
-              <el-button icon="Search" @click="fetchExercises" />
+          <el-input 
+            v-model="searchKeyword" 
+            placeholder="搜索知识点..." 
+            style="width: 200px;"
+            clearable
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
             </template>
           </el-input>
-        </el-col>
-      </el-row>
-    </el-card>
+        </div>
+      </div>
 
-    <!-- 练习列表 -->
-    <el-row gutter="20">
-      <el-col :span="8" v-for="exercise in exercises" :key="exercise.id">
-        <el-card class="exercise-card" shadow="hover" @click="viewExercise(exercise.id)">
-          <template #header>
-            <div class="card-header">
-              <span class="exercise-title">{{ exercise.title }}</span>
-              <el-tag :type="getDifficultyTag(exercise.difficulty)" size="small">
-                {{ getDifficultyText(exercise.difficulty)
-              </el-tag>
+      <!-- 阶段说明 -->
+      <div class="stage-info" style="margin-bottom: 30px;">
+        <el-alert 
+          :title="stageInfo.title" 
+          :description="stageInfo.description"
+          type="info" 
+          show-icon
+          :closable="false"
+        />
+      </div>
+
+      <!-- 习题列表 -->
+      <div class="exercises-grid">
+        <div 
+          class="exercise-card" 
+          v-for="exercise in paginatedExercises" 
+          :key="exercise.id"
+          @click="goToDetail(exercise.id)"
+        >
+          <div class="exercise-header">
+            <el-tag :type="getStageTagType(exercise.stage)" size="small">
+              阶段{{ exercise.stage }}
+            </el-tag>
+            <el-tag :type="getDifficultyTagType(exercise.difficulty)" size="small">
+              {{ getDifficultyText(exercise.difficulty) }}
+            </el-tag>
+          </div>
+          <h3 class="exercise-title">{{ exercise.title }}</h3>
+          <p class="exercise-desc">{{ exercise.description }}</p>
+          <div class="exercise-meta">
+            <div class="meta-item" v-if="exercise.knowledge_point">
+              <el-icon size="16"><PriceTag /></el-icon>
+              <span class="knowledge-tag">{{ exercise.knowledge_point }}</span>
             </div>
-          </template>
-          
-          <div class="exercise-info">
-            <span class="language-tag">{{ exercise.language }}</span>
-            <span v-if="exercise.completed" class="completed-tag">
-              <el-icon :size="12"><Check /></el-icon> 已完成
-            </span>
-            <span class="score">得分: {{ exercise.passed_count }}/{{ exercise.total_count }}</span>
+            <div class="meta-item">
+              <el-icon size="16"><Timer /></el-icon>
+              <span>{{ exercise.time_estimate }}分钟</span>
+            </div>
+            <div class="meta-item">
+              <el-icon size="16"><Collection /></el-icon>
+              <span>{{ exercise.category }}</span>
+            </div>
           </div>
-
-          <p class="exercise-description">{{ exercise.description }}</p>
-
           <div class="exercise-footer">
-            <el-progress :percentage="Math.round(exercise.passed_count / exercise.total_count * 100)" :show-text="false" />
-            <span class="pass-rate">通过率 {{ getPassRate(exercise) }}%</span>
+            <el-button type="primary" size="small" plain>
+              开始练习
+            </el-button>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </div>
 
-    <el-empty v-if="exercises.length === 0" description="暂无练习题"></el-empty>
+      <!-- 空状态 -->
+      <div class="empty-state" v-if="filteredExercises.length === 0 && !loading">
+        <el-empty description="暂无符合条件的习题" />
+      </div>
 
-    <!-- 分页 -->
-    <div style="text-align: center; margin-top: 30px;">
-      <el-pagination
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.page_size"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50]"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="fetchExercises"
-        @current-change="fetchExercises"
-      />
+      <!-- 加载状态 -->
+      <div class="loading" v-if="loading">
+        <el-spinner size="40" />
+      </div>
+
+      <!-- 分页 -->
+      <div class="pagination-container" v-if="paginatedExercises.length > 0">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[12, 24, 36, 48]"
+          :total="filteredExercises.length"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Check, Search } from '@element-plus/icons-vue'
+import { Search, Timer, PriceTag, Collection } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 
 const exercises = ref([])
-const filters = ref({
-  difficulty: '',
-  language: '',
-  status: '',
-  keyword: ''
+const loading = ref(false)
+const currentModule = ref('')
+const currentStage = ref(1)
+const currentDifficulty = ref('')
+const searchKeyword = ref('')
+const currentPage = ref(1)
+const pageSize = ref(12)
+
+// 阶段说明
+const stageInfos = {
+  1: {
+    title: '阶段1 - 测试入门筑基',
+    description: '适合零基础入门，掌握软件测试基础理论、测试方法、计算机基础和SQL，为测试生涯打好基础。'
+  },
+  2: {
+    title: '阶段2 - 功能测试精通',
+    description: '精通Web/APP/小程序等各类项目的功能测试，掌握完整的测试流程，能独立负责项目测试。'
+  },
+  3: {
+    title: '阶段3 - 测试技术进阶',
+    description: '掌握接口测试、Linux、数据库进阶、性能测试基础，成为中级测试工程师。'
+  },
+  4: {
+    title: '阶段4 - 自动化测试专家',
+    description: '精通Python编程、接口自动化、UI自动化、APP自动化、性能测试，成为高级自动化测试工程师。'
+  },
+  5: {
+    title: '阶段5 - 测试架构师之路',
+    description: '掌握测试平台开发、DevOps、质量体系建设、专项测试技术，向测试架构师/测试专家方向发展。'
+  }
+}
+
+const stageInfo = computed(() => {
+  return stageInfos[currentStage.value] || {}
 })
 
-const pagination = ref({
-  page: 1,
-  page_size: 12,
-  total: 0
+// 筛选后的习题列表
+const filteredExercises = computed(() => {
+  let result = exercises.value
+  
+  // 按模块筛选
+  if (currentModule.value) {
+    result = result.filter(item => item.module === currentModule.value)
+  }
+  
+  // 按阶段筛选
+  if (currentStage.value > 0) {
+    result = result.filter(item => item.stage === currentStage.value)
+  }
+  
+  // 按难度筛选
+  if (currentDifficulty.value) {
+    result = result.filter(item => item.difficulty === currentDifficulty.value)
+  }
+  
+  // 按关键词搜索
+  if (searchKeyword.value.trim()) {
+    const keyword = searchKeyword.value.trim().toLowerCase()
+    result = result.filter(item => 
+      item.title.toLowerCase().includes(keyword) || 
+      (item.description && item.description.toLowerCase().includes(keyword)) ||
+      (item.knowledge_point && item.knowledge_point.toLowerCase().includes(keyword))
+    )
+  }
+  
+  return result
 })
 
-const getDifficultyTag = (difficulty) => {
-  const tags = {
-    beginner: 'success',
-    intermediate: 'warning',
-    advanced: 'danger'
-  }
-  return tags[difficulty] || 'info'
+// 分页后的习题列表
+const paginatedExercises = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredExercises.value.slice(start, end)
+})
+
+// 分页大小变化
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  currentPage.value = 1
 }
 
-const getDifficultyText = (difficulty) => {
-  const texts = {
-    beginner: '初级',
-    intermediate: '中级',
-    advanced: '高级'
-  }
-  return texts[difficulty] || difficulty
+// 页码变化
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+  // 滚动到顶部
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const getPassRate = (exercise) => {
-  return Math.round(exercise.passed_count / exercise.total_count * 100)
-}
+// 模块变化重新获取数据
+watch(currentModule, () => {
+  currentPage.value = 1
+  fetchExercises()
+})
 
-const goBack = () => {
-  router.go(-1)
-}
+// 阶段变化重置页码
+watch(currentStage, () => {
+  currentPage.value = 1
+})
 
-const viewExercise = (id) => {
-  router.push(`/exercises/${id}`)
-}
+// 难度变化重置页码
+watch(currentDifficulty, () => {
+  currentPage.value = 1
+})
 
-const fetchExercises = async () => {
-  try {
-    const params = {
-      ...filters.value,
-      page: pagination.value.page,
-      page_size: pagination.value.page_size
-    }
-    const res = await request.get('/exercises', { params })
-    exercises.value = res.exercises
-    pagination.value.total = res.total
-  } catch (error) {
-    console.error('Failed to fetch exercises:', error)
-    // 模拟数据
-    exercises.value = [
-      {
-        id: 1,
-        title: '两数之和',
-        description: '给定一个整数数组 nums 和一个整数目标值 target，请你在该数组中找出 和为目标值 target 的那 两个 整数，并返回它们的数组下标。',
-        difficulty: 'beginner',
-        language: 'Python',
-        completed: true,
-        passed_count: 1200,
-        total_count: 1500
-      },
-      {
-        id: 2,
-        title: '回文数',
-        description: '给你一个整数 x ，如果 x 是一个回文整数，返回 true ；否则，返回 false 。',
-        difficulty: 'beginner',
-        language: 'Python',
-        completed: false,
-        passed_count: 980,
-        total_count: 1200
-      },
-      {
-        id: 3,
-        title: '最长公共前缀',
-        description: '编写一个函数来查找字符串数组中的最长公共前缀。如果不存在公共前缀，返回空字符串 ""。',
-        difficulty: 'beginner',
-        language: 'Python',
-        completed: true,
-        passed_count: 850,
-        total_count: 1100
-      },
-      {
-        id: 4,
-        title: '有效的括号',
-        description: '给定一个只包括 \'(\',\')\',\'{\',\'}\',\'[\',\']\' 的字符串 s ，判断字符串是否有效。',
-        difficulty: 'intermediate',
-        language: 'JavaScript',
-        completed: false,
-        passed_count: 760,
-        total_count: 1300
-      },
-      {
-        id: 5,
-        title: '合并两个有序链表',
-        description: '将两个升序链表合并为一个新的 升序 链表并返回。新链表是通过拼接给定的两个链表的所有节点组成的。',
-        difficulty: 'intermediate',
-        language: 'Java',
-        completed: false,
-        passed_count: 650,
-        total_count: 1000
-      },
-      {
-        id: 6,
-        title: '最大子数组和',
-        description: '给你一个整数数组 nums ，请你找出一个具有最大和的连续子数组（子数组最少包含一个元素），返回其最大和。',
-        difficulty: 'intermediate',
-        language: 'C++',
-        completed: true,
-        passed_count: 580,
-        total_count: 950
-      }
-    ]
-    pagination.value.total = 6
-  }
-}
+// 搜索关键词变化重置页码
+watch(searchKeyword, () => {
+  currentPage.value = 1
+})
 
 onMounted(() => {
   fetchExercises()
 })
+
+const fetchExercises = async () => {
+  loading.value = true
+  try {
+    // 获取全部习题，后端支持按module筛选
+    const params = {
+      _t: Date.now() // 添加时间戳防止缓存
+    }
+    if (currentModule.value) {
+      params.module = currentModule.value
+    }
+    const res = await request.get('/exercises', { params })
+    if (Array.isArray(res.data)) {
+      exercises.value = res.data
+    } else if (Array.isArray(res)) {
+      exercises.value = res
+    } else {
+      exercises.value = []
+    }
+  } catch (error) {
+    console.error('获取习题列表失败:', error)
+    ElMessage.error('获取习题列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const getStageTagType = (stage) => {
+  const types = ['', 'primary', 'success', 'warning', 'danger', 'info']
+  return types[stage] || 'info'
+}
+
+const getDifficultyTagType = (difficulty) => {
+  const map = {
+    easy: 'success',
+    medium: 'warning',
+    hard: 'danger'
+  }
+  return map[difficulty] || 'info'
+}
+
+const getDifficultyText = (difficulty) => {
+  const map = {
+    easy: '简单',
+    medium: '中等',
+    hard: '困难'
+  }
+  return map[difficulty] || difficulty
+}
+
+const goToDetail = (id) => {
+  // 未登录也可以查看习题详情，和代码练习室逻辑一致
+  router.push(`/exercises/${id}`)
+}
 </script>
 
 <style scoped>
-.exercise-card {
-  margin-bottom: 20px;
-  cursor: pointer;
-  transition: all 0.3s;
+.exercises {
+  padding: 40px 0;
+  min-height: calc(100vh - 60px);
+  background-color: var(--tm-bg-color);
+  background-image: var(--tm-bg-image);
+  background-size: cover;
+  background-position: center;
 }
 
-.exercise-card:hover {
-  transform: translateY(-3px);
+.container {
+  width: 100%;
+  max-width: 1440px;
+  padding: 0 24px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
-.card-header {
+.filter-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 20px;
+  background: var(--tm-card-bg);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border: var(--tm-card-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.page-title {
+  font-size: 32px;
+  font-weight: bold;
+  color: var(--tm-text-primary);
+  margin: 0;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.exercises-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 24px;
+}
+
+.exercise-card {
+  background: var(--tm-card-bg);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border: var(--tm-card-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.exercise-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.15);
+}
+
+.exercise-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .exercise-title {
+  font-size: 18px;
   font-weight: bold;
-  font-size: 16px;
+  color: var(--tm-text-primary);
+  margin-bottom: 12px;
+  line-height: 1.4;
 }
 
-.exercise-info {
+.exercise-desc {
+  color: var(--tm-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 20px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.exercise-meta {
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--tm-border-light);
 }
 
-.language-tag {
-  background-color: #ecf5ff;
-  color: #409eff;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.completed-tag {
-  background-color: #f0f9ff;
-  color: #67c23a;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
+.meta-item {
   display: flex;
   align-items: center;
-  gap: 2px;
-}
-
-.score {
-  color: #909399;
-  font-size: 12px;
-  margin-left: auto;
-}
-
-.exercise-description {
-  color: #606266;
+  gap: 6px;
   font-size: 14px;
-  line-height: 1.6;
-  margin-bottom: 15px;
-  height: 60px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  color: var(--tm-text-secondary);
+}
+
+.knowledge-tag {
+  background-color: rgba(var(--tm-color-primary), 0.1);
+  color: var(--tm-color-primary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
 }
 
 .exercise-footer {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
 }
 
-.exercise-footer .el-progress {
-  flex: 1;
+.empty-state {
+  background: var(--tm-card-bg);
+  padding: 60px 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border: var(--tm-card-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-align: center;
 }
 
-.pass-rate {
-  font-size: 12px;
-  color: #909399;
-  width: 50px;
-  text-align: right;
+.loading {
+  background: var(--tm-card-bg);
+  padding: 60px 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border: var(--tm-card-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-align: center;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+  padding: 20px 0;
+}
+
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-title {
+    font-size: 24px;
+  }
+
+  .exercises-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

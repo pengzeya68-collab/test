@@ -1,0 +1,54 @@
+{
+  "name": "步骤 48: 获取考试结果",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775533439104,
+  "stop": 1775533441162,
+  "duration": 2058,
+  "uuid": "1a09c008-ffdc-4e9c-adfb-2a7b72aa4b1a",
+  "historyId": "6_161",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/exams/attempts/1/result"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_48.txt",
+      "body": "API: GET http://localhost:5000/api/exams/attempts/1/result\n状态码: 422\n耗时: 2058ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

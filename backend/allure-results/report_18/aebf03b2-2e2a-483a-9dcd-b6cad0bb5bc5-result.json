@@ -1,0 +1,53 @@
+{
+  "name": "[行 1] 步骤 1: DDT批量创建用户",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1775757850393,
+  "stop": 1775757851317,
+  "duration": 924,
+  "uuid": "aebf03b2-2e2a-483a-9dcd-b6cad0bb5bc5",
+  "historyId": "1_8_iter1",
+  "statusDetails": {
+    "message": "成功",
+    "trace": ""
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 1"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 1"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "https://httpbin.org/post"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_1.txt"
+    }
+  ]
+}

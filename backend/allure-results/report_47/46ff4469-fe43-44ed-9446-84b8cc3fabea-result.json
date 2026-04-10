@@ -1,0 +1,54 @@
+{
+  "name": "步骤 41: 获取我收藏的面试题",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534106879,
+  "stop": 1775534108935,
+  "duration": 2056,
+  "uuid": "46ff4469-fe43-44ed-9446-84b8cc3fabea",
+  "historyId": "6_154",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/interview/my-collections?page=1&per_page=10"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_41.txt",
+      "body": "API: GET http://localhost:5000/api/interview/my-collections?page=1&per_page=10\n状态码: 422\n耗时: 2056ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

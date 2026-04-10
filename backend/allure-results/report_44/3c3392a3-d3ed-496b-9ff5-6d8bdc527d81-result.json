@@ -1,0 +1,54 @@
+{
+  "name": "步骤 2: 测试登录接口",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1775533100773,
+  "stop": 1775533102975,
+  "duration": 2202,
+  "uuid": "3c3392a3-d3ed-496b-9ff5-6d8bdc527d81",
+  "historyId": "7_186",
+  "statusDetails": {
+    "message": "",
+    "trace": "{\"code\":0,\"data\":{\"access_token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc3NTU2MTkwMiwianRpIjoiOTc4NmVjYjQtNjg5ZS00MGM5LWExZTctOTY4NmUwMmY0MDQ0IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6MiwibmJmIjoxNzc1NTYxOTAyLCJleHAiOjE3NzU2NDgzMDJ9.trnDk6-KVY3kqDnKcc_aB3myRgObWObZnUCKCdxBLpA\",\"refresh_token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc3NTU2MTkwMiwianRpIjoiYjNlODJjZGMtZjNiOC00YWM4LThmNGEtNmYzNTBmMzgyZTk4IiwidHlwZSI6InJlZnJlc2giLCJzdWIiOjIsIm5iZiI6MTc3NTU2MTkwMiwiZXhwIjoxNzc4MTUzOTAyfQ.H83BGjQZ6ovpjbqNlImXatIqrYnniGXXFZi4rxlwvwg\",\"user\":{\"email\":\"newemail@example.com\",\"id\":2,\"is_admin\":true,\"phone\":null,\"username\":\"admin\"}},\"msg\":\"\\u767b\\u5f55\\u6210\\u529f\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 1"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 7"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/login"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_2.txt",
+      "body": "API: POST http://localhost:5000/api/login\n状态码: 200\n耗时: 2202ms\n错误: 无错误\n响应: {\"code\":0,\"data\":{\"access_token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc3NTU2MTkwMiwianRpIjoiOTc4NmVjYjQtNjg5ZS00MGM5LWExZTctOTY4NmUwMmY0MDQ0IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6MiwibmJmIjoxNzc1NTYxOTAyLCJleHAiOjE3NzU2NDgzMDJ9.trnDk6-KVY3kqDnKcc_aB3myRgObWObZnUCKCdxBLpA\",\"refresh_token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc3NTU2MTkwMiwianRpIjoiYjNlODJjZGMtZjNiOC00YWM4LThmNGEtNmYzNTBmMzgyZTk4IiwidHlwZSI6InJlZnJlc2giLCJzdWIiOjIsIm5iZiI6MTc3NTU2MTkwMiwiZXhwIjoxNzc4MTUzOTAyfQ.H83BGjQZ6ovpjbqNlImXatIqrYnniGXXFZi4rxlwvwg\",\"user\":{\"email\":\"newemail@example.com\",\"id\":2,\"is_admin\":true,\"phone\":null,\"username\":\"admin\"}},\"msg\":\"\\u767b\\u5f55\\u6210\\u529f\"}\n"
+    }
+  ]
+}

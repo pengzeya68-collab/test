@@ -1,0 +1,53 @@
+{
+  "name": "步骤 1: DDT批量创建用户",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775756750432,
+  "stop": 1775756751513,
+  "duration": 1081,
+  "uuid": "8740cf92-fd1f-4b33-89e6-32abdc1edd27",
+  "historyId": "1_8_iter1",
+  "statusDetails": {
+    "message": "断言失败: [status_code] 期望 == '{{expected_code}}', 实际为 '200'",
+    "trace": ""
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 1"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 1"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "https://httpbin.org/post"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_1.txt"
+    }
+  ]
+}

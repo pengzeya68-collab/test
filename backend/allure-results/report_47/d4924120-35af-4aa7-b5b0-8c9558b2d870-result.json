@@ -1,0 +1,54 @@
+{
+  "name": "步骤 52: 获取考试详情",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534129359,
+  "stop": 1775534131396,
+  "duration": 2037,
+  "uuid": "d4924120-35af-4aa7-b5b0-8c9558b2d870",
+  "historyId": "6_165",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 500",
+    "trace": "<!doctype html>\n<html lang=en>\n<title>500 Internal Server Error</title>\n<h1>Internal Server Error</h1>\n<p>The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.</p>\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/exams/1"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_52.txt",
+      "body": "API: GET http://localhost:5000/api/exams/1\n状态码: 500\n耗时: 2037ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 500\n响应: <!doctype html>\n<html lang=en>\n<title>500 Internal Server Error</title>\n<h1>Internal Server Error</h1>\n<p>The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.</p>\n"
+    }
+  ]
+}

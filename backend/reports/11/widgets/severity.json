@@ -1,0 +1,1 @@
+[{"uid":"5af9417538d6fc6","name":"步骤 2: 把国家名传给验证接口（验证传递）","time":{"start":1775703485171,"stop":1775703486045,"duration":874},"status":"passed","severity":"normal"},{"uid":"6afbe780110e01e5","name":"步骤 1: 获取邮编信息（提取“国家”）","time":{"start":1775703485044,"stop":1775703485171,"duration":127},"status":"passed","severity":"normal"}]

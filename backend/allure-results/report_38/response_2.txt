@@ -1,0 +1,25 @@
+API: POST https://httpbin.org/post
+状态码: 200
+耗时: 883ms
+错误: 无错误
+响应: {
+  "args": {}, 
+  "data": "{\"name\": \"Trinity\", \"job\": \"Hacker\"}", 
+  "files": {}, 
+  "form": {}, 
+  "headers": {
+    "Accept": "*/*", 
+    "Accept-Encoding": "gzip, deflate", 
+    "Content-Length": "36", 
+    "Content-Type": "application/json", 
+    "Host": "httpbin.org", 
+    "User-Agent": "python-requests/2.31.0", 
+    "X-Amzn-Trace-Id": "Root=1-69d7ca6f-3c7acbe2776f67a743f8e271"
+  }, 
+  "json": {
+    "job": "Hacker", 
+    "name": "Trinity"
+  }, 
+  "origin": "34.96.134.66", 
+  "url": "https://httpbin.org/post"
+}

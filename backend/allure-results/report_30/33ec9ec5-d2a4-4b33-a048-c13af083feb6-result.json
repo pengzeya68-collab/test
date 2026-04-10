@@ -1,0 +1,53 @@
+{
+  "name": "[行 3] 步骤 5: DDT批量创建用户",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775754875771,
+  "stop": 1775754875772,
+  "duration": 1,
+  "uuid": "33ec9ec5-d2a4-4b33-a048-c13af083feb6",
+  "historyId": "1_8_iter3",
+  "statusDetails": {
+    "message": "Invalid URL '{{my_base_url}}/post': No scheme supplied. Perhaps you meant https://{{my_base_url}}/post?",
+    "trace": ""
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 1"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 1"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "{{my_base_url}}/post"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_5.txt"
+    }
+  ]
+}

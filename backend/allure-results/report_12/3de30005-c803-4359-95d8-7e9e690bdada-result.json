@@ -1,0 +1,53 @@
+{
+  "name": "步骤 1: DDT批量创建用户",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775707246826,
+  "stop": 1775707247876,
+  "duration": 1050,
+  "uuid": "3de30005-c803-4359-95d8-7e9e690bdada",
+  "historyId": "12_7",
+  "statusDetails": {
+    "message": "断言失败: [status_code] 期望 == 'Neo', 实际为 '200'",
+    "trace": ""
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 高并发用户创建测试"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 12"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "https://httpbin.org/post"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_1.txt"
+    }
+  ]
+}

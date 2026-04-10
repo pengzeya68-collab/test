@@ -1,0 +1,54 @@
+{
+  "name": "步骤 64: 获取所有公开习题（需登录）",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534153828,
+  "stop": 1775534155878,
+  "duration": 2050,
+  "uuid": "be22b93a-7373-4e95-b775-947049b0fd04",
+  "historyId": "6_177",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/exercises/public"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_64.txt",
+      "body": "API: GET http://localhost:5000/api/exercises/public\n状态码: 422\n耗时: 2050ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

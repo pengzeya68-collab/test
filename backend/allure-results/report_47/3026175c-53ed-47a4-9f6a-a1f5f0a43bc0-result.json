@@ -1,0 +1,54 @@
+{
+  "name": "步骤 62: 执行 SQL（SQL 题验证）",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534149751,
+  "stop": 1775534151791,
+  "duration": 2040,
+  "uuid": "3026175c-53ed-47a4-9f6a-a1f5f0a43bc0",
+  "historyId": "6_175",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/exercises/execute-sql"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_62.txt",
+      "body": "API: POST http://localhost:5000/api/exercises/execute-sql\n状态码: 422\n耗时: 2040ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

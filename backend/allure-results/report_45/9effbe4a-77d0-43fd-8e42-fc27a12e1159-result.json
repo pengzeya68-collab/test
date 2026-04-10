@@ -1,0 +1,54 @@
+{
+  "name": "步骤 19: 更新文件夹",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775533379884,
+  "stop": 1775533381914,
+  "duration": 2030,
+  "uuid": "9effbe4a-77d0-43fd-8e42-fc27a12e1159",
+  "historyId": "6_132",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "PUT"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/interface-test/folders/1"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_19.txt",
+      "body": "API: PUT http://localhost:5000/api/interface-test/folders/1\n状态码: 422\n耗时: 2030ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

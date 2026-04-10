@@ -1,0 +1,54 @@
+{
+  "name": "步骤 45: 获取我的考试记录",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534115077,
+  "stop": 1775534117113,
+  "duration": 2036,
+  "uuid": "baad6184-46c0-4fad-87d0-ba72d860d335",
+  "historyId": "6_158",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/exams/my-attempts?page=1&per_page=10"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_45.txt",
+      "body": "API: GET http://localhost:5000/api/exams/my-attempts?page=1&per_page=10\n状态码: 422\n耗时: 2036ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

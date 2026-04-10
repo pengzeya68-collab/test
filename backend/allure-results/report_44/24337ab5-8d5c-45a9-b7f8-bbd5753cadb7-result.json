@@ -1,0 +1,54 @@
+{
+  "name": "步骤 1: 测试登录接口",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775533096699,
+  "stop": 1775533100773,
+  "duration": 4074,
+  "uuid": "24337ab5-8d5c-45a9-b7f8-bbd5753cadb7",
+  "historyId": "7_185",
+  "statusDetails": {
+    "message": "HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/login (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=3000): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。\"))",
+    "trace": ""
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 1"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 7"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:3000/api/login"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_1.txt",
+      "body": "API: POST http://localhost:3000/api/login\n状态码: None\n耗时: 4074ms\n错误: HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/login (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=3000): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。\"))\n响应: 无响应体"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "name": "步骤 65: 删除习题",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534155878,
+  "stop": 1775534157903,
+  "duration": 2025,
+  "uuid": "d80992a5-b78f-4ee5-b30a-2add44062a2d",
+  "historyId": "6_178",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "DELETE"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/exercises/1"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_65.txt",
+      "body": "API: DELETE http://localhost:5000/api/exercises/1\n状态码: 422\n耗时: 2025ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

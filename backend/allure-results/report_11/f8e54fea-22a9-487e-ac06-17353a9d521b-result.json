@@ -1,0 +1,54 @@
+{
+  "name": "步骤 2: 把国家名传给验证接口（验证传递）",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1775701757974,
+  "stop": 1775701759017,
+  "duration": 1043,
+  "uuid": "f8e54fea-22a9-487e-ac06-17353a9d521b",
+  "historyId": "11_6",
+  "statusDetails": {
+    "message": "",
+    "trace": "{\n  \"args\": {\n    \"name\": \"United States\"\n  }, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate\", \n    \"Authorization\": \"Bearer United States\", \n    \"Host\": \"httpbin.org\", \n    \"User-Agent\": \"python-requests/2.31.0\", \n    \"X-Amzn-Trace-Id\": \"Root=1-69d77f7e-0d24c5e95eaa8fe85c65db5d\"\n  }, \n  \"origin\": \"34.96.134.66\", \n  \"url\": \"https://httpbin.org/get?name=United States\"\n}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 测试"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 11"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "https://httpbin.org/get?name=United States"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_2.txt",
+      "body": "API: GET https://httpbin.org/get?name=United States\n状态码: 200\n耗时: 1043ms\n错误: 无错误\n响应: {\n  \"args\": {\n    \"name\": \"United States\"\n  }, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate\", \n    \"Authorization\": \"Bearer United States\", \n    \"Host\": \"httpbin.org\", \n    \"User-Agent\": \"python-requests/2.31.0\", \n    \"X-Amzn-Trace-Id\": \"Root=1-69d77f7e-0d24c5e95eaa8fe85c65db5d\"\n  }, \n  \"origin\": \"34.96.134.66\", \n  \"url\": \"https://httpbin.org/get?name=United States\"\n}\n"
+    }
+  ]
+}

@@ -1,0 +1,660 @@
+{
+  "name": "TestMasterProject 接口文档",
+  "version": "1.0",
+  "description": "TestMasterProject 后端API接口，支持导入Apipost/Postman",
+  "baseUrl": "http://localhost:5000/api",
+  "items": [
+    {
+      "name": "认证相关",
+      "items": [
+        {
+          "name": "用户注册",
+          "method": "POST",
+          "url": "{{baseUrl}}/register",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@test.com\",\n  \"password\": \"123456\"\n}"
+            }
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"code\": 0,\n  \"msg\": \"注册成功\",\n  \"data\": {\n    \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": 1,\n      \"username\": \"testuser\",\n      \"email\": \"test@test.com\"\n    }\n  }\n}"
+          }
+        },
+        {
+          "name": "用户登录",
+          "method": "POST",
+          "url": "{{baseUrl}}/login",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"123456\"\n}"
+            }
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"code\": 0,\n  \"msg\": \"登录成功\",\n  \"data\": {\n    \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": 1,\n      \"username\": \"testuser\",\n      \"email\": \"test@test.com\",\n      \"is_admin\": false\n    }\n  }\n}"
+          }
+        },
+        {
+          "name": "修改密码",
+          "method": "POST",
+          "url": "{{baseUrl}}/change-password",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"old_password\": \"123456\",\n  \"new_password\": \"654321\"\n}"
+            }
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"code\": 0,\n  \"msg\": \"密码修改成功\"\n}"
+          }
+        },
+        {
+          "name": "刷新Token",
+          "method": "POST",
+          "url": "{{baseUrl}}/refresh",
+          "request": {
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{refresh_token}}"
+              }
+            ]
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+          }
+        },
+        {
+          "name": "获取用户信息",
+          "method": "GET",
+          "url": "{{baseUrl}}/profile",
+          "request": {
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              }
+            ]
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"testuser\",\n    \"email\": \"test@test.com\",\n    \"created_at\": \"2024-03-15T12:00:00\"\n  }\n}"
+          }
+        },
+        {
+          "name": "退出登录",
+          "method": "POST",
+          "url": "{{baseUrl}}/logout",
+          "response": {
+            "code": 200,
+            "body": "{\n  \"message\": \"Logout successful\"\n}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "管理员相关",
+      "items": [
+        {
+          "name": "管理员登录",
+          "method": "POST",
+          "url": "{{baseUrl}}/admin/login",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+            }
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"code\": 0,\n  \"msg\": \"登录成功\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"admin\": {\n      \"id\": 1,\n      \"username\": \"admin\",\n      \"name\": \"超级管理员\",\n      \"role\": \"super_admin\"\n    }\n  }\n}"
+          }
+        },
+        {
+          "name": "数据统计",
+          "method": "GET",
+          "url": "{{baseUrl}}/admin/dashboard",
+          "request": {
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ]
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"total_users\": 100,\n    \"total_exercises\": 50,\n    \"total_learning_paths\": 10,\n    \"total_study_time\": 1000,\n    \"today_new_users\": 5,\n    \"today_active_users\": 20,\n    \"growth_rate\": 12.5\n  }\n}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "用户管理",
+      "items": [
+        {
+          "name": "获取用户列表",
+          "method": "GET",
+          "url": "{{baseUrl}}/admin/users",
+          "request": {
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "query": [
+              {
+                "key": "page",
+                "value": "1",
+                "description": "页码，默认1"
+              },
+              {
+                "key": "size",
+                "value": "10",
+                "description": "每页数量，默认10"
+              },
+              {
+                "key": "keyword",
+                "value": "",
+                "description": "搜索关键词"
+              },
+              {
+                "key": "status",
+                "value": "",
+                "description": "状态：active/disabled"
+              }
+            ]
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"list\": [\n      {\n        \"id\": 1,\n        \"username\": \"testuser\",\n        \"email\": \"test@test.com\",\n        \"level\": 2,\n        \"score\": 100,\n        \"status\": \"active\",\n        \"is_admin\": false,\n        \"registerTime\": \"2024-03-15 12:00:00\"\n      }\n    ],\n    \"total\": 100,\n    \"page\": 1,\n    \"size\": 10\n  }\n}"
+          }
+        },
+        {
+          "name": "新增用户",
+          "method": "POST",
+          "url": "{{baseUrl}}/admin/users",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"new@test.com\",\n  \"password\": \"123456\",\n  \"level\": 1,\n  \"score\": 0,\n  \"is_active\": true,\n  \"is_admin\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "编辑用户",
+          "method": "PUT",
+          "url": "{{baseUrl}}/admin/users/:user_id",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "params": [
+              {
+                "key": "user_id",
+                "value": "1",
+                "description": "用户ID"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"new@test.com\",\n  \"level\": 2,\n  \"score\": 100,\n  \"is_active\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "删除用户",
+          "method": "DELETE",
+          "url": "{{baseUrl}}/admin/users/:user_id",
+          "request": {
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "params": [
+              {
+                "key": "user_id",
+                "value": "1",
+                "description": "用户ID"
+              }
+            ]
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"code\": 0,\n  \"msg\": \"用户删除成功\"\n}"
+          }
+        },
+        {
+          "name": "切换用户状态",
+          "method": "PUT",
+          "url": "{{baseUrl}}/admin/users/:user_id/toggle-status",
+          "request": {
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "params": [
+              {
+                "key": "user_id",
+                "value": "1",
+                "description": "用户ID"
+              }
+            ]
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"code\": 0,\n  \"msg\": \"状态切换成功\"\n}"
+          }
+        },
+        {
+          "name": "设置/取消管理员",
+          "method": "PUT",
+          "url": "{{baseUrl}}/admin/users/:user_id/admin",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "params": [
+              {
+                "key": "user_id",
+                "value": "1",
+                "description": "用户ID"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_admin\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "重置用户密码",
+          "method": "PUT",
+          "url": "{{baseUrl}}/admin/users/:user_id/reset-password",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "params": [
+              {
+                "key": "user_id",
+                "value": "1",
+                "description": "用户ID"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"new_password\": \"654321\"\n}"
+            }
+          },
+          "response": {
+            "code": 200,
+            "body": "{\n  \"code\": 0,\n  \"msg\": \"密码重置成功\"\n}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "习题管理",
+      "items": [
+        {
+          "name": "获取习题列表",
+          "method": "GET",
+          "url": "{{baseUrl}}/admin/exercises",
+          "request": {
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "query": [
+              {
+                "key": "page",
+                "value": "1"
+              },
+              {
+                "key": "size",
+                "value": "10"
+              },
+              {
+                "key": "keyword",
+                "value": ""
+              },
+              {
+                "key": "difficulty",
+                "value": ""
+              },
+              {
+                "key": "category",
+                "value": ""
+              },
+              {
+                "key": "stage",
+                "value": ""
+              }
+            ]
+          }
+        },
+        {
+          "name": "新增习题",
+          "method": "POST",
+          "url": "{{baseUrl}}/admin/exercises",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Python基础题\",\n  \"description\": \"请编写一个Python程序输出Hello World\",\n  \"difficulty\": \"easy\",\n  \"category\": \"Python\",\n  \"stage\": \"基础阶段\",\n  \"points\": 10,\n  \"time_limit\": 30,\n  \"code_template\": \"# 请在这里编写代码\",\n  \"test_cases\": \"[]\",\n  \"solution\": \"print('Hello World')\",\n  \"is_published\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "编辑习题",
+          "method": "PUT",
+          "url": "{{baseUrl}}/admin/exercises/:exercise_id",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "params": [
+              {
+                "key": "exercise_id",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Python基础题（修改）\",\n  \"description\": \"请编写一个Python程序输出Hello World\",\n  \"difficulty\": \"medium\"\n}"
+            }
+          }
+        },
+        {
+          "name": "删除习题",
+          "method": "DELETE",
+          "url": "{{baseUrl}}/admin/exercises/:exercise_id",
+          "request": {
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "params": [
+              {
+                "key": "exercise_id",
+                "value": "1"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "学习路径管理",
+      "items": [
+        {
+          "name": "获取学习路径列表",
+          "method": "GET",
+          "url": "{{baseUrl}}/admin/learning-paths",
+          "request": {
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "query": [
+              {
+                "key": "page",
+                "value": "1"
+              },
+              {
+                "key": "size",
+                "value": "10"
+              },
+              {
+                "key": "keyword",
+                "value": ""
+              },
+              {
+                "key": "level",
+                "value": ""
+              }
+            ]
+          }
+        },
+        {
+          "name": "新增学习路径",
+          "method": "POST",
+          "url": "{{baseUrl}}/admin/learning-paths",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Python入门学习路径\",\n  \"description\": \"从零基础到掌握Python基础语法\",\n  \"icon\": \"🐍\",\n  \"level\": 1,\n  \"estimated_time\": 120,\n  \"exercise_ids\": [1, 2, 3],\n  \"is_published\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "编辑学习路径",
+          "method": "PUT",
+          "url": "{{baseUrl}}/admin/learning-paths/:path_id",
+          "request": {
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "params": [
+              {
+                "key": "path_id",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Python入门学习路径（修改）\",\n  \"level\": 2,\n  \"exercise_ids\": [1, 2, 3, 4]\n}"
+            }
+          }
+        },
+        {
+          "name": "删除学习路径",
+          "method": "DELETE",
+          "url": "{{baseUrl}}/admin/learning-paths/:path_id",
+          "request": {
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "params": [
+              {
+                "key": "path_id",
+                "value": "1"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "前台接口",
+      "items": [
+        {
+          "name": "前台获取习题列表",
+          "method": "GET",
+          "url": "{{baseUrl}}/exercises",
+          "request": {
+            "query": [
+              {
+                "key": "page",
+                "value": "1"
+              },
+              {
+                "key": "size",
+                "value": "10"
+              },
+              {
+                "key": "keyword",
+                "value": ""
+              }
+            ]
+          }
+        },
+        {
+          "name": "前台获取习题详情",
+          "method": "GET",
+          "url": "{{baseUrl}}/exercises/:exercise_id",
+          "request": {
+            "params": [
+              {
+                "key": "exercise_id",
+                "value": "1"
+              }
+            ]
+          }
+        },
+        {
+          "name": "前台获取学习路径列表",
+          "method": "GET",
+          "url": "{{baseUrl}}/learning-paths"
+        },
+        {
+          "name": "前台获取学习路径详情",
+          "method": "GET",
+          "url": "{{baseUrl}}/learning-paths/:path_id",
+          "request": {
+            "params": [
+              {
+                "key": "path_id",
+                "value": "1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "description": "后端接口地址"
+    },
+    {
+      "key": "user_token",
+      "value": "",
+      "description": "普通用户登录后的token"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "description": "管理员登录后的token"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "description": "刷新token"
+    }
+  ]
+}

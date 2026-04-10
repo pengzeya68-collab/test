@@ -1,0 +1,54 @@
+{
+  "name": "步骤 18: 获取测试用例列表",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775533377838,
+  "stop": 1775533379884,
+  "duration": 2046,
+  "uuid": "d73b8081-f41f-40d9-94f3-98f06156f930",
+  "historyId": "6_131",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/interface-test/cases"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_18.txt",
+      "body": "API: GET http://localhost:5000/api/interface-test/cases\n状态码: 422\n耗时: 2046ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "name": "步骤 4: 启用/禁用用户",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775533349259,
+  "stop": 1775533351314,
+  "duration": 2055,
+  "uuid": "09f67cf4-0a2b-43e0-b0c4-5325d6196892",
+  "historyId": "6_117",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 404",
+    "trace": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "PUT"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/admin/users/1/status"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_4.txt",
+      "body": "API: PUT http://localhost:5000/api/admin/users/1/status\n状态码: 404\n耗时: 2055ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 404\n响应: <!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>\n"
+    }
+  ]
+}

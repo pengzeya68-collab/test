@@ -1,0 +1,54 @@
+{
+  "name": "步骤 58: 创建学习路径",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534141559,
+  "stop": 1775534143587,
+  "duration": 2028,
+  "uuid": "2b29a32e-7eca-42b0-8964-07b9aae45a8f",
+  "historyId": "6_171",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/learning-paths"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_58.txt",
+      "body": "API: POST http://localhost:5000/api/learning-paths\n状态码: 422\n耗时: 2028ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

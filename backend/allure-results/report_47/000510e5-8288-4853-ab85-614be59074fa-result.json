@@ -1,0 +1,54 @@
+{
+  "name": "步骤 57: 获取学习路径详情",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534139528,
+  "stop": 1775534141559,
+  "duration": 2031,
+  "uuid": "000510e5-8288-4853-ab85-614be59074fa",
+  "historyId": "6_170",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 404",
+    "trace": "{\"error\":\"Learning path not found\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/learning-paths/1"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_57.txt",
+      "body": "API: GET http://localhost:5000/api/learning-paths/1\n状态码: 404\n耗时: 2031ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 404\n响应: {\"error\":\"Learning path not found\"}\n"
+    }
+  ]
+}

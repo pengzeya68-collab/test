@@ -1,0 +1,54 @@
+{
+  "name": "步骤 54: 删除学习路径",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534133432,
+  "stop": 1775534135469,
+  "duration": 2037,
+  "uuid": "44784d73-33ab-4997-b6e8-3027eb32fedb",
+  "historyId": "6_167",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "DELETE"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/learning-paths/1"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_54.txt",
+      "body": "API: DELETE http://localhost:5000/api/learning-paths/1\n状态码: 422\n耗时: 2037ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

@@ -1,0 +1,1081 @@
+{
+  "info": {
+    "name": "TestMasterProject 接口文档",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "testmaster-project-20240315",
+    "description": "TestMasterProject 后端API接口，支持Apipost/Postman导入"
+  },
+  "item": [
+    {
+      "name": "认证相关",
+      "item": [
+        {
+          "name": "用户注册",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@test.com\",\n  \"password\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "register"
+              ]
+            },
+            "description": "新用户注册接口"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"注册成功\",\n  \"data\": {\n    \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": 1,\n      \"username\": \"testuser\",\n      \"email\": \"test@test.com\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "用户登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "普通用户登录接口"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"登录成功\",\n  \"data\": {\n    \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": 1,\n      \"username\": \"testuser\",\n      \"email\": \"test@test.com\",\n      \"is_admin\": false\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "修改密码",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"old_password\": \"123456\",\n  \"new_password\": \"654321\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "change-password"
+              ]
+            },
+            "description": "登录后修改密码接口"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"密码修改成功\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "刷新Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{refresh_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ]
+            },
+            "description": "刷新access_token接口"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "获取用户信息",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profile"
+              ]
+            },
+            "description": "获取当前登录用户信息"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"testuser\",\n    \"email\": \"test@test.com\",\n    \"created_at\": \"2024-03-15T12:00:00\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "退出登录",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "logout"
+              ]
+            },
+            "description": "退出登录接口"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Logout successful\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "管理员相关",
+      "item": [
+        {
+          "name": "管理员登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "login"
+              ]
+            },
+            "description": "后台管理员登录接口"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"登录成功\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"admin\": {\n      \"id\": 1,\n      \"username\": \"admin\",\n      \"name\": \"超级管理员\",\n      \"role\": \"super_admin\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "数据统计",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "dashboard"
+              ]
+            },
+            "description": "后台首页数据统计"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"total_users\": 100,\n    \"total_exercises\": 50,\n    \"total_learning_paths\": 10,\n    \"total_study_time\": 1000,\n    \"today_new_users\": 5,\n    \"today_active_users\": 20,\n    \"growth_rate\": 12.5\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "用户管理",
+      "item": [
+        {
+          "name": "获取用户列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?page=1&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "页码，默认1"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "每页数量，默认10"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "搜索关键词（用户名/邮箱）",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "状态筛选：active/disabled",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "分页获取用户列表"
+          }
+        },
+        {
+          "name": "新增用户",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"new@test.com\",\n  \"password\": \"123456\",\n  \"level\": 1,\n  \"score\": 0,\n  \"is_active\": true,\n  \"is_admin\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
+            },
+            "description": "管理员新增用户"
+          }
+        },
+        {
+          "name": "编辑用户",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"new@test.com\",\n  \"level\": 2,\n  \"score\": 100,\n  \"is_active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "1",
+                  "description": "用户ID"
+                }
+              ]
+            },
+            "description": "编辑用户信息"
+          }
+        },
+        {
+          "name": "删除用户",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "1",
+                  "description": "用户ID"
+                }
+              ]
+            },
+            "description": "删除用户"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"用户删除成功\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "切换用户状态",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/1/toggle-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":user_id",
+                "toggle-status"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "1",
+                  "description": "用户ID"
+                }
+              ]
+            },
+            "description": "启用/禁用用户"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"状态切换成功\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "设置/取消管理员",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_admin\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/1/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":user_id",
+                "admin"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "1",
+                  "description": "用户ID"
+                }
+              ]
+            },
+            "description": "设置或取消用户管理员权限（仅超级管理员可调用）"
+          }
+        },
+        {
+          "name": "重置用户密码",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"new_password\": \"654321\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/1/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":user_id",
+                "reset-password"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "1",
+                  "description": "用户ID"
+                }
+              ]
+            },
+            "description": "管理员重置用户密码"
+          },
+          "response": [
+            {
+              "name": "成功响应",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"密码重置成功\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "习题管理",
+      "item": [
+        {
+          "name": "获取习题列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/exercises?page=1&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "exercises"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "difficulty",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "stage",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "分页获取习题列表"
+          }
+        },
+        {
+          "name": "新增习题",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Python基础题\",\n  \"description\": \"请编写一个Python程序输出Hello World\",\n  \"difficulty\": \"easy\",\n  \"category\": \"Python\",\n  \"stage\": \"基础阶段\",\n  \"points\": 10,\n  \"time_limit\": 30,\n  \"code_template\": \"# 请在这里编写代码\",\n  \"test_cases\": \"[]\",\n  \"solution\": \"print('Hello World')\",\n  \"is_published\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/exercises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "exercises"
+              ]
+            },
+            "description": "新增习题"
+          }
+        },
+        {
+          "name": "编辑习题",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Python基础题（修改）\",\n  \"description\": \"请编写一个Python程序输出Hello World\",\n  \"difficulty\": \"medium\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/exercises/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "exercises",
+                ":exercise_id"
+              ],
+              "variable": [
+                {
+                  "key": "exercise_id",
+                  "value": "1",
+                  "description": "习题ID"
+                }
+              ]
+            },
+            "description": "编辑习题信息"
+          }
+        },
+        {
+          "name": "删除习题",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/exercises/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "exercises",
+                ":exercise_id"
+              ],
+              "variable": [
+                {
+                  "key": "exercise_id",
+                  "value": "1",
+                  "description": "习题ID"
+                }
+              ]
+            },
+            "description": "删除习题"
+          }
+        }
+      ]
+    },
+    {
+      "name": "学习路径管理",
+      "item": [
+        {
+          "name": "获取学习路径列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/learning-paths?page=1&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "learning-paths"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "level",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "分页获取学习路径列表"
+          }
+        },
+        {
+          "name": "新增学习路径",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Python入门学习路径\",\n  \"description\": \"从零基础到掌握Python基础语法\",\n  \"icon\": \"🐍\",\n  \"level\": 1,\n  \"estimated_time\": 120,\n  \"exercise_ids\": [1, 2, 3],\n  \"is_published\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/learning-paths",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "learning-paths"
+              ]
+            },
+            "description": "新增学习路径"
+          }
+        },
+        {
+          "name": "编辑学习路径",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Python入门学习路径（修改）\",\n  \"level\": 2,\n  \"exercise_ids\": [1, 2, 3, 4]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/learning-paths/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "learning-paths",
+                ":path_id"
+              ],
+              "variable": [
+                {
+                  "key": "path_id",
+                  "value": "1",
+                  "description": "学习路径ID"
+                }
+              ]
+            },
+            "description": "编辑学习路径信息"
+          }
+        },
+        {
+          "name": "删除学习路径",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/learning-paths/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "learning-paths",
+                ":path_id"
+              ],
+              "variable": [
+                {
+                  "key": "path_id",
+                  "value": "1",
+                  "description": "学习路径ID"
+                }
+              ]
+            },
+            "description": "删除学习路径"
+          }
+        }
+      ]
+    },
+    {
+      "name": "前台接口",
+      "item": [
+        {
+          "name": "前台获取习题列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/exercises?page=1&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exercises"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "前台公开接口，获取习题列表"
+          }
+        },
+        {
+          "name": "前台获取习题详情",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/exercises/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exercises",
+                ":exercise_id"
+              ],
+              "variable": [
+                {
+                  "key": "exercise_id",
+                  "value": "1",
+                  "description": "习题ID"
+                }
+              ]
+            },
+            "description": "前台公开接口，获取习题详情"
+          }
+        },
+        {
+          "name": "前台获取学习路径列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/learning-paths",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "learning-paths"
+              ]
+            },
+            "description": "前台公开接口，获取学习路径列表"
+          }
+        },
+        {
+          "name": "前台获取学习路径详情",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/learning-paths/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "learning-paths",
+                ":path_id"
+              ],
+              "variable": [
+                {
+                  "key": "path_id",
+                  "value": "1",
+                  "description": "学习路径ID"
+                }
+              ]
+            },
+            "description": "前台公开接口，获取学习路径详情"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string",
+      "description": "后端接口基础地址"
+    },
+    {
+      "key": "user_token",
+      "value": "",
+      "type": "string",
+      "description": "普通用户登录后的access_token"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string",
+      "description": "管理员登录后的token"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string",
+      "description": "刷新token"
+    }
+  ]
+}

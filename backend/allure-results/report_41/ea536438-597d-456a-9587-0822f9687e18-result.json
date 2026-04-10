@@ -1,0 +1,53 @@
+{
+  "name": "[行 3] 步骤 3: DDT批量创建用户",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775749921875,
+  "stop": 1775749922757,
+  "duration": 882,
+  "uuid": "ea536438-597d-456a-9587-0822f9687e18",
+  "historyId": "1_8_iter3",
+  "statusDetails": {
+    "message": "断言失败: [status_code] 期望 == '404', 实际为 '200'",
+    "trace": ""
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 1"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 1"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "https://httpbin.org/post"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_3.txt"
+    }
+  ]
+}

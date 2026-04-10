@@ -1,0 +1,54 @@
+{
+  "name": "步骤 2: 把国家名传给验证接口（验证传递）",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1775689511825,
+  "stop": 1775689512690,
+  "duration": 865,
+  "uuid": "385336ad-456a-4229-bb13-eef1b1bd9f09",
+  "historyId": "11_6",
+  "statusDetails": {
+    "message": "",
+    "trace": "{\n  \"args\": {\n    \"name\": \"{{user_name}}\"\n  }, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate\", \n    \"Host\": \"httpbin.org\", \n    \"User-Agent\": \"python-requests/2.31.0\", \n    \"X-Amzn-Trace-Id\": \"Root=1-69d74fa8-24d414656e485fcf7891fe72\"\n  }, \n  \"origin\": \"34.96.134.66\", \n  \"url\": \"https://httpbin.org/get?name={{user_name}}\"\n}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 测试"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 11"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "https://httpbin.org/get?name={{user_name}}"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_2.txt",
+      "body": "API: GET https://httpbin.org/get?name={{user_name}}\n状态码: 200\n耗时: 865ms\n错误: 无错误\n响应: {\n  \"args\": {\n    \"name\": \"{{user_name}}\"\n  }, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate\", \n    \"Host\": \"httpbin.org\", \n    \"User-Agent\": \"python-requests/2.31.0\", \n    \"X-Amzn-Trace-Id\": \"Root=1-69d74fa8-24d414656e485fcf7891fe72\"\n  }, \n  \"origin\": \"34.96.134.66\", \n  \"url\": \"https://httpbin.org/get?name={{user_name}}\"\n}\n"
+    }
+  ]
+}

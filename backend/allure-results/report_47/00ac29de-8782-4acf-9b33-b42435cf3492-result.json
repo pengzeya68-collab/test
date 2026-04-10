@@ -1,0 +1,54 @@
+{
+  "name": "步骤 46: 智能生成试卷",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534117113,
+  "stop": 1775534119153,
+  "duration": 2040,
+  "uuid": "00ac29de-8782-4acf-9b33-b42435cf3492",
+  "historyId": "6_159",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/exams/generate"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_46.txt",
+      "body": "API: POST http://localhost:5000/api/exams/generate\n状态码: 422\n耗时: 2040ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

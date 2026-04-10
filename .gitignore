@@ -1,1 +1,47 @@
 node_modules/
+
+# 环境变量文件（包含敏感信息）
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.pyc
+
+# 数据库
+instance/*.db
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志
+*.log
+logs/
+
+# 备份
+backups/
+
+# 自动化测试平台
+auto_test_platform/__pycache__/
+auto_test_platform/*.pyc
+auto_test_platform/allure-results/
+auto_test_platform/reports/
+auto_test_platform/temp_run_data/
+auto_test_platform/temp_pytest_tests/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 前端构建
+frontend/dist/
+frontend/.DS_Store
+

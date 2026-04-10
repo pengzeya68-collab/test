@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "sessions": {
+    "9ee0d90de1df470dbb0a3e1042e35390": [
+      {
+        "expertId": "BackendArchitect",
+        "name": "Joy",
+        "profession": "后端架构师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/BackendArchitect/BackendArchitect.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/BackendArchitect/BackendArchitect_zh.md",
+        "usedAt": 1774699255426,
+        "industryId": "02-Engineering"
+      },
+      {
+        "expertId": "SeniorDeveloper",
+        "name": "Will",
+        "profession": "高级开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/SeniorDeveloper/SeniorDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/SeniorDeveloper/SeniorDeveloper_zh.md",
+        "usedAt": 1774699234943,
+        "industryId": "02-Engineering"
+      }
+    ]
+  },
+  "lastUpdated": 1774704285652
+}

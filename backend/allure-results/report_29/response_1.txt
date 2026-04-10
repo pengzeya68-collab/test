@@ -1,0 +1,5 @@
+API: POST {{my_base_url}}/post
+状态码: None
+耗时: 4ms
+错误: Invalid URL '{{my_base_url}}/post': No scheme supplied. Perhaps you meant https://{{my_base_url}}/post?
+响应: 无响应体

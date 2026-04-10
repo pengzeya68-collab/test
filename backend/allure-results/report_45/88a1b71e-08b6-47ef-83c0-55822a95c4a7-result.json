@@ -1,0 +1,54 @@
+{
+  "name": "步骤 28: 删除评论",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775533398213,
+  "stop": 1775533400255,
+  "duration": 2042,
+  "uuid": "88a1b71e-08b6-47ef-83c0-55822a95c4a7",
+  "historyId": "6_141",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 404",
+    "trace": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "DELETE"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/community/comments/1"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_28.txt",
+      "body": "API: DELETE http://localhost:5000/api/community/comments/1\n状态码: 404\n耗时: 2042ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 404\n响应: <!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>\n"
+    }
+  ]
+}

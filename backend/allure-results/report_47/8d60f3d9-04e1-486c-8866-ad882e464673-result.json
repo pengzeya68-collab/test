@@ -1,0 +1,54 @@
+{
+  "name": "步骤 30: 获取帖子评论",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534084482,
+  "stop": 1775534086506,
+  "duration": 2024,
+  "uuid": "8d60f3d9-04e1-486c-8866-ad882e464673",
+  "historyId": "6_143",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 404",
+    "trace": "{\"error\":\"\\u5e16\\u5b50\\u4e0d\\u5b58\\u5728\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/community/posts/1/comments?page=1&per_page=20"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_30.txt",
+      "body": "API: GET http://localhost:5000/api/community/posts/1/comments?page=1&per_page=20\n状态码: 404\n耗时: 2024ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 404\n响应: {\"error\":\"\\u5e16\\u5b50\\u4e0d\\u5b58\\u5728\"}\n"
+    }
+  ]
+}

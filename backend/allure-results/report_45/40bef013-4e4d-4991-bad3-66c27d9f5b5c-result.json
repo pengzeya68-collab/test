@@ -1,0 +1,54 @@
+{
+  "name": "步骤 26: 获取我的帖子",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775533394130,
+  "stop": 1775533396173,
+  "duration": 2043,
+  "uuid": "40bef013-4e4d-4991-bad3-66c27d9f5b5c",
+  "historyId": "6_139",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 404",
+    "trace": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "GET"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/community/my-posts?page=1&per_page=10"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_26.txt",
+      "body": "API: GET http://localhost:5000/api/community/my-posts?page=1&per_page=10\n状态码: 404\n耗时: 2043ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 404\n响应: <!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>\n"
+    }
+  ]
+}

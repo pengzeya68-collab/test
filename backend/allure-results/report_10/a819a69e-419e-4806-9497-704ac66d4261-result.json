@@ -1,0 +1,54 @@
+{
+  "name": "步骤 4: 创建数据库备份",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775552447206,
+  "stop": 1775552449257,
+  "duration": 2051,
+  "uuid": "a819a69e-419e-4806-9497-704ac66d4261",
+  "historyId": "10_4",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 1"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 10"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "POST"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/admin/backups"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_4.txt",
+      "body": "API: POST http://localhost:5000/api/admin/backups\n状态码: 422\n耗时: 2051ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}

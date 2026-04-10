@@ -1,0 +1,54 @@
+{
+  "name": "步骤 50: 删除考试",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1775534125254,
+  "stop": 1775534127314,
+  "duration": 2060,
+  "uuid": "50f3bd85-def3-45e8-8f63-b43780f1c935",
+  "historyId": "6_163",
+  "statusDetails": {
+    "message": "默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422",
+    "trace": "{\"msg\":\"Not enough segments\"}\n"
+  },
+  "labels": [
+    {
+      "name": "parentSuite",
+      "value": "自动化场景测试"
+    },
+    {
+      "name": "suite",
+      "value": "场景: 11"
+    },
+    {
+      "name": "subSuite",
+      "value": "ID: 6"
+    },
+    {
+      "name": "severity",
+      "value": "normal"
+    },
+    {
+      "name": "host",
+      "value": "localhost"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Method",
+      "value": "DELETE"
+    },
+    {
+      "name": "URL",
+      "value": "http://localhost:5000/api/exams/1"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "响应详情",
+      "type": "text/plain",
+      "source": "response_50.txt",
+      "body": "API: DELETE http://localhost:5000/api/exams/1\n状态码: 422\n耗时: 2060ms\n错误: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 422\n响应: {\"msg\":\"Not enough segments\"}\n"
+    }
+  ]
+}
