@@ -22,6 +22,14 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
+
+def get_env_flag(name, default=False):
+    """Parse boolean-like environment variables in a predictable way."""
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+
 # 确保工作目录正确
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if os.getcwd() != project_root:
@@ -70,10 +78,11 @@ def auto_backup_on_start():
         print("      App will continue starting...\n")
 
 # 执行自动备份
-auto_backup_on_start()
-
 def create_app():
     app = Flask(__name__)
+    flask_env = os.environ.get('FLASK_ENV', 'development')
+    config_class = config.get(flask_env, config['default'])
+    is_celery_worker = any('celery' in arg.lower() for arg in sys.argv)
     
     # Configuration
     # 密钥首先从环境变量读取，其次从 .env 文件读取
@@ -131,10 +140,10 @@ def create_app():
     app.config['JWT_SECRET_KEY'] = jwt_secret_key
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
     # 完全禁用速率限制 - 本地开发调试不需要
-    app.config['RATELIMIT_ENABLED'] = False
+    app.config['RATELIMIT_ENABLED'] = get_env_flag('RATELIMIT_ENABLED', flask_env != 'development')
     
     # Debug mode
-    app.debug = False
+    app.debug = config_class.DEBUG
     
     # Initialize extensions
     db.init_app(app)
@@ -143,9 +152,11 @@ def create_app():
     limiter.init_app(app)
 
     # Get CORS origins from config
-    flask_env = os.environ.get('FLASK_ENV', 'development')
-    cors_origins = config[flask_env].CORS_ORIGINS
+    cors_origins = config_class.CORS_ORIGINS
     CORS(app, origins=cors_origins)
+
+    if get_env_flag('AUTO_BACKUP_ON_STARTUP', False) and not is_celery_worker:
+        auto_backup_on_start()
     
     # Import and register blueprints
     print("Importing blueprints...")
@@ -203,7 +214,10 @@ def create_app():
     # Create tables and initialize scheduler
     with app.app_context():
         from .models import models
-        db.create_all()
+
+        if get_env_flag('AUTO_CREATE_TABLES_ON_STARTUP', False):
+            db.create_all()
+            print("[Startup] AUTO_CREATE_TABLES_ON_STARTUP enabled, database tables ensured.")
 
         # ========== 初始化 APScheduler 定时任务调度 ==========
         # 【致命修复】绝对禁止 Celery worker 进程启动 scheduler！

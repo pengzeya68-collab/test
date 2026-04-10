@@ -7,6 +7,16 @@
           <el-icon><ArrowLeft /></el-icon>
           返回用例列表
         </el-button>
+
+        <el-button
+          type="primary"
+          :disabled="!canRerun"
+          :loading="rerunning"
+          @click="handleOneClickRerun"
+        >
+          <el-icon><RefreshRight /></el-icon>
+          再次运行
+        </el-button>
       </div>
 
       <!-- 基本信息 -->
@@ -225,7 +235,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ArrowLeft, Plus, Document, VideoPlay, Setting } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus, Document, VideoPlay, Setting, RefreshRight } from '@element-plus/icons-vue'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
@@ -237,6 +247,7 @@ const caseId = route.params.id
 const loading = ref(false)
 const saving = ref(false)
 const sending = ref(false)
+const rerunning = ref(false)
 const error = ref(null)
 const response = ref(null)
 const envManagerVisible = ref(false)
@@ -247,6 +258,10 @@ const availableVariables = ref([])
 const selectedEnvId = ref(null)
 const selectedEnv = computed(() => {
   return environments.value.find(e => e.id === selectedEnvId.value) || null
+})
+
+const canRerun = computed(() => {
+  return Boolean(caseId && caseId !== '0' && caseId !== 'new')
 })
 
 // 获取环境变量列表
@@ -528,6 +543,29 @@ const sendRequest = async () => {
   }
 }
 
+const handleOneClickRerun = async () => {
+  if (!canRerun.value) {
+    ElMessage.warning('请先保存用例后再运行')
+    return
+  }
+  if (!selectedEnvId.value) {
+    ElMessage.warning('请先选择环境')
+    return
+  }
+  if (sending.value || rerunning.value) return
+
+  rerunning.value = true
+  error.value = null
+  response.value = null
+  ElMessage.success('已触发再次运行，执行中...')
+
+  try {
+    await sendRequest()
+  } finally {
+    rerunning.value = false
+  }
+}
+
 const goBack = () => {
   router.push('/interface-test')
 }
@@ -560,6 +598,9 @@ onMounted(async () => {
 
 .back-bar {
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .info-card {

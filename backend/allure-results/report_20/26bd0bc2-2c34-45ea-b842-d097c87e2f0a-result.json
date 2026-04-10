@@ -1,14 +1,14 @@
 {
-  "name": "[行 3] 步骤 3: DDT批量创建用户",
+  "name": "[行 1] 步骤 1: DDT批量创建用户",
   "status": "failed",
   "stage": "finished",
-  "start": 1775752683084,
-  "stop": 1775752683982,
-  "duration": 898,
-  "uuid": "e5d88016-d56a-42c7-838f-6a771671d885",
-  "historyId": "1_8_iter3",
+  "start": 1775809265301,
+  "stop": 1775809266165,
+  "duration": 864,
+  "uuid": "26bd0bc2-2c34-45ea-b842-d097c87e2f0a",
+  "historyId": "1_8_iter1",
   "statusDetails": {
-    "message": "断言失败: [status_code] 期望 == '404', 实际为 '200'",
+    "message": "断言失败: [None] 期望 equals '', 实际为 'None'",
     "trace": ""
   },
   "labels": [
@@ -47,7 +47,7 @@
     {
       "name": "响应详情",
       "type": "text/plain",
-      "source": "response_3.txt"
+      "source": "response_1.txt"
     }
   ]
 }

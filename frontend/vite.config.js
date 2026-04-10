@@ -34,6 +34,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           ws: false
+        },
+        '/reports': {
+          target: env.VITE_AUTO_TEST_API_BASE_URL || 'http://127.0.0.1:5002',
+          changeOrigin: true,
+          secure: false,
+          ws: false
         }
       }
     }

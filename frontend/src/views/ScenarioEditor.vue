@@ -1342,6 +1342,20 @@ const getStatusCodeType = (statusCode) => {
   return 'info'
 }
 
+const resolveReportUrl = (reportUrl) => {
+  if (!reportUrl) return ''
+  if (/^https?:\/\//i.test(reportUrl)) return reportUrl
+
+  const normalizedPath = reportUrl.startsWith('/') ? reportUrl : `/${reportUrl}`
+  const configuredBase = import.meta.env.VITE_AUTO_TEST_API_BASE_URL?.trim()
+
+  if (configuredBase) {
+    return `${configuredBase.replace(/\/+$/, '')}${normalizedPath}`
+  }
+
+  return normalizedPath
+}
+
 // 打开 Allure 详细报告
 const openAllureReport = () => {
   console.log('--- 终极接管 Allure 按钮 ---', runResult.value);
@@ -1359,7 +1373,7 @@ const openAllureReport = () => {
   if (url) {
     console.log('即将打开报告地址:', `http://127.0.0.1:5002${url}`);
     // 强行补齐前缀并打开
-    window.open(`http://127.0.0.1:5002${url}`, '_blank');
+    window.open(resolveReportUrl(url), '_blank');
   } else {
     ElMessage.error('执行结果中缺失 report_id，无法拼接报告地址！');
   }
@@ -1403,8 +1417,7 @@ const getStatusText = (status) => {
 
 const openReport = (reportUrl) => {
   // 拼接完整 URL
-  const baseUrl = window.location.origin
-  const fullUrl = reportUrl.startsWith('http') ? reportUrl : `${baseUrl}/${reportUrl}`
+  const fullUrl = resolveReportUrl(reportUrl)
   window.open(fullUrl, '_blank')
 }
 

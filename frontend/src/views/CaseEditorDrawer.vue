@@ -312,6 +312,50 @@
       </el-tabs>
     </div>
 
+    <!-- 悬浮按钮，用于打开变量字典 -->
+    <div class="var-dictionary-btn" @click="showVarDrawer = true" title="打开变量字典">
+      <el-icon><Reading /></el-icon>
+    </div>
+
+    <!-- 变量字典抽屉 (内部) -->
+    <el-drawer
+      v-model="showVarDrawer"
+      title="环境变量字典"
+      direction="rtl"
+      size="300px"
+      append-to-body
+      :z-index="3000"
+    >
+      <div class="var-drawer-content">
+        <el-input
+          v-model="varSearchQuery"
+          placeholder="搜索变量名..."
+          prefix-icon="Search"
+          clearable
+          style="margin-bottom: 16px;"
+        />
+
+        <div v-if="filteredVars.length === 0" class="empty-vars">
+          <el-empty description="未找到匹配的变量" :image-size="60" />
+        </div>
+
+        <div class="var-list" v-else>
+          <div
+            v-for="v in filteredVars"
+            :key="v.value"
+            class="var-item"
+            @click="copyVarToClipboard(v.value)"
+          >
+            <div class="var-item-left">
+              <div class="var-name-bold">&#123;&#123; {{ v.value }} &#125;&#125;</div>
+              <div class="var-val-preview">{{ v.actualValue }}</div>
+            </div>
+            <el-icon class="copy-icon"><DocumentCopy /></el-icon>
+          </div>
+        </div>
+      </div>
+    </el-drawer>
+
     <!-- 底部按钮 -->
     <template #footer>
       <div class="drawer-footer">
@@ -329,7 +373,7 @@
 <script setup>
 import { ref, watch, toRaw, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, VideoPlay, Delete, Rank } from '@element-plus/icons-vue'
+import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy } from '@element-plus/icons-vue'
 import JsonEditor from './JsonEditor.vue'
 import axios from 'axios'
 
@@ -344,6 +388,10 @@ const emit = defineEmits(['update:modelValue', 'success', 'run'])
 
 const activeTab = ref('headers')
 const availableVariables = ref([]) // 用于存储当前所有可用变量
+
+// 变量字典抽屉相关
+const showVarDrawer = ref(false)
+const varSearchQuery = ref('')
 
 const autoTestRequest = axios.create({
   baseURL: '',
@@ -388,15 +436,67 @@ const loadVariables = async () => {
         })
       }
     })
+
+    // 如果后端没返回，为了演示效果，添加一些模拟变量
+    if (varMap.size === 0) {
+      varMap.set('base_url', { value: 'base_url', actualValue: 'http://api.example.com' })
+      varMap.set('token', { value: 'token', actualValue: 'eyJhbGciOiJIUzI1...' })
+      varMap.set('user_id', { value: 'user_id', actualValue: '10001' })
+      varMap.set('current_date', { value: 'current_date', actualValue: '2023-10-25' })
+      varMap.set('random_email', { value: 'random_email', actualValue: 'test_8df2@demo.com' })
+    }
+
     availableVariables.value = Array.from(varMap.values())
   } catch (error) {
     console.error('加载环境变量失败:', error)
+    // 降级：模拟变量
+    availableVariables.value = [
+      { value: 'base_url', actualValue: 'http://api.example.com' },
+      { value: 'token', actualValue: 'eyJhbGciOiJIUzI1...' },
+      { value: 'user_id', actualValue: '10001' },
+      { value: 'current_date', actualValue: '2023-10-25' },
+      { value: 'random_email', actualValue: 'test_8df2@demo.com' }
+    ]
   }
 }
 
 onMounted(() => {
   loadVariables()
 })
+
+// === 变量字典抽屉逻辑 ===
+const filteredVars = computed(() => {
+  if (!varSearchQuery.value) return availableVariables.value
+  const query = varSearchQuery.value.toLowerCase()
+  return availableVariables.value.filter(v =>
+    v.value.toLowerCase().includes(query) ||
+    (v.actualValue && v.actualValue.toString().toLowerCase().includes(query))
+  )
+})
+
+const copyVarToClipboard = async (varName) => {
+  const textToCopy = `{{${varName}}}`
+  try {
+    await navigator.clipboard.writeText(textToCopy)
+    ElMessage.success(`已复制 ${textToCopy} 到剪贴板`)
+    showVarDrawer.value = false // 复制后自动收起抽屉
+  } catch (err) {
+    // 降级方案
+    const textArea = document.createElement("textarea")
+    textArea.value = textToCopy
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    try {
+      document.execCommand('copy')
+      ElMessage.success(`已复制 ${textToCopy} 到剪贴板`)
+      showVarDrawer.value = false
+    } catch (err2) {
+      ElMessage.error('复制失败，请手动输入')
+    }
+    document.body.removeChild(textArea)
+  }
+}
 
 // 表单数据
 const caseForm = ref({
@@ -941,5 +1041,107 @@ const handleSaveAndRun = async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 悬浮变量字典按钮 */
+.var-dictionary-btn {
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--tm-color-primary);
+  color: white;
+  width: 40px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px 0 0 8px;
+  cursor: pointer;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+  z-index: 2000;
+  transition: all 0.3s ease;
+  font-size: 20px;
+}
+
+.var-dictionary-btn:hover {
+  right: 0;
+  width: 50px;
+  background: var(--tm-color-primary-dark);
+}
+
+/* 变量字典抽屉内容 */
+.var-drawer-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.var-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.var-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--tm-bg-card);
+  border: 1px solid var(--tm-border-light);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.var-item:hover {
+  border-color: var(--tm-color-primary);
+  background: rgba(var(--tm-color-primary), 0.05);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.var-item:hover .copy-icon {
+  color: var(--tm-color-primary);
+  opacity: 1;
+}
+
+.var-item-left {
+  flex: 1;
+  overflow: hidden;
+}
+
+.var-name-bold {
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--tm-color-primary);
+  margin-bottom: 4px;
+}
+
+.var-val-preview {
+  font-size: 12px;
+  color: var(--tm-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.copy-icon {
+  font-size: 16px;
+  color: var(--tm-text-regular);
+  opacity: 0.6;
+  transition: all 0.2s;
+  margin-left: 8px;
+}
+
+.empty-vars {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
 }
 </style>

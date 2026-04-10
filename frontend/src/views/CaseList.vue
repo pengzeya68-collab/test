@@ -31,13 +31,13 @@
           <el-dropdown trigger="click" @command="handleImportCommand">
             <el-button type="success" plain>
               <el-icon><Upload /></el-icon>
-              导入
+              导入用例
               <el-icon class="el-icon--right"><ArrowDown /></el-icon>
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="postman">导入 Postman</el-dropdown-item>
-                <el-dropdown-item command="swagger">导入 Swagger/OpenAPI</el-dropdown-item>
+                <el-dropdown-item command="postman">Postman</el-dropdown-item>
+                <el-dropdown-item command="swagger">Swagger/OpenAPI</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -131,27 +131,15 @@
     >
       <div class="import-container" v-loading="importing">
         <el-alert
-          :title="importType === 'postman' ? '请选择导出的 Postman Collection v2.1 JSON 文件' : '请提供 Swagger/OpenAPI 的 JSON 文件或在线地址'"
+          :title="importType === 'postman' ? '请选择导出的 Postman Collection v2.1 JSON 文件' : '请选择 Swagger/OpenAPI 的 JSON 文件'"
           type="info"
           show-icon
           style="margin-bottom: 20px"
         />
 
         <el-form label-width="100px">
-          <!-- OpenAPI/Swagger 允许在线 URL 或文件上传 -->
-          <el-form-item v-if="importType === 'swagger'" label="获取方式">
-            <el-radio-group v-model="swaggerImportSource">
-              <el-radio value="url" label="url">在线 URL</el-radio>
-              <el-radio value="file" label="file">上传文件</el-radio>
-            </el-radio-group>
-          </el-form-item>
-
-          <el-form-item v-if="importType === 'swagger' && swaggerImportSource === 'url'" label="在线地址">
-            <el-input v-model="swaggerUrl" placeholder="http://api.example.com/v2/api-docs" />
-          </el-form-item>
-
           <!-- 统一的文件上传框 -->
-          <el-form-item v-show="importType === 'postman' || (importType === 'swagger' && swaggerImportSource === 'file')" label="选择文件">
+          <el-form-item v-show="importType === 'postman' || importType === 'swagger'" label="选择文件">
             <el-upload
               class="upload-demo"
               drag
@@ -259,8 +247,6 @@ const currentGroupId = ref(null)
 // ===== 导入相关变量 =====
 const importDialogVisible = ref(false)
 const importType = ref('') // 'postman' or 'swagger'
-const swaggerImportSource = ref('url') // 'url' or 'file'
-const swaggerUrl = ref('')
 const importFile = ref(null)
 const importing = ref(false)
 const parsedData = ref(null) // 解析后的预览数据
@@ -494,7 +480,6 @@ const handleImportCommand = (command) => {
   importType.value = command
   importFile.value = null
   parsedData.value = null
-  swaggerUrl.value = ''
   importDialogVisible.value = true
 }
 
@@ -511,7 +496,6 @@ const handleImportClose = () => {
   importDialogVisible.value = false
   importFile.value = null
   parsedData.value = null
-  swaggerUrl.value = ''
   importing.value = false
 }
 
@@ -526,21 +510,12 @@ const handleParseFile = async () => {
       formData.append('target_group_id', props.groupId)
     }
 
-    if (importType.value === 'swagger' && swaggerImportSource.value === 'url') {
-      if (!swaggerUrl.value) {
-        ElMessage.warning('请输入 Swagger URL')
-        importing.value = false
-        return
-      }
-      formData.append('url', swaggerUrl.value)
-    } else {
-      if (!importFile.value) {
-        ElMessage.warning('请选择文件')
-        importing.value = false
-        return
-      }
-      formData.append('file', importFile.value)
+    if (!importFile.value) {
+      ElMessage.warning('请选择文件')
+      importing.value = false
+      return
     }
+    formData.append('file', importFile.value)
 
     const endpoint = importType.value === 'postman' ? '/api/auto-test/import/postman' : '/api/auto-test/import/swagger'
 
@@ -581,11 +556,7 @@ const handleConfirmImport = async () => {
       formData.append('target_group_id', props.groupId)
     }
 
-    if (importType.value === 'swagger' && swaggerImportSource.value === 'url') {
-      formData.append('url', swaggerUrl.value)
-    } else {
-      formData.append('file', importFile.value)
-    }
+    formData.append('file', importFile.value)
 
     const endpoint = importType.value === 'postman' ? '/api/auto-test/import/postman' : '/api/auto-test/import/swagger'
 

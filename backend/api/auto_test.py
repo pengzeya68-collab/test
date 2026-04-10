@@ -1629,11 +1629,18 @@ def run_scenario_data_driven(scenario_id):
 @auto_test_bp.route('/auto-test/scenarios/<int:scenario_id>/history', methods=['GET'])
 @jwt_required()
 def get_scenario_history(scenario_id):
-    """获取场景执行历史"""
+    """获取场景执行历史，支持条件筛选和通过率统计"""
     user_id = get_jwt_identity()
     from backend.models.models import InterfaceTestReport
+    from datetime import datetime
+
     page_str = request.args.get('page', '1')
     per_page_str = request.args.get('per_page', '20')
+
+    # 获取筛选参数
+    status = request.args.get('status')
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
 
     try:
         page = int(page_str)
@@ -1642,9 +1649,38 @@ def get_scenario_history(scenario_id):
         page = 1
         per_page = 20
 
-    reports = InterfaceTestReport.query\
-        .filter_by(user_id=user_id, plan_id=scenario_id)\
-        .order_by(InterfaceTestReport.executed_at.desc())\
+    # 构建基础查询（用于统计，不包含状态筛选）
+    base_query = InterfaceTestReport.query.filter_by(user_id=user_id, plan_id=scenario_id)
+
+    # 构建筛选查询（用于分页，包含所有筛选）
+    filtered_query = InterfaceTestReport.query.filter_by(user_id=user_id, plan_id=scenario_id)
+
+    # 添加日期范围筛选（同时应用到基础查询和筛选查询）
+    if start_date_str and start_date_str != '':
+        try:
+            start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+            base_query = base_query.filter(InterfaceTestReport.executed_at >= start_date)
+            filtered_query = filtered_query.filter(InterfaceTestReport.executed_at >= start_date)
+        except (ValueError, TypeError):
+            pass
+
+    if end_date_str and end_date_str != '':
+        try:
+            end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+            base_query = base_query.filter(InterfaceTestReport.executed_at <= end_date)
+            filtered_query = filtered_query.filter(InterfaceTestReport.executed_at <= end_date)
+        except (ValueError, TypeError):
+            pass
+
+    # 计算通过的报告数（状态为'completed'的报告，基于日期筛选但不包括状态筛选）
+    passed_count = base_query.filter(InterfaceTestReport.status == 'completed').count()
+
+    # 在筛选查询中添加状态筛选（如果提供了状态）
+    if status and status != '':
+        filtered_query = filtered_query.filter(InterfaceTestReport.status == status)
+
+    # 分页查询（使用筛选后的查询）
+    reports = filtered_query.order_by(InterfaceTestReport.executed_at.desc())\
         .paginate(page=page, per_page=per_page, error_out=False)
 
     items = []
@@ -1663,7 +1699,13 @@ def get_scenario_history(scenario_id):
         'total': reports.total,
         'page': reports.page,
         'pages': reports.pages,
-        'items': items
+        'items': items,
+        'passed_count': passed_count,
+        'statistics': {
+            'total_reports': reports.total,
+            'passed_reports': passed_count,
+            'pass_rate': round((passed_count / reports.total * 100), 2) if reports.total > 0 else 0
+        }
     })
 
 

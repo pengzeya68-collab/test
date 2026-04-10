@@ -498,6 +498,76 @@
       size="70%"
     >
       <div class="history-content" v-loading="historyLoading">
+        <!-- 统计卡片 -->
+        <el-row :gutter="16" class="stats-cards">
+          <el-col :span="8">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-content">
+                <div class="stat-value">{{ historyStats.total_reports }}</div>
+                <div class="stat-label">总报告数</div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="8">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-content">
+                <div class="stat-value" style="color: #67c23a;">{{ historyStats.passed_reports }}</div>
+                <div class="stat-label">通过报告数</div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="8">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-content">
+                <div class="stat-value" :style="{ color: historyStats.pass_rate >= 80 ? '#67c23a' : (historyStats.pass_rate >= 60 ? '#e6a23c' : '#f56c6c') }">
+                  {{ historyStats.pass_rate }}%
+                </div>
+                <div class="stat-label">通过率</div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <!-- 筛选表单 -->
+        <el-form :inline="true" class="history-filter-form">
+          <el-form-item label="状态">
+            <el-select v-model="historyFilterStatus" placeholder="全部状态" clearable style="width: 120px">
+              <el-option label="全部" value="" />
+              <el-option label="待处理" value="pending" />
+              <el-option label="运行中" value="running" />
+              <el-option label="已完成" value="completed" />
+              <el-option label="已失败" value="failed" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="日期范围">
+            <el-date-picker
+              v-model="historyFilterStartDate"
+              type="date"
+              placeholder="开始日期"
+              value-format="YYYY-MM-DD"
+              style="width: 140px"
+            />
+            <span style="margin: 0 8px">至</span>
+            <el-date-picker
+              v-model="historyFilterEndDate"
+              type="date"
+              placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              style="width: 140px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="loadExecutionHistory" :loading="historyLoading">
+              <el-icon><Search /></el-icon>
+              查询
+            </el-button>
+            <el-button @click="resetHistoryFilters">
+              <el-icon><RefreshRight /></el-icon>
+              重置
+            </el-button>
+          </el-form-item>
+        </el-form>
+
         <!-- 温馨提示：自动清理 -->
         <el-alert
           title="⚠️ 温馨提示"
@@ -606,9 +676,17 @@
               失败: <span style="color: #f56c6c">{{ reportDetailData.failed_steps || 0 }}</span> |
               总耗时: {{ (reportDetailData.total_time || 0) }}ms
             </span>
-            <!-- 增加再次运行按钮 -->
-            <el-button type="primary" size="small" style="margin-left: 20px" @click="reRunHistory(reportDetailData)">
-              <el-icon><VideoPlay/></el-icon> 再次运行
+            <!-- 再次运行（失败报告更醒目） -->
+            <el-button
+              :type="reportDetailData.failed_steps > 0 ? 'danger' : 'primary'"
+              size="default"
+              style="margin-left: 20px"
+              :loading="isRunning"
+              :disabled="isRunning"
+              @click="reRunHistory(reportDetailData)"
+            >
+              <el-icon><VideoPlay /></el-icon>
+              再次运行
             </el-button>
           </div>
 
@@ -618,7 +696,7 @@
           <div style="height: 60vh; width: 100%; margin-bottom: 20px; border: 1px solid #dcdfe6; border-radius: 4px; overflow: hidden;">
             <iframe
               v-if="reportDetailData && reportDetailData.id"
-              :src="`http://127.0.0.1:5002/reports/${reportDetailData.id}/index.html`"
+              :src="resolveReportUrl(`/reports/${reportDetailData.id}/index.html`)"
               style="width: 100%; height: 100%; border: none;"
               title="Allure 报告"
             ></iframe>
@@ -784,6 +862,20 @@ const scheduleForm = ref({
 // CI/CD Webhook 配置对话框
 const ciCdDialogVisible = ref(false)
 const currentCiCdScene = ref(null)
+const resolveReportUrl = (reportUrl) => {
+  if (!reportUrl) return ''
+  if (/^https?:\/\//i.test(reportUrl)) return reportUrl
+
+  const normalizedPath = reportUrl.startsWith('/') ? reportUrl : `/${reportUrl}`
+  const configuredBase = import.meta.env.VITE_AUTO_TEST_API_BASE_URL?.trim()
+
+  if (configuredBase) {
+    return `${configuredBase.replace(/\/+$/, '')}${normalizedPath}`
+  }
+
+  return normalizedPath
+}
+
 const curlCommand = computed(() => {
   if (!currentCiCdScene.value || !currentCiCdScene.value.webhook_token) {
     return ''
@@ -830,6 +922,16 @@ const executionHistory = ref({
   success_count: 0,
   failed_count: 0,
   items: []
+})
+
+// 执行历史筛选参数
+const historyFilterStatus = ref('')
+const historyFilterStartDate = ref('')
+const historyFilterEndDate = ref('')
+const historyStats = ref({
+  total_reports: 0,
+  passed_reports: 0,
+  pass_rate: 0
 })
 
 // 报告详情对话框相关
@@ -890,7 +992,33 @@ const loadExecutionHistory = async () => {
   if (!currentHistoryScenarioId.value) return
   historyLoading.value = true
   try {
-    const res = await autoTestRequest.get(`/api/auto-test/scenarios/${currentHistoryScenarioId.value}/history`)
+    const params = {}
+
+    // 添加筛选参数
+    if (historyFilterStatus.value) {
+      params.status = historyFilterStatus.value
+    }
+    if (historyFilterStartDate.value) {
+      params.start_date = historyFilterStartDate.value
+    }
+    if (historyFilterEndDate.value) {
+      params.end_date = historyFilterEndDate.value
+    }
+
+    const res = await autoTestRequest.get(`/api/auto-test/scenarios/${currentHistoryScenarioId.value}/history`, { params })
+
+    // 使用后端返回的统计数据
+    if (res.statistics) {
+      historyStats.value = res.statistics
+    } else {
+      // 兼容旧版
+      historyStats.value = {
+        total_reports: res.total || 0,
+        passed_reports: 0,
+        pass_rate: 0
+      }
+    }
+
     const items = res.items || []
     // 后端 status: 'completed' = 全部成功, 'failed' = 有失败, 'running' = 执行中
     const successCount = items.filter(item => item.status === 'completed').length
@@ -906,6 +1034,13 @@ const loadExecutionHistory = async () => {
   } finally {
     historyLoading.value = false
   }
+}
+
+const resetHistoryFilters = () => {
+  historyFilterStatus.value = ''
+  historyFilterStartDate.value = ''
+  historyFilterEndDate.value = ''
+  loadExecutionHistory()
 }
 
 const refreshExecutionHistory = () => {
@@ -933,8 +1068,7 @@ const deleteHistoryRecord = async (historyId) => {
 
 const openReport = (reportUrl) => {
   // 拼接完整 URL
-  const baseUrl = window.location.origin.replace(/:\d+$/, ':5002')
-  const fullUrl = reportUrl.startsWith('http') ? reportUrl : `${baseUrl}/${reportUrl}`
+  const fullUrl = resolveReportUrl(reportUrl)
   window.open(fullUrl, '_blank')
 }
 
@@ -970,7 +1104,7 @@ const reRunHistory = async (historyRow) => {
     runResult.value = null
     expandedSteps.value = []
 
-    ElMessage.info({ message: '任务已提交，后台正在执行中，请稍候...', duration: 3000 })
+    ElMessage.success({ message: '测试已开始，请查看最新报告/执行进度', duration: 3000 })
 
     const res = await autoTestRequest.post(
       `/api/auto-test/scenarios/${scenarioId}/run`,
@@ -1404,7 +1538,7 @@ const openAllureReport = () => {
   if (url) {
     console.log('即将打开报告地址:', `http://127.0.0.1:5002${url}`);
     // 强行补齐前缀并打开
-    window.open(`http://127.0.0.1:5002${url}`, '_blank');
+    window.open(resolveReportUrl(url), '_blank');
   } else {
     ElMessage.error('执行结果中缺失 report_id，无法拼接报告地址！');
   }
@@ -1848,6 +1982,55 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
+/* 统计卡片样式 */
+.stats-cards {
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  border-radius: 8px;
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-content {
+  text-align: center;
+  padding: 12px 0;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--tm-text-secondary);
+}
+
+/* 历史记录筛选表单样式 */
+.history-filter-form {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--tm-bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--tm-border-light);
+}
+
+.history-filter-form .el-form-item {
+  margin-bottom: 0;
+  margin-right: 16px;
+}
+
+.history-filter-form .el-form-item:last-child {
+  margin-right: 0;
+}
+
 /* 响应式 */
 @media (max-width: 768px) {
   .list-toolbar {
@@ -1859,6 +2042,24 @@ onUnmounted(() => {
   .toolbar-left,
   .toolbar-right {
     justify-content: center;
+  }
+
+  .stats-cards {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .stat-card {
+    width: 100%;
+  }
+
+  .history-filter-form .el-form-item {
+    margin-right: 0;
+    margin-bottom: 12px;
+  }
+
+  .history-filter-form .el-form-item:last-child {
+    margin-bottom: 0;
   }
 }
 </style>

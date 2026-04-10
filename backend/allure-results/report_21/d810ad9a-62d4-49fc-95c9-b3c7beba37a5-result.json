@@ -1,14 +1,14 @@
 {
   "name": "[行 1] 步骤 1: DDT批量创建用户",
-  "status": "passed",
+  "status": "failed",
   "stage": "finished",
-  "start": 1775752681165,
-  "stop": 1775752682041,
-  "duration": 876,
-  "uuid": "341d8041-2a24-408d-bd0c-fa72c6de2f47",
+  "start": 1775813756023,
+  "stop": 1775813756889,
+  "duration": 866,
+  "uuid": "d810ad9a-62d4-49fc-95c9-b3c7beba37a5",
   "historyId": "1_8_iter1",
   "statusDetails": {
-    "message": "成功",
+    "message": "断言失败: [None] 期望 equals '', 实际为 'None'",
     "trace": ""
   },
   "labels": [

@@ -30,6 +30,28 @@ from auto_test_platform.services.execution import quick_run_case, run_case_with_
 BASE_DIR = Path(__file__).parent.absolute()
 
 
+def get_env_flag(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def get_cors_origins():
+    configured = os.getenv("AUTO_TEST_CORS_ORIGINS", "").strip()
+    if configured:
+        return [origin.strip() for origin in configured.split(",") if origin.strip()]
+
+    return [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -105,8 +127,8 @@ app = FastAPI(
 # CORS 配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=get_cors_origins(),
+    allow_credentials=get_env_flag("AUTO_TEST_ALLOW_CREDENTIALS", True),
     allow_methods=["*"],
     allow_headers=["*"],
 )

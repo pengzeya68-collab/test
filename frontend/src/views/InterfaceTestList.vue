@@ -498,10 +498,82 @@
       :close-on-click-modal="false"
     >
       <div class="report-header">
-        <el-button type="primary" @click="fetchReports" :loading="reportsLoading">
-          <el-icon><Refresh /></el-icon>
-          刷新
-        </el-button>
+        <!-- 统计卡片 -->
+        <el-row :gutter="16" class="stats-cards">
+          <el-col :span="8">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-content">
+                <div class="stat-value">{{ reportStats.total_reports }}</div>
+                <div class="stat-label">总报告数</div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="8">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-content">
+                <div class="stat-value" style="color: #67c23a;">{{ reportStats.passed_reports }}</div>
+                <div class="stat-label">通过报告数</div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="8">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-content">
+                <div class="stat-value" :style="{ color: reportStats.pass_rate >= 80 ? '#67c23a' : (reportStats.pass_rate >= 60 ? '#e6a23c' : '#f56c6c') }">
+                  {{ reportStats.pass_rate }}%
+                </div>
+                <div class="stat-label">通过率</div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <!-- 筛选表单 -->
+        <el-form :inline="true" class="filter-form">
+          <el-form-item label="状态">
+            <el-select v-model="reportFilterStatus" placeholder="全部状态" clearable style="width: 120px">
+              <el-option label="全部" value="" />
+              <el-option label="待处理" value="pending" />
+              <el-option label="运行中" value="running" />
+              <el-option label="已完成" value="completed" />
+              <el-option label="已失败" value="failed" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="日期范围">
+            <el-date-picker
+              v-model="reportFilterStartDate"
+              type="date"
+              placeholder="开始日期"
+              value-format="YYYY-MM-DD"
+              style="width: 140px"
+            />
+            <span style="margin: 0 8px">至</span>
+            <el-date-picker
+              v-model="reportFilterEndDate"
+              type="date"
+              placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              style="width: 140px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="fetchReports" :loading="reportsLoading">
+              <el-icon><Search /></el-icon>
+              查询
+            </el-button>
+            <el-button @click="resetReportFilters">
+              <el-icon><RefreshRight /></el-icon>
+              重置
+            </el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="report-actions">
+          <el-button type="primary" @click="fetchReports" :loading="reportsLoading">
+            <el-icon><Refresh /></el-icon>
+            刷新列表
+          </el-button>
+        </div>
       </div>
 
       <el-table :data="reports" v-loading="reportsLoading" border style="width: 100%; margin-top: 15px">
@@ -759,7 +831,7 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, VideoPlay, Document, Clock, Refresh, Download, Setting, Rank, Upload, ArrowDown, UploadFilled } from '@element-plus/icons-vue'
+import { Plus, VideoPlay, Document, Clock, Refresh, Download, Setting, Rank, Upload, ArrowDown, UploadFilled, Search, RefreshRight } from '@element-plus/icons-vue'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
 import request from '@/utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -780,6 +852,18 @@ const reportsLoading = ref(false)
 const reportPage = ref(1)
 const reportPageSize = ref(10)
 const reportTotal = ref(0)
+
+// 报告筛选参数
+const reportFilterStatus = ref('')
+const reportFilterStartDate = ref('')
+const reportFilterEndDate = ref('')
+
+// 报告统计数据
+const reportStats = ref({
+  total_reports: 0,
+  passed_reports: 0,
+  pass_rate: 0
+})
 
 const envManagerVisible = ref(false)
 const selectedEnvId = ref(null)
@@ -1104,27 +1188,70 @@ const fetchCaseExecutionHistory = async (caseId) => {
   }
 }
 
-// 获取报告列表 (带分页)
+// 获取报告列表 (带分页和筛选)
 const fetchReports = async () => {
   reportsLoading.value = true
   try {
-    const res = await request.get('/interface-test/reports', {
-      params: {
-        page: reportPage.value,
-        page_size: reportPageSize.value
-      }
-    })
+    const params = {
+      page: reportPage.value,
+      per_page: reportPageSize.value  // 注意后端接口参数是per_page
+    }
 
-    // 兼容可能的新分页返回结构，如果后端还没改，就当作直接返回数组处理
-    if (res.items !== undefined) {
+    // 添加筛选参数
+    if (reportFilterStatus.value) {
+      params.status = reportFilterStatus.value
+    }
+    if (reportFilterStartDate.value) {
+      params.start_date = reportFilterStartDate.value
+    }
+    if (reportFilterEndDate.value) {
+      params.end_date = reportFilterEndDate.value
+    }
+
+    const res = await request.get('/interface-test/reports', { params })
+
+    // 处理后端返回的数据结构
+    if (res.data !== undefined) {
+      // 新接口结构：data为数组，包含分页和统计信息
+      reports.value = res.data
+      reportTotal.value = res.total
+
+      // 获取统计信息
+      if (res.statistics) {
+        reportStats.value = res.statistics
+      } else {
+        // 如果后端没有返回statistics，计算默认值
+        reportStats.value = {
+          total_reports: res.total || 0,
+          passed_reports: res.passed_count || 0,
+          pass_rate: res.passed_count && res.total ?
+            round((res.passed_count / res.total) * 100, 2) : 0
+        }
+      }
+    } else if (res.items !== undefined) {
+      // 兼容可能的新分页返回结构
       reports.value = res.items
       reportTotal.value = res.total
+      reportStats.value = {
+        total_reports: res.total || 0,
+        passed_reports: res.passed_count || 0,
+        pass_rate: res.passed_count && res.total ?
+          round((res.passed_count / res.total) * 100, 2) : 0
+      }
     } else {
       // 旧的直接返回全部数组
       const allData = res.data || res
       reportTotal.value = allData.length
       const start = (reportPage.value - 1) * reportPageSize.value
       reports.value = allData.slice(start, start + reportPageSize.value)
+
+      // 计算统计数据
+      const passedCount = allData.filter(item => item.status === 'completed').length
+      reportStats.value = {
+        total_reports: allData.length,
+        passed_reports: passedCount,
+        pass_rate: allData.length ? round((passedCount / allData.length) * 100, 2) : 0
+      }
     }
   } catch (e) {
     console.error('获取报告列表失败:', e)
@@ -1132,6 +1259,20 @@ const fetchReports = async () => {
   } finally {
     reportsLoading.value = false
   }
+}
+
+// 辅助函数：保留小数
+const round = (value, decimals) => {
+  return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals)
+}
+
+// 重置报告筛选条件
+const resetReportFilters = () => {
+  reportFilterStatus.value = ''
+  reportFilterStartDate.value = ''
+  reportFilterEndDate.value = ''
+  reportPage.value = 1
+  fetchReports()
 }
 
 const handleReportPageChange = () => {
@@ -2183,5 +2324,49 @@ onMounted(() => {
   margin-top: 0;
   margin-bottom: 12px;
   color: var(--tm-text-primary);
+}
+
+/* 报告统计卡片样式 */
+.stats-cards {
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  border-radius: 8px;
+}
+
+.stat-content {
+  text-align: center;
+  padding: 12px 0;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--tm-text-secondary);
+}
+
+/* 报告筛选表单样式 */
+.filter-form {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--tm-bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--tm-border-light);
+}
+
+.filter-form .el-form-item {
+  margin-bottom: 0;
+  margin-right: 16px;
+}
+
+.filter-form .el-form-item:last-child {
+  margin-right: 0;
 }
 </style>

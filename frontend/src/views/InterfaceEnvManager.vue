@@ -82,6 +82,39 @@
                 placeholder="变量值"
                 style="flex: 1; margin-right: 8px;"
               />
+              <el-popover
+                placement="top"
+                trigger="click"
+                :width="320"
+                popper-class="var-preview-popover"
+                :visible="activePreviewIndex === index"
+                @update:visible="(v) => onPreviewVisibleChange(index, v)"
+              >
+                <template #default>
+                  <div class="var-preview-pop">
+                    <div class="var-preview-pop-title">
+                      <span class="label">预览</span>
+                      <code class="token">{{ toToken(item) }}</code>
+                    </div>
+                    <div class="var-preview-pop-body">
+                      <div class="caption">解包后真实值</div>
+                      <div class="value" :class="{ 'is-unresolved': hasUnresolved(item) }">
+                        {{ resolveVarValue(item) }}
+                      </div>
+                      <div v-if="hasUnresolved(item)" class="hint">
+                        仍包含未解析的占位符（可能缺少变量或存在循环引用）
+                      </div>
+                    </div>
+                  </div>
+                </template>
+                <template #reference>
+                  <el-tooltip content="预览：解析嵌套变量" placement="top">
+                    <el-button type="primary" text circle size="small">
+                      <el-icon><Search /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+                </template>
+              </el-popover>
               <el-button
                 type="danger"
                 icon="Delete"
@@ -112,7 +145,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, Plus, Delete } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus, Delete, Search } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -130,12 +163,81 @@ const formData = reactive({
 })
 
 const vars = ref([{ key: '', value: '' }])
+const activePreviewIndex = ref(null)
+
+const onPreviewVisibleChange = (index, visible) => {
+  if (visible) {
+    activePreviewIndex.value = index
+    return
+  }
+  if (activePreviewIndex.value === index) {
+    activePreviewIndex.value = null
+  }
+}
+
+const _buildVarMapForPreview = () => {
+  const map = {}
+  // base_url 也允许用 {{base_url}} 引用
+  if (formData.base_url) map.base_url = String(formData.base_url)
+  for (const v of vars.value || []) {
+    const k = String(v?.key || '').trim()
+    if (!k) continue
+    map[k] = String(v?.value ?? '')
+  }
+  return map
+}
+
+const _resolveNestedVars = (input, varMap, maxDepth = 10) => {
+  let text = String(input ?? '')
+  const tokenRe = /\{\{(.*?)\}\}/g
+
+  // 防循环：记录每轮替换后的结果，重复则停止
+  const seen = new Set()
+
+  for (let i = 0; i < maxDepth; i++) {
+    if (!tokenRe.test(text)) break
+    tokenRe.lastIndex = 0
+
+    const next = text.replace(tokenRe, (match, keyRaw) => {
+      const key = String(keyRaw || '').trim()
+      if (!key) return match
+      if (Object.prototype.hasOwnProperty.call(varMap, key)) return String(varMap[key])
+      return match
+    })
+
+    if (seen.has(next)) break
+    seen.add(next)
+    text = next
+  }
+
+  return text
+}
+
+const toToken = (item) => {
+  const key = String(item?.key || '').trim()
+  return key ? `{{${key}}}` : '{{变量名}}'
+}
+
+const resolveVarValue = (item) => {
+  const rawValue = String(item?.value ?? '')
+  const varMap = _buildVarMapForPreview()
+  return _resolveNestedVars(rawValue, varMap, 15)
+}
+
+const hasUnresolved = (item) => {
+  const resolved = resolveVarValue(item)
+  return /\{\{(.*?)\}\}/.test(resolved)
+}
 
 const addVar = () => {
   vars.value.push({ key: '', value: '' })
 }
 
 const removeVar = (index) => {
+  if (activePreviewIndex.value === index) activePreviewIndex.value = null
+  if (activePreviewIndex.value !== null && activePreviewIndex.value > index) {
+    activePreviewIndex.value -= 1
+  }
   vars.value.splice(index, 1)
 }
 
@@ -167,6 +269,7 @@ const createEnv = () => {
   formData.is_default = false
   formData.variables = {}
   vars.value = [{ key: '', value: '' }]
+  activePreviewIndex.value = null
   dialogVisible.value = true
 }
 
@@ -185,6 +288,7 @@ const editEnv = (env) => {
   } else {
     vars.value = entries.map(([key, value]) => ({ key, value }))
   }
+  activePreviewIndex.value = null
   dialogVisible.value = true
 }
 
@@ -357,5 +461,61 @@ onMounted(() => {
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
+}
+
+/* 变量预览 Popover（小巧，不占空间） */
+:deep(.var-preview-popover) {
+  padding: 10px 12px;
+}
+.var-preview-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.var-preview-pop-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.var-preview-pop-title .label {
+  font-size: 12px;
+  color: #606266;
+  font-weight: 700;
+}
+.var-preview-pop-title .token {
+  background: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #409eff;
+  font-size: 12px;
+}
+.var-preview-pop-body .caption {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 6px;
+}
+.var-preview-pop-body .value {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f5f7fa;
+  border: 1px solid #ebeef5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #303133;
+}
+.var-preview-pop-body .value.is-unresolved {
+  background: #fef0f0;
+  border-color: #fbc4c4;
+  color: #f56c6c;
+  font-weight: 700;
+}
+.var-preview-pop-body .hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #e6a23c;
 }
 </style>
