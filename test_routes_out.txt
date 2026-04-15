@@ -1,0 +1,4 @@
+﻿FAIL /api/v1: HTTP Error 404: Not Found
+FAIL /api: HTTP Error 404: Not Found
+FAIL /learning-paths: HTTP Error 404: Not Found
+FAIL /api/learning-paths: HTTP Error 404: Not Found

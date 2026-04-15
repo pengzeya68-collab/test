@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="backup-manager">
     <div class="layout-fluid">
       <div class="page-header">
@@ -564,8 +564,7 @@ const initCharts = async (chartData) => {
       grid: {
         left: '3%',
         right: '4%',
-        bottom: '3%',
-        containLabel: true
+        bottom: '3%'
       },
       xAxis: { type: 'category', boundaryGap: false, data: dates },
       yAxis: { type: 'value', max: 100, name: '%' },
@@ -674,6 +673,15 @@ onUnmounted(() => {
   if (refreshTimer) {
     clearInterval(refreshTimer)
   }
+  window.removeEventListener('resize', handleResize)
+  if (tableSpaceChart.value) {
+    tableSpaceChart.value.dispose()
+    tableSpaceChart.value = null
+  }
+  if (systemLoadChart.value) {
+    systemLoadChart.value.dispose()
+    systemLoadChart.value = null
+  }
 })
 </script>
 
@@ -681,7 +689,7 @@ onUnmounted(() => {
 .backup-manager {
   padding: 30px 0;
   min-height: calc(100vh - 60px);
-  background-color: #f5f7fa;
+  background-color: var(--tm-bg-elevated);
 }
 
 .layout-fluid {
@@ -699,18 +707,18 @@ onUnmounted(() => {
 .page-title {
   font-size: 28px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin: 0 0 8px 0;
 }
 
 .page-subtitle {
   font-size: 14px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   margin: 0;
 }
 
 .db-tabs {
-  background: #fff;
+  background: #18181B;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   padding: 0 20px;
@@ -726,7 +734,7 @@ onUnmounted(() => {
 
 .stat-card .stat-label {
   font-size: 14px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   margin-bottom: 12px;
 }
 
@@ -744,7 +752,7 @@ onUnmounted(() => {
 .chart-placeholder {
   padding: 60px 20px;
   text-align: center;
-  color: #909399;
+  color: var(--tm-text-secondary);
   font-size: 14px;
 }
 
@@ -766,12 +774,12 @@ onUnmounted(() => {
 
 .guide-content {
   line-height: 1.8;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .guide-content h4 {
   margin: 20px 0 10px 0;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .guide-content p {

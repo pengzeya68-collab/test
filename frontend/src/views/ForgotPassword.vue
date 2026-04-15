@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="forgot-password-container">
     <div class="forgot-password-card">
       <div class="forgot-password-header">
@@ -57,7 +57,7 @@
               {{ codeCountdown > 0 ? `${codeCountdown}s后重新发送` : '发送验证码' }}
             </el-button>
           </div>
-          <p style="font-size: 12px; color: #999; margin: 5px 0 0 0;">测试验证码：123456</p>
+          <p style="font-size: 12px; color: var(--tm-text-secondary); margin: 5px 0 0 0;">测试验证码：123456</p>
         </el-form-item>
         
         <el-form-item
@@ -121,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
@@ -159,38 +159,49 @@ const sendCode = () => {
   // 模拟发送验证码
   ElMessage.success('验证码已发送')
   codeCountdown.value = 60
-  const timer = setInterval(() => {
+  codeTimer = setInterval(() => {
     codeCountdown.value--
     if (codeCountdown.value <= 0) {
-      clearInterval(timer)
+      clearInterval(codeTimer)
+      codeTimer = null
     }
   }, 1000)
 }
 
+let codeTimer = null
+
+onUnmounted(() => {
+  if (codeTimer) {
+    clearInterval(codeTimer)
+    codeTimer = null
+  }
+})
+
 const handleSubmit = async () => {
   if (!forgotPasswordFormRef.value) return
   
-  await forgotPasswordFormRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true
-      try {
-        await request.post('/forgot-password', {
-          phone: forgotPasswordForm.value.phone,
-          code: forgotPasswordForm.value.code,
-          new_password: forgotPasswordForm.value.new_password
-        })
-        
-        ElMessage.success('密码重置成功！请使用新密码登录')
-        
-        // 跳转到登录页
-        router.push('/login')
-      } catch (error) {
-        console.error('密码重置失败:', error)
-      } finally {
-        loading.value = false
-      }
-    }
-  })
+  try {
+    await forgotPasswordFormRef.value.validate()
+  } catch {
+    return
+  }
+  
+  loading.value = true
+  try {
+    await request.post('/auth/forgot-password', {
+      phone: forgotPasswordForm.value.phone,
+      code: forgotPasswordForm.value.code,
+      new_password: forgotPasswordForm.value.new_password
+    })
+    
+    ElMessage.success('密码重置成功！请使用新密码登录')
+    router.push('/login')
+  } catch (error) {
+    console.error('密码重置失败:', error)
+    ElMessage.error(error.response?.data?.detail || '密码重置失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
 }
 
 const goToLogin = () => {
@@ -209,7 +220,7 @@ const goToLogin = () => {
 }
 
 .forgot-password-card {
-  background: white;
+  background: #18181B;
   border-radius: 16px;
   padding: 48px;
   width: 100%;
@@ -225,13 +236,13 @@ const goToLogin = () => {
 .title {
   font-size: 32px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin: 0 0 10px 0;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   margin: 0;
 }
 
@@ -242,7 +253,7 @@ const goToLogin = () => {
 .forgot-password-footer {
   text-align: center;
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 @media (max-width: 768px) {

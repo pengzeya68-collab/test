@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="interview-question-bank">
     <div class="container">
       <div class="page-header">
@@ -20,22 +20,24 @@
 
       <div class="filter-bar">
         <el-row :gutter="16">
+          <!-- 分类筛选器暂时隐藏，新接口暂无分类数据
           <el-col :span="5">
-            <el-select 
-              v-model="filters.category" 
-              placeholder="分类" 
+            <el-select
+              v-model="filters.category"
+              placeholder="分类"
               @change="fetchQuestions"
               style="width: 100%;"
               clearable
             >
-              <el-option 
-                v-for="cat in categories" 
-                :key="cat.value" 
-                :label="cat.label" 
+              <el-option
+                v-for="cat in categories"
+                :key="cat.value"
+                :label="cat.label"
                 :value="cat.value"
               />
             </el-select>
           </el-col>
+          -->
           <el-col :span="4">
             <el-select 
               v-model="filters.difficulty" 
@@ -49,10 +51,11 @@
               <el-option label="困难" value="hard" />
             </el-select>
           </el-col>
+          <!-- 级别筛选器暂时隐藏，新接口暂无级别数据
           <el-col :span="4">
-            <el-select 
-              v-model="filters.level" 
-              placeholder="级别" 
+            <el-select
+              v-model="filters.level"
+              placeholder="级别"
               @change="fetchQuestions"
               style="width: 100%;"
               clearable
@@ -63,7 +66,8 @@
               <el-option label="专家" value="专家" />
             </el-select>
           </el-col>
-          <el-col :span="7">
+          -->
+          <el-col :span="13">
             <el-input
               v-model="filters.search"
               placeholder="搜索题目..."
@@ -75,7 +79,7 @@
               </template>
             </el-input>
           </el-col>
-          <el-col :span="4">
+          <el-col :span="7">
             <el-button type="primary" @click="fetchQuestions" style="width: 100%;">
               <el-icon><Search /></el-icon>
               搜索
@@ -87,7 +91,9 @@
       <div class="tabs-container">
         <el-tabs v-model="activeTab" @tab-change="fetchQuestions">
           <el-tab-pane label="全部题目" name="all" />
+          <!-- 收藏功能暂时隐藏，新接口暂无收藏功能
           <el-tab-pane label="我的收藏" name="collected" />
+          -->
         </el-tabs>
       </div>
 
@@ -100,12 +106,14 @@
         >
           <div class="card-header">
             <div class="question-title">{{ question.title }}</div>
-            <el-button 
-              type="text" 
+            <!-- 收藏按钮暂时隐藏，新接口暂无收藏功能
+            <el-button
+              link type="primary"
               :icon="question.is_collected ? StarFilled : Star"
               @click.stop="toggleCollect(question)"
-              :style="{ color: question.is_collected ? '#e6a23c' : '#909399' }"
+              :style="{ color: question.is_collected ? '#e6a23c' : 'var(--tm-text-secondary)' }"
             />
+            -->
           </div>
           
           <div class="card-body">
@@ -206,7 +214,7 @@ import {
   VideoPlay, Document, Search, Star, StarFilled, View 
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/utils/markdown'
 
 const questions = ref([])
 const categories = ref([])
@@ -225,39 +233,60 @@ const showDetailDialog = ref(false)
 const currentQuestion = ref(null)
 
 onMounted(() => {
-  fetchCategories()
+  // 新接口暂无分类数据，暂时不调用
+  // fetchCategories()
   fetchQuestions()
 })
 
 const fetchCategories = async () => {
-  try {
-    const res = await request.get('/interview/categories')
-    categories.value = res
-  } catch (error) {
-    console.error('获取分类失败:', error)
-  }
+  // 新接口暂无分类数据，暂时返回空数组
+  categories.value = []
 }
 
 const fetchQuestions = async () => {
   loading.value = true
   try {
+    // 构建新接口参数
     let params = {
       page: currentPage.value,
-      per_page: perPage.value,
-      category: filters.category,
-      difficulty: filters.difficulty,
-      level: filters.level,
-      search: filters.search.trim()
+      size: perPage.value,
+      difficulty: filters.difficulty || undefined,
+      keyword: filters.search.trim() || undefined
     }
-    
+
+    // 新接口只支持全部题目，不支持收藏列表
     let url = '/interview/questions'
-    if (activeTab.value === 'collected') {
-      url = '/interview/my-collections'
-    }
-    
+
     const res = await request.get(url, { params })
-    questions.value = res.list
-    total.value = res.total
+
+    // 新接口返回格式: { success: true, message: "...", data: { items: [...], total: X, page: X, size: X, pages: X } }
+    if (res.success) {
+      // 转换数据格式，添加前端需要的字段
+      const transformedItems = res.data.items.map(item => ({
+        id: item.id,
+        title: item.title,
+        slug: item.slug,
+        difficulty: item.difficulty,
+        // 新接口没有分类，使用默认值
+        category: '算法',
+        // 新接口没有级别，使用默认值
+        position_level: '中级',
+        // 新接口没有浏览和收藏数，使用默认值
+        view_count: 0,
+        collect_count: 0,
+        // 新接口没有公司信息
+        company: '',
+        // 新接口没有收藏状态
+        is_collected: false,
+        // 解析 tags 字段（JSON 字符串、逗号分隔字符串或数组）
+        tags: parseTags(item.tags)
+      }))
+
+      questions.value = transformedItems
+      total.value = res.data.total
+    } else {
+      throw new Error(res.message || '获取题目列表失败')
+    }
   } catch (error) {
     console.error('获取题目列表失败:', error)
     ElMessage.error('获取题目列表失败')
@@ -278,44 +307,67 @@ const getDifficultyTagType = (difficulty) => {
 const viewQuestion = async (question) => {
   try {
     const res = await request.get(`/interview/questions/${question.id}`)
-    currentQuestion.value = res
-    showDetailDialog.value = true
+
+    if (res.success) {
+      // 转换数据格式，适配前端期望的字段
+      const questionDetail = res.data
+      currentQuestion.value = {
+        id: questionDetail.id,
+        title: questionDetail.title,
+        slug: questionDetail.slug,
+        difficulty: questionDetail.difficulty,
+        // 将 description 映射到 content
+        content: questionDetail.description,
+        // 将 reference_solution 映射到 answer
+        answer: questionDetail.reference_solution || '暂无参考答案',
+        // 其他字段使用默认值
+        category: '算法',
+        view_count: 0,
+        collect_count: 0,
+        is_collected: false
+      }
+      showDetailDialog.value = true
+    } else {
+      throw new Error(res.message || '获取题目详情失败')
+    }
   } catch (error) {
     console.error('获取题目详情失败:', error)
     ElMessage.error('获取题目详情失败')
   }
 }
 
-const toggleCollect = async (question) => {
-  try {
-    await request.post(`/interview/questions/${question.id}/toggle-collect`)
-    question.is_collected = !question.is_collected
-    if (question.is_collected) {
-      question.collect_count += 1
-      ElMessage.success('收藏成功')
-    } else {
-      question.collect_count = Math.max(0, question.collect_count - 1)
-      ElMessage.success('取消收藏成功')
-    }
-    
-    // 如果是收藏列表，取消收藏后刷新
-    if (activeTab.value === 'collected' && !question.is_collected) {
-      fetchQuestions()
-    }
-    
-    // 更新弹窗中的收藏状态
-    if (currentQuestion.value && currentQuestion.value.id === question.id) {
-      currentQuestion.value.is_collected = question.is_collected
-      currentQuestion.value.collect_count = question.collect_count
-    }
-  } catch (error) {
-    console.error('收藏操作失败:', error)
-    ElMessage.error('操作失败')
+const toggleCollect = (question) => {
+  // 新接口暂无收藏功能
+  ElMessage.info('收藏功能暂未开放，敬请期待')
+  // 暂时模拟收藏状态变化，用于UI展示
+  question.is_collected = !question.is_collected
+  if (question.is_collected) {
+    question.collect_count += 1
+  } else {
+    question.collect_count = Math.max(0, question.collect_count - 1)
+  }
+
+  // 更新弹窗中的收藏状态
+  if (currentQuestion.value && currentQuestion.value.id === question.id) {
+    currentQuestion.value.is_collected = question.is_collected
+    currentQuestion.value.collect_count = question.collect_count
   }
 }
 
-const renderMarkdown = (content) => {
-  return marked(content || '')
+
+const parseTags = (tags) => {
+  if (!tags) return []
+  if (Array.isArray(tags)) return tags
+  if (typeof tags === 'string') {
+    try {
+      const parsed = JSON.parse(tags)
+      return Array.isArray(parsed) ? parsed : [tags]
+    } catch {
+      // 可能是逗号分隔字符串
+      return tags.split(',').map(t => t.trim()).filter(Boolean)
+    }
+  }
+  return []
 }
 </script>
 
@@ -323,10 +375,7 @@ const renderMarkdown = (content) => {
 .interview-question-bank {
   padding: 30px 0;
   min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-color: #09090B;
 }
 
 .container {

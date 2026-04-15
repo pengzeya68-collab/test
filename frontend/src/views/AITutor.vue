@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="ai-tutor">
     <div class="container">
       <div class="page-header">
@@ -25,7 +25,7 @@
                 :class="{ active: currentMode === 'code' }"
                 @click="switchMode('code')"
               >
-                <el-icon size="20"><Code /></el-icon>
+                <el-icon size="20"><Cpu /></el-icon>
                 <span>代码审查</span>
               </div>
               <div 
@@ -105,7 +105,7 @@
           <div class="chat-container" ref="chatContainer">
             <div class="welcome-message" v-if="messages.length === 0">
               <div class="welcome-avatar">
-                <el-icon size="48" color="#409eff"><Robot /></el-icon>
+                <el-icon size="48" color="#409eff"><Monitor /></el-icon>
               </div>
               <h2>你好！我是你的AI测试导师 TestMaster</h2>
               <p>我有10年软件测试行业经验，精通功能测试、接口测试、自动化测试、性能测试等技术。</p>
@@ -119,7 +119,7 @@
               :class="msg.role"
             >
               <div class="message-avatar">
-                <el-icon size="24" v-if="msg.role === 'assistant'" color="#409eff"><Robot /></el-icon>
+                <el-icon size="24" v-if="msg.role === 'assistant'" color="#409eff"><Monitor /></el-icon>
                 <el-icon size="24" v-else color="#67c23a"><User /></el-icon>
               </div>
               <div class="message-content">
@@ -131,7 +131,7 @@
                   <div class="markdown-content" v-html="renderMarkdown(msg.content)"></div>
                 </div>
                 <div class="message-loading" v-else>
-                  <el-spinner size="20" />
+                  <el-icon class="is-loading" size="20"><Loading /></el-icon>
                   <span>正在思考中...</span>
                 </div>
               </div>
@@ -195,7 +195,7 @@
               <div class="interview-config" v-if="!interviewStarted">
                 <el-form :model="interviewForm" label-width="100px">
                   <el-form-item label="目标岗位">
-                    <el-select v-model="interviewForm.position" style="width: 200px;">
+                    <el-select v-model="interviewForm.position_level" style="width: 200px;">
                       <el-option label="功能测试工程师" value="功能测试工程师" />
                       <el-option label="自动化测试工程师" value="自动化测试工程师" />
                       <el-option label="测试开发工程师" value="测试开发工程师" />
@@ -203,7 +203,7 @@
                     </el-select>
                   </el-form-item>
                   <el-form-item label="工作经验">
-                    <el-select v-model="interviewForm.experience" style="width: 200px;">
+                    <el-select v-model="interviewForm.years_of_experience" style="width: 200px;">
                       <el-option label="应届生" :value="0" />
                       <el-option label="1-3年" :value="2" />
                       <el-option label="3-5年" :value="4" />
@@ -211,7 +211,7 @@
                     </el-select>
                   </el-form-item>
                   <el-form-item label="面试轮次">
-                    <el-select v-model="interviewForm.round" style="width: 200px;">
+                    <el-select v-model="interviewForm.interview_round" style="width: 200px;">
                       <el-option label="一面（技术基础）" value="一面" />
                       <el-option label="二面（技术深度）" value="二面" />
                       <el-option label="三面（综合能力）" value="三面" />
@@ -258,10 +258,17 @@ import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { 
   ChatDotRound, Guide, User, Delete, Promotion, 
-  Refresh, Check
+  Refresh, Check, Cpu, Monitor, Loading
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/utils/markdown'
+import {
+  chat as aiChat,
+  codeReview as aiCodeReview,
+  getLearningAdvice as aiGetLearningAdvice,
+  clearHistory as aiClearHistory,
+  startInterview as aiStartInterview
+} from '@/api/interview-adapter'
 
 const currentMode = ref('chat')
 const inputMessage = ref('')
@@ -272,20 +279,10 @@ const sending = ref(false)
 const chatContainer = ref(null)
 const interviewStarted = ref(false)
 const interviewForm = ref({
-  position: '功能测试工程师',
-  experience: 2,
-  round: '一面'
+  position_level: '功能测试工程师',
+  years_of_experience: 2,
+  interview_round: '一面'
 })
-
-// 配置marked
-marked.setOptions({
-  breaks: true,
-  gfm: true
-})
-
-const renderMarkdown = (content) => {
-  return marked(content)
-}
 
 const switchMode = (mode) => {
   currentMode.value = mode
@@ -339,11 +336,11 @@ const sendMessage = async () => {
   sending.value = true
   
   try {
-    const res = await request.post('/ai/chat', {
+    const res = await aiChat({
       question,
       type: 'general'
     })
-    
+
     // 替换loading消息
     messages.value[messages.value.length - 1] = {
       role: 'assistant',
@@ -351,7 +348,7 @@ const sendMessage = async () => {
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       loading: false
     }
-    
+
   } catch (error) {
     console.error('发送消息失败:', error)
     ElMessage.error('发送消息失败，请稍后重试')
@@ -380,11 +377,11 @@ const reviewCode = async () => {
   sending.value = true
   
   try {
-    const res = await request.post('/ai/code-review', {
+    const res = await aiCodeReview({
       code,
       language: codeLanguage.value
     })
-    
+
     // 替换loading消息
     messages.value[messages.value.length - 1] = {
       role: 'assistant',
@@ -392,7 +389,7 @@ const reviewCode = async () => {
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       loading: false
     }
-    
+
   } catch (error) {
     console.error('代码审查失败:', error)
     ElMessage.error('代码审查失败，请稍后重试')
@@ -416,8 +413,8 @@ const getLearningAdvice = async () => {
   sending.value = true
   
   try {
-    const res = await request.get('/ai/learning-advice')
-    
+    const res = await aiGetLearningAdvice()
+
     // 替换loading消息
     messages.value[messages.value.length - 1] = {
       role: 'assistant',
@@ -425,7 +422,7 @@ const getLearningAdvice = async () => {
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       loading: false
     }
-    
+
   } catch (error) {
     console.error('获取学习建议失败:', error)
     ElMessage.error('获取学习建议失败，请稍后重试')
@@ -438,22 +435,24 @@ const getLearningAdvice = async () => {
   }
 }
 
-const startInterview = () => {
+const startInterview = async () => {
   interviewStarted.value = true
-  
-  const question = `我要模拟${interviewForm.position}面试，工作经验${interviewForm.experience}年，${interviewForm.round}。请开始面试。`
-  
-  // 添加用户消息
+
+  // 添加用户消息 - 保持原来的描述性消息
+  const question = `我要模拟${interviewForm.position_level}面试，工作经验${interviewForm.years_of_experience}年，${interviewForm.interview_round}。请开始面试。`
   addMessage('user', question)
-  
+
   // 添加AI loading消息
   addMessage('assistant', '', true)
   sending.value = true
-  
-  request.post('/ai/chat', {
-    question,
-    type: 'interview'
-  }).then(res => {
+
+  try {
+    const res = await aiStartInterview({
+      position: interviewForm.position_level,
+      experience: interviewForm.years_of_experience,
+      round: interviewForm.interview_round
+    })
+
     // 替换loading消息
     messages.value[messages.value.length - 1] = {
       role: 'assistant',
@@ -461,14 +460,14 @@ const startInterview = () => {
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       loading: false
     }
-  }).catch(error => {
+  } catch (error) {
     console.error('开始面试失败:', error)
     ElMessage.error('开始面试失败，请稍后重试')
     messages.value.pop()
-  }).finally(() => {
+  } finally {
     sending.value = false
     scrollToBottom()
-  })
+  }
 }
 
 const sendInterviewAnswer = async () => {
@@ -488,11 +487,11 @@ const sendInterviewAnswer = async () => {
   sending.value = true
   
   try {
-    const res = await request.post('/ai/chat', {
+    const res = await aiChat({
       question: answer,
       type: 'interview'
     })
-    
+
     // 替换loading消息
     messages.value[messages.value.length - 1] = {
       role: 'assistant',
@@ -500,7 +499,7 @@ const sendInterviewAnswer = async () => {
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       loading: false
     }
-    
+
   } catch (error) {
     console.error('提交回答失败:', error)
     ElMessage.error('提交回答失败，请稍后重试')
@@ -522,7 +521,7 @@ const clearCode = () => {
 
 const clearHistory = async () => {
   try {
-    await request.post('/ai/clear-history')
+    await aiClearHistory()
     messages.value = []
     ElMessage.success('对话历史已清空')
   } catch (error) {
@@ -536,10 +535,7 @@ const clearHistory = async () => {
 .ai-tutor {
   padding: 30px 0;
   min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-color: #09090B;
 }
 
 .container {

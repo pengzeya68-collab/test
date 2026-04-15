@@ -129,13 +129,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Lock, Message, Phone } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import request from '@/utils/request'
+import request, { setToken } from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const registerFormRef = ref(null)
 const loading = ref(false)
 
@@ -162,13 +164,23 @@ const sendCode = () => {
   // 模拟发送验证码
   ElMessage.success('验证码已发送')
   codeCountdown.value = 60
-  const timer = setInterval(() => {
+  codeTimer = setInterval(() => {
     codeCountdown.value--
     if (codeCountdown.value <= 0) {
-      clearInterval(timer)
+      clearInterval(codeTimer)
+      codeTimer = null
     }
   }, 1000)
 }
+
+let codeTimer = null
+
+onUnmounted(() => {
+  if (codeTimer) {
+    clearInterval(codeTimer)
+    codeTimer = null
+  }
+})
 
 const validateConfirmPassword = (rule, value, callback) => {
   if (value !== registerForm.value.password) {
@@ -185,23 +197,24 @@ const handleRegister = async () => {
     if (valid) {
       loading.value = true
       try {
-        const res = await request.post('/register', {
+        const res = await request.post('/auth/register', {
           username: registerForm.value.username,
           email: registerForm.value.email,
-          phone: registerForm.value.phone,
+          phone: registerForm.value.phone || '',
           password: registerForm.value.password
         })
-        
-        // 保存token和用户信息
-        localStorage.setItem('token', res.data.access_token)
-        localStorage.setItem('user', JSON.stringify(res.data.user))
-        
+
+        userStore.setLogin(res.access_token, res.user)
+        setToken(res.access_token)
+        localStorage.setItem('refresh_token', res.refresh_token)
+
         ElMessage.success('注册成功！')
         
-        // 跳转到首页
         router.push('/')
       } catch (error) {
         console.error('注册失败:', error)
+        const msg = error?.response?.data?.detail || error?.message || '注册失败，请稍后重试'
+        ElMessage.error(msg)
       } finally {
         loading.value = false
       }
@@ -220,17 +233,18 @@ const goToLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #09090B;
   padding: 20px;
 }
 
 .register-card {
-  background: white;
+  background: #18181B;
   border-radius: 16px;
   padding: 48px;
   width: 100%;
   max-width: 450px;
   box-shadow: 0 20px 60px 0 rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .register-header {
@@ -241,13 +255,13 @@ const goToLogin = () => {
 .title {
   font-size: 32px;
   font-weight: bold;
-  color: #303133;
+  color: #FAFAFA;
   margin: 0 0 10px 0;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #909399;
+  color: #71717A;
   margin: 0;
 }
 
@@ -258,7 +272,7 @@ const goToLogin = () => {
 .register-footer {
   text-align: center;
   font-size: 14px;
-  color: #606266;
+  color: #A1A1AA;
 }
 
 @media (max-width: 768px) {

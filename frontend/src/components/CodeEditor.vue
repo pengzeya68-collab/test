@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="code-editor-container">
     <!-- 工具栏 -->
     <div class="editor-toolbar">
@@ -37,7 +37,7 @@
       <div class="output-header">
         <span class="output-title">运行结果</span>
         <el-button 
-          type="text" 
+          link 
           size="small" 
           @click="showOutput = false"
         >
@@ -48,7 +48,7 @@
         <pre v-if="outputResult?.stdout">{{ outputResult.stdout }}</pre>
         <pre v-if="outputResult?.stderr" class="stderr">{{ outputResult.stderr }}</pre>
         <div v-if="!outputResult && running" class="loading">
-          <el-spinner size="20" />
+          <el-icon class="is-loading" size="20"><Loading /></el-icon>
           <span>代码执行中...</span>
         </div>
       </div>
@@ -64,7 +64,7 @@ import { defaultKeymap } from '@codemirror/commands'
 import { python } from '@codemirror/lang-python'
 import { sql } from '@codemirror/lang-sql'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
-import { VideoPlay, Refresh } from '@element-plus/icons-vue'
+import { VideoPlay, Refresh, Loading } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 
@@ -97,47 +97,48 @@ const showOutput = ref(false)
 const outputResult = ref(null)
 
 // 语言配置
-const languageExtensions = {
-  python: python(),
-  sql: sql(),
-  shell: python() // 暂时用python高亮shell
-}
+const languageExtensions = {}
+try { languageExtensions.python = python() } catch(e) { console.warn('Python lang not loaded') }
+try { languageExtensions.sql = sql() } catch(e) { console.warn('SQL lang not loaded') }
+languageExtensions.shell = languageExtensions.python
 
 // 创建编辑器
 const createEditor = () => {
   if (!editorRef.value) return
   
+  const extList = [
+    lineNumbers(),
+    highlightActiveLineGutter(),
+    highlightSpecialChars(),
+    drawSelection(),
+    dropCursor(),
+    rectangularSelection(),
+    crosshairCursor(),
+    highlightActiveLine(),
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    keymap.of([
+      ...defaultKeymap,
+      {
+        key: 'Ctrl-Enter',
+        run: () => {
+          runCode()
+          return true
+        }
+      }
+    ]),
+    languageExtensions[currentLanguage.value],
+    EditorState.readOnly.of(props.readOnly),
+    EditorView.updateListener.of(update => {
+      if (update.docChanged) {
+        const content = update.state.doc.toString()
+        emit('update:modelValue', content)
+      }
+    })
+  ].filter(Boolean)
+
   const startState = EditorState.create({
     doc: props.modelValue || props.template || getDefaultTemplate(currentLanguage.value),
-    extensions: [
-      lineNumbers(),
-      highlightActiveLineGutter(),
-      highlightSpecialChars(),
-      drawSelection(),
-      dropCursor(),
-      rectangularSelection(),
-      crosshairCursor(),
-      highlightActiveLine(),
-      syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-      keymap.of([
-        ...defaultKeymap,
-        {
-          key: 'Ctrl-Enter',
-          run: () => {
-            runCode()
-            return true
-          }
-        }
-      ]),
-      languageExtensions[currentLanguage.value],
-      EditorState.readOnly.of(props.readOnly),
-      EditorView.updateListener.of(update => {
-        if (update.docChanged) {
-          const content = update.state.doc.toString()
-          emit('update:modelValue', content)
-        }
-      })
-    ]
+    extensions: extList
   })
 
   editorView.value = new EditorView({
@@ -180,14 +181,22 @@ const runCode = async () => {
   outputResult.value = null
   
   try {
-    const res = await request.post('/code/execute', {
+    const res = await request.post('/sandbox/execute', {
       code,
-      language: currentLanguage.value
+      language: currentLanguage.value,
+      timeout: 5
     })
-    outputResult.value = res
-    
+    // FastAPI 返回 {success, data, message}，data 包含 {stdout, stderr, exit_code, ...}
+    const result = res.data || res
+    // 统一字段名：FastAPI 用 exit_code，前端用 returncode
+    outputResult.value = {
+      stdout: result.stdout || '',
+      stderr: result.stderr || '',
+      returncode: result.exit_code !== undefined ? result.exit_code : (result.returncode !== undefined ? result.returncode : 0)
+    }
+
     if (res.success) {
-      emit('run', { code, result: res })
+      emit('run', { code, result: outputResult.value })
     }
   } catch (error) {
     console.error('代码执行失败:', error)
@@ -249,7 +258,7 @@ onBeforeUnmount(() => {
   border: 1px solid #ebeef5;
   border-radius: 8px;
   overflow: hidden;
-  background: white;
+  background: #18181B;
 }
 
 .editor-toolbar {
@@ -257,7 +266,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #fafafa;
+  background: var(--tm-bg-card);
   border-bottom: 1px solid #ebeef5;
 }
 
@@ -292,19 +301,19 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 16px;
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   border-bottom: 1px solid #ebeef5;
 }
 
 .output-title {
   font-weight: 500;
-  color: #303133;
+  color: var(--tm-text-primary);
   font-size: 14px;
 }
 
 .output-content {
   padding: 16px;
-  background: #fafafa;
+  background: var(--tm-bg-card);
   max-height: 200px;
   overflow-y: auto;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -325,7 +334,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #909399;
+  color: var(--tm-text-secondary);
 }
 
 pre {

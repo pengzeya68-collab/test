@@ -16,7 +16,7 @@ from fastapi_backend.schemas.groups import (
     ApiGroupTreeNode,
 )
 
-router = APIRouter(prefix="/api/groups", tags=["接口分组"])
+router = APIRouter(prefix="/api/v1/groups", tags=["接口分组"])
 
 
 def build_tree(nodes, parent_id=None):

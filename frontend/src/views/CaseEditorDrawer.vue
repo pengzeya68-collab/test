@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <el-drawer
     :model-value="modelValue"
     :title="isEdit ? '编辑用例' : '新建用例'"
@@ -107,14 +107,66 @@
           </div>
         </el-tab-pane>
 
+        <!-- Params -->
+        <el-tab-pane label="Params" name="params">
+          <div class="tab-content">
+            <div class="table-toolbar">
+              <span class="toolbar-title">请求参数</span>
+              <el-button size="small" @click="addParam">
+                <el-icon><Plus /></el-icon>
+                添加
+              </el-button>
+            </div>
+            <el-table :data="caseForm.params" border size="small">
+              <el-table-column label="Key" min-width="150">
+                <template #default="{ row }">
+                  <el-input v-model="row.key" placeholder="Param key" />
+                </template>
+              </el-table-column>
+              <el-table-column label="Value" min-width="200">
+                <template #default="{ row }">
+                  <el-autocomplete
+                    v-model="row.value"
+                    :fetch-suggestions="querySearchVars"
+                    placeholder="Param value"
+                    :trigger-on-focus="false"
+                    @select="handleSelectVar($event, row, 'value')"
+                    @input="handleTableInput(row, 'value', $event)"
+                    style="width: 100%"
+                  >
+                    <template #default="{ item }">
+                      <div class="var-suggestion">
+                        <span class="var-name">&#123;&#123; {{ item.value }} &#125;&#125;</span>
+                        <span class="var-val">{{ item.actualValue }}</span>
+                      </div>
+                    </template>
+                  </el-autocomplete>
+                </template>
+              </el-table-column>
+              <el-table-column label="描述" min-width="150">
+                <template #default="{ row }">
+                  <el-input v-model="row.description" placeholder="描述（可选）" />
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="60" align="center">
+                <template #default="{ row, $index }">
+                  <el-button type="danger" size="small" text @click="removeParam($index)">
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-tab-pane>
+
         <!-- Body -->
         <el-tab-pane label="Body" name="body">
           <div class="tab-content">
             <div class="body-type-selector">
               <el-radio-group v-model="caseForm.bodyType">
-                <el-radio value="none" label="none">none</el-radio>
-                <el-radio value="raw" label="raw">raw</el-radio>
-                <el-radio value="form-data" label="form-data">form-data</el-radio>
+                <el-radio value="none">none</el-radio>
+                <el-radio value="raw">raw</el-radio>
+                <el-radio value="form-data">form-data</el-radio>
               </el-radio-group>
             </div>
 
@@ -241,80 +293,76 @@
                 </template>
               </el-alert>
             </div>
-            <!-- 使用 el-table-draggable 实现拖拽 -->
-            <ElTableDraggable>
-              <el-table :data="caseForm.assertions" border size="small" style="margin-top: 16px;" row-key="id">
-                <el-table-column width="50" align="center">
-                  <template #default>
-                    <el-icon style="cursor: move; color: #909399;"><Rank /></el-icon>
-                  </template>
-                </el-table-column>
-                <el-table-column label="断言目标" min-width="140">
-                  <template #default="{ row }">
-                    <el-select v-model="row.target" style="width: 100%;">
-                      <el-option label="状态码" value="status_code" />
-                      <el-option label="JSON体" value="json_body" />
-                      <el-option label="响应时间(ms)" value="response_time" />
-                    </el-select>
-                  </template>
-                </el-table-column>
-                <el-table-column label="JSONPath" min-width="200" v-if="showExpressionColumn">
-                  <template #default="{ row }">
-                    <el-input
-                      v-if="row.target === 'json_body'"
-                      v-model="row.expression"
-                      placeholder="JSONPath 表达式，例如 $.data.code"
-                    />
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作符" width="100">
-                  <template #default="{ row }">
-                    <el-select v-model="row.operator" style="width: 100%;">
-                      <el-option label="等于" value="==" />
-                      <el-option label="不等于" value="!=" />
-                      <el-option label="包含" value="contains" />
-                      <el-option label="小于" value="<" />
-                      <el-option label="大于" value=">" />
-                    </el-select>
-                  </template>
-                </el-table-column>
-                <el-table-column label="期望值" min-width="180">
-                  <template #default="{ row }">
-                    <el-autocomplete
-                      v-model="row.expected"
-                      :fetch-suggestions="querySearchVars"
-                      placeholder="期望值，支持 &#123;&#123;var&#125;&#125;"
-                      :trigger-on-focus="false"
-                      @select="handleSelectVar($event, row, 'expected')"
-                      @input="handleTableInput(row, 'expected', $event)"
-                      style="width: 100%"
-                    >
-                      <template #default="{ item }">
-                        <div class="var-suggestion">
-                          <span class="var-name">&#123;&#123; {{ item.value }} &#125;&#125;</span>
-                          <span class="var-val">{{ item.actualValue }}</span>
-                        </div>
-                      </template>
-                    </el-autocomplete>
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" width="60" align="center">
-                  <template #default="{ row, $index }">
-                    <el-button type="danger" size="small" text @click="removeAssertion($index)">
-                      <el-icon><Delete /></el-icon>
-                    </el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </ElTableDraggable>
+              <draggable
+                v-model="caseForm.assertions"
+                item-key="id"
+                handle=".drag-handle"
+                class="assertions-draggable"
+              >
+                <template #item="{ element, index }">
+                  <div class="assertion-row" :key="element.id">
+                    <div class="drag-handle">
+                      <el-icon><Rank /></el-icon>
+                    </div>
+                    <div class="assertion-cell">
+                      <el-select v-model="element.target" style="width: 100%;">
+                        <el-option label="状态码" value="status_code" />
+                        <el-option label="JSON体" value="json_body" />
+                        <el-option label="响应时间(ms)" value="response_time" />
+                      </el-select>
+                    </div>
+                    <div class="assertion-cell" v-show="showExpressionColumn">
+                      <el-input
+                        v-if="element.target === 'json_body'"
+                        v-model="element.expression"
+                        placeholder="JSONPath 表达式，例如 $.data.code"
+                        style="width: 100%"
+                      />
+                    </div>
+                    <div class="assertion-cell">
+                      <el-select v-model="element.operator" style="width: 100%;">
+                        <el-option label="等于" value="==" />
+                        <el-option label="不等于" value="!=" />
+                        <el-option label="包含" value="contains" />
+                        <el-option label="小于" value="<" />
+                        <el-option label="大于" value=">" />
+                      </el-select>
+                    </div>
+                    <div class="assertion-cell">
+                      <el-autocomplete
+                        v-model="element.expected"
+                        :fetch-suggestions="querySearchVars"
+                        placeholder="期望值，支持 &#123;&#123;var&#125;&#125;"
+                        :trigger-on-focus="false"
+                        @select="handleSelectVar($event, element, 'expected')"
+                        @input="handleTableInput(element, 'expected', $event)"
+                        style="width: 100%"
+                      >
+                        <template #default="{ item }">
+                          <div class="var-suggestion">
+                            <span class="var-name">&#123;&#123; {{ item.value }} &#125;&#125;</span>
+                            <span class="var-val">{{ item.actualValue }}</span>
+                          </div>
+                        </template>
+                      </el-autocomplete>
+                    </div>
+                    <div class="assertion-cell">
+                      <el-button type="danger" size="small" text @click="removeAssertion(index)">
+                        <el-icon><Delete /></el-icon>
+                      </el-button>
+                    </div>
+                  </div>
+                </template>
+              </draggable>
           </div>
         </el-tab-pane>
       </el-tabs>
     </div>
 
     <!-- 悬浮按钮，用于打开变量字典 -->
-    <div class="var-dictionary-btn" @click="showVarDrawer = true" title="打开变量字典">
+    <div class="var-dictionary-btn" @click="handleOpenVarDrawer" title="打开变量字典">
       <el-icon><Reading /></el-icon>
+      <span class="btn-text">变量</span>
     </div>
 
     <!-- 变量字典抽屉 (内部) -->
@@ -375,6 +423,7 @@ import { ref, watch, toRaw, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy } from '@element-plus/icons-vue'
 import JsonEditor from './JsonEditor.vue'
+import draggable from 'vuedraggable'
 import axios from 'axios'
 
 const props = defineProps({
@@ -421,9 +470,25 @@ autoTestRequest.interceptors.response.use(
 // 记载环境变量字典（用于自动补全）
 const loadVariables = async () => {
   try {
-    const res = await autoTestRequest.get('/api/auto-test/environments')
-    const envs = res.data || res || []
     const varMap = new Map()
+    
+    // 1. 加载全局变量
+    try {
+      const globalVarsRes = await autoTestRequest.get('/api/auto-test/global-variables')
+      const globalVars = Array.isArray(globalVarsRes.data) ? globalVarsRes.data : (Array.isArray(globalVarsRes) ? globalVarsRes : [])
+      globalVars.forEach(varItem => {
+        varMap.set(varItem.name, { 
+          value: varItem.name, 
+          actualValue: varItem.is_encrypted ? '******' : varItem.value 
+        })
+      })
+    } catch (globalError) {
+      console.error('加载全局变量失败:', globalError)
+    }
+    
+    // 2. 加载环境变量（会覆盖全局变量）
+    const res = await autoTestRequest.get('/api/auto-test/environments')
+    const envs = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
     envs.forEach(env => {
       // 获取 base_url
       if (env.base_url) {
@@ -463,6 +528,18 @@ const loadVariables = async () => {
 onMounted(() => {
   loadVariables()
 })
+
+// 打开变量字典抽屉
+const handleOpenVarDrawer = () => {
+  // 确保 availableVariables 已经加载
+  if (availableVariables.value.length === 0) {
+    loadVariables().then(() => {
+      showVarDrawer.value = true
+    })
+  } else {
+    showVarDrawer.value = true
+  }
+}
 
 // === 变量字典抽屉逻辑 ===
 const filteredVars = computed(() => {
@@ -505,6 +582,7 @@ const caseForm = ref({
   url: '',
   description: '',
   headers: [],
+  params: [],
   bodyType: 'none',
   contentType: 'application/json',
   payload: '',
@@ -571,19 +649,125 @@ const handleTableInput = (row, prop, val) => {
 const initFormData = (data) => {
   if (data) {
     // 编辑模式：从传入的完整数据初始化
+    // 🔥 修复：使用深拷贝确保数据独立，避免引用问题
+    const rawHeaders = data.headers
+    const rawParams = data.params
+    const rawFormData = data.form_data
+    const rawExtractors = data.extractors
+    const rawAssertions = data.assertions ?? data.assert_rules
+    const rawPayload = data.payload
+    
+    // 🔥 深拷贝并解析 headers
+    let parsedHeaders = []
+    if (Array.isArray(rawHeaders)) {
+      parsedHeaders = JSON.parse(JSON.stringify(rawHeaders))
+    } else if (rawHeaders && typeof rawHeaders === 'object') {
+      parsedHeaders = Object.entries(rawHeaders).map(([key, value], index) => ({
+        id: `hdr_${Date.now()}_${index}`,
+        key,
+        value: value || '',
+        description: ''
+      }))
+    }
+    
+    // 🔥 深拷贝并解析 params
+    let parsedParams = []
+    if (Array.isArray(rawParams)) {
+      parsedParams = JSON.parse(JSON.stringify(rawParams))
+    } else if (rawParams && typeof rawParams === 'object') {
+      parsedParams = Object.entries(rawParams).map(([key, value], index) => ({
+        id: `param_${Date.now()}_${index}`,
+        key,
+        value: value || '',
+        description: ''
+      }))
+    }
+    
+    // 🔥 深拷贝并解析 form_data
+    let parsedFormData = []
+    if (Array.isArray(rawFormData)) {
+      parsedFormData = JSON.parse(JSON.stringify(rawFormData))
+    } else if (rawFormData && typeof rawFormData === 'object') {
+      parsedFormData = Object.entries(rawFormData).map(([key, value], index) => ({
+        id: `fd_${Date.now()}_${index}`,
+        key,
+        value: value || ''
+      }))
+    }
+    
+    // 🔥 关键修复：深拷贝 extractors，确保正确回显
+    let parsedExtractors = []
+    if (Array.isArray(rawExtractors)) {
+      parsedExtractors = JSON.parse(JSON.stringify(rawExtractors)).map((item, index) => ({
+        id: item.id || `ext_${Date.now()}_${index}`,
+        variableName: item.variableName || item.var_name || '',
+        extractorType: item.extractorType || item.type || 'jsonpath',
+        expression: item.expression || item.path || '',
+        defaultValue: item.defaultValue || item.default || ''
+      }))
+    }
+    
+    // 🔥 深拷贝并解析 assertions/assert_rules
+    let parsedAssertions = []
+    if (Array.isArray(rawAssertions)) {
+      parsedAssertions = JSON.parse(JSON.stringify(rawAssertions)).map((item, index) => {
+        if (item.target) {
+          return { ...item, id: item.id || `ast_${Date.now()}_${index}` }
+        }
+        return {
+          id: `ast_${Date.now()}_${index}`,
+          target: item.field === 'body' ? 'json_body' : (item.field || 'status_code'),
+          operator: mapOldOperator(item.operator),
+          expected: item.expectedValue || item.expected || '',
+          expression: item.expression || ''
+        }
+      })
+    }
+    
+    // 🔥 深拷贝 payload
+    let parsedPayload = ''
+    if (rawPayload !== null && rawPayload !== undefined) {
+      if (typeof rawPayload === 'object') {
+        parsedPayload = JSON.stringify(rawPayload, null, 2)
+      } else {
+        parsedPayload = String(rawPayload)
+      }
+    }
+    
+    // 🔥 bodyType 映射：后端可能存了 'json'，但 radio 只认 none/raw/form-data
+    const rawBodyType = data.body_type || 'none'
+    const bodyTypeMap = { 'json': 'raw', 'raw': 'raw', 'form-data': 'form-data', 'none': 'none' }
+    const mappedBodyType = bodyTypeMap[rawBodyType] || rawBodyType
+
+    // 🔥 content_type 映射：根据 bodyType 补全
+    let mappedContentType = data.content_type || 'application/json'
+    if (rawBodyType === 'json' && !data.content_type) {
+      mappedContentType = 'application/json'
+    }
+
     caseForm.value = {
+      group_id: data.group_id || null,   // 🔥 保留用例自己的分组 ID，编辑模式下绝不丢失
       method: data.method || 'GET',
       name: data.name || '',
       url: data.url || '',
       description: data.description || '',
-      headers: parseJson(data.headers) || [],
-      bodyType: data.body_type || 'none',
-      contentType: data.content_type || 'application/json',
-      payload: parseJson(data.payload) || '',
-      formData: parseJson(data.form_data) || [],
-      extractors: parseJson(data.extractors) || [],
-      assertions: parseJson(data.assertions ?? data.assert_rules, true) || []
+      headers: parsedHeaders,
+      params: parsedParams,
+      bodyType: mappedBodyType,
+      contentType: mappedContentType,
+      payload: parsedPayload,
+      formData: parsedFormData,
+      extractors: parsedExtractors,
+      assertions: parsedAssertions
     }
+    
+    // 🔥 如果有 body 内容，自动切到 Body Tab 让用户直接看到
+    if (mappedBodyType !== 'none' || parsedPayload) {
+      activeTab.value = 'body'
+    }
+    
+    // 🔥 调试日志
+    console.log('🔥 initFormData 完成，bodyType:', mappedBodyType, 'payload:', parsedPayload, 'extractors:', parsedExtractors)
   } else {
     // 新建模式
     caseForm.value = {
@@ -592,6 +776,7 @@ const initFormData = (data) => {
       url: '',
       description: '',
       headers: [],
+      params: [],
       bodyType: 'none',
       contentType: 'application/json',
       payload: '',
@@ -679,7 +864,8 @@ const parseJson = (str, isAssertRules = false) => {
       }
       return assertions
     }
-    return str
+    // 确保返回数组，即使输入是对象
+    return Array.isArray(str) ? str : []
   }
 
   try {
@@ -739,13 +925,6 @@ const mapOldOperator = (oldOp) => {
   return mapping[oldOp] || oldOp || '=='
 }
 
-// 监听打开
-watch(() => props.modelValue, (val) => {
-  if (val) {
-    initFormData()
-  }
-})
-
 // Headers
 const addHeader = () => {
   caseForm.value.headers.push({ key: '', value: '', description: '', id: `hdr_${Date.now()}` })
@@ -753,6 +932,15 @@ const addHeader = () => {
 
 const removeHeader = (index) => {
   caseForm.value.headers.splice(index, 1)
+}
+
+// Params
+const addParam = () => {
+  caseForm.value.params.push({ key: '', value: '', description: '', id: `param_${Date.now()}` })
+}
+
+const removeParam = (index) => {
+  caseForm.value.params.splice(index, 1)
 }
 
 // Form Data
@@ -815,8 +1003,13 @@ const handleSave = async () => {
     ElMessage.warning('请输入请求 URL')
     return
   }
-  // 🔥 防御修复：必须选择所属分组
-  if (!props.groupId) {
+  // 🔥 优化：编辑模式下使用 caseForm 自带的 group_id（来自用例本身），新建模式下才需要 tree 的 groupId
+  let groupIdToUse = caseForm.value.group_id || null   // 默认用用例自己的 group_id
+  if (!groupIdToUse && !props.isEdit) {
+    // 纯新建 + 表单没有 group_id → 才从左侧树取
+    groupIdToUse = props.groupId
+  }
+  if (!groupIdToUse) {
     ElMessage.warning('请先从左侧分组树选择一个分组再保存')
     return
   }
@@ -826,11 +1019,16 @@ const handleSave = async () => {
     // 🔥 强制深度拷贝，确保拿到响应式对象的真实原生数据
     const rawForm = JSON.parse(JSON.stringify(toRaw(caseForm.value)))
 
-    // 🔥 防御性空数组检查，确保任何情况下都不会发送 undefined
-    if (!rawForm.headers) rawForm.headers = []
-    if (!rawForm.formData) rawForm.formData = []
-    if (!rawForm.extractors) rawForm.extractors = []
-    if (!rawForm.assertions) rawForm.assertions = []
+    // 🔥 自动补全 URL 协议
+    if (rawForm.url && !rawForm.url.includes('://')) {
+      rawForm.url = 'http://' + rawForm.url
+    }
+
+    // 🔥 防御性空数组检查，确保任何情况下都不会发送 undefined 且确保是数组类型
+    if (!Array.isArray(rawForm.headers)) rawForm.headers = []
+    if (!Array.isArray(rawForm.formData)) rawForm.formData = []
+    if (!Array.isArray(rawForm.extractors)) rawForm.extractors = []
+    if (!Array.isArray(rawForm.assertions)) rawForm.assertions = []
 
     // 构建 headers 对象
     const headersObj = {}
@@ -838,22 +1036,37 @@ const handleSave = async () => {
       if (h.key) headersObj[h.key] = h.value || ''
     })
 
+    // 构建 params 对象
+    const paramsObj = {}
+    rawForm.params.forEach(item => {
+      if (item.key) paramsObj[item.key] = item.value || ''
+    })
+
+    // 构建 form-data 对象
+    const formDataObj = {}
+    rawForm.formData.forEach(item => {
+      if (item.key) formDataObj[item.key] = item.value || ''
+    })
+
     // 构建 payload
     let payloadData = null
-    if (rawForm.bodyType === 'raw' && rawForm.payload) {
-      // raw 模式，尝试解析 JSON
-      try {
-        payloadData = JSON.parse(rawForm.payload)
-      } catch {
-        payloadData = rawForm.payload
+    if (rawForm.bodyType === 'raw' || rawForm.bodyType === 'json') {
+      if (rawForm.payload && rawForm.payload.trim()) {
+        // raw/json 模式，必须是合法 JSON
+        try {
+          payloadData = JSON.parse(rawForm.payload)
+        } catch (e) {
+          ElMessage.error('请求体 JSON 格式错误，请检查！')
+          return
+        }
+      } else {
+        payloadData = {}
       }
     } else if (rawForm.bodyType === 'form-data') {
-      // form-data 模式，转为对象
-      payloadData = {}
-      rawForm.formData.forEach(item => {
-        if (item.key) payloadData[item.key] = item.value || ''
-      })
+      // form-data 模式
+      payloadData = formDataObj
     }
+    // none 模式 payloadData 保持 null
 
     // 构建提取规则 - 传递完整的 extractors 数组
     const extractorsList = rawForm.extractors
@@ -876,7 +1089,7 @@ const handleSave = async () => {
       }))
 
     const payload = {
-      group_id: props.groupId,
+      group_id: groupIdToUse,
       method: rawForm.method,
       name: rawForm.name,
       url: rawForm.url,
@@ -884,8 +1097,9 @@ const handleSave = async () => {
       body_type: rawForm.bodyType,
       content_type: rawForm.contentType,
       payload: payloadData,
-      form_data: rawForm.formData,
-      headers: rawForm.headers,
+      form_data: formDataObj,
+      headers: headersObj,
+      params: paramsObj,
       extractors: extractorsList,
       assertions: assertRules
     }
@@ -893,29 +1107,44 @@ const handleSave = async () => {
     // 🔥 调试日志：打印准备发送给后端的真实 payload
     console.log('🔥 准备发送给后端的真实 Payload:', payload)
 
+    let createdCaseId = null
     if (props.isEdit) {
       await autoTestRequest.put(`/api/auto-test/cases/${props.caseData.id}`, payload)
       ElMessage.success('更新成功')
+      createdCaseId = props.caseData.id
     } else {
-      await autoTestRequest.post('/api/auto-test/cases', payload)
+      const response = await autoTestRequest.post('/api/auto-test/cases', payload)
       ElMessage.success('创建成功')
+      // 假设后端返回新建用例的ID
+      createdCaseId = response.id || response.data?.id || response.case_id
+      console.log('🔥 新建用例返回的响应:', response)
+      console.log('🔥 新建用例ID:', createdCaseId)
     }
 
     emit('success')
     handleClose()
+
+    return createdCaseId
   } catch (error) {
     console.error('保存用例失败:', error)
+    if (error.response?.data) {
+      console.error('后端返回的详细错误信息:', error.response.data)
+    }
     ElMessage.error(props.isEdit ? '更新失败' : '创建失败')
   }
 }
 
 // 保存并运行
 const handleSaveAndRun = async () => {
-  await handleSave()
+  const savedCaseId = await handleSave()
   if (caseForm.value.name && caseForm.value.url) {
     // 🔥 确保传递真实数据，避免响应式问题
     const data = JSON.parse(JSON.stringify(toRaw(caseForm.value)))
-    emit('run', { ...data, id: props.caseData?.id })
+    // 使用保存后获得的ID，如果保存失败则不会执行到这里
+    const caseId = savedCaseId || props.caseData?.id
+    if (caseId) {
+      emit('run', { ...data, id: caseId })
+    }
   }
 }
 </script>
@@ -1046,28 +1275,36 @@ const handleSaveAndRun = async () => {
 /* 悬浮变量字典按钮 */
 .var-dictionary-btn {
   position: absolute;
-  right: -20px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 20px;
+  top: 20px;
   background: var(--tm-color-primary);
   color: white;
-  width: 40px;
-  height: 60px;
+  width: 80px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px 0 0 8px;
+  border-radius: 20px;
   cursor: pointer;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   z-index: 2000;
-  transition: all 0.3s ease;
-  font-size: 20px;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  gap: 5px;
 }
 
 .var-dictionary-btn:hover {
-  right: 0;
-  width: 50px;
   background: var(--tm-color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.var-dictionary-btn .btn-text {
+  font-weight: 500;
+}
+
+.var-dictionary-btn .el-icon {
+  font-size: 16px;
 }
 
 /* 变量字典抽屉内容 */
@@ -1143,5 +1380,74 @@ const handleSaveAndRun = async () => {
   justify-content: center;
   align-items: center;
   flex: 1;
+}
+
+/* 断言拖拽样式 */
+.assertions-draggable {
+  margin-top: 16px;
+}
+
+.assertion-row {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--tm-border-color);
+  border-bottom: none;
+  background: var(--tm-bg-card);
+}
+
+.assertion-row:last-child {
+  border-bottom: 1px solid var(--tm-border-color);
+}
+
+.drag-handle {
+  width: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: move;
+  color: var(--tm-text-secondary);
+  padding: 8px 0;
+  flex-shrink: 0;
+}
+
+.assertion-cell {
+  padding: 8px 12px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  border-left: 1px solid var(--tm-border-light);
+  box-sizing: border-box;
+}
+
+/* 列宽设置 */
+.assertion-cell:nth-child(2) { /* 断言目标 */
+  min-width: 140px;
+  flex: 1;
+}
+
+.assertion-cell:nth-child(3) { /* JSONPath */
+  min-width: 200px;
+  flex: 1;
+}
+
+.assertion-cell:nth-child(4) { /* 操作符 */
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.assertion-cell:nth-child(5) { /* 期望值 */
+  min-width: 180px;
+  flex: 2;
+}
+
+.assertion-cell:nth-child(6) { /* 操作 */
+  width: 60px;
+  flex-shrink: 0;
+  justify-content: center;
+  border-left: 1px solid var(--tm-border-light);
+}
+
+.assertion-cell:first-child {
+  border-left: none;
 }
 </style>

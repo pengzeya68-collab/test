@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="dashboard">
     <div class="stats-grid">
       <div v-for="stat in statsData" :key="stat.title" class="stat-card">
@@ -56,7 +56,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { User, Document, Guide, DataAnalysis } from '@element-plus/icons-vue'
-import axios from '@/utils/request'
+import request from '@/utils/request'
 
 const statsData = ref([])
 const recentUsers = ref([])
@@ -74,7 +74,7 @@ const getStatIconClass = (title) => {
 
 const loadDashboardStats = async () => {
   try {
-    const res = await axios.get('/api/admin/dashboard/stats')
+    const res = await request.get('/admin/dashboard/stats')
     statsData.value = res.stats || []
     recentUsers.value = res.recentUsers || []
     recentExercises.value = res.recentExercises || []
@@ -101,7 +101,7 @@ onMounted(() => {
 }
 
 .stat-card {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   padding: 24px;
   display: flex;
@@ -143,13 +143,13 @@ onMounted(() => {
 .stat-value {
   font-size: 28px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   margin-bottom: 4px;
 }
 
@@ -173,7 +173,7 @@ onMounted(() => {
 }
 
 .chart-card {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
@@ -184,7 +184,7 @@ onMounted(() => {
   margin: 0 0 20px 0;
   font-size: 18px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .recent-section {
@@ -194,7 +194,7 @@ onMounted(() => {
 }
 
 .recent-card {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
@@ -204,7 +204,7 @@ onMounted(() => {
   margin: 0 0 20px 0;
   font-size: 18px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 @media (max-width: 1200px) {

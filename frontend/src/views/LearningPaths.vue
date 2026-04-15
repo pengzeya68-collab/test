@@ -6,15 +6,15 @@
         <h1 class="page-title">学习路径</h1>
         <div class="filters">
           <el-radio-group v-model="currentStage" @change="handleStageChange">
-            <el-radio-button :label="1">阶段1</el-radio-button>
-            <el-radio-button :label="2">阶段2</el-radio-button>
-            <el-radio-button :label="3">阶段3</el-radio-button>
-            <el-radio-button :label="4">阶段4</el-radio-button>
-            <el-radio-button :label="5">阶段5</el-radio-button>
+            <el-radio-button :value="1">阶段1</el-radio-button>
+            <el-radio-button :value="2">阶段2</el-radio-button>
+            <el-radio-button :value="3">阶段3</el-radio-button>
+            <el-radio-button :value="4">阶段4</el-radio-button>
+            <el-radio-button :value="5">阶段5</el-radio-button>
           </el-radio-group>
-          <el-select 
-            v-model="currentDifficulty" 
-            placeholder="难度筛选" 
+          <el-select
+            v-model="currentDifficulty"
+            placeholder="难度筛选"
             @change="fetchLearningPaths"
             style="width: 120px; margin-left: 20px;"
           >
@@ -28,10 +28,10 @@
 
       <!-- 阶段说明 -->
       <div class="stage-info" v-if="currentStage > 0">
-        <el-alert 
-          :title="stageInfo.title" 
+        <el-alert
+          :title="stageInfo.title"
           :description="stageInfo.description"
-          type="info" 
+          type="info"
           show-icon
           :closable="false"
         />
@@ -39,9 +39,9 @@
 
       <!-- 学习路径列表 -->
       <div class="paths-grid">
-        <div 
-          class="path-card" 
-          v-for="path in learningPaths" 
+        <div
+          class="path-card"
+          v-for="path in learningPaths"
           :key="path.id"
         >
           <div class="path-header">
@@ -54,6 +54,21 @@
           </div>
           <h3 class="path-title">{{ path.title }}</h3>
           <p class="path-desc">{{ path.description }}</p>
+
+          <!-- 进度条 -->
+          <div class="path-progress" v-if="isLoggedIn && getPathProgress(path.id)">
+            <div class="progress-info">
+              <span class="progress-text">已完成 {{ getPathProgress(path.id).completed_exercises }}/{{ getPathProgress(path.id).total_exercises }} 题</span>
+              <span class="progress-percent">{{ getPathProgress(path.id).progress_percent }}%</span>
+            </div>
+            <el-progress
+              :percentage="getPathProgress(path.id).progress_percent"
+              :stroke-width="6"
+              :show-text="false"
+              :color="getPathProgressColor(path.id)"
+            />
+          </div>
+
           <div class="path-meta">
             <div class="meta-item">
               <el-icon size="16"><Timer /></el-icon>
@@ -70,7 +85,7 @@
           </div>
           <div class="path-footer">
             <el-button type="primary" size="small" plain @click.stop="goToDetail(path.id)">
-              开始学习
+              {{ getPathProgress(path.id)?.completed_exercises > 0 ? '继续学习' : '开始学习' }}
             </el-button>
           </div>
         </div>
@@ -83,7 +98,7 @@
 
       <!-- 加载状态 -->
       <div class="loading" v-if="loading">
-        <el-spinner size="40" />
+        <el-icon class="is-loading" size="40"><Loading /></el-icon>
       </div>
     </div>
   </div>
@@ -92,16 +107,21 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Timer, Document, Collection } from '@element-plus/icons-vue'
+import { Timer, Document, Collection, Loading } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
+
+const isLoggedIn = computed(() => userStore.isLoggedIn)
 
 const learningPaths = ref([])
 const loading = ref(false)
 const currentStage = ref(1)
 const currentDifficulty = ref('')
+const allProgress = ref([])
 
 const stageInfos = {
   1: {
@@ -131,11 +151,13 @@ const stageInfo = computed(() => {
 })
 
 onMounted(() => {
-  // 从路由参数获取阶段
   if (route.query.stage) {
     currentStage.value = parseInt(route.query.stage)
   }
   fetchLearningPaths()
+  if (isLoggedIn.value) {
+    fetchAllProgress()
+  }
 })
 
 const fetchLearningPaths = async () => {
@@ -148,7 +170,7 @@ const fetchLearningPaths = async () => {
     if (currentDifficulty.value) {
       params.difficulty = currentDifficulty.value
     }
-    
+
     const res = await request.get('/learning-paths', { params })
     learningPaths.value = res
   } catch (error) {
@@ -156,6 +178,28 @@ const fetchLearningPaths = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const fetchAllProgress = async () => {
+  try {
+    const res = await request.get('/learning-paths/all-progress')
+    allProgress.value = res.progress || []
+  } catch (error) {
+    console.error('获取学习进度失败:', error)
+  }
+}
+
+const getPathProgress = (pathId) => {
+  return allProgress.value.find(p => p.path_id === pathId)
+}
+
+const getPathProgressColor = (pathId) => {
+  const p = getPathProgress(pathId)
+  if (!p) return '#909399'
+  if (p.progress_percent >= 100) return '#67c23a'
+  if (p.progress_percent >= 60) return '#409eff'
+  if (p.progress_percent >= 30) return '#e6a23c'
+  return '#909399'
 }
 
 const handleStageChange = () => {
@@ -186,8 +230,6 @@ const getDifficultyText = (difficulty) => {
 }
 
 const goToDetail = (id) => {
-  console.log('跳转到学习路径详情:', id)
-  // 未登录也可以查看学习路径详情，和习题库逻辑一致
   router.push(`/learning-paths/${id}`)
 }
 </script>
@@ -196,10 +238,7 @@ const goToDetail = (id) => {
 .learning-paths {
   padding: 40px 0;
   min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-color: var(--tm-bg-page);
 }
 
 .container {
@@ -214,22 +253,25 @@ const goToDetail = (id) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
   flex-wrap: wrap;
   gap: 20px;
-  background: var(--tm-card-bg);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  padding: 24px;
+  border-radius: 16px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
 }
 
 .page-title {
   font-size: 32px;
-  font-weight: bold;
-  color: var(--tm-text-primary);
+  font-weight: 700;
+  background: var(--tm-gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin: 0;
 }
 
@@ -241,30 +283,33 @@ const goToDetail = (id) => {
 }
 
 .stage-info {
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .paths-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 24px;
+  position: relative;
 }
 
 .path-card {
-  background: var(--tm-card-bg);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  border-radius: 16px;
+  padding: 28px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  position: relative;
 }
 
 .path-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--tm-shadow-glow), var(--tm-shadow-hover);
+  border-color: rgba(214, 51, 108, 0.2);
 }
 
 .path-header {
@@ -275,7 +320,7 @@ const goToDetail = (id) => {
 
 .path-title {
   font-size: 20px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--tm-text-primary);
   margin-bottom: 12px;
   line-height: 1.4;
@@ -283,12 +328,39 @@ const goToDetail = (id) => {
 
 .path-desc {
   color: var(--tm-text-secondary);
-  line-height: 1.6;
-  margin-bottom: 20px;
+  line-height: 1.7;
+  margin-bottom: 16px;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+  font-size: 14px;
+}
+
+.path-progress {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: rgba(214, 51, 108, 0.04);
+  border-radius: 10px;
+  border: 1px solid rgba(214, 51, 108, 0.08);
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.progress-text {
+  font-size: 13px;
+  color: var(--tm-text-secondary);
+}
+
+.progress-percent {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tm-color-primary);
 }
 
 .path-meta {
@@ -303,7 +375,7 @@ const goToDetail = (id) => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--tm-text-secondary);
 }
 
@@ -313,24 +385,24 @@ const goToDetail = (id) => {
 }
 
 .empty-state {
-  background: var(--tm-card-bg);
-  padding: 60px 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  padding: 80px 20px;
+  border-radius: 16px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
   text-align: center;
 }
 
 .loading {
-  background: var(--tm-card-bg);
-  padding: 60px 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  padding: 80px 20px;
+  border-radius: 16px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
   text-align: center;
 }
 

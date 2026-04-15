@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="user-management-theme">
     <h1 class="page-title">用户管理</h1>
 
@@ -29,7 +29,7 @@
 
     <!-- 用户列表 -->
     <div class="list-card">
-      <el-table :data="list" border stripe class="dark-table">
+      <el-table :data="list" border stripe class="dark-table" row-key="id">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="email" label="邮箱" min-width="200" />
@@ -77,7 +77,7 @@
                   </el-dropdown-item>
                   <el-dropdown-item
                     @click="toggleAdmin(row)"
-                    :style="{ color: row.is_admin ? '#909399' : '#409EFF' }"
+                    :style="{ color: row.is_admin ? 'var(--tm-text-secondary)' : '#409EFF' }"
                     :disabled="row.id === currentAdminId"
                   >
                     <el-icon :color="row.is_admin ? '#909399' : '#409EFF'">
@@ -126,7 +126,7 @@
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" type="password" placeholder="请输入密码" class="dark-input" />
-          <div style="font-size: 12px; color: #888; margin-top: 6px;">编辑时不填则保持原密码</div>
+          <div style="font-size: 12px; color: var(--tm-text-secondary); margin-top: 6px;">编辑时不填则保持原密码</div>
         </el-form-item>
         <el-form-item label="等级" prop="level">
           <el-input-number v-model="form.level" :min="1" :max="10" />
@@ -136,8 +136,8 @@
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
-            <el-radio value="active" label="active" class="dark-radio">正常</el-radio>
-            <el-radio value="disabled" label="disabled" class="dark-radio">禁用</el-radio>
+            <el-radio value="active" class="dark-radio">正常</el-radio>
+            <el-radio value="disabled" class="dark-radio">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="管理员" prop="is_admin">
@@ -168,8 +168,12 @@ const list = ref([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const currentAdminId = computed(() => {
-  const user = localStorage.getItem('user')
-  return user ? JSON.parse(user).id : 0
+  try {
+    const user = localStorage.getItem('user')
+    return user ? JSON.parse(user).id : 0
+  } catch {
+    return 0
+  }
 })
 
 const form = reactive({

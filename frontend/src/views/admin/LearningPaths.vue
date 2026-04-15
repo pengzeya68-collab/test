@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="learning-paths-manage">
     <div class="page-header">
       <h1 class="page-title">学习路径管理</h1>
@@ -140,9 +140,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -157,33 +158,10 @@ const filters = reactive({
 const pagination = reactive({
   page: 1,
   pageSize: 10,
-  total: 50
+  total: 0
 })
 
-const tableData = ref([
-  {
-    id: 1,
-    title: 'Python自动化测试入门',
-    stage: 4,
-    difficulty: 'intermediate',
-    estimated_hours: 40,
-    exercise_count: 20,
-    language: 'Python',
-    created_at: '2026-03-10 10:00:00',
-    status: true
-  },
-  {
-    id: 2,
-    title: '接口测试实战',
-    stage: 3,
-    difficulty: 'beginner',
-    estimated_hours: 24,
-    exercise_count: 15,
-    language: '通用',
-    created_at: '2026-03-11 14:30:00',
-    status: true
-  }
-])
+const tableData = ref([])
 
 const form = ref({
   id: null,
@@ -215,12 +193,40 @@ const getDifficultyText = (difficulty) => {
   return map[difficulty] || difficulty
 }
 
-const handleSearch = () => {
+const fetchPaths = async () => {
   loading.value = true
-  // 实际项目中调用接口搜索
-  setTimeout(() => {
+  try {
+    const params = {
+      page: pagination.page,
+      size: pagination.pageSize,
+      keyword: filters.keyword || undefined,
+      level: filters.difficulty || undefined
+    }
+    const res = await request.get('/admin/paths', { params })
+    if (res && res.list) {
+      tableData.value = res.list.map(p => ({
+        id: p.id,
+        title: p.title,
+        stage: '',
+        difficulty: p.level || 'beginner',
+        estimated_hours: 0,
+        exercise_count: p.exerciseCount || 0,
+        language: '',
+        created_at: '',
+        status: true
+      }))
+      pagination.total = res.total || 0
+    }
+  } catch (error) {
+    console.error('获取学习路径列表失败:', error)
+  } finally {
     loading.value = false
-  }, 500)
+  }
+}
+
+const handleSearch = () => {
+  pagination.page = 1
+  fetchPaths()
 }
 
 const handleReset = () => {
@@ -233,7 +239,7 @@ const handleReset = () => {
 }
 
 const handlePageChange = () => {
-  handleSearch()
+  fetchPaths()
 }
 
 const handleCreate = () => {
@@ -258,26 +264,51 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
-const handleDelete = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除学习路径"${row.title}"吗？`,
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除学习路径"${row.title}"吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await request.delete(`/admin/paths/${row.id}`)
     ElMessage.success('删除成功')
-    handleSearch()
-  })
+    fetchPaths()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
 }
 
-const handleSubmit = () => {
-  ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
-  dialogVisible.value = false
-  handleSearch()
+const handleSubmit = async () => {
+  try {
+    const payload = {
+      title: form.value.title,
+      description: form.value.description,
+      level: form.value.difficulty
+    }
+    if (isEdit.value) {
+      await request.put(`/admin/paths/${form.value.id}`, payload)
+      ElMessage.success('更新成功')
+    } else {
+      await request.post('/admin/paths', payload)
+      ElMessage.success('创建成功')
+    }
+    dialogVisible.value = false
+    fetchPaths()
+  } catch (error) {
+    ElMessage.error('操作失败：' + (error.response?.data?.detail || error.message))
+  }
 }
+
+onMounted(() => {
+  fetchPaths()
+})
 </script>
 
 <style scoped>
@@ -296,7 +327,7 @@ const handleSubmit = () => {
   margin: 0;
   font-size: 24px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .header-actions {
@@ -305,7 +336,7 @@ const handleSubmit = () => {
 }
 
 .filter-section {
-  background: white;
+  background: #18181B;
   padding: 20px;
   border-radius: 8px;
   margin-bottom: 20px;
@@ -313,7 +344,7 @@ const handleSubmit = () => {
 }
 
 .table-section {
-  background: white;
+  background: #18181B;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);

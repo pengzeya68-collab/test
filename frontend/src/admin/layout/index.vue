@@ -28,7 +28,7 @@
         </div>
         <div class="user-info">
           <el-dropdown trigger="click" @command="changeTheme">
-            <el-button type="text" class="theme-btn">
+            <el-button link class="theme-btn">
               <el-icon><Brush /></el-icon>
               <span>美化中心</span>
               <el-icon class="el-icon--right"><ArrowDown /></el-icon>
@@ -43,7 +43,7 @@
             </template>
           </el-dropdown>
           <span class="user-name">{{ adminInfo?.username || 'Admin' }}</span>
-          <el-button type="text" class="logout-btn" @click="logout">退出登录</el-button>
+          <el-button link class="logout-btn" @click="logout">退出登录</el-button>
         </div>
       </header>
 
@@ -76,6 +76,7 @@ const menus = [
   { path: '/admin/interview', title: '面试题库' },
   { path: '/admin/community', title: '社区管理' },
   { path: '/admin/backup', title: '备份管理' },
+  { path: '/admin/ai-config', title: 'AI配置' },
   { path: '/admin/settings', title: '系统设置' }
 ]
 
@@ -123,9 +124,7 @@ const logout = async () => {
   width: 100%;
   display: flex;
   background: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-color: #09090B;
   background-attachment: fixed;
   font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   overflow: hidden;

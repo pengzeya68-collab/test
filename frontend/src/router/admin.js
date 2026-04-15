@@ -91,6 +91,14 @@ const adminRoutes = {
       }
     },
     {
+      path: 'ai-config',
+      name: 'AIConfigManage',
+      component: () => import('@/admin/views/AIConfig/index.vue'),
+      meta: {
+        title: 'AI配置'
+      }
+    },
+    {
       path: 'settings',
       name: 'SystemSettings',
       component: () => import('@/views/admin/Settings.vue'),

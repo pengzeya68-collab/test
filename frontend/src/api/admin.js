@@ -102,3 +102,40 @@ export function updateExam(id, data) {
 export function deleteExam(id) {
   return request.delete(`/admin/exams/${id}`)
 }
+
+// AI配置相关
+export function getAIConfigs() {
+  return request.get('/admin/ai-configs')
+}
+
+export function getAIConfig(id) {
+  return request.get(`/admin/ai-configs/${id}`)
+}
+
+export function createAIConfig(data) {
+  return request.post('/admin/ai-configs', data)
+}
+
+export function updateAIConfig(id, data) {
+  return request.put(`/admin/ai-configs/${id}`, data)
+}
+
+export function deleteAIConfig(id) {
+  return request.delete(`/admin/ai-configs/${id}`)
+}
+
+export function activateAIConfig(id) {
+  return request.post(`/admin/ai-configs/${id}/activate`)
+}
+
+export function testAIConfig(id) {
+  return request.post(`/admin/ai-configs/${id}/test`)
+}
+
+export function getAIConfigQuota(id) {
+  return request.get(`/admin/ai-configs/${id}/quota`)
+}
+
+export function getActiveAIConfig() {
+  return request.get('/admin/ai-configs/active')
+}

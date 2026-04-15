@@ -1,0 +1,6 @@
+﻿
+=== instance/testmaster.db ===
+Tables: ['achievements', 'admin_users', 'alembic_version', 'audit_logs', 'auto_test_cases', 'auto_test_groups', 'auto_test_plans', 'auto_test_report_results', 'auto_test_reports', 'auto_test_steps', 'comments', 'daily_checkins', 'exam_answers', 'exam_attempts', 'exam_questions', 'exams', 'exercise_submissions', 'exercises', 'favorites', 'interface_test_cases', 'interface_test_environments', 'interface_test_folders', 'interface_test_plans', 'interface_test_report_results', 'interface_test_reports', 'interview_question_collections', 'interview_question_records', 'interview_questions', 'interview_sessions', 'interview_test_cases', 'learning_paths', 'likes', 'notes', 'posts', 'progress', 'scheduled_tasks', 'sqlite_sequence', 'submissions', 'test_scenarios', 'user_achievements', 'users']
+
+=== instance/auto_test.db ===
+Tables: ['api_cases', 'api_groups', 'environments', 'global_variables', 'scenario_execution_records', 'scenario_steps', 'test_datasets', 'test_history', 'test_scenarios']

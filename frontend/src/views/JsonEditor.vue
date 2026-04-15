@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="json-editor">
     <div class="editor-toolbar">
       <span class="toolbar-hint">支持 JSON 语法高亮</span>
@@ -150,7 +150,7 @@ defineExpose({
 .json-editor {
   display: flex;
   flex-direction: column;
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--tm-border-color);
   border-radius: 4px;
   background: #1e1e1e;
 }

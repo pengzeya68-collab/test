@@ -11,9 +11,9 @@ from datetime import datetime
 # Flask后端数据库
 FLASK_DB = r"c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 # FastAPI零代码平台数据库
-FASTAPI_DB = r"c:/Users/lenovo/Desktop/TestMasterProject/auto_test_platform/auto_test.db"
+FASTAPI_DB = r"c:/Users/lenovo/Desktop/TestMasterProject/instance/auto_test.db"
 # 备份目录
-BACKUP_DIR = r"c:/Users/lenovo/Desktop/TestMasterProject/auto_test_platform/backups"
+BACKUP_DIR = r"c:/Users/lenovo/Desktop/TestMasterProject/fastapi_backend/autotest_data/backups"
 
 def backup_database():
     """备份FastAPI数据库"""
@@ -175,7 +175,7 @@ def restore_to_fastapi():
     # 插入一个默认环境
     cursor.execute("""
         INSERT INTO environments (id, env_name, base_url, variables, is_default, created_at)
-        VALUES (NULL, '默认环境', 'http://localhost:5000', '{}', 1, datetime('now'))
+        VALUES (NULL, '默认环境', 'http://localhost:5001', '{}', 1, datetime('now'))
     """)
 
     conn.commit()

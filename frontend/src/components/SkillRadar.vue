@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="skill-radar">
     <!-- 雷达图区域 -->
     <div class="radar-container">
@@ -127,7 +127,7 @@ const chartOption = computed(() => {
 
 <style scoped>
 .skill-radar {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   padding: 30px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
@@ -148,7 +148,7 @@ const chartOption = computed(() => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .legend-color {

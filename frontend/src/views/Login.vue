@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
@@ -86,9 +86,11 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import request from '@/utils/request'
+import request, { setToken } from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const loginFormRef = ref(null)
 const loading = ref(false)
 
@@ -104,27 +106,25 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
-        const res = await request.post('/login', loginForm.value)
-        // 保存token和用户信息
-        // 后端返回格式: {code: 0, msg: '登录成功', data: {access_token, refresh_token, user}}
-        localStorage.setItem('token', res.data.access_token)
-        localStorage.setItem('user', JSON.stringify(res.data.user))
+        const res = await request.post('/auth/login', loginForm.value)
+        userStore.setLogin(res.access_token, res.user)
+        setToken(res.access_token)
         
         ElMessage.success('登录成功！')
         
-        // 跳转到redirect地址，没有的话跳转到首页
-        const redirect = router.currentRoute.value?.query?.redirect || '/'
+        const completed = await userStore.checkAssessmentStatus()
+        const redirect = router.currentRoute.value?.query?.redirect
+        
         if (redirect) {
-          router.push(decodeURIComponent(redirect)).catch(err => {
-            console.error('路由跳转失败:', err)
-            // 如果跳转失败，直接跳首页
-            router.push('/')
-          })
+          router.push(decodeURIComponent(redirect)).catch(() => router.push('/'))
+        } else if (!completed) {
+          router.push('/assessment')
         } else {
           router.push('/')
         }
       } catch (error) {
         console.error('登录失败:', error)
+        ElMessage.error(error.response?.data?.detail || '登录失败，请检查用户名和密码')
       } finally {
         loading.value = false
       }
@@ -147,17 +147,18 @@ const goToForgotPassword = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--tm-bg-page);
   padding: 20px;
 }
 
 .login-card {
-  background: white;
+  background: var(--tm-bg-card);
   border-radius: 16px;
   padding: 48px;
   width: 100%;
   max-width: 400px;
   box-shadow: 0 20px 60px 0 rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--tm-border-primary);
 }
 
 .login-header {
@@ -168,9 +169,9 @@ const goToForgotPassword = () => {
 .title {
   font-size: 36px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin: 0 0 10px 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--tm-gradient-brand, linear-gradient(135deg, #EC4899, #9333EA));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -178,7 +179,7 @@ const goToForgotPassword = () => {
 
 .subtitle {
   font-size: 14px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   margin: 0;
 }
 
@@ -189,7 +190,7 @@ const goToForgotPassword = () => {
 .login-footer {
   text-align: center;
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-tertiary);
 }
 
 .demo-account {
@@ -199,7 +200,7 @@ const goToForgotPassword = () => {
 .account-item {
   text-align: center;
   font-size: 13px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   padding: 8px 0;
 }
 

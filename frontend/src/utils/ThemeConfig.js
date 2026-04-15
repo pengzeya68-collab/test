@@ -68,23 +68,23 @@ export const themes = [
   {
     id: 'deep-ocean',
     name: '深邃之海',
-    description: '冷调科技感',
-    primary: '#00d2ff',
-    primaryDark: '#00a8cc',
+    description: 'Vercel风格高级深色质感',
+    primary: '#3b82f6',
+    primaryDark: '#2563eb',
     bg: "url('https://source.unsplash.com/featured/1920x1080/?ocean,dark,blue')",
-    bgColor: 'rgba(5, 15, 25, 0.85)',
-    cardBg: 'rgba(10, 25, 40, 0.7)',
-    cardBorder: '1px solid rgba(0, 210, 255, 0.3)',
-    textPrimary: '#e0e8f0',
-    textSecondary: '#a0b8c8',
-    sidebarBg: 'rgba(5, 20, 35, 0.9)',
-    glow: '0 0 15px rgba(0, 210, 255, 0.4)',
+    bgColor: '#09090b',
+    cardBg: '#141415',
+    cardBorder: '1px solid rgba(255, 255, 255, 0.08)',
+    textPrimary: '#fafafa',
+    textSecondary: '#a1a1aa',
+    sidebarBg: '#141415',
+    glow: '0 0 15px rgba(59, 130, 246, 0.15)',
     isDark: true
   }
 ]
 
 // 默认主题
-export const defaultThemeId = 'deep-ocean'
+export const defaultThemeId = 'cyberpunk'
 
 // 从localStorage读取保存的主题
 export function loadSavedTheme() {
@@ -133,6 +133,9 @@ export function applyTheme(themeId) {
   const theme = themes.find(t => t.id === themeId) || themes[0]
 
   const root = document.documentElement
+  
+  // 设置data-theme属性，用于CSS选择器
+  root.setAttribute('data-theme', theme.id)
 
   // ========== 核心主题颜色变量 ==========
   // 主色调
@@ -166,6 +169,8 @@ export function applyTheme(themeId) {
   root.style.setProperty('--tm-text-secondary', theme.textSecondary)
   root.style.setProperty('--tm-text-regular', theme.textPrimary)
   root.style.setProperty('--tm-color-text-primary', theme.textPrimary)
+  // 按钮文字颜色
+  root.style.setProperty('--tm-button-text-color', theme.isDark ? '#ffffff' : '#333333')
 
   // 侧边栏
   root.style.setProperty('--tm-sidebar-bg', theme.sidebarBg)
@@ -185,6 +190,43 @@ export function applyTheme(themeId) {
     const match = borderStr.match(/rgba?\([^)]+\)/)
     return match ? match[0] : 'rgba(120, 120, 120, 0.2)'
   }
+
+  // ========== Vercel/Shadcn UI 高级深色质感系统 ==========
+  // 根据主题类型（深色/浅色）设置新变量
+  if (theme.isDark) {
+    // 深色主题变量
+    root.style.setProperty('--bg-base', '#09090b');
+    root.style.setProperty('--bg-surface', '#141415');
+    root.style.setProperty('--bg-surface-hover', '#27272a');
+    root.style.setProperty('--bg-elevated', '#18181b');
+    root.style.setProperty('--border-subtle', 'rgba(255, 255, 255, 0.08)');
+    root.style.setProperty('--border-focus', 'rgba(255, 255, 255, 0.2)');
+    root.style.setProperty('--text-primary', '#fafafa');
+    root.style.setProperty('--text-secondary', '#a1a1aa');
+    root.style.setProperty('--text-muted', '#52525b');
+    root.style.setProperty('--accent-primary', theme.primary);
+    root.style.setProperty('--accent-hover', theme.primaryDark || theme.primary);
+    root.style.setProperty('--accent-glow', `rgba(${hexToRgb(theme.primary)}, 0.15)`);
+  } else {
+    // 浅色主题变量
+    root.style.setProperty('--bg-base', '#ffffff');
+    root.style.setProperty('--bg-surface', '#fafafa');
+    root.style.setProperty('--bg-surface-hover', '#f0f0f0');
+    root.style.setProperty('--bg-elevated', '#ffffff');
+    root.style.setProperty('--border-subtle', 'rgba(0, 0, 0, 0.08)');
+    root.style.setProperty('--border-focus', 'rgba(0, 0, 0, 0.2)');
+    root.style.setProperty('--text-primary', '#18181b');
+    root.style.setProperty('--text-secondary', '#52525b');
+    root.style.setProperty('--text-muted', '#a1a1aa');
+    root.style.setProperty('--accent-primary', theme.primary);
+    root.style.setProperty('--accent-hover', theme.primaryDark || theme.primary);
+    root.style.setProperty('--accent-glow', `rgba(${hexToRgb(theme.primary)}, 0.1)`);
+  }
+
+  // 圆角规范
+  root.style.setProperty('--radius-sm', '4px');
+  root.style.setProperty('--radius-md', '8px');
+  root.style.setProperty('--radius-lg', '12px');
 
   // 保存
   saveTheme(themeId)

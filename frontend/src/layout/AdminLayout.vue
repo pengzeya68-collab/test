@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="admin-layout">
     <el-container>
       <!-- 侧边栏 -->
@@ -192,7 +192,7 @@ const handleCommand = async (command) => {
 }
 
 .admin-header {
-  background: #fff;
+  background: #18181B;
   box-shadow: 0 1px 4px rgba(0,21,41,.08);
   display: flex;
   align-items: center;
@@ -210,7 +210,7 @@ const handleCommand = async (command) => {
 .collapse-btn {
   font-size: 20px;
   cursor: pointer;
-  color: #606266;
+  color: var(--tm-text-regular);
   transition: color 0.3s;
 }
 
@@ -228,7 +228,7 @@ const handleCommand = async (command) => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .user-info:hover {
@@ -240,7 +240,7 @@ const handleCommand = async (command) => {
 }
 
 .admin-main {
-  background-color: #f0f2f5;
+  background-color: var(--tm-bg-page);
   padding: 20px;
   overflow-y: auto;
 }

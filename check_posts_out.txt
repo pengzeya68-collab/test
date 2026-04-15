@@ -1,0 +1,41 @@
+﻿--- posts schema ---
+(0, 'id', 'INTEGER', 1, None, 1)
+(1, 'title', 'VARCHAR(200)', 1, None, 0)
+(2, 'content', 'TEXT', 1, None, 0)
+(3, 'summary', 'VARCHAR(500)', 0, None, 0)
+(4, 'tags', 'VARCHAR(200)', 0, None, 0)
+(5, 'category', 'VARCHAR(50)', 1, None, 0)
+(6, 'view_count', 'INTEGER', 0, None, 0)
+(7, 'like_count', 'INTEGER', 0, None, 0)
+(8, 'comment_count', 'INTEGER', 0, None, 0)
+(9, 'is_essence', 'BOOLEAN', 0, None, 0)
+(10, 'is_top', 'BOOLEAN', 0, None, 0)
+(11, 'created_at', 'DATETIME', 0, None, 0)
+(12, 'updated_at', 'DATETIME', 0, None, 0)
+(13, 'user_id', 'INTEGER', 1, None, 0)
+(14, 'is_approved', 'BOOLEAN', 0, '1', 0)
+
+--- posts (ǰ10��) ---
+(1, '����')
+
+--- ���� "�ޱ���" ---
+learning_paths: [(33, '�ӿ��Զ������� - Requests+Pytest')]
+exercises: [(355, 'Pytest����������')]
+
+--- exercises �� NULL/�� title ---
+�� NULL/�� title
+
+--- ��� learning_paths �Լ��� title ---
+LP: (25, '������Ի�������')
+LP: (26, 'SQL���ݿ����')
+LP: (27, '���������������֪ʶ')
+LP: (28, 'Linux��������')
+LP: (29, '���Լƻ���д����Ŀ����')
+LP: (30, '�ӿڲ��Ի���')
+LP: (31, 'Python��̻���')
+LP: (32, 'UI�Զ������� - Selenium')
+LP: (33, '�ӿ��Զ������� - Requests+Pytest')
+LP: (34, '���ܲ��� - JMeter��Locust')
+LP: (35, '��ȫ���Ի���')
+LP: (36, 'AI���������ܻ�')
+LP: (37, '����ƽ̨������DevOps')

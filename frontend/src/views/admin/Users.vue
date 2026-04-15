@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="users-manage">
     <div class="page-header">
       <h1 class="page-title">用户管理</h1>
@@ -136,9 +136,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Download } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -153,33 +154,10 @@ const filters = reactive({
 const pagination = reactive({
   page: 1,
   pageSize: 10,
-  total: 1000
+  total: 0
 })
 
-const tableData = ref([
-  {
-    id: 1,
-    username: 'test001',
-    email: 'test001@example.com',
-    phone: '13800138001',
-    role: 'user',
-    register_time: '2026-03-01 10:00:00',
-    last_login: '2026-03-15 09:30:00',
-    study_hours: 45,
-    status: 'active'
-  },
-  {
-    id: 2,
-    username: 'admin',
-    email: 'admin@example.com',
-    phone: '13800138000',
-    role: 'admin',
-    register_time: '2026-01-01 00:00:00',
-    last_login: '2026-03-15 08:00:00',
-    study_hours: 200,
-    status: 'active'
-  }
-])
+const tableData = ref([])
 
 const form = ref({
   id: null,
@@ -191,12 +169,40 @@ const form = ref({
   status: 'active'
 })
 
-const handleSearch = () => {
+const fetchUsers = async () => {
   loading.value = true
-  // 实际项目中调用接口搜索
-  setTimeout(() => {
+  try {
+    const params = {
+      page: pagination.page,
+      size: pagination.pageSize,
+      keyword: filters.username || undefined,
+      status: filters.status || undefined
+    }
+    const res = await request.get('/admin/users', { params })
+    if (res && res.list) {
+      tableData.value = res.list.map(u => ({
+        id: u.id,
+        username: u.username,
+        email: u.email || '',
+        phone: u.phone || '',
+        role: u.is_admin ? 'admin' : 'user',
+        register_time: u.registerTime || '',
+        last_login: '',
+        study_hours: u.studyTime || 0,
+        status: u.status
+      }))
+      pagination.total = res.total || 0
+    }
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+  } finally {
     loading.value = false
-  }, 500)
+  }
+}
+
+const handleSearch = () => {
+  pagination.page = 1
+  fetchUsers()
 }
 
 const handleReset = () => {
@@ -209,7 +215,7 @@ const handleReset = () => {
 }
 
 const handlePageChange = () => {
-  handleSearch()
+  fetchUsers()
 }
 
 const handleCreate = () => {
@@ -232,34 +238,68 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
-const handleDelete = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除用户"${row.username}"吗？`,
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除用户"${row.username}"吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await request.delete(`/admin/users/${row.id}`)
     ElMessage.success('删除成功')
-    handleSearch()
-  })
+    fetchUsers()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
 }
 
-const handleSubmit = () => {
-  ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
-  dialogVisible.value = false
-  handleSearch()
+const handleSubmit = async () => {
+  try {
+    const payload = {
+      username: form.value.username,
+      email: form.value.email,
+      phone: form.value.phone,
+      is_admin: form.value.role === 'admin',
+      status: form.value.status,
+      password: form.value.password || undefined
+    }
+    if (isEdit.value) {
+      await request.put(`/admin/users/${form.value.id}`, payload)
+      ElMessage.success('更新成功')
+    } else {
+      await request.post('/admin/users', payload)
+      ElMessage.success('创建成功')
+    }
+    dialogVisible.value = false
+    fetchUsers()
+  } catch (error) {
+    ElMessage.error('操作失败：' + (error.response?.data?.detail || error.message))
+  }
 }
 
 const handleExport = () => {
   ElMessage.info('导出功能开发中')
 }
 
-const handleStatusChange = (row) => {
-  ElMessage.success(`用户${row.username}状态已更新`)
+const handleStatusChange = async (row) => {
+  try {
+    await request.post(`/admin/users/${row.id}/toggle-status`)
+    ElMessage.success(`用户${row.username}状态已更新`)
+    fetchUsers()
+  } catch (error) {
+    ElMessage.error('操作失败')
+  }
 }
+
+onMounted(() => {
+  fetchUsers()
+})
 </script>
 
 <style scoped>
@@ -278,7 +318,7 @@ const handleStatusChange = (row) => {
   margin: 0;
   font-size: 24px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .header-actions {
@@ -287,7 +327,7 @@ const handleStatusChange = (row) => {
 }
 
 .filter-section {
-  background: white;
+  background: #18181B;
   padding: 20px;
   border-radius: 8px;
   margin-bottom: 20px;
@@ -295,7 +335,7 @@ const handleStatusChange = (row) => {
 }
 
 .table-section {
-  background: white;
+  background: #18181B;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);

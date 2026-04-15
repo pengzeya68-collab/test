@@ -1,0 +1,778 @@
+[
+  {
+    "title": "软件测试基础认证考试",
+    "description": "覆盖软件测试基础概念、测试用例设计方法和缺陷管理的综合考试。",
+    "exam_type": "模拟考试",
+    "difficulty": "easy",
+    "duration": 45,
+    "total_score": 100,
+    "pass_score": 60,
+    "is_published": true,
+    "questions": [
+      {
+        "question_type": "single_choice",
+        "content": "软件测试的目的是什么？",
+        "options": [
+          "证明软件没有缺陷",
+          "发现软件中的缺陷",
+          "提高软件开发效率",
+          "减少开发成本"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "软件测试的目的是发现缺陷，而非证明无缺陷。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "以下哪个不是黑盒测试方法？",
+        "options": [
+          "等价类划分",
+          "边界值分析",
+          "语句覆盖",
+          "因果图"
+        ],
+        "correct_answer": "C",
+        "score": 5,
+        "analysis": "语句覆盖是白盒测试方法。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "V模型中，系统测试对应哪个开发阶段？",
+        "options": [
+          "需求分析",
+          "概要设计",
+          "详细设计",
+          "编码"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "V模型中系统测试与概要设计阶段对应。"
+      },
+      {
+        "question_type": "multiple_choice",
+        "content": "以下哪些属于性能测试的类型？",
+        "options": [
+          "负载测试",
+          "压力测试",
+          "回归测试",
+          "稳定性测试",
+          "兼容性测试"
+        ],
+        "correct_answer": "A,B,D",
+        "score": 10,
+        "analysis": "回归测试属于功能测试，兼容性测试不是性能测试。"
+      },
+      {
+        "question_type": "true_false",
+        "content": "测试应该从代码编写完成后才开始。",
+        "options": [
+          "正确",
+          "错误"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "测试左移原则强调测试应尽早开始。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "等价类划分法的核心思想是什么？",
+        "options": [
+          "测试所有可能输入",
+          "将输入域划分为等价类，每类选代表值",
+          "只测试边界值",
+          "随机选择测试数据"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "等价类划分法从每个等价类中选取代表性数据。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "缺陷的严重程度和优先级的关系是？",
+        "options": [
+          "严重程度越高优先级越高",
+          "两者没有必然关系",
+          "优先级由严重程度决定",
+          "严重程度由优先级决定"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "严重程度和优先级是两个独立维度。"
+      },
+      {
+        "question_type": "multiple_choice",
+        "content": "以下哪些是测试用例的必要元素？",
+        "options": [
+          "用例编号",
+          "前置条件",
+          "测试步骤",
+          "预期结果",
+          "开发人员姓名"
+        ],
+        "correct_answer": "A,B,C,D",
+        "score": 10,
+        "analysis": "开发人员姓名不是必要元素。"
+      },
+      {
+        "question_type": "true_false",
+        "content": "自动化测试可以完全替代手工测试。",
+        "options": [
+          "正确",
+          "错误"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "探索性测试、用户体验测试等仍需人工执行。"
+      },
+      {
+        "question_type": "short_answer",
+        "content": "请简述边界值分析法的基本原理，并举一个例子说明。",
+        "correct_answer": "边界值分析法基于缺陷往往出现在边界处的规律，选取刚好等于、刚刚大于和刚刚小于边界值的数据。例如：年龄输入1-100，测试0,1,2,99,100,101。",
+        "score": 15,
+        "analysis": "边界值分析是对等价类划分的补充。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "以下哪种测试属于静态测试？",
+        "options": [
+          "单元测试",
+          "代码审查",
+          "集成测试",
+          "系统测试"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "静态测试不运行被测软件。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "杀虫剂悖论指的是什么？",
+        "options": [
+          "测试用例越多越好",
+          "相同的测试用例重复执行将无法发现新缺陷",
+          "自动化测试比手工测试更有效",
+          "测试应该由开发人员执行"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "杀虫剂悖论指出反复使用相同测试用例无法发现新缺陷。"
+      }
+    ]
+  },
+  {
+    "title": "接口测试专项考试",
+    "description": "考察HTTP协议、API测试方法和自动化接口测试的综合能力。",
+    "exam_type": "专项练习",
+    "difficulty": "medium",
+    "duration": 60,
+    "total_score": 100,
+    "pass_score": 60,
+    "is_published": true,
+    "questions": [
+      {
+        "question_type": "single_choice",
+        "content": "HTTP状态码401表示什么？",
+        "options": [
+          "请求成功",
+          "未认证",
+          "无权限",
+          "资源不存在"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "401表示未提供有效认证信息。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "RESTful API中，更新资源应使用哪个HTTP方法？",
+        "options": [
+          "GET",
+          "POST",
+          "PUT",
+          "DELETE"
+        ],
+        "correct_answer": "C",
+        "score": 5,
+        "analysis": "PUT用于全量更新资源。"
+      },
+      {
+        "question_type": "multiple_choice",
+        "content": "接口测试需要关注哪些方面？",
+        "options": [
+          "参数校验",
+          "业务逻辑",
+          "安全性",
+          "性能",
+          "UI布局"
+        ],
+        "correct_answer": "A,B,C,D",
+        "score": 10,
+        "analysis": "接口测试不关注UI布局。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "JWT Token通常放在HTTP请求的哪个位置？",
+        "options": [
+          "请求体",
+          "URL参数",
+          "Authorization请求头",
+          "Cookie"
+        ],
+        "correct_answer": "C",
+        "score": 5,
+        "analysis": "JWT通常放在Authorization请求头中。"
+      },
+      {
+        "question_type": "true_false",
+        "content": "GET请求可以携带请求体。",
+        "options": [
+          "正确",
+          "错误"
+        ],
+        "correct_answer": "A",
+        "score": 5,
+        "analysis": "HTTP规范不禁止GET携带请求体，但不建议。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "以下哪个不是常见的API文档格式？",
+        "options": [
+          "Swagger/OpenAPI",
+          "GraphQL Schema",
+          "HTML页面截图",
+          "RAML"
+        ],
+        "correct_answer": "C",
+        "score": 5,
+        "analysis": "HTML页面截图不是API文档格式。"
+      },
+      {
+        "question_type": "short_answer",
+        "content": "请说明接口自动化测试中数据驱动的作用和实现方式。",
+        "correct_answer": "数据驱动将测试数据与脚本分离，通过外部数据源驱动测试执行。优点：新增场景只需添加数据、便于维护、支持参数化。实现：pytest.mark.parametrize、ddt库、YAML文件。",
+        "score": 15,
+        "analysis": "数据驱动是接口自动化的核心设计模式。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "HTTPS相比HTTP增加了什么安全机制？",
+        "options": [
+          "身份认证",
+          "数据加密",
+          "数据完整性",
+          "以上全部"
+        ],
+        "correct_answer": "D",
+        "score": 5,
+        "analysis": "HTTPS提供身份认证、数据加密和完整性保护。"
+      },
+      {
+        "question_type": "multiple_choice",
+        "content": "以下哪些是常见的接口安全测试项？",
+        "options": [
+          "SQL注入",
+          "越权访问",
+          "敏感信息泄露",
+          "接口幂等性",
+          "CSS样式"
+        ],
+        "correct_answer": "A,B,C,D",
+        "score": 10,
+        "analysis": "CSS样式不属于接口安全测试范畴。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "Postman中Pre-request Script的作用是什么？",
+        "options": [
+          "验证响应结果",
+          "在请求发送前执行脚本",
+          "设置环境变量",
+          "生成测试报告"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "Pre-request Script在请求发送前执行。"
+      },
+      {
+        "question_type": "true_false",
+        "content": "接口测试不需要关注数据库的验证。",
+        "options": [
+          "正确",
+          "错误"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "接口测试需要验证数据库数据是否正确变更。"
+      },
+      {
+        "question_type": "short_answer",
+        "content": "请描述如何测试一个分页查询接口的正确性。",
+        "correct_answer": "1)验证默认参数；2)边界值：page=0、size=0等；3)数据正确性：每页数据量、总数；4)排序验证；5)空数据处理；6)参数类型验证；7)性能测试。",
+        "score": 15,
+        "analysis": "分页接口测试需要覆盖功能、边界、异常和性能多个维度。"
+      }
+    ]
+  },
+  {
+    "title": "UI自动化测试专项考试",
+    "description": "考察Selenium WebDriver、POM设计模式和测试框架的综合能力。",
+    "exam_type": "专项练习",
+    "difficulty": "medium",
+    "duration": 60,
+    "total_score": 100,
+    "pass_score": 60,
+    "is_published": true,
+    "questions": [
+      {
+        "question_type": "single_choice",
+        "content": "Selenium中优先使用的元素定位方式是？",
+        "options": [
+          "XPath",
+          "CSS Selector",
+          "ID",
+          "Class Name"
+        ],
+        "correct_answer": "C",
+        "score": 5,
+        "analysis": "ID定位最快最稳定，应优先使用。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "以下哪种等待策略最推荐？",
+        "options": [
+          "time.sleep(10)",
+          "implicitly_wait(10)",
+          "WebDriverWait显式等待",
+          "不需要等待"
+        ],
+        "correct_answer": "C",
+        "score": 5,
+        "analysis": "显式等待最灵活精确，是最佳实践。"
+      },
+      {
+        "question_type": "multiple_choice",
+        "content": "POM设计模式的优势有哪些？",
+        "options": [
+          "代码复用",
+          "易于维护",
+          "提高执行速度",
+          "提高可读性",
+          "减少内存占用"
+        ],
+        "correct_answer": "A,B,D",
+        "score": 10,
+        "analysis": "POM主要优势是代码复用、易维护和可读性好。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "Selenium中切换到iframe使用哪个方法？",
+        "options": [
+          "switch_to.alert()",
+          "switch_to.frame()",
+          "switch_to.window()",
+          "switch_to.default_content()"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "switch_to.frame()用于切换到iframe。"
+      },
+      {
+        "question_type": "true_false",
+        "content": "Selenium WebDriver只能测试Web应用。",
+        "options": [
+          "正确",
+          "错误"
+        ],
+        "correct_answer": "A",
+        "score": 5,
+        "analysis": "Selenium WebDriver专门用于Web应用测试。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "数据驱动测试的核心思想是什么？",
+        "options": [
+          "把所有数据写在代码里",
+          "将测试数据与测试脚本分离",
+          "使用数据库存储测试结果",
+          "随机生成测试数据"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "数据驱动将测试数据与脚本分离。"
+      },
+      {
+        "question_type": "multiple_choice",
+        "content": "以下哪些是Selenium支持的浏览器？",
+        "options": [
+          "Chrome",
+          "Firefox",
+          "Safari",
+          "Edge",
+          "Internet Explorer"
+        ],
+        "correct_answer": "A,B,C,D,E",
+        "score": 10,
+        "analysis": "Selenium支持所有主流浏览器。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "Allure测试报告中@allure.step的作用是什么？",
+        "options": [
+          "标记测试用例",
+          "描述测试步骤",
+          "设置严重级别",
+          "添加附件"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "@allure.step用于描述测试步骤。"
+      },
+      {
+        "question_type": "true_false",
+        "content": "隐式等待和显式等待可以混合使用且不会产生问题。",
+        "options": [
+          "正确",
+          "错误"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "混合使用可能导致不可预测的等待时间。"
+      },
+      {
+        "question_type": "short_answer",
+        "content": "请说明如何处理Selenium中的弹窗（Alert）。",
+        "correct_answer": "1.切换到Alert：alert=driver.switch_to.alert\n2.获取文本：alert.text\n3.确认：alert.accept()\n4.取消：alert.dismiss()\n5.输入文本：alert.send_keys('text')",
+        "score": 15,
+        "analysis": "Alert处理是Selenium常见操作。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "以下哪个不是Selenium的组件？",
+        "options": [
+          "WebDriver",
+          "IDE",
+          "Grid",
+          "Docker"
+        ],
+        "correct_answer": "D",
+        "score": 5,
+        "analysis": "Docker不是Selenium组件。"
+      },
+      {
+        "question_type": "short_answer",
+        "content": "请描述如何解决UI自动化测试中的Flaky Test问题。",
+        "correct_answer": "1.使用显式等待替代time.sleep\n2.优化定位策略：优先ID和CSS\n3.测试数据隔离\n4.消除用例间依赖\n5.添加失败重试机制\n6.使用Docker保证环境一致\n7.失败时自动截图\n8.持续监控flaky rate",
+        "score": 15,
+        "analysis": "Flaky Test需要从等待策略、数据管理、环境控制等多方面综合治理。"
+      }
+    ]
+  },
+  {
+    "title": "性能测试专项考试",
+    "description": "考察性能测试理论、工具使用和瓶颈分析的综合能力。",
+    "exam_type": "专项练习",
+    "difficulty": "medium",
+    "duration": 60,
+    "total_score": 100,
+    "pass_score": 60,
+    "is_published": true,
+    "questions": [
+      {
+        "question_type": "single_choice",
+        "content": "TPS的全称和含义是什么？",
+        "options": [
+          "Transactions Per Second，每秒事务数",
+          "Tests Per Second，每秒测试数",
+          "Tasks Per Second，每秒任务数",
+          "Threads Per Second，每秒线程数"
+        ],
+        "correct_answer": "A",
+        "score": 5,
+        "analysis": "TPS = Transactions Per Second。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "以下哪种测试用于确定系统最大处理能力？",
+        "options": [
+          "负载测试",
+          "压力测试",
+          "容量测试",
+          "稳定性测试"
+        ],
+        "correct_answer": "C",
+        "score": 5,
+        "analysis": "容量测试用于确定系统最大处理能力。"
+      },
+      {
+        "question_type": "multiple_choice",
+        "content": "性能测试中需要关注的核心指标有哪些？",
+        "options": [
+          "TPS",
+          "响应时间",
+          "错误率",
+          "并发数",
+          "代码覆盖率"
+        ],
+        "correct_answer": "A,B,C,D",
+        "score": 10,
+        "analysis": "代码覆盖率不是性能测试指标。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "JMeter中用于控制请求发送速率的定时器是？",
+        "options": [
+          "Constant Timer",
+          "Gaussian Random Timer",
+          "Constant Throughput Timer",
+          "Sync Timer"
+        ],
+        "correct_answer": "C",
+        "score": 5,
+        "analysis": "Constant Throughput Timer用于控制TPS。"
+      },
+      {
+        "question_type": "true_false",
+        "content": "压力测试和负载测试是同一种测试类型。",
+        "options": [
+          "正确",
+          "错误"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "负载测试找最佳点，压力测试找崩溃点。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "TPS和并发数的关系是？",
+        "options": [
+          "TPS = 并发数 x 响应时间",
+          "TPS = 并发数 / 响应时间",
+          "TPS = 响应时间 / 并发数",
+          "两者没有关系"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "TPS = 并发数 / 平均响应时间(Little's Law)。"
+      },
+      {
+        "question_type": "multiple_choice",
+        "content": "以下哪些是常见的性能瓶颈原因？",
+        "options": [
+          "数据库慢查询",
+          "内存泄漏",
+          "线程池配置过小",
+          "网络带宽不足",
+          "测试用例设计不合理"
+        ],
+        "correct_answer": "A,B,C,D",
+        "score": 10,
+        "analysis": "测试用例设计不合理不是性能瓶颈原因。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "Locust中@task装饰器的作用是什么？",
+        "options": [
+          "定义测试数据",
+          "定义用户行为",
+          "设置并发数",
+          "配置等待时间"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "@task装饰器定义模拟用户的操作行为。"
+      },
+      {
+        "question_type": "true_false",
+        "content": "性能测试只需要关注响应时间，不需要关注资源使用率。",
+        "options": [
+          "正确",
+          "错误"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "性能测试需要同时关注响应时间和资源使用率。"
+      },
+      {
+        "question_type": "short_answer",
+        "content": "请说明如何定位TPS上不去的性能瓶颈。",
+        "correct_answer": "1.检查线程池/连接池配置\n2.检查数据库连接数上限\n3.检查锁竞争\n4.检查网络带宽\n5.使用APM工具定位热点方法\n6.检查GC频率",
+        "score": 15,
+        "analysis": "TPS上不去通常与资源限制或锁竞争有关。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "JMeter分布式压测中，哪个角色负责调度？",
+        "options": [
+          "Server",
+          "Controller",
+          "Agent",
+          "Worker"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "Controller负责调度和汇总结果。"
+      },
+      {
+        "question_type": "short_answer",
+        "content": "请描述性能测试报告应包含哪些关键内容。",
+        "correct_answer": "1.概述 2.测试环境 3.测试场景 4.测试结果(TPS/RT/错误率+曲线图) 5.资源使用率曲线 6.瓶颈分析 7.优化建议 8.结论 9.附录",
+        "score": 15,
+        "analysis": "性能测试报告需要全面、数据支撑、有结论。"
+      }
+    ]
+  },
+  {
+    "title": "安全测试综合考试",
+    "description": "考察OWASP Top 10漏洞原理、安全测试方法和防御措施的综合能力。",
+    "exam_type": "模拟考试",
+    "difficulty": "hard",
+    "duration": 60,
+    "total_score": 100,
+    "pass_score": 60,
+    "is_published": true,
+    "questions": [
+      {
+        "question_type": "single_choice",
+        "content": "OWASP Top 10中排名第一的安全风险是什么？",
+        "options": [
+          "注入攻击",
+          "权限控制失效",
+          "加密机制失效",
+          "安全配置错误"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "2021版OWASP Top 10中A01是权限控制失效。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "以下哪种方法可以有效防止SQL注入？",
+        "options": [
+          "输入长度限制",
+          "参数化查询",
+          "前端验证",
+          "使用GET请求"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "参数化查询是防止SQL注入最有效的方法。"
+      },
+      {
+        "question_type": "multiple_choice",
+        "content": "XSS漏洞的类型有哪些？",
+        "options": [
+          "反射型XSS",
+          "存储型XSS",
+          "DOM型XSS",
+          "SQL注入型XSS",
+          "CSRF型XSS"
+        ],
+        "correct_answer": "A,B,C",
+        "score": 10,
+        "analysis": "XSS分为反射型、存储型和DOM型三种。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "CSRF攻击的核心原理是什么？",
+        "options": [
+          "注入恶意脚本",
+          "诱导用户在已认证网站执行非预期操作",
+          "暴力破解密码",
+          "窃取数据库数据"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "CSRF利用用户已认证的身份发起非预期请求。"
+      },
+      {
+        "question_type": "true_false",
+        "content": "使用HTTPS就可以完全防止XSS攻击。",
+        "options": [
+          "正确",
+          "错误"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "HTTPS防止传输层窃听，不能防止XSS（应用层漏洞）。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "以下哪个HTTP头可以防止点击劫持？",
+        "options": [
+          "X-Content-Type-Options",
+          "X-Frame-Options",
+          "Content-Security-Policy",
+          "Strict-Transport-Security"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "X-Frame-Options防止页面被iframe嵌入，防止点击劫持。"
+      },
+      {
+        "question_type": "multiple_choice",
+        "content": "以下哪些是防止CSRF的有效措施？",
+        "options": [
+          "CSRF Token",
+          "SameSite Cookie",
+          "验证Referer头",
+          "使用HTTPS",
+          "关键操作二次确认"
+        ],
+        "correct_answer": "A,B,C,E",
+        "score": 10,
+        "analysis": "HTTPS防止窃听但不能防止CSRF。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "Burp Suite中用于自动化漏洞扫描的模块是？",
+        "options": [
+          "Proxy",
+          "Scanner",
+          "Intruder",
+          "Repeater"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "Scanner模块用于自动化漏洞扫描。"
+      },
+      {
+        "question_type": "true_false",
+        "content": "水平越权是指普通用户访问管理员功能。",
+        "options": [
+          "正确",
+          "错误"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "水平越权是同级别用户间越权，垂直越权才是低权限访问高权限功能。"
+      },
+      {
+        "question_type": "short_answer",
+        "content": "请说明如何测试一个登录接口的安全性。",
+        "correct_answer": "1.暴力破解：是否有频率限制和账户锁定\n2.SQL注入：用户名/密码输入注入语句\n3.弱密码：是否强制密码复杂度\n4.密码重置：重置链接是否可预测\n5.Session固定：登录后是否更换Session ID\n6.Cookie安全：HttpOnly/Secure/SameSite属性\n7.越权：登录后能否访问其他用户数据",
+        "score": 15,
+        "analysis": "登录接口安全测试需要覆盖认证、授权、会话管理等多个维度。"
+      },
+      {
+        "question_type": "single_choice",
+        "content": "CSP(Content-Security-Policy)主要用于防止什么攻击？",
+        "options": [
+          "SQL注入",
+          "XSS",
+          "CSRF",
+          "DDoS"
+        ],
+        "correct_answer": "B",
+        "score": 5,
+        "analysis": "CSP限制资源加载来源，主要用于防止XSS攻击。"
+      },
+      {
+        "question_type": "short_answer",
+        "content": "请描述OWASP Top 10中的注入攻击(A03)的常见类型和防御措施。",
+        "correct_answer": "常见类型：SQL注入、命令注入、LDAP注入、XPATH注入。\n防御措施：\n1.使用参数化查询/预编译语句\n2.输入验证与白名单过滤\n3.输出编码\n4.最小权限原则\n5.WAF防护\n6.使用ORM框架",
+        "score": 15,
+        "analysis": "注入攻击是最常见的Web安全漏洞之一，需要从多个层面进行防御。"
+      }
+    ]
+  }
+]

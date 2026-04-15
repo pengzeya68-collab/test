@@ -1,0 +1,52 @@
+﻿=== ������� exercises �� title ===
+OK: id=324, lpid=25, title='������ԵĶ�����Ŀ��', type=choice
+OK: id=325, lpid=25, title='����ԭ�� - ɱ������', type=choice
+OK: id=326, lpid=25, title='�ںв�����׺в��Ե�����', type=choice
+OK: id=327, lpid=25, title='ȱ�ݵ����س̶������ȼ�', type=choice
+OK: id=328, lpid=25, title='Vģ���еĲ��Խ׶�', type=choice
+OK: id=329, lpid=26, title='����SELECT��ѯ', type=sql
+OK: id=330, lpid=26, title='GROUP BY��ۺϺ���', type=sql
+OK: id=331, lpid=26, title='���JOIN��ѯ', type=sql
+OK: id=332, lpid=26, title='�Ӳ�ѯʵս', type=sql
+OK: id=333, lpid=27, title='HTTP״̬��ʶ��', type=choice
+OK: id=334, lpid=27, title='GET��POST���������', type=choice
+OK: id=335, lpid=27, title='TCP��������', type=choice
+OK: id=336, lpid=28, title='�ļ�Ȩ��chmod����', type=choice
+OK: id=337, lpid=28, title='grep���������־', type=code
+OK: id=338, lpid=28, title='tail����ʵʱ�鿴��־', type=code
+OK: id=339, lpid=29, title='���Լƻ�����Ҫ��', type=choice
+OK: id=340, lpid=29, title='���Է�������', type=choice
+OK: id=341, lpid=30, title='RESTful API��ƹ淶', type=choice
+OK: id=342, lpid=30, title='�ӿڲ����������', type=choice
+OK: id=343, lpid=30, title='Postman��������', type=code
+OK: id=344, lpid=30, title='�ӿڼ�ȨToken����', type=code
+OK: id=345, lpid=31, title='Python�б����', type=code
+OK: id=346, lpid=31, title='Python�ֵ����', type=code
+OK: id=347, lpid=31, title='Python�������', type=code
+OK: id=348, lpid=31, title='Python�ļ���ȡ�����', type=code
+OK: id=349, lpid=31, title='Python�쳣����', type=code
+OK: id=350, lpid=32, title='SeleniumԪ�ض�λ', type=choice
+OK: id=351, lpid=32, title='��ʽ�ȴ�����ʽ�ȴ�', type=choice
+OK: id=352, lpid=32, title='��дSelenium��¼����', type=code
+OK: id=353, lpid=32, title='POM���ģʽ', type=choice
+OK: id=354, lpid=33, title='Requests����POST����', type=code
+OK: id=355, lpid=33, title='Pytest����������', type=code
+OK: id=356, lpid=33, title='�ӿ��Զ�����ֲܷ�', type=choice
+OK: id=357, lpid=34, title='���ܲ��Ժ���ָ��', type=choice
+OK: id=358, lpid=34, title='Locust�����ű�', type=code
+OK: id=359, lpid=35, title='SQLע��ʶ��', type=choice
+OK: id=360, lpid=35, title='XSS��������', type=choice
+OK: id=361, lpid=35, title='CSRF��������', type=choice
+OK: id=362, lpid=36, title='AI����Ӧ�ó���', type=choice
+OK: id=363, lpid=36, title='�Ӿ��ع����ԭ��', type=choice
+OK: id=364, lpid=37, title='Docker��������', type=choice
+OK: id=365, lpid=37, title='Jenkins Pipeline�﷨', type=choice
+OK: id=366, lpid=37, title='��������ָ�����', type=choice
+
+Total bad: 0
+Bad IDs: []
+
+=== �������� learning_paths�����κ� exercise��===
+���� learning_paths: []
+
+������ɣ�

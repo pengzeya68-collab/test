@@ -1,0 +1,287 @@
+[
+  {
+    "step_id": 6,
+    "step_order": 0,
+    "api_case_id": 11,
+    "api_case_name": "步骤 2：用提取出来的数据组装全新的请求体",
+    "method": "POST",
+    "url": "https://httpbin.org/post",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "payload": {
+      "message": "报告！我已经成功抓获目标",
+      "suspect_email": "{{target_email}}",
+      "suspect_id": "{{target_uuid}}"
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 901,
+    "response": {
+      "status": 200,
+      "body": "{\n  \"args\": {}, \n  \"data\": \"{\\\"message\\\":\\\"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\\\",\\\"suspect_email\\\":\\\"{{target_email}}\\\",\\\"suspect_id\\\":\\\"{{target_uuid}}\\\"}\", \n  \"files\": {}, \n  \"form\": {}, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate\", \n    \"Content-Length\": \"116\", \n    \"Content-Type\": \"application/json\", \n    \"Host\": \"httpbin.org\", \n    \"User-Agent\": \"python-httpx/0.28.1\", \n    \"X-Amzn-Trace-Id\": \"Root=1-69de4771-55dbcec761008ec91fbdf225\"\n  }, \n  \"json\": {\n    \"message\": \"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\", \n    \"suspect_email\": \"{{target_email}}\", \n    \"suspect_id\": \"{{target_uuid}}\"\n  }, \n  \"origin\": \"34.96.134.66\", \n  \"url\": \"https://httpbin.org/post\"\n}\n",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 13:56:01 GMT",
+        "content-type": "application/json",
+        "content-length": "773",
+        "connection": "keep-alive",
+        "server": "gunicorn/19.9.0",
+        "access-control-allow-origin": "*",
+        "access-control-allow-credentials": "true"
+      },
+      "json": {
+        "args": {},
+        "data": "{\"message\":\"报告！我已经成功抓获目标\",\"suspect_email\":\"{{target_email}}\",\"suspect_id\":\"{{target_uuid}}\"}",
+        "files": {},
+        "form": {},
+        "headers": {
+          "Accept": "*/*",
+          "Accept-Encoding": "gzip, deflate",
+          "Content-Length": "116",
+          "Content-Type": "application/json",
+          "Host": "httpbin.org",
+          "User-Agent": "python-httpx/0.28.1",
+          "X-Amzn-Trace-Id": "Root=1-69de4771-55dbcec761008ec91fbdf225"
+        },
+        "json": {
+          "message": "报告！我已经成功抓获目标",
+          "suspect_email": "{{target_email}}",
+          "suspect_id": "{{target_uuid}}"
+        },
+        "origin": "34.96.134.66",
+        "url": "https://httpbin.org/post"
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {},
+    "status": "success"
+  },
+  {
+    "step_id": 7,
+    "step_order": 1,
+    "api_case_id": 10,
+    "api_case_name": "步骤 1：获取随机生成的复杂用户信息",
+    "method": "GET",
+    "url": "https://randomuser.me/api/",
+    "headers": {},
+    "payload": {
+      "results": [
+        {
+          "gender": "female",
+          "name": {
+            "first": "John",
+            "last": "Doe"
+          },
+          "email": "john.doe@example.com",
+          "login": {
+            "uuid": "abc-123-xyz",
+            "username": "johndoe123"
+          }
+        }
+      ],
+      "info": {
+        "version": "1.3"
+      }
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 359,
+    "response": {
+      "status": 200,
+      "body": "{\"results\":[{\"gender\":\"female\",\"name\":{\"title\":\"Miss\",\"first\":\"Nikoline\",\"last\":\"Frydenberg\"},\"location\":{\"street\":{\"number\":4891,\"name\":\"Risbekkveien\"},\"city\":\"Høvåg\",\"state\":\"Sogn og Fjordane\",\"country\":\"Norway\",\"postcode\":\"5109\",\"coordinates\":{\"latitude\":\"41.1393\",\"longitude\":\"160.2353\"},\"timezone\":{\"offset\":\"-4:00\",\"description\":\"Atlantic Time (Canada), Caracas, La Paz\"}},\"email\":\"nikoline.frydenberg@example.com\",\"login\":{\"uuid\":\"b3147b5a-75fa-41e8-b3a7-57188b866c75\",\"username\":\"heavygoose548\",\"password\":\"odessa\",\"salt\":\"w8Oe6HCo\",\"md5\":\"aee0c2e0800473b129dc0dc1fc48d9f8\",\"sha1\":\"f8d95f1ffbe651fb62b06f4d06f19f9e3084c8d7\",\"sha256\":\"4a59a946c98c66cb53d2f1955298e9b8fde432464f79aad4cb89e1a006b59744\"},\"dob\":{\"date\":\"1949-06-11T20:20:12.398Z\",\"age\":76},\"registered\":{\"date\":\"2013-07-05T17:05:55.800Z\",\"age\":12},\"phone\":\"75337433\",\"cell\":\"90378263\",\"id\":{\"name\":\"FN\",\"value\":\"11064946872\"},\"picture\":{\"large\":\"https://randomuser.me/api/portraits/women/51.jpg\",\"medium\":\"https://randomuser.me/api/portraits/med/women/51.jpg\",\"thumbnail\":\"https://randomuser.me/api/portraits/thumb/women/51.jpg\"},\"nat\":\"NO\"}],\"info\":{\"seed\":\"1b42fa051fea4e4d\",\"results\":1,\"page\":1,\"version\":\"1.4\"}}",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 13:56:01 GMT",
+        "content-type": "application/json; charset=utf-8",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "server": "cloudflare",
+        "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "*",
+        "cache-control": "no-cache",
+        "etag": "W/\"4a3-dnv28CY/eupAHBHKd0bsAJC/hhY\"",
+        "vary": "Accept-Encoding",
+        "content-encoding": "gzip",
+        "cf-cache-status": "DYNAMIC",
+        "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=R1IXTRKSg%2BrLWt51NXcxSc1mO8%2BPpANJuGsI%2BWkNngTRy0l00PDg1Jz0keHRo9FSBeRPzzEijBUm1CgD53hN9KbNYUYkEfpImlEnPalzIn9EdPOga79UFgbUg1ttHDwO\"}]}",
+        "cf-ray": "9ec336256be1dd3d-HKG",
+        "alt-svc": "h3=\":443\"; ma=86400"
+      },
+      "json": {
+        "results": [
+          {
+            "gender": "female",
+            "name": {
+              "title": "Miss",
+              "first": "Nikoline",
+              "last": "Frydenberg"
+            },
+            "location": {
+              "street": {
+                "number": 4891,
+                "name": "Risbekkveien"
+              },
+              "city": "Høvåg",
+              "state": "Sogn og Fjordane",
+              "country": "Norway",
+              "postcode": "5109",
+              "coordinates": {
+                "latitude": "41.1393",
+                "longitude": "160.2353"
+              },
+              "timezone": {
+                "offset": "-4:00",
+                "description": "Atlantic Time (Canada), Caracas, La Paz"
+              }
+            },
+            "email": "nikoline.frydenberg@example.com",
+            "login": {
+              "uuid": "b3147b5a-75fa-41e8-b3a7-57188b866c75",
+              "username": "heavygoose548",
+              "password": "odessa",
+              "salt": "w8Oe6HCo",
+              "md5": "aee0c2e0800473b129dc0dc1fc48d9f8",
+              "sha1": "f8d95f1ffbe651fb62b06f4d06f19f9e3084c8d7",
+              "sha256": "4a59a946c98c66cb53d2f1955298e9b8fde432464f79aad4cb89e1a006b59744"
+            },
+            "dob": {
+              "date": "1949-06-11T20:20:12.398Z",
+              "age": 76
+            },
+            "registered": {
+              "date": "2013-07-05T17:05:55.800Z",
+              "age": 12
+            },
+            "phone": "75337433",
+            "cell": "90378263",
+            "id": {
+              "name": "FN",
+              "value": "11064946872"
+            },
+            "picture": {
+              "large": "https://randomuser.me/api/portraits/women/51.jpg",
+              "medium": "https://randomuser.me/api/portraits/med/women/51.jpg",
+              "thumbnail": "https://randomuser.me/api/portraits/thumb/women/51.jpg"
+            },
+            "nat": "NO"
+          }
+        ],
+        "info": {
+          "seed": "1b42fa051fea4e4d",
+          "results": 1,
+          "page": 1,
+          "version": "1.4"
+        }
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {
+      "target_email": "nikoline.frydenberg@example.com",
+      "target_uuid": "b3147b5a-75fa-41e8-b3a7-57188b866c75"
+    },
+    "status": "success"
+  },
+  {
+    "step_id": 8,
+    "step_order": 2,
+    "api_case_id": 9,
+    "api_case_name": "根据 ID 修改该用户信息",
+    "method": "PUT",
+    "success": false,
+    "status": "failed",
+    "response_time": 1995,
+    "error": "断言失败: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 500"
+  },
+  {
+    "step_id": 9,
+    "step_order": 3,
+    "api_case_id": 8,
+    "api_case_name": "根据 ID 查询该用户的详细信息",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 10,
+    "step_order": 4,
+    "api_case_id": 7,
+    "api_case_name": "创建一条新用户记录，提取 ID",
+    "method": "POST",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 11,
+    "step_order": 5,
+    "api_case_id": 6,
+    "api_case_name": "GET bearer",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 12,
+    "step_order": 6,
+    "api_case_id": 5,
+    "api_case_name": "POST post",
+    "method": "POST",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 13,
+    "step_order": 7,
+    "api_case_id": 4,
+    "api_case_name": "GET get",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 14,
+    "step_order": 8,
+    "api_case_id": 2,
+    "api_case_name": "GET all.json",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 15,
+    "step_order": 9,
+    "api_case_id": 1,
+    "api_case_name": "GET users",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  }
+]

@@ -1,0 +1,2 @@
+﻿ERROR /learning-paths: HTTP Error 404: Not Found
+ERROR /learning-paths/25: HTTP Error 404: Not Found

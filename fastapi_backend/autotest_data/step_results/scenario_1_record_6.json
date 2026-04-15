@@ -1,0 +1,195 @@
+[
+  {
+    "step_id": 1,
+    "step_order": 0,
+    "api_case_id": 10,
+    "api_case_name": "步骤 1：获取随机生成的复杂用户信息",
+    "method": "GET",
+    "url": "https://randomuser.me/api/",
+    "headers": {},
+    "payload": {
+      "results": [
+        {
+          "gender": "female",
+          "name": {
+            "first": "John",
+            "last": "Doe"
+          },
+          "email": "john.doe@example.com",
+          "login": {
+            "uuid": "abc-123-xyz",
+            "username": "johndoe123"
+          }
+        }
+      ],
+      "info": {
+        "version": "1.3"
+      }
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 419,
+    "response": {
+      "status": 200,
+      "body": "{\"results\":[{\"gender\":\"male\",\"name\":{\"title\":\"Mr\",\"first\":\"Jonathan\",\"last\":\"Pedroza\"},\"location\":{\"street\":{\"number\":8558,\"name\":\"Viaducto Yucatán\"},\"city\":\"La Escondida\",\"state\":\"Jalisco\",\"country\":\"Mexico\",\"postcode\":71689,\"coordinates\":{\"latitude\":\"25.1001\",\"longitude\":\"-65.3693\"},\"timezone\":{\"offset\":\"-1:00\",\"description\":\"Azores, Cape Verde Islands\"}},\"email\":\"jonathan.pedroza@example.com\",\"login\":{\"uuid\":\"8b6df67a-e44d-41ac-aed1-d4f9d92422c8\",\"username\":\"ticklishcat875\",\"password\":\"uptown\",\"salt\":\"6rt2hPWQ\",\"md5\":\"671c095a77ccc1db04d96fe9d17dda59\",\"sha1\":\"409ec78c285dabd56d3d5dc54e8a8e4a24517351\",\"sha256\":\"f249e47813d8f4261d13917d2c7d3864f7d39d84634d5a30359a4d8cd21391ee\"},\"dob\":{\"date\":\"1960-02-27T08:38:05.698Z\",\"age\":66},\"registered\":{\"date\":\"2021-05-27T19:47:46.206Z\",\"age\":4},\"phone\":\"(685) 131 1855\",\"cell\":\"(631) 499 4038\",\"id\":{\"name\":\"NSS\",\"value\":\"57 18 08 2301 1\"},\"picture\":{\"large\":\"https://randomuser.me/api/portraits/men/57.jpg\",\"medium\":\"https://randomuser.me/api/portraits/med/men/57.jpg\",\"thumbnail\":\"https://randomuser.me/api/portraits/thumb/men/57.jpg\"},\"nat\":\"MX\"}],\"info\":{\"seed\":\"198ee5adfc9e3bef\",\"results\":1,\"page\":1,\"version\":\"1.4\"}}",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 12:03:08 GMT",
+        "content-type": "application/json; charset=utf-8",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "server": "cloudflare",
+        "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "*",
+        "cache-control": "no-cache",
+        "etag": "W/\"497-7cqETxxlmI2RQglA8oFco1017IY\"",
+        "vary": "Accept-Encoding",
+        "content-encoding": "gzip",
+        "cf-cache-status": "DYNAMIC",
+        "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=tNPtettiElIgQG9rUhDHbUPbsdRQ6QAuEBm0FEsaWRGEd27MfyOpu1%2FhhAqQdKaCkfFX0nczb7MhDU5te74tTJzmJCyDCrOJDUo9ebgmRdOVVg%2BIJXC8F2phNjXoxfyS\"}]}",
+        "cf-ray": "9ec290c9ea4bdd9f-HKG",
+        "alt-svc": "h3=\":443\"; ma=86400"
+      },
+      "json": {
+        "results": [
+          {
+            "gender": "male",
+            "name": {
+              "title": "Mr",
+              "first": "Jonathan",
+              "last": "Pedroza"
+            },
+            "location": {
+              "street": {
+                "number": 8558,
+                "name": "Viaducto Yucatán"
+              },
+              "city": "La Escondida",
+              "state": "Jalisco",
+              "country": "Mexico",
+              "postcode": 71689,
+              "coordinates": {
+                "latitude": "25.1001",
+                "longitude": "-65.3693"
+              },
+              "timezone": {
+                "offset": "-1:00",
+                "description": "Azores, Cape Verde Islands"
+              }
+            },
+            "email": "jonathan.pedroza@example.com",
+            "login": {
+              "uuid": "8b6df67a-e44d-41ac-aed1-d4f9d92422c8",
+              "username": "ticklishcat875",
+              "password": "uptown",
+              "salt": "6rt2hPWQ",
+              "md5": "671c095a77ccc1db04d96fe9d17dda59",
+              "sha1": "409ec78c285dabd56d3d5dc54e8a8e4a24517351",
+              "sha256": "f249e47813d8f4261d13917d2c7d3864f7d39d84634d5a30359a4d8cd21391ee"
+            },
+            "dob": {
+              "date": "1960-02-27T08:38:05.698Z",
+              "age": 66
+            },
+            "registered": {
+              "date": "2021-05-27T19:47:46.206Z",
+              "age": 4
+            },
+            "phone": "(685) 131 1855",
+            "cell": "(631) 499 4038",
+            "id": {
+              "name": "NSS",
+              "value": "57 18 08 2301 1"
+            },
+            "picture": {
+              "large": "https://randomuser.me/api/portraits/men/57.jpg",
+              "medium": "https://randomuser.me/api/portraits/med/men/57.jpg",
+              "thumbnail": "https://randomuser.me/api/portraits/thumb/men/57.jpg"
+            },
+            "nat": "MX"
+          }
+        ],
+        "info": {
+          "seed": "198ee5adfc9e3bef",
+          "results": 1,
+          "page": 1,
+          "version": "1.4"
+        }
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {
+      "target_email": "jonathan.pedroza@example.com",
+      "target_uuid": "8b6df67a-e44d-41ac-aed1-d4f9d92422c8"
+    },
+    "status": "success"
+  },
+  {
+    "step_id": 2,
+    "step_order": 1,
+    "api_case_id": 11,
+    "api_case_name": "步骤 2：用提取出来的数据组装全新的请求体",
+    "method": "POST",
+    "url": "https://httpbin.org/post",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "payload": {
+      "message": "报告！我已经成功抓获目标",
+      "suspect_email": "{{target_email}}",
+      "suspect_id": "{{target_uuid}}"
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 882,
+    "response": {
+      "status": 200,
+      "body": "{\n  \"args\": {}, \n  \"data\": \"{\\\"message\\\":\\\"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\\\",\\\"suspect_email\\\":\\\"{{target_email}}\\\",\\\"suspect_id\\\":\\\"{{target_uuid}}\\\"}\", \n  \"files\": {}, \n  \"form\": {}, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate\", \n    \"Content-Length\": \"116\", \n    \"Content-Type\": \"application/json\", \n    \"Host\": \"httpbin.org\", \n    \"User-Agent\": \"python-httpx/0.28.1\", \n    \"X-Amzn-Trace-Id\": \"Root=1-69de2cfd-2674669159415dc169a18d78\"\n  }, \n  \"json\": {\n    \"message\": \"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\", \n    \"suspect_email\": \"{{target_email}}\", \n    \"suspect_id\": \"{{target_uuid}}\"\n  }, \n  \"origin\": \"34.96.134.66\", \n  \"url\": \"https://httpbin.org/post\"\n}\n",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 12:03:09 GMT",
+        "content-type": "application/json",
+        "content-length": "773",
+        "connection": "keep-alive",
+        "server": "gunicorn/19.9.0",
+        "access-control-allow-origin": "*",
+        "access-control-allow-credentials": "true"
+      },
+      "json": {
+        "args": {},
+        "data": "{\"message\":\"报告！我已经成功抓获目标\",\"suspect_email\":\"{{target_email}}\",\"suspect_id\":\"{{target_uuid}}\"}",
+        "files": {},
+        "form": {},
+        "headers": {
+          "Accept": "*/*",
+          "Accept-Encoding": "gzip, deflate",
+          "Content-Length": "116",
+          "Content-Type": "application/json",
+          "Host": "httpbin.org",
+          "User-Agent": "python-httpx/0.28.1",
+          "X-Amzn-Trace-Id": "Root=1-69de2cfd-2674669159415dc169a18d78"
+        },
+        "json": {
+          "message": "报告！我已经成功抓获目标",
+          "suspect_email": "{{target_email}}",
+          "suspect_id": "{{target_uuid}}"
+        },
+        "origin": "34.96.134.66",
+        "url": "https://httpbin.org/post"
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {
+      "target_email": "jonathan.pedroza@example.com",
+      "target_uuid": "8b6df67a-e44d-41ac-aed1-d4f9d92422c8"
+    },
+    "status": "success"
+  }
+]

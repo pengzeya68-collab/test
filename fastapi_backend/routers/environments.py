@@ -13,7 +13,7 @@ from fastapi_backend.schemas.environments import (
     EnvironmentResponse,
 )
 
-router = APIRouter(prefix="/api/environments", tags=["测试环境"])
+router = APIRouter(prefix="/api/v1/environments", tags=["测试环境"])
 
 
 @router.get("/", response_model=List[EnvironmentResponse])

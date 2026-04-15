@@ -1,0 +1,195 @@
+[
+  {
+    "step_id": 1,
+    "step_order": 0,
+    "api_case_id": 10,
+    "api_case_name": "步骤 1：获取随机生成的复杂用户信息",
+    "method": "GET",
+    "url": "https://randomuser.me/api/",
+    "headers": {},
+    "payload": {
+      "results": [
+        {
+          "gender": "female",
+          "name": {
+            "first": "John",
+            "last": "Doe"
+          },
+          "email": "john.doe@example.com",
+          "login": {
+            "uuid": "abc-123-xyz",
+            "username": "johndoe123"
+          }
+        }
+      ],
+      "info": {
+        "version": "1.3"
+      }
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 465,
+    "response": {
+      "status": 200,
+      "body": "{\"results\":[{\"gender\":\"female\",\"name\":{\"title\":\"Mrs\",\"first\":\"Thea\",\"last\":\"Zhang\"},\"location\":{\"street\":{\"number\":4521,\"name\":\"Ronwood Avenue\"},\"city\":\"Blenheim\",\"state\":\"West Coast\",\"country\":\"New Zealand\",\"postcode\":77065,\"coordinates\":{\"latitude\":\"48.6817\",\"longitude\":\"36.1159\"},\"timezone\":{\"offset\":\"-12:00\",\"description\":\"Eniwetok, Kwajalein\"}},\"email\":\"thea.zhang@example.com\",\"login\":{\"uuid\":\"ff607c1f-bc02-47cf-a68a-893a0eefb3d6\",\"username\":\"redleopard635\",\"password\":\"live\",\"salt\":\"VclEV04z\",\"md5\":\"baf096adbc80bea4687c700c04d91e1c\",\"sha1\":\"6a0db64e18726d9504b2e65cc3a3016c45ddac1d\",\"sha256\":\"490482c03408aced25f26dfb975112f7db6693f308158e351228e1a79b009748\"},\"dob\":{\"date\":\"1956-07-20T09:11:17.801Z\",\"age\":69},\"registered\":{\"date\":\"2015-07-10T06:28:38.185Z\",\"age\":10},\"phone\":\"(989)-718-4987\",\"cell\":\"(027)-046-9839\",\"id\":{\"name\":\"\",\"value\":null},\"picture\":{\"large\":\"https://randomuser.me/api/portraits/women/2.jpg\",\"medium\":\"https://randomuser.me/api/portraits/med/women/2.jpg\",\"thumbnail\":\"https://randomuser.me/api/portraits/thumb/women/2.jpg\"},\"nat\":\"NZ\"}],\"info\":{\"seed\":\"69ea366f8ab41cae\",\"results\":1,\"page\":1,\"version\":\"1.4\"}}",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 11:37:40 GMT",
+        "content-type": "application/json; charset=utf-8",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "server": "cloudflare",
+        "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "*",
+        "cache-control": "no-cache",
+        "etag": "W/\"479-qucGArMLpzV81+L8ULBHAkFcprk\"",
+        "vary": "Accept-Encoding",
+        "content-encoding": "gzip",
+        "cf-cache-status": "DYNAMIC",
+        "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=L0Aj3RFZVGkR%2Fs9MZq%2BGkmx8sX0GOn5BHBl3Z2KTSTxk5mbgbefc%2Fn8OZg1vKFetNOr80Z5Xx1O6XIfN4TeF4wMd1C2wKknHye9PlANF21J%2Fl3C93fCuXbDXfc2a9Yox\"}]}",
+        "cf-ray": "9ec26b78d9383e83-HKG",
+        "alt-svc": "h3=\":443\"; ma=86400"
+      },
+      "json": {
+        "results": [
+          {
+            "gender": "female",
+            "name": {
+              "title": "Mrs",
+              "first": "Thea",
+              "last": "Zhang"
+            },
+            "location": {
+              "street": {
+                "number": 4521,
+                "name": "Ronwood Avenue"
+              },
+              "city": "Blenheim",
+              "state": "West Coast",
+              "country": "New Zealand",
+              "postcode": 77065,
+              "coordinates": {
+                "latitude": "48.6817",
+                "longitude": "36.1159"
+              },
+              "timezone": {
+                "offset": "-12:00",
+                "description": "Eniwetok, Kwajalein"
+              }
+            },
+            "email": "thea.zhang@example.com",
+            "login": {
+              "uuid": "ff607c1f-bc02-47cf-a68a-893a0eefb3d6",
+              "username": "redleopard635",
+              "password": "live",
+              "salt": "VclEV04z",
+              "md5": "baf096adbc80bea4687c700c04d91e1c",
+              "sha1": "6a0db64e18726d9504b2e65cc3a3016c45ddac1d",
+              "sha256": "490482c03408aced25f26dfb975112f7db6693f308158e351228e1a79b009748"
+            },
+            "dob": {
+              "date": "1956-07-20T09:11:17.801Z",
+              "age": 69
+            },
+            "registered": {
+              "date": "2015-07-10T06:28:38.185Z",
+              "age": 10
+            },
+            "phone": "(989)-718-4987",
+            "cell": "(027)-046-9839",
+            "id": {
+              "name": "",
+              "value": null
+            },
+            "picture": {
+              "large": "https://randomuser.me/api/portraits/women/2.jpg",
+              "medium": "https://randomuser.me/api/portraits/med/women/2.jpg",
+              "thumbnail": "https://randomuser.me/api/portraits/thumb/women/2.jpg"
+            },
+            "nat": "NZ"
+          }
+        ],
+        "info": {
+          "seed": "69ea366f8ab41cae",
+          "results": 1,
+          "page": 1,
+          "version": "1.4"
+        }
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {
+      "target_email": "thea.zhang@example.com",
+      "target_uuid": "ff607c1f-bc02-47cf-a68a-893a0eefb3d6"
+    },
+    "status": "success"
+  },
+  {
+    "step_id": 2,
+    "step_order": 1,
+    "api_case_id": 11,
+    "api_case_name": "步骤 2：用提取出来的数据组装全新的请求体",
+    "method": "POST",
+    "url": "https://httpbin.org/post",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "payload": {
+      "message": "报告！我已经成功抓获目标",
+      "suspect_email": "{{target_email}}",
+      "suspect_id": "{{target_uuid}}"
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 1706,
+    "response": {
+      "status": 200,
+      "body": "{\n  \"args\": {}, \n  \"data\": \"{\\\"message\\\":\\\"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\\\",\\\"suspect_email\\\":\\\"{{target_email}}\\\",\\\"suspect_id\\\":\\\"{{target_uuid}}\\\"}\", \n  \"files\": {}, \n  \"form\": {}, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate\", \n    \"Content-Length\": \"116\", \n    \"Content-Type\": \"application/json\", \n    \"Host\": \"httpbin.org\", \n    \"User-Agent\": \"python-httpx/0.28.1\", \n    \"X-Amzn-Trace-Id\": \"Root=1-69de2704-7d508dc566a892490477c7b8\"\n  }, \n  \"json\": {\n    \"message\": \"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\", \n    \"suspect_email\": \"{{target_email}}\", \n    \"suspect_id\": \"{{target_uuid}}\"\n  }, \n  \"origin\": \"34.96.134.66\", \n  \"url\": \"https://httpbin.org/post\"\n}\n",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 11:37:41 GMT",
+        "content-type": "application/json",
+        "content-length": "773",
+        "connection": "keep-alive",
+        "server": "gunicorn/19.9.0",
+        "access-control-allow-origin": "*",
+        "access-control-allow-credentials": "true"
+      },
+      "json": {
+        "args": {},
+        "data": "{\"message\":\"报告！我已经成功抓获目标\",\"suspect_email\":\"{{target_email}}\",\"suspect_id\":\"{{target_uuid}}\"}",
+        "files": {},
+        "form": {},
+        "headers": {
+          "Accept": "*/*",
+          "Accept-Encoding": "gzip, deflate",
+          "Content-Length": "116",
+          "Content-Type": "application/json",
+          "Host": "httpbin.org",
+          "User-Agent": "python-httpx/0.28.1",
+          "X-Amzn-Trace-Id": "Root=1-69de2704-7d508dc566a892490477c7b8"
+        },
+        "json": {
+          "message": "报告！我已经成功抓获目标",
+          "suspect_email": "{{target_email}}",
+          "suspect_id": "{{target_uuid}}"
+        },
+        "origin": "34.96.134.66",
+        "url": "https://httpbin.org/post"
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {
+      "target_email": "thea.zhang@example.com",
+      "target_uuid": "ff607c1f-bc02-47cf-a68a-893a0eefb3d6"
+    },
+    "status": "success"
+  }
+]

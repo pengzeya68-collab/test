@@ -483,173 +483,7 @@
       </template>
     </el-dialog>
 
-    <!-- 运行结果对话框 -->
-    <el-dialog
-      v-model="resultDialogVisible"
-      title="场景执行结果"
-      width="80%"
-      append-to-body
-      destroy-on-close
-    >
-      <!-- 后台执行中状态 - 带实时进度条和停止按钮 -->
-      <div v-if="isRunning && !runResult" style="padding: 40px 20px; text-align: center;">
-        <el-progress
-          :percentage="runningTaskProgress?.percent || 0"
-          :text-inside="true"
-          :stroke-width="24"
-          status="success"
-          style="margin: 0 auto 20px; max-width: 80%;"
-        ></el-progress>
-
-        <p style="margin-top: 15px; color: #666; font-size: 14px;">
-          正在执行: {{ runningTaskProgress?.current_api || '初始化中...' }}
-        </p>
-        <p style="margin-top: 5px; color: #909399; font-size: 13px;">
-          {{ runningTaskProgress?.current || 0 }} / {{ runningTaskProgress?.total || 0 }} 步骤
-        </p>
-
-        <el-button
-          type="danger"
-          style="margin-top: 20px;"
-          :loading="isCanceling"
-          @click="handleCancelTask"
-        >
-          🛑 停止执行
-        </el-button>
-      </div>
-
-      <div class="result-content" v-else-if="runResult">
-        <div class="result-header-stats">
-          <el-tag :type="runResult.failed_steps > 0 ? 'danger' : 'success'" size="large">
-            {{ runResult.failed_steps > 0 ? '❌ 有步骤失败' : '✅ 全部通过' }}
-          </el-tag>
-          <span style="margin-left: 15px; color: #606266;">
-            总步骤: {{ runResult.total_steps || 0 }} |
-            成功: <span style="color: #67c23a">{{ runResult.success_steps || 0 }}</span> |
-            失败: <span style="color: #f56c6c">{{ runResult.failed_steps || 0 }}</span> |
-            跳过: <span style="color: #909399">{{ runResult.skipped_count || 0 }}</span> |
-            总耗时: {{ runResult.total_time || '0ms' }}
-          </span>
-        </div>
-
-        <el-divider />
-
-        <!-- 步骤结果列表 -->
-        <div class="step-results">
-          <div
-            v-for="(step, index) in runResult.step_results"
-            :key="index"
-            class="step-result-card"
-            :class="{ 'is-failed': step.status === 'failed', 'is-skipped': step.status === 'skipped' }"
-          >
-            <!-- 跳过状态的步骤头部（不可点击展开） -->
-            <div v-if="step.status === 'skipped'" class="step-header step-header-skipped">
-              <span class="step-order">{{ index + 1 }}</span>
-              <el-tag type="info" size="small">{{ step.method || 'N/A' }}</el-tag>
-              <span class="step-name">{{ step.api_case_name }}</span>
-              <el-tag type="info" size="small">未执行/跳过</el-tag>
-              <span class="step-skipped-hint">因前置步骤失败，此步骤被跳过</span>
-            </div>
-
-            <!-- 正常执行/失败状态的步骤头部 -->
-            <div v-else class="step-header" @click="toggleStepDetail(index)">
-              <span class="step-order">{{ index + 1 }}</span>
-              <el-tag :type="getMethodType(step.method)" size="small">{{ step.method }}</el-tag>
-              <span class="step-name">{{ step.api_case_name }}</span>
-              <el-tag v-if="step.status_code" :type="getStatusCodeType(step.status_code)" size="small">
-                {{ step.status_code }}
-              </el-tag>
-              <el-tag v-if="step.status === 'success'" type="success" effect="light">通过</el-tag>
-              <el-tag v-else-if="step.status === 'failed'" type="danger" effect="light">失败</el-tag>
-              <el-tag v-else-if="step.status === 'skipped'" type="info" effect="light">跳过</el-tag>
-              <el-tag v-else type="warning" effect="light">未知</el-tag>
-
-              <span style="margin-left: 10px; color: #909399; font-size: 13px;" v-if="step.status !== 'skipped'">
-                {{ step.duration || 0 }}ms
-              </span>
-              <el-icon class="toggle-icon" :class="{ 'is-expanded': expandedSteps.includes(index) }">
-                <ArrowRight />
-              </el-icon>
-            </div>
-
-            <!-- 步骤详情（跳过状态不显示） -->
-            <div class="step-detail" v-if="expandedSteps.includes(index) && step.status !== 'skipped'">
-              <div class="detail-url">{{ step.url }}</div>
-
-              <!-- 请求信息 -->
-              <div class="detail-section" v-if="step.request">
-                <h5>请求信息</h5>
-                <div class="request-info">
-                  <span class="info-tag">{{ step.request.method }} {{ step.request.url }}</span>
-                </div>
-              </div>
-
-              <!-- 错误信息 -->
-              <div class="step-error" v-if="step.error">
-                <el-alert type="error" :title="step.error" :closable="false" show-icon />
-              </div>
-
-              <!-- 响应信息 -->
-              <div class="detail-section" v-if="step.response">
-                <h5>响应信息</h5>
-                <div class="response-info">
-                  <span class="info-label">状态码:</span>
-                  <el-tag :type="getStatusCodeType(step.status_code)" size="small">
-                    {{ step.status_code || '无' }}
-                  </el-tag>
-                </div>
-                <div class="response-body">
-                  <h5>响应体</h5>
-                  <pre class="body-display">{{ formatResponseBody(step.response) }}</pre>
-                </div>
-              </div>
-
-              <!-- 提取的变量 -->
-              <div class="detail-section" v-if="step.extracted_vars && Object.keys(step.extracted_vars).length > 0">
-                <h5>提取的变量</h5>
-                <el-tag
-                  v-for="(value, key) in step.extracted_vars"
-                  :key="key"
-                  class="var-tag"
-                  type="info"
-                >
-                  {{ key }}: {{ typeof value === 'object' ? JSON.stringify(value) : value }}
-                </el-tag>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 全局变量 -->
-        <el-divider />
-        <div class="context-vars">
-          <h4>执行后的全局变量</h4>
-          <el-empty v-if="Object.keys(runResult.context_vars || {}).length === 0" description="无提取的变量" />
-          <el-tag
-            v-for="(value, key) in runResult.context_vars"
-            :key="key"
-            class="var-tag"
-            type="info"
-          >
-            {{ key }}: {{ typeof value === 'object' ? JSON.stringify(value) : value }}
-          </el-tag>
-        </div>
-      </div>
-
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button
-            v-show="!isRunning && runResult && runResult.status !== 'running'"
-            type="primary"
-            style="pointer-events: auto; z-index: 9999;"
-            @click="openAllureReport"
-          >
-            📊 查看 Allure 详细报告
-          </el-button>
-          <el-button @click="resultDialogVisible = false">关闭</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <ScenarioExecutionDialog ref="executionDialogRef" v-model="resultDialogVisible" @completed="handleExecutionCompleted" />
   </div>
 </template>
 
@@ -661,6 +495,7 @@ import draggable from 'vuedraggable'
 import axios from 'axios'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
+import ScenarioExecutionDialog from '@/components/ScenarioExecutionDialog.vue'
 
 const props = defineProps({
   scenarioId: {
@@ -713,8 +548,11 @@ const caseSearchKeyword = ref('')
 const selectedCases = ref([])
 const caseTableRef = ref(null)
 const resultDialogVisible = ref(false)
+const executionDialogRef = ref(null)
 const runResult = ref(null)
 let pollingTimer = null
+let pollingAbortController = null
+let datasetSaveTimer = null
 const runningTaskProgress = ref(null)
 
 // 标签页
@@ -811,8 +649,8 @@ const saveDataset = async () => {
 
 const handleDatasetChange = () => {
   // 数据变化时自动保存（防抖）
-  clearTimeout(window.datasetSaveTimer)
-  window.datasetSaveTimer = setTimeout(() => {
+  clearTimeout(datasetSaveTimer)
+  datasetSaveTimer = setTimeout(() => {
     saveDataset()
   }, 1000)
 }
@@ -1213,14 +1051,19 @@ const stopPolling = () => {
     clearInterval(pollingTimer)
     pollingTimer = null
   }
+  if (pollingAbortController) {
+    pollingAbortController.abort()
+    pollingAbortController = null
+  }
 }
 
-// 轮询任务状态
 const pollTaskStatus = async (taskId) => {
   stopPolling()
+  pollingAbortController = new AbortController()
+  const signal = pollingAbortController.signal
   pollingTimer = setInterval(async () => {
     try {
-      const res = await autoTestRequest.get(`/api/auto-test/tasks/${taskId}`)
+      const res = await autoTestRequest.get(`/api/auto-test/tasks/${taskId}`, { signal })
       const state = res.status  // Celery 任务状态: 'PENDING' | 'PROGRESS' | 'completed' | 'SUCCESS' | 'FAILURE' | 'REVOKED'
 
       if (state === 'completed' || state === 'SUCCESS') {
@@ -1251,6 +1094,7 @@ const pollTaskStatus = async (taskId) => {
       }
       // PENDING 继续轮询
     } catch (error) {
+      if (axios.isCancel(error)) return
       stopPolling()
       isRunning.value = false
       ElMessage.error('查询任务状态失败: ' + (error.response?.data?.detail || error.message))
@@ -1259,34 +1103,20 @@ const pollTaskStatus = async (taskId) => {
 }
 
 const handleRun = async () => {
-  if (isRunning.value) {
-    ElMessage.warning('已有任务正在执行中，请稍候...')
+  if (!selectedEnvId.value) {
+    ElMessage.warning('请先选择执行环境！')
     return
   }
-  isRunning.value = true
-  runningTaskProgress.value = null
-  resultDialogVisible.value = true
-  runResult.value = null
-  expandedSteps.value = []
-  try {
-    ElMessage.info({ message: '任务已提交，后台正在执行中，请稍候...', duration: 3000 })
-    const res = await autoTestRequest.post(`/api/auto-test/scenarios/${props.scenarioId}/run`, {
-      env_id: selectedEnvId.value
-    })
-    const taskId = res?.data?.task_id || res?.task_id
-    if (!taskId) {
-      isRunning.value = false
-      ElMessage.error('任务提交失败，未获取到 task_id')
-      return
-    }
-    // 保存当前任务 ID
-    currentTaskId = taskId
-    pollTaskStatus(taskId)
-  } catch (error) {
-    isRunning.value = false
-    stopPolling()
-    ElMessage.error('提交任务失败: ' + (error.response?.data?.detail || error.message))
+  if (scenario.value && !scenario.value.is_active) {
+    ElMessage.warning('该场景已停用，无法运行！')
+    return
   }
+  const stepCount = steps.value ? steps.value.length : 0
+  executionDialogRef.value?.startExecution(props.scenarioId, selectedEnvId.value, stepCount)
+}
+
+const handleExecutionCompleted = () => {
+  loadExecutionHistory()
 }
 
 // 强制取消当前任务
@@ -1371,7 +1201,7 @@ const openAllureReport = () => {
   }
 
   if (url) {
-    console.log('即将打开报告地址:', `http://127.0.0.1:5002${url}`);
+    console.log('即将打开报告地址:', url);
     // 强行补齐前缀并打开
     window.open(resolveReportUrl(url), '_blank');
   } else {
@@ -1386,7 +1216,7 @@ const loadExecutionHistory = async () => {
     const res = await autoTestRequest.get(`/api/auto-test/scenarios/${props.scenarioId}/history`)
     const items = res.items || []
     // 统计成功失败 - 后端使用 completed 表示成功完成
-    const successCount = items.filter(item => item.status === 'completed').length
+    const successCount = items.filter(item => item.status === 'success' || item.status === 'completed').length
     executionHistory.value = {
       total: res.total || 0,
       success_count: successCount,
@@ -1406,12 +1236,12 @@ const refreshExecutionHistory = () => {
 }
 
 const getStatusType = (status) => {
-  const types = { success: 'success', failed: 'danger', error: 'warning' }
+  const types = { success: 'success', completed: 'success', failed: 'danger', error: 'warning', running: 'primary' }
   return types[status] || 'info'
 }
 
 const getStatusText = (status) => {
-  const texts = { success: '成功', failed: '失败', error: '异常' }
+  const texts = { success: '成功', completed: '成功', failed: '失败', error: '异常', running: '运行中' }
   return texts[status] || status
 }
 
@@ -1424,7 +1254,7 @@ const openReport = (reportUrl) => {
 // 加载环境列表
 const loadEnvironments = async () => {
   try {
-    const res = await autoTestRequest.get('/api/interface-test/environments')
+    const res = await autoTestRequest.get('/api/auto-test/environments')
     environments.value = res || []
     // 默认选中第一个
     if (environments.value.length > 0) {
@@ -1448,6 +1278,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopPolling()
+  if (datasetSaveTimer) {
+    clearTimeout(datasetSaveTimer)
+    datasetSaveTimer = null
+  }
 })
 </script>
 
@@ -1618,7 +1452,7 @@ onUnmounted(() => {
 }
 
 .summary-info {
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .step-result-card {
@@ -1711,7 +1545,7 @@ onUnmounted(() => {
 
 .matrix-table-wrapper {
   overflow-x: auto;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--tm-border-color);
   border-radius: 4px;
 }
 
@@ -1980,12 +1814,12 @@ onUnmounted(() => {
 }
 
 .iteration-data {
-  color: #909399;
+  color: var(--tm-text-secondary);
   font-size: 12px;
 }
 
 .iteration-duration {
-  color: #909399;
+  color: var(--tm-text-secondary);
   font-size: 12px;
 }
 

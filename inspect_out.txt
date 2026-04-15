@@ -1,0 +1,65 @@
+﻿=== learning_paths ===
+col: (0, 'id', 'INTEGER', 1, None, 1)
+col: (1, 'title', 'VARCHAR(200)', 1, None, 0)
+col: (2, 'description', 'TEXT', 0, None, 0)
+col: (3, 'learning_objectives', 'TEXT', 0, None, 0)
+col: (4, 'knowledge_outline', 'TEXT', 0, None, 0)
+col: (5, 'supporting_resources', 'TEXT', 0, None, 0)
+col: (6, 'prerequisites', 'VARCHAR(500)', 0, None, 0)
+col: (7, 'language', 'VARCHAR(50)', 1, None, 0)
+col: (8, 'difficulty', 'VARCHAR(20)', 0, None, 0)
+col: (9, 'stage', 'INTEGER', 0, None, 0)
+col: (10, 'estimated_hours', 'INTEGER', 0, None, 0)
+col: (11, 'exercise_count', 'INTEGER', 0, None, 0)
+col: (12, 'is_public', 'BOOLEAN', 0, None, 0)
+col: (13, 'created_at', 'DATETIME', 0, None, 0)
+col: (14, 'updated_at', 'DATETIME', 0, None, 0)
+col: (15, 'user_id', 'INTEGER', 0, None, 0)
+col: (16, 'admin_id', 'INTEGER', 0, None, 0)
+py : Traceback (most recent call last):
+所在位置 行:1 字符: 164
++ ... ncoding = [System.Text.Encoding]::UTF8; py inspect_lp.py 2>&1 | Out-F ...
++                                             ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\lenovo\Desktop\TestMasterProject\inspect_lp.py", line 20, in <module>
+row: (25, '������Ի�������', 'ϵͳѧϰ������ԵĻ������ԭ�򡢷�������̣�������ȷ�Ĳ���˼ά������Vģ�͡�Wģ�͡���ݲ��Եȿ���ģ�ͣ����ںв�����׺в��Եĺ�������')
+row: (26, 'SQL���ݿ����', '����SQL���Եĺ��Ĳ������������ݲ�ѯ(SELECT)�����ݲ���(INSERT/UPDATE/DELETE)�������(CREATE/ALTER/DROP)���Լ�������Ӳ�ѯ���Ӳ�ѯ�����ǲ��Թ���ʦ��֤������ȷ�Եıر����ܡ�')
+row: (27, '���������������֪ʶ', '���Թ���ʦ��Ҫ�߱������ļ����������֪ʶ������HTTPЭ�顢TCP/IP������ϵͳ���������ݽṹ�ȣ���Щ�����ϵͳ��Ϊ�Ͷ�λ����Ļ�����')
+row: (28, 'Linux��������', '����Linux���������ǲ��Թ���ʦ�鿴��־�����𻷾����Ų�����ıر����ܡ���·�������ļ��������ı���������̹����Ȩ�޹���Ⱥ������')
+row: (29, '���Լƻ���д����Ŀ����', 'ѧϰ��α�дרҵ�Ĳ��Լƻ��ĵ������ղ��Է�Χ�綨����Դ���㡢�������������Ȱ��ŵȺ����������ܶ���������Ŀ�Ĳ��Թ�����')
+row: (30, '�ӿڲ��Ի���', 'ϵͳѧϰ�ӿڲ��Եĺ��ĸ���ͷ���������HTTP�ӿڲ������̡�Postman����ʹ�á��ӿ��ĵ���������������ԡ�������֤��ʵս���ܡ�')
+row: (31, 'Python��̻���', '���㿪ʼѧϰPython��̣����ձ������������͡�����������������������ļ��������쳣����Ⱥ����﷨��Ϊ�Զ������Դ��¼�ʵ�ı�̻�����')
+row: (32, 'UI�Զ������� - Selenium', 'ϵͳѧϰSelenium WebDriver����Web UI�Զ������ԣ�����Ԫ�ض�λ��������������ȴ����ơ�ҳ�����ģʽ(POM)�������������ԵȺ��ļ��ܡ�')
+row: (33, '�ӿ��Զ������� - Requests+Pytest', 'ʹ��Python Requests��+Pytest��ܹ����ӿ��Զ���������ϵ�����սӿ��Զ��������ơ�����������Allure���桢CI���ɵ���ҵ��ʵ����')
+row: (34, '���ܲ��� - JMeter��Locust', 'ϵͳѧϰ���ܲ������ۺͷ���������JMeter��Locust�������ܲ��Թ��ߣ��ܶ���������ܲ��Է�����ơ��ű���д������ִ�кͽ��������')
+row: (35, '��ȫ���Ի���', 'ѧϰWeb��ȫ���Եĺ���֪ʶ������OWASP Top 10��ȫ©���Ĳ��Է���������SQLע�롢XSS��CSRF��ԽȨ���ʵȳ�����ȫ���յķ�������֤��')
+row: (36, 'AI���������ܻ�', '̽��AI��������������Ӧ�ã�����AI���������������ɡ�����ȱ��Ԥ�⡢�Ӿ��ع���ԡ�NLP�����Ľӿڲ��Ե�ǰ�ؼ�������')
+row: (37, '����ƽ̨������DevOps', 'ѧϰ����ƽ̨������뿪��������Docker��������Jenkins CI/CD������������ϵ��DevOpsʵ��������Լܹ�ʦ����չ��')
+
+=== exercises (first 20) ===
+col: (0, 'id', 'INTEGER', 1, None, 1)
+col: (1, 'title', 'VARCHAR(200)', 1, None, 0)
+col: (2, 'description', 'TEXT', 0, None, 0)
+col: (3, 'instructions', 'TEXT', 0, None, 0)
+col: (4, 'solution', 'TEXT', 0, None, 0)
+col: (5, 'difficulty', 'VARCHAR(20)', 0, None, 0)
+col: (6, 'language', 'VARCHAR(50)', 1, None, 0)
+col: (7, 'module', 'VARCHAR(50)', 0, None, 0)
+col: (8, 'category', 'VARCHAR(100)', 0, None, 0)
+col: (9, 'stage', 'INTEGER', 0, None, 0)
+col: (10, 'knowledge_point', 'VARCHAR(200)', 0, None, 0)
+col: (11, 'time_estimate', 'INTEGER', 0, None, 0)
+col: (12, 'is_public', 'BOOLEAN', 0, None, 0)
+col: (13, 'exercise_type', 'VARCHAR(20)', 0, None, 0)
+col: (14, 'test_cases', 'TEXT', 0, None, 0)
+col: (15, 'code_template', 'TEXT', 0, None, 0)
+col: (16, 'expected_output', 'TEXT', 0, None, 0)
+col: (17, 'created_at', 'DATETIME', 0, None, 0)
+col: (18, 'updated_at', 'DATETIME', 0, None, 0)
+col: (19, 'user_id', 'INTEGER', 0, None, 0)
+col: (20, 'admin_id', 'INTEGER', 0, None, 0)
+col: (21, 'learning_path_id', 'INTEGER', 0, None, 0)
+    c.execute('SELECT id, title, type, learning_path_id FROM exercises ORDER BY id LIMIT 30')
+sqlite3.OperationalError: no such column: type

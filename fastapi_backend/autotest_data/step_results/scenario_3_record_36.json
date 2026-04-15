@@ -1,0 +1,287 @@
+[
+  {
+    "step_id": 6,
+    "step_order": 0,
+    "api_case_id": 11,
+    "api_case_name": "步骤 2：用提取出来的数据组装全新的请求体",
+    "method": "POST",
+    "url": "https://httpbin.org/post",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "payload": {
+      "message": "报告！我已经成功抓获目标",
+      "suspect_email": "{{target_email}}",
+      "suspect_id": "{{target_uuid}}"
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 894,
+    "response": {
+      "status": 200,
+      "body": "{\n  \"args\": {}, \n  \"data\": \"{\\\"message\\\":\\\"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\\\",\\\"suspect_email\\\":\\\"{{target_email}}\\\",\\\"suspect_id\\\":\\\"{{target_uuid}}\\\"}\", \n  \"files\": {}, \n  \"form\": {}, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate\", \n    \"Content-Length\": \"116\", \n    \"Content-Type\": \"application/json\", \n    \"Host\": \"httpbin.org\", \n    \"User-Agent\": \"python-httpx/0.28.1\", \n    \"X-Amzn-Trace-Id\": \"Root=1-69de4069-0f8f84453a08abb82f47d2d5\"\n  }, \n  \"json\": {\n    \"message\": \"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\", \n    \"suspect_email\": \"{{target_email}}\", \n    \"suspect_id\": \"{{target_uuid}}\"\n  }, \n  \"origin\": \"34.96.134.66\", \n  \"url\": \"https://httpbin.org/post\"\n}\n",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 13:26:01 GMT",
+        "content-type": "application/json",
+        "content-length": "773",
+        "connection": "keep-alive",
+        "server": "gunicorn/19.9.0",
+        "access-control-allow-origin": "*",
+        "access-control-allow-credentials": "true"
+      },
+      "json": {
+        "args": {},
+        "data": "{\"message\":\"报告！我已经成功抓获目标\",\"suspect_email\":\"{{target_email}}\",\"suspect_id\":\"{{target_uuid}}\"}",
+        "files": {},
+        "form": {},
+        "headers": {
+          "Accept": "*/*",
+          "Accept-Encoding": "gzip, deflate",
+          "Content-Length": "116",
+          "Content-Type": "application/json",
+          "Host": "httpbin.org",
+          "User-Agent": "python-httpx/0.28.1",
+          "X-Amzn-Trace-Id": "Root=1-69de4069-0f8f84453a08abb82f47d2d5"
+        },
+        "json": {
+          "message": "报告！我已经成功抓获目标",
+          "suspect_email": "{{target_email}}",
+          "suspect_id": "{{target_uuid}}"
+        },
+        "origin": "34.96.134.66",
+        "url": "https://httpbin.org/post"
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {},
+    "status": "success"
+  },
+  {
+    "step_id": 7,
+    "step_order": 1,
+    "api_case_id": 10,
+    "api_case_name": "步骤 1：获取随机生成的复杂用户信息",
+    "method": "GET",
+    "url": "https://randomuser.me/api/",
+    "headers": {},
+    "payload": {
+      "results": [
+        {
+          "gender": "female",
+          "name": {
+            "first": "John",
+            "last": "Doe"
+          },
+          "email": "john.doe@example.com",
+          "login": {
+            "uuid": "abc-123-xyz",
+            "username": "johndoe123"
+          }
+        }
+      ],
+      "info": {
+        "version": "1.3"
+      }
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 331,
+    "response": {
+      "status": 200,
+      "body": "{\"results\":[{\"gender\":\"female\",\"name\":{\"title\":\"Miss\",\"first\":\"Liva\",\"last\":\"Kristensen\"},\"location\":{\"street\":{\"number\":671,\"name\":\"Lyngvejen\"},\"city\":\"Kvistgaard\",\"state\":\"Sjælland\",\"country\":\"Denmark\",\"postcode\":28975,\"coordinates\":{\"latitude\":\"-44.1954\",\"longitude\":\"91.2364\"},\"timezone\":{\"offset\":\"+11:00\",\"description\":\"Magadan, Solomon Islands, New Caledonia\"}},\"email\":\"liva.kristensen@example.com\",\"login\":{\"uuid\":\"861f176d-3323-4ee6-bcd6-57be5cfe7b2f\",\"username\":\"greengoose518\",\"password\":\"sonny\",\"salt\":\"mlo36ySV\",\"md5\":\"f06937644de2936191ca7d2bf16a9b45\",\"sha1\":\"cacdbd1da4547b83466ccc01fb66dc0f27a48247\",\"sha256\":\"77cc58d1eac660dc915a2a3fd860ab585974ce15eb8ac40cfbb546993fc1b767\"},\"dob\":{\"date\":\"1986-05-05T08:49:31.652Z\",\"age\":39},\"registered\":{\"date\":\"2020-08-14T02:16:09.128Z\",\"age\":5},\"phone\":\"89946197\",\"cell\":\"39376290\",\"id\":{\"name\":\"CPR\",\"value\":\"050586-1026\"},\"picture\":{\"large\":\"https://randomuser.me/api/portraits/women/31.jpg\",\"medium\":\"https://randomuser.me/api/portraits/med/women/31.jpg\",\"thumbnail\":\"https://randomuser.me/api/portraits/thumb/women/31.jpg\"},\"nat\":\"DK\"}],\"info\":{\"seed\":\"0373588914a56f39\",\"results\":1,\"page\":1,\"version\":\"1.4\"}}",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 13:26:01 GMT",
+        "content-type": "application/json; charset=utf-8",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "server": "cloudflare",
+        "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "*",
+        "cache-control": "no-cache",
+        "etag": "W/\"493-LWZistZ6JL4JRgFeT0Q1xr3RgF4\"",
+        "vary": "Accept-Encoding",
+        "content-encoding": "gzip",
+        "cf-cache-status": "DYNAMIC",
+        "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=%2BXHUbn9wh0iyU5%2B%2BENGv0VgZMClMB%2FmDuj%2BmltIhm0WzCOT9fmiKlwS8smBvSs5wTrHASR6MS%2FBciVCiIM1%2FbMLqdY0Jp5zVJ5eLlkYc6keqLGjx6z1TmhjyvITlwQmy\"}]}",
+        "cf-ray": "9ec30a33e8d90eba-HKG",
+        "alt-svc": "h3=\":443\"; ma=86400"
+      },
+      "json": {
+        "results": [
+          {
+            "gender": "female",
+            "name": {
+              "title": "Miss",
+              "first": "Liva",
+              "last": "Kristensen"
+            },
+            "location": {
+              "street": {
+                "number": 671,
+                "name": "Lyngvejen"
+              },
+              "city": "Kvistgaard",
+              "state": "Sjælland",
+              "country": "Denmark",
+              "postcode": 28975,
+              "coordinates": {
+                "latitude": "-44.1954",
+                "longitude": "91.2364"
+              },
+              "timezone": {
+                "offset": "+11:00",
+                "description": "Magadan, Solomon Islands, New Caledonia"
+              }
+            },
+            "email": "liva.kristensen@example.com",
+            "login": {
+              "uuid": "861f176d-3323-4ee6-bcd6-57be5cfe7b2f",
+              "username": "greengoose518",
+              "password": "sonny",
+              "salt": "mlo36ySV",
+              "md5": "f06937644de2936191ca7d2bf16a9b45",
+              "sha1": "cacdbd1da4547b83466ccc01fb66dc0f27a48247",
+              "sha256": "77cc58d1eac660dc915a2a3fd860ab585974ce15eb8ac40cfbb546993fc1b767"
+            },
+            "dob": {
+              "date": "1986-05-05T08:49:31.652Z",
+              "age": 39
+            },
+            "registered": {
+              "date": "2020-08-14T02:16:09.128Z",
+              "age": 5
+            },
+            "phone": "89946197",
+            "cell": "39376290",
+            "id": {
+              "name": "CPR",
+              "value": "050586-1026"
+            },
+            "picture": {
+              "large": "https://randomuser.me/api/portraits/women/31.jpg",
+              "medium": "https://randomuser.me/api/portraits/med/women/31.jpg",
+              "thumbnail": "https://randomuser.me/api/portraits/thumb/women/31.jpg"
+            },
+            "nat": "DK"
+          }
+        ],
+        "info": {
+          "seed": "0373588914a56f39",
+          "results": 1,
+          "page": 1,
+          "version": "1.4"
+        }
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {
+      "target_email": "liva.kristensen@example.com",
+      "target_uuid": "861f176d-3323-4ee6-bcd6-57be5cfe7b2f"
+    },
+    "status": "success"
+  },
+  {
+    "step_id": 8,
+    "step_order": 2,
+    "api_case_id": 9,
+    "api_case_name": "根据 ID 修改该用户信息",
+    "method": "PUT",
+    "success": false,
+    "status": "failed",
+    "response_time": 1969,
+    "error": "断言失败: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 500"
+  },
+  {
+    "step_id": 9,
+    "step_order": 3,
+    "api_case_id": 8,
+    "api_case_name": "根据 ID 查询该用户的详细信息",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 10,
+    "step_order": 4,
+    "api_case_id": 7,
+    "api_case_name": "创建一条新用户记录，提取 ID",
+    "method": "POST",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 11,
+    "step_order": 5,
+    "api_case_id": 6,
+    "api_case_name": "GET bearer",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 12,
+    "step_order": 6,
+    "api_case_id": 5,
+    "api_case_name": "POST post",
+    "method": "POST",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 13,
+    "step_order": 7,
+    "api_case_id": 4,
+    "api_case_name": "GET get",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 14,
+    "step_order": 8,
+    "api_case_id": 2,
+    "api_case_name": "GET all.json",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 15,
+    "step_order": 9,
+    "api_case_id": 1,
+    "api_case_name": "GET users",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  }
+]

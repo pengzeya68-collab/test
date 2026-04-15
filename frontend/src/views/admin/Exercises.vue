@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="exercises-manage">
     <div class="page-header">
       <h1 class="page-title">习题管理</h1>
@@ -154,9 +154,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -172,29 +173,10 @@ const filters = reactive({
 const pagination = reactive({
   page: 1,
   pageSize: 10,
-  total: 100
+  total: 0
 })
 
-const tableData = ref([
-  {
-    id: 1,
-    title: 'SQL基础查询',
-    stage: 1,
-    difficulty: 'easy',
-    exercise_type: 'code',
-    knowledge_point: 'SQL基础',
-    created_at: '2026-03-10 10:00:00'
-  },
-  {
-    id: 2,
-    title: '测试用例设计方法',
-    stage: 2,
-    difficulty: 'medium',
-    exercise_type: 'text',
-    knowledge_point: '功能测试',
-    created_at: '2026-03-11 14:30:00'
-  }
-])
+const tableData = ref([])
 
 const form = ref({
   id: null,
@@ -225,12 +207,38 @@ const getDifficultyText = (difficulty) => {
   return map[difficulty] || difficulty
 }
 
-const handleSearch = () => {
+const fetchExercises = async () => {
   loading.value = true
-  // 实际项目中调用接口搜索
-  setTimeout(() => {
+  try {
+    const params = {
+      page: pagination.page,
+      size: pagination.pageSize,
+      keyword: filters.keyword || undefined,
+      difficulty: filters.difficulty || undefined
+    }
+    const res = await request.get('/admin/exercises', { params })
+    if (res && res.list) {
+      tableData.value = res.list.map(e => ({
+        id: e.id,
+        title: e.title,
+        stage: '',
+        difficulty: e.difficulty,
+        exercise_type: 'text',
+        knowledge_point: e.category || '',
+        created_at: e.createTime || ''
+      }))
+      pagination.total = res.total || 0
+    }
+  } catch (error) {
+    console.error('获取习题列表失败:', error)
+  } finally {
     loading.value = false
-  }, 500)
+  }
+}
+
+const handleSearch = () => {
+  pagination.page = 1
+  fetchExercises()
 }
 
 const handleReset = () => {
@@ -244,7 +252,7 @@ const handleReset = () => {
 }
 
 const handlePageChange = () => {
-  handleSearch()
+  fetchExercises()
 }
 
 const handleCreate = () => {
@@ -268,30 +276,57 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
-const handleDelete = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除习题"${row.title}"吗？`,
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除习题"${row.title}"吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await request.delete(`/admin/exercises/${row.id}`)
     ElMessage.success('删除成功')
-    handleSearch()
-  })
+    fetchExercises()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
 }
 
-const handleSubmit = () => {
-  ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
-  dialogVisible.value = false
-  handleSearch()
+const handleSubmit = async () => {
+  try {
+    const payload = {
+      title: form.value.title,
+      content: form.value.description,
+      answer: form.value.solution,
+      difficulty: form.value.difficulty,
+      category: form.value.knowledge_point
+    }
+    if (isEdit.value) {
+      await request.put(`/admin/exercises/${form.value.id}`, payload)
+      ElMessage.success('更新成功')
+    } else {
+      await request.post('/admin/exercises', payload)
+      ElMessage.success('创建成功')
+    }
+    dialogVisible.value = false
+    fetchExercises()
+  } catch (error) {
+    ElMessage.error('操作失败：' + (error.response?.data?.detail || error.message))
+  }
 }
 
 const handleImport = () => {
   ElMessage.info('批量导入功能开发中')
 }
+
+onMounted(() => {
+  fetchExercises()
+})
 </script>
 
 <style scoped>
@@ -310,7 +345,7 @@ const handleImport = () => {
   margin: 0;
   font-size: 24px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .header-actions {
@@ -319,7 +354,7 @@ const handleImport = () => {
 }
 
 .filter-section {
-  background: white;
+  background: #18181B;
   padding: 20px;
   border-radius: 8px;
   margin-bottom: 20px;
@@ -327,7 +362,7 @@ const handleImport = () => {
 }
 
 .table-section {
-  background: white;
+  background: #18181B;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);

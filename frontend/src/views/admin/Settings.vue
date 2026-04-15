@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="settings-page-dark">
     <div class="page-header">
       <h1 class="page-title">系统设置</h1>
@@ -100,9 +100,9 @@
           <el-form :model="storageSettings" label-width="120px">
             <el-form-item label="存储方式">
               <el-radio-group v-model="storageSettings.storageType" class="dark-radio">
-                <el-radio value="local" label="local">本地存储</el-radio>
-                <el-radio value="oss" label="oss">阿里云OSS</el-radio>
-                <el-radio value="cos" label="cos">腾讯云COS</el-radio>
+                <el-radio value="local">本地存储</el-radio>
+                <el-radio value="oss">阿里云OSS</el-radio>
+                <el-radio value="cos">腾讯云COS</el-radio>
               </el-radio-group>
             </el-form-item>
             <template v-if="storageSettings.storageType !== 'local'">
@@ -136,24 +136,14 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 import axios from 'axios'
 
-// Add token interceptor
-const apiRequest = axios.create({
-  baseURL: '/api',
-  timeout: 10000
+const token = localStorage.getItem('token') || ''
+const autoTestRequest = axios.create({
+  timeout: 30000,
+  headers: token ? { Authorization: `Bearer ${token}` } : {}
 })
-
-apiRequest.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('token')
-    if (token && token !== 'undefined' && token !== 'null' && token !== '[object Object]') {
-      config.headers['Authorization'] = `Bearer ${token}`
-    }
-    return config
-  },
-  error => Promise.reject(error)
-)
 
 const activeTab = ref('basic')
 const emailSaving = ref(false)
@@ -216,9 +206,9 @@ const saveBasicSettings = () => {
 
 const loadEmailSettings = async () => {
   try {
-    const res = await apiRequest.get('/auto-test/email/config')
-    if (res.data) {
-      Object.assign(emailSettings, res.data)
+    const res = await autoTestRequest.get('/api/auto-test/email/config')
+    if (res) {
+      Object.assign(emailSettings, res)
     }
   } catch (error) {
     console.error('加载邮件配置失败:', error)
@@ -228,7 +218,7 @@ const loadEmailSettings = async () => {
 const saveEmailSettings = async () => {
   emailSaving.value = true
   try {
-    await apiRequest.post('/auto-test/email/config', emailSettings)
+    await autoTestRequest.post('/api/auto-test/email/config', emailSettings)
     ElMessage.success('邮件配置保存成功')
   } catch (error) {
     ElMessage.error('保存失败: ' + (error.response?.data?.detail || error.message))
@@ -244,7 +234,7 @@ const testEmail = async () => {
   }
   emailTesting.value = true
   try {
-    await apiRequest.post('/auto-test/email/test', {
+    await autoTestRequest.post('/api/auto-test/email/test', {
       to_email: emailSettings.testToEmail
     })
     ElMessage.success('测试邮件发送成功，请查收')
@@ -350,7 +340,7 @@ onMounted(() => {
 .form-hint {
   margin-top: 6px;
   font-size: 12px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   line-height: 1.5;
   color: #a0a0a0;
 }

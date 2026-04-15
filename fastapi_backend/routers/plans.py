@@ -9,7 +9,7 @@ from fastapi_backend.core.database import get_db
 from fastapi_backend.models.models import TestPlan, Environment, ApiCase
 from fastapi_backend.schemas.plans import TestPlanResponse
 
-router = APIRouter(prefix="/api/plans", tags=["测试计划"])
+router = APIRouter(prefix="/api/v1/plans", tags=["测试计划"])
 
 
 @router.get("/", response_model=List[TestPlanResponse])

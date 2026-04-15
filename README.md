@@ -6,7 +6,7 @@
 
 ```
 TestMasterProject/
-├── backend/                      # Flask 后端（学习平台，端口 5000）
+├── fastapi_backend/              # FastAPI 统一后端（学习平台 + 自动化测试，端口 5001）
 │   ├── __init__.py
 │   ├── app.py                   # 应用工厂
 │   ├── config.py                # 配置
@@ -31,7 +31,7 @@ TestMasterProject/
 │       ├── views/              # 页面组件
 │       ├── api/                # API 调用
 │       └── ...
-├── auto_test_platform/          # 自动化测试模块（FastAPI，端口 5002）
+├── fastapi_backend/            # 统一FastAPI后端模块（端口 5001）
 │   ├── main.py                 # FastAPI 主入口
 │   ├── models.py               # 数据模型
 │   ├── schemas.py              # Pydantic schemas
@@ -62,9 +62,10 @@ TestMasterProject/
 
 ## 技术栈
 
-- **后端**：Python Flask + SQLAlchemy + JWT + Flask-Limiter
+- **后端**：Python FastAPI + SQLAlchemy Async + JWT + APScheduler
 - **前端**：Vue 3 + TypeScript + Vite + Element Plus + ECharts
-- **数据库**：SQLite（开发）/ MySQL（生产）
+- **数据库**：SQLite（开发）
+- **自动化测试**：Pytest + Allure Report + 数据驱动测试
 
 ## 功能模块
 
@@ -137,22 +138,25 @@ cp .env.example .env
 # 注意：.env 文件已添加到 .gitignore，不会被提交
 ```
 
-#### 步骤 2：重新初始化数据库
+#### 步骤 2：初始化数据库（FastAPI版本）
 
-由于 User 模型添加了 `phone` 字段，需要重新创建数据库：
+使用新的FastAPI兼容初始化脚本：
 
 ```bash
-# 删除旧数据库
-rm instance/testmaster.db  # Linux/Mac
-# 或: del instance\testmaster.db  # Windows
+# 使用新的FastAPI初始化脚本
+python scripts/init_fastapi.py
 
-# 初始化新数据库
-python scripts/init_all.py
+# 或者手动步骤：
+# 1. 备份现有数据库（脚本自动完成）
+# 2. 创建所有表
+# 3. 创建管理员用户（admin/admin123）和测试用户（testuser/password123）
 ```
+
+注意：旧的Flask初始化脚本已重命名为 `init_all_flask_deprecated.py`
 
 #### 步骤 3：启动服务
 
-**后端启动：**
+**后端启动（FastAPI）：**
 ```bash
 # 确保环境变量已设置
 # 进入项目目录
@@ -160,16 +164,18 @@ cd TestMasterProject
 
 # 创建虚拟环境（可选推荐）
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 或: venv\Scripts\activate  # Windows
+source venvin/Scripts/activate  # Windows（注意：venv\Scripts\activate）
+# 或: source venv/bin/activate  # Linux/Mac
 
-# 安装依赖
-pip install -r requirements.txt
+# 安装依赖（使用FastAPI后端依赖）
+pip install -r fastapi_backend/requirements.txt
 
-# 启动开发服务器
-python wsgi.py
+# 启动FastAPI开发服务器
+python -m uvicorn fastapi_backend.main:app --host 0.0.0.0 --port 5001 --reload
+# 或使用提供的批处理文件：.\start_all.bat
 ```
-后端服务运行在 http://localhost:5000
+后端服务运行在 http://localhost:5001
+API文档：http://localhost:5001/api/docs
 
 **前端启动：**
 ```bash
@@ -179,16 +185,13 @@ npm run dev
 ```
 前端服务运行在 http://localhost:5173
 
-**自动化测试平台启动：**
-```bash
-# 安装依赖
-pip install -r auto_test_platform/requirements.txt
+**自动化测试平台：**
+自动化测试功能已集成到统一的FastAPI后端中，无需单独启动。
 
-# 启动服务
-cd auto_test_platform
-uvicorn main:app --host 0.0.0.0 --port 5002 --reload
-```
-自动化测试平台运行在 http://localhost:5002
+访问自动化测试功能：
+1. 启动统一后端（如上所述）
+2. 访问前端界面中的自动化测试模块
+3. 或直接访问API端点
 
 ### 默认账号
 
@@ -212,14 +215,15 @@ cp .env.example .env
 # 编辑 .env 修改密钥和数据库配置
 ```
 
-4. **初始化数据库**
+4. **初始化数据库（FastAPI版本）**
 ```bash
-python scripts/init_all.py
+python scripts/init_fastapi.py
 ```
 
-5. **使用 Gunicorn 启动**
+5. **使用 Gunicorn 启动（FastAPI）**
 ```bash
-gunicorn --workers 4 --bind 127.0.0.1:5000 wsgi:app
+# 注意：FastAPI需要异步worker
+gunicorn --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 127.0.0.1:5001 fastapi_backend.main:app
 ```
 
 6. **Nginx 配置**
@@ -232,7 +236,7 @@ location / {
 
 # 后端 API 反向代理
 location /api {
-    proxy_pass http://127.0.0.1:5000;
+    proxy_pass http://127.0.0.1:5001;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
 }

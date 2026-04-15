@@ -16,11 +16,11 @@
             <el-option label="接口测试" value="api" />
           </el-select>
           <el-radio-group v-model="currentStage">
-            <el-radio-button :label="1">阶段1</el-radio-button>
-            <el-radio-button :label="2">阶段2</el-radio-button>
-            <el-radio-button :label="3">阶段3</el-radio-button>
-            <el-radio-button :label="4">阶段4</el-radio-button>
-            <el-radio-button :label="5">阶段5</el-radio-button>
+            <el-radio-button :value="1">阶段1</el-radio-button>
+            <el-radio-button :value="2">阶段2</el-radio-button>
+            <el-radio-button :value="3">阶段3</el-radio-button>
+            <el-radio-button :value="4">阶段4</el-radio-button>
+            <el-radio-button :value="5">阶段5</el-radio-button>
           </el-radio-group>
           <el-select 
             v-model="currentDifficulty" 
@@ -28,9 +28,20 @@
             style="width: 120px;"
           >
             <el-option label="全部" value="" />
-            <el-option label="简单" value="easy" />
-            <el-option label="中等" value="medium" />
-            <el-option label="困难" value="hard" />
+            <el-option label="简单/初级" value="easy" />
+            <el-option label="中等/中级" value="medium" />
+            <el-option label="困难/高级" value="hard" />
+          </el-select>
+          <el-select
+            v-model="currentType"
+            placeholder="题型筛选"
+            style="width: 120px;"
+          >
+            <el-option label="全部题型" value="" />
+            <el-option label="选择题" value="choice" />
+            <el-option label="代码题" value="code" />
+            <el-option label="SQL题" value="sql" />
+            <el-option label="文本题" value="text" />
           </el-select>
           <el-input 
             v-model="searchKeyword" 
@@ -58,18 +69,28 @@
 
       <!-- 习题列表 -->
       <div class="exercises-grid">
-        <div 
-          class="exercise-card" 
-          v-for="exercise in paginatedExercises" 
+        <div
+          class="exercise-card"
+          :class="{ 'exercise-completed': isExerciseCompleted(exercise.id) }"
+          v-for="exercise in paginatedExercises"
           :key="exercise.id"
           @click="goToDetail(exercise.id)"
         >
           <div class="exercise-header">
-            <el-tag :type="getStageTagType(exercise.stage)" size="small">
-              阶段{{ exercise.stage }}
-            </el-tag>
-            <el-tag :type="getDifficultyTagType(exercise.difficulty)" size="small">
-              {{ getDifficultyText(exercise.difficulty) }}
+            <div class="exercise-header-left">
+              <span class="completion-badge" v-if="isExerciseCompleted(exercise.id)">✅</span>
+              <el-tag :type="getStageTagType(exercise.stage)" size="small">
+                阶段{{ exercise.stage }}
+              </el-tag>
+              <el-tag :type="getDifficultyTagType(exercise.difficulty)" size="small">
+                {{ getDifficultyText(exercise.difficulty) }}
+              </el-tag>
+              <el-tag :type="getExerciseTypeTagType(exercise.exercise_type)" size="small" v-if="exercise.exercise_type">
+                {{ getExerciseTypeText(exercise.exercise_type) }}
+              </el-tag>
+            </div>
+            <el-tag v-if="getExerciseScore(exercise.id)" type="success" size="small" effect="dark">
+              {{ getExerciseScore(exercise.id) }}分
             </el-tag>
           </div>
           <h3 class="exercise-title">{{ exercise.title }}</h3>
@@ -90,7 +111,7 @@
           </div>
           <div class="exercise-footer">
             <el-button type="primary" size="small" plain>
-              开始练习
+              {{ isExerciseCompleted(exercise.id) ? '再做一次' : '开始练习' }}
             </el-button>
           </div>
         </div>
@@ -103,7 +124,7 @@
 
       <!-- 加载状态 -->
       <div class="loading" v-if="loading">
-        <el-spinner size="40" />
+        <el-icon class="is-loading" size="40"><Loading /></el-icon>
       </div>
 
       <!-- 分页 -->
@@ -125,20 +146,24 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Timer, PriceTag, Collection } from '@element-plus/icons-vue'
+import { Search, Timer, PriceTag, Collection, Loading } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const exercises = ref([])
 const loading = ref(false)
 const currentModule = ref('')
 const currentStage = ref(1)
 const currentDifficulty = ref('')
+const currentType = ref('')
 const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(12)
+const exerciseProgress = ref({})
 
 // 阶段说明
 const stageInfos = {
@@ -184,7 +209,24 @@ const filteredExercises = computed(() => {
   
   // 按难度筛选
   if (currentDifficulty.value) {
-    result = result.filter(item => item.difficulty === currentDifficulty.value)
+    const difficultyMap = {
+      easy: ['easy', 'beginner'],
+      medium: ['medium', 'intermediate'],
+      hard: ['hard', 'advanced'],
+    }
+    const allowed = difficultyMap[currentDifficulty.value] || [currentDifficulty.value]
+    result = result.filter(item => allowed.includes(item.difficulty))
+  }
+
+  if (currentType.value) {
+    const typeMap = {
+      choice: ['choice', 'multiple_choice', 'true_false'],
+      code: ['code'],
+      sql: ['sql'],
+      text: ['text'],
+    }
+    const allowedTypes = typeMap[currentType.value] || [currentType.value]
+    result = result.filter(item => allowedTypes.includes(item.exercise_type))
   }
   
   // 按关键词搜索
@@ -236,6 +278,10 @@ watch(currentDifficulty, () => {
   currentPage.value = 1
 })
 
+watch(currentType, () => {
+  currentPage.value = 1
+})
+
 // 搜索关键词变化重置页码
 watch(searchKeyword, () => {
   currentPage.value = 1
@@ -243,7 +289,27 @@ watch(searchKeyword, () => {
 
 onMounted(() => {
   fetchExercises()
+  if (userStore.isLoggedIn) {
+    fetchProgress()
+  }
 })
+
+const fetchProgress = async () => {
+  try {
+    const res = await request.get('/exercise/progress')
+    exerciseProgress.value = res.progress || {}
+  } catch (error) {
+    console.error('获取习题进度失败:', error)
+  }
+}
+
+const isExerciseCompleted = (exerciseId) => {
+  return exerciseProgress.value[exerciseId]?.completed || false
+}
+
+const getExerciseScore = (exerciseId) => {
+  return exerciseProgress.value[exerciseId]?.score
+}
 
 const fetchExercises = async () => {
   loading.value = true
@@ -280,7 +346,10 @@ const getDifficultyTagType = (difficulty) => {
   const map = {
     easy: 'success',
     medium: 'warning',
-    hard: 'danger'
+    hard: 'danger',
+    beginner: 'success',
+    intermediate: 'warning',
+    advanced: 'danger',
   }
   return map[difficulty] || 'info'
 }
@@ -289,9 +358,36 @@ const getDifficultyText = (difficulty) => {
   const map = {
     easy: '简单',
     medium: '中等',
-    hard: '困难'
+    hard: '困难',
+    beginner: '初级',
+    intermediate: '中级',
+    advanced: '高级',
   }
   return map[difficulty] || difficulty
+}
+
+const getExerciseTypeTagType = (type) => {
+  const map = {
+    choice: 'primary',
+    multiple_choice: 'primary',
+    true_false: 'primary',
+    code: 'warning',
+    sql: 'success',
+    text: 'info',
+  }
+  return map[type] || 'info'
+}
+
+const getExerciseTypeText = (type) => {
+  const map = {
+    choice: '选择题',
+    multiple_choice: '多选题',
+    true_false: '判断题',
+    code: '代码题',
+    sql: 'SQL题',
+    text: '文本题',
+  }
+  return map[type] || type
 }
 
 const goToDetail = (id) => {
@@ -304,10 +400,7 @@ const goToDetail = (id) => {
 .exercises {
   padding: 40px 0;
   min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-color: var(--tm-bg-page);
 }
 
 .container {
@@ -322,22 +415,25 @@ const goToDetail = (id) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
   flex-wrap: wrap;
   gap: 20px;
-  background: var(--tm-card-bg);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  padding: 24px;
+  border-radius: 16px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
 }
 
 .page-title {
   font-size: 32px;
-  font-weight: bold;
-  color: var(--tm-text-primary);
+  font-weight: 700;
+  background: var(--tm-gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin: 0;
 }
 
@@ -345,7 +441,7 @@ const goToDetail = (id) => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 16px;
 }
 
 .exercises-grid {
@@ -355,31 +451,49 @@ const goToDetail = (id) => {
 }
 
 .exercise-card {
-  background: var(--tm-card-bg);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  border-radius: 16px;
+  padding: 28px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  position: relative;
 }
 
 .exercise-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--tm-shadow-glow), var(--tm-shadow-hover);
+  border-color: rgba(214, 51, 108, 0.2);
+}
+
+.exercise-card.exercise-completed {
+  border-left: 3px solid rgba(81, 207, 102, 0.6);
+  background: rgba(81, 207, 102, 0.03);
 }
 
 .exercise-header {
   display: flex;
-  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 16px;
+}
+
+.exercise-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.completion-badge {
+  font-size: 16px;
 }
 
 .exercise-title {
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--tm-text-primary);
   margin-bottom: 12px;
   line-height: 1.4;
@@ -387,33 +501,34 @@ const goToDetail = (id) => {
 
 .exercise-desc {
   color: var(--tm-text-secondary);
-  line-height: 1.6;
+  line-height: 1.7;
   margin-bottom: 20px;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+  font-size: 14px;
 }
 
 .exercise-meta {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  gap: 16px;
   margin-bottom: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--tm-border-light);
+  flex-wrap: wrap;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--tm-text-secondary);
 }
 
 .knowledge-tag {
-  background-color: rgba(var(--tm-color-primary), 0.1);
+  background-color: rgba(214, 51, 108, 0.1);
   color: var(--tm-color-primary);
   padding: 2px 8px;
   border-radius: 4px;
@@ -426,24 +541,24 @@ const goToDetail = (id) => {
 }
 
 .empty-state {
-  background: var(--tm-card-bg);
-  padding: 60px 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  padding: 80px 20px;
+  border-radius: 16px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
   text-align: center;
 }
 
 .loading {
-  background: var(--tm-card-bg);
-  padding: 60px 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  padding: 80px 20px;
+  border-radius: 16px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
   text-align: center;
 }
 

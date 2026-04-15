@@ -259,11 +259,12 @@ const fetchExams = async () => {
     }
     
     const res = await request.get('/exams', { params })
-    exams.value = res.list.map(exam => ({
+    const examList = res.list || res.items || res || []
+    exams.value = examList.map(exam => ({
       ...exam,
       difficultyLevel: exam.difficulty === 'easy' ? 1 : exam.difficulty === 'medium' ? 2 : 3
     }))
-    total.value = res.total
+    total.value = res.total || 0
   } catch (error) {
     console.error('获取考试列表失败:', error)
     ElMessage.error('获取考试列表失败')
@@ -318,7 +319,10 @@ const generateExam = async () => {
     showGenerateDialog.value = false
     fetchExams()
     // 跳转到考试页面
-    router.push(`/exam/${res.exam_id}`)
+    const examId = res.exam_id || res.id || res.data?.exam_id || res.data?.id
+    if (examId) {
+      router.push(`/exam/${examId}`)
+    }
   } catch (error) {
     console.error('生成试卷失败:', error)
     ElMessage.error('生成失败，请稍后重试')
@@ -359,12 +363,9 @@ const deleteExam = async (exam) => {
 
 <style scoped>
 .exam-list {
-  padding: 30px 0;
+  padding: 40px 0;
   min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-color: var(--tm-bg-page);
 }
 
 .container {
@@ -379,56 +380,81 @@ const deleteExam = async (exam) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .page-title {
   font-size: 32px;
-  font-weight: bold;
-  color: var(--tm-text-primary);
+  font-weight: 700;
+  background: var(--tm-gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin: 0 0 8px 0;
 }
 
 .page-subtitle {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--tm-text-secondary);
   margin: 0;
 }
 
-.filter-bar {
-  background: var(--tm-card-bg);
-  padding: 20px;
+.page-header :deep(.el-button--primary) {
+  background: var(--tm-gradient-brand);
+  border: none;
+  box-shadow: var(--tm-gradient-brand-glow);
+  font-weight: 600;
+  padding: 12px 28px;
   border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  margin-bottom: 30px;
+  font-size: 15px;
+  animation: breathe 3s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 4px 20px rgba(214, 51, 108, 0.4); }
+  50% { box-shadow: 0 4px 30px rgba(214, 51, 108, 0.6); }
+}
+
+.page-header :deep(.el-button--primary:hover) {
+  background: var(--tm-gradient-brand-hover);
+  transform: translateY(-2px);
+}
+
+.filter-bar {
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  padding: 24px;
+  border-radius: 16px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
+  margin-bottom: 32px;
 }
 
 .exam-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 24px;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .exam-card {
-  background: var(--tm-card-bg);
-  border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  border-radius: 16px;
+  box-shadow: var(--tm-shadow-card);
   overflow: hidden;
-  transition: all 0.3s ease;
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: var(--tm-glass-border);
   display: flex;
   flex-direction: column;
 }
 
 .exam-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--tm-shadow-glow), var(--tm-shadow-hover);
+  border-color: rgba(214, 51, 108, 0.2);
 }
 
 .card-header {
@@ -441,7 +467,7 @@ const deleteExam = async (exam) => {
 
 .exam-title {
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--tm-text-primary);
   line-height: 1.5;
   flex: 1;
@@ -456,7 +482,7 @@ const deleteExam = async (exam) => {
 .exam-desc {
   font-size: 14px;
   color: var(--tm-text-secondary);
-  line-height: 1.6;
+  line-height: 1.7;
   margin: 0 0 16px 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -476,7 +502,7 @@ const deleteExam = async (exam) => {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #606266;
+  color: var(--tm-text-secondary);
 }
 
 .difficulty {
@@ -484,7 +510,7 @@ const deleteExam = async (exam) => {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #606266;
+  color: var(--tm-text-secondary);
 }
 
 .card-footer {
@@ -492,8 +518,8 @@ const deleteExam = async (exam) => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  border-top: 1px solid #f0f2f5;
-  background: #fafafa;
+  border-top: 1px solid var(--tm-border-light);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .exam-status {
@@ -512,10 +538,13 @@ const deleteExam = async (exam) => {
 }
 
 .empty-state, .loading-state {
-  background: white;
-  padding: 60px 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  padding: 80px 20px;
+  border-radius: 16px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
 }
 
 .ml-2 {

@@ -54,19 +54,25 @@
               </div>
             </div>
             
-            <div class="score-section" v-if="session.status === 'completed'">
+            <div class="score-section" v-if="session.status === 'completed' && session.user_score !== null">
               <div class="score-display">
                 <span class="score-label">得分：</span>
                 <span class="score-value" :class="getScoreClass(session.user_score)">
                   {{ session.user_score }} / {{ session.total_score }}
                 </span>
-                <el-tag 
-                  :type="session.user_score >= 60 ? 'success' : 'danger'" 
+                <el-tag
+                  :type="session.user_score >= 60 ? 'success' : 'danger'"
                   size="small"
                   class="result-tag"
                 >
                   {{ session.user_score >= 60 ? '通过' : '未通过' }}
                 </el-tag>
+              </div>
+            </div>
+            <div class="score-section" v-else-if="session.status === 'completed'">
+              <div class="score-display">
+                <span class="score-label">状态：</span>
+                <span class="score-value">已完成，待评分</span>
               </div>
             </div>
             
@@ -129,55 +135,65 @@ const total = ref(0)
 const loading = ref(false)
 
 onMounted(() => {
-  // 先用静态数据测试
-  sessions.value = [
-    {
-      id: 1,
-      title: '中级测试工程师技术面试',
-      position: '测试工程师',
-      level: '中级',
-      interview_type: '技术面',
-      status: 'completed',
-      user_score: 85,
-      total_score: 100,
-      start_time: '2026-03-14 20:00:00',
-      question_count: 10
-    },
-    {
-      id: 2,
-      title: '自动化测试工程师面试',
-      position: '自动化测试工程师',
-      level: '高级',
-      interview_type: '技术面',
-      status: 'in_progress',
-      user_score: null,
-      total_score: 100,
-      start_time: '2026-03-14 21:30:00',
-      question_count: 15
-    }
-  ]
-  total.value = 2
-  loading.value = false
-  // fetchSessions()
+  fetchSessions()
 })
 
 const fetchSessions = async () => {
   loading.value = true
   try {
+    // 构建fastapi_backend接口参数
     const params = {
       page: currentPage.value,
-      per_page: perPage.value,
-      status: activeTab.value === 'all' ? '' : activeTab.value
+      size: perPage.value
     }
-    
-    console.log('请求参数:', params)
+
+    // 状态筛选映射
+    if (activeTab.value !== 'all') {
+      if (activeTab.value === 'in_progress') {
+        params.status_filter = 'started'  // 也可以考虑'submitted'
+      } else if (activeTab.value === 'completed') {
+        params.status_filter = 'finished'
+      }
+    }
+
+    console.log('请求fastapi_backend参数:', params)
     const res = await request.get('/interview/sessions', { params })
-    console.log('接口返回:', res)
-    sessions.value = res.list || []
-    total.value = res.total || 0
+    console.log('fastapi_backend接口返回:', res)
+
+    // 检查响应结构
+    if (res.data && res.data.items) {
+      sessions.value = res.data.items.map(session => {
+        let frontendStatus = 'in_progress'
+        if (session.status === 'finished' || session.status === 'abandoned') {
+          frontendStatus = 'completed'
+        }
+
+        const difficultyMap = { 'easy': '初级', 'medium': '中级', 'hard': '高级' }
+
+        return {
+          id: session.id,
+          title: session.question_title || '模拟面试',
+          position: '测试工程师',
+          level: difficultyMap[session.question_difficulty] || '中级',
+          interview_type: '技术面',
+          status: frontendStatus,
+          user_score: session.latest_score,
+          total_score: 100,
+          start_time: session.started_at ? formatDateTime(session.started_at) : formatDateTime(session.created_at),
+          question_count: 1,
+          raw_status: session.status,
+        }
+      })
+      total.value = res.data.total || 0
+    } else {
+      // 如果响应结构不符合预期，使用原始数据
+      console.warn('响应结构不符合预期，使用原始数据:', res)
+      sessions.value = res.items || []
+      total.value = res.total || 0
+    }
   } catch (error) {
     console.error('获取面试记录失败:', error)
-    ElMessage.error('获取面试记录失败: ' + error.message)
+    ElMessage.error('获取面试记录失败: ' + (error.response?.data?.message || error.message))
     sessions.value = []
     total.value = 0
   } finally {
@@ -185,19 +201,37 @@ const fetchSessions = async () => {
   }
 }
 
+// 格式化日期时间
+const formatDateTime = (dateTimeStr) => {
+  if (!dateTimeStr) return ''
+  try {
+    const date = new Date(dateTimeStr)
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).replace(/\//g, '-')
+  } catch (e) {
+    console.error('日期格式化错误:', e)
+    return dateTimeStr
+  }
+}
+
 const getScoreClass = (score) => {
+  if (score === null || score === undefined) return 'poor'
   if (score >= 80) return 'excellent'
   if (score >= 60) return 'good'
   return 'poor'
 }
 
 const viewSession = (session) => {
-  if (session.status === 'in_progress') {
-    // 进行中的面试跳转到面试页面
+  if (session.raw_status === 'started' || session.raw_status === 'submitted') {
     router.push(`/interview/simulate?session_id=${session.id}`)
   } else {
-    // 已完成的跳转到详情页
-    router.push(`/interview/detail/${session.id}`)
+    router.push(`/interview/simulate?session_id=${session.id}`)
   }
 }
 </script>
@@ -206,10 +240,7 @@ const viewSession = (session) => {
 .interview-my {
   padding: 30px 0;
   min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-color: #09090B;
 }
 
 .container {

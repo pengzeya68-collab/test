@@ -36,7 +36,7 @@
             />
           </el-select>
         </div>
-        <el-tooltip content="环境管理" placement="top">
+        <el-tooltip content="环境管理" placement="top" popper-class="action-tooltip">
           <el-button :icon="Setting" @click="openEnvManager" />
         </el-tooltip>
         <el-button type="primary" @click="handleCreate">
@@ -52,25 +52,29 @@
         :data="filteredScenarios"
         style="width: 100%"
         stripe
-        :header-cell-style="{ background: '#fafafa', color: '#1d2129' }"
+        :header-cell-style="{ background: 'var(--tm-bg-card)', color: 'var(--tm-text-primary)' }"
       >
         <el-table-column prop="name" label="场景名称" min-width="180" />
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
         <el-table-column label="步骤数" width="100" align="center">
           <template #default="{ row }">
-            <el-tag type="info" effect="plain" round>{{ row.step_count || 0 }}</el-tag>
+            <el-tag type="info" effect="plain" round>{{ row.steps ? row.steps.length : 0 }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="80" align="center">
+        <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.is_active ? 'success' : 'info'" effect="light">
-              {{ row.is_active ? '启用' : '停用' }}
-            </el-tag>
+            <el-switch
+              :model-value="row.is_active"
+              active-text="启用"
+              inactive-text="停用"
+              inline-prompt
+              @change="(val) => handleToggleStatus(row, val)"
+            />
           </template>
         </el-table-column>
         <el-table-column label="定时计划" width="120" align="center">
           <template #default="{ row }">
-            <el-tooltip content="设置定时计划" placement="top">
+            <el-tooltip content="设置定时计划" placement="top" popper-class="action-tooltip">
               <el-button type="warning" link :icon="Clock" @click="openScheduleDialog(row)">
                 设置计划
               </el-button>
@@ -80,19 +84,19 @@
         <el-table-column label="操作" width="200" align="center">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-tooltip content="运行场景" placement="top">
+              <el-tooltip content="运行场景" placement="top" popper-class="action-tooltip">
                 <span><el-button type="primary" link :icon="VideoPlay" @click="handleRun(row)" /></span>
               </el-tooltip>
-              <el-tooltip content="CI/CD 集成" placement="top">
+              <el-tooltip content="CI/CD 集成" placement="top" popper-class="action-tooltip">
                 <span><el-button type="success" link :icon="Link" @click="openCiCdDialog(row)" /></span>
               </el-tooltip>
-              <el-tooltip content="执行历史" placement="top">
+              <el-tooltip content="执行历史" placement="top" popper-class="action-tooltip">
                 <span><el-button type="info" link :icon="Timer" @click="openHistoryDrawer(row)" /></span>
               </el-tooltip>
-              <el-tooltip content="编辑场景" placement="top">
+              <el-tooltip content="编辑场景" placement="top" popper-class="action-tooltip">
                 <span><el-button type="primary" link :icon="Edit" @click="handleEdit(row)" /></span>
               </el-tooltip>
-              <el-tooltip content="删除场景" placement="top">
+              <el-tooltip content="删除场景" placement="top" popper-class="action-tooltip">
                 <span><el-button type="danger" link :icon="Delete" @click="handleDelete(row.id)" /></span>
               </el-tooltip>
             </div>
@@ -131,212 +135,7 @@
       </template>
     </el-dialog>
 
-    <!-- 执行结果对话框 -->
-    <el-dialog
-      v-model="resultDialogVisible"
-      title="场景执行结果"
-      width="80%"
-      append-to-body
-      destroy-on-close
-    >
-      <!-- 后台执行中状态 - 带实时进度条和停止按钮 -->
-      <div v-if="isRunning && !runResult" style="padding: 40px 20px; text-align: center;">
-        <el-progress
-          :percentage="runningTaskProgress?.percent || 0"
-          :text-inside="true"
-          :stroke-width="24"
-          status="success"
-          style="margin: 0 auto 20px; max-width: 80%;"
-        ></el-progress>
-
-        <p style="margin-top: 15px; color: #666; font-size: 14px;">
-          正在执行: {{ runningTaskProgress?.current_api || '初始化中...' }}
-        </p>
-        <p style="margin-top: 5px; color: #909399; font-size: 13px;">
-          {{ runningTaskProgress?.current || 0 }} / {{ runningTaskProgress?.total || 0 }} 步骤
-        </p>
-
-        <el-button
-          type="danger"
-          style="margin-top: 20px;"
-          :loading="isCanceling"
-          @click="handleCancelTask"
-        >
-          🛑 停止执行
-        </el-button>
-      </div>
-
-      <div class="result-content" v-else-if="runResult">
-        <div class="result-header-stats">
-          <el-tag :type="runResult.failed_steps > 0 ? 'danger' : 'success'" size="large">
-            {{ runResult.failed_steps > 0 ? '❌ 有步骤失败' : '✅ 全部通过' }}
-          </el-tag>
-          <span style="margin-left: 15px; color: #606266;">
-            总步骤: {{ runResult.total_steps || 0 }} |
-            成功: <span style="color: #67c23a">{{ runResult.success_steps || 0 }}</span> |
-            失败: <span style="color: #f56c6c">{{ runResult.failed_steps || 0 }}</span> |
-            跳过: <span style="color: #909399">{{ runResult.skipped_count || 0 }}</span> |
-            总耗时: {{ runResult.total_time || '0ms' }}
-          </span>
-        </div>
-
-        <el-divider />
-
-        <!-- 步骤结果列表 -->
-        <div class="step-results">
-          <div
-            v-for="(step, index) in runResult.step_results"
-            :key="index"
-            class="step-result-card"
-            :class="{ 'is-failed': step.status === 'failed', 'is-skipped': step.status === 'skipped' }"
-          >
-            <!-- 跳过状态的步骤头部（不可点击展开） -->
-            <div v-if="step.status === 'skipped'" class="step-header step-header-skipped">
-              <span class="step-order">{{ index + 1 }}</span>
-              <el-tag type="info" size="small">{{ step.method || 'N/A' }}</el-tag>
-              <span class="step-name">{{ step.api_case_name }}</span>
-              <el-tag type="info" size="small">未执行/跳过</el-tag>
-              <span class="step-skipped-hint">因前置步骤失败，此步骤被跳过</span>
-            </div>
-
-            <!-- 正常执行/失败状态的步骤头部 -->
-            <div v-else class="step-header" @click="toggleStepDetail(index)">
-              <span class="step-order">{{ index + 1 }}</span>
-              <el-tag :type="getMethodType(step.method)" size="small">{{ step.method }}</el-tag>
-              <span class="step-name">{{ step.api_case_name }}</span>
-              <el-tag v-if="step.status_code" :type="getStatusCodeType(step.status_code)" size="small">
-                {{ step.status_code }}
-              </el-tag>
-              <el-tag v-if="step.status === 'success'" type="success" effect="light">通过</el-tag>
-              <el-tag v-else-if="step.status === 'failed'" type="danger" effect="light">失败</el-tag>
-              <el-tag v-else-if="step.status === 'skipped'" type="info" effect="light">跳过</el-tag>
-              <el-tag v-else type="warning" effect="light">未知</el-tag>
-
-              <span style="margin-left: 10px; color: #909399; font-size: 13px;" v-if="step.status !== 'skipped'">
-                {{ step.response_time || 0 }}ms
-              </span>
-              <el-icon class="toggle-icon" :class="{ 'is-expanded': expandedSteps.includes(index) }">
-                <ArrowRight />
-              </el-icon>
-            </div>
-
-            <!-- 步骤详情（跳过状态不显示） -->
-            <div class="step-detail" v-if="expandedSteps.includes(index) && step.status !== 'skipped'">
-              <div class="detail-url">{{ step.url }}</div>
-
-              <!-- 请求信息 -->
-              <div class="detail-section" v-if="step.request">
-                <h5>请求信息</h5>
-                <div class="request-info">
-                  <span class="info-tag">{{ step.request.method }} {{ step.request.url }}</span>
-                </div>
-              </div>
-
-              <!-- 错误信息 -->
-              <div class="step-error" v-if="step.error">
-                <el-alert type="error" :title="step.error" :closable="false" show-icon />
-              </div>
-
-              <!-- 响应信息 -->
-              <div class="detail-section" v-if="step.response">
-                <h5>响应信息</h5>
-                <div class="response-info">
-                  <span class="info-label">状态码:</span>
-                  <el-tag :type="getStatusCodeType(step.status_code)" size="small">
-                    {{ step.status_code || '无' }}
-                  </el-tag>
-                </div>
-                <div class="response-body">
-                  <h5>响应体</h5>
-                  <pre class="body-display">{{ formatResponseBody(step.response) }}</pre>
-                </div>
-              </div>
-
-              <!-- 断言结果 -->
-              <div class="detail-section" v-if="step.assertions">
-                <h5>断言结果</h5>
-                <div class="assertion-summary">
-                  <el-tag type="success" size="small">通过: {{ step.assertions.passed || 0 }}</el-tag>
-                  <el-tag type="danger" size="small">失败: {{ step.assertions.failed?.length || 0 }}</el-tag>
-                </div>
-                <el-table
-                  v-if="step.assertions.failed?.length || step.assertions.details?.length"
-                  :data="step.assertions.failed || step.assertions.details || []"
-                  border
-                  size="small"
-                  class="assertion-table"
-                >
-                  <el-table-column prop="field" label="字段" width="120" />
-                  <el-table-column prop="operator" label="比较" width="100" />
-                  <el-table-column prop="expectedValue" label="预期值" />
-                  <el-table-column prop="actualValue" label="实际值" />
-                  <el-table-column label="结果" width="80" align="center">
-                    <template #default="{ row }">
-                      <el-tag :type="row.passed !== false ? 'success' : 'danger'" size="small">
-                        {{ row.passed !== false ? '通过' : '失败' }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-                </el-table>
-                <!-- 默认断言失败信息 -->
-                <div v-if="step.assertions.failed?.length" class="assertion-errors">
-                  <el-alert
-                    v-for="(fail, idx) in step.assertions.failed"
-                    :key="idx"
-                    type="error"
-                    :title="fail.reason || formatExpectedValue(fail.assertion)"
-                    :closable="false"
-                    show-icon
-                  />
-                </div>
-              </div>
-
-              <!-- 提取的变量 -->
-              <div class="detail-section" v-if="step.extracted_vars && Object.keys(step.extracted_vars).length > 0">
-                <h5>提取的变量</h5>
-                <el-tag
-                  v-for="(value, key) in step.extracted_vars"
-                  :key="key"
-                  class="var-tag"
-                  type="info"
-                >
-                  {{ key }}: {{ typeof value === 'object' ? JSON.stringify(value) : value }}
-                </el-tag>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 全局变量 -->
-        <el-divider />
-        <div class="context-vars">
-          <h4>执行后的全局变量</h4>
-          <el-empty v-if="Object.keys(runResult.context_vars || {}).length === 0" description="无提取的变量" />
-          <el-tag
-            v-for="(value, key) in runResult.context_vars"
-            :key="key"
-            class="var-tag"
-            type="info"
-          >
-            {{ key }}: {{ typeof value === 'object' ? JSON.stringify(value) : value }}
-          </el-tag>
-        </div>
-      </div>
-
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button
-            v-show="!isRunning && runResult && runResult.status !== 'running'"
-            type="primary"
-            style="pointer-events: auto; z-index: 9999;"
-            @click="openAllureReport"
-          >
-            📊 查看 Allure 详细报告
-          </el-button>
-          <el-button @click="resultDialogVisible = false">关闭</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <ScenarioExecutionDialog ref="executionDialogRef" v-model="resultDialogVisible" @completed="handleExecutionCompleted" />
 
     <!-- 定时计划配置对话框 -->
     <el-dialog v-model="scheduleDialogVisible" title="定时计划配置" width="500px">
@@ -383,7 +182,7 @@
               <template #label>
                 <span>Cron 表达式</span>
                 <el-tooltip content="格式：分 时 日 月 周&#10;常用：&#10;每天凌晨2点 → 0 2 * * *&#10;每小时 → 0 * * * *&#10;每周一早上9点 → 0 9 * * 1" placement="top">
-                  <el-icon :size="14" style="margin-left: 4px; color: #909399; cursor: help;"><QuestionFilled /></el-icon>
+                  <el-icon :size="14" style="margin-left: 4px; color: var(--tm-text-secondary); cursor: help;"><QuestionFilled /></el-icon>
                 </el-tooltip>
               </template>
               <el-input v-model="scheduleForm.cron_expression" placeholder="分 时 日 月 周" />
@@ -436,7 +235,7 @@
         <div v-if="currentExistingTasks.length > 0" class="existing-tasks">
           <div class="section-title">当前已有定时任务</div>
           <el-table :data="currentExistingTasks" style="width: 100%; margin-top: 8px" size="small">
-            <el-table-column prop="id" label="ID" width="60" align="center" />
+            <el-table-column prop="task_id" label="ID" width="60" align="center" />
             <el-table-column prop="name" label="名称" width="120" />
             <el-table-column prop="cron_expression" label="Cron" width="120" />
             <el-table-column prop="is_active" label="状态" width="100" align="center">
@@ -453,7 +252,7 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column prop="last_run_at" label="上次执行" width="130" />
+            <el-table-column prop="last_run" label="上次执行" width="130" />
           </el-table>
         </div>
 
@@ -533,7 +332,6 @@
           <el-form-item label="状态">
             <el-select v-model="historyFilterStatus" placeholder="全部状态" clearable style="width: 120px">
               <el-option label="全部" value="" />
-              <el-option label="待处理" value="pending" />
               <el-option label="运行中" value="running" />
               <el-option label="已完成" value="completed" />
               <el-option label="已失败" value="failed" />
@@ -545,6 +343,7 @@
               type="date"
               placeholder="开始日期"
               value-format="YYYY-MM-DD"
+              :disabled-date="disabledStartDate"
               style="width: 140px"
             />
             <span style="margin: 0 8px">至</span>
@@ -553,6 +352,7 @@
               type="date"
               placeholder="结束日期"
               value-format="YYYY-MM-DD"
+              :disabled-date="disabledEndDate"
               style="width: 140px"
             />
           </el-form-item>
@@ -670,7 +470,7 @@
             <el-tag :type="reportDetailData.failed_steps > 0 ? 'danger' : 'success'" size="large">
               {{ reportDetailData.failed_steps > 0 ? '❌ 有步骤失败' : '✅ 全部通过' }}
             </el-tag>
-            <span style="margin-left: 15px; color: #606266;">
+            <span style="margin-left: 15px; color: var(--tm-text-regular);">
               总步骤: {{ reportDetailData.total_steps || 0 }} |
               成功: <span style="color: #67c23a">{{ reportDetailData.success_steps || 0 }}</span> |
               失败: <span style="color: #f56c6c">{{ reportDetailData.failed_steps || 0 }}</span> |
@@ -693,10 +493,10 @@
           <el-divider />
 
           <!-- 嵌入式 Allure 报告 -->
-          <div style="height: 60vh; width: 100%; margin-bottom: 20px; border: 1px solid #dcdfe6; border-radius: 4px; overflow: hidden;">
+          <div style="height: 60vh; width: 100%; margin-bottom: 20px; border: 1px solid var(--tm-border-color); border-radius: 4px; overflow: hidden;">
             <iframe
-              v-if="reportDetailData && reportDetailData.id"
-              :src="resolveReportUrl(`/reports/${reportDetailData.id}/index.html`)"
+              v-if="reportDetailData && reportDetailData.report_url"
+              :src="resolveReportUrl(reportDetailData.report_url)"
               style="width: 100%; height: 100%; border: none;"
               title="Allure 报告"
             ></iframe>
@@ -735,7 +535,7 @@
                 <el-tag v-else-if="step.status === 'skipped'" type="info" effect="light">跳过</el-tag>
                 <el-tag v-else type="warning" effect="light">未知</el-tag>
 
-                <span style="margin-left: 10px; color: #909399; font-size: 13px;" v-if="step.status !== 'skipped'">
+                <span style="margin-left: 10px; color: var(--tm-text-secondary); font-size: 13px;" v-if="step.status !== 'skipped'">
                   {{ step.duration || 0 }}ms
                 </span>
                 <el-icon class="toggle-icon" :class="{ 'is-expanded': expandedDetailSteps.includes(index) }">
@@ -748,10 +548,25 @@
                 <div class="detail-url">{{ step.url }}</div>
 
                 <!-- 请求信息 -->
-                <div class="detail-section" v-if="step.request_headers || step.request_body">
+                <div class="detail-section" v-if="step.headers || step.payload">
                   <h5>请求信息</h5>
                   <div class="request-info">
-                    <span class="info-tag">{{ step.method }} {{ step.url }}</span>
+                    <div class="info-row">
+                      <span class="info-label">方法:</span>
+                      <el-tag :type="getMethodType(step.method)" size="small">{{ step.method }}</el-tag>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">URL:</span>
+                      <span class="info-value">{{ step.url }}</span>
+                    </div>
+                    <div class="info-row" v-if="step.headers && Object.keys(step.headers).length > 0">
+                      <span class="info-label">请求头:</span>
+                      <pre class="code-block">{{ formatResponseBody(step.headers) }}</pre>
+                    </div>
+                    <div class="info-row" v-if="step.payload && Object.keys(step.payload).length > 0">
+                      <span class="info-label">请求体:</span>
+                      <pre class="code-block">{{ formatResponseBody(step.payload) }}</pre>
+                    </div>
                   </div>
                 </div>
 
@@ -764,14 +579,20 @@
                 <div class="detail-section" v-if="step.response">
                   <h5>响应信息</h5>
                   <div class="response-info">
-                    <span class="info-label">状态码:</span>
-                    <el-tag :type="getStatusCodeType(step.status_code)" size="small">
-                      {{ step.status_code || '无' }}
-                    </el-tag>
-                  </div>
-                  <div class="response-body">
-                    <h5>响应体</h5>
-                    <pre class="body-display">{{ formatResponseBody(step.response) }}</pre>
+                    <div class="info-row">
+                      <span class="info-label">状态码:</span>
+                      <el-tag :type="getStatusCodeType(step.status_code)" size="small">
+                        {{ step.status_code || '无' }}
+                      </el-tag>
+                    </div>
+                    <div class="info-row" v-if="step.response.headers && Object.keys(step.response.headers).length > 0">
+                      <span class="info-label">响应头:</span>
+                      <pre class="code-block">{{ formatResponseBody(step.response.headers) }}</pre>
+                    </div>
+                    <div class="info-row" v-if="step.response.body">
+                      <span class="info-label">响应体:</span>
+                      <pre class="code-block">{{ step.response.body }}</pre>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -786,7 +607,7 @@
 
     <!-- 环境管理抽屉 - 和接口库页面保持一致 -->
     <EnvironmentManager
-      v-model:visible="envManagerDrawerVisible"
+      v-model="envManagerDrawerVisible"
       @close="handleEnvManagerClose"
     />
   </div>
@@ -798,6 +619,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, VideoPlay, Delete, Search, ArrowRight, Document, Link, DocumentCopy, Clock, DataAnalysis, Edit, Timer, Refresh, Loading, Setting, QuestionFilled } from '@element-plus/icons-vue'
 import axios from 'axios'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
+import ScenarioExecutionDialog from '@/components/ScenarioExecutionDialog.vue'
 
 const autoTestRequest = axios.create({
   baseURL: '',
@@ -840,13 +662,16 @@ const scenarioForm = ref({
 })
 const currentScenarioId = ref(null)
 const resultDialogVisible = ref(false)
+const executionDialogRef = ref(null)
 const runResult = ref(null)
 const expandedSteps = ref([])
-let pollingTimer = null  // 轮询定时器
-let currentTaskId = null  // 当前执行的任务 ID
-const isRunning = ref(false)  // 执行中状态
-const isCanceling = ref(false)  // 正在取消中
-const runningTaskProgress = ref(null)  // 当前进度
+let pollingTimer = null
+let pollingAbortController = null
+let currentTaskId = null
+let fakeProgressTimer = null
+const isRunning = ref(false)
+const isCanceling = ref(false)
+const runningTaskProgress = ref(null)
 
 // 定时计划相关
 const scheduleDialogVisible = ref(false)
@@ -880,7 +705,7 @@ const curlCommand = computed(() => {
   if (!currentCiCdScene.value || !currentCiCdScene.value.webhook_token) {
     return ''
   }
-  const baseUrl = window.location.origin.replace(/:\d+$/, ':5000')
+  const baseUrl = window.location.origin
   return `curl -X POST "${baseUrl}/api/auto-test/scenarios/webhook/${currentCiCdScene.value.webhook_token}" \\
      -H "Content-Type: application/json" \\
      -d '{"env_id": 替换为实际环境ID}'`
@@ -934,6 +759,39 @@ const historyStats = ref({
   pass_rate: 0
 })
 
+// 禁用未来日期的函数
+const disabledFutureDate = (time) => {
+  return time.getTime() > Date.now()
+}
+
+// 开始日期选择器的禁用函数
+const disabledStartDate = (time) => {
+  // 禁用未来日期
+  if (time.getTime() > Date.now()) {
+    return true
+  }
+  // 如果结束日期已选择，开始日期不能大于结束日期
+  if (historyFilterEndDate.value) {
+    const endDate = new Date(historyFilterEndDate.value)
+    return time.getTime() > endDate.getTime()
+  }
+  return false
+}
+
+// 结束日期选择器的禁用函数
+const disabledEndDate = (time) => {
+  // 禁用未来日期
+  if (time.getTime() > Date.now()) {
+    return true
+  }
+  // 如果开始日期已选择，结束日期不能小于开始日期
+  if (historyFilterStartDate.value) {
+    const startDate = new Date(historyFilterStartDate.value)
+    return time.getTime() < startDate.getTime()
+  }
+  return false
+}
+
 // 报告详情对话框相关
 const reportDetailVisible = ref(false)
 const reportDetailLoading = ref(false)
@@ -948,7 +806,7 @@ const environments = ref([])
 // 加载环境列表 - 使用正确的 API 路径
 const loadEnvironments = async () => {
   try {
-    const res = await autoTestRequest.get('/api/interface-test/environments')
+    const res = await autoTestRequest.get('/api/auto-test/environments')
     environments.value = res || []
   } catch (error) {
     console.error('加载环境列表失败:', error)
@@ -973,12 +831,12 @@ const handleEnvManagerClose = () => {
 }
 
 const getStatusType = (status) => {
-  const types = { success: 'success', failed: 'danger', error: 'warning' }
+  const types = { success: 'success', completed: 'success', failed: 'danger', error: 'warning', running: 'primary' }
   return types[status] || 'info'
 }
 
 const getStatusText = (status) => {
-  const texts = { success: '成功', failed: '失败', error: '异常' }
+  const texts = { success: '成功', completed: '成功', failed: '失败', error: '异常', running: '运行中' }
   return texts[status] || status
 }
 
@@ -1007,21 +865,19 @@ const loadExecutionHistory = async () => {
 
     const res = await autoTestRequest.get(`/api/auto-test/scenarios/${currentHistoryScenarioId.value}/history`, { params })
 
-    // 使用后端返回的统计数据
-    if (res.statistics) {
-      historyStats.value = res.statistics
-    } else {
-      // 兼容旧版
-      historyStats.value = {
-        total_reports: res.total || 0,
-        passed_reports: 0,
-        pass_rate: 0
-      }
+    // 计算统计数据
+    const items = res.items || []
+    const total = items.length
+    const passedCount = items.filter(item => item.status === 'success' || item.status === 'completed').length
+    const passRate = total > 0 ? Math.round((passedCount / total) * 100) : 0
+
+    historyStats.value = {
+      total_reports: total,
+      passed_reports: passedCount,
+      pass_rate: passRate
     }
 
-    const items = res.items || []
-    // 后端 status: 'completed' = 全部成功, 'failed' = 有失败, 'running' = 执行中
-    const successCount = items.filter(item => item.status === 'completed').length
+    const successCount = items.filter(item => item.status === 'success' || item.status === 'completed').length
     executionHistory.value = {
       total: res.total || 0,
       success_count: successCount,
@@ -1055,7 +911,10 @@ const deleteHistoryRecord = async (historyId) => {
       type: 'warning'
     })
 
-    await autoTestRequest.delete(`/api/auto-test/scenarios/history/${historyId}`)
+    if (!currentHistoryScenarioId.value) {
+      throw new Error('未找到当前场景ID')
+    }
+    await autoTestRequest.delete(`/api/auto-test/scenarios/${currentHistoryScenarioId.value}/history/${historyId}`)
     ElMessage.success('删除成功')
     await loadExecutionHistory()
   } catch (error) {
@@ -1074,12 +933,6 @@ const openReport = (reportUrl) => {
 
 // 再次运行历史报告对应的场景
 const reRunHistory = async (historyRow) => {
-  if (isRunning.value) {
-    ElMessage.warning('已有任务正在执行中，请稍候...')
-    return
-  }
-
-  // 提取 scenario_id 和当初执行的 env_id
   const scenarioId = historyRow.scenario_id || currentHistoryScenarioId.value;
   const envId = historyRow.env_id || selectedEnvId.value;
 
@@ -1088,43 +941,15 @@ const reRunHistory = async (historyRow) => {
       return;
   }
 
-  // 自动切换下拉框选中的环境为当初执行的环境
   if (envId) {
       selectedEnvId.value = envId;
   }
 
-  // 关闭历史和详情弹窗
   historyDrawerVisible.value = false;
   reportDetailVisible.value = false;
 
-  try {
-    isRunning.value = true
-    runningTaskProgress.value = null
-    resultDialogVisible.value = true
-    runResult.value = null
-    expandedSteps.value = []
-
-    ElMessage.success({ message: '测试已开始，请查看最新报告/执行进度', duration: 3000 })
-
-    const res = await autoTestRequest.post(
-      `/api/auto-test/scenarios/${scenarioId}/run`,
-      { env_id: envId }
-    )
-
-    const taskId = res?.task_id || res?.data?.task_id
-    if (!taskId) {
-      isRunning.value = false
-      ElMessage.error('任务提交失败，未获取到 task_id')
-      return
-    }
-
-    currentTaskId = taskId
-    pollTaskStatus(taskId, '场景重跑')
-  } catch (error) {
-    isRunning.value = false
-    stopPolling()
-    ElMessage.error('提交任务失败: ' + (error.response?.data?.detail || error.message))
-  }
+  const stepCount = historyRow.total_steps || 0
+  executionDialogRef.value?.startExecution(scenarioId, envId, stepCount)
 }
 
 const filteredScenarios = computed(() => {
@@ -1139,6 +964,12 @@ const filteredScenarios = computed(() => {
 const getMethodType = (method) => {
   const types = { GET: 'success', POST: 'warning', PUT: 'primary', DELETE: 'danger', PATCH: 'info' }
   return types[method] || 'info'
+}
+
+const formatTotalTime = (ms) => {
+  if (!ms && ms !== 0) return '0ms'
+  if (ms < 1000) return ms + 'ms'
+  return (ms / 1000).toFixed(2) + 's'
 }
 
 // 格式化断言预期值，处理对象格式
@@ -1174,6 +1005,10 @@ const toggleStepDetail = (index) => {
 
 const formatResponseBody = (response) => {
   if (!response) return '无响应'
+  // 如果 response 是对象，直接格式化
+  if (typeof response === 'object') {
+    return JSON.stringify(response, null, 2)
+  }
   // 后端返回的响应体直接存在 response 字段（字符串）
   try {
     const json = JSON.parse(response)
@@ -1188,6 +1023,10 @@ const loadScenarios = async () => {
   try {
     const res = await autoTestRequest.get('/api/auto-test/scenarios')
     scenarios.value = res || []
+    // #region agent log
+    // 注释掉这个调试请求，因为没有服务在 7444 端口运行
+    // fetch('http://127.0.0.1:7444/ingest/5081c6b5-d6af-4e32-8f31-9f3bb44e7710',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d60346'},body:JSON.stringify({sessionId:'d60346',runId:'run1',hypothesisId:'H4',location:'ScenarioList.vue:loadScenarios',message:'frontend_scenarios_shape',data:{count:(res||[]).length,sample:(res||[]).slice(0,3).map(s=>({id:s.id,step_count:s.step_count,steps_len:Array.isArray(s.steps)?s.steps.length:null,keys:Object.keys(s||{}).slice(0,10)}))},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
   } catch (error) {
     console.error('加载场景失败:', error)
   } finally {
@@ -1289,7 +1128,7 @@ const handleToggleTaskStatus = async (task) => {
   const originalStatus = task.is_active
   task.statusLoading = true
   try {
-    await autoTestRequest.post(`/api/auto-test/scheduler/tasks/${task.id}/toggle`)
+    await autoTestRequest.post(`/api/auto-test/scheduler/tasks/${task.task_id}/toggle`)
     ElMessage.success(`任务已${task.is_active ? '启用' : '暂停'}`)
     // 重新加载任务列表
     await loadScheduleTasks()
@@ -1367,7 +1206,7 @@ const handleScheduleSubmit = async () => {
     // 先删除该场景的所有现有任务
     const existingTasks = scheduleTasks.value[scheduleForm.value.scenario_id] || []
     for (const task of existingTasks) {
-      await autoTestRequest.delete(`/api/auto-test/scheduler/tasks/${task.id}`)
+      await autoTestRequest.delete(`/api/auto-test/scheduler/tasks/${task.task_id}`)
     }
 
     // 创建新任务
@@ -1394,8 +1233,8 @@ const handleDeleteSchedule = async (scenarioId) => {
     const tasks = scheduleTasks.value[scenarioId] || []
     console.log("[DEBUG] 准备删除定时任务，scenarioId=", scenarioId, "tasks=", tasks)
     for (const task of tasks) {
-      console.log("[DEBUG] 删除任务ID:", task.id)
-      await autoTestRequest.delete(`/api/auto-test/scheduler/tasks/${task.id}`)
+      console.log("[DEBUG] 删除任务ID:", task.task_id)
+      await autoTestRequest.delete(`/api/auto-test/scheduler/tasks/${task.task_id}`)
     }
     ElMessage.success('删除成功')
     loadScheduleTasks()
@@ -1410,29 +1249,55 @@ const stopPolling = () => {
     clearInterval(pollingTimer)
     pollingTimer = null
   }
+  if (pollingAbortController) {
+    pollingAbortController.abort()
+    pollingAbortController = null
+  }
+  stopFakeProgress()
 }
 
-// 轮询任务状态
 const pollTaskStatus = async (taskId, scenarioName) => {
   stopPolling()
+  pollingAbortController = new AbortController()
+  const signal = pollingAbortController.signal
   pollingTimer = setInterval(async () => {
     try {
-      const res = await autoTestRequest.get(`/api/auto-test/tasks/${taskId}`)
-      const state = res.status  // Celery 任务状态: 'PENDING' | 'PROGRESS' | 'completed' | 'SUCCESS' | 'FAILURE' | 'REVOKED'
+      const res = await autoTestRequest.get(`/api/auto-test/tasks/${taskId}`, { signal })
+      const state = res.status
+
+      if (state === 'PROGRESS') {
+        stopFakeProgress()
+        const progress = res.progress || {}
+        runningTaskProgress.value = {
+          percent: progress.percent || 10,
+          current: progress.current || 0,
+          total: progress.total || runningTaskProgress.value?.total || 0,
+          current_api: progress.current_api || '执行中...'
+        }
+      }
 
       if (state === 'completed' || state === 'SUCCESS') {
         stopPolling()
+        stopFakeProgress()
         isRunning.value = false
-        runResult.value = res
+        const resultData = res.result || res
+        runningTaskProgress.value = {
+          percent: 100,
+          current: resultData.total_steps || 0,
+          total: resultData.total_steps || 0,
+          current_api: '执行完成'
+        }
+        runResult.value = resultData
         expandedSteps.value = []
-        if (res && res.step_results) {
-          const failedIndex = res.step_results.findIndex(s => !s.success)
+        if (resultData && resultData.step_results) {
+          const failedIndex = resultData.step_results.findIndex(s => !s.success)
           if (failedIndex >= 0) expandedSteps.value = [failedIndex]
         }
         resultDialogVisible.value = true
         ElMessage.success('执行完成')
       } else if (state === 'failed' || state === 'FAILURE' || state === 'REVOKED') {
         stopPolling()
+        stopFakeProgress()
         isRunning.value = false
         if (state === 'REVOKED') {
           ElMessage.warning('⛔ 任务已被终止')
@@ -1440,62 +1305,69 @@ const pollTaskStatus = async (taskId, scenarioName) => {
         } else {
           ElMessage.error('执行失败: ' + (res.error || '未知错误'))
         }
-      } else if (state === 'PROGRESS' || state === 'PROGRESS') {
-        // 更新进度
-        runningTaskProgress.value = res.progress
       }
-      // PENDING 继续轮询
     } catch (error) {
+      if (axios.isCancel(error)) return
       stopPolling()
+      stopFakeProgress()
       isRunning.value = false
       ElMessage.error('查询任务状态失败: ' + (error.response?.data?.detail || error.message))
     }
-  }, 2000)  // 每 2 秒轮询一次
+  }, 2000)
+}
+
+const handleToggleStatus = async (row, val) => {
+  const oldVal = row.is_active
+  try {
+    await autoTestRequest.put(`/api/auto-test/scenarios/${row.id}/status`, {
+      is_active: val
+    })
+    row.is_active = val
+    ElMessage.success(val ? '场景已启用' : '场景已停用')
+  } catch (error) {
+    row.is_active = oldVal
+    ElMessage.error('状态切换失败: ' + (error.response?.data?.detail || error.message))
+  }
 }
 
 const handleRun = async (row) => {
-  if (isRunning.value) {
-    ElMessage.warning('已有任务正在执行中，请稍候...')
-    return
-  }
-
-  // 检查是否选择了环境
   if (!selectedEnvId.value) {
     ElMessage.warning('请先选择执行环境！')
     return
   }
+  if (!row.is_active) {
+    ElMessage.warning('该场景已停用，无法运行！')
+    return
+  }
+  const stepCount = row.steps ? row.steps.length : 0
+  executionDialogRef.value?.startExecution(row.id, selectedEnvId.value, stepCount)
+}
 
-  try {
-    isRunning.value = true
-    runningTaskProgress.value = null
-    resultDialogVisible.value = true
-    runResult.value = null
-    expandedSteps.value = []
-    // 显示执行中提示
-    ElMessage.info({ message: '任务已提交，后台正在执行中，请稍候...', duration: 3000 })
+const handleExecutionCompleted = () => {
+  loadScenarios()
+}
 
-    // POST 请求携带 JSON body 和 env_id
-    const res = await autoTestRequest.post(
-      `/api/auto-test/scenarios/${row.id}/run`,
-      {
-        env_id: selectedEnvId.value
+const startFakeProgress = (totalSteps) => {
+  stopFakeProgress()
+  let fakePercent = 5
+  fakeProgressTimer = setInterval(() => {
+    if (fakePercent < 85) {
+      fakePercent += Math.random() * 3
+      if (fakePercent > 85) fakePercent = 85
+      runningTaskProgress.value = {
+        percent: Math.round(fakePercent),
+        current: Math.floor((fakePercent / 100) * totalSteps),
+        total: totalSteps,
+        current_api: '正在执行步骤...'
       }
-    )
-    const taskId = res?.task_id || res?.data?.task_id
-    if (!taskId) {
-      isRunning.value = false
-      ElMessage.error('任务提交失败，未获取到 task_id')
-      return
     }
+  }, 1500)
+}
 
-    // 保存当前任务 ID
-    currentTaskId = taskId
-    // 开始轮询
-    pollTaskStatus(taskId, row.name)
-  } catch (error) {
-    isRunning.value = false
-    stopPolling()
-    ElMessage.error('提交任务失败: ' + (error.response?.data?.detail || error.message))
+const stopFakeProgress = () => {
+  if (fakeProgressTimer) {
+    clearInterval(fakeProgressTimer)
+    fakeProgressTimer = null
   }
 }
 
@@ -1523,24 +1395,20 @@ const handleCancelTask = async () => {
 }
 
 const openAllureReport = () => {
-  console.log('--- 终极接管 Allure 按钮 ---', runResult.value);
-
-  // 尝试获取当前运行结果 或 历史详情数据
   const resultData = runResult.value || reportDetailData.value || {};
 
-  // 第一优先级：后端传了 report_url
-  // 第二优先级：前端自己用 report_id 拼装！
   let url = resultData.report_url;
+  if (!url && resultData.execution_record_id) {
+    url = `/reports/scenario_${resultData.scenario_id || 'unknown'}/index.html`;
+  }
   if (!url && resultData.report_id) {
     url = `/reports/${resultData.report_id}/index.html`;
   }
 
   if (url) {
-    console.log('即将打开报告地址:', `http://127.0.0.1:5002${url}`);
-    // 强行补齐前缀并打开
     window.open(resolveReportUrl(url), '_blank');
   } else {
-    ElMessage.error('执行结果中缺失 report_id，无法拼接报告地址！');
+    ElMessage.warning('Allure 报告未生成（可能未安装 allure 命令行工具）。请检查后端日志。');
   }
 };
 
@@ -1626,7 +1494,7 @@ onUnmounted(() => {
 }
 
 .env-label {
-  color: #606266;
+  color: var(--tm-text-regular);
   font-size: 14px;
   white-space: nowrap;
 }
@@ -1873,7 +1741,7 @@ onUnmounted(() => {
 .section-title {
   font-size: 14px;
   font-weight: 500;
-  color: #606266;
+  color: var(--tm-text-regular);
   margin-bottom: 8px;
 }
 
@@ -2061,5 +1929,44 @@ onUnmounted(() => {
   .history-filter-form .el-form-item:last-child {
     margin-bottom: 0;
   }
+}
+
+/* 步骤详情样式 */
+.info-row {
+  margin-bottom: 12px;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  display: inline-block;
+  min-width: 60px;
+  color: var(--tm-text-secondary);
+  font-size: 13px;
+  margin-right: 8px;
+}
+
+.info-value {
+  color: var(--tm-text-primary);
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.code-block {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: var(--tm-radius-small);
+  max-height: 300px;
+  overflow: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 8px 0 0 0;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 </style>

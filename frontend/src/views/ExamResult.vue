@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="exam-result">
     <div class="container">
       <div class="back-btn" @click="goBack">
@@ -69,7 +69,7 @@
             <div class="stat-label">做错</div>
           </div>
           <div class="stat-card">
-            <div class="stat-number" style="color: #909399;">{{ result.statistics.total_questions - result.statistics.correct_count - result.statistics.wrong_count }}</div>
+            <div class="stat-number" style="color: var(--tm-text-secondary);">{{ result.statistics.total_questions - result.statistics.correct_count - result.statistics.wrong_count }}</div>
             <div class="stat-label">未判分</div>
           </div>
         </div>
@@ -195,7 +195,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Check, Close, Edit, List } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/utils/markdown'
 
 const router = useRouter()
 const route = useRoute()
@@ -251,16 +251,13 @@ const getScoreColor = (score, total) => {
   return '#f56c6c'
 }
 
-const renderMarkdown = (content) => {
-  return marked(content || '')
-}
 </script>
 
 <style scoped>
 .exam-result {
   padding: 30px 0;
   min-height: calc(100vh - 60px);
-  background-color: #f5f7fa;
+  background-color: var(--tm-bg-elevated);
 }
 
 .container {
@@ -274,13 +271,13 @@ const renderMarkdown = (content) => {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: white;
+  background: #18181B;
   border-radius: 8px;
   margin-bottom: 20px;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-regular);
   box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08);
 }
 
@@ -296,7 +293,7 @@ const renderMarkdown = (content) => {
 }
 
 .overview-card {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   padding: 40px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
@@ -364,19 +361,19 @@ const renderMarkdown = (content) => {
 
 .score-total {
   font-size: 14px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   margin-bottom: 4px;
 }
 
 .score-label {
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .score-info h2 {
   font-size: 24px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin: 0 0 16px 0;
 }
 
@@ -389,7 +386,7 @@ const renderMarkdown = (content) => {
   grid-template-columns: 1fr 1fr;
   gap: 8px 24px;
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-regular);
   line-height: 2;
 }
 
@@ -400,7 +397,7 @@ const renderMarkdown = (content) => {
 }
 
 .stat-card {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   padding: 24px;
   text-align: center;
@@ -416,11 +413,11 @@ const renderMarkdown = (content) => {
 
 .stat-label {
   font-size: 14px;
-  color: #909399;
+  color: var(--tm-text-secondary);
 }
 
 .section-card {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   padding: 32px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
@@ -429,7 +426,7 @@ const renderMarkdown = (content) => {
 .section-title {
   font-size: 20px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin: 0 0 24px 0;
   padding-bottom: 12px;
   border-bottom: 1px solid #f0f2f5;
@@ -456,19 +453,19 @@ const renderMarkdown = (content) => {
 .type-name {
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .type-score {
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .type-meta {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   margin-top: 4px;
 }
 
@@ -504,12 +501,12 @@ const renderMarkdown = (content) => {
 .question-number {
   font-size: 16px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .question-score {
   font-size: 14px;
-  color: #909399;
+  color: var(--tm-text-secondary);
 }
 
 .question-result {
@@ -520,13 +517,13 @@ const renderMarkdown = (content) => {
 
 .user-score {
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .question-content {
   font-size: 15px;
   line-height: 2;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin-bottom: 16px;
 }
 
@@ -541,7 +538,7 @@ const renderMarkdown = (content) => {
   padding: 12px 16px;
   border-radius: 8px;
   margin-bottom: 8px;
-  background: #fafafa;
+  background: var(--tm-bg-card);
   position: relative;
 }
 
@@ -580,13 +577,13 @@ const renderMarkdown = (content) => {
 .answer-label {
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin-bottom: 8px;
 }
 
 .answer-content {
   padding: 12px 16px;
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   border-radius: 8px;
   font-size: 14px;
   line-height: 1.8;
@@ -621,7 +618,7 @@ const renderMarkdown = (content) => {
 .analysis-content {
   font-size: 14px;
   line-height: 1.8;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .action-buttons {
@@ -632,7 +629,7 @@ const renderMarkdown = (content) => {
 }
 
 .loading-state {
-  background: white;
+  background: #18181B;
   padding: 40px;
   border-radius: 12px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);

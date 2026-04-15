@@ -3,8 +3,8 @@ $projectRoot = "c:/Users/lenovo/Desktop/TestMasterProject"
 
 $env:PYTHONPATH = $projectRoot
 
-# Kill processes on ports 5000, 5002, 5173
-$ports = @(5000, 5002, 5173)
+# Kill processes on ports 5001, 5173
+$ports = @(5001, 5173)
 foreach ($port in $ports) {
     $connections = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
     foreach ($conn in $connections) {
@@ -14,15 +14,9 @@ foreach ($port in $ports) {
 
 Start-Sleep -Seconds 3
 
-# 1. Flask on 5000
-$flaskProc = Start-Process -FilePath "py" -ArgumentList "-3", "auto_test_platform/run_flask.py" -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru
-Write-Host "Flask started: PID=$($flaskProc.Id)"
-
-Start-Sleep -Seconds 3
-
-# 2. FastAPI on 5002 (使用 -NoProfile 避免加载用户配置，-Environment 显式传递环境变量)
-$fastapiProc = Start-Process -FilePath "py" -ArgumentList "-3", "-m", "uvicorn", "auto_test_platform.main:app", "--port", "5002", "--host", "127.0.0.1" -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -Environment @{"PYTHONPATH"=$projectRoot}
-Write-Host "FastAPI started: PID=$($fastapiProc.Id)"
+# 1. Unified FastAPI backend on 5001
+$fastapiProc = Start-Process -FilePath "py" -ArgumentList "-3", "-m", "uvicorn", "fastapi_backend.main:app", "--port", "5001", "--host", "0.0.0.0", "--reload", "--reload-exclude", "**/temp_pytest_tests/**", "--reload-exclude", "**/autotest_data/allure-results/**", "--reload-exclude", "**/autotest_data/reports/**", "--reload-exclude", "**/autotest_data/temp_run_data/**" -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -Environment @{"PYTHONPATH"=$projectRoot; "PYTHONIOENCODING"="utf-8"}
+Write-Host "Unified FastAPI backend started: PID=$($fastapiProc.Id)"
 
 Start-Sleep -Seconds 3
 
@@ -35,4 +29,4 @@ Start-Sleep -Seconds 3
 # Verify
 Write-Host ""
 Write-Host "=== Port Status ==="
-Get-NetTCPConnection -LocalPort 5000,5002,5173 -ErrorAction SilentlyContinue | Format-Table LocalAddress,LocalPort,State,OwningProcess -AutoSize
+Get-NetTCPConnection -LocalPort 5001,5173 -ErrorAction SilentlyContinue | Format-Table LocalAddress,LocalPort,State,OwningProcess -AutoSize

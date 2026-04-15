@@ -1,0 +1,371 @@
+[
+  {
+    "title": "请解释软件测试的目的是什么？",
+    "content": "软件测试的核心目的是什么？",
+    "answer": "软件测试的目的是发现缺陷，评估质量，提供质量信息。测试不能证明无缺陷，只能证明缺陷存在。",
+    "category": "测试基础",
+    "difficulty": "easy",
+    "position_level": "初级",
+    "tags": "测试基础,测试原则"
+  },
+  {
+    "title": "什么是回归测试？",
+    "content": "请解释回归测试的概念和触发时机。",
+    "answer": "回归测试是在软件修改后重新执行之前通过的测试用例，确认修改没有引入新缺陷。触发时机：代码修改后、缺陷修复后、环境变更后、版本合并后。",
+    "category": "测试基础",
+    "difficulty": "easy",
+    "position_level": "初级",
+    "tags": "回归测试"
+  },
+  {
+    "title": "请说明V模型和W模型的区别",
+    "content": "V模型与W模型有什么不同？",
+    "answer": "V模型强调测试与开发的对应关系，但测试是开发之后的活动。W模型强调测试与开发同步进行，测试贯穿整个开发周期，包括需求评审等静态测试。W模型更符合'尽早测试'原则。",
+    "category": "测试基础",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "测试模型"
+  },
+  {
+    "title": "如何设计一个好的测试用例？",
+    "content": "优秀测试用例的特征是什么？",
+    "answer": "好的测试用例特征：覆盖率高、可重复、清晰明确、独立性强、可维护、高效。设计方法：等价类划分+边界值分析+错误推测法组合使用。",
+    "category": "测试用例",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "测试用例"
+  },
+  {
+    "title": "什么是冒烟测试？",
+    "content": "请解释冒烟测试的概念和作用。",
+    "answer": "冒烟测试是对软件基本功能进行初步验证，确认主要功能是否正常。作用：快速验证版本是否可测、节省测试资源、作为提测门槛。",
+    "category": "测试基础",
+    "difficulty": "easy",
+    "position_level": "初级",
+    "tags": "冒烟测试"
+  },
+  {
+    "title": "黑盒测试和白盒测试的区别",
+    "content": "核心区别是什么？",
+    "answer": "黑盒测试：不考虑内部结构，基于需求。方法：等价类划分、边界值分析、因果图。白盒测试：基于代码内部结构。方法：语句覆盖、判定覆盖、条件覆盖、路径覆盖。区别：关注点、依据、适用阶段、技能要求不同。",
+    "category": "测试基础",
+    "difficulty": "easy",
+    "position_level": "初级",
+    "tags": "黑盒,白盒"
+  },
+  {
+    "title": "什么是灰盒测试？",
+    "content": "请解释灰盒测试的概念和应用场景。",
+    "answer": "灰盒测试介于黑盒和白盒之间，既关注输入输出，也关注系统内部工作原理，但不需要完全了解代码实现。应用场景：接口测试、数据库测试、集成测试。",
+    "category": "测试基础",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "灰盒测试"
+  },
+  {
+    "title": "缺陷严重程度和优先级的区别",
+    "content": "请解释两者的区别并举例。",
+    "answer": "严重程度(Severity)：缺陷对系统影响的程度，客观的。优先级(Priority)：修复的紧急程度，受业务影响。两者独立。例如：首页拼写错误严重程度低但优先级可能高。",
+    "category": "缺陷管理",
+    "difficulty": "easy",
+    "position_level": "初级",
+    "tags": "缺陷管理"
+  },
+  {
+    "title": "等价类划分法的核心思想",
+    "content": "请详细解释等价类划分法。",
+    "answer": "将输入域划分为若干等价类，从每类中选取代表性数据。划分规则：按区间、按数值集合、按限制条件、按数据类型。步骤：划分等价类->建立等价类表->选取测试数据。",
+    "category": "功能测试",
+    "difficulty": "easy",
+    "position_level": "初级",
+    "tags": "等价类划分"
+  },
+  {
+    "title": "边界值分析为什么边界处容易出错？",
+    "content": "请解释边界值分析法的原理。",
+    "answer": "缺陷往往集中在边界附近。原因：边界条件判断容易出错(< vs <=)、循环边界处理不当(off-by-one)、数组越界、数据类型溢出。与等价类划分配合使用。",
+    "category": "功能测试",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "边界值分析"
+  },
+  {
+    "title": "如何进行接口测试？重点是什么？",
+    "content": "请描述接口测试的流程和关注点。",
+    "answer": "流程：分析文档->设计用例->准备数据->执行测试->结果验证->生成报告。重点：参数校验、业务逻辑、安全性、性能、兼容性、幂等性。",
+    "category": "接口测试",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "接口测试"
+  },
+  {
+    "title": "HTTP和HTTPS的区别",
+    "content": "请说明两者的区别及HTTPS工作原理。",
+    "answer": "区别：HTTP明文/HTTPS加密、端口80/443、HTTPS需要证书。HTTPS工作原理：TLS握手->证书验证->会话密钥协商->对称加密通信。",
+    "category": "接口测试",
+    "difficulty": "easy",
+    "position_level": "初级",
+    "tags": "HTTP,HTTPS"
+  },
+  {
+    "title": "什么是RESTful API？",
+    "content": "请解释RESTful API的概念和核心原则。",
+    "answer": "REST是一种软件架构风格。核心原则：资源导向(URL用名词)、HTTP方法语义化、无状态、统一接口。示例：GET /users获取列表，POST /users创建，PUT /users/1更新。",
+    "category": "接口测试",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "RESTful"
+  },
+  {
+    "title": "JWT Token的工作原理",
+    "content": "请解释JWT的结构和工作流程。",
+    "answer": "JWT由Header(算法)、Payload(数据)、Signature(签名)三部分组成。流程：登录生成JWT->客户端存储->请求携带Token->服务端验证签名和过期时间。优点：无状态、跨域。缺点：无法主动失效。",
+    "category": "接口测试",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "JWT,认证"
+  },
+  {
+    "title": "如何测试接口的幂等性？",
+    "content": "什么是接口幂等性？如何测试？",
+    "answer": "幂等性：同一请求执行一次和多次效果相同。GET/PUT/DELETE幂等，POST非幂等。测试：重复提交、网络重试、并发请求。保证方法：唯一请求ID、唯一约束、乐观锁、Token机制。",
+    "category": "接口测试",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "幂等性"
+  },
+  {
+    "title": "Selenium中如何处理动态加载的元素？",
+    "content": "如何处理AJAX动态加载的页面元素？",
+    "answer": "1.显式等待(推荐)：WebDriverWait+EC\n2.隐式等待：implicitly_wait\n3.固定等待(不推荐)：time.sleep\n4.自定义等待条件\n5.判断元素可见性/可点击",
+    "category": "UI自动化",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "Selenium,等待策略"
+  },
+  {
+    "title": "什么是POM设计模式？",
+    "content": "请解释Page Object Model及其优势。",
+    "answer": "POM将页面元素和操作封装为独立类。每个页面对应一个Page类，封装元素定位(属性)、操作方法(行为)、断言方法(验证)。优势：代码复用、易维护、可读性好。",
+    "category": "UI自动化",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "POM,设计模式"
+  },
+  {
+    "title": "如何保证自动化测试的稳定性？",
+    "content": "Flaky test如何解决？",
+    "answer": "1.显式等待替代sleep\n2.稳定定位策略(ID/CSS)\n3.测试数据隔离\n4.消除用例间依赖\n5.重试机制\n6.Docker保证环境一致\n7.失败自动截图\n8.监控flaky rate",
+    "category": "自动化测试",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "稳定性,Flaky Test"
+  },
+  {
+    "title": "Selenium中如何处理文件上传？",
+    "content": "请说明文件上传的处理方法。",
+    "answer": "1.send_keys(最简单)：driver.find_element(By.ID,'file').send_keys('/path')\n2.AutoIt(Windows系统对话框)\n3.pyautogui模拟操作\n注意：优先send_keys，文件路径用绝对路径",
+    "category": "UI自动化",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "Selenium,文件上传"
+  },
+  {
+    "title": "Playwright和Selenium的区别",
+    "content": "请比较两者的优缺点。",
+    "answer": "Playwright：自动等待、多浏览器、请求拦截、并行执行、截图录屏。Selenium：生态成熟、多语言、Grid分布式、行业标准。选择：新项目推荐Playwright，兼容旧系统选Selenium。",
+    "category": "UI自动化",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "Playwright,Selenium"
+  },
+  {
+    "title": "性能测试的类型和区别",
+    "content": "负载测试、压力测试等有什么区别？",
+    "answer": "负载测试：逐步增加负载找最佳点。压力测试：超负载验证恢复能力。稳定性测试：长时间运行检测内存泄漏。容量测试：确定最大处理能力。基准测试：建立性能基线。",
+    "category": "性能测试",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "性能测试类型"
+  },
+  {
+    "title": "如何分析性能测试结果？",
+    "content": "请说明分析方法和关键指标。",
+    "answer": "查看TPS/RT/错误率趋势，找到拐点，分析资源使用率，定位瓶颈。判断标准：RT<200ms优秀，错误率<0.1%优秀，CPU<70%正常。常见问题：TPS上不去(连接池不足)、RT线性增长(资源竞争)。",
+    "category": "性能测试",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "性能分析"
+  },
+  {
+    "title": "JMeter和Locust的区别",
+    "content": "请比较两者的优缺点。",
+    "answer": "JMeter：GUI界面、协议支持广、插件丰富、社区成熟。Locust：Python编写灵活、实时监控Web界面、轻量级。选择：非Python团队选JMeter，需要快速脚本选Locust。",
+    "category": "性能测试",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "JMeter,Locust"
+  },
+  {
+    "title": "OWASP Top 10有哪些？",
+    "content": "请列举并简要说明。",
+    "answer": "A01权限控制失效、A02加密机制失效、A03注入攻击、A04不安全设计、A05安全配置错误、A06过时组件、A07身份验证失败、A08数据完整性失败、A09日志监控失败、A10 SSRF。",
+    "category": "安全测试",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "OWASP"
+  },
+  {
+    "title": "如何测试越权漏洞？",
+    "content": "请说明水平越权和垂直越权的测试方法。",
+    "answer": "水平越权：用户A访问用户B的资源(修改URL中的ID)。垂直越权：普通用户访问管理员功能(用普通Token请求管理员API)。自动化：Burp Suite Autorize插件。",
+    "category": "安全测试",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "越权"
+  },
+  {
+    "title": "什么是测试左移和测试右移？",
+    "content": "分别是什么策略？",
+    "answer": "测试左移：将测试前移到需求和设计阶段，尽早发现缺陷。包括需求评审、TDD、静态分析。测试右移：将测试延伸到生产环境，关注线上监控。包括灰度发布、A/B测试、监控告警。",
+    "category": "测试策略",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "测试左移,测试右移"
+  },
+  {
+    "title": "BDD和TDD的区别",
+    "content": "请解释两者的区别。",
+    "answer": "TDD：先写单元测试再写代码，红-绿-重构循环，关注代码正确性。BDD：用自然语言描述行为，Given-When-Then格式，关注业务正确性。区别：视角、参与者、粒度、工具不同。",
+    "category": "测试策略",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "BDD,TDD"
+  },
+  {
+    "title": "如何设计自动化测试框架？",
+    "content": "请描述架构设计和关键组件。",
+    "answer": "架构：基础层(驱动/配置)->页面对象层(POM)->API封装层->测试数据层->工具层->用例层->报告层。原则：高内聚低耦合、数据与脚本分离、支持并行执行、失败重试、CI友好。",
+    "category": "测试开发",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "测试框架"
+  },
+  {
+    "title": "如何测试微服务架构？",
+    "content": "微服务测试策略有什么不同？",
+    "answer": "测试金字塔：单元测试(最多)->契约测试(Pact)->集成测试->端到端测试(最少)。挑战：服务依赖(Mock/Stub)、数据一致性、网络故障(混沌工程)、服务发现、灰度发布、链路追踪。",
+    "category": "测试策略",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "微服务"
+  },
+  {
+    "title": "什么是测试金字塔？",
+    "content": "如何合理分配测试比例？",
+    "answer": "金字塔：单元测试(底层最多)->集成测试(中层)->端到端测试(顶层最少)。推荐比例：70%单元+20%集成+10%E2E。反模式：冰淇淋蛋卷、倒金字塔。原则：尽量用低层测试覆盖。",
+    "category": "测试策略",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "测试金字塔"
+  },
+  {
+    "title": "如何设计测试平台？",
+    "content": "需要哪些核心功能？",
+    "answer": "核心功能：用例管理、执行引擎、报告中心、数据管理、环境管理、缺陷集成、CI/CD集成、权限管理。技术架构：Vue3/React+FastAPI/Django+MySQL+Redis+Celery+Docker。",
+    "category": "测试开发",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "测试平台"
+  },
+  {
+    "title": "什么是契约测试？",
+    "content": "在微服务中如何应用？",
+    "answer": "契约测试验证服务间接口契约是否被遵守。Pact流程：消费者定义期望->生成契约文件->提供者验证。优势：不需要完整环境、快速发现接口变更、CI/CD自动验证。",
+    "category": "测试开发",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "契约测试,Pact"
+  },
+  {
+    "title": "Appium和Selenium的区别",
+    "content": "请比较两者的特点。",
+    "answer": "相同：都基于WebDriver协议、支持多语言。不同：Selenium只测Web，Appium测移动端；Appium有移动端特有定位(Accessibility ID/UIAutomator)；Appium支持手势操作；Appium需要SDK/模拟器。",
+    "category": "移动端测试",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "Appium"
+  },
+  {
+    "title": "移动端性能测试关注什么？",
+    "content": "需要关注哪些指标和工具？",
+    "answer": "指标：启动时间、CPU使用率、内存使用、电量消耗、FPS帧率、网络流量、包大小。工具：Android Profiler、Instruments(iOS)、PerfDog、adb命令。方法：基准测试、对比测试、长时间测试。",
+    "category": "移动端测试",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "移动端性能"
+  },
+  {
+    "title": "什么是CI/CD？测试的角色？",
+    "content": "请解释CI/CD及测试如何融入。",
+    "answer": "CI持续集成：频繁合并代码，自动构建测试。CD持续交付/部署：通过测试后自动部署。测试角色：质量门禁、快速反馈、自动化核心。流水线层次：提交阶段(单元测试)->构建阶段(接口测试)->验收阶段(E2E)->生产阶段(监控)。",
+    "category": "CI/CD",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "CI/CD"
+  },
+  {
+    "title": "如何实现测试左移？",
+    "content": "请说明具体实践方法。",
+    "answer": "需求评审阶段：参与评审、编写测试需求矩阵。设计阶段：参与设计评审、提前设计测试方案。编码阶段：TDD、代码审查中的测试审查、单元测试覆盖率要求。工具：SonarQube、Pre-commit Hook、PR自动CI。",
+    "category": "测试策略",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "测试左移"
+  },
+  {
+    "title": "如何进行数据库测试？",
+    "content": "请说明主要内容和测试方法。",
+    "answer": "内容：数据完整性、一致性、准确性、存储过程、性能、安全。方法：SQL查询验证、数据对比、数据生成、迁移验证、并发测试。自动化：pytest+SQLAlchemy、DBUnit、Flyway。",
+    "category": "数据库测试",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "数据库测试"
+  },
+  {
+    "title": "如何评估测试覆盖率？",
+    "content": "请说明类型和评估方法。",
+    "answer": "类型：需求覆盖率、用例覆盖率、代码覆盖率(语句/分支/路径)、功能覆盖率。评估：需求追踪矩阵、coverage.py/JaCoCo、代码审查、变异测试。注意：100%覆盖率不等于100%质量。",
+    "category": "测试管理",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "测试覆盖率"
+  },
+  {
+    "title": "如何处理上线前的测试风险？",
+    "content": "请说明常见风险及应对策略。",
+    "answer": "风险：测试时间不足(基于风险的测试+自动化)、缺陷修复不及时(SLA+每日评审)、需求变更频繁(变更影响分析)、环境不稳定(监控+备用环境)、第三方依赖风险(Mock+降级)。原则：预防为主、及时发现、快速响应。",
+    "category": "测试管理",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "风险管理"
+  },
+  {
+    "title": "敏捷开发中如何做测试？",
+    "content": "请说明敏捷测试的特点和实践。",
+    "answer": "特点：持续测试、快速反馈、全员质量、适应变化。实践：Sprint规划参与、每日站会同步、持续集成、探索性测试、回顾会议、DoD完成定义。敏捷测试四象限：Q1技术+支持团队、Q2业务+支持团队、Q3业务+评价产品、Q4技术+评价产品。",
+    "category": "测试管理",
+    "difficulty": "medium",
+    "position_level": "中级",
+    "tags": "敏捷测试"
+  },
+  {
+    "title": "什么是变异测试？",
+    "content": "请解释变异测试的概念和用途。",
+    "answer": "通过人为修改代码(变异)来评估测试用例有效性。如果修改后测试仍通过，说明测试不充分。变异操作：算术运算符替换、条件边界修改、逻辑运算符替换。变异得分>=80%为目标。工具：mutmut(Python)、PITest(Java)、Stryker(JS)。",
+    "category": "代码质量",
+    "difficulty": "hard",
+    "position_level": "高级",
+    "tags": "变异测试"
+  }
+]

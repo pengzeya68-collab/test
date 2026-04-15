@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="admin-layout">
     <!-- 侧边栏 -->
     <el-aside width="240px" class="sidebar">
@@ -149,7 +149,7 @@ const handleCommand = (command) => {
 }
 
 .header {
-  background: white;
+  background: #18181B;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -173,7 +173,7 @@ const handleCommand = (command) => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #606266;
+  color: var(--tm-text-regular);
   padding: 0 10px;
 }
 
@@ -181,6 +181,6 @@ const handleCommand = (command) => {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
 }
 </style>

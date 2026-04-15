@@ -11,7 +11,13 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-# 🔥 强制写死绝对路径！全局统一备份目录
+# 设置UTF-8编码，避免Windows控制台编码问题
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
+# 强制写死绝对路径！全局统一备份目录
 BACKUP_DIR = Path(r"C:\Users\lenovo\Desktop\TestMasterProject\backups")
 # 数据库路径
 DB_PATH = Path(r"C:\Users\lenovo\Desktop\TestMasterProject\instance\testmaster.db")

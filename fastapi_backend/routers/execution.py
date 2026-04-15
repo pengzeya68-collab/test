@@ -4,6 +4,7 @@
 - 保存测试报告
 - 返回执行结果
 """
+import asyncio
 import json
 import time
 from datetime import datetime
@@ -13,7 +14,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from fastapi_backend.core.database import get_db
+from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.models import (
+    User,
     TestPlan,
     TestReport,
     TestReportResult,
@@ -21,7 +24,7 @@ from fastapi_backend.models.models import (
     ApiCase,
 )
 
-router = APIRouter(prefix="/api", tags=["测试执行"])
+router = APIRouter(prefix="/api/v1", tags=["测试执行"])
 
 
 def replace_variables(text: str, variables: dict) -> str:
@@ -39,7 +42,7 @@ def replace_variables(text: str, variables: dict) -> str:
 @router.post("/plans/{plan_id}/execute")
 async def execute_plan(
     plan_id: int,
-    user_id: int = 1,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """执行测试计划并保存报告"""
@@ -66,13 +69,16 @@ async def execute_plan(
         if environment.variables:
             try:
                 env_variables = json.loads(environment.variables)
-            except:
+            except (json.JSONDecodeError, TypeError):
                 env_variables = {}
         if environment.base_url and 'base_url' not in env_variables:
             env_variables['base_url'] = environment.base_url
 
     # 3. 获取计划中的用例
-    case_ids = json.loads(plan.case_ids) if plan.case_ids else []
+    try:
+        case_ids = json.loads(plan.case_ids) if plan.case_ids else []
+    except (json.JSONDecodeError, TypeError):
+        case_ids = []
     if not case_ids:
         return {
             "report_id": None,
@@ -94,7 +100,6 @@ async def execute_plan(
 
     # 4. 创建报告
     report = TestReport(
-        user_id=user_id,
         plan_id=plan.id,
         plan_name=plan.name,
         status='running',
@@ -138,17 +143,20 @@ async def execute_plan(
                     headers = json.loads(case.headers)
                     for key in headers:
                         headers[key] = replace_variables(headers[key], env_variables)
-                except:
+                except (json.JSONDecodeError, TypeError):
                     pass
 
             body = case.body or ''
             if body:
                 body = replace_variables(body, env_variables)
+            # 更新result_data中的request_body为替换后的实际请求体
+            result_data['request_body'] = body
 
             # URL 合法性强制校验
             if '{{' in url or '}}' in url:
                 elapsed = int(time.time() * 1000) - start_time
                 result_data['time_ms'] = elapsed
+                result_data['status_code'] = 400  # 设置状态码为400表示请求错误
                 result_data['success'] = False
                 result_data['error'] = f'环境变量替换失败，URL 中仍存在未替换的占位符: {url}'
                 failed_count += 1
@@ -162,11 +170,11 @@ async def execute_plan(
                     url=case.url,
                     status_code=result_data['status_code'],
                     success=result_data['success'],
-                    time_ms=result_data['time_ms'],
+                    time=result_data['time_ms'],
                     error=result_data['error'],
                     request_headers=result_data['request_headers'],
                     request_body=result_data['request_body'],
-                    response_body=result_data['response_body'],
+                    response=result_data['response_body'],
                     response_headers=result_data['response_headers']
                 )
                 db.add(report_result)
@@ -176,6 +184,7 @@ async def execute_plan(
             if not (url.startswith('http://') or url.startswith('https://')):
                 elapsed = int(time.time() * 1000) - start_time
                 result_data['time_ms'] = elapsed
+                result_data['status_code'] = 400  # 设置状态码为400表示请求错误
                 result_data['success'] = False
                 result_data['error'] = f'生成的 URL 不合法，必须以 http:// 或 https:// 开头: {url}'
                 failed_count += 1
@@ -189,11 +198,11 @@ async def execute_plan(
                     url=case.url,
                     status_code=result_data['status_code'],
                     success=result_data['success'],
-                    time_ms=result_data['time_ms'],
+                    time=result_data['time_ms'],
                     error=result_data['error'],
                     request_headers=result_data['request_headers'],
                     request_body=result_data['request_body'],
-                    response_body=result_data['response_body'],
+                    response=result_data['response_body'],
                     response_headers=result_data['response_headers']
                 )
                 db.add(report_result)
@@ -214,19 +223,18 @@ async def execute_plan(
                 if case.body_type == 'json':
                     try:
                         req_kwargs['json'] = json.loads(body)
-                    except:
+                    except (json.JSONDecodeError, TypeError):
                         req_kwargs['data'] = body
                 else:
                     req_kwargs['data'] = body
 
-            # 发送请求
-            resp = requests.request(**req_kwargs)
+            resp = await asyncio.to_thread(requests.request, **req_kwargs)
             elapsed = int(time.time() * 1000) - start_time
 
             result_data['status_code'] = resp.status_code
             result_data['success'] = 200 <= resp.status_code < 300
             result_data['time_ms'] = elapsed
-            result_data['response_body'] = resp.text[:10000]  # 限制长度
+            result_data['response_body'] = resp.text[:10000]
             result_data['response_headers'] = json.dumps(dict(resp.headers))
 
             if result_data['success']:
@@ -237,6 +245,7 @@ async def execute_plan(
         except Exception as e:
             elapsed = int(time.time() * 1000) - start_time
             result_data['time_ms'] = elapsed
+            result_data['status_code'] = 500  # 设置状态码为500表示服务器错误
             result_data['success'] = False
             result_data['error'] = str(e)
             failed_count += 1
@@ -252,11 +261,11 @@ async def execute_plan(
             url=case.url,
             status_code=result_data['status_code'],
             success=result_data['success'],
-            time_ms=result_data['time_ms'],
+            time=result_data['time_ms'],
             error=result_data['error'],
             request_headers=result_data['request_headers'],
             request_body=result_data['request_body'],
-            response_body=result_data['response_body'],
+            response=result_data['response_body'],
             response_headers=result_data['response_headers']
         )
         db.add(report_result)
@@ -270,7 +279,11 @@ async def execute_plan(
     report.status = 'completed'
     report.executed_at = datetime.utcnow()
 
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="报告保存失败，事务已回滚")
     await db.refresh(report)
 
     # 7. 返回结果
@@ -360,11 +373,11 @@ async def get_report_detail(
                 "url": r.url,
                 "status": r.status_code,
                 "success": r.success,
-                "time": r.time_ms,
+                "time": r.time,
                 "error": r.error,
                 "request_headers": json.loads(r.request_headers) if r.request_headers else {},
                 "request_body": r.request_body,
-                "response": r.response_body,
+                "response": r.response,
                 "response_headers": json.loads(r.response_headers) if r.response_headers else None,
                 "executed_at": r.executed_at
             } for r in results

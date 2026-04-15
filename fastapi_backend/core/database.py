@@ -1,28 +1,35 @@
 """
-数据库连接 - 异步 SQLAlchemy
+Async SQLAlchemy database setup for fastapi_backend.
 """
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# 创建异步引擎（硬编码异步驱动，不受 .env 同步配置影响）
+from fastapi_backend.core.config import settings
+
+
+def _normalize_async_database_url(database_url: str) -> str:
+    if database_url.startswith("sqlite:///"):
+        return database_url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+    return database_url
+
+
 engine = create_async_engine(
-    "sqlite+aiosqlite:///./instance/testmaster.db",
+    _normalize_async_database_url(settings.DATABASE_URL),
     echo=False,
-    connect_args={"check_same_thread": False}  # SQLite 特定配置
+    connect_args={"check_same_thread": False},
+    pool_pre_ping=True,
+    pool_recycle=3600,
 )
 
-# 创建异步会话工厂
 AsyncSessionLocal = sessionmaker(
     engine,
     class_=AsyncSession,
-    expire_on_commit=False
+    expire_on_commit=False,
 )
 
-# 基础模型类
 Base = declarative_base()
 
-# 数据库依赖注入
+
 async def get_db() -> AsyncSession:
-    """获取数据库会话依赖"""
     async with AsyncSessionLocal() as session:
         yield session

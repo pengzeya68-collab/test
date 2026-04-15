@@ -1055,7 +1055,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:5000/api",
+      "value": "http://localhost:5001/api/v1",
       "type": "string",
       "description": "后端接口基础地址"
     },

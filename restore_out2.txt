@@ -1,0 +1,11 @@
+﻿������ linked exercises: 319 ��, IDs: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]...[316, 317, 318, 319, 320]
+����: ['id', 'title', 'description', 'instructions', 'solution', 'difficulty', 'language', 'module', 'category', 'stage', 'knowledge_point', 'time_estimate', 'is_public', 'exercise_type', 'test_cases', 'code_template', 'expected_output', 'created_at', 'updated_at', 'user_id', 'admin_id', 'learning_path_id']
+��ǰ main db linked exercises: 0
+�ָ���: 319 ���²���, 0 ���Ѵ�������, �ܹ� 319 �� linked exercises
+  id=2, lpid=4, title='������ԵĻ���ԭ������Щ��'
+  id=3, lpid=4, title='����������ڰ�����Щ�׶Σ�'
+  id=4, lpid=4, title='�ںв��ԺͰ׺в��Ե�������ʲô��'
+  id=5, lpid=4, title='ʲô�ǲ�����������������������ЩҪ�أ�'
+  id=6, lpid=4, title='������Է�Ϊ�ļ����׶Σ����׶ε���Ҫ������ʲô��'
+
+�ָ���ɣ�

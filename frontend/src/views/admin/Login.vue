@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="admin-login">
     <div class="login-card">
       <div class="login-header">
@@ -52,7 +52,7 @@
         </el-form-item>
       </el-form>
       <div class="login-footer">
-        <el-button type="text" @click="goToFront">返回前台首页</el-button>
+        <el-button link @click="goToFront">返回前台首页</el-button>
       </div>
     </div>
   </div>
@@ -84,7 +84,7 @@ const handleLogin = async () => {
 
       try {
         // 真实请求后端登录接口（baseURL 已经是 /api，不需要重复）
-        const res = await request.post('/login', {
+        const res = await request.post('/auth/login', {
           username: loginForm.value.username,
           password: loginForm.value.password
         });
@@ -142,7 +142,7 @@ const goToFront = () => {
 }
 
 .login-card {
-  background: white;
+  background: #18181B;
   border-radius: 16px;
   padding: 48px;
   width: 100%;
@@ -158,12 +158,12 @@ const goToFront = () => {
 .login-header h1 {
   margin: 0 0 10px 0;
   font-size: 28px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .login-header p {
   margin: 0;
-  color: #909399;
+  color: var(--tm-text-secondary);
   font-size: 14px;
 }
 

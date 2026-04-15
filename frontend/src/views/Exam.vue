@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="exam-page">
     <div class="exam-header">
       <div class="container">
@@ -68,10 +68,10 @@
           <div class="question-header">
             <div class="question-number">第 {{ currentQuestionIndex + 1 }} 题 ({{ currentQuestion.score }}分)</div>
             <el-button 
-              type="text" 
+              link 
               :icon="markedQuestions.includes(currentQuestion.id) ? StarFilled : Star"
               @click="toggleMarkQuestion"
-              :style="{ color: markedQuestions.includes(currentQuestion.id) ? '#e6a23c' : '#909399' }"
+              :style="{ color: markedQuestions.includes(currentQuestion.id) ? '#e6a23c' : 'var(--tm-text-secondary)' }"
             >
               {{ markedQuestions.includes(currentQuestion.id) ? '已标记' : '标记此题' }}
             </el-button>
@@ -89,9 +89,9 @@
             <div v-if="currentQuestion.question_type === 'single_choice'" class="options">
               <el-radio-group v-model="userAnswers[currentQuestion.id]">
                 <el-radio 
-                  :label="String.fromCharCode(65 + index)"
+                  :value="String.fromCharCode(65 + index)"
                   v-for="(option, index) in currentQuestion.options" 
-                  :key="index"
+                  :key="`${currentQuestion.id}-opt-${index}`"
                 >
                   {{ String.fromCharCode(65 + index) }}. {{ option }}
                 </el-radio>
@@ -105,9 +105,9 @@
                 @change="updateMultipleChoiceAnswer"
               >
                 <el-checkbox 
-                  :label="String.fromCharCode(65 + index)"
+                  :value="String.fromCharCode(65 + index)"
                   v-for="(option, index) in currentQuestion.options" 
-                  :key="index"
+                  :key="`${currentQuestion.id}-opt-${index}`"
                 >
                   {{ String.fromCharCode(65 + index) }}. {{ option }}
                 </el-checkbox>
@@ -116,8 +116,10 @@
             
             <!-- 判断题 -->
             <div v-if="currentQuestion.question_type === 'true_false'" class="options">
-              <el-radio v-model="userAnswers[currentQuestion.id]" value="true" label="true">正确</el-radio>
-              <el-radio v-model="userAnswers[currentQuestion.id]" value="false" label="false">错误</el-radio>
+              <el-radio-group v-model="userAnswers[currentQuestion.id]">
+                <el-radio value="true">正确</el-radio>
+                <el-radio value="false">错误</el-radio>
+              </el-radio-group>
             </div>
             
             <!-- 简答题 -->
@@ -242,7 +244,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Timer, Star, StarFilled, CircleCheck, Collection } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/utils/markdown'
 import CodeEditor from '@/components/CodeEditor.vue'
 
 const router = useRouter()
@@ -257,7 +259,7 @@ const userAnswers = ref({})
 const selectedOptions = ref([])
 const markedQuestions = ref([])
 const remainingTime = ref(0)
-const timer = ref(null)
+let examTimer = null
 const showSubmitConfirm = ref(false)
 const showTimeWarning = ref(false)
 const submitting = ref(false)
@@ -286,8 +288,9 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  if (timer.value) {
-    clearInterval(timer.value)
+  if (examTimer) {
+    clearInterval(examTimer)
+    examTimer = null
   }
 })
 
@@ -323,21 +326,20 @@ const startTimer = () => {
   // 将分钟转换为秒
   remainingTime.value = remainingTime.value * 60
   
-  timer.value = setInterval(() => {
+  examTimer = setInterval(() => {
     remainingTime.value -= 1
     
-    // 10分钟提醒（600秒）
     if (remainingTime.value === 600) {
       showTimeWarning.value = true
     }
     
-    // 时间到自动提交
     if (remainingTime.value <= 0) {
-      clearInterval(timer.value)
+      clearInterval(examTimer)
+      examTimer = null
       ElMessage.warning('考试时间已到，系统将自动提交')
       submitExam()
     }
-  }, 1000) // 每秒减1
+  }, 1000)
 }
 
 const formatTime = (seconds) => {
@@ -361,9 +363,6 @@ const getQuestionTypeText = (type) => {
   return map[type] || type
 }
 
-const renderMarkdown = (content) => {
-  return marked(content)
-}
 
 const jumpToQuestion = (index) => {
   // 保存当前多选题的答案
@@ -452,13 +451,13 @@ const submitExam = async () => {
 <style scoped>
 .exam-page {
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background-color: var(--tm-bg-elevated);
   padding-bottom: 100px;
 }
 
 .exam-header {
-  background: white;
-  border-bottom: 1px solid #e4e7ed;
+  background: #18181B;
+  border-bottom: 1px solid var(--tm-border-color);
   padding: 16px 0;
   position: sticky;
   top: 0;
@@ -483,7 +482,7 @@ const submitExam = async () => {
 .exam-title {
   font-size: 24px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin: 0 0 8px 0;
 }
 
@@ -491,7 +490,7 @@ const submitExam = async () => {
   display: flex;
   gap: 24px;
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .timer {
@@ -505,7 +504,7 @@ const submitExam = async () => {
   margin-bottom: 8px;
   font-size: 16px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .time-text {
@@ -520,7 +519,7 @@ const submitExam = async () => {
 }
 
 .question-nav {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   padding: 20px;
   height: fit-content;
@@ -531,7 +530,7 @@ const submitExam = async () => {
 .nav-header {
   font-size: 16px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid #f0f2f5;
@@ -548,12 +547,12 @@ const submitExam = async () => {
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-regular);
   cursor: pointer;
   transition: all 0.3s ease;
   border: 2px solid transparent;
@@ -595,15 +594,15 @@ const submitExam = async () => {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .legend-dot {
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  background: #f5f7fa;
-  border: 2px solid #dcdfe6;
+  background: var(--tm-bg-elevated);
+  border: 2px solid var(--tm-border-color);
 }
 
 .legend-dot.answered {
@@ -617,7 +616,7 @@ const submitExam = async () => {
 }
 
 .question-content {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   padding: 32px;
   min-height: 500px;
@@ -635,7 +634,7 @@ const submitExam = async () => {
 .question-number {
   font-size: 18px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .question-body {
@@ -649,7 +648,7 @@ const submitExam = async () => {
 .question-text {
   font-size: 16px;
   line-height: 2;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin-bottom: 24px;
 }
 
@@ -680,8 +679,8 @@ const submitExam = async () => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: white;
-  border-top: 1px solid #e4e7ed;
+  background: #18181B;
+  border-top: 1px solid var(--tm-border-color);
   padding: 16px 0;
   z-index: 100;
   box-shadow: 0 -4px 20px 0 rgba(0, 0, 0, 0.1);
@@ -707,7 +706,7 @@ const submitExam = async () => {
 }
 
 .info-item .label {
-  color: #909399;
+  color: var(--tm-text-secondary);
 }
 
 .info-item .value {
@@ -728,14 +727,14 @@ const submitExam = async () => {
 }
 
 .info-item .total {
-  color: #909399;
+  color: var(--tm-text-secondary);
   font-size: 14px;
 }
 
 .divider {
   width: 1px;
   height: 24px;
-  background: #e4e7ed;
+  background: var(--tm-border-color);
 }
 
 .submit-actions {
@@ -775,7 +774,7 @@ const submitExam = async () => {
 }
 
 .question-text code {
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;

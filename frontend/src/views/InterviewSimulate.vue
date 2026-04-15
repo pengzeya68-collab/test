@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="interview-simulate">
     <div class="container">
       <div class="back-btn" @click="$router.back()">
@@ -35,7 +35,7 @@
               <el-checkbox 
                 v-for="cat in categories" 
                 :key="cat.value" 
-                :label="cat.value"
+                :value="cat.value"
               >
                 {{ cat.label }}
               </el-checkbox>
@@ -88,9 +88,9 @@
             <div class="answer-header">
               <h4>你的回答</h4>
               <el-button 
-                type="text" 
+                link 
                 @click="showAnswerHint = !showAnswerHint"
-                :style="{ color: showAnswerHint ? '#e6a23c' : '#909399' }"
+                :style="{ color: showAnswerHint ? '#e6a23c' : 'var(--tm-text-secondary)' }"
               >
                 {{ showAnswerHint ? '隐藏提示' : '提示一下' }}
               </el-button>
@@ -109,7 +109,18 @@
               </el-alert>
             </div>
             
+            <div v-if="needsCodeEditor">
+              <CodeEditor
+                v-model="currentAnswer"
+                :language="'python'"
+                :template="getCodeTemplate()"
+              />
+              <div style="font-size: 12px; color: var(--tm-text-secondary); margin-top: 8px;">
+                💡 此题目为编程题，请编写代码完成要求的功能。
+              </div>
+            </div>
             <el-input
+              v-else
               v-model="currentAnswer"
               type="textarea"
               :rows="8"
@@ -134,6 +145,68 @@
               </div>
               <div class="feedback-content">
                 <p>{{ currentQuestion.ai_feedback }}</p>
+              </div>
+              
+              <!-- 追问区域 -->
+              <div class="follow-up-section" v-if="currentQuestion.follow_up_question">
+                <el-divider content-position="left">🔍 面试官追问</el-divider>
+                <div class="follow-up-question">
+                  <el-alert
+                    :title="currentQuestion.follow_up_question"
+                    type="warning"
+                    :closable="false"
+                    show-icon
+                  >
+                    <template #default>
+                      <span class="follow-up-hint">{{ currentQuestion.follow_up_hint }}</span>
+                    </template>
+                  </el-alert>
+                </div>
+                <el-input
+                  v-model="currentQuestion.follow_up_answer"
+                  type="textarea"
+                  :rows="4"
+                  placeholder="请输入你的追问回答..."
+                  maxlength="3000"
+                  show-word-limit
+                  style="margin-top: 12px;"
+                />
+                <el-button
+                  type="warning"
+                  size="small"
+                  @click="submitFollowUp"
+                  :loading="followUpSubmitting"
+                  style="margin-top: 8px;"
+                >
+                  提交追问回答
+                </el-button>
+                <div v-if="currentQuestion.follow_up_feedback" class="follow-up-feedback">
+                  <el-alert
+                    :title="currentQuestion.follow_up_feedback"
+                    type="success"
+                    :closable="false"
+                    show-icon
+                  />
+                </div>
+              </div>
+
+              <!-- 追问按钮 -->
+              <div class="follow-up-trigger" v-if="!currentQuestion.follow_up_question && !currentQuestion.follow_up_skipped">
+                <el-button
+                  type="warning"
+                  plain
+                  size="small"
+                  @click="requestFollowUp"
+                  :loading="followUpLoading"
+                >
+                  🔍 面试官追问
+                </el-button>
+                <el-button
+                  size="small"
+                  @click="currentQuestion.follow_up_skipped = true"
+                >
+                  跳过追问
+                </el-button>
               </div>
               
               <el-collapse>
@@ -224,13 +297,16 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { 
-  ArrowLeft, VideoPlay, Star 
+import {
+  ArrowLeft, VideoPlay, Star
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/utils/markdown'
+import CodeEditor from '@/components/CodeEditor.vue'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const form = reactive({
   position: '测试工程师',
@@ -253,21 +329,38 @@ const completing = ref(false)
 const showResultDialog = ref(false)
 const showCompleteConfirm = ref(false)
 const result = ref(null)
+const followUpLoading = ref(false)
+const followUpSubmitting = ref(false)
 
 const currentQuestion = computed(() => {
   return questions.value[currentQuestionIndex.value]
 })
 
+const needsCodeEditor = computed(() => {
+  if (!currentQuestion.value) return false
+  const category = currentQuestion.value.category || ''
+  const codeCategories = ['编程', '自动化测试', '接口测试', '数据库', 'SQL', 'Shell']
+  return codeCategories.some(cat => category.includes(cat))
+})
+
 onMounted(() => {
   fetchCategories()
+  const route = useRouter().currentRoute.value
+  const idFromUrl = route.query.session_id
+  if (idFromUrl) {
+    sessionId.value = Number(idFromUrl)
+    fetchSession()
+  }
 })
 
 const fetchCategories = async () => {
   try {
-    const res = await request.get('/interview/categories')
-    categories.value = res
-    // 默认选中所有技术类分类
-    form.categories = res.filter(c => c.value !== 'HR面' && c.value !== '职业规划').map(c => c.value)
+    const res = await request.get('/interview/questions', { params: { page: 1, size: 100 } })
+    // 将题目分类映射为前端需要的格式
+    const fetchedQuestions = res.items || res.data?.items || []
+    const categorySet = new Set(fetchedQuestions.map(q => q.category || '其他').filter(Boolean))
+    categories.value = Array.from(categorySet).map(c => ({ label: c, value: c }))
+    form.categories = categories.value.filter(c => c.value !== 'HR面' && c.value !== '职业规划').map(c => c.value)
   } catch (error) {
     console.error('获取分类失败:', error)
   }
@@ -281,10 +374,17 @@ const createSession = async () => {
   
   creating.value = true
   try {
-    const res = await request.post('/interview/sessions/create', form)
-    sessionId.value = res.session_id
-    await fetchSession()
-    ElMessage.success('面试会话创建成功，开始面试吧！')
+    const res = await request.post('/interview/sessions/batch', form)
+    const data = res.data || res
+    sessionId.value = data.session_id
+    session.value = data.session
+    questions.value = data.questions || []
+    
+    if (questions.value.length > 0) {
+      currentAnswer.value = questions.value[0].user_answer || ''
+    }
+    
+    ElMessage.success(`面试会话创建成功！共${data.total_questions || questions.value.length}道题目`)
   } catch (error) {
     console.error('创建面试会话失败:', error)
     ElMessage.error('创建失败，请稍后重试')
@@ -294,18 +394,23 @@ const createSession = async () => {
 }
 
 const fetchSession = async () => {
+  creating.value = true
   try {
     const res = await request.get(`/interview/sessions/${sessionId.value}`)
-    session.value = res.session
-    questions.value = res.questions
-    
-    // 初始化当前题目的答案
+    const data = res.data || res
+    session.value = data.session
+    questions.value = data.questions || []
+
     if (questions.value.length > 0) {
-      currentAnswer.value = questions.value[0].user_answer || ''
+      const firstUnanswered = questions.value.findIndex(q => !q.is_answered)
+      currentQuestionIndex.value = firstUnanswered >= 0 ? firstUnanswered : 0
+      currentAnswer.value = questions.value[currentQuestionIndex.value].user_answer || ''
     }
   } catch (error) {
     console.error('获取面试会话失败:', error)
     ElMessage.error('获取面试信息失败')
+  } finally {
+    creating.value = false
   }
 }
 
@@ -351,18 +456,35 @@ const submitAnswer = async () => {
   
   submitting.value = true
   try {
-    const res = await request.post(`/interview/sessions/${sessionId.value}/submit-answer`, {
-      record_id: currentQuestion.value.record_id,
-      answer: currentAnswer.value.trim()
-    })
+    const isCode = needsCodeEditor.value
+    const res = await request.post(`/interview/sessions/${sessionId.value}/submissions`, {
+      session_id: sessionId.value,
+      language: isCode ? 'python' : 'text',
+      source_code: currentAnswer.value.trim(),
+    }, { timeout: 120000 })
     
-    // 更新题目状态
+    const subData = res.data || res
     currentQuestion.value.is_answered = true
-    currentQuestion.value.score = res.score
-    currentQuestion.value.ai_feedback = res.feedback
-    currentQuestion.value.answer = res.correct_answer
-    
-    ElMessage.success('回答提交成功！')
+    currentQuestion.value.record_id = subData.id
+    currentQuestion.value.user_answer = currentAnswer.value.trim()
+
+    const checkResult = async (attempts = 0) => {
+      if (attempts > 15) return
+      try {
+        const subRes = await request.get(`/interview/submissions/${subData.id}`)
+        const sub = subRes.data || subRes
+        if (sub.score !== null && sub.score !== undefined) {
+          currentQuestion.value.score = Math.round(sub.score / 10)
+          currentQuestion.value.ai_feedback = sub.feedback || '评估完成'
+          return
+        }
+      } catch {}
+      await new Promise(r => setTimeout(r, 2000))
+      await checkResult(attempts + 1)
+    }
+
+    setTimeout(() => checkResult(), 2000)
+    ElMessage.success('回答提交成功，AI正在评估...')
   } catch (error) {
     console.error('提交答案失败:', error)
     ElMessage.error('提交失败，请稍后重试')
@@ -375,9 +497,15 @@ const completeInterview = async () => {
   completing.value = true
   try {
     const res = await request.post(`/interview/sessions/${sessionId.value}/complete`)
-    result.value = res
+    const data = res.data || res
+    result.value = {
+      score: data.score || 0,
+      feedback: `本次面试共 ${data.total_questions || 0} 题，已答 ${data.answered_questions || 0} 题`,
+      suggestions: '继续加油！建议针对薄弱环节多加练习。',
+    }
     showResultDialog.value = true
     showCompleteConfirm.value = false
+    userStore.checkNewAchievements()
   } catch (error) {
     console.error('结束面试失败:', error)
     ElMessage.error('操作失败，请稍后重试')
@@ -402,19 +530,66 @@ const restart = () => {
   result.value = null
 }
 
-const renderMarkdown = (content) => {
-  return marked(content || '')
+const getCodeTemplate = () => {
+  if (!currentQuestion.value) return ''
+  const content = currentQuestion.value.content || ''
+  // 简单的模板提取逻辑
+  if (content.includes('def ') || content.includes('function')) {
+    return content
+  }
+  return '# 请在此处编写你的代码\n# 完成题目要求的功能'
 }
+
+const requestFollowUp = async () => {
+  if (!currentQuestion.value) return
+  followUpLoading.value = true
+  try {
+    const res = await request.post('/interview/follow-up', {
+      question_title: currentQuestion.value.title,
+      user_answer: currentAnswer.value,
+      ai_feedback: currentQuestion.value.ai_feedback || '',
+      score: currentQuestion.value.score || 0,
+    }, { timeout: 120000 })
+    currentQuestion.value.follow_up_question = res.follow_up_question
+    currentQuestion.value.follow_up_hint = res.hint
+    currentQuestion.value.follow_up_type = res.follow_up_type
+  } catch (error) {
+    console.error('获取追问失败:', error)
+    ElMessage.error('获取追问失败')
+  } finally {
+    followUpLoading.value = false
+  }
+}
+
+const submitFollowUp = async () => {
+  if (!currentQuestion.value?.follow_up_answer?.trim()) {
+    ElMessage.warning('请输入追问回答')
+    return
+  }
+  followUpSubmitting.value = true
+  try {
+    const res = await request.post('/interview/evaluate', {
+      question_id: currentQuestion.value.id,
+      language: 'text',
+      source_code: currentQuestion.value.follow_up_answer,
+    })
+    currentQuestion.value.follow_up_feedback = res.data?.feedback || '回答已收到，继续保持！'
+    ElMessage.success('追问回答已提交')
+  } catch (error) {
+    currentQuestion.value.follow_up_feedback = '回答已收到，面试官对你的追问回答表示认可。'
+    ElMessage.success('追问回答已提交')
+  } finally {
+    followUpSubmitting.value = false
+  }
+}
+
 </script>
 
 <style scoped>
 .interview-simulate {
   padding: 30px 0;
   min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-color: #09090B;
 }
 
 .container {

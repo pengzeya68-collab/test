@@ -45,7 +45,7 @@ frontend/
 ```
 
 ## 🔧 配置说明
-后端 API 代理配置在 `vite.config.js` 中，默认代理到 `http://localhost:5000`，如需修改请调整 proxy 配置。
+后端 API 代理配置在 `vite.config.js` 中，默认代理到 `http://localhost:5001`，如需修改请调整 proxy 配置。
 
 ## 📋 页面功能
 - **首页**: 平台介绍和功能展示

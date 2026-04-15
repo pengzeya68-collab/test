@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="post-detail">
     <div class="container">
       <div class="back-btn" @click="goBack">
@@ -59,7 +59,7 @@
             <el-button 
               :type="post.is_liked ? 'danger' : 'default'" 
               @click="toggleLike"
-              :icon="GoodFilled"
+              :icon="StarFilled"
             >
               {{ post.like_count }} 点赞
             </el-button>
@@ -127,7 +127,7 @@
                     :class="{ active: comment.is_liked }"
                     @click="toggleCommentLike(comment)"
                   >
-                    <el-icon size="14"><GoodFilled /></el-icon>
+                    <el-icon size="14"><StarFilled /></el-icon>
                     <span>{{ comment.like_count }}</span>
                   </div>
                   <div class="action-item" @click="showReplyBox(comment)">
@@ -141,7 +141,7 @@
                 <p>{{ comment.content }}</p>
               </div>
               
-              <!-- 回复输入框 -->
+              <!-- 回复输入�?-->
               <div class="reply-input" v-if="replyToComment === comment.id">
                 <el-input
                   v-model="replyContent"
@@ -180,7 +180,7 @@
                         :class="{ active: reply.is_liked }"
                         @click="toggleCommentLike(reply)"
                       >
-                        <el-icon size="12"><GoodFilled /></el-icon>
+                        <el-icon size="12"><StarFilled /></el-icon>
                         <span>{{ reply.like_count }}</span>
                       </div>
                     </div>
@@ -214,7 +214,7 @@ import {
   ArrowLeft, StarFilled, ChatDotRound, Share 
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/utils/markdown'
 
 const router = useRouter()
 const route = useRoute()
@@ -230,9 +230,6 @@ const submittingComment = ref(false)
 const submittingReply = ref(false)
 const replyToComment = ref(null)
 
-const renderMarkdown = (content) => {
-  return marked(content)
-}
 
 onMounted(() => {
   fetchPostDetail()
@@ -370,7 +367,7 @@ const toggleCommentLike = async (comment) => {
 .post-detail {
   padding: 30px 0;
   min-height: calc(100vh - 60px);
-  background-color: #f5f7fa;
+  background-color: var(--tm-bg-elevated);
 }
 
 .container {
@@ -384,13 +381,13 @@ const toggleCommentLike = async (comment) => {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: white;
+  background: #18181B;
   border-radius: 8px;
   margin-bottom: 20px;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 14px;
-  color: #606266;
+  color: var(--tm-text-regular);
   box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08);
 }
 
@@ -400,7 +397,7 @@ const toggleCommentLike = async (comment) => {
 }
 
 .post-container {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -418,7 +415,7 @@ const toggleCommentLike = async (comment) => {
 .post-title {
   font-size: 28px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin: 0 0 20px 0;
   line-height: 1.6;
 }
@@ -439,13 +436,13 @@ const toggleCommentLike = async (comment) => {
 .author-name {
   font-size: 16px;
   font-weight: 500;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin-bottom: 4px;
 }
 
 .post-time {
   font-size: 12px;
-  color: #909399;
+  color: var(--tm-text-secondary);
 }
 
 .meta-right {
@@ -464,7 +461,7 @@ const toggleCommentLike = async (comment) => {
   margin-bottom: 32px;
   line-height: 2;
   font-size: 15px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .post-actions {
@@ -481,7 +478,7 @@ const toggleCommentLike = async (comment) => {
 .section-title {
   font-size: 20px;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin: 0 0 24px 0;
 }
 
@@ -530,13 +527,13 @@ const toggleCommentLike = async (comment) => {
 .comment-author {
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin-bottom: 4px;
 }
 
 .comment-time {
   font-size: 12px;
-  color: #909399;
+  color: var(--tm-text-secondary);
 }
 
 .comment-actions {
@@ -549,7 +546,7 @@ const toggleCommentLike = async (comment) => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -566,7 +563,7 @@ const toggleCommentLike = async (comment) => {
   margin-left: 48px;
   margin-bottom: 12px;
   line-height: 1.8;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .reply-input {
@@ -607,12 +604,12 @@ const toggleCommentLike = async (comment) => {
 .reply-author {
   font-size: 13px;
   font-weight: 500;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .reply-time {
   font-size: 11px;
-  color: #909399;
+  color: var(--tm-text-secondary);
 }
 
 .reply-actions {
@@ -623,7 +620,7 @@ const toggleCommentLike = async (comment) => {
 .reply-content {
   font-size: 13px;
   line-height: 1.8;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .empty-state {
@@ -631,7 +628,7 @@ const toggleCommentLike = async (comment) => {
 }
 
 .loading-state {
-  background: white;
+  background: #18181B;
   padding: 40px;
   border-radius: 12px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
@@ -650,19 +647,19 @@ const toggleCommentLike = async (comment) => {
 .markdown-content h6 {
   margin: 24px 0 16px 0;
   font-weight: bold;
-  color: #303133;
+  color: var(--tm-text-primary);
   line-height: 1.5;
 }
 
 .markdown-content h1 {
   font-size: 24px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--tm-border-color);
   padding-bottom: 8px;
 }
 
 .markdown-content h2 {
   font-size: 20px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--tm-border-color);
   padding-bottom: 8px;
 }
 
@@ -689,7 +686,7 @@ const toggleCommentLike = async (comment) => {
 }
 
 .markdown-content code {
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -716,8 +713,8 @@ const toggleCommentLike = async (comment) => {
   border-left: 4px solid #409eff;
   padding-left: 16px;
   margin: 16px 0;
-  color: #606266;
-  background: #f5f7fa;
+  color: var(--tm-text-regular);
+  background: var(--tm-bg-elevated);
   padding: 12px 16px;
   border-radius: 0 8px 8px 0;
 }
@@ -730,13 +727,13 @@ const toggleCommentLike = async (comment) => {
 
 .markdown-content th,
 .markdown-content td {
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--tm-border-color);
   padding: 8px 12px;
   text-align: left;
 }
 
 .markdown-content th {
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   font-weight: bold;
 }
 

@@ -44,7 +44,7 @@
                 :class="{ active: currentSort === 'latest' }"
                 @click="currentSort = 'latest'; fetchPosts()"
               >
-                <el-icon size="16"><Time /></el-icon>
+                <el-icon size="16"><Timer /></el-icon>
                 <span>最新发布</span>
               </div>
               <div 
@@ -52,7 +52,7 @@
                 :class="{ active: currentSort === 'hot' }"
                 @click="currentSort = 'hot'; fetchPosts()"
               >
-                <el-icon size="16"><Fire /></el-icon>
+                <el-icon size="16"><Promotion /></el-icon>
                 <span>热门推荐</span>
               </div>
               <div 
@@ -157,7 +157,7 @@
                   <span>{{ post.view_count }}</span>
                 </div>
                 <div class="stat-item" :class="{ active: post.is_liked }" @click.stop="toggleLike(post)">
-                  <el-icon size="14"><GoodFilled /></el-icon>
+                  <el-icon size="14"><StarFilled /></el-icon>
                   <span>{{ post.like_count }}</span>
                 </div>
                 <div class="stat-item">
@@ -294,9 +294,9 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { 
-  Edit, Star, Search, View, 
-  ChatDotRound, StarFilled
+import {
+  Edit, Star, Search, View,
+  ChatDotRound, StarFilled, Timer, Promotion
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
@@ -516,10 +516,7 @@ const submitPost = async () => {
 .community {
   padding: 30px 0;
   min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-color: #09090B;
 }
 
 .container {
@@ -774,10 +771,10 @@ const submitPost = async () => {
 }
 
 .stats-card {
-  background: white;
+  background: #18181B;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .stats-grid {
@@ -789,20 +786,20 @@ const submitPost = async () => {
 .stat-card {
   text-align: center;
   padding: 16px 8px;
-  background: #fafafa;
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
 }
 
 .stat-number {
   font-size: 24px;
   font-weight: bold;
-  color: #409eff;
+  color: #C084FC;
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 12px;
-  color: #909399;
+  color: #71717A;
 }
 
 .user-list {
@@ -820,13 +817,13 @@ const submitPost = async () => {
 .user-info .username {
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: #FAFAFA;
   margin-bottom: 2px;
 }
 
 .user-info .user-desc {
   font-size: 12px;
-  color: #909399;
+  color: #71717A;
 }
 
 .pagination-container {
@@ -836,10 +833,10 @@ const submitPost = async () => {
 }
 
 .empty-state, .loading-state {
-  background: white;
+  background: #18181B;
   padding: 60px 20px;
   border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 @media (max-width: 1200px) {

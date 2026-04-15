@@ -1,0 +1,6 @@
+﻿Port 5000: closed
+Port 5001: OPEN
+Port 5002: closed
+Port 5173: OPEN
+Port 8000: OPEN
+Port 3000: closed

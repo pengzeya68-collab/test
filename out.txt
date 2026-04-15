@@ -1,0 +1,21 @@
+﻿=== learning_paths ===
+py : ERROR: no such table: learning_path_items
+所在位置 行:1 字符: 164
++ ... utEncoding = [System.Text.Encoding]::UTF8; py show_lp.py 2>&1 | Out-F ...
++                                                ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ERROR: no such ...ning_path_items:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(25, '������Ի�������')
+(26, 'SQL���ݿ����')
+(27, '���������������֪ʶ')
+(28, 'Linux��������')
+(29, '���Լƻ���д����Ŀ����')
+(30, '�ӿڲ��Ի���')
+(31, 'Python��̻���')
+(32, 'UI�Զ������� - Selenium')
+(33, '�ӿ��Զ������� - Requests+Pytest')
+(34, '���ܲ��� - JMeter��Locust')
+(35, '��ȫ���Ի���')
+(36, 'AI���������ܻ�')
+(37, '����ƽ̨������DevOps')

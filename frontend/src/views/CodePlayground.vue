@@ -75,27 +75,78 @@
 
           <!-- 代码编辑器 -->
           <div class="editor-section">
-            <CodeEditor 
-              v-model="userCode" 
+            <CodeEditor
+              v-model="userCode"
               :language="currentLanguage"
               ref="editorRef"
+              @run="handleCodeRun"
             />
           </div>
 
-          <!-- 提交结果 -->
+          <!-- 执行结果 -->
           <div class="result-section" v-if="submitResult">
-            <el-alert 
-              :title="submitResult.is_correct ? '🎉 答案正确！' : '❌ 答案不正确'"
-              :type="submitResult.is_correct ? 'success' : 'error'"
+            <el-alert
+              :title="submitResult.success ? '🎉 执行成功！' : '❌ 执行失败'"
+              :type="submitResult.success ? 'success' : 'error'"
               show-icon
               :closable="false"
             >
               <template #default>
-                <p>{{ submitResult.message }}</p>
-                <div v-if="submitResult.execution" class="execution-result">
+                <div v-if="submitResult.stdout" class="execution-result">
                   <p><strong>运行输出：</strong></p>
-                  <pre>{{ submitResult.execution.stdout }}</pre>
-                  <pre v-if="submitResult.execution.stderr" class="error">{{ submitResult.execution.stderr }}</pre>
+                  <pre>{{ submitResult.stdout }}</pre>
+                </div>
+                <div v-if="submitResult.stderr" class="execution-result">
+                  <p><strong>错误输出：</strong></p>
+                  <pre class="error">{{ submitResult.stderr }}</pre>
+                </div>
+
+                <!-- AI评估按钮 -->
+                <div class="ai-evaluation-section" v-if="submitResult.success">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="getAIEvaluation"
+                    :loading="aiLoading"
+                    :disabled="aiLoading"
+                  >
+                    <el-icon><ChatLineRound /></el-icon>
+                    {{ aiLoading ? 'AI评估中...' : '获取AI点评' }}
+                  </el-button>
+                </div>
+              </template>
+            </el-alert>
+          </div>
+
+          <!-- AI评估结果 -->
+          <div class="result-section" v-if="aiEvaluationResult">
+            <el-alert
+              title="🤖 AI导师点评"
+              type="info"
+              show-icon
+              :closable="false"
+            >
+              <template #default>
+                <div class="ai-evaluation-result">
+                  <div class="ai-score">
+                    <strong>评分：</strong>
+                    <span class="score-text">{{ aiEvaluationResult.score }}分 / 100分</span>
+                    <el-progress
+                      :percentage="aiEvaluationResult.score"
+                      :stroke-width="12"
+                      :width="120"
+                      :show-text="false"
+                      style="margin-left: 12px;"
+                    />
+                  </div>
+                  <div class="ai-feedback">
+                    <strong>反馈：</strong>
+                    <p>{{ aiEvaluationResult.feedback }}</p>
+                  </div>
+                  <div v-if="aiEvaluationResult.optimized_code" class="ai-optimized-code">
+                    <strong>优化建议：</strong>
+                    <pre>{{ aiEvaluationResult.optimized_code }}</pre>
+                  </div>
                 </div>
               </template>
             </el-alert>
@@ -114,6 +165,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { ChatLineRound } from '@element-plus/icons-vue'
 import CodeEditor from '@/components/CodeEditor.vue'
 import request from '@/utils/request'
 
@@ -124,6 +176,9 @@ const userCode = ref('')
 const currentLanguageFilter = ref('')
 const submitResult = ref(null)
 const editorRef = ref(null)
+// AI评估相关状态
+const aiEvaluationResult = ref(null)
+const aiLoading = ref(false)
 
 // 筛选后的习题列表
 const filteredExercises = computed(() => {
@@ -150,8 +205,10 @@ const fetchExercises = async () => {
   try {
     // 获取全部代码习题，前端做筛选
     const res = await request.get('/exercises')
+    // 确保 res 是一个数组
+    const exerciseList = Array.isArray(res) ? res : (res.data || [])
     // 过滤出代码类型的习题
-    exercises.value = res.filter(ex => ex.exercise_type === 'code' || ex.category?.includes('代码') || ex.category?.includes('编程'))
+    exercises.value = exerciseList.filter(ex => ex.exercise_type === 'code' || ex.category?.includes('代码') || ex.category?.includes('编程'))
   } catch (error) {
     console.error('获取习题失败:', error)
     ElMessage.error('获取习题失败')
@@ -163,7 +220,43 @@ const fetchExercises = async () => {
 const selectExercise = (exercise) => {
   selectedExercise.value = exercise
   submitResult.value = null
+  aiEvaluationResult.value = null
   userCode.value = exercise.code_template || ''
+}
+
+const handleCodeRun = (event) => {
+  // 保存执行结果
+  submitResult.value = event.result
+  // 重置AI评估结果
+  aiEvaluationResult.value = null
+}
+
+const getAIEvaluation = async () => {
+  if (!selectedExercise.value || !userCode.value.trim()) {
+    ElMessage.warning('请先执行代码')
+    return
+  }
+
+  aiLoading.value = true
+  try {
+    const res = await request.post('/exercise/evaluate', {
+      exercise_id: selectedExercise.value.id.toString(),
+      language: currentLanguage.value,
+      source_code: userCode.value,
+      exercise_description: selectedExercise.value.description,
+      test_cases: selectedExercise.value.test_cases,
+      expected_output: selectedExercise.value.expected_output
+    })
+
+    // FastAPI 返回 {success, data, message}
+    aiEvaluationResult.value = res.data || res
+    ElMessage.success('AI评估完成')
+  } catch (error) {
+    console.error('AI评估失败:', error)
+    ElMessage.error('AI评估失败，请稍后重试')
+  } finally {
+    aiLoading.value = false
+  }
 }
 
 const getDifficultyTagType = (difficulty) => {
@@ -189,10 +282,7 @@ const getDifficultyText = (difficulty) => {
 .code-playground {
   padding: 30px 0;
   min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-color: #09090B;
 }
 
 .container {
@@ -407,6 +497,55 @@ const getDifficultyText = (difficulty) => {
   border: var(--tm-card-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+.ai-evaluation-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--tm-border-light);
+}
+
+.ai-evaluation-result {
+  margin-top: 12px;
+}
+
+.ai-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.score-text {
+  font-weight: bold;
+  color: var(--tm-color-primary);
+}
+
+.ai-feedback {
+  margin-bottom: 16px;
+}
+
+.ai-feedback p {
+  margin: 8px 0 0 0;
+  padding: 12px;
+  background: rgba(var(--tm-bg-page-rgb), 0.5);
+  border-radius: 6px;
+  line-height: 1.6;
+}
+
+.ai-optimized-code {
+  margin-top: 16px;
+}
+
+.ai-optimized-code pre {
+  background: rgba(var(--tm-bg-page-rgb), 0.5);
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 4px 0;
 }
 
 @media (max-width: 1200px) {

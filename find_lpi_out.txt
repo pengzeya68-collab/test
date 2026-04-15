@@ -1,0 +1,7 @@
+﻿FAIL /api/v1/learning-paths/25: HTTP Error 404: Not Found
+OK /api/v1/learning-paths/learning-paths/25
+  title='������Ի�������', exercises_count=5
+  ex id=324, title='������ԵĶ�����Ŀ��'
+  ex id=325, title='����ԭ�� - ɱ������'
+  ex id=326, title='�ںв�����׺в��Ե�����'
+FAIL /api/v1/learning-paths/learning-paths?stage=1: 'list' object has no attribute 'get'

@@ -232,8 +232,8 @@
                 <el-form-item label="正确答案">
                   <!-- 判断题 -->
                   <el-radio-group v-if="q.question_type === 'true_false'" v-model="q.correct_answer" size="small">
-                    <el-radio value="true" label="true">正确</el-radio>
-                    <el-radio value="false" label="false">错误</el-radio>
+                    <el-radio value="true">正确</el-radio>
+                    <el-radio value="false">错误</el-radio>
                   </el-radio-group>
                   <!-- 单选题 -->
                   <el-select v-else-if="q.question_type === 'single_choice'" v-model="q.correct_answer" size="small" style="width: 200px;">
@@ -246,7 +246,7 @@
                   </el-select>
                   <!-- 多选题 -->
                   <el-checkbox-group v-else-if="q.question_type === 'multiple_choice'" v-model="q.correctAnswerArr" size="small">
-                    <el-checkbox v-for="(opt, oi) in q.options" :key="oi" :label="String.fromCharCode(65+oi)">
+                    <el-checkbox v-for="(opt, oi) in q.options" :key="oi" :value="String.fromCharCode(65+oi)">
                       {{ String.fromCharCode(65+oi) }}. {{ opt }}
                     </el-checkbox>
                   </el-checkbox-group>

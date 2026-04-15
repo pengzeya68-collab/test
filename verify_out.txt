@@ -1,0 +1,20 @@
+﻿=== �ָ�����֤ ===
+�� learning_path_id �� exercises: 319 ��
+
+--- exercises �� learning_path_id ���� ---
+  LP id=25, title='������Ի�������', exercises=0
+  LP id=26, title='SQL���ݿ����', exercises=0
+  LP id=27, title='���������������֪ʶ', exercises=0
+  LP id=28, title='Linux��������', exercises=0
+  LP id=29, title='���Լƻ���д����Ŀ����', exercises=0
+  LP id=30, title='�ӿڲ��Ի���', exercises=0
+  LP id=31, title='Python��̻���', exercises=0
+  LP id=32, title='UI�Զ������� - Selenium', exercises=0
+  LP id=33, title='�ӿ��Զ������� - Requests+Pytest', exercises=0
+  LP id=34, title='���ܲ��� - JMeter��Locust', exercises=0
+  LP id=35, title='��ȫ���Ի���', exercises=0
+  LP id=36, title='AI���������ܻ�', exercises=0
+  LP id=37, title='����ƽ̨������DevOps', exercises=0
+
+--- posts �ޱ������� ---
+���� posts: 0 ��: []

@@ -55,7 +55,8 @@
           style="width: 100%"
           stripe
           highlight-current-row
-          :header-cell-style="{ background: '#fafafa', color: '#1d2129', fontWeight: '600' }"
+          row-key="id"
+          class="modern-table"
           @row-dblclick="handleRowDblClick"
         >
           <el-table-column prop="method" label="请求方法" width="100">
@@ -76,15 +77,15 @@
           <el-table-column label="操作" width="160" fixed="right">
             <template #default="{ row }">
               <div style="display: flex; gap: 12px; align-items: center;">
-                <el-tooltip content="运行用例" placement="top">
+                <el-tooltip content="运行用例" placement="top" popper-class="action-tooltip">
                   <span><el-button type="primary" link :icon="VideoPlay" @click="handleRun(row)" /></span>
                 </el-tooltip>
 
-                <el-tooltip content="编辑用例" placement="top">
+                <el-tooltip content="编辑用例" placement="top" popper-class="action-tooltip">
                   <span><el-button type="primary" link :icon="Edit" @click="handleEdit(row)" /></span>
                 </el-tooltip>
 
-                <el-tooltip content="删除用例" placement="top">
+                <el-tooltip content="删除用例" placement="top" popper-class="action-tooltip">
                   <span><el-button type="danger" link :icon="Delete" @click="handleDelete(row.id)" /></span>
                 </el-tooltip>
               </div>
@@ -92,7 +93,14 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!loading && filteredCases.length === 0" description="暂无用例" />
+        <div v-if="!loading && filteredCases.length === 0" class="empty-state">
+          <div class="empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="empty-text">暂无用例</div>
+        </div>
       </div>
 
       <!-- 分页 -->
@@ -170,7 +178,7 @@
       <!-- 解析结果预览区 (Conflict Detection) -->
       <div v-if="parsedData && parsedData.length > 0" class="import-preview">
         <h4>解析预览 (共解析到 {{ parsedData.length }} 个接口)</h4>
-        <el-table :data="parsedData" max-height="300" size="small" border>
+        <el-table :data="parsedData || []" max-height="300" size="small" border row-key="url">
           <el-table-column type="selection" width="55" />
           <el-table-column prop="method" label="Method" width="80">
             <template #default="{ row }">
@@ -286,6 +294,7 @@ const getStatusCodeType = (status) => {
   if (!status) return 'info'
   const types = {
     passed: 'success',
+    success: 'success',
     failed: 'danger',
     error: 'warning'
   }
@@ -305,6 +314,7 @@ const getMethodTagType = (method) => {
 const formatStatus = (status) => {
   const labels = {
     passed: '通过',
+    success: '通过',
     failed: '失败',
     error: '错误'
   }
@@ -357,7 +367,7 @@ const loadCases = async () => {
       cases.value = res
       total.value = res.length
     } else {
-      cases.value = res.items || res || []
+      cases.value = Array.isArray(res.items) ? res.items : (Array.isArray(res) ? res : [])
       total.value = res.total || cases.value.length
     }
   } catch (error) {
@@ -399,10 +409,16 @@ const handleEnvChange = () => {
 
 // 新建用例
 const handleCreate = () => {
+  console.log('新建用例按钮被点击，当前分组ID:', props.groupId)
+  if (!props.groupId) {
+    ElMessage.warning('请先从左侧分组树选择一个分组再创建用例')
+    return
+  }
   currentCase.value = null
   isEdit.value = false
   currentGroupId.value = props.groupId
   drawerVisible.value = true
+  console.log('抽屉已打开')
 }
 
 // 编辑用例
@@ -528,7 +544,7 @@ const handleParseFile = async () => {
       }
     })
 
-    if (res && res.cases) {
+    if (res && Array.isArray(res.cases)) {
       // 组装冲突检测数据
       parsedData.value = res.cases.map(c => ({
         ...c,
@@ -537,6 +553,7 @@ const handleParseFile = async () => {
       ElMessage.success(`成功解析 ${res.cases.length} 个接口`)
     } else {
       ElMessage.error('解析失败，返回数据格式不正确')
+      parsedData.value = [] // 确保 parsedData 始终是一个数组
     }
 
   } catch (error) {
@@ -691,8 +708,61 @@ defineExpose({
   font-size: 12px;
   padding: 4px 0;
 }
-.api-method-tag.get { background: #f6ffed !important; color: #52c41a !important; border: 1px solid #b7eb8f !important; }
-.api-method-tag.post { background: #e6f7ff !important; color: #1890ff !important; border: 1px solid #91d5ff !important; }
-.api-method-tag.put { background: #fff7e6 !important; color: #fa8c16 !important; border: 1px solid #ffd591 !important; }
-.api-method-tag.delete { background: #fff1f0 !important; color: #f5222d !important; border: 1px solid #ffa39e !important; }
+.api-method-tag.get { background: rgba(82, 196, 26, 0.15) !important; color: #52c41a !important; border: 1px solid rgba(82, 196, 26, 0.3) !important; }
+.api-method-tag.post { background: rgba(24, 144, 255, 0.15) !important; color: #1890ff !important; border: 1px solid rgba(24, 144, 255, 0.3) !important; }
+.api-method-tag.put { background: rgba(250, 140, 22, 0.15) !important; color: #fa8c16 !important; border: 1px solid rgba(250, 140, 22, 0.3) !important; }
+.api-method-tag.delete { background: rgba(245, 34, 45, 0.15) !important; color: #f5222d !important; border: 1px solid rgba(245, 34, 45, 0.3) !important; }
+
+/* 现代化表格样式 */
+.modern-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.modern-table :deep(.el-table__header-wrapper th) {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary) !important;
+  background-color: var(--bg-surface) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.modern-table :deep(.el-table__row td) {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.modern-table :deep(.el-table__row:hover) {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* 现代化空状态样式 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+  min-height: 320px;
+}
+
+.empty-icon {
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.empty-icon svg {
+  opacity: 0.6;
+}
+
+.empty-text {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  font-weight: 400;
+  margin-top: 8px;
+}
 </style>

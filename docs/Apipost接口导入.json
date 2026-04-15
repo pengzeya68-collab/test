@@ -2,7 +2,7 @@
   "name": "TestMasterProject 接口文档",
   "version": "1.0",
   "description": "TestMasterProject 后端API接口，支持导入Apipost/Postman",
-  "baseUrl": "http://localhost:5000/api",
+  "baseUrl": "http://localhost:5001/api/v1",
   "items": [
     {
       "name": "认证相关",
@@ -638,7 +638,7 @@
   "variables": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:5000/api",
+      "value": "http://localhost:5001/api/v1",
       "description": "后端接口地址"
     },
     {

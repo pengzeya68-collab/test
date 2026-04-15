@@ -1,14 +1,9 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { adminLoginRoute, adminRoutes } from './admin'
+import { useUserStore } from '@/stores/user'
 
 const routes = [
-  // 测试路由
-  {
-    path: '/test',
-    name: 'Test',
-    component: () => import('@/test.vue')
-  },
   adminLoginRoute,
   adminRoutes,
   {
@@ -49,7 +44,8 @@ const routes = [
   {
     path: '/exercises/:id',
     name: 'ExerciseDetail',
-    component: () => import('@/views/ExerciseDetail.vue')
+    component: () => import('@/views/ExerciseDetail.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/profile',
@@ -78,12 +74,14 @@ const routes = [
   {
     path: '/community',
     name: 'Community',
-    component: () => import('@/views/Community.vue')
+    component: () => import('@/views/Community.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/community/post/:id',
     name: 'PostDetail',
-    component: () => import('@/views/PostDetail.vue')
+    component: () => import('@/views/PostDetail.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/exams',
@@ -128,49 +126,63 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/interface-test',
-    name: 'InterfaceTestList',
-    component: () => import('@/views/InterfaceTestList.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/interface-test/new',
-    name: 'InterfaceTestNew',
-    component: () => import('@/views/InterfaceTestDetail.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/interface-test/:id',
-    name: 'InterfaceTestDetail',
-    component: () => import('@/views/InterfaceTestDetail.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/interface-test/environments',
-    name: 'InterfaceEnvManager',
-    component: () => import('@/views/InterfaceEnvManager.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/auto-test',
     name: 'AutoTest',
     component: () => import('@/views/AutoTest.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/assessment',
+    name: 'OnboardingAssessment',
+    component: () => import('@/views/OnboardingAssessment.vue'),
+    meta: { requiresAuth: true, isAssessment: true }
+  },
+  {
+    path: '/wrong-answers',
+    name: 'WrongAnswers',
+    component: () => import('@/views/WrongAnswers.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/leaderboard',
+    name: 'Leaderboard',
+    component: () => import('@/views/Leaderboard.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/weekly-report',
+    name: 'WeeklyReport',
+    component: () => import('@/views/WeeklyReport.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/certificates',
+    name: 'Certificates',
+    component: () => import('@/views/Certificates.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/views/NotFound.vue')
   }
 ]
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes,
-  // 启用严格模式，调试路由
   strict: true,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    }
+    return { top: 0 }
+  }
 })
 
 // 全局路由守卫
-router.beforeEach((to, from, next) => {
-  // 检查是否需要登录权限
+router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth) {
-    // 管理员页面判断管理员token
     if (to.path.startsWith('/admin')) {
       const adminToken = localStorage.getItem('admin_token')
       const adminInfo = localStorage.getItem('admin_info')
@@ -184,18 +196,32 @@ router.beforeEach((to, from, next) => {
         return
       }
     } else {
-      // 普通页面判断普通用户token
       const token = localStorage.getItem('token')
       const user = localStorage.getItem('user')
       
       if (!token || !user) {
         ElMessage.warning('你当前未登录，请登录后操作')
-        // 跳转到登录页，携带跳转前的路径
         next({
           path: '/login',
           query: { redirect: to.fullPath }
         })
         return
+      }
+
+      if (!to.meta.isAssessment) {
+        try {
+          const userStore = useUserStore()
+          if (!userStore.assessmentCompleted) {
+            const completed = await userStore.checkAssessmentStatus()
+            if (!completed) {
+              ElMessage.info('请先完成入学测评，我们将为你定制学习计划')
+              next({ path: '/assessment' })
+              return
+            }
+          }
+        } catch (error) {
+          console.warn('路由守卫: 检查测评状态失败，放行导航', error)
+        }
       }
     }
   }

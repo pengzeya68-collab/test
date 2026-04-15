@@ -1,0 +1,1 @@
+[{"uid":"3d298dd3113e9954","name":"测试步骤: 步骤 2：用提取出来的数据组装全新的请求体","time":{"start":1776168964180,"stop":1776168964181,"duration":1},"status":"passed","severity":"normal"},{"uid":"5d6e073b3d9a6050","name":"测试步骤: 步骤 1：获取随机生成的复杂用户信息","time":{"start":1776168964173,"stop":1776168964174,"duration":1},"status":"passed","severity":"normal"}]

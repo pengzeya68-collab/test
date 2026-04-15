@@ -1,55 +1,46 @@
-#!/usr/bin/env python3
-"""
-无损修复脚本：添加缺失的 auto_test_steps.extractors 字段
-"""
 
-import sqlite3
-import os
+def fix_it():
+    import sqlite3
+    from pathlib import Path
+    import sys
+    import os
 
-# 数据库路径 - 根据项目配置，真实路径是 instance/testmaster.db
-DB_PATH = r"C:\Users\lenovo\Desktop\TestMasterProject\instance\testmaster.db"
+    # 确定当前工作目录
+    current_dir = Path(__file__).resolve().parent
+    INSTANCE_DIR = current_dir / "instance"
+    DB_PATH = INSTANCE_DIR / "auto_test.db"
 
-# 确保使用正确的路径格式
-DB_PATH = os.path.abspath(DB_PATH)
+    print(f"数据库路径: {DB_PATH}")
+    print(f"数据库存在: {DB_PATH.exists()}")
 
-print("Checking database file: %s" % DB_PATH)
-print("File exists: %s" % os.path.exists(DB_PATH))
+    if not DB_PATH.exists():
+        print(f"在 {INSTANCE_DIR} 下未找到 auto_test.db")
+        return
 
-if not os.path.exists(DB_PATH):
-    print("ERROR: Database file does not exist: %s" % DB_PATH)
-    exit(1)
+    conn = sqlite3.connect(str(DB_PATH))
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("PRAGMA table_info(api_cases)")
+        columns = [col[1] for col in cursor.fetchall()]
+        print(f"当前 api_cases 表的列: {columns}")
+        
+        if 'extractors' not in columns:
+            print("正在添加 extractors 字段...")
+            cursor.execute("ALTER TABLE api_cases ADD COLUMN extractors TEXT")
+            conn.commit()
+            print("extractors 字段添加成功！")
+        else:
+            print("extractors 字段已存在，无需添加。")
+            
+    except Exception as e:
+        print(f"迁移失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+    finally:
+        conn.close()
 
-print("Connecting to database...")
-conn = sqlite3.connect(DB_PATH)
-cursor = conn.cursor()
+if __name__ == "__main__":
+    fix_it()
 
-try:
-    # 先检查表是否存在
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='auto_test_steps';")
-    table_exists = cursor.fetchone()
-    if not table_exists:
-        print("ERROR: Table auto_test_steps does not exist!")
-        exit(1)
-
-    print("OK: Table auto_test_steps exists, adding extractors column...")
-
-    # 尝试添加缺失的列，类型 TEXT
-    cursor.execute("ALTER TABLE auto_test_steps ADD COLUMN extractors TEXT;")
-    conn.commit()
-    print("SUCCESS: extractors column added to auto_test_steps table.")
-    print("Existing data has NULL for this column, no data affected.")
-    exit(0)
-
-except sqlite3.OperationalError as e:
-    if "duplicate column name" in str(e):
-        print("WARNING: Column extractors already exists, no need to add.")
-        print("If you still get error, check if it's from another cause.")
-        exit(0)
-    else:
-        print("ERROR: Failed to add column: %s" % e)
-        exit(1)
-except Exception as e:
-    print("ERROR: Unknown error: %s" % e)
-    exit(1)
-finally:
-    conn.close()

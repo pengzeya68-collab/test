@@ -1,0 +1,13 @@
+﻿OK /api/v1/learning-paths/learning-paths/25
+  title='������Ի�������', exercises_count=5
+  ex id=324, title='������ԵĶ�����Ŀ��'
+  ex id=325, title='����ԭ�� - ɱ������'
+  ex id=326, title='�ںв�����׺в��Ե�����'
+OK /api/v1/learning-paths/learning-paths/26
+  title='SQL���ݿ����', exercises_count=4
+  ex id=329, title='����SELECT��ѯ'
+  ex id=330, title='GROUP BY��ۺϺ���'
+  ex id=331, title='���JOIN��ѯ'
+LIST /api/v1/learning-paths/learning-paths?stage=1: 4 items
+  id=25, title='������Ի�������', exercises=5
+  id=26, title='SQL���ݿ����', exercises=4

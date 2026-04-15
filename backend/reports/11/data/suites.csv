@@ -1,3 +1,0 @@
-"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
-"","127","步骤 1: 获取邮编信息（提取“国家”）","自动化场景测试","2026-04-09","passed","2026-04-09","ID: 11","场景: 测试","",""
-"","874","步骤 2: 把国家名传给验证接口（验证传递）","自动化场景测试","2026-04-09","passed","2026-04-09","ID: 11","场景: 测试","",""

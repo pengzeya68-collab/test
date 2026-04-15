@@ -90,43 +90,38 @@ const handleLogin = async () => {
       loading.value = true
 
       try {
-        const res = await request.post('/login', {
+        const res = await request.post('/admin/login', {
           username: form.value.username,
           password: form.value.password
         })
 
-        // 后端返回结构: { code: 0, data: { access_token, user }, msg: '登录成功' }
-        // 兼容: 从 res 或 res.data 获取 access_token
-        const access_token = res.access_token || (res.data && res.data.access_token)
-        const user = res.user || (res.data && res.data.user)
+        const adminToken = res.token || res.access_token
+        const adminUser = res.user
 
-        if (!access_token || access_token === 'undefined' || access_token === 'null') {
+        if (!adminToken || adminToken === 'undefined' || adminToken === 'null') {
           ElMessage.error('登录失败：服务器未返回有效Token')
-          loading.value = false
           return
         }
 
-        // 检查是否是管理员
-        if (!user.is_admin) {
+        if (adminUser && !adminUser.is_admin && !adminUser.is_super_admin) {
           ElMessage.error('该账号不是管理员，无权访问后台')
-          loading.value = false
           return
         }
 
-        localStorage.setItem('admin_token', access_token)
-        localStorage.setItem('admin_info', JSON.stringify(user))
+        localStorage.setItem('admin_token', adminToken)
+        localStorage.setItem('admin_info', JSON.stringify(adminUser))
 
         ElMessage.success('登录成功')
 
         const redirect = route.query.redirect || '/admin/dashboard'
-        // 使用 router.push 进行单页应用跳转，避免页面刷新
         router.push(redirect).catch(err => {
           console.error('路由跳转失败:', err)
-          // 如果跳转失败，直接跳后台首页
           router.push('/admin/dashboard')
         })
       } catch (error) {
         console.error('登录异常:', error)
+        ElMessage.error(error.response?.data?.detail || '登录失败，请检查账号密码')
+      } finally {
         loading.value = false
       }
     }
@@ -137,10 +132,7 @@ const handleLogin = async () => {
 <style scoped>
 .admin-login-theme {
   height: 100vh;
-  background: var(--tm-bg-color);
-  background-image: var(--tm-bg-image);
-  background-size: cover;
-  background-position: center;
+  background: var(--tm-bg-page);
   display: flex;
   align-items: center;
   justify-content: center;

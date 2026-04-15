@@ -2,7 +2,7 @@ import sqlite3
 import json
 from datetime import datetime
 
-AUTO_TEST_DB = 'c:/Users/lenovo/Desktop/TestMasterProject/auto_test_platform/auto_test.db'
+AUTO_TEST_DB = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/auto_test.db'
 
 conn = sqlite3.connect(AUTO_TEST_DB)
 cursor = conn.cursor()
