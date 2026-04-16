@@ -1,6 +1,0 @@
-{
-  "url": "https://jsonplaceholder.typicode.com/posts",
-  "method": "GET",
-  "headers": {},
-  "payload": {}
-}

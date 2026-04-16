@@ -139,3 +139,8 @@ export function getAIConfigQuota(id) {
 export function getActiveAIConfig() {
   return request.get('/admin/ai-configs/active')
 }
+
+// AI生成面试题参考答案
+export function generateInterviewAnswers(limit = 20) {
+  return request.post('/interview/questions/generate-answers', { limit }, { timeout: 300000 })
+}

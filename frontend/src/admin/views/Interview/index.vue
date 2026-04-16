@@ -9,6 +9,9 @@
           <el-icon><Plus /></el-icon>
           新增题目
         </el-button>
+        <el-button type="warning" @click="handleGenerateAnswers" :loading="generating" class="btn-warning">
+          🤖 AI生成参考答案
+        </el-button>
       </div>
       <div class="toolbar-right">
         <el-input
@@ -143,6 +146,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { generateInterviewAnswers } from '@/api/admin'
 
 // 分类列表
 const categories = ['基础测试', '自动化测试', '性能测试', '接口测试', '数据库', '编程', 'HR面试', '安全测试', '其他']
@@ -153,6 +157,7 @@ const total = ref(0)
 const page = ref(1)
 const size = ref(10)
 const loading = ref(false)
+const generating = ref(false)
 const keyword = ref('')
 const filterCategory = ref('')
 const filterDifficulty = ref('')
@@ -165,12 +170,35 @@ const fetchList = async () => {
     if (filterCategory.value) params.category = filterCategory.value
     if (filterDifficulty.value) params.difficulty = filterDifficulty.value
     const res = await request.get('/admin/interview/questions', { params })
-    list.value = res?.list || []
-    total.value = res?.total || 0
+    const data = res?.data || res
+    list.value = data?.items || data?.list || []
+    total.value = data?.total || 0
   } catch (e) {
     ElMessage.error('获取面试题列表失败')
   } finally {
     loading.value = false
+  }
+}
+
+const handleGenerateAnswers = async () => {
+  await ElMessageBox.confirm(
+    '将使用AI为所有没有参考答案的面试题生成参考答案，可能需要几分钟时间。是否继续？',
+    'AI生成参考答案',
+    { confirmButtonText: '开始生成', cancelButtonText: '取消', type: 'warning' }
+  )
+  generating.value = true
+  try {
+    const res = await generateInterviewAnswers(20)
+    const data = res?.data || res
+    ElMessage.success(data.message || `生成完成：成功 ${data.generated} 个，跳过 ${data.skipped} 个`)
+    if (data.errors?.length) {
+      console.warn('生成错误:', data.errors)
+    }
+    fetchList()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.detail || '生成失败，请检查AI配置')
+  } finally {
+    generating.value = false
   }
 }
 
@@ -235,7 +263,18 @@ const handleEdit = async (row) => {
   resetForm()
   try {
     const res = await request.get(`/admin/interview/questions/${row.id}`)
-    Object.assign(form, res)
+    const detail = res?.data || res
+    Object.assign(form, {
+      id: detail.id,
+      title: detail.title || '',
+      content: detail.content || detail.description || '',
+      answer: detail.answer || detail.reference_solution || '',
+      category: detail.category || '',
+      difficulty: detail.difficulty || 'medium',
+      position_level: detail.position_level || '通用',
+      tags: detail.tags || '',
+      company: detail.company || ''
+    })
     dialogVisible.value = true
   } catch (e) {
     ElMessage.error('获取题目详情失败')
@@ -343,6 +382,17 @@ const handleSubmit = async () => {
   color: var(--tm-color-primary);
   border: 1px solid var(--tm-color-primary);
   background: transparent;
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #E6A23C, #F56C6C);
+  border: none;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(230, 162, 60, 0.3);
+}
+.btn-warning:hover {
+  background: linear-gradient(135deg, #F56C6C, #E6A23C);
+  box-shadow: 0 4px 15px rgba(245, 108, 108, 0.4);
 }
 
 .btn-search:hover {

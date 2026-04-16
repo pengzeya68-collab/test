@@ -4,7 +4,7 @@ AutoTest 模型 - 使用 auto_test_platform 原始表名确保数据兼容
 这些模型映射到 auto_test_platform 的原有 SQLite 表，
 与 fastapi_backend/models/models.py 中的同名类（不同表名）不冲突。
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from fastapi_backend.core.autotest_database import AutoTestBase as Base
@@ -17,7 +17,7 @@ class AutoTestGroup(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, comment="分组名称")
     parent_id = Column(Integer, ForeignKey("api_groups.id"), nullable=True, comment="父级分组ID")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
 
     # 关联关系
     parent = relationship("AutoTestGroup", remote_side=[id], backref="children")
@@ -42,7 +42,7 @@ class AutoTestCase(Base):
     assert_rules = Column(JSON, nullable=True, comment="断言规则")
     extractors = Column(JSON, nullable=True, comment="变量提取规则")
     description = Column(Text, nullable=True, comment="用例描述")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
 
     # 关联关系
     group = relationship("AutoTestGroup", back_populates="cases")
@@ -58,8 +58,8 @@ class AutoTestGlobalVariable(Base):
     value = Column(Text, nullable=False, comment="变量值")
     description = Column(Text, nullable=True, comment="变量描述")
     is_encrypted = Column(Boolean, default=False, comment="是否加密")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
 
 
 class AutoTestEnvironment(Base):
@@ -71,7 +71,7 @@ class AutoTestEnvironment(Base):
     base_url = Column(String(500), nullable=True, comment="基础路径")
     variables = Column(JSON, nullable=True, default=dict, comment="环境变量")
     is_default = Column(Boolean, default=False, comment="是否默认环境")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
 
 
 class AutoTestHistory(Base):
@@ -85,7 +85,7 @@ class AutoTestHistory(Base):
     report_url = Column(String(500), nullable=True, comment="报告路径")
     response_data = Column(JSON, nullable=True, comment="响应数据")
     error_message = Column(Text, nullable=True, comment="错误信息")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="执行时间")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="执行时间")
 
     # 关联关系
     case = relationship("AutoTestCase", back_populates="history")
@@ -99,8 +99,8 @@ class AutoTestScenario(Base):
     name = Column(String(200), nullable=False, comment="场景名称")
     description = Column(Text, nullable=True, comment="场景描述")
     is_active = Column(Boolean, default=True, comment="是否启用")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
     # 定时任务配置（持久化，避免仅内存导致重载后丢失）
     schedule_cron_expression = Column(String(200), nullable=True, comment="Cron 表达式")
     schedule_env_id = Column(Integer, nullable=True, comment="定时执行环境 ID")
@@ -137,7 +137,7 @@ class AutoTestScenarioStep(Base):
     step_order = Column(Integer, nullable=False, default=0, comment="执行顺序")
     is_active = Column(Boolean, default=True, comment="是否启用")
     variable_overrides = Column(JSON, nullable=True, comment="局部变量覆盖")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
 
     scenario = relationship("AutoTestScenario", back_populates="steps")
     api_case = relationship("AutoTestCase")
@@ -156,10 +156,10 @@ class AutoTestDataset(Base):
         comment="所属场景ID",
     )
     name = Column(String(200), nullable=False, default="默认数据集", comment="数据集名称")
-    data_matrix = Column(JSON, nullable=False, default={"columns": [], "rows": []}, comment="数据矩阵")
+    data_matrix = Column(JSON, nullable=False, default=lambda: {"columns": [], "rows": []}, comment="数据矩阵")
     description = Column(Text, nullable=True, comment="数据集描述")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
 
     scenario = relationship("AutoTestScenario", back_populates="dataset")
 
@@ -177,6 +177,6 @@ class AutoTestScenarioExecutionRecord(Base):
     skipped_steps = Column(Integer, nullable=False, default=0, comment="跳过步骤数")
     total_time = Column(Integer, nullable=True, comment="执行总耗时(ms)")
     report_url = Column(String(500), nullable=True, comment="报告路径")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="执行时间")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="执行时间")
 
     scenario = relationship("AutoTestScenario", back_populates="execution_records")

@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="backup-manager">
     <div class="layout-fluid">
       <div class="page-header">

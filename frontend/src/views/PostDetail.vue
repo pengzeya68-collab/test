@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="post-detail">
     <div class="container">
       <div class="back-btn" @click="goBack">

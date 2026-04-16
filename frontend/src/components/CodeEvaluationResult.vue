@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="code-evaluation-result">
     <!-- 状态指示器 -->
     <div class="status-indicator" :class="statusClass">

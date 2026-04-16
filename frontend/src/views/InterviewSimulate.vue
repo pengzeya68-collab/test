@@ -1,4 +1,4 @@
-﻿<template>
+﻿﻿<template>
   <div class="interview-simulate">
     <div class="container">
       <div class="back-btn" @click="$router.back()">

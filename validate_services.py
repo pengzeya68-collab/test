@@ -91,8 +91,8 @@ class ServiceValidator:
         """测试认证端点"""
         # 测试管理员登录
         login_data = {
-            "username": "admin",
-            "password": "admin123"
+            "username": os.environ.get("TEST_ADMIN_USER", "admin"),
+            "password": os.environ.get("TEST_ADMIN_PASSWORD", "")
         }
 
         try:

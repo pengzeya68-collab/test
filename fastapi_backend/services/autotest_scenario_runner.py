@@ -4,6 +4,7 @@
 """
 import asyncio
 import json
+import logging
 import subprocess
 import time
 import uuid
@@ -13,19 +14,12 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-def convert_to_dict(data):
-    if data is None or data == "":
-        return {}
-    elif isinstance(data, str):
-        try:
-            return json.loads(data)
-        except json.JSONDecodeError:
-            _logger.warning(f"JSON解析失败，数据将被丢弃: {data[:100]}")
-            return {}
-    elif isinstance(data, dict):
-        return data
-    else:
-        return {}
+_logger = logging.getLogger(__name__)
+
+
+from fastapi_backend.utils.autotest_helpers import convert_to_dict, extract_jsonpath_value
+from fastapi_backend.services.autotest_variable_service import save_variables_to_db
+from fastapi_backend.services.autotest_report_service import write_allure_results
 
 from fastapi_backend.core.autotest_database import async_session
 from fastapi_backend.models.autotest import (
@@ -107,7 +101,8 @@ class ScenarioExecutionEngine:
 
                 if env:
                     env_name = env.env_name or env.name or ""
-                    self.context_vars.update(env.variables or {}) if isinstance(env.variables, dict) else {}
+                    if isinstance(env.variables, dict):
+                        self.context_vars.update(env.variables)
                     if env.base_url:
                         self.base_url = env.base_url
                         self.context_vars["base_url"] = env.base_url
@@ -430,16 +425,16 @@ class TestScenario{scenario_id}:
         report_dir_abs = str(Path(report_dir).absolute())
 
         # 强制执行前彻底清理旧数据（包含 pycache 和临时文件）
-        print(f"[AllureReport] 清理旧结果目录：{allure_results_dir_abs}")
+        _logger.info(f"[AllureReport] 清理旧结果目录：{allure_results_dir_abs}")
         if os.path.exists(allure_results_dir_abs):
             try:
                 shutil.rmtree(allure_results_dir_abs)
-                print(f"[AllureReport] 已删除旧目录：{allure_results_dir_abs}")
+                _logger.info(f"[AllureReport] 已删除旧目录：{allure_results_dir_abs}")
             except Exception as e:
-                print(f"[AllureReport] 清理失败：{e}")
+                _logger.warning(f"[AllureReport] 清理失败：{e}")
         # 重新创建空目录
         Path(allure_results_dir_abs).mkdir(parents=True, exist_ok=True)
-        print(f"[AllureReport] 已创建新目录：{allure_results_dir_abs}")
+        _logger.info(f"[AllureReport] 已创建新目录：{allure_results_dir_abs}")
 
         try:
             python_executable = sys.executable
@@ -492,7 +487,7 @@ class TestScenario{scenario_id}:
                 if new_results_history.exists():
                     shutil.rmtree(str(new_results_history))
                 shutil.copytree(str(old_report_history), str(new_results_history))
-                print(f"[AllureReport] 已拷贝历史趋势数据: {old_report_history} -> {new_results_history}")
+                _logger.info(f"[AllureReport] 已拷贝历史趋势数据: {old_report_history} -> {new_results_history}")
 
             report_result = subprocess.run(
                 ["allure", "generate", allure_results_dir_abs, "-o", report_dir_abs, "--clean"],
@@ -507,7 +502,7 @@ class TestScenario{scenario_id}:
         except Exception:
             return False
 
-    def _write_allure_result(self, allure_results_dir: Path, scenario_name: str, history_id: str, start_time: float, duration: int):
+    def write_allure_results(self, allure_results_dir: Path, scenario_name: str, history_id: str, start_time: float, duration: int):
         """已废弃，保留兼容"""
         pass
 
@@ -622,7 +617,7 @@ class TestScenario{scenario_id}:
             try:
                 response_json = response.json()
                 response_data["json"] = response_json
-            except:
+            except Exception:
                 pass
 
             # 执行断言
@@ -800,130 +795,26 @@ class TestScenario{scenario_id}:
                 if extractor_type == "jsonpath":
                     json_data = response_data.get("json")
                     if json_data is not None:
-                        value = self._extract_jsonpath_value(json_data, expression, default_value)
+                        value = extract_jsonpath_value(json_data, expression, default_value)
                 elif extractor_type == "regex":
                     import re
                     match = re.search(expression, body)
                     if match:
                         value = match.group(1) if match.groups() else match.group(0)
             except Exception as e:
-                print(f"变量提取失败 {var_name}: {str(e)}")
+                _logger.warning(f"变量提取失败 {var_name}: {str(e)}")
 
             self.context_vars[var_name] = value
 
         # 🔥 修复：将提取的变量持久化到全局变量表
         if self.context_vars:
-            asyncio.create_task(self._save_variables_to_db(dict(self.context_vars)))
-
-    def _extract_jsonpath_value(self, data: Any, path: str, default: Any = None) -> Any:
-        """
-        从 JSON 数据中提取值（简化版 JSONPath）
-        支持: $.data.id, $.items[0].name, data.id, items[0].name
-        """
-        if not path:
-            return default
-
-        path = path.replace("$.", "").replace("$", "")
-
-        keys = []
-        current = ""
-        i = 0
-        while i < len(path):
-            char = path[i]
-            if char == ".":
-                if current:
-                    keys.append(current)
-                    current = ""
-            elif char == "[":
-                if current:
-                    keys.append(current)
-                    current = ""
-                j = i + 1
-                while j < len(path) and path[j] != "]":
-                    j += 1
-                index_str = path[i+1:j]
-                try:
-                    keys.append(int(index_str))
-                except ValueError:
-                    pass
-                i = j
-            elif char == "]":
-                pass
-            else:
-                current += char
-            i += 1
-
-        if current:
-            keys.append(current)
-
-        value = data
-        for key in keys:
-            if isinstance(key, int):
-                if isinstance(value, list) and 0 <= key < len(value):
-                    value = value[key]
-                else:
-                    return default
-            elif isinstance(value, dict):
-                value = value.get(key, default)
-            else:
-                return default
-
-        return value
-
-    async def _save_variables_to_db(self, variables: Dict[str, Any]) -> bool:
-        """
-        将提取的变量保存到全局变量表
-        """
-        if not variables:
-            return False
-
-        from fastapi_backend.models.autotest import AutoTestGlobalVariable
-        from datetime import datetime
-
-        try:
-            async with async_session() as session:
-                for var_name, var_value in variables.items():
-                    result = await session.execute(
-                        select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == var_name)
-                    )
-                    existing_var = result.scalar_one_or_none()
-
-                    if existing_var:
-                        existing_var.value = str(var_value)
-                        existing_var.updated_at = datetime.utcnow()
-                    else:
-                        new_var = AutoTestGlobalVariable(
-                            name=var_name,
-                            value=str(var_value),
-                            description=f"从场景执行提取",
-                            is_encrypted=False
-                        )
-                        session.add(new_var)
-
-                await session.commit()
-                return True
-        except Exception as e:
-            print(f"保存变量到数据库失败: {str(e)}")
-            return False
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(save_variables_to_db(dict(self.context_vars)))
+            except RuntimeError:
+                _logger.debug("无运行中的事件循环，跳过变量持久化")
 
 
-async def run_scenario(scenario_id: int, env_id: Optional[int] = None, progress_callback=None) -> Dict[str, Any]:
-    """执行场景的入口函数"""
-    engine = ScenarioExecutionEngine(scenario_id, env_id, progress_callback)
-    return await engine.execute()
-
-
-# ========== 数据驱动执行引擎 ==========
-
-class DataDrivenScenarioExecutionEngine:
-    """
-    数据驱动场景执行引擎
-
-    核心概念：
-    - data_matrix: 二维数据矩阵，包含 columns（变量名）和 rows（数据行）
-    - 每一行数据会驱动场景执行一次
-    - 每次迭代开始时，将该行数据注入到 context_vars 中
-    """
 
     def __init__(self, scenario_id: int, env_id: Optional[int] = None):
         self.scenario_id = scenario_id
@@ -975,7 +866,7 @@ class DataDrivenScenarioExecutionEngine:
                     env = result.scalars().first()
 
             if env:
-                env_config = env.variables or {} if isinstance(env.variables, dict) else {}
+                env_config = env.variables if isinstance(env.variables, dict) else {}
 
             for row_index, row_data in enumerate(rows):
                 iteration_result = await self._execute_iteration(

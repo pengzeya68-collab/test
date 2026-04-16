@@ -100,7 +100,7 @@ class EmailNotifier:
             return False
 
         if not self.smtp_host or not self.smtp_user or not self.smtp_password:
-            print("[EmailNotifier] 邮件配置不完整，跳过发送")
+            _logger.info("[EmailNotifier] 邮件配置不完整，跳过发送")
             return False
 
         # 拼接完整报告链接

@@ -1,4 +1,0 @@
-"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
-"[POST] 创建一条新用户记录，提取 ID - HTTP 201","2","测试步骤: 创建一条新用户记录，提取 ID","","2026-04-14","passed","2026-04-14","","test_scenario_2_8ca01666","",""
-"[GET] 根据 ID 查询该用户的详细信息 - HTTP 200","1","测试步骤: 根据 ID 查询该用户的详细信息","","2026-04-14","passed","2026-04-14","","test_scenario_2_8ca01666","",""
-"[PUT] 根据 ID 修改该用户信息 - HTTP 0","3","测试步骤: 根据 ID 修改该用户信息","","2026-04-14","failed","2026-04-14","","test_scenario_2_8ca01666","",""

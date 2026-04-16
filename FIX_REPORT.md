@@ -68,7 +68,7 @@
 - **迁移状态**: ✅ 完成
 - **迁移表数**: 8个表
 - **迁移行数**: 0行 (目标数据库为空)
-- **备份文件**: `instance/auto_test.db.backup_before_migration_20260412_161340**
+- **备份文件**: `instance/auto_test.db.backup_before_migration_20260412_161340`
 
 ## 新增功能
 

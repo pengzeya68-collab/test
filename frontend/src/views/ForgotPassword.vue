@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="forgot-password-container">
     <div class="forgot-password-card">
       <div class="forgot-password-header">

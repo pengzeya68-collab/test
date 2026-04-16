@@ -505,6 +505,16 @@
 
           <el-divider>文本步骤详情</el-divider>
 
+          <el-alert
+            v-if="reportDetailData.step_results.length === 0 && !reportDetailData.step_detail_available"
+            title="步骤详情不可用"
+            description="该报告的步骤详情数据无法读取，可能已被清理或写入失败。统计信息仍然准确。"
+            type="warning"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 16px;"
+          />
+
           <!-- 步骤结果列表 -->
           <div class="step-results">
             <div

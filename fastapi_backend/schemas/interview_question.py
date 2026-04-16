@@ -13,6 +13,11 @@ class InterviewQuestionBase(BaseModel):
     difficulty: str = Field(default="medium", description="难度: easy/medium/hard")
     tags: Optional[str] = Field(None, description="标签列表 JSON 格式，如 [\"数组\", \"动态规划\"]")
     description: Optional[str] = Field(None, description="题目描述，支持Markdown")
+    content: Optional[str] = Field(None, description="题目内容（兼容旧字段）")
+    answer: Optional[str] = Field(None, description="参考答案（兼容旧字段）")
+    category: Optional[str] = Field(None, description="分类（兼容旧字段）")
+    position_level: Optional[str] = Field(None, description="职位级别（兼容旧字段）")
+    company: Optional[str] = Field(None, description="来源公司（兼容旧字段）")
     prompt: Optional[str] = Field(None, description="AI提示词，用于引导AI评估")
     input_spec: Optional[str] = Field(None, description="输入规范说明")
     output_spec: Optional[str] = Field(None, description="输出规范说明")
@@ -34,6 +39,11 @@ class InterviewQuestionUpdate(BaseModel):
     difficulty: Optional[str] = Field(None, description="难度: easy/medium/hard")
     tags: Optional[str] = Field(None, description="标签列表 JSON 格式")
     description: Optional[str] = Field(None, min_length=1, description="题目描述")
+    content: Optional[str] = Field(None, description="题目内容（兼容旧字段）")
+    answer: Optional[str] = Field(None, description="参考答案（兼容旧字段）")
+    category: Optional[str] = Field(None, description="分类（兼容旧字段）")
+    position_level: Optional[str] = Field(None, description="职位级别（兼容旧字段）")
+    company: Optional[str] = Field(None, description="来源公司（兼容旧字段）")
     prompt: Optional[str] = Field(None, min_length=1, description="AI提示词")
     input_spec: Optional[str] = Field(None, description="输入规范说明")
     output_spec: Optional[str] = Field(None, description="输出规范说明")
@@ -46,6 +56,13 @@ class InterviewQuestionUpdate(BaseModel):
 class InterviewQuestionDetail(InterviewQuestionBase):
     """题目详情"""
     id: int
+    content: Optional[str] = None
+    answer: Optional[str] = None
+    category: Optional[str] = None
+    position_level: Optional[str] = None
+    company: Optional[str] = None
+    view_count: int = 0
+    collect_count: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -59,9 +76,14 @@ class InterviewQuestionList(BaseModel):
     slug: Optional[str] = None
     difficulty: str
     tags: Optional[str] = None
-    is_published: bool
-    created_at: datetime
-    updated_at: datetime
+    category: Optional[str] = None
+    position_level: Optional[str] = None
+    company: Optional[str] = None
+    view_count: int = 0
+    collect_count: int = 0
+    is_published: bool = True
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

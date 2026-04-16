@@ -49,14 +49,15 @@ async def create_interview_question(
     db: AsyncSession = Depends(get_db)
 ):
     """创建新的面试题目（仅管理员）"""
-    existing = await db.execute(
-        select(InterviewQuestion).where(InterviewQuestion.slug == question_data.slug)
-    )
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"题目标识 '{question_data.slug}' 已存在"
+    if question_data.slug:
+        existing = await db.execute(
+            select(InterviewQuestion).where(InterviewQuestion.slug == question_data.slug)
         )
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"题目标识 '{question_data.slug}' 已存在"
+            )
 
     new_question = InterviewQuestion(
         title=question_data.title,
@@ -64,11 +65,16 @@ async def create_interview_question(
         difficulty=question_data.difficulty,
         tags=question_data.tags,
         description=question_data.description,
+        content=question_data.content or "",
+        answer=question_data.answer or question_data.reference_solution or "",
+        category=question_data.category or "",
+        position_level=question_data.position_level or "",
+        company=question_data.company or "",
         prompt=question_data.prompt,
         input_spec=question_data.input_spec,
         output_spec=question_data.output_spec,
         examples=question_data.examples,
-        reference_solution=question_data.reference_solution,
+        reference_solution=question_data.reference_solution or question_data.answer or "",
         test_cases=question_data.test_cases,
         is_published=question_data.is_published
     )
@@ -89,6 +95,7 @@ async def list_interview_questions(
     size: int = Query(20, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="关键词搜索"),
     difficulty: Optional[str] = Query(None, description="难度筛选"),
+    category: Optional[str] = Query(None, description="分类筛选"),
     is_published: Optional[bool] = Query(None, description="发布状态筛选"),
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
@@ -108,6 +115,10 @@ async def list_interview_questions(
 
     if difficulty and difficulty.lower() in ["easy", "medium", "hard"]:
         query = query.where(InterviewQuestion.difficulty == difficulty.lower())
+
+    if category:
+        category = category.strip()
+        query = query.where(InterviewQuestion.category == category)
 
     if is_published is not None:
         query = query.where(InterviewQuestion.is_published == is_published)
@@ -181,6 +192,16 @@ async def update_interview_question(
         question.tags = question_data.tags
     if question_data.description is not None:
         question.description = question_data.description
+    if question_data.content is not None:
+        question.content = question_data.content
+    if question_data.answer is not None:
+        question.answer = question_data.answer
+    if question_data.category is not None:
+        question.category = question_data.category
+    if question_data.position_level is not None:
+        question.position_level = question_data.position_level
+    if question_data.company is not None:
+        question.company = question_data.company
     if question_data.prompt is not None:
         question.prompt = question_data.prompt
     if question_data.input_spec is not None:

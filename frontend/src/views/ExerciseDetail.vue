@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="exercise-detail">
     <div class="container">
       <!-- 加载状态 -->

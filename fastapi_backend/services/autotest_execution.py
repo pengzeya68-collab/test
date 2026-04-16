@@ -13,10 +13,16 @@ import json
 import time
 import subprocess
 import asyncio
+import logging
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 import requests
+
+_logger = logging.getLogger(__name__)
+
+from fastapi_backend.utils.autotest_helpers import extract_jsonpath_value
+from fastapi_backend.services.autotest_variable_service import save_variables_to_db
 
 from fastapi_backend.utils.parser import replace_variables
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment, AutoTestGlobalVariable
@@ -233,7 +239,7 @@ async def quick_run_case(
             extractors = case.extractors
         extracted_vars = await extract_variables_from_response(extractors, response_data, response.text)
         if extracted_vars:
-            await save_extracted_variables(extracted_vars)
+            await save_variables_to_db(extracted_vars)
 
         # Bug 1 修复：状态码拦截
         if response.status_code >= 400:
@@ -256,10 +262,10 @@ async def quick_run_case(
                 "request_body": payload,
                 "request_url": url,
                 "request_method": method,
-            "request_headers": headers,
-            "request_params": params,
-            "extracted_variables": extracted_vars
-        }
+                "request_headers": headers,
+                "request_params": params,
+                "extracted_variables": extracted_vars
+            }
 
         assert_result = execute_assertions(case_data["assert_rules"], response.status_code, response_data)
 
@@ -593,7 +599,7 @@ async def extract_variables_from_response(extractors: Any, response_data: Any, r
             elif extractor_type == "header":
                 pass
         except Exception as e:
-            print(f"变量提取失败 {var_name}: {str(e)}")
+            _logger.info(f"变量提取失败 {var_name}: {str(e)}")
             value = default_value
 
         extracted[var_name] = value
@@ -601,63 +607,8 @@ async def extract_variables_from_response(extractors: Any, response_data: Any, r
     return extracted
 
 
-def extract_jsonpath_value(data: Any, path: str, default: Any = None) -> Any:
-    """
-    从 JSON 数据中提取值（简化版 JSONPath）
-    支持: $.data.id, $.items[0].name, data.id, items[0].name
-    """
-    if not path:
-        return default
 
-    path = path.replace("$.", "").replace("$", "")
-
-    keys = []
-    current = ""
-    i = 0
-    while i < len(path):
-        char = path[i]
-        if char == ".":
-            if current:
-                keys.append(current)
-                current = ""
-        elif char == "[":
-            if current:
-                keys.append(current)
-                current = ""
-            j = i + 1
-            while j < len(path) and path[j] != "]":
-                j += 1
-            index_str = path[i+1:j]
-            try:
-                keys.append(int(index_str))
-            except ValueError:
-                pass
-            i = j
-        elif char == "]":
-            pass
-        else:
-            current += char
-        i += 1
-
-    if current:
-        keys.append(current)
-
-    value = data
-    for key in keys:
-        if isinstance(key, int):
-            if isinstance(value, list) and 0 <= key < len(value):
-                value = value[key]
-            else:
-                return default
-        elif isinstance(value, dict):
-            value = value.get(key, default)
-        else:
-            return default
-
-    return value
-
-
-async def save_extracted_variables(variables: Dict[str, str]) -> bool:
+async def save_variables_to_db(variables: Dict[str, str]) -> bool:
     """
     将提取的变量保存到全局变量表
     Args:
@@ -682,7 +633,7 @@ async def save_extracted_variables(variables: Dict[str, str]) -> bool:
 
                 if existing_var:
                     existing_var.value = str(var_value)
-                    existing_var.updated_at = datetime.utcnow()
+                    existing_var.updated_at = datetime.now(timezone.utc)()
                 else:
                     new_var = AutoTestGlobalVariable(
                         name=var_name,
@@ -695,7 +646,7 @@ async def save_extracted_variables(variables: Dict[str, str]) -> bool:
             await session.commit()
             return True
     except Exception as e:
-        print(f"保存变量失败: {str(e)}")
+        _logger.info(f"保存变量失败: {str(e)}")
         return False
 
 
@@ -737,33 +688,33 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
             f"--data_path={yaml_file}", f"--alluredir={allure_results_dir_abs}", "-v"
         ]
 
-        print(f"[Execution] 尝试方式1: {' '.join(cmd1)}")
+        _logger.info(f"[Execution] 尝试方式1: {' '.join(cmd1)}")
         result = await asyncio.to_thread(
-            subprocess.run, cmd1, capture_output=True, text=True, timeout=60, shell=True
+            subprocess.run, cmd1, capture_output=True, text=True, timeout=60, 
         )
 
         result_files = list(allure_results_dir.glob("*.json"))
-        print(f"[Execution] 方式1 后 JSON 结果文件数量: {len(result_files)}")
+        _logger.info(f"[Execution] 方式1 后 JSON 结果文件数量: {len(result_files)}")
 
         if len(result_files) == 0 and result.returncode != 0 and "No module named pytest" in result.stderr:
-            print("[Execution] 方式1失败，尝试其他方式")
+            _logger.info("[Execution] 方式1失败，尝试其他方式")
 
             python_dir = Path(sys.executable).parent
             pytest_exe = python_dir / "Scripts" / "pytest.exe"
 
             if pytest_exe.exists():
                 cmd2 = [str(pytest_exe), str(runner_script), f"--data_path={yaml_file}", f"--alluredir={allure_results_dir_abs}", "-v"]
-                print(f"[Execution] 尝试方式2 (Python Scripts): {' '.join(cmd2)}")
+                _logger.info(f"[Execution] 尝试方式2 (Python Scripts): {' '.join(cmd2)}")
                 result = await asyncio.to_thread(
-                    subprocess.run, cmd2, capture_output=True, text=True, timeout=60, shell=True
+                    subprocess.run, cmd2, capture_output=True, text=True, timeout=60, 
                 )
                 result_files = list(allure_results_dir.glob("*.json"))
 
             if len(result_files) == 0:
                 cmd3 = ["pytest", str(runner_script), f"--data_path={yaml_file}", f"--alluredir={allure_results_dir_abs}", "-v"]
-                print(f"[Execution] 尝试方式3: {' '.join(cmd3)}")
+                _logger.info(f"[Execution] 尝试方式3: {' '.join(cmd3)}")
                 result = await asyncio.to_thread(
-                    subprocess.run, cmd3, capture_output=True, text=True, timeout=60, shell=True
+                    subprocess.run, cmd3, capture_output=True, text=True, timeout=60, 
                 )
                 result_files = list(allure_results_dir.glob("*.json"))
 
@@ -784,7 +735,7 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
             cmd_result = await asyncio.to_thread(
                 subprocess.run,
                 ["allure", "generate", str(allure_results_dir), "-o", str(report_dir), "--clean"],
-                capture_output=True, shell=True
+                capture_output=True, 
             )
             report_url = f"/reports/report_{history_id}/index.html" if cmd_result.returncode == 0 else None
         except (FileNotFoundError, Exception):

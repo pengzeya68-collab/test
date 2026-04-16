@@ -16,8 +16,12 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 from fastapi_backend.models.models import Base as MainBase
-from fastapi_backend.models.autotest import Base as AutoTestBase
 from fastapi_backend.core.config import settings
+
+db_url = settings.DATABASE_URL
+if db_url.startswith("sqlite+aiosqlite:///"):
+    db_url = db_url.replace("sqlite+aiosqlite:///", "sqlite:///", 1)
+config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = MainBase.metadata
 

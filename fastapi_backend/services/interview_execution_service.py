@@ -10,12 +10,68 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.config import settings
 from fastapi_backend.core.database import get_db
-from fastapi_backend.models.models import Submission, InterviewQuestion, TestCase
+from fastapi_backend.models.models import Submission, InterviewQuestion, TestCase, Exercise
 from fastapi_backend.schemas.submission import SubmissionUpdate
 from fastapi_backend.services.sandbox_service import CodeSandbox
 from fastapi_backend.services.ai_tutor_service import AITutorService
 
 logger = logging.getLogger(__name__)
+
+
+async def _get_question_for_submission(db: AsyncSession, submission: Submission) -> tuple:
+    """根据submission获取题目，返回 (question_or_exercise, source_type)
+    source_type: 'interview_question' | 'exercise' | None
+    """
+    qid = submission.question_id
+    source = getattr(submission, 'question_source', None) or 'interview_question'
+
+    if source == 'exercise':
+        ex_result = await db.execute(select(Exercise).where(Exercise.id == qid))
+        exercise = ex_result.scalar_one_or_none()
+        if exercise:
+            return exercise, 'exercise'
+
+    iq_result = await db.execute(select(InterviewQuestion).where(InterviewQuestion.id == qid))
+    question = iq_result.scalar_one_or_none()
+    if question:
+        return question, 'interview_question'
+
+    ex_result = await db.execute(select(Exercise).where(Exercise.id == qid))
+    exercise = ex_result.scalar_one_or_none()
+    if exercise:
+        return exercise, 'exercise'
+
+    return None, None
+
+
+def _extract_question_info(q_obj, source_type: str) -> dict:
+    """从InterviewQuestion或Exercise对象提取统一格式的题目信息"""
+    if source_type == 'exercise' and q_obj:
+        return {
+            "title": q_obj.title,
+            "content": q_obj.description or q_obj.instructions or "",
+            "reference_answer": q_obj.solution or q_obj.expected_output or "",
+            "prompt": q_obj.instructions or q_obj.description or "",
+            "test_cases_json": q_obj.test_cases or "",
+            "code_template": q_obj.code_template or "",
+            "category": q_obj.category or "",
+            "difficulty": q_obj.difficulty or "medium",
+        }
+    elif q_obj:
+        return {
+            "title": q_obj.title,
+            "content": q_obj.content or q_obj.description or "",
+            "reference_answer": q_obj.answer or q_obj.reference_solution or "",
+            "prompt": q_obj.prompt or q_obj.content or q_obj.description or "",
+            "test_cases_json": q_obj.test_cases or "",
+            "code_template": q_obj.reference_solution or "",
+            "category": q_obj.category or "",
+            "difficulty": q_obj.difficulty or "medium",
+        }
+    return {
+        "title": "", "content": "", "reference_answer": "", "prompt": "",
+        "test_cases_json": "", "code_template": "", "category": "", "difficulty": "medium"
+    }
 
 
 class InterviewExecutionService:
@@ -31,10 +87,8 @@ class InterviewExecutionService:
         通过提交ID执行并评估代码提交
         在后台任务中使用，内部创建数据库会话
         """
-        # 使用新的数据库会话
         async for db in get_db():
             try:
-                # 查询提交记录
                 result = await db.execute(
                     select(Submission).where(Submission.id == submission_id)
                 )
@@ -44,12 +98,10 @@ class InterviewExecutionService:
                     logger.error(f"提交 #{submission_id} 不存在")
                     return
 
-                # 执行并评估
                 await self.execute_and_evaluate_submission(db, submission)
 
             except Exception as exc:
                 logger.error(f"处理提交 #{submission_id} 时发生异常: {exc}")
-                # 这里可以记录错误，但不抛出异常，避免后台任务崩溃
 
     async def execute_and_evaluate_submission(
         self,
@@ -87,18 +139,12 @@ class InterviewExecutionService:
         logger.info(f"在沙盒中执行提交 #{submission.id} 的代码")
 
         try:
-            # 使用配置的超时时间
             timeout = settings.SANDBOX_DEFAULT_TIMEOUT_SECONDS
 
-            # 获取题目和测试用例
-            from sqlalchemy import select
-            from fastapi_backend.models.models import InterviewQuestion
+            q_obj, source_type = await _get_question_for_submission(db, submission)
+            q_info = _extract_question_info(q_obj, source_type)
 
-            question_query = select(InterviewQuestion).where(InterviewQuestion.id == submission.question_id)
-            question_result = await db.execute(question_query)
-            question = question_result.scalar_one_or_none()
-
-            if not question:
+            if not q_obj:
                 logger.error(f"提交 #{submission.id} 关联的题目 #{submission.question_id} 不存在")
                 return {
                     "exit_code": -1,
@@ -109,40 +155,43 @@ class InterviewExecutionService:
                     "judge_result": None
                 }
 
-            # 获取测试用例 - 优先从TestCase表读取，保持向后兼容
             test_cases = []
 
-            # 1. 尝试从TestCase表读取
-            test_case_query = select(TestCase).where(TestCase.question_id == question.id)
-            test_case_result = await db.execute(test_case_query)
-            test_case_objects = test_case_result.scalars().all()
-
-            if test_case_objects:
-                # 从TestCase表构建测试用例列表
-                for tc in test_case_objects:
-                    test_cases.append({
-                        "input": tc.input,
-                        "output": tc.expected_output,
-                        "is_example": tc.is_example,
-                        "is_hidden": tc.is_hidden,
-                        "description": tc.description
-                    })
-                logger.info(f"从TestCase表读取到 {len(test_cases)} 个测试用例")
-            else:
-                # 2. 回退到旧的JSON格式test_cases字段
-                import json
+            if source_type == 'exercise':
                 try:
-                    test_cases = json.loads(question.test_cases)
-                    if not isinstance(test_cases, list):
+                    tc_json = json.loads(q_info["test_cases_json"]) if q_info["test_cases_json"] else []
+                    if isinstance(tc_json, list):
+                        test_cases = tc_json
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            else:
+                test_case_query = select(TestCase).where(TestCase.question_id == q_obj.id)
+                test_case_result = await db.execute(test_case_query)
+                test_case_objects = test_case_result.scalars().all()
+
+                if test_case_objects:
+                    for tc in test_case_objects:
+                        test_cases.append({
+                            "input": tc.input,
+                            "output": tc.expected_output,
+                            "is_example": tc.is_example,
+                            "is_hidden": tc.is_hidden,
+                            "description": tc.description
+                        })
+                    logger.info(f"从TestCase表读取到 {len(test_cases)} 个测试用例")
+                else:
+                    try:
+                        test_cases = json.loads(q_obj.test_cases) if hasattr(q_obj, 'test_cases') and q_obj.test_cases else []
+                        if not isinstance(test_cases, list):
+                            test_cases = []
+                        logger.info(f"从JSON字段读取到 {len(test_cases)} 个测试用例")
+                    except (json.JSONDecodeError, AttributeError) as e:
+                        logger.error(f"题目 #{q_obj.id} 的测试用例JSON解析失败: {e}")
                         test_cases = []
-                    logger.info(f"从JSON字段读取到 {len(test_cases)} 个测试用例")
-                except json.JSONDecodeError as e:
-                    logger.error(f"题目 #{question.id} 的测试用例JSON解析失败: {e}")
-                    test_cases = []
 
             # 如果没有测试用例，只执行代码不判题
             if not test_cases:
-                logger.info(f"题目 #{question.id} 没有测试用例，只执行代码")
+                logger.info(f"题目 #{q_obj.id} 没有测试用例，只执行代码")
                 result = await self.sandbox.execute_python_code(
                     code=submission.source_code,
                     timeout=timeout
@@ -195,8 +244,6 @@ class InterviewExecutionService:
             判题结果字典
         """
         logger.info(f"开始判题，共有 {len(test_cases)} 个测试用例")
-        import json
-        import asyncio
 
         case_results = []
         passed_count = 0
@@ -323,16 +370,14 @@ class InterviewExecutionService:
         logger.info(f"开始AI评估文本回答 #{submission.id}")
 
         try:
-            from sqlalchemy import select
-            from fastapi_backend.models.models import InterviewQuestion, AIConfig
+            from fastapi_backend.models.models import AIConfig
 
-            question_query = select(InterviewQuestion).where(InterviewQuestion.id == submission.question_id)
-            question_result = await db.execute(question_query)
-            question = question_result.scalar_one_or_none()
+            q_obj, source_type = await _get_question_for_submission(db, submission)
+            q_info = _extract_question_info(q_obj, source_type)
 
-            question_title = question.title if question else ""
-            question_content = question.content or question.description or "" if question else ""
-            reference_answer = question.answer or question.reference_solution or "" if question else ""
+            question_title = q_info["title"]
+            question_content = q_info["content"]
+            reference_answer = q_info["reference_answer"]
 
             ai_config_result = await db.execute(select(AIConfig).where(AIConfig.is_active == True))
             ai_config = ai_config_result.scalar_one_or_none()
@@ -443,15 +488,10 @@ class InterviewExecutionService:
         logger.info(f"开始AI评估提交 #{submission.id}")
 
         try:
-            from sqlalchemy import select
-            from fastapi_backend.models.models import InterviewQuestion
-            question_query = select(InterviewQuestion).where(InterviewQuestion.id == submission.question_id)
-            question_result = await db.execute(question_query)
-            question = question_result.scalar_one_or_none()
+            q_obj, source_type = await _get_question_for_submission(db, submission)
+            q_info = _extract_question_info(q_obj, source_type)
 
-            question_prompt = None
-            if question:
-                question_prompt = question.prompt or question.content or question.description
+            question_prompt = q_info["prompt"] if q_obj else None
 
             judge_result = execution_result.get("judge_result")
 

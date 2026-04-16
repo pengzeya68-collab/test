@@ -13,6 +13,14 @@ class AITutorService:
     def __init__(self, db=None):
         self.db = db
         self._config = None
+        self.api_key = None
+        self.base_url = None
+        self.model = None
+        self.timeout = 30
+        self.max_tokens = 2000
+        self.temperature = 0.7
+        self.provider = "openai"
+        self.group_id = None
 
     async def _load_config(self):
         if self._config:

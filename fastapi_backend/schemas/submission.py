@@ -12,6 +12,7 @@ class SubmissionBase(BaseModel):
     session_id: int = Field(..., description="会话ID")
     user_id: int = Field(..., description="用户ID")
     question_id: int = Field(..., description="题目ID")
+    question_source: str = Field(default="interview_question", description="题目来源: interview_question / exercise")
     language: str = Field(default="python", description="编程语言")
     source_code: str = Field(..., min_length=1, description="源代码")
     execution_status: str = Field(default="pending", description="执行状态: pending/running/success/failed")
@@ -26,7 +27,6 @@ class SubmissionCreate(BaseModel):
     session_id: int = Field(..., description="会话ID")
     language: str = Field(default="python", description="编程语言")
     source_code: str = Field(..., min_length=1, description="源代码")
-    # user_id 和 question_id 从会话中获取，不需要前端传递
 
 
 class SubmissionUpdate(BaseModel):
@@ -64,6 +64,7 @@ class SubmissionList(BaseModel):
     session_id: int
     user_id: int
     question_id: int
+    question_source: str = "interview_question"
     language: str
     execution_status: str
     ai_evaluation_status: str
@@ -79,6 +80,7 @@ class SubmissionWithSessionInfo(BaseModel):
     session_id: int
     user_id: int
     question_id: int
+    question_source: str = "interview_question"
     language: str
     source_code: str
     execution_status: str
@@ -108,12 +110,10 @@ class SubmissionWithSessionInfo(BaseModel):
 
 class SubmissionResultDetail(SubmissionWithSessionInfo):
     """提交结果详情 - 用于完整评估报告"""
-    # 题目详细信息
     question_description: Optional[str] = None
     question_prompt: Optional[str] = None
     question_test_cases: Optional[str] = None
 
-    # 解析后的测试用例结果
     @computed_field
     @property
     def test_case_results(self) -> Optional[list[dict[str, Any]]]:
@@ -136,7 +136,6 @@ class SubmissionResultDetail(SubmissionWithSessionInfo):
         judge_result = parsed.get("judge_result")
         if not judge_result:
             return None
-        # 返回摘要信息
         return {
             "passed_count": judge_result.get("passed_count"),
             "failed_count": judge_result.get("failed_count"),
@@ -147,7 +146,6 @@ class SubmissionResultDetail(SubmissionWithSessionInfo):
             "total_execution_time_ms": judge_result.get("total_execution_time_ms")
         }
 
-    # AI评估结果（已包含在基类中）
     @computed_field
     @property
     def ai_evaluation(self) -> dict[str, Any]:
@@ -164,6 +162,7 @@ class SubmissionHistoryItem(BaseModel):
     id: int
     session_id: int
     question_id: int
+    question_source: str = "interview_question"
     question_title: str
     question_difficulty: str
     language: str
@@ -179,14 +178,10 @@ class SubmissionHistoryItem(BaseModel):
     @property
     def is_passed(self) -> bool:
         """是否通过（基于判题结果或AI评分）"""
-        # 如果AI评分存在，使用80分作为通过标准
         if self.score is not None:
             return self.score >= 80
-
-        # 如果执行状态为success且AI评估完成，视为通过
         if self.execution_status == "success" and self.ai_evaluation_status == "completed":
             return True
-
         return False
 
     @computed_field
@@ -210,5 +205,4 @@ class SubmissionHistoryItem(BaseModel):
             return "执行失败"
         elif self.execution_status == "timeout":
             return "执行超时"
-
         return "未知状态"

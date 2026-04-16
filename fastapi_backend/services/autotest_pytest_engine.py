@@ -12,12 +12,15 @@ import os
 import re
 import json
 import time
-import subprocess
+import asyncio
+import logging
 import yaml
 import requests
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
+
+_logger = logging.getLogger(__name__)
 
 # 项目根目录
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -182,7 +185,7 @@ def check_assertion(actual, operator, expected):
         elif operator == "regex":
             return bool(re.search(str(expected), str(actual)))
         return False
-    except:
+    except Exception:
         return False
 
 
@@ -205,7 +208,7 @@ def test_scenario_iteration(test_data, allure_dir, request):
     iteration_id = request.node.callspec.id if hasattr(request.node, 'callspec') else "0"
     try:
         iteration_index = int(iteration_id.split("-")[-1]) if iteration_id else 0
-    except:
+    except Exception:
         iteration_index = 0
 
     columns = test_data.get("columns", [])
@@ -276,7 +279,7 @@ def test_scenario_iteration(test_data, allure_dir, request):
                     try:
                         response_json = response.json()
                         response_data = {{"status": response.status_code, "body": response.text, "json": response_json}}
-                    except:
+                    except Exception:
                         response_data = {{"status": response.status_code, "body": response.text}}
                     allure.attach(
                         json.dumps({{"status": response.status_code, "duration_ms": step_duration, "body": str(response_data)[:500]}}, ensure_ascii=False, indent=2),
@@ -288,7 +291,7 @@ def test_scenario_iteration(test_data, allure_dir, request):
                 try:
                     response_json = response.json()
                     response_data = {{"status": response.status_code, "body": response.text, "json": response_json}}
-                except:
+                except Exception:
                     response_data = {{"status": response.status_code, "body": response.text}}
 
                 allure.attach(
@@ -370,10 +373,10 @@ def pytest_addoption(parser):
 
     def _run_pytest(self, test_file: Path, data_file: Path) -> Dict[str, Any]:
         import sys
+        import subprocess
 
         allure_results_dir_abs = str(self.allure_results_dir.absolute())
 
-        # 强制执行前清理旧数据
         import shutil
         shutil.rmtree(str(self.allure_results_dir), ignore_errors=True)
         self.allure_results_dir.mkdir(parents=True, exist_ok=True)
@@ -386,7 +389,7 @@ def pytest_addoption(parser):
         ]
 
         result = subprocess.run(cmd1, capture_output=True, text=True,
-                                cwd=str(self.temp_dir), shell=True)
+                                cwd=str(self.temp_dir))
         result_files = list(self.allure_results_dir.glob("*.json"))
 
         if len(result_files) == 0 and result.returncode != 0 and "No module named pytest" in result.stderr:
@@ -397,14 +400,14 @@ def pytest_addoption(parser):
                 cmd2 = [str(pytest_exe), str(test_file), f"--data_file={data_file}",
                         f"--alluredir={allure_results_dir_abs}", "-v", "--tb=short", "--no-header", "-p", "no:warnings"]
                 result = subprocess.run(cmd2, capture_output=True, text=True,
-                                        cwd=str(self.temp_dir), shell=True)
+                                        cwd=str(self.temp_dir))
                 result_files = list(self.allure_results_dir.glob("*.json"))
 
             if len(result_files) == 0:
                 cmd3 = ["pytest", str(test_file), f"--data_file={data_file}",
                         f"--alluredir={allure_results_dir_abs}", "-v", "--tb=short", "--no-header", "-p", "no:warnings"]
                 result = subprocess.run(cmd3, capture_output=True, text=True,
-                                        cwd=str(self.temp_dir), shell=True)
+                                        cwd=str(self.temp_dir))
                 result_files = list(self.allure_results_dir.glob("*.json"))
 
         passed = 0
@@ -444,7 +447,7 @@ def pytest_addoption(parser):
             cmd_result = subprocess.run(
                 ["allure", "generate", str(self.allure_results_dir.absolute()),
                  "-o", str(self.report_dir.absolute()), "--clean"],
-                capture_output=True, text=True, timeout=60, shell=True
+                capture_output=True, text=True, timeout=60
             )
 
             if cmd_result.returncode == 0:
@@ -461,6 +464,13 @@ def pytest_addoption(parser):
             for pattern in [f"*_{self.run_id}*"]:
                 for f in self.temp_dir.glob(pattern):
                     f.unlink()
+            cutoff = time.time() - 3600
+            for f in self.temp_dir.iterdir():
+                if f.is_file() and f.stat().st_mtime < cutoff:
+                    try:
+                        f.unlink()
+                    except OSError:
+                        pass
         except Exception:
             pass
 

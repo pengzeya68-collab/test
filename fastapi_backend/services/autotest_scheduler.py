@@ -9,11 +9,13 @@ import uuid
 from datetime import datetime
 
 _logger = logging.getLogger(__name__)
+
+from fastapi_backend.services.autotest_report_service import write_allure_results
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.jobstores.memory import MemoryJobStore
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 
 from fastapi_backend.core.autotest_database import INSTANCE_DIR
 
@@ -72,8 +74,9 @@ def get_scheduler() -> AsyncIOScheduler:
     """获取全局调度器实例"""
     global scheduler
     if scheduler is None:
+        jobstore_url = f"sqlite:///{INSTANCE_DIR / 'scheduler_jobs.db'}"
         scheduler = AsyncIOScheduler(
-            jobstores={'default': MemoryJobStore()},
+            jobstores={'default': SQLAlchemyJobStore(url=jobstore_url)},
             job_defaults={
                 'coalesce': True,
                 'max_instances': 1,
@@ -88,7 +91,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
     import subprocess
     import asyncio
 
-    print(f"[Scheduler] 开始执行任务 {task_id}, 场景 {scenario_id}")
+    _logger.info(f"[Scheduler] 开始执行任务 {task_id}, 场景 {scenario_id}")
 
     try:
         from fastapi_backend.core.autotest_database import AsyncSessionLocal
@@ -99,13 +102,13 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
             result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
             scenario = result.scalar_one_or_none()
             if not scenario or not scenario.is_active:
-                print(f"[Scheduler] 场景 {scenario_id} 已停用或不存在，跳过执行")
+                _logger.info(f"[Scheduler] 场景 {scenario_id} 已停用或不存在，跳过执行")
                 if task_id in scheduled_tasks:
                     scheduled_tasks[task_id]["status"] = "skipped"
                     scheduled_tasks[task_id]["last_error"] = "场景已停用，跳过执行"
                 return
     except Exception as e:
-        print(f"[Scheduler] 检查场景状态失败: {e}")
+        _logger.info(f"[Scheduler] 检查场景状态失败: {e}")
 
     if task_id in scheduled_tasks:
         scheduled_tasks[task_id]["last_run"] = datetime.now().isoformat()
@@ -116,7 +119,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
         from fastapi_backend.tasks import task_run_scenario
 
         # 创建Celery任务
-        print(f"[Scheduler] 发送Celery任务: scenario_id={scenario_id}, env_id={env_id}")
+        _logger.info(f"[Scheduler] 发送Celery任务: scenario_id={scenario_id}, env_id={env_id}")
         celery_task = task_run_scenario.delay(scenario_id, env_id)
 
         if not celery_task:
@@ -126,7 +129,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
         if not celery_task_id:
             raise ValueError("Celery任务ID为空，任务可能未成功发送")
 
-        print(f"[Scheduler] Celery任务已发送，任务ID: {celery_task_id}")
+        _logger.info(f"[Scheduler] Celery任务已发送，任务ID: {celery_task_id}")
 
         # 等待任务完成（异步等待）
         max_wait_time = 300  # 5分钟超时
@@ -138,7 +141,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                 try:
                     await asyncio.sleep(wait_interval)
                 except asyncio.CancelledError:
-                    print(f"[Scheduler] 任务 {task_id} 等待被取消，正在更新任务状态")
+                    _logger.info(f"[Scheduler] 任务 {task_id} 等待被取消，正在更新任务状态")
                     if task_id in scheduled_tasks:
                         scheduled_tasks[task_id]["last_status"] = "cancelled"
                         scheduled_tasks[task_id]["status"] = "idle"
@@ -153,7 +156,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                 if task_result.ready():
                     if task_result.successful():
                         result = task_result.result
-                        print(f"[Scheduler] Celery任务完成: {celery_task_id}")
+                        _logger.info(f"[Scheduler] Celery任务完成: {celery_task_id}")
                         break
                     else:
                         error_msg = str(task_result.result) if task_result.result else "任务执行失败"
@@ -161,7 +164,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
             else:
                 raise TimeoutError(f"Celery任务超时: {celery_task_id}")
         except asyncio.CancelledError:
-            print(f"[Scheduler] 任务 {task_id} 执行被完全取消")
+            _logger.info(f"[Scheduler] 任务 {task_id} 执行被完全取消")
             if task_id in scheduled_tasks:
                 scheduled_tasks[task_id]["last_status"] = "cancelled"
                 scheduled_tasks[task_id]["status"] = "idle"
@@ -180,7 +183,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
         allure_results_dir.mkdir(parents=True, exist_ok=True)
 
         history_id = str(uuid.uuid4())[:8]
-        _write_allure_result(allure_results_dir, scenario_id, result, history_id)
+        write_allure_results(allure_results_dir, scenario_id, result, history_id)
 
         try:
             import shutil
@@ -195,7 +198,6 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                 ["allure", "generate", str(allure_results_dir), "-o", str(report_dir), "--clean"],
                 capture_output=True,
                 timeout=60,
-                shell=True,
                 text=True,
                 encoding='utf-8',
                 errors='ignore'
@@ -236,19 +238,19 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                     _logger.warning(f"Webhook 通知失败 {webhook_url}: {wh_err}")
 
     except asyncio.CancelledError:
-        print(f"[Scheduler] 任务 {task_id} 被取消执行")
+        _logger.info(f"[Scheduler] 任务 {task_id} 被取消执行")
         if task_id in scheduled_tasks:
             scheduled_tasks[task_id]["last_status"] = "cancelled"
             scheduled_tasks[task_id]["status"] = "idle"
     except Exception as e:
-        print(f"[Scheduler] 任务 {task_id} 执行失败: {str(e)}")
+        _logger.info(f"[Scheduler] 任务 {task_id} 执行失败: {str(e)}")
         if task_id in scheduled_tasks:
             scheduled_tasks[task_id]["last_status"] = "error"
             scheduled_tasks[task_id]["last_error"] = str(e)
             scheduled_tasks[task_id]["status"] = "idle"
 
 
-def _write_allure_result(allure_results_dir: Path, scenario_id: int, result: dict, history_id: str):
+def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dict, history_id: str):
     """写入 Allure 结果文件 - 每个步骤生成独立的测试用例JSON，模拟 Pytest Class 架构"""
     import time as time_module
 
@@ -492,17 +494,17 @@ def toggle_task_status(task_id: str) -> Dict[str, Any]:
     is_active = task_info.get("is_active", True)
     sched = get_scheduler()
 
-    print(f"[Scheduler] 切换任务状态: {task_id}, 当前is_active={is_active}, 调度器运行状态: {sched.running}")
+    _logger.info(f"[Scheduler] 切换任务状态: {task_id}, 当前is_active={is_active}, 调度器运行状态: {sched.running}")
 
     if is_active:
         # 暂停任务
-        print(f"[Scheduler] 暂停任务: {task_id}")
+        _logger.info(f"[Scheduler] 暂停任务: {task_id}")
         sched.pause_job(task_id)
         task_info["is_active"] = False
         task_info["status"] = "paused"
     else:
         # 恢复任务
-        print(f"[Scheduler] 恢复任务: {task_id}")
+        _logger.info(f"[Scheduler] 恢复任务: {task_id}")
         sched.resume_job(task_id)
         task_info["is_active"] = True
         task_info["status"] = "idle"
@@ -510,7 +512,7 @@ def toggle_task_status(task_id: str) -> Dict[str, Any]:
     # 验证作业状态
     job = sched.get_job(task_id)
     if job:
-        print(f"[Scheduler] 作业状态: pending={job.pending}, next_run_time={job.next_run_time}")
+        _logger.info(f"[Scheduler] 作业状态: pending={job.pending}, next_run_time={job.next_run_time}")
 
     return {
         "task_id": task_id,
@@ -638,7 +640,7 @@ def start_scheduler():
     sched = get_scheduler()
     if not sched.running:
         sched.start()
-        print("[Scheduler] 调度器已启动")
+        _logger.info("[Scheduler] 调度器已启动")
 
 
 def stop_scheduler():
@@ -646,5 +648,5 @@ def stop_scheduler():
     global scheduler
     if scheduler and scheduler.running:
         scheduler.shutdown()
-        print("[Scheduler] 调度器已停止")
+        _logger.info("[Scheduler] 调度器已停止")
     scheduler = None

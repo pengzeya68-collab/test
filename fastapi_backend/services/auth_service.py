@@ -6,9 +6,9 @@ import secrets
 import time
 from typing import Any
 
+import bcrypt
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from werkzeug.security import check_password_hash, generate_password_hash
 
 from fastapi_backend.core.config import settings
 from fastapi_backend.models.models import User
@@ -28,6 +28,9 @@ def _b64url_decode(data: str) -> bytes:
     return base64.urlsafe_b64decode(data + padding)
 
 
+_DUMMY_HASH = bcrypt.hashpw(b"dummy", bcrypt.gensalt()).decode("utf-8")
+
+
 class AuthService:
     def __init__(self):
         self.secret_key = settings.SECRET_KEY
@@ -36,11 +39,14 @@ class AuthService:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        return generate_password_hash(password)
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     @staticmethod
     def verify_password(password: str, password_hash: str) -> bool:
-        return check_password_hash(password_hash, password)
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+        except Exception:
+            return False
 
     @staticmethod
     def to_user_response(user: User) -> CurrentUserResponse:
@@ -64,7 +70,7 @@ class AuthService:
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
         if not user:
-            self.verify_password(password, "pbkdf2:sha256:260000$dummy$dummyhash")
+            self.verify_password(password, _DUMMY_HASH)
             return None
         if not self.verify_password(password, user.password_hash):
             return None

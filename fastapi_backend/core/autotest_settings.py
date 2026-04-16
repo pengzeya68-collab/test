@@ -1,37 +1,34 @@
 """
-AutoTest 配置模块
-
-替代 auto_test_platform/settings.py，
-所有配置项通过环境变量读取，支持运行时修改。
+AutoTest settings - now delegates to the unified config.py
 """
-import os
+import logging
 
-# ========== 邮件通知配置 ==========
-# 是否启用邮件通知
-EMAIL_ENABLED = os.getenv("EMAIL_ENABLED", "False").lower() == "true"
-
-# SMTP 服务器配置
-EMAIL_SMTP_HOST = os.getenv("EMAIL_SMTP_HOST", "smtp.gmail.com")
-EMAIL_SMTP_PORT = int(os.getenv("EMAIL_SMTP_PORT", "465"))
-EMAIL_SMTP_USER = os.getenv("EMAIL_SMTP_USER", "")
-EMAIL_SMTP_PASSWORD = os.getenv("EMAIL_SMTP_PASSWORD", "")
-EMAIL_FROM = os.getenv("EMAIL_FROM", EMAIL_SMTP_USER)
-
-# 管理员收件邮箱
-EMAIL_ADMIN_TO = os.getenv("EMAIL_ADMIN_TO", "")
-
-# 是否启用 SSL
-EMAIL_ENABLE_SSL = os.getenv("EMAIL_ENABLE_SSL", "True").lower() == "true"
-
-# ========== 服务配置 ==========
-# 基础 URL，用于邮件/飞书中生成完整的报告链接
-BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5001")
+_logger = logging.getLogger(__name__)
 
 
-def get_settings():
-    """
-    返回当前模块作为设置对象（支持运行时 setattr 修改）。
-    用法: settings = get_settings(); settings.EMAIL_ENABLED = True
-    """
-    import sys
-    return sys.modules[__name__]
+class _AutoTestSettings:
+    def __init__(self):
+        self._load_from_config()
+
+    def _load_from_config(self):
+        from fastapi_backend.core.config import settings
+        self.EMAIL_SMTP_HOST = settings.EMAIL_SMTP_HOST
+        self.EMAIL_SMTP_PORT = settings.EMAIL_SMTP_PORT
+        self.EMAIL_SMTP_USER = settings.EMAIL_SMTP_USER
+        self.EMAIL_SMTP_PASSWORD = settings.EMAIL_SMTP_PASSWORD
+        self.EMAIL_FROM_ADDRESS = settings.EMAIL_FROM_ADDRESS
+        self.EMAIL_USE_SSL = settings.EMAIL_USE_SSL
+        self.EMAIL_ENABLED = settings.EMAIL_ENABLED
+        self.AUTO_TEST_BASE_URL = settings.AUTO_TEST_BASE_URL
+        self.CELERY_BROKER_URL = settings.CELERY_BROKER_URL
+        self.CELERY_RESULT_BACKEND = settings.CELERY_RESULT_BACKEND
+
+    def reload(self):
+        self._load_from_config()
+
+
+def get_settings() -> _AutoTestSettings:
+    return _AutoTestSettings()
+
+
+autotest_settings = get_settings()

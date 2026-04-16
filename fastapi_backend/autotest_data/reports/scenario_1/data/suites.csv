@@ -1,3 +1,0 @@
-"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
-"[POST] 步骤 2：用提取出来的数据组装全新的请求体 - HTTP 200","1","测试步骤: 步骤 2：用提取出来的数据组装全新的请求体","","2026-04-14","passed","2026-04-14","","test_scenario_1_a967dc21","",""
-"[GET] 步骤 1：获取随机生成的复杂用户信息 - HTTP 200","1","测试步骤: 步骤 1：获取随机生成的复杂用户信息","","2026-04-14","passed","2026-04-14","","test_scenario_1_a967dc21","",""

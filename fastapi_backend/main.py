@@ -7,21 +7,29 @@ have been natively migrated — no bridge middleware is needed.
 from __future__ import annotations
 
 import uuid
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from fastapi_backend.core.config import settings
+
+_logger = logging.getLogger(__name__)
 from fastapi_backend.core.database import Base, engine
 from fastapi_backend.core.exceptions import BusinessException
 from fastapi_backend.routers.admin import router as admin_router
-from fastapi_backend.routers.admin_manage import router as admin_manage_router
+from fastapi_backend.routers.admin_users import router as admin_users_router
+from fastapi_backend.routers.admin_exercises import router as admin_exercises_router
+from fastapi_backend.routers.admin_paths import router as admin_paths_router
+from fastapi_backend.routers.admin_exams import router as admin_exams_router
+from fastapi_backend.routers.admin_community import router as admin_community_router
+from fastapi_backend.routers.admin_system import router as admin_system_router
 from fastapi_backend.routers.auth import router as auth_router
 from fastapi_backend.routers.cases import router as cases_router
 from fastapi_backend.routers.community import router as community_router
@@ -63,6 +71,23 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 
 
+def _cleanup_stale_temp_files(directory: Path, max_age_hours: int = 24) -> None:
+    import time
+    if not directory.exists():
+        return
+    cutoff = time.time() - max_age_hours * 3600
+    removed = 0
+    for f in directory.iterdir():
+        if f.is_file() and f.stat().st_mtime < cutoff:
+            try:
+                f.unlink()
+                removed += 1
+            except OSError:
+                pass
+    if removed:
+        _logger.info("已清理 %s 中 %d 个过期临时文件（超过 %d 小时）", directory, removed, max_age_hours)
+
+
 async def create_tables() -> None:
     """Create tables only when AUTO_CREATE_TABLES_ON_STARTUP is explicitly set to 'true' or '1'.
     This prevents bypassing migration system during normal startup."""
@@ -70,6 +95,98 @@ async def create_tables() -> None:
         return
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _migrate_remove_foreign_keys(conn)
+
+
+async def _migrate_remove_foreign_keys(conn) -> None:
+    """移除 submissions 和 interview_sessions 表中 question_id 的外键约束
+    SQLite 不支持 ALTER TABLE DROP CONSTRAINT，需要重建表
+    同时添加 submissions.question_source 列"""
+    from sqlalchemy import text as sa_text, inspect as sa_inspect
+
+    try:
+        def _do_migrate(sync_conn):
+            try:
+                insp = sa_inspect(sync_conn)
+                sub_cols = [c["name"] for c in insp.get_columns("submissions")]
+                if "question_source" not in sub_cols:
+                    sync_conn.execute(sa_text(
+                        "ALTER TABLE submissions ADD COLUMN question_source VARCHAR(20) DEFAULT 'interview_question'"
+                    ))
+                    _logger.info("[迁移] 已添加 submissions.question_source 列")
+            except Exception as e:
+                _logger.debug(f"[迁移] 添加 question_source 列时出错（可忽略）: {e}")
+
+            for table_name, fk_col, fk_ref_table in [
+                ("submissions", "question_id", "interview_questions"),
+                ("interview_sessions", "question_id", "interview_questions"),
+            ]:
+                try:
+                    insp = sa_inspect(sync_conn)
+                    fks = insp.get_foreign_keys(table_name)
+                    target_fk = None
+                    for fk in fks:
+                        if fk.get("constrained_columns") and fk_col in fk["constrained_columns"]:
+                            if fk.get("referred_table") == fk_ref_table:
+                                target_fk = fk
+                                break
+                    if not target_fk:
+                        continue
+
+                    cols_info = insp.get_columns(table_name)
+                    col_defs = []
+                    for c in cols_info:
+                        cd = f'"{c["name"]}" {c["type"]}'
+                        if not c.get("nullable", True):
+                            cd += " NOT NULL"
+                        if c.get("default") is not None:
+                            cd += f' DEFAULT {c["default"]}'
+                        col_defs.append(cd)
+
+                    pk_info = insp.get_pk_constraint(table_name)
+                    if pk_info and pk_info.get("constrained_columns"):
+                        pk_cols = ", ".join(f'"{c}"' for c in pk_info["constrained_columns"])
+                        col_defs.append(f"PRIMARY KEY ({pk_cols})")
+
+                    remaining_fks = [fk for fk in fks if fk is not target_fk]
+                    for fk in remaining_fks:
+                        fk_cols = ", ".join(f'"{c}"' for c in fk["constrained_columns"])
+                        ref_cols = ", ".join(f'"{c}"' for c in fk["referred_columns"])
+                        col_defs.append(
+                            f'FOREIGN KEY({fk_cols}) REFERENCES "{fk["referred_table"]}"({ref_cols})'
+                        )
+
+                    col_defs_str = ",\n  ".join(col_defs)
+                    tmp_name = f"_tmp_migrate_{table_name}"
+
+                    sync_conn.execute(sa_text(f"ALTER TABLE \"{table_name}\" RENAME TO \"{tmp_name}\""))
+                    sync_conn.execute(sa_text(
+                        f'CREATE TABLE "{table_name}" (\n  {col_defs_str}\n)'
+                    ))
+                    orig_cols = [c["name"] for c in cols_info]
+                    cols_str = ", ".join(f'"{c}"' for c in orig_cols)
+                    sync_conn.execute(sa_text(
+                        f'INSERT INTO "{table_name}" ({cols_str}) SELECT {cols_str} FROM "{tmp_name}"'
+                    ))
+                    sync_conn.execute(sa_text(f'DROP TABLE "{tmp_name}"'))
+
+                    idxs = insp.get_indexes(table_name)
+                    for idx in idxs:
+                        try:
+                            idx_cols = ", ".join(f'"{c}"' for c in idx["column_names"])
+                            sync_conn.execute(sa_text(
+                                f'CREATE INDEX IF NOT EXISTS "{idx["name"]}" ON "{table_name}"({idx_cols})'
+                            ))
+                        except Exception:
+                            pass
+
+                    _logger.info(f"[迁移] 已移除 {table_name}.{fk_col} 的外键约束")
+                except Exception as e:
+                    _logger.debug(f"[迁移] 处理 {table_name}.{fk_col} 时出错（可忽略）: {e}")
+
+        await conn.run_sync(_do_migrate)
+    except Exception as e:
+        _logger.debug(f"[迁移] 外键迁移过程出错（可忽略）: {e}")
 
 
 async def init_auto_test_runtime() -> None:
@@ -95,7 +212,10 @@ async def init_auto_test_runtime() -> None:
     ):
         directory.mkdir(parents=True, exist_ok=True)
 
-    # 启动调度器并从数据库恢复定时任务（Cron / Webhook 等）
+    _cleanup_stale_temp_files(AUTOTEST_DATA_DIR / "temp_pytest_tests", max_age_hours=24)
+    _cleanup_stale_temp_files(AUTOTEST_DATA_DIR / "temp_run_data", max_age_hours=24)
+
+    # 启动调度器（SQLAlchemyJobStore 自动持久化 Job，restore 作为安全补充）
     from fastapi_backend.services.autotest_scheduler import start_scheduler
     start_scheduler()
     await restore_scheduler_jobs_from_db()
@@ -106,9 +226,12 @@ async def lifespan(_: FastAPI):
     if settings.AUTO_CREATE_TABLES_ON_STARTUP:
         await create_tables()
     await init_auto_test_runtime()
+    from fastapi_backend.services.autotest_task_store import start_cleanup_task, stop_cleanup_task
+    start_cleanup_task()
     try:
         yield
     finally:
+        stop_cleanup_task()
         from fastapi_backend.services.autotest_scheduler import stop_scheduler
         stop_scheduler()
 
@@ -189,41 +312,61 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Trace-ID", "X-Request-ID"],
 )
 
-# ========== Legacy routes (Phase A migrated) ==========
+# ========== 路由分组注册 ==========
 app.include_router(auth_router)
-app.include_router(admin_router)
-app.include_router(admin_manage_router)
-app.include_router(groups_router)
-app.include_router(cases_router)
-app.include_router(envs_router)
-app.include_router(plans_router)
-app.include_router(execution_router)
-app.include_router(interview_router)
-app.include_router(sandbox_router)
-app.include_router(exercise_router)
-app.include_router(community_router)
-app.include_router(learning_paths_router)
-app.include_router(skills_router)
-app.include_router(assessment_router)
-app.include_router(achievements_router)
-app.include_router(checkin_router)
-app.include_router(leaderboard_router)
-app.include_router(report_router)
-app.include_router(notes_router)
-app.include_router(certificates_router)
-app.include_router(exam_router)
-app.include_router(exercises_router)
-app.include_router(ai_tutor_router)
-app.include_router(ai_config_router)
 
-# ========== AutoTest native routes (Phase B migrated) ==========
-app.include_router(autotest_groups_router)
-app.include_router(autotest_cases_router)
-app.include_router(autotest_envs_router)
-app.include_router(autotest_scenarios_router)
-app.include_router(autotest_execution_router)
-app.include_router(autotest_diagnostic_router)
-app.include_router(autotest_global_vars_router)
+admin_router_group = APIRouter()
+admin_router_group.include_router(admin_router)
+admin_router_group.include_router(admin_users_router)
+admin_router_group.include_router(admin_exercises_router)
+admin_router_group.include_router(admin_paths_router)
+admin_router_group.include_router(admin_exams_router)
+admin_router_group.include_router(admin_community_router)
+admin_router_group.include_router(admin_system_router)
+admin_router_group.include_router(ai_config_router)
+admin_router_group.include_router(backup_router)
+
+legacy_test_router = APIRouter()
+legacy_test_router.include_router(groups_router)
+legacy_test_router.include_router(cases_router)
+legacy_test_router.include_router(envs_router)
+legacy_test_router.include_router(plans_router)
+legacy_test_router.include_router(execution_router)
+
+autotest_router = APIRouter()
+autotest_router.include_router(autotest_groups_router)
+autotest_router.include_router(autotest_cases_router)
+autotest_router.include_router(autotest_envs_router)
+autotest_router.include_router(autotest_scenarios_router)
+autotest_router.include_router(autotest_execution_router)
+autotest_router.include_router(autotest_diagnostic_router)
+autotest_router.include_router(autotest_global_vars_router)
+
+learning_router = APIRouter()
+learning_router.include_router(learning_paths_router)
+learning_router.include_router(skills_router)
+learning_router.include_router(assessment_router)
+learning_router.include_router(achievements_router)
+learning_router.include_router(checkin_router)
+learning_router.include_router(leaderboard_router)
+learning_router.include_router(report_router)
+learning_router.include_router(notes_router)
+learning_router.include_router(certificates_router)
+learning_router.include_router(exam_router)
+learning_router.include_router(exercise_router)
+learning_router.include_router(exercises_router)
+
+ai_tools_router = APIRouter()
+ai_tools_router.include_router(interview_router)
+ai_tools_router.include_router(sandbox_router)
+ai_tools_router.include_router(ai_tutor_router)
+ai_tools_router.include_router(community_router)
+
+app.include_router(admin_router_group)
+app.include_router(legacy_test_router)
+app.include_router(autotest_router)
+app.include_router(learning_router)
+app.include_router(ai_tools_router)
 
 # ========== Static files for Allure reports ==========
 REPORTS_DIR = AUTOTEST_DATA_DIR / "reports"

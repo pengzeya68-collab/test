@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="code-editor-container">
     <!-- 工具栏 -->
     <div class="editor-toolbar">

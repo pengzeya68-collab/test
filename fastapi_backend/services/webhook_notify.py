@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Dict, List, Optional, Tuple
-from urllib import error as urllib_error
-from urllib import request as urllib_request
+
+import httpx
+
+_logger = logging.getLogger(__name__)
 
 
 def _is_feishu_webhook(webhook_url: str) -> bool:
@@ -15,15 +18,13 @@ def _is_feishu_webhook(webhook_url: str) -> bool:
 def _public_backend_base_url() -> str:
     try:
         from fastapi_backend.core import autotest_settings as _s
-
-        base = getattr(_s, "BASE_URL", None) or ""
+        base = getattr(_s, "AUTO_TEST_BASE_URL", None) or ""
         return (base or "http://localhost:5001").strip().rstrip("/")
     except Exception:
         return "http://localhost:5001"
 
 
 def absolute_report_url(report_path: Optional[str]) -> Optional[str]:
-    """将 /reports/... 转为可点击的完整 URL（依赖 BASE_URL / 邮件配置里的服务地址）。"""
     if not (report_path or "").strip():
         return None
     p = report_path.strip()
@@ -42,7 +43,6 @@ def _build_payload(webhook_url: str, text: str) -> Tuple[Dict[str, Any], Dict[st
         return {"msgtype": "text", "text": {"content": text}}, headers
     if "qyapi.weixin.qq.com" in u:
         return {"msgtype": "markdown", "markdown": {"content": text}}, headers
-    # Default: 按飞书文本
     return {"msg_type": "text", "content": {"text": text}}, headers
 
 
@@ -58,7 +58,6 @@ def _feishu_interactive_card_payload(
     env_name: Optional[str] = None,
     skipped: int = 0,
 ) -> Dict[str, Any]:
-    """飞书机器人 interactive 卡片消息：动态颜色标题 + 核心指标 + 统计 + 报告按钮。"""
     passed = max(0, total - failed - skipped) if total > 0 else 0
     pass_rate = f"{round((passed / total) * 100)}%" if total > 0 else "N/A"
     sec = f"{total_time_ms / 1000.0:.2f}s" if total_time_ms is not None else "N/A"
@@ -123,7 +122,6 @@ def _feishu_post_schedule_payload(
     env_name: Optional[str] = None,
     skipped: int = 0,
 ) -> Dict[str, Any]:
-    """飞书自定义机器人推送（优先使用 interactive 卡片）。"""
     return _feishu_interactive_card_payload(
         scenario_id,
         scenario_name,
@@ -136,6 +134,41 @@ def _feishu_post_schedule_payload(
         env_name,
         skipped,
     )
+
+
+async def send_bot_webhook_async(
+    webhook_url: str,
+    text: str = "",
+    *,
+    payload_override: Optional[Dict[str, Any]] = None,
+) -> Tuple[bool, str]:
+    if not (webhook_url or "").strip():
+        return False, "empty url"
+    wu = webhook_url.strip()
+    if payload_override is not None:
+        payload = payload_override
+        headers = {"Content-Type": "application/json; charset=utf-8"}
+    else:
+        payload, headers = _build_payload(wu, text)
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(wu, json=payload, headers=headers)
+            body = resp.text
+            if resp.status_code >= 400:
+                return False, f"HTTP {resp.status_code}: {body[:500]}"
+            try:
+                j = json.loads(body)
+                if isinstance(j, dict) and j.get("code") not in (None, 0):
+                    return False, body[:500]
+            except json.JSONDecodeError:
+                pass
+            return True, body[:200]
+    except httpx.HTTPStatusError as e:
+        err_body = e.response.text[:500] if e.response else ""
+        return False, f"HTTPError {e.response.status_code}: {err_body}"
+    except Exception as e:
+        return False, str(e)[:500]
 
 
 def send_bot_webhook(
@@ -152,14 +185,13 @@ def send_bot_webhook(
         headers = {"Content-Type": "application/json; charset=utf-8"}
     else:
         payload, headers = _build_payload(wu, text)
-    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    req = urllib_request.Request(wu, data=data, headers=headers, method="POST")
+
     try:
-        with urllib_request.urlopen(req, timeout=20) as resp:
-            body = resp.read().decode("utf-8", errors="replace")
-            if resp.status >= 400:
-                return False, f"HTTP {resp.status}: {body[:500]}"
-            # Feishu returns JSON with code != 0 on business error
+        with httpx.Client(timeout=20.0) as client:
+            resp = client.post(wu, json=payload, headers=headers)
+            body = resp.text
+            if resp.status_code >= 400:
+                return False, f"HTTP {resp.status_code}: {body[:500]}"
             try:
                 j = json.loads(body)
                 if isinstance(j, dict) and j.get("code") not in (None, 0):
@@ -167,9 +199,9 @@ def send_bot_webhook(
             except json.JSONDecodeError:
                 pass
             return True, body[:200]
-    except urllib_error.HTTPError as e:
-        err_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
-        return False, f"HTTPError {e.code}: {err_body[:500]}"
+    except httpx.HTTPStatusError as e:
+        err_body = e.response.text[:500] if e.response else ""
+        return False, f"HTTPError {e.response.status_code}: {err_body}"
     except Exception as e:
         return False, str(e)[:500]
 
@@ -185,10 +217,6 @@ def _failed_step_count_payload(result: Optional[dict]) -> int:
 
 
 def notify_scenario_schedule_webhook_from_db(scenario_id: int, result: dict) -> Tuple[bool, str]:
-    """
-    场景在 Celery 中执行结束后调用：从 DB 读 schedule_webhook_url 并推送。
-    与 FastAPI 调度进程是否被 WatchFiles reload 无关。
-    """
     from fastapi_backend.services.autotest_schedule_persistence import read_schedule_webhook_sync
 
     url = read_schedule_webhook_sync(scenario_id)
@@ -226,7 +254,6 @@ def notify_scenario_schedule_webhook_from_db(scenario_id: int, result: dict) -> 
         )
         return send_bot_webhook(url, payload_override=post)
 
-    # 钉钉 / 企微等：纯文本 + 完整报告链接
     lines = [
         "【TestMaster】接口自动化执行结果",
         f"场景：{name or '—'}（ID {scenario_id}）",

@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="profile-page">
     <div class="container">
       <div class="profile-header-section">

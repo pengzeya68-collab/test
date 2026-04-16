@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="global-variable-manager">
     <el-card>
       <template #header>

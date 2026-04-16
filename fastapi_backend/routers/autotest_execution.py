@@ -55,209 +55,35 @@ TASKS_DIR = AUTOTEST_DATA_DIR / "tasks"
 _task_store: dict = {}  # 内存缓存
 _task_store_lock = asyncio.Lock()
 
-def _load_task_store():
-    """从文件加载所有任务状态到内存缓存"""
-    global _task_store
-    _task_store = {}
-    TASKS_DIR.mkdir(parents=True, exist_ok=True)
-    if not TASKS_DIR.exists():
-        return
-    for json_file in TASKS_DIR.glob("*.json"):
-        try:
-            with open(json_file, "r", encoding="utf-8") as f:
-                task_data = json.load(f)
-                task_id = task_data.get("task_id")
-                if task_id:
-                    _task_store[task_id] = task_data
-        except Exception:
-            pass
-
-def _save_task_to_file(task_id: str, task_info: dict):
-    task_file = TASKS_DIR / f"{task_id}.json"
-    tmp_file = TASKS_DIR / f"{task_id}.json.tmp"
-    try:
-        with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(task_info, f, ensure_ascii=False, indent=2)
-        tmp_file.replace(task_file)
-    except Exception:
-        pass
-
-def _delete_task_file(task_id: str):
-    """删除任务状态文件"""
-    task_file = TASKS_DIR / f"{task_id}.json"
-    try:
-        if task_file.exists():
-            task_file.unlink()
-    except Exception:
-        pass
-
-def _get_task_from_store(task_id: str) -> dict | None:
-    """从内存或文件获取任务状态"""
-    if task_id in _task_store:
-        return _task_store[task_id]
-    task_file = TASKS_DIR / f"{task_id}.json"
-    if task_file.exists():
-        try:
-            with open(task_file, "r", encoding="utf-8") as f:
-                task_data = json.load(f)
-                _task_store[task_id] = task_data
-                return task_data
-        except Exception:
-            pass
-    return None
-
-
-async def _update_task_store(task_id: str, task_info: dict):
-    """更新内存缓存并保存到文件（异步安全）"""
-    async with _task_store_lock:
-        _task_store[task_id] = task_info
-        _save_task_to_file(task_id, task_info)
-
-# 启动时加载已有任务
-_load_task_store()
-
+# ========== 任务状态管理 ==========
+from fastapi_backend.services.autotest_task_store import (
+    get_task, update_task, delete_task, get_all_tasks
+)
 
 # ========== 接口调试发送 ==========
 
-def convert_to_dict(data):
-    if data is None or data == "":
-        return {}
-    elif isinstance(data, str):
-        import json
-        try:
-            return json.loads(data)
-        except json.JSONDecodeError:
-            import logging
-            logging.getLogger(__name__).warning(f"JSON解析失败，数据将被丢弃: {data[:100]}")
-            return {}
-    elif isinstance(data, dict):
-        return data
-    else:
-        return {}
+from fastapi_backend.utils.autotest_helpers import convert_to_dict
+from fastapi_backend.services.autotest_report_service import write_allure_results
 
 @router.post("/send")
 async def send_request(payload: dict):
-    method = payload.get("method", "GET").upper()
+    from fastapi_backend.services.autotest_request_service import execute_http_request
     url = payload.get("url", "")
-    headers = convert_to_dict(payload.get("headers"))
-    params = convert_to_dict(payload.get("params"))
-    body = payload.get("body") or payload.get("payload")
-    body_type = payload.get("body_type", "json")
-    env_id = payload.get("env_id")
-    variables = convert_to_dict(payload.get("variables"))
-
     if not url:
         raise HTTPException(status_code=400, detail="URL 不能为空")
-
-    import ipaddress
-    import urllib.parse
     try:
-        parsed = urllib.parse.urlparse(url)
-        hostname = parsed.hostname
-        if hostname:
-            import socket
-            resolved_ip = socket.gethostbyname(hostname)
-            ip = ipaddress.ip_address(resolved_ip)
-            if ip.is_private or ip.is_loopback or ip.is_reserved:
-                raise HTTPException(status_code=400, detail="不允许访问内网或保留地址")
-    except (ValueError, socket.gaierror):
-        pass
-
-    # 加载全局变量
-    from fastapi_backend.core.autotest_database import AsyncSessionLocal
-    async with AsyncSessionLocal() as session:
-        # 加载全局变量
-        global_vars_result = await session.execute(select(AutoTestGlobalVariable))
-        global_vars = {}
-        for var in global_vars_result.scalars().all():
-            value = var.value
-            if var.is_encrypted:
-                value = decrypt(value)
-            global_vars[var.name] = value
-        # 合并全局变量到 variables
-        variables.update(global_vars)
-
-        # 如果提供了 env_id，从数据库加载环境变量
-        if env_id:
-            result = await session.execute(
-                select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id)
-            )
-            env = result.scalar_one_or_none()
-            if env and env.variables and isinstance(env.variables, dict):
-                variables.update(env.variables)
-            if env and env.base_url and not url.startswith(("http://", "https://")):
-                url = env.base_url.rstrip("/") + "/" + url.lstrip("/")
-
-    # 变量替换
-    if variables:
-        from fastapi_backend.utils.parser import replace_variables as rv
-        url = rv(url, variables)
-        # 处理headers
-        if isinstance(headers, dict):
-            headers = {k: rv(str(v), variables) for k, v in headers.items()}
-        # 处理params
-        if isinstance(params, dict):
-            params = {k: rv(str(v), variables) for k, v in params.items()}
-        # 处理body
-        if body and isinstance(body, str):
-            body = rv(body, variables)
-        elif body and isinstance(body, dict):
-            import json as _json
-            body_str = _json.dumps(body, ensure_ascii=False)
-            body_str = rv(body_str, variables)
-            try:
-                body = _json.loads(body_str)
-            except Exception:
-                body = body_str
-
-    import requests as _requests
-    start_time = time.time()
-    try:
-        req_kwargs = {"headers": headers, "timeout": 30, "params": params}
-        processed_body = convert_to_dict(body) if body_type == "form" else body
-        if body_type == "json" and processed_body:
-            if isinstance(processed_body, str):
-                try:
-                    processed_body = json.loads(processed_body)
-                except json.JSONDecodeError as e:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"请求体 JSON 格式校验失败，请检查语法。错误: {str(e)}"
-                    )
-            req_kwargs["json"] = processed_body
-        elif body_type == "form" and processed_body:
-            req_kwargs["data"] = processed_body
-        elif processed_body:
-            if isinstance(processed_body, str):
-                try:
-                    processed_body = json.loads(processed_body)
-                except json.JSONDecodeError as e:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"请求体 JSON 格式校验失败，请检查语法。错误: {str(e)}"
-                    )
-            req_kwargs["json"] = processed_body
-
-        resp = await asyncio.to_thread(_requests.request, method, url, **req_kwargs)
-
-        execution_time = int((time.time() - start_time) * 1000)
-        try:
-            response_content = resp.json()
-        except Exception:
-            response_content = resp.text
-
-        return {
-            "status_code": resp.status_code,
-            "response_content": response_content,
-            "execution_time": execution_time,
-            "success": 200 <= resp.status_code < 400,
-        }
-    except _requests.exceptions.Timeout:
-        return {"error": "请求超时", "execution_time": int((time.time() - start_time) * 1000)}
-    except _requests.exceptions.ConnectionError:
-        return {"error": "连接失败，请检查网络或服务地址", "execution_time": int((time.time() - start_time) * 1000)}
-    except Exception as e:
-        return {"error": str(e), "execution_time": int((time.time() - start_time) * 1000)}
+        return await execute_http_request(
+            method=payload.get("method", "GET").upper(),
+            url=url,
+            headers=convert_to_dict(payload.get("headers")),
+            params=convert_to_dict(payload.get("params")),
+            body=payload.get("body") or payload.get("payload"),
+            body_type=payload.get("body_type", "json"),
+            env_id=payload.get("env_id"),
+            variables=convert_to_dict(payload.get("variables")),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # ========== Celery 任务状态管理 ==========
@@ -361,165 +187,12 @@ async def cancel_task(task_id: str):
 @router.get("/reports/{report_id}")
 async def get_report_detail(report_id: int, db: AsyncSession = Depends(get_db)):
     """获取执行报告详情"""
-    # 先查 AutoTestScenarioExecutionRecord
-    result = await db.execute(
-        select(AutoTestScenarioExecutionRecord)
-        .where(AutoTestScenarioExecutionRecord.id == report_id)
-    )
-    record = result.scalar_one_or_none()
-    if record:
-        # 优先从保存的 JSON 文件中读取完整的步骤结果
-        step_results = []
-        step_results_file = AUTOTEST_DATA_DIR / "step_results" / f"scenario_{record.scenario_id}_record_{record.id}.json"
-        if step_results_file.exists():
-            try:
-                with open(step_results_file, "r", encoding="utf-8") as f:
-                    step_results = json.load(f)
-            except Exception:
-                step_results = []
-        
-        # 如果没有从 JSON 文件中读取到步骤结果，尝试从 Allure 结果中读取
-        if not step_results and record.report_url:
-            allure_results_dir = AUTOTEST_DATA_DIR / "allure-results" / f"scenario_{record.scenario_id}"
-            if allure_results_dir.exists():
-                for json_file in sorted(allure_results_dir.glob("*.json")):
-                    try:
-                        with open(json_file, "r", encoding="utf-8") as f:
-                            allure_data = json.load(f)
-                            if allure_data.get("fullName", "").startswith("TestScenario"):
-                                step_name = allure_data.get("name", "")
-                                step_status = allure_data.get("status", "passed")
-                                description = allure_data.get("description", "")
-                                method = "GET"
-                                if description.startswith("["):
-                                    method = description.split("]")[0].strip("[")
-                                elif step_name.startswith("["):
-                                    method = step_name.split("]")[0].strip("[")
-                                api_case_name = step_name
-                                if ": " in step_name:
-                                    api_case_name = step_name.split(": ", 1)[1]
-                                status_code = 0
-                                response_body = None
-                                for sub_step in allure_data.get("steps", []):
-                                    for att in sub_step.get("attachments", []):
-                                        if att.get("name") == "响应信息" and att.get("body"):
-                                            try:
-                                                resp_info = json.loads(att["body"])
-                                                status_code = resp_info.get("status_code", 0)
-                                                response_body = resp_info.get("body", "")
-                                            except Exception:
-                                                pass
-                                step_results.append({
-                                    "name": step_name,
-                                    "status": "skipped" if step_status == "skipped" else ("success" if step_status == "passed" else "failed"),
-                                    "success": step_status == "passed",
-                                    "duration": allure_data.get("duration", 0),
-                                    "method": method,
-                                    "api_case_name": api_case_name,
-                                    "url": "",
-                                    "status_code": status_code,
-                                    "response": {"body": response_body} if response_body else None,
-                                    "error": allure_data.get("statusDetails", {}).get("message") if step_status == "failed" else None
-                                })
-                            else:
-                                for step in allure_data.get("steps", []):
-                                    step_results.append({
-                                        "name": step.get("name", ""),
-                                        "status": "passed" if step.get("status") == "passed" else "failed",
-                                        "success": step.get("status") == "passed",
-                                        "duration": step.get("duration", 0),
-                                        "method": step.get("name", "").split()[0].strip("[]") if step.get("name") else "GET",
-                                        "api_case_name": " ".join(step.get("name", "").split()[1:]) if step.get("name") else "未知用例",
-                                        "url": "",
-                                        "status_code": 0,
-                                        "response": None,
-                                        "error": None
-                                    })
-                    except Exception:
-                        pass
-        
-        # 如果仍然没有读取到步骤结果，根据统计数据生成模拟的步骤结果
-        if not step_results and record.total_steps > 0:
-            # 生成成功步骤
-            for i in range(record.success_steps):
-                step_results.append({
-                    "name": f"步骤 {i+1}",
-                    "status": "success",
-                    "success": True,
-                    "duration": 0,
-                    "method": "GET",
-                    "api_case_name": f"成功用例 {i+1}",
-                    "url": "",
-                    "status_code": 200,
-                    "response": None,
-                    "error": None
-                })
-            
-            # 生成失败步骤
-            for i in range(record.failed_steps):
-                step_results.append({
-                    "name": f"步骤 {record.success_steps + i + 1}",
-                    "status": "failed",
-                    "success": False,
-                    "duration": 0,
-                    "method": "GET",
-                    "api_case_name": f"失败用例 {i+1}",
-                    "url": "",
-                    "status_code": 500,
-                    "response": None,
-                    "error": "执行失败"
-                })
-            
-            # 生成跳过步骤
-            for i in range(record.skipped_steps):
-                step_results.append({
-                    "name": f"步骤 {record.success_steps + record.failed_steps + i + 1}",
-                    "status": "skipped",
-                    "success": False,
-                    "duration": 0,
-                    "method": "GET",
-                    "api_case_name": f"跳过用例 {i+1}",
-                    "url": "",
-                    "status_code": 0,
-                    "response": None,
-                    "error": None
-                })
+    from fastapi_backend.services.autotest_report_service import get_report_detail as _get_report
+    result = await _get_report(report_id, db)
+    if result is None:
+        raise HTTPException(status_code=404, detail="报告不存在")
+    return result
 
-        return {
-            "id": record.id,
-            "scenario_id": record.scenario_id,
-            "status": record.status,
-            "total_steps": record.total_steps,
-            "success_steps": record.success_steps,
-            "failed_steps": record.failed_steps,
-            "skipped_steps": record.skipped_steps,
-            "total_time": record.total_time,
-            "report_url": record.report_url,
-            "step_results": step_results,
-            "created_at": record.created_at,
-        }
-
-    # 查 AutoTestHistory
-    result = await db.execute(
-        select(AutoTestHistory).where(AutoTestHistory.id == report_id)
-    )
-    history = result.scalar_one_or_none()
-    if history:
-        return {
-            "id": history.id,
-            "case_id": history.case_id,
-            "status": history.status,
-            "execution_time": history.execution_time,
-            "response_data": history.response_data,
-            "error_message": history.error_message,
-            "created_at": history.created_at,
-            "step_results": [],
-        }
-
-    raise HTTPException(status_code=404, detail="报告不存在")
-
-
-# ========== 变量解析预览接口 ==========
 
 @router.post("/utils/preview", response_model=VariablePreviewResponse)
 async def preview_variables(request: VariablePreviewRequest):
@@ -867,7 +540,7 @@ async def run_scenario_data_driven(scenario_id: int, body: CaseRunRequest = None
 
         history_id = str(uuid.uuid4())[:8]
 
-        _write_allure_results(allure_results_dir, scenario_id, result_data, history_id)
+        write_allure_results(allure_results_dir, scenario_id, result_data, history_id)
 
         try:
             import shutil
@@ -917,7 +590,7 @@ def _scenario_id_from_scheduler_task_id(task_id: str) -> Optional[int]:
 async def list_scheduler_tasks():
     """获取所有定时任务"""
     from fastapi_backend.services.autotest_scheduler import get_all_scheduled_tasks
-    return get_all_scheduled_tasks()
+    return get_all_tasks()
 
 
 @router.get("/scheduler/tasks/{scenario_id}", response_model=List[ScheduleTaskResponse])
@@ -1243,168 +916,4 @@ async def import_swagger(file: UploadFile = File(...), db: AsyncSession = Depend
 
 
 # ========== Allure 报告辅助函数 ==========
-
-def _write_allure_results(allure_results_dir: Path, scenario_id: int, result: dict, history_id: str):
-    """将场景执行结果写入 Allure 结果文件 - 每个步骤生成独立的测试用例JSON，模拟 Pytest Class 架构"""
-    import time as time_mod
-
-    start_time = result.get("start_time")
-    if start_time:
-        if isinstance(start_time, (int, float)):
-            base_start_ms = int(start_time * 1000) if start_time < 1e10 else int(start_time)
-        else:
-            try:
-                dt = datetime.fromisoformat(str(start_time).replace('Z', '+00:00'))
-                base_start_ms = int(dt.timestamp() * 1000)
-            except Exception:
-                base_start_ms = int(time_mod.time() * 1000)
-    else:
-        base_start_ms = int(time_mod.time() * 1000)
-
-    step_results = result.get("step_results", [])
-    scenario_name = result.get("scenario_name", f"场景 {scenario_id}")
-
-    cumulative_ms = 0
-
-    for i, step in enumerate(step_results):
-        i_plus_1 = i + 1
-        step_duration = step.get("duration", 0)
-        step_start_ms = base_start_ms + cumulative_ms
-        step_stop_ms = step_start_ms + step_duration
-        cumulative_ms += step_duration
-
-        step_status_raw = step.get("status", "success")
-        if step_status_raw == "skipped":
-            step_status = "skipped"
-            status_details = {"message": step.get("skipped_reason", "步骤被跳过")}
-        else:
-            success = step.get("success", False)
-            status_code = step.get("status_code", 0)
-            url = step.get("url", "")
-            is_really_success = success and status_code > 0 and url
-
-            if is_really_success:
-                step_status = "passed"
-                status_details = {}
-            else:
-                step_status = "failed"
-                error_msg = step.get("error", "")
-                if not error_msg:
-                    assertions = step.get("assertions", {})
-                    failed_asserts = assertions.get("failed", [])
-                    if failed_asserts:
-                        msgs = []
-                        for fa in failed_asserts:
-                            if isinstance(fa, dict):
-                                msgs.append(fa.get("reason", str(fa)))
-                            else:
-                                msgs.append(str(fa))
-                        error_msg = "; ".join(msgs)
-                    if not error_msg:
-                        if success and (status_code == 0 or not url):
-                            error_msg = f"请求未成功发出 (status_code={status_code}, url为空)"
-                        else:
-                            error_msg = f"期望 2xx/3xx, 实际返回 {status_code}"
-                status_details = {"message": error_msg}
-
-        api_case_name = step.get("api_case_name", f"步骤 {i_plus_1}")
-        method = step.get("method", "GET")
-        step_title = f"用例{i_plus_1}: {api_case_name}"
-
-        sub_steps = []
-
-        request_step = {
-            "name": f"1. 发起HTTP请求: {method} {url}",
-            "status": step_status,
-            "stage": "finished",
-            "start": step_start_ms,
-            "stop": step_start_ms + max(step_duration // 3, 1),
-            "duration": max(step_duration // 3, 1),
-            "steps": [],
-            "attachments": [],
-        }
-        request_info = {"url": url, "method": method, "headers": step.get("headers", {}), "payload": step.get("payload", {})}
-        request_step["attachments"].append({
-            "name": "请求信息",
-            "type": "application/json",
-            "source": f"request_{i_plus_1}.json",
-            "body": json.dumps(request_info, ensure_ascii=False, indent=2)
-        })
-        sub_steps.append(request_step)
-
-        response_step = {
-            "name": "2. 获取响应信息",
-            "status": step_status,
-            "stage": "finished",
-            "start": step_start_ms + max(step_duration // 3, 1),
-            "stop": step_start_ms + max(step_duration * 2 // 3, 1),
-            "duration": max(step_duration // 3, 1),
-            "steps": [],
-            "attachments": [],
-        }
-        response_body = ""
-        if step.get("response"):
-            response_body = step["response"].get("body", "")
-        response_info = {"status_code": status_code, "response_time_ms": step.get("response_time", 0), "body": str(response_body)[:2000] if response_body else ""}
-        response_step["attachments"].append({
-            "name": "响应信息",
-            "type": "application/json",
-            "source": f"response_{i_plus_1}.json",
-            "body": json.dumps(response_info, ensure_ascii=False, indent=2)
-        })
-        sub_steps.append(response_step)
-
-        assertion_step = {
-            "name": "3. 执行断言校验",
-            "status": step_status,
-            "stage": "finished",
-            "start": step_start_ms + max(step_duration * 2 // 3, 1),
-            "stop": step_stop_ms,
-            "duration": max(step_duration // 3, 1),
-            "steps": [],
-            "attachments": [],
-        }
-        if step.get("extracted_vars"):
-            vars_info = ", ".join([f"{k}={v}" for k, v in step["extracted_vars"].items()])
-            assertion_step["attachments"].append({
-                "name": f"提取变量_{i_plus_1}",
-                "type": "text/plain",
-                "source": f"vars_{i_plus_1}.txt",
-                "body": vars_info
-            })
-        sub_steps.append(assertion_step)
-
-        step_uuid = str(uuid.uuid4())
-        test_case_result = {
-            "name": step_title,
-            "uuid": step_uuid,
-            "historyId": f"TestScenario{scenario_id}.test_step_{i_plus_1}",
-            "fullName": f"TestScenario{scenario_id}.test_step_{i_plus_1}",
-            "status": step_status,
-            "stage": "finished",
-            "start": step_start_ms,
-            "stop": step_stop_ms,
-            "duration": step_duration,
-            "description": f"[{method}] {api_case_name}",
-            "labels": [
-                {"name": "suite", "value": scenario_name},
-                {"name": "feature", "value": scenario_name},
-                {"name": "severity", "value": "normal"},
-                {"name": "scenario_id", "value": str(scenario_id)},
-                {"name": "thread", "value": "main"},
-                {"name": "host", "value": "localhost"},
-            ],
-            "parameters": [],
-            "links": [],
-            "steps": sub_steps,
-            "attachments": [],
-        }
-        if status_details:
-            test_case_result["statusDetails"] = status_details
-
-        output_file = allure_results_dir / f"scenario-{scenario_id}-step-{i_plus_1}-{history_id}.json"
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(test_case_result, f, ensure_ascii=False, indent=2)
-
-
-
+# 已提取到 fastapi_backend.utils.autotest_helpers.write_allure_results
