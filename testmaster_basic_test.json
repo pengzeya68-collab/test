@@ -1,0 +1,78 @@
+{
+  "info": {
+    "name": "TestMaster 公开接口测试",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "基础接口",
+      "item": [
+        {
+          "name": "健康检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/health",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "用户认证",
+      "item": [
+        {
+          "name": "用户登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"testuser\", \"password\": \"testuser\"}"
+            },
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/auth/login",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "管理员登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"admin\", \"password\": \"admin123456\"}"
+            },
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/auth/login",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

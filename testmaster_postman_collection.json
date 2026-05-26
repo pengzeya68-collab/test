@@ -1,0 +1,305 @@
+{
+  "info": {
+    "name": "TestMaster 接口库",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "用户认证模块",
+      "item": [
+        {
+          "name": "用户登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/auth/login",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"admin\", \"password\": \"admin123456\"}"
+            }
+          }
+        },
+        {
+          "name": "用户注册",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/auth/register",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"newuser\", \"password\": \"123456\", \"email\": \"new@test.com\"}"
+            }
+          }
+        },
+        {
+          "name": "获取当前用户信息",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/auth/me",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "未读通知数",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/notifications/unread-count",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "notifications", "unread-count"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "题目管理模块",
+      "item": [
+        {
+          "name": "题目列表(分页)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/exercises?page=1&size=10",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "exercises"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "题目详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/exercises/1",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "exercises", "1"]
+            }
+          }
+        },
+        {
+          "name": "搜索题目",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/exercises/search?keyword=python",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "exercises", "search"],
+              "query": [
+                { "key": "keyword", "value": "python" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "考试评测模块",
+      "item": [
+        {
+          "name": "考试列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/exams",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "exams"]
+            }
+          }
+        },
+        {
+          "name": "提交考试答案",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/exams/1/submit",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "exams", "1", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"answers\": [{\"question_id\": 1, \"answer\": \"A\"}]}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "系统管理模块",
+      "item": [
+        {
+          "name": "健康检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/health",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "health"]
+            }
+          }
+        },
+        {
+          "name": "备份列表(管理员)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/admin/backups",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "admin", "backups"]
+            }
+          }
+        },
+        {
+          "name": "创建备份(管理员)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/admin/backups",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "admin", "backups"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "社区互动模块",
+      "item": [
+        {
+          "name": "社区帖子列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/community/posts?page=1",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "community", "posts"],
+              "query": [
+                { "key": "page", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "发布帖子",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/community/posts",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "community", "posts"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"测试帖子\", \"content\": \"这是一条测试内容\"}"
+            }
+          }
+        },
+        {
+          "name": "排行榜",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://34.150.26.84:5001/api/v1/leaderboard?type=score",
+              "protocol": "http",
+              "host": ["34", "150", "26", "84"],
+              "port": "5001",
+              "path": ["api", "v1", "leaderboard"],
+              "query": [
+                { "key": "type", "value": "score" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

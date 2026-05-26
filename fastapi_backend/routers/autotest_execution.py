@@ -1007,8 +1007,12 @@ async def import_postman(
                         headers[h.get("key", "")] = h.get("value", "")
 
                 payload = None
+                body_type = "none"
+                content_type = "application/json"
                 body = req.get("body")
                 if body and body.get("mode") == "raw":
+                    body_type = "raw"
+                    content_type = "application/json"
                     try:
                         payload = json.loads(body.get("raw", "{}"))
                     except Exception:
@@ -1019,6 +1023,8 @@ async def import_postman(
                     "method": method.upper(),
                     "url": url,
                     "headers": headers if headers else None,
+                    "body_type": body_type,
+                    "content_type": content_type,
                     "payload": payload,
                 }
                 if dry_run:
