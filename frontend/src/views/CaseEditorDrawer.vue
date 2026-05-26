@@ -3,8 +3,10 @@
     :model-value="modelValue"
     :title="isEdit ? '编辑用例' : '新建用例'"
     direction="rtl"
-    size="75%"
-    :before-close="handleClose"
+    size="50%"
+    :close-on-click-modal="true"
+    :close-on-press-escape="true"
+    @close="handleClose"
   >
     <div class="drawer-content">
       <!-- 顶部：Method + Name + URL -->
