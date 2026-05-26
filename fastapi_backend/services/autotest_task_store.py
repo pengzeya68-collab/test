@@ -74,8 +74,6 @@ def _delete_task_file(task_id: str) -> None:
 
 
 def get_task(task_id: str) -> Optional[dict]:
-    if task_id in _task_store:
-        return _task_store[task_id]
     tasks_dir = _get_tasks_dir()
     task_file = tasks_dir / f"{task_id}.json"
     if task_file.exists():
@@ -86,6 +84,8 @@ def get_task(task_id: str) -> Optional[dict]:
                 return task_data
         except Exception:
             pass
+    if task_id in _task_store:
+        return _task_store[task_id]
     return None
 
 
