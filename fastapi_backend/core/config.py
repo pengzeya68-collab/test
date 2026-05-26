@@ -59,6 +59,11 @@ class Settings(BaseSettings):
 
     AUTO_CREATE_TABLES_ON_STARTUP: bool = False
 
+    # 加密密钥（用于加密数据库敏感字段）
+    TESTMASTER_ENCRYPTION_KEY: str = ""
+
+    REDIS_URL: Optional[str] = None
+
     EMAIL_SMTP_HOST: Optional[str] = None
     EMAIL_SMTP_PORT: int = 465
     EMAIL_SMTP_USER: Optional[str] = None

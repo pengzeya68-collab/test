@@ -167,10 +167,25 @@ async def lifespan(_: FastAPI):
         await create_tables()
     else:
         await ensure_dev_tables()
+    # AutoTest 初始化（失败不阻塞主服务启动）
+    try:
+        await init_auto_test_runtime()
+        from fastapi_backend.services.autotest_task_store import start_cleanup_task, stop_cleanup_task
+        start_cleanup_task()
+        _cleanup_needed = True
+    except Exception as e:
+        _logger.warning("AutoTest 初始化失败（不影响主服务）: %s", e)
+        _cleanup_needed = False
     try:
         yield
     finally:
-        pass
+        if _cleanup_needed:
+            try:
+                stop_cleanup_task()
+                from fastapi_backend.services.autotest_scheduler import stop_scheduler
+                stop_scheduler()
+            except Exception as e:
+                _logger.warning("AutoTest 清理失败: %s", e)
 
 
 def get_trace_id(request: Request) -> str:
