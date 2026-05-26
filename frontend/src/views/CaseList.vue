@@ -844,6 +844,12 @@ defineExpose({
   border-radius: 8px;
   border: 1px solid var(--tm-border-light);
 }
+.case-list-card :deep(.el-card__body) {
+  height: calc(100vh - 130px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
 .case-list-container {
   display: flex;
