@@ -206,7 +206,8 @@ defineExpose({ refreshCaseList })
 <style scoped>
 .page-layout {
   display: flex;
-  height: calc(100vh - 220px);
+  flex: 1;
+  min-height: 0;
   gap: 20px;
 }
 
@@ -314,6 +315,7 @@ defineExpose({ refreshCaseList })
 
 .right-panel {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;

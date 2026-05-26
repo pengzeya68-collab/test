@@ -238,14 +238,28 @@ async def get_task_status(task_id: str):
                 "info": "任务启动中"
             }
         elif celery_state == 'SUCCESS':
-            result = celery_meta if not isinstance(celery_meta, Exception) else {}
+            # SUCCESS 状态：优先从持久化存储读取完整结果（包含 step_results）
+            # Celery 通过 Redis 传输大结果时可能丢失 step_results
+            result = None
+            if stored and stored.get("result"):
+                result = stored["result"]
+            elif celery_meta and not isinstance(celery_meta, Exception):
+                result = celery_meta
+            else:
+                result = {}
+            
+            # 如果持久化存储有进度信息，也使用它
+            final_progress = {"percent": 100, "current": 0, "total": 0, "current_api": '执行完成'}
+            if stored and stored.get("progress"):
+                final_progress = stored["progress"]
+            
             return {
                 "task_id": task_id,
                 "status": "completed",
                 "state": "SUCCESS",
                 "result": result,
-                "progress": {"percent": 100, "current": 0, "total": 0, "current_api": '执行完成'},
-                "info": "任务执行成功"
+                "progress": final_progress,
+                "info": stored.get("info", "任务执行成功") if stored else "任务执行成功"
             }
         elif celery_state == 'FAILURE':
             error_str = str(celery_meta) if isinstance(celery_meta, Exception) else str(celery_meta)

@@ -124,9 +124,6 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
             logging.getLogger(__name__).warning(f"通知 webhook 失败: {e}")
         _persist_task_result(task_id, fail_payload)
         return fail_payload
-
-@app.task(bind=True, name='fastapi_backend.tasks.run_case')
-def task_run_case(self, case_id: int, env_id: int = None):
     """Celery任务：执行单个用例"""
     task_id = self.request.id
 

@@ -1261,6 +1261,9 @@ const handleSaveAndRun = async () => {
 
 .tab-content {
   padding: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .table-toolbar {
