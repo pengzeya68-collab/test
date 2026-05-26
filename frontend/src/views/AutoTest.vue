@@ -649,6 +649,8 @@ watch(
   flex: 1;
   min-height: 0;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .scenario-container {
