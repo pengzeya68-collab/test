@@ -7,55 +7,112 @@
 ```
 TestMaster/
 ├── fastapi_backend/          # FastAPI 后端
-├── frontend/                 # Vue 3 主前端（端口 5173）
-├── workspace/                # React 辅助前端（端口 5174）
-├── start_backend.bat         # 启动后端
-├── start_frontend.bat        # 启动主前端
-├── start_workspace.bat       # 启动辅助前端
-├── test_backend.bat          # 运行后端测试
+│   ├── main.py              # 应用入口
+│   ├── routers/             # API 路由（40+ 模块）
+│   ├── models/              # 数据模型
+│   ├── services/            # 业务逻辑
+│   └── core/                # 核心配置
+├── frontend/                 # Vue 3 前端
+│   ├── src/                 # 源代码
+│   └── dist/                # 构建产物（已包含在仓库中）
+├── nginx.conf                # Nginx 前端托管配置
+├── Dockerfile                # Docker 镜像构建
+├── docker-compose.yml        # 服务编排（后端+Redis+Celery+Nginx）
 └── requirements.txt          # Python 依赖
 ```
 
-## 快速开始
+---
 
-### 1. 环境准备
+## 🚀 Docker 一键部署（推荐）
 
-- Python >= 3.10
-- Node.js >= 18
-- （可选）Redis（用于 Celery 任务队列）
+> **零依赖，一条命令部署到生产服务器！**
 
-### 2. 配置环境变量
+### 第1步：安装 Docker
 
-复制 `.env.example` 为 `.env`：
+```bash
+curl -fsSL https://get.docker.com | sh
+```
+
+### 第2步：克隆项目
+
+```bash
+git clone https://github.com/pengzeya68-collab/test.git TestMaster
+cd TestMaster
+```
+
+### 第3步：配置环境变量
 
 ```bash
 cp .env.example .env
 ```
 
-编辑 `.env` 中的数据库、AI API Key 等配置。
-
-### 3. 安装后端依赖
+编辑 `.env` 文件，**必须修改**以下配置：
 
 ```bash
+nano .env
+```
+
+```env
+# 生产环境必改项
+ENVIRONMENT=production
+SECRET_KEY=随机32位以上字符串（用 openssl rand -hex 32 生成）
+ADMIN_PASSWORD=你的管理员密码
+ADMIN_SECRET_KEY=随机32位以上字符串
+CORS_ORIGINS=http://你的服务器IP
+
+# 其他可选配置
+TESTMASTER_ENCRYPTION_KEY=随机32位字符串（用于加密敏感数据）
+AI_API_KEY=你的AI密钥（如需AI功能）
+AI_BASE_URL=https://api.openai.com/v1
+```
+
+### 第4步：启动服务
+
+```bash
+docker compose up -d
+```
+
+### 第5步：开放端口
+
+服务器控制台安全组开放 **80** 和 **5001** 端口。
+
+### 第6步：访问
+
+| 地址 | 说明 |
+|------|------|
+| `http://你的IP` | 前端首页 |
+| `http://你的IP/api/health` | API 健康检查 |
+| `http://你的IP:5001/api/docs` | API 文档 (Swagger) |
+
+**默认管理员**：`admin` / 你设置的密码
+
+---
+
+## 🖥️ 本地开发
+
+### 环境准备
+
+- Python >= 3.10
+- Node.js >= 18
+- （可选）Redis（用于 Celery 任务队列）
+
+### 启动后端
+
+```bash
+# 安装依赖
 pip install -r requirements.txt
-```
 
-### 4. 启动后端
+# 复制环境变量并配置
+cp .env.example .env
 
-```bash
-start_backend.bat
-```
-
-或手动：
-
-```bash
+# 启动
 cd fastapi_backend
-python -m uvicorn main:app --host 0.0.0.0 --port 5001 --reload
+uvicorn main:app --host 0.0.0.0 --port 5001 --reload
 ```
 
-后端默认运行在 http://localhost:5001。
+后端运行在 http://localhost:5001
 
-### 5. 启动主前端
+### 启动前端
 
 ```bash
 cd frontend
@@ -63,63 +120,94 @@ npm install
 npm run dev
 ```
 
-主前端运行在 http://localhost:5173。
+前端运行在 http://localhost:5173
 
-### 6. 启动辅助前端（可选）
+---
 
-```bash
-cd workspace
-npm install
-npm run dev
-```
-
-辅助前端运行在 http://localhost:5174。
-
-## 测试
-
-### 后端测试
+## 🧪 测试
 
 ```bash
-test_backend.bat
-```
-
-或手动：
-
-```bash
+# 后端测试
 pytest fastapi_backend/tests -q
+
+# 前端代码检查
+cd frontend && npm run lint
 ```
 
-### 前端代码检查
+---
+
+## 🐳 Docker 服务说明
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| Nginx | 80 | 前端托管 + API 代理 |
+| Backend | 5001 | FastAPI 后端 |
+| Celery Worker | - | 异步任务处理 |
+| Redis | 6379 | 缓存 & 任务队列 |
+
+### 常用命令
 
 ```bash
-cd frontend
-npm run lint
+# 查看服务状态
+docker compose ps
+
+# 查看日志
+docker compose logs -f backend
+
+# 重启服务
+docker compose restart
+
+# 停止服务
+docker compose down
+
+# 更新代码后重新部署
+git pull
+docker compose up -d --build
 ```
 
-## 数据库
+---
 
-- 开发环境可使用 SQLite（默认）
-- 生产环境建议使用 PostgreSQL/MySQL
-- 数据库迁移使用 Alembic
+## 📦 技术栈
 
-## 环境变量说明
+| 层面 | 技术 |
+|------|------|
+| 后端框架 | FastAPI (异步) |
+| ORM | SQLAlchemy 2.0 |
+| 数据库迁移 | Alembic |
+| 任务队列 | Celery + Redis |
+| 前端框架 | Vue 3 + Vite |
+| UI 组件 | Element Plus |
+| 状态管理 | Pinia |
+| 代码编辑器 | CodeMirror |
+| 数据可视化 | ECharts |
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| DATABASE_URL | 数据库连接 | sqlite+aiosqlite:///./instance/testmaster.db |
-| SECRET_KEY | JWT 密钥 | 必填 |
-| CORS_ORIGINS | 允许跨域域名 | http://localhost:5173 |
-| AI_API_KEY | OpenAI API Key | 必填 |
-| CELERY_BROKER_URL | Celery Broker | redis://localhost:6379/0 |
+---
 
-## 技术栈
+## 🔧 环境变量说明
 
-- 后端：FastAPI, SQLAlchemy, Alembic, Celery
-- 主前端：Vue 3, Vite, Element Plus, Pinia
-- 辅助前端：React, Vite
+| 变量 | 说明 | 必填 |
+|------|------|------|
+| `SECRET_KEY` | JWT 签名密钥 | ✅ |
+| `ADMIN_PASSWORD` | 管理员密码 | ✅ |
+| `ADMIN_SECRET_KEY` | 管理员密钥 | ✅ |
+| `TESTMASTER_ENCRYPTION_KEY` | 数据加密密钥 | ✅ |
+| `DATABASE_URL` | 数据库连接 | - |
+| `CORS_ORIGINS` | 跨域白名单 | ✅ |
+| `AI_API_KEY` | AI API 密钥 | 可选 |
+| `EMAIL_ENABLED` | 启用邮件 | 可选 |
+| `CELERY_BROKER_URL` | 消息队列 | Docker 自动配置 |
 
-## 开发说明
+---
 
-- 后端 `.env` 放在项目根目录
-- 前端开发代理已配置在 `vite.config.js` 中
-- 测试环境设置 `ENVIRONMENT=testing` 可避免启动副作用
+## 📝 功能模块
+
+- 🧠 **AI 导师**：智能学习问答
+- 📚 **学习路径**：体系化学习内容
+- ✍️ **练习系统**：在线刷题
+- 📝 **考试系统**：在线考试自动评分
+- 🤖 **自动化测试**：接口测试编排执行
+- 💬 **面试模拟**：AI 模拟面试
+- 🏆 **成就系统**：勋章积分排行榜
+- 👥 **社区交流**：论坛发帖互动
+- 🏗️ **代码沙盒**：安全代码执行
+- 🛠️ **测试工具**：API 调试、数据工厂
