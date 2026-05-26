@@ -1,0 +1,36 @@
+name: 🚀 自动部署到服务器
+
+on:
+  push:
+    branches:
+      - main    # 推送到 main 分支时自动触发
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 第1步：检出代码
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      # 第2步：通过 SSH 部署到服务器
+      - name: 🚀 部署到服务器
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /root/TestMaster
+            echo ">>> 拉取最新代码..."
+            git pull origin main
+            echo ">>> 重启 Docker 服务..."
+            docker compose up -d --build
+            echo ">>> 清理旧镜像..."
+            docker image prune -f
+            echo ">>> 检查服务状态..."
+            sleep 10
+            docker compose ps
+            curl -s http://localhost:5001/api/health || echo "⚠️ 服务启动中，请稍后访问"
+            echo ""
+            echo "✅ 部署完成！"
