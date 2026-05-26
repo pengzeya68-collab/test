@@ -1200,10 +1200,18 @@ const handleSaveAndRun = async () => {
 </script>
 
 <style scoped>
+:deep(.el-drawer__body) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
 .drawer-content {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  overflow: hidden;
   background: var(--tm-bg-page);
 }
 

@@ -91,7 +91,7 @@
               <span v-else class="no-run">未执行</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="220" fixed="right">
+          <el-table-column label="操作" width="280" fixed="right">
             <template #default="{ row }">
               <div style="display: flex; gap: 12px; align-items: center;">
                 <el-tooltip content="运行用例" placement="top" popper-class="action-tooltip">
@@ -100,6 +100,10 @@
 
                 <el-tooltip content="编辑用例" placement="top" popper-class="action-tooltip">
                   <span><el-button type="primary" link :icon="Edit" @click="handleEdit(row)" /></span>
+                </el-tooltip>
+
+                <el-tooltip content="执行历史" placement="top" popper-class="action-tooltip">
+                  <span><el-button type="warning" link :icon="Timer" @click="handleShowHistory(row)" /></span>
                 </el-tooltip>
 
                 <el-tooltip content="导出到 JMeter" placement="top" popper-class="action-tooltip">
@@ -278,6 +282,31 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="historyDialogVisible" :title="`执行历史 - ${historyCaseName}`" width="800px" destroy-on-close>
+      <div v-loading="historyLoading">
+        <el-table :data="historyList" stripe size="small" max-height="400" empty-text="暂无执行记录">
+          <el-table-column prop="execution_time" label="执行时间" width="90">
+            <template #default="{ row }">
+              <span>{{ (row.execution_time || 0).toFixed(0) }}ms</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="90">
+            <template #default="{ row }">
+              <el-tag v-if="row.status === 'success'" type="success" size="small">成功</el-tag>
+              <el-tag v-else-if="row.status === 'failed'" type="danger" size="small">失败</el-tag>
+              <el-tag v-else type="info" size="small">{{ row.status }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="error_message" label="错误信息" min-width="200" show-overflow-tooltip />
+          <el-table-column label="创建时间" width="170">
+            <template #default="{ row }">
+              {{ row.created_at ? new Date(row.created_at).toLocaleString() : '-' }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-dialog>
   </el-card>
 </template>
 
@@ -294,7 +323,8 @@ import {
   Upload,
   ArrowDown,
   UploadFilled,
-  Download
+  Download,
+  Timer
 } from '@element-plus/icons-vue'
 import CaseEditorDrawer from './CaseEditorDrawer.vue'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
@@ -339,6 +369,26 @@ const jmeterImportFile = ref(null)
 const jmeterImporting = ref(false)
 const jmeterExporting = ref(false)
 const jmeterImportGroupId = ref(null) // JMeter 导入目标分组ID
+
+const historyDialogVisible = ref(false)
+const historyCaseName = ref('')
+const historyList = ref([])
+const historyLoading = ref(false)
+
+const handleShowHistory = async (row) => {
+  historyDialogVisible.value = true
+  historyCaseName.value = row.name
+  historyLoading.value = true
+  try {
+    const res = await autoTestRequest.get('/auto-test/history', { params: { case_id: row.id, page_size: 20 } })
+    historyList.value = Array.isArray(res) ? res : (res.items || [])
+  } catch (e) {
+    console.error('加载历史失败', e)
+    historyList.value = []
+  } finally {
+    historyLoading.value = false
+  }
+}
 
 // 打开环境管理弹窗
 const openEnvManager = () => {
