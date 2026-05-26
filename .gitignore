@@ -63,6 +63,7 @@ node_modules/
 
 # Build outputs
 dist/
+!frontend/dist/
 build/
 *.tsbuildinfo
 
