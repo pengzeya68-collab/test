@@ -410,7 +410,7 @@ async def quick_run(
     p: str = Query(None, description="已替换变量的请求参数字符串（JSON）"),
     db: AsyncSession = Depends(get_db)
 ):
-    """快速执行用例（不保存历史记录）"""
+    """快速执行用例（结果自动保存历史记录）"""
     env_id = body.env_id if body else None
     result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == case_id))
     case = result.scalar_one_or_none()
@@ -447,6 +447,19 @@ async def quick_run(
 
     from fastapi_backend.services.autotest_execution import quick_run_case
     result_data = await quick_run_case(case, env, override_params=override_params)
+
+    history = AutoTestHistory(
+        case_id=case_id,
+        status="success" if result_data.get("success") else "failed",
+        execution_time=result_data.get("execution_time") or result_data.get("response_time", 0),
+        response_data=result_data.get("response"),
+        error_message=result_data.get("error"),
+    )
+    db.add(history)
+    await db.commit()
+    await db.refresh(history)
+
+    result_data["history_id"] = history.id
     return CaseExecutionResult(**result_data)
 
 
