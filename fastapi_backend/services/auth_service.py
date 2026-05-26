@@ -10,6 +10,7 @@ import hashlib
 import jwt
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.config import settings
 from fastapi_backend.models.models import User, TokenBlacklist
@@ -151,7 +152,7 @@ class AuthService:
         )
 
     async def authenticate_user(self, db: AsyncSession, username: str, password: str) -> User | None:
-        stmt = select(User).where(or_(User.username == username, User.email == username))
+        stmt = select(User).where(or_(User.username == username, User.email == username)).options(selectinload(User.role_obj))
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
         if not user:
