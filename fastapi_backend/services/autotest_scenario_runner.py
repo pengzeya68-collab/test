@@ -99,6 +99,7 @@ class ScenarioExecutionEngine:
                         env = result.scalars().first()
 
                 if env:
+                    self.env = env  # 保存到 self.env，供 finally 块写数据库记录使用
                     env_name = env.env_name or env.name or ""
                     if isinstance(env.variables, dict):
                         self.context_vars.update(env.variables)
@@ -116,6 +117,7 @@ class ScenarioExecutionEngine:
 
                 for idx, step in enumerate(all_steps):
                     step_name = step.api_case.name if step.api_case else f"Step {step.step_order}"
+                    step_start = time.time()  # 记录每步独立开始时间
                     if self.progress_callback:
                         self.progress_callback(idx, total_steps, f'执行: {step_name}')
 
@@ -134,7 +136,7 @@ class ScenarioExecutionEngine:
                             self.progress_callback(idx + 1, total_steps, f'完成: {step_name}')
 
                     except AssertionError as e:
-                        step_duration = int((time.time() - start_time) * 1000)
+                        step_duration = int((time.time() - step_start) * 1000)
                         self.step_results.append({
                             "step_id": step.id,
                             "step_order": step.step_order,
@@ -151,12 +153,12 @@ class ScenarioExecutionEngine:
                             self.progress_callback(idx + 1, total_steps, f'失败: {step_name}')
 
                     except Exception as e:
-                        step_duration = int((time.time() - start_time) * 1000)
+                        step_duration = int((time.time() - step_start) * 1000)
                         self.step_results.append({
                             "step_id": step.id,
                             "step_order": step.step_order,
                             "api_case_id": step.api_case_id,
-                            "api_case_name": step.api_case.method if step.api_case else "GET",
+                            "api_case_name": step.api_case.name if step.api_case else f"Step {step.step_order}",
                             "success": False,
                             "status": "failed",
                             "response_time": step_duration,

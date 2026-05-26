@@ -204,14 +204,17 @@ async def get_task_status(task_id: str):
             if stored:
                 stored["status"] = "PROGRESS"
                 stored["info"] = f"执行中: {meta.get('step_name', '...')}"
+                # 合并旧的 progress 保留 env_id 等字段
+                old_progress = stored.get("progress", {}) if isinstance(stored.get("progress"), dict) else {}
                 stored["progress"] = {
-                    "percent": meta.get('percent', 0),
-                    "current": meta.get('current', 0),
-                    "total": meta.get('total', 0),
-                    "current_api": meta.get('current_api', '执行中...'),
-                    "current_step": meta.get('current_step', 0),
-                    "total_steps": meta.get('total_steps', 0),
-                    "step_name": meta.get('step_name', '执行中...'),
+                    **old_progress,
+                    "percent": meta.get('percent', old_progress.get("percent", 0)),
+                    "current": meta.get('current', old_progress.get("current", 0)),
+                    "total": meta.get('total', old_progress.get("total", 0)),
+                    "current_api": meta.get('current_api', old_progress.get("current_api", '执行中...')),
+                    "current_step": meta.get('current_step', old_progress.get("current_step", 0)),
+                    "total_steps": meta.get('total_steps', old_progress.get("total_steps", 0)),
+                    "step_name": meta.get('step_name', old_progress.get("step_name", '执行中...')),
                 }
                 await update_task(task_id, stored)
             return {
