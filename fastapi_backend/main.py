@@ -167,15 +167,10 @@ async def lifespan(_: FastAPI):
         await create_tables()
     else:
         await ensure_dev_tables()
-    await init_auto_test_runtime()
-    from fastapi_backend.services.autotest_task_store import start_cleanup_task, stop_cleanup_task
-    start_cleanup_task()
     try:
         yield
     finally:
-        stop_cleanup_task()
-        from fastapi_backend.services.autotest_scheduler import stop_scheduler
-        stop_scheduler()
+        pass
 
 
 def get_trace_id(request: Request) -> str:
