@@ -8,11 +8,13 @@ services:
     ports:
       - "5001:5001"
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:////tmp/testmaster.db
+      - DATABASE_URL=sqlite+aiosqlite:////app/instance/testmaster.db
       - AUTO_CREATE_TABLES_ON_STARTUP=true
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    volumes:
+      - ./instance:/app/instance
     env_file:
       - .env
     depends_on:
@@ -29,10 +31,12 @@ services:
     restart: unless-stopped
     command: celery -A fastapi_backend.tasks worker --loglevel=info --concurrency=4
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:////tmp/testmaster.db
+      - DATABASE_URL=sqlite+aiosqlite:////app/instance/testmaster.db
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    volumes:
+      - ./instance:/app/instance
     env_file:
       - .env
     depends_on:
