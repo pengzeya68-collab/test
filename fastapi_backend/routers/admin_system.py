@@ -23,6 +23,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 BACKUP_DIR = PROJECT_ROOT / "backups"
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
+MAX_BACKUPS = 10
+
 @router.get("/backups")
 async def list_backups(
     current_user: User = Depends(require_admin),
@@ -36,10 +38,10 @@ async def list_backups(
             stat = os.stat(filepath)
             backups.append({
                 "name": f,
-                "size": stat.st_size,
-                "createTime": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                "size": round(stat.st_size / (1024 * 1024), 2),
+                "time": int(stat.st_mtime * 1000),
             })
-    return {"list": backups, "total": len(backups)}
+    return {"backups": backups, "max_backups": MAX_BACKUPS}
 
 
 @router.post("/backups")
@@ -49,7 +51,7 @@ async def create_backup(
     """创建数据库备份"""
     os.makedirs(BACKUP_DIR, exist_ok=True)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    backup_name = f"backup_{timestamp}.db"
+    backup_name = f"testmaster_backup_{timestamp}.db"
 
     db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "instance", "testmaster.db")
     db_path = os.path.abspath(db_path)
