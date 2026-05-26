@@ -294,7 +294,7 @@
     <el-drawer
       v-model="historyDrawerVisible"
       title="执行历史记录"
-      size="70%"
+      size="85%"
     >
       <div class="history-content" v-loading="historyLoading">
         <!-- 统计卡片 -->
@@ -425,21 +425,21 @@
                 再次运行
               </el-button>
               <el-button
+                v-if="row.report_url"
                 size="small"
                 type="primary"
+                @click="openReport(row.report_url)"
+              >
+                <el-icon><View /></el-icon>
+                查看Allure报告
+              </el-button>
+              <el-button
+                size="small"
+                type="info"
                 link
                 @click="viewReportDetail(row.id)"
               >
-                查看详情
-              </el-button>
-              <el-button
-                v-if="row.report_url"
-                size="small"
-                type="success"
-                link
-                @click="openReport(row.report_url)"
-              >
-                Allure
+                查看步骤详情
               </el-button>
               <el-button
                 size="small"
@@ -461,7 +461,7 @@
     <el-dialog
       v-model="reportDetailVisible"
       title="执行报告详情"
-      width="80%"
+      width="95%"
       append-to-body
       destroy-on-close
     >
@@ -493,16 +493,30 @@
 
           <el-divider />
 
-          <!-- 嵌入式 Allure 报告 -->
-          <div style="height: 60vh; width: 100%; margin-bottom: 20px; border: 1px solid var(--tm-border-color); border-radius: 4px; overflow: hidden;">
-            <iframe
-              v-if="reportDetailData && reportDetailData.report_url"
-              :src="resolveReportUrl(reportDetailData.report_url)"
-              style="width: 100%; height: 100%; border: none;"
-              title="Allure 报告"
-            ></iframe>
-            <el-empty v-else description="暂无报告数据" />
+          <!-- 嵌入式 Allure 报告（优先显示，占主导） -->
+          <div v-if="reportDetailData && reportDetailData.report_url" style="margin-bottom: 20px;">
+            <el-alert
+              title="Allure 报告为精准自动测试结果，支持导出邮件发送"
+              type="info"
+              :closable="false"
+              show-icon
+              style="margin-bottom: 10px"
+            >
+              <template #default>
+                <el-button type="primary" size="small" @click="openReport(reportDetailData.report_url)">
+                  在新标签页打开 Allure 报告
+                </el-button>
+              </template>
+            </el-alert>
+            <div style="height: 70vh; width: 100%; border: 1px solid var(--tm-border-color); border-radius: 4px; overflow: hidden;">
+              <iframe
+                :src="resolveReportUrl(reportDetailData.report_url)"
+                style="width: 100%; height: 100%; border: none;"
+                title="Allure 报告"
+              ></iframe>
+            </div>
           </div>
+          <el-empty v-else description="暂无 Allure 报告数据" />
 
           <el-divider>文本步骤详情</el-divider>
 
