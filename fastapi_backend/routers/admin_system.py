@@ -160,7 +160,7 @@ async def list_audit_logs(
             "createTime": s.created_at.isoformat() if s.created_at else None,
         })
 
-    return {"list": logs, "total": total, "page": page, "size": size}
+    return {"logs": logs, "total": total, "page": page, "size": size}
 
 
 # ============== 系统指标 ==============
@@ -192,6 +192,19 @@ async def get_system_metrics(
             if os.path.isfile(fp):
                 backup_size += os.path.getsize(fp)
 
+    backup_count = len(os.listdir(BACKUP_DIR)) if os.path.exists(BACKUP_DIR) else 0
+    
+    # Redis 健康检查
+    redis_healthy = False
+    try:
+        from redis.asyncio import Redis as ARedis
+        from fastapi_backend.core.config import settings
+        r = ARedis.from_url(settings.REDIS_URL or "redis://redis:6379/0", socket_connect_timeout=2)
+        redis_healthy = await r.ping()
+        await r.close()
+    except Exception:
+        pass
+
     return {
         "system": {
             "platform": platform.platform(),
@@ -207,11 +220,23 @@ async def get_system_metrics(
             "total_learning_paths": total_paths,
             "total_interview_questions": total_questions,
             "total_exams": total_exams,
+            "healthy": True,
+        },
+        "redis": {
+            "enabled": bool(settings.REDIS_URL),
+            "healthy": redis_healthy,
         },
         "backups": {
             "size_bytes": backup_size,
             "size_mb": round(backup_size / 1024 / 1024, 2),
-            "count": len(os.listdir(BACKUP_DIR)) if os.path.exists(BACKUP_DIR) else 0,
+            "count": backup_count,
+        },
+        "charts": {
+            "table_space": {
+                "labels": ["users", "submissions", "exercises", "paths", "questions", "exams"],
+                "values": [total_users, total_submissions, total_exercises, total_paths, total_questions, total_exams]
+            },
+            "system_load_7d": {"labels": [], "values": []}
         }
     }
 

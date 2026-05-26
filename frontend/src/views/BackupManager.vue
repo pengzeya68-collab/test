@@ -349,7 +349,7 @@ const cleanOldBackups = async () => {
 const downloadBackup = (backup) => {
   // 构建下载 URL
   const token = localStorage.getItem('admin_token') || localStorage.getItem('token')
-  const downloadUrl = `/api/admin/backups/download/${encodeURIComponent(backup.name)}`
+  const downloadUrl = `/api/v1/admin/backups/download/${encodeURIComponent(backup.name)}`
   
   // 使用动态创建 a 标签的方式下载
   const link = document.createElement('a')
