@@ -78,6 +78,7 @@ services:
     volumes:
       - ./frontend/dist:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./fastapi_backend/autotest_data:/usr/share/nginx/autotest_data:ro
     depends_on:
       - backend
     networks:
