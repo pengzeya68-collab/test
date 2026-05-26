@@ -65,9 +65,9 @@ class TestCaseListResponse(BaseModel):
 
 class TestCaseBatchCreate(BaseModel):
     """批量创建测试用例"""
-    test_cases: list[TestCaseBase] = Field(..., min_items=1, description="测试用例列表")
+    test_cases: list[TestCaseBase] = Field(..., min_length=1, description="测试用例列表")
 
 
 class TestCaseBatchUpdate(BaseModel):
     """批量更新测试用例"""
-    test_cases: list[TestCaseUpdate] = Field(..., min_items=1, description="测试用例列表")
+    test_cases: list[TestCaseUpdate] = Field(..., min_length=1, description="测试用例列表")

@@ -1,9 +1,9 @@
-﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="forgot-password-container">
     <div class="forgot-password-card">
       <div class="forgot-password-header">
-        <h1 class="title">重置密码</h1>
-        <p class="subtitle">通过手机号重置你的账号密码</p>
+        <h1 class="title">忘记密码</h1>
+        <p class="subtitle">通过手机号找回你的账号密码</p>
       </div>
       
       <el-form 
@@ -26,7 +26,7 @@
             size="large"
           >
             <template #prefix>
-              <el-icon>📱</el-icon>
+              <el-icon><Phone /></el-icon>
             </template>
           </el-input>
         </el-form-item>
@@ -46,7 +46,7 @@
               style="flex: 1;"
             >
               <template #prefix>
-                <el-icon>🔒</el-icon>
+                <el-icon><Lock /></el-icon>
               </template>
             </el-input>
             <el-button 
@@ -74,7 +74,7 @@
             size="large"
           >
             <template #prefix>
-              <el-icon>🔑</el-icon>
+              <el-icon><Lock /></el-icon>
             </template>
           </el-input>
         </el-form-item>
@@ -95,7 +95,7 @@
             @keyup.enter="handleSubmit"
           >
             <template #prefix>
-              <el-icon>🔑</el-icon>
+              <el-icon><Lock /></el-icon>
             </template>
           </el-input>
         </el-form-item>
@@ -124,6 +124,7 @@
 import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Phone, Lock } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -215,17 +216,18 @@ const goToLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--tm-bg-page, #09090B);
   padding: 20px;
 }
 
 .forgot-password-card {
-  background: #18181B;
+  background: var(--tm-bg-card, #18181B);
   border-radius: 16px;
   padding: 48px;
   width: 100%;
   max-width: 450px;
   box-shadow: 0 20px 60px 0 rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .forgot-password-header {
@@ -236,13 +238,17 @@ const goToLogin = () => {
 .title {
   font-size: 32px;
   font-weight: bold;
-  color: var(--tm-text-primary);
+  color: var(--tm-text-primary, #FAFAFA);
   margin: 0 0 10px 0;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .subtitle {
   font-size: 14px;
-  color: var(--tm-text-secondary);
+  color: var(--tm-text-secondary, #71717A);
   margin: 0;
 }
 
@@ -253,7 +259,7 @@ const goToLogin = () => {
 .forgot-password-footer {
   text-align: center;
   font-size: 14px;
-  color: var(--tm-text-regular);
+  color: var(--tm-text-secondary);
 }
 
 @media (max-width: 768px) {

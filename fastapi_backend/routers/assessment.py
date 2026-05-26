@@ -1,8 +1,6 @@
 """Onboarding assessment – quick skill profiling for new users."""
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -220,6 +218,7 @@ async def submit_assessment(
     db: AsyncSession = Depends(get_db),
 ):
     question_map = {q["id"]: q for q in ASSESSMENT_QUESTIONS}
+    dim_name_map = {q["dimension"]: q["dimension_name"] for q in ASSESSMENT_QUESTIONS}
 
     dimension_scores_raw: dict[str, list[int]] = {}
     for ans in payload.answers:
@@ -247,9 +246,7 @@ async def submit_assessment(
         dimension_results.append(
             DimensionScore(
                 key=dim,
-                name=ASSESSMENT_QUESTIONS[
-                    [i for i, q in enumerate(ASSESSMENT_QUESTIONS) if q["dimension"] == dim][0]
-                ]["dimension_name"],
+                name=dim_name_map.get(dim, dim),
                 score=dim_score,
                 level=_get_level(dim_score),
             )
@@ -258,7 +255,7 @@ async def submit_assessment(
     overall_score = round(overall_score, 1)
     overall_level = _get_level(overall_score)
 
-    current_user.score = int(overall_score)
+    current_user.assessment_score = int(overall_score)
     current_user.level = 1 if overall_score < 40 else 2 if overall_score < 60 else 3 if overall_score < 80 else 4
 
     stmt = select(LearningPath).where(LearningPath.is_public == True).order_by(LearningPath.id)
@@ -314,9 +311,9 @@ async def submit_assessment(
 async def get_assessment_status(
     current_user: User = Depends(get_current_user),
 ):
-    has_completed = (current_user.score or 0) > 0
+    has_completed = current_user.assessment_score is not None
     return AssessmentStatusResponse(
         has_completed_assessment=has_completed,
-        overall_score=float(current_user.score) if has_completed else None,
-        overall_level=_get_level(current_user.score) if has_completed else None,
+        overall_score=float(current_user.assessment_score) if has_completed else None,
+        overall_level=_get_level(current_user.assessment_score) if has_completed else None,
     )

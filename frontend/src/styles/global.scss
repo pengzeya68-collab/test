@@ -1,99 +1,93 @@
+﻿// ============================================
+// 鍏ㄥ眬鏍峰紡 - TestMaster 涓婚绯荤粺 (Cyberpunk & Glassmorphism)
 // ============================================
-// 全局样式 - TestMaster 主题系统
-// ============================================
-@import './variables.scss';
+@use './variables.scss' as *;
 
-// ============================================
-// 主题 CSS 变量定义 - 完整全局变量池
-// ============================================
 :root {
-  // ========== Vercel/Shadcn UI 高级深色质感系统 ==========
-  /* 背景层级：拒绝纯黑，使用高级的 Zinc 色系 */
-  --bg-base: #09090b;          /* 最底层的背景色 */
-  --bg-surface: #141415;       /* 卡片、侧边栏背景 */
-  --bg-surface-hover: #27272a; /* 悬浮状态 */
-  --bg-elevated: #18181b;      /* 弹窗、下拉菜单背景 */
+  // ========== 鏆楅粦绉戝够搴曞眰鑳屾櫙 ==========
+  --bg-base: #050505;          /* 鏋佹繁榛戝簳 */
+  --bg-surface: rgba(15, 15, 20, 0.65); /* 鐜荤拑鎬佸崱鐗囪儗鏅?*/
+  --bg-surface-hover: rgba(30, 30, 40, 0.8); 
+  --bg-elevated: rgba(20, 20, 25, 0.85); 
 
-  /* 边框与分割线：极其克制，几乎看不见 */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(255, 255, 255, 0.2);
+  /* 杈规涓庡彂鍏夋晥鏋滐細闇撹櫣绾挎潯涓庡井鍏?*/
+  --border-subtle: rgba(0, 242, 254, 0.15);
+  --border-focus: rgba(0, 242, 254, 0.5);
+  --border-neon: 1px solid rgba(0, 242, 254, 0.3);
 
-  /* 文本层级：建立清晰的视觉焦点 */
-  --text-primary: #fafafa;     /* 标题、高亮数据 */
-  --text-secondary: #a1a1aa;   /* 正文、常规标签 */
-  --text-muted: #52525b;       /* 占位符、次要辅助信息 */
+  /* 鏂囨湰锛氶珮瀵规瘮搴︾骞绘劅 */
+  --text-primary: #ffffff;     
+  --text-secondary: #a0aec0;   
+  --text-muted: #4a5568;       
 
-  /* 品牌强调色：Pink-500 to Purple-600 渐变 */
-  --accent-primary: #EC4899;
-  --accent-hover: #9333EA;
-  --accent-glow: rgba(236, 72, 153, 0.15);
-  --accent-primary-rgb: 236, 72, 153;
-  --text-primary-rgb: 250, 250, 250;
-  --text-secondary-rgb: 161, 161, 170;
-  --text-muted-rgb: 82, 82, 91;
+  /* 鍝佺墝寮鸿皟鑹诧細璧涘崥钃?缁垮埌绱殑杩囨浮 */
+  --accent-primary: #00f2fe;
+  --accent-hover: #4facfe;
+  --accent-glow: rgba(0, 242, 254, 0.4);
+  --accent-purple: #b026ff;
+  --accent-purple-glow: rgba(176, 38, 255, 0.4);
 
-  /* 圆角规范 */
+  /* 鍦嗚锛氭洿鍏风鎶€鎰熺殑寰皬鍒囪鎰?*/
   --radius-sm: 4px;
   --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-lg: 16px;
 
-  // ========== 兼容现有系统（映射到新变量）==========
-  // 主色调
+  // ========== 鍏煎鏄犲皠 ==========
   --tm-primary-color: var(--accent-primary);
   --tm-primary-dark: var(--accent-hover);
   --tm-color-primary: var(--accent-primary);
   --tm-color-primary-dark: var(--accent-hover);
-  --tm-color-primary-rgb: 236, 72, 153;
 
-  // 背景
   --tm-bg-color: var(--bg-base);
   --tm-bg-page: var(--bg-base);
 
-  // 卡片
   --tm-card-bg: var(--bg-surface);
   --tm-bg-card: var(--bg-surface);
-  --tm-card-border: 1px solid var(--border-subtle);
+  --tm-card-border: var(--border-neon);
   --tm-border-light: var(--border-subtle);
 
-  // 文字
   --tm-text-primary: var(--text-primary);
   --tm-text-secondary: var(--text-secondary);
   --tm-text-regular: var(--text-primary);
-  --tm-color-text-primary: var(--text-primary);
 
-  // 侧边栏
-  --tm-sidebar-bg: var(--bg-surface);
+  --tm-sidebar-bg: rgba(10, 10, 15, 0.8);
 
-  // 效果
-  --tm-glow-effect: 0 0 15px var(--accent-glow);
-  --tm-shadow-base: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --tm-glow-effect: 0 0 20px var(--accent-glow);
+  --tm-shadow-base: 0 8px 32px rgba(0, 0, 0, 0.5);
 
-  // 圆角常量
   --tm-radius-base: var(--radius-md);
   --tm-radius-small: var(--radius-sm);
 }
 
-// ============================================
-// Reset & Base
-// ============================================
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+// 鐜荤拑鎷熸€佸熀纭€绫?(鍙湪缁勪欢涓洿鎺ュ鐢?
+.glass-panel {
+  background: var(--bg-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: var(--border-neon);
+  box-shadow: var(--tm-shadow-base);
+  border-radius: var(--radius-lg);
+  transition: all 0.3s ease;
+}
+.glass-panel:hover {
+  border-color: var(--border-focus);
+  box-shadow: var(--tm-glow-effect);
 }
 
-html,
-body {
+// 鍏ㄥ眬绉戝够鑳屾櫙鍔ㄦ晥
+html, body {
   height: 100%;
-  font-family: $--font-family;
-  font-size: 14px;
-  line-height: 1.5;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color: var(--tm-text-primary);
-  background: var(--tm-bg-color);
-  /* 移除不稳定的外部背景图，使用纯色提高稳定性 */
+  background-color: var(--bg-base);
+  /* 娣诲姞寰急鐨勭骞荤綉鏍艰儗鏅?*/
+  background-image: 
+    linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+  background-position: center center;
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 #app {
@@ -104,7 +98,7 @@ body {
 }
 
 // ============================================
-// 滚动条美化 - 细线深灰半透明
+// 婊氬姩鏉＄編鍖?- 缁嗙嚎娣辩伆鍗婇€忔槑
 // ============================================
 ::-webkit-scrollbar {
   width: 4px;
@@ -125,14 +119,14 @@ body {
   }
 }
 
-/* Firefox 滚动条 */
+/* Firefox 婊氬姩鏉?*/
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
 }
 
 // ============================================
-// 现代化空状态样式
+// 鐜颁唬鍖栫┖鐘舵€佹牱寮?
 // ============================================
 .empty-state {
   display: flex;
@@ -166,84 +160,90 @@ body {
 }
 
 // ============================================
-// Element Plus 全局覆盖
+// Element Plus 鍏ㄥ眬瑕嗙洊
 // ============================================
 
-// 卡片样式
+// 鍗＄墖鏍峰紡瑕嗙洊涓虹幓鐠冩嫙鎬?
 .el-card {
-  @include card-style;
+  background: var(--bg-surface) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--tm-radius-base);
-  border: 1px solid var(--tm-border-light);
+  border: var(--border-neon) !important;
+  color: var(--text-primary) !important;
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
+    border-color: rgba(0, 242, 254, 0.5) !important;
+  }
 
   &__header {
-    padding: $--spacing-md $--spacing-lg;
-    border-bottom: 1px solid var(--tm-border-light);
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
     font-weight: 600;
-    color: var(--tm-text-primary);
+    color: var(--accent-primary) !important;
+    text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
   }
 
   &__body {
-    padding: $--spacing-lg;
+    padding: 20px;
   }
 }
 
-// 输入框样式
+// 杈撳叆妗嗘牱寮?
 .el-input {
-  --el-input-focus-border-color: #{$--color-primary};
+  --el-input-focus-border-color: var(--accent-primary);
+  --el-input-bg-color: rgba(0,0,0,0.4);
+  --el-input-border-color: rgba(255,255,255,0.1);
+  --el-input-text-color: #fff;
 
   .el-input__wrapper {
-    border-radius: $--border-radius-small;
+    background-color: var(--el-input-bg-color) !important;
+    border: 1px solid var(--el-input-border-color) !important;
+    box-shadow: none !important;
+    border-radius: var(--tm-radius-small);
     transition: all 0.3s;
-    @include focus-ring;
 
-    &:hover {
-      box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.1);
+    &.is-focus, &:hover {
+      border-color: var(--accent-primary) !important;
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.3) !important;
     }
   }
-
-  &.is-disabled .el-input__wrapper {
-    background-color: var(--bg-surface-hover);
-  }
 }
 
-// 选择框样式
-.el-select {
-  --el-select-input-focus-border-color: #{$--color-primary};
-
-  .el-select__wrapper {
-    border-radius: $--border-radius-small;
-    @include focus-ring;
-  }
-}
-
-// 按钮样式优化
+// 鎸夐挳鏍峰紡浼樺寲
 .el-button {
-  border-radius: $--border-radius-small;
-  font-weight: 500;
-  transition: all 0.3s;
+  border-radius: var(--tm-radius-small);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
 
   &--primary {
-    background-color: $--color-primary;
-    border-color: $--color-primary;
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-purple)) !important;
+    border: none !important;
+    color: #fff !important;
+    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3) !important;
 
     &:hover,
     &:focus {
-      background-color: $--color-primary-light-3;
-      border-color: $--color-primary-light-3;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(176, 38, 255, 0.5) !important;
+      filter: brightness(1.1);
     }
 
     &:active {
-      background-color: $--color-primary-dark-2;
-      border-color: $--color-primary-dark-2;
+      transform: translateY(0);
     }
   }
 
   &--default {
     &:hover,
     &:focus {
-      color: $--color-primary;
-      border-color: $--color-primary-light-5;
-      background-color: $--color-primary-light-9;
+      color: $tm-color-primary;
+      border-color: $tm-color-primary-light-5;
+      background-color: $tm-color-primary-light-9;
     }
   }
 
@@ -253,12 +253,12 @@ body {
   }
 }
 
-// 表格样式
+// 琛ㄦ牸鏍峰紡
 .el-table {
   --el-table-border-color: transparent;
   --el-table-header-bg-color: var(--bg-surface);
   --el-table-row-hover-bg-color: var(--bg-surface-hover);
-  --el-table-current-row-bg-color: #{rgba($--color-primary, 0.05)};
+  --el-table-current-row-bg-color: #{rgba($tm-color-primary, 0.05)};
 
   border: none;
   border-radius: var(--tm-radius-base);
@@ -266,9 +266,9 @@ body {
 
   th.el-table__cell {
     background-color: var(--bg-surface);
-    font-weight: 500;
+    font-weight: 600;
     font-size: 12px;
-    color: var(--text-secondary);
+    color: var(--tm-text-primary);
     padding: 12px 0;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -284,68 +284,68 @@ body {
     background-color: var(--bg-surface-hover);
   }
 
-  // 表格 hover 效果
+  // 琛ㄦ牸 hover 鏁堟灉
   .el-table__row {
     transition: background-color 0.2s;
 
     &:hover > td.el-table__cell {
-      background-color: rgba(255, 255, 255, 0.05) !important;
+      background-color: rgba(var(--tm-color-primary-rgb), 0.08) !important;
     }
   }
 }
 
-// 标签样式优化 - Method Tags
+// 鏍囩鏍峰紡浼樺寲 - Method Tags
 .el-tag {
-  border-radius: $--border-radius-small;
+  border-radius: $tm-border-radius-small;
   font-weight: 600;
   font-size: 12px;
   padding: 0 8px;
   height: 24px;
   line-height: 22px;
 
-  // GET - 绿色
+  // GET - 缁胯壊
   &--success {
-    background-color: rgba($--color-success, 0.1);
-    border-color: rgba($--color-success, 0.3);
-    color: $--color-success;
+    background-color: rgba($tm-color-success, 0.1);
+    border-color: rgba($tm-color-success, 0.3);
+    color: $tm-color-success;
   }
 
-  // POST - 蓝色
+  // POST - 钃濊壊
   &--warning {
-    background-color: rgba($--color-primary, 0.1);
-    border-color: rgba($--color-primary, 0.3);
-    color: $--color-primary;
+    background-color: rgba($tm-color-primary, 0.1);
+    border-color: rgba($tm-color-primary, 0.3);
+    color: $tm-color-primary;
   }
 
-  // PUT - 橙色
+  // PUT - 姗欒壊
   &--primary {
-    background-color: rgba($--color-warning, 0.1);
-    border-color: rgba($--color-warning, 0.3);
-    color: $--color-warning-dark;
+    background-color: rgba($tm-color-warning, 0.1);
+    border-color: rgba($tm-color-warning, 0.3);
+    color: $tm-color-warning-dark;
   }
 
-  // DELETE - 红色
+  // DELETE - 绾㈣壊
   &--danger {
-    background-color: rgba($--color-danger, 0.1);
-    border-color: rgba($--color-danger, 0.3);
-    color: $--color-danger;
+    background-color: rgba($tm-color-danger, 0.1);
+    border-color: rgba($tm-color-danger, 0.3);
+    color: $tm-color-danger;
   }
 
-  // PATCH - 灰色
+  // PATCH - 鐏拌壊
   &--info {
-    background-color: rgba($--color-info, 0.1);
-    border-color: rgba($--color-info, 0.3);
-    color: $--color-info;
+    background-color: rgba($tm-color-info, 0.1);
+    border-color: rgba($tm-color-info, 0.3);
+    color: $tm-color-info;
   }
 }
 
-// 对话框样式
+// 瀵硅瘽妗嗘牱寮?
 .el-dialog {
   border-radius: var(--tm-radius-base);
   overflow: hidden;
 
   &__header {
-    padding: $--spacing-lg;
+    padding: $tm-spacing-lg;
     border-bottom: 1px solid var(--tm-border-light);
     margin-right: 0;
   }
@@ -357,18 +357,18 @@ body {
   }
 
   &__body {
-    padding: $--spacing-lg;
+    padding: $tm-spacing-lg;
   }
 
   &__footer {
-    padding: $--spacing-md $--spacing-lg;
+    padding: $tm-spacing-md $tm-spacing-lg;
     border-top: 1px solid var(--tm-border-light);
   }
 }
 
-// 下拉菜单
+// 涓嬫媺鑿滃崟
 .el-dropdown-menu {
-  border-radius: $--border-radius-small;
+  border-radius: $tm-border-radius-small;
   box-shadow: var(--tm-shadow-base);
   border: 1px solid var(--tm-border-light);
   padding: 4px 0;
@@ -380,8 +380,8 @@ body {
     transition: all 0.2s;
 
     &:hover {
-      background-color: rgba($--color-primary, 0.05);
-      color: $--color-primary;
+      background-color: rgba($tm-color-primary, 0.05);
+      color: $tm-color-primary;
     }
 
     &--divided {
@@ -391,13 +391,13 @@ body {
   }
 }
 
-// 消息提示
+// 娑堟伅鎻愮ず
 .el-message {
-  border-radius: $--border-radius-small;
+  border-radius: $tm-border-radius-small;
   box-shadow: var(--tm-shadow-base);
 }
 
-// 标签页
+// 鏍囩椤?
 .el-tabs {
   &__header {
     margin-bottom: 0;
@@ -413,56 +413,56 @@ body {
     transition: color 0.3s;
 
     &:hover {
-      color: $--color-primary;
+      color: $tm-color-primary;
     }
 
     &.is-active {
-      color: $--color-primary;
+      color: $tm-color-primary;
       font-weight: 600;
     }
   }
 
   &__active-bar {
-    background-color: $--color-primary;
+    background-color: $tm-color-primary;
   }
 }
 
 // Radio Button
 .el-radio-button__inner {
-  border-radius: $--border-radius-small;
+  border-radius: $tm-border-radius-small;
   transition: all 0.3s;
 
   &:hover {
-    color: $--color-primary;
+    color: $tm-color-primary;
   }
 }
 
 .el-radio-button__original-radio:checked + .el-radio-button__inner {
-  background-color: $--color-primary;
-  border-color: $--color-primary;
+  background-color: $tm-color-primary;
+  border-color: $tm-color-primary;
   box-shadow: none;
 }
 
-// 分页
+// 鍒嗛〉
 .el-pagination {
-  --el-pagination-hover-color: #{$--color-primary};
+  --el-pagination-hover-color: #{$tm-color-primary};
 
   .el-pager li {
-    border-radius: $--border-radius-small;
+    border-radius: $tm-border-radius-small;
     transition: all 0.2s;
 
     &:hover {
-      color: $--color-primary;
+      color: $tm-color-primary;
     }
 
     &.is-active {
-      background-color: $--color-primary;
+      background-color: $tm-color-primary;
       color: var(--text-primary);
     }
   }
 }
 
-// 表单
+// 琛ㄥ崟
 .el-form-item__label {
   font-weight: 500;
   color: var(--tm-text-primary);
@@ -479,14 +479,14 @@ body {
 }
 
 // ============================================
-// 页面容器
+// 椤甸潰瀹瑰櫒
 // ============================================
 .page-container {
-  padding: $--spacing-lg;
+  padding: $tm-spacing-lg;
 }
 
 .page-header {
-  margin-bottom: $--spacing-lg;
+  margin-bottom: $tm-spacing-lg;
 
   &__title {
     font-size: 18px;
@@ -496,18 +496,18 @@ body {
 }
 
 // ============================================
-// 卡片区块
+// 鍗＄墖鍖哄潡
 // ============================================
 .card-section {
   @include card-style;
-  padding: $--spacing-lg;
-  margin-bottom: $--spacing-lg;
+  padding: $tm-spacing-lg;
+  margin-bottom: $tm-spacing-lg;
 
   &__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: $--spacing-md;
+    margin-bottom: $tm-spacing-md;
 
     &-title {
       font-size: 15px;
@@ -518,16 +518,16 @@ body {
 }
 
 // ============================================
-// 工具栏
+// 宸ュ叿鏍?
 // ============================================
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: $--spacing-md $--spacing-lg;
+  padding: $tm-spacing-md $tm-spacing-lg;
   background: var(--tm-bg-card);
   border-radius: var(--tm-radius-base);
-  margin-bottom: $--spacing-md;
+  margin-bottom: $tm-spacing-md;
   @include transition-base;
 
   &--sticky {
@@ -541,16 +541,16 @@ body {
   &__right {
     display: flex;
     align-items: center;
-    gap: $--spacing-sm;
+    gap: $tm-spacing-sm;
   }
 }
 
 // ============================================
-// 面板布局
+// 闈㈡澘甯冨眬
 // ============================================
 .panel-layout {
   display: flex;
-  gap: $--spacing-lg;
+  gap: $tm-spacing-lg;
   height: 100%;
 
   &__left {
@@ -572,7 +572,7 @@ body {
 }
 
 // ============================================
-// 工具提示图标
+// 宸ュ叿鎻愮ず鍥炬爣
 // ============================================
 .icon-btn {
   display: inline-flex;
@@ -580,36 +580,36 @@ body {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: $--border-radius-small;
+  border-radius: $tm-border-radius-small;
   cursor: pointer;
   transition: all 0.2s;
   color: var(--tm-text-secondary);
 
   &:hover {
-    background-color: rgba($--color-primary, 0.08);
-    color: $--color-primary;
+    background-color: rgba($tm-color-primary, 0.08);
+    color: $tm-color-primary;
   }
 
   &--danger:hover {
-    background-color: rgba($--color-danger, 0.08);
-    color: $--color-danger;
+    background-color: rgba($tm-color-danger, 0.08);
+    color: $tm-color-danger;
   }
 }
 
 // ============================================
-// 空状态
+// 绌虹姸鎬?
 // ============================================
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: $--spacing-xl * 2;
+  padding: $tm-spacing-xl * 2;
   color: var(--tm-text-secondary);
 
   &__icon {
     font-size: 48px;
-    margin-bottom: $--spacing-md;
+    margin-bottom: $tm-spacing-md;
     opacity: 0.5;
   }
 
@@ -619,7 +619,7 @@ body {
 }
 
 // ============================================
-// 响应式
+// 鍝嶅簲寮?
 // ============================================
 @media (max-width: 768px) {
   .panel-layout {
@@ -633,7 +633,7 @@ body {
 
   .toolbar {
     flex-direction: column;
-    gap: $--spacing-sm;
+    gap: $tm-spacing-sm;
     align-items: stretch;
 
     &__left,
@@ -644,11 +644,11 @@ body {
 }
 
 // ============================================
-// Element Plus 深度主题强制覆写 - Glassmorphism 风格
-// 彻底剥离默认白色背景，完美融入主题系统
+// Element Plus 娣卞害涓婚寮哄埗瑕嗗啓 - Glassmorphism 椋庢牸
+// 褰诲簳鍓ョ榛樿鐧借壊鑳屾櫙锛屽畬缇庤瀺鍏ヤ富棰樼郴缁?
 // ============================================
 
-// ---------- 表格透明化 ----------
+// ---------- 琛ㄦ牸閫忔槑鍖?----------
 .el-table,
 .el-table__expanded-cell {
   background-color: transparent !important;
@@ -677,14 +677,15 @@ body {
 
 .el-table th.el-table__cell {
   background-color: transparent !important;
-  color: var(--tm-text-secondary) !important;
+  color: var(--tm-text-primary) !important;
+  font-weight: 600;
 }
 
-// ---------- 输入框与下拉菜单 ----------
+// ---------- 杈撳叆妗嗕笌涓嬫媺鑿滃崟 ----------
 .el-input__wrapper,
 .el-select .el-input__wrapper,
 .el-textarea__inner {
-  background-color: rgba(0, 0, 0, 0.2) !important;
+  background-color: var(--tm-card-bg) !important;
   border: 1px solid var(--tm-border-light) !important;
   box-shadow: none !important;
 }
@@ -712,7 +713,7 @@ body {
   }
 }
 
-// ---------- 弹框 ----------
+// ---------- 寮规 ----------
 .el-overlay {
   background-color: rgba(0, 0, 0, 0.6) !important;
 }
@@ -732,13 +733,13 @@ body {
   }
 }
 
-// ---------- 下拉菜单 ----------
+// ---------- 涓嬫媺鑿滃崟 ----------
 .el-dropdown-menu {
   background-color: var(--tm-card-bg) !important;
   border: 1px solid var(--tm-border-light) !important;
 }
 
-// ---------- 日期选择器 ----------
+// ---------- 鏃ユ湡閫夋嫨鍣?----------
 .el-date-picker {
   background-color: var(--tm-card-bg) !important;
   border: 1px solid var(--tm-border-light) !important;
@@ -752,12 +753,12 @@ body {
   }
 }
 
-// ---------- 开关 ----------
+// ---------- 寮€鍏?----------
 .el-switch__core {
-  background-color: rgba(var(--tm-border-light), 0.5) !important;
+  border: 1px solid var(--tm-border-light) !important;
 }
 
-// ---------- 复选框/单选框 ----------
+// ---------- 澶嶉€夋/鍗曢€夋 ----------
 .el-checkbox__label {
   color: var(--tm-text-primary) !important;
 }
@@ -776,14 +777,14 @@ body {
   border-color: var(--tm-color-primary) !important;
 }
 
-// ---------- 全局按钮现代化重塑 ----------
+// ---------- 鍏ㄥ眬鎸夐挳鐜颁唬鍖栭噸濉?----------
 .el-button {
   border-radius: 8px !important;
   font-weight: 500;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   border-width: 1px !important;
 
-  // 默认/普通按钮 - 极简设计
+  // 榛樿/鏅€氭寜閽?- 鏋佺畝璁捐
   &:not(.el-button--primary):not(.el-button--danger):not(.el-button--success):not(.el-button--warning):not(.el-button--text) {
     border-color: var(--tm-border-light) !important;
     color: var(--tm-text-primary) !important;
@@ -800,12 +801,12 @@ body {
     }
   }
 
-  // 幽灵按钮
+  // 骞界伒鎸夐挳
   &--default.is-plain {
     background-color: transparent !important;
   }
 
-  // 主要按钮 - 渐变光泽
+  // 涓昏鎸夐挳 - 娓愬彉鍏夋辰
   &--primary {
     background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark)) !important;
     border-color: var(--tm-color-primary) !important;
@@ -821,7 +822,7 @@ body {
     }
   }
 
-  // 成功按钮
+  // 鎴愬姛鎸夐挳
   &--success {
     background: linear-gradient(135deg, #67c23a, #84cc16) !important;
     border-color: #67c23a !important;
@@ -833,7 +834,7 @@ body {
     }
   }
 
-  // 警告按钮
+  // 璀﹀憡鎸夐挳
   &--warning {
     background: linear-gradient(135deg, #e6a23c, #f56c6c) !important;
     border-color: #e6a23c !important;
@@ -845,7 +846,7 @@ body {
     }
   }
 
-  // 危险按钮
+  // 鍗遍櫓鎸夐挳
   &--danger {
     background: linear-gradient(135deg, #f56c6c, #dc2626) !important;
     border-color: #f56c6c !important;
@@ -857,7 +858,7 @@ body {
     }
   }
 
-  // 文字按钮
+  // 鏂囧瓧鎸夐挳
   &--text {
     background-color: transparent !important;
     border: none !important;
@@ -867,14 +868,14 @@ body {
     }
   }
 
-  // 小号按钮微调
+  // 灏忓彿鎸夐挳寰皟
   &--small {
     padding: 5px 12px;
     font-size: 13px;
   }
 }
 
-// ---------- 分页 ----------
+// ---------- 鍒嗛〉 ----------
 .el-pagination {
   .el-pagination__total,
   .el-pagination__jump {
@@ -908,8 +909,8 @@ body {
 }
 
 // ========================================
-// 终极强力覆写 - 按钮强制重塑 (Ultimate Force Overrides)
-// 权重拉满，确保无论如何都覆盖默认样式
+// 缁堟瀬寮哄姏瑕嗗啓 - 鎸夐挳寮哄埗閲嶅 (Ultimate Force Overrides)
+// 鏉冮噸鎷夋弧锛岀‘淇濇棤璁哄浣曢兘瑕嗙洊榛樿鏍峰紡
 // ========================================
 .el-button {
   background-color: var(--tm-card-bg) !important;
@@ -923,14 +924,14 @@ body {
   letter-spacing: 0.5px !important;
 }
 
-// 确保浅色主题下按钮文字颜色与背景有足够对比度
+// 纭繚娴呰壊涓婚涓嬫寜閽枃瀛楅鑹蹭笌鑳屾櫙鏈夎冻澶熷姣斿害
 [data-theme="sakura"],
 [data-theme="mojito-green"],
 [data-theme="apple-light"] {
-  // 全局文字颜色
+  // 鍏ㄥ眬鏂囧瓧棰滆壊
   color: #000000 !important;
   
-  // 普通按钮
+  // 鏅€氭寜閽?
   .el-button {
     color: #000000 !important;
     background-color: var(--tm-bg-elevated) !important;
@@ -943,28 +944,28 @@ body {
     border-color: var(--tm-color-primary) !important;
   }
   
-  // 主要按钮
+  // 涓昏鎸夐挳
   .el-button--primary {
     color: #ffffff !important;
     background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark)) !important;
   }
   
-  // 危险按钮
+  // 鍗遍櫓鎸夐挳
   .el-button--danger {
     color: #ffffff !important;
   }
   
-  // 成功按钮
+  // 鎴愬姛鎸夐挳
   .el-button--success {
     color: #ffffff !important;
   }
   
-  // 警告按钮
+  // 璀﹀憡鎸夐挳
   .el-button--warning {
     color: #ffffff !important;
   }
   
-  // 链接按钮（操作列中的按钮）
+  // 閾炬帴鎸夐挳锛堟搷浣滃垪涓殑鎸夐挳锛?
   .el-button--primary.is-link {
     color: #000000 !important;
     background-color: transparent !important;
@@ -990,7 +991,7 @@ body {
     background-color: transparent !important;
   }
   
-  // 表格操作列中的按钮
+  // 琛ㄦ牸鎿嶄綔鍒椾腑鐨勬寜閽?
   .el-table .el-button--primary.is-link {
     color: #000000 !important;
     background-color: transparent !important;
@@ -1011,7 +1012,7 @@ body {
     background-color: transparent !important;
   }
   
-  // 表格文字
+  // 琛ㄦ牸鏂囧瓧
   .el-table {
     color: #000000 !important;
   }
@@ -1024,7 +1025,7 @@ body {
     color: #000000 !important;
   }
   
-  // 穿透选择器，确保覆盖UI组件库的默认样式
+  // 绌块€忛€夋嫨鍣紝纭繚瑕嗙洊UI缁勪欢搴撶殑榛樿鏍峰紡
   :deep(.el-button) {
     color: #000000 !important;
   }
@@ -1045,7 +1046,7 @@ body {
     color: #ffffff !important;
   }
   
-  // 穿透选择器，确保覆盖链接按钮的默认样式
+  // 绌块€忛€夋嫨鍣紝纭繚瑕嗙洊閾炬帴鎸夐挳鐨勯粯璁ゆ牱寮?
   :deep(.el-button--primary.is-link) {
     color: #000000 !important;
     background-color: transparent !important;
@@ -1071,7 +1072,7 @@ body {
     background-color: transparent !important;
   }
   
-  // 穿透选择器，确保覆盖表格操作列中按钮的默认样式
+  // 绌块€忛€夋嫨鍣紝纭繚瑕嗙洊琛ㄦ牸鎿嶄綔鍒椾腑鎸夐挳鐨勯粯璁ゆ牱寮?
   :deep(.el-table .el-button--primary.is-link) {
     color: #000000 !important;
     background-color: transparent !important;
@@ -1092,7 +1093,7 @@ body {
     background-color: transparent !important;
   }
   
-  // 确保图标颜色也正确
+  // 纭繚鍥炬爣棰滆壊涔熸纭?
   :deep(.el-button--primary.is-link .el-icon) {
     color: #000000 !important;
   }
@@ -1113,7 +1114,7 @@ body {
     color: #000000 !important;
   }
   
-  // 确保其他文本元素颜色正确
+  // 纭繚鍏朵粬鏂囨湰鍏冪礌棰滆壊姝ｇ‘
   :deep(.el-tooltip__content) {
     color: #000000 !important;
   }
@@ -1149,6 +1150,75 @@ body {
   :deep(.el-empty__text) {
     color: #000000 !important;
   }
+
+  // ========== 寮€鍏?Switch锛堟牳蹇冧慨澶嶏細鐧藉瓧绮夊簳闂锛?=========
+  .el-switch__core {
+    background-color: #d1d5db !important;
+    border: 1px solid #9ca3af !important;
+  }
+
+  .el-switch.is-checked .el-switch__core {
+    background-color: var(--tm-color-primary-dark) !important;
+    border-color: var(--tm-color-primary-dark) !important;
+  }
+
+  .el-switch__label {
+    color: var(--tm-text-primary) !important;
+  }
+
+  // ========== 琛ㄥご鑳屾櫙锛堜笉瑕?transparent锛?=========
+  .el-table th.el-table__cell {
+    background-color: var(--tm-bg-card) !important;
+  }
+
+  // ========== 杈撳叆妗?涓嬫媺妗嗚儗鏅?==========
+  .el-input__wrapper,
+  .el-select .el-input__wrapper,
+  .el-textarea__inner {
+    background-color: #ffffff !important;
+    border-color: #d1d5db !important;
+  }
+
+  .el-input__inner,
+  .el-textarea__inner {
+    color: #1f2937 !important;
+  }
+
+  // ========== 鏍囩 Tag ==========
+  .el-tag--success {
+    color: #166534 !important;
+    background-color: #dcfce7 !important;
+    border-color: #bbf7d0 !important;
+  }
+
+  .el-tag--danger {
+    color: #991b1b !important;
+    background-color: #fee2e2 !important;
+    border-color: #fecaca !important;
+  }
+
+  .el-tag--warning {
+    color: #92400e !important;
+    background-color: #fef3c7 !important;
+    border-color: #fde68a !important;
+  }
+
+  .el-tag--info {
+    color: #1e40af !important;
+    background-color: #dbeafe !important;
+    border-color: #bfdbfe !important;
+  }
+
+  // ========== 澶嶉€夋/鍗曢€夋 ==========
+  .el-checkbox__inner {
+    background-color: #ffffff !important;
+    border-color: #d1d5db !important;
+  }
+
+  .el-radio__inner {
+    background-color: #ffffff !important;
+    border-color: #d1d5db !important;
+  }
 }
 
 .el-button:hover {
@@ -1159,7 +1229,7 @@ body {
   color: var(--tm-color-primary) !important;
 }
 
-/* 针对 Primary, Danger 等特殊按钮保留主题色倾向 */
+/* 閽堝 Primary, Danger 绛夌壒娈婃寜閽繚鐣欎富棰樿壊鍊惧悜 */
 .el-button--primary {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark)) !important;
   color: var(--tm-button-text-color) !important;
@@ -1213,8 +1283,8 @@ body {
 }
 
 // ========================================
-// 终极强制修复下拉菜单白块
-// 下拉菜单挂载在 body，必须全局强制覆写
+// 缁堟瀬寮哄埗淇涓嬫媺鑿滃崟鐧藉潡
+// 涓嬫媺鑿滃崟鎸傝浇鍦?body锛屽繀椤诲叏灞€寮哄埗瑕嗗啓
 // ========================================
 .el-popper,
 .el-dropdown-menu,
@@ -1245,40 +1315,40 @@ body {
 }
 
 // ========================================
-// 图标样式设置
-// 确保图标颜色能够根据主题变化
+// 鍥炬爣鏍峰紡璁剧疆
+// 纭繚鍥炬爣棰滆壊鑳藉鏍规嵁涓婚鍙樺寲
 // ========================================
 .el-icon {
   color: var(--tm-text-primary, #fff) !important;
   transition: color 0.3s ease !important;
 }
 
-// 按钮中的图标
+// 鎸夐挳涓殑鍥炬爣
 .el-button .el-icon {
   color: inherit !important;
 }
 
-// 输入框中的图标
+// 杈撳叆妗嗕腑鐨勫浘鏍?
 .el-input .el-icon {
   color: var(--tm-text-secondary, #a0a0a0) !important;
 }
 
-// 标签页中的图标
+// 鏍囩椤典腑鐨勫浘鏍?
 .el-tabs__item .el-icon {
   color: inherit !important;
 }
 
-// 下拉菜单中的图标
+// 涓嬫媺鑿滃崟涓殑鍥炬爣
 .el-dropdown-menu__item .el-icon {
   color: inherit !important;
 }
 
 // ========================================
-// 终极修复 Tooltip 文字颜色问题
-// Tooltip 挂载在 body，必须全局强制覆写
+// 缁堟瀬淇 Tooltip 鏂囧瓧棰滆壊闂
+// Tooltip 鎸傝浇鍦?body锛屽繀椤诲叏灞€寮哄埗瑕嗗啓
 // ========================================
 
-// 浅色主题下，强制悬浮气泡文字为深色
+// 娴呰壊涓婚涓嬶紝寮哄埗鎮诞姘旀场鏂囧瓧涓烘繁鑹?
 [data-theme="sakura"] .action-tooltip,
 [data-theme="mojito-green"] .action-tooltip,
 [data-theme="apple-light"] .action-tooltip {
@@ -1287,14 +1357,14 @@ body {
   border: 1px solid var(--tm-border-color) !important;
 }
 
-// 确保内部如果有 span 等标签也一并继承
+// 纭繚鍐呴儴濡傛灉鏈?span 绛夋爣绛句篃涓€骞剁户鎵?
 [data-theme="sakura"] .action-tooltip *,
 [data-theme="mojito-green"] .action-tooltip *,
 [data-theme="apple-light"] .action-tooltip * {
   color: #000000 !important;
 }
 
-// 深色主题下，保持白色文字
+// 娣辫壊涓婚涓嬶紝淇濇寔鐧借壊鏂囧瓧
 [data-theme="cyberpunk"] .action-tooltip,
 [data-theme="deep-ocean"] .action-tooltip {
   color: #ffffff !important;
@@ -1306,3 +1376,4 @@ body {
 [data-theme="deep-ocean"] .action-tooltip * {
   color: #ffffff !important;
 }
+

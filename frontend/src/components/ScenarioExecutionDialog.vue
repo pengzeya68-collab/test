@@ -31,6 +31,16 @@
       </el-button>
     </div>
 
+    <div v-else-if="submitError" style="padding: 24px 20px;">
+      <el-alert
+        title="场景执行未成功启动"
+        :description="submitError"
+        type="error"
+        show-icon
+        :closable="false"
+      />
+    </div>
+
     <div class="result-content" v-else-if="runResult">
       <div class="result-header-stats">
         <el-tag :type="(runResult.failed_count || runResult.failed_steps || 0) > 0 ? 'danger' : 'success'" size="large">
@@ -50,7 +60,7 @@
       <div class="step-results">
         <div
           v-for="(step, index) in runResult.step_results"
-          :key="index"
+          :key="step.step_id || step.api_case_id || index"
           class="step-result-card"
           :class="{ 'is-failed': step.status === 'failed', 'is-skipped': step.status === 'skipped' }"
         >
@@ -191,7 +201,7 @@
 import { ref, computed, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowRight } from '@element-plus/icons-vue'
-import axios from 'axios'
+import autoTestRequest from '@/utils/autoTestRequest'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false }
@@ -204,29 +214,12 @@ const dialogVisible = computed({
   set: val => emit('update:modelValue', val)
 })
 
-const autoTestRequest = axios.create({
-  baseURL: '',
-  timeout: 30000
-})
-
-autoTestRequest.interceptors.request.use(config => {
-  const token = localStorage.getItem('admin_token') || localStorage.getItem('token')
-  if (token && token !== 'undefined' && token !== 'null' && token !== '[object Object]') {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-}, error => Promise.reject(error))
-
-autoTestRequest.interceptors.response.use(
-  response => response.data,
-  error => Promise.reject(error)
-)
-
 const isRunning = ref(false)
 const isCanceling = ref(false)
 const runResult = ref(null)
 const progress = ref(null)
 const expandedSteps = ref([])
+const submitError = ref('')
 
 let pollingTimer = null
 let pollingAbortController = null
@@ -289,17 +282,11 @@ const resolveReportUrl = (reportUrl) => {
 
 const openAllureReport = () => {
   const resultData = runResult.value || {}
-  let url = resultData.report_url
-  if (!url && resultData.execution_record_id) {
-    url = `/reports/scenario_${resultData.scenario_id || 'unknown'}/index.html`
-  }
-  if (!url && resultData.report_id) {
-    url = `/reports/${resultData.report_id}/index.html`
-  }
+  const url = resultData.report_url
   if (url) {
     window.open(resolveReportUrl(url), '_blank')
   } else {
-    ElMessage.warning('Allure 报告未生成（可能未安装 allure 命令行工具）。请检查后端日志。')
+    ElMessage.warning('报告地址不可用，请重新执行生成最新报告，或检查后端报告生成日志。')
   }
 }
 
@@ -314,7 +301,7 @@ const pollTaskStatus = (taskId) => {
   const signal = pollingAbortController.signal
   pollingTimer = setInterval(async () => {
     try {
-      const res = await autoTestRequest.get(`/api/auto-test/tasks/${taskId}`, { signal })
+      const res = await autoTestRequest.get(`/auto-test/tasks/${taskId}`, { signal })
       const state = res.status
 
       if (state === 'PENDING') {
@@ -385,7 +372,7 @@ const pollTaskStatus = (taskId) => {
         }
       }
     } catch (error) {
-      if (axios.isCancel(error)) return
+      if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
       stopPolling()
       isRunning.value = false
       ElMessage.error('查询任务状态失败: ' + (error.response?.data?.detail || error.message))
@@ -397,7 +384,7 @@ const handleCancel = async () => {
   if (!currentTaskId) { ElMessage.warning('没有正在执行的任务'); return }
   try {
     isCanceling.value = true
-    await autoTestRequest.post(`/api/auto-test/tasks/${currentTaskId}/cancel`)
+    await autoTestRequest.post(`/auto-test/tasks/${currentTaskId}/cancel`)
     stopPolling()
     isRunning.value = false
     isCanceling.value = false
@@ -417,6 +404,7 @@ const handleClose = () => {
   runResult.value = null
   progress.value = null
   expandedSteps.value = []
+  submitError.value = ''
   currentTaskId = null
 }
 
@@ -424,6 +412,7 @@ const startExecution = async (scenarioId, envId, totalSteps) => {
   isRunning.value = true
   runResult.value = null
   expandedSteps.value = []
+  submitError.value = ''
   progress.value = {
     percent: 0,
     current: 0,
@@ -437,12 +426,13 @@ const startExecution = async (scenarioId, envId, totalSteps) => {
 
   try {
     const res = await autoTestRequest.post(
-      `/api/auto-test/scenarios/${scenarioId}/run`,
+      `/auto-test/scenarios/${scenarioId}/run`,
       { env_id: envId }
     )
     const taskId = res?.task_id || res?.data?.task_id
     if (!taskId) {
       isRunning.value = false
+      submitError.value = '任务提交成功后未返回 task_id，前端无法进入轮询。请检查场景执行接口返回结构。'
       ElMessage.error('任务提交失败，未获取到 task_id')
       return
     }
@@ -450,7 +440,8 @@ const startExecution = async (scenarioId, envId, totalSteps) => {
     pollTaskStatus(taskId)
   } catch (error) {
     isRunning.value = false
-    ElMessage.error('提交任务失败: ' + (error.response?.data?.detail || error.message))
+    submitError.value = error.response?.data?.detail || error.message || '提交任务失败'
+    ElMessage.error('提交任务失败: ' + submitError.value)
   }
 }
 

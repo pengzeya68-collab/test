@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import request from '@/utils/request'
 import { ElNotification } from 'element-plus'
+import { setToken, setUserInfo, clearUserAuth, TOKEN_KEY, USER_KEY, ASSESSMENT_KEY, SKILL_PROFILE_KEY } from '@/utils/auth'
 
 function safeJsonParse(str, fallback = null) {
   try {
@@ -12,10 +13,11 @@ function safeJsonParse(str, fallback = null) {
 }
 
 export const useUserStore = defineStore('user', () => {
-  const token = ref(localStorage.getItem('token') || '')
-  const userInfo = ref(safeJsonParse(localStorage.getItem('user') || 'null'))
-  const assessmentCompleted = ref(localStorage.getItem('assessment_completed') === 'true')
-  const skillProfile = ref(safeJsonParse(localStorage.getItem('skill_profile') || 'null'))
+  const token = ref(localStorage.getItem(TOKEN_KEY) || '')
+  const userInfo = ref(safeJsonParse(localStorage.getItem(USER_KEY) || 'null'))
+  const assessmentCompleted = ref(localStorage.getItem(ASSESSMENT_KEY) === 'true')
+  const skillProfile = ref(safeJsonParse(localStorage.getItem(SKILL_PROFILE_KEY) || 'null'))
+  const isLoading = ref(false)
 
   const isLoggedIn = computed(() => !!token.value)
   const username = computed(() => userInfo.value?.username || '')
@@ -25,36 +27,42 @@ export const useUserStore = defineStore('user', () => {
   const setLogin = (newToken, user) => {
     token.value = newToken
     userInfo.value = user
-    localStorage.setItem('token', newToken)
-    localStorage.setItem('user', JSON.stringify(user))
+    setToken(newToken)
+    setUserInfo(user)
   }
 
   const setAssessmentCompleted = (profile) => {
     assessmentCompleted.value = true
     skillProfile.value = profile
-    localStorage.setItem('assessment_completed', 'true')
+    localStorage.setItem(ASSESSMENT_KEY, 'true')
     if (profile) {
-      localStorage.setItem('skill_profile', JSON.stringify(profile))
+      localStorage.setItem(SKILL_PROFILE_KEY, JSON.stringify(profile))
     }
   }
 
   const checkAssessmentStatus = async () => {
     if (!isLoggedIn.value) return false
+    if (isLoading.value) return assessmentCompleted.value
+    
+    isLoading.value = true
     try {
       const res = await request.get('/assessment/status')
       const completed = res.has_completed_assessment
       assessmentCompleted.value = completed
-      localStorage.setItem('assessment_completed', String(completed))
+      localStorage.setItem(ASSESSMENT_KEY, String(completed))
       if (completed && res.overall_score) {
         skillProfile.value = {
           overall_score: res.overall_score,
           overall_level: res.overall_level,
         }
-        localStorage.setItem('skill_profile', JSON.stringify(skillProfile.value))
+        localStorage.setItem(SKILL_PROFILE_KEY, JSON.stringify(skillProfile.value))
       }
       return completed
-    } catch {
-      return false
+    } catch (error) {
+      console.warn('检查测评状态失败，使用本地缓存:', error)
+      return assessmentCompleted.value
+    } finally {
+      isLoading.value = false
     }
   }
 
@@ -78,15 +86,25 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await request.post('/auth/logout', {})
+    } catch {
+      // ignore - token may already be expired
+    }
     token.value = ''
     userInfo.value = null
     assessmentCompleted.value = false
     skillProfile.value = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('assessment_completed')
-    localStorage.removeItem('skill_profile')
+    clearUserAuth()
+  }
+
+  const resetSession = () => {
+    token.value = ''
+    userInfo.value = null
+    assessmentCompleted.value = false
+    skillProfile.value = null
+    clearUserAuth()
   }
 
   return {
@@ -103,5 +121,6 @@ export const useUserStore = defineStore('user', () => {
     checkAssessmentStatus,
     checkNewAchievements,
     logout,
+    resetSession,
   }
 })

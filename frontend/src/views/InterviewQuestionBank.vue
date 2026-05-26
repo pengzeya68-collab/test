@@ -1,209 +1,167 @@
-﻿﻿﻿﻿<template>
-  <div class="interview-question-bank">
-    <div class="container">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">面试题库</h1>
-          <p class="page-subtitle">海量测试工程师面试真题，助力Offer收割</p>
-        </div>
-        <el-button-group>
-          <el-button type="primary" @click="$router.push('/interview/simulate')">
-            <el-icon><VideoPlay /></el-icon>
-            模拟面试
-          </el-button>
-          <el-button @click="$router.push('/interview/my')">
-            <el-icon><Document /></el-icon>
-            我的面试
-          </el-button>
-        </el-button-group>
-      </div>
+<template>
+  <div class="interview-question-bank" style="position: relative; z-index: 1;">
+    <!-- 背景特效 -->
+    <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
+    <div class="glow-orb" style="position: absolute; top: 10%; right: 10%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(236,72,153,0.15), transparent 70%); border-radius: 50%; z-index: -1; pointer-events: none;"></div>
 
-      <div class="filter-bar">
-        <el-row :gutter="16">
-          <!-- 分类筛选器暂时隐藏，新接口暂无分类数据
-          <el-col :span="5">
-            <el-select
-              v-model="filters.category"
-              placeholder="分类"
-              @change="fetchQuestions"
-              style="width: 100%;"
-              clearable
-            >
-              <el-option
-                v-for="cat in categories"
-                :key="cat.value"
-                :label="cat.label"
-                :value="cat.value"
-              />
-            </el-select>
-          </el-col>
-          -->
-          <el-col :span="4">
-            <el-select 
-              v-model="filters.difficulty" 
-              placeholder="难度" 
-              @change="fetchQuestions"
-              style="width: 100%;"
-              clearable
-            >
-              <el-option label="简单" value="easy" />
-              <el-option label="中等" value="medium" />
-              <el-option label="困难" value="hard" />
-            </el-select>
-          </el-col>
-          <!-- 级别筛选器暂时隐藏，新接口暂无级别数据
-          <el-col :span="4">
-            <el-select
-              v-model="filters.level"
-              placeholder="级别"
-              @change="fetchQuestions"
-              style="width: 100%;"
-              clearable
-            >
-              <el-option label="初级" value="初级" />
-              <el-option label="中级" value="中级" />
-              <el-option label="高级" value="高级" />
-              <el-option label="专家" value="专家" />
-            </el-select>
-          </el-col>
-          -->
-          <el-col :span="13">
-            <el-input
-              v-model="filters.search"
-              placeholder="搜索题目..."
-              @keyup.enter="fetchQuestions"
-              style="width: 100%;"
-            >
-              <template #prefix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-input>
-          </el-col>
-          <el-col :span="7">
-            <el-button type="primary" @click="fetchQuestions" style="width: 100%;">
-              <el-icon><Search /></el-icon>
-              搜索
-            </el-button>
-          </el-col>
-        </el-row>
+    <!-- 原始结构恢复 -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">面试题库</h1>
+        <p class="page-subtitle">海量测试工程师面试真题，助力Offer收割</p>
       </div>
-
-      <div class="tabs-container">
-        <el-tabs v-model="activeTab" @tab-change="fetchQuestions">
-          <el-tab-pane label="全部题目" name="all" />
-          <!-- 收藏功能暂时隐藏，新接口暂无收藏功能
-          <el-tab-pane label="我的收藏" name="collected" />
-          -->
-        </el-tabs>
-      </div>
-
-      <div class="question-list">
-        <div 
-          class="question-card" 
-          v-for="question in questions" 
-          :key="question.id"
-          @click="viewQuestion(question)"
-        >
-          <div class="card-header">
-            <div class="question-title">{{ question.title }}</div>
-            <!-- 收藏按钮暂时隐藏，新接口暂无收藏功能
-            <el-button
-              link type="primary"
-              :icon="question.is_collected ? StarFilled : Star"
-              @click.stop="toggleCollect(question)"
-              :style="{ color: question.is_collected ? '#e6a23c' : 'var(--tm-text-secondary)' }"
-            />
-            -->
-          </div>
-          
-          <div class="card-body">
-            <div class="question-meta">
-              <el-tag size="small" type="primary">{{ question.category }}</el-tag>
-              <el-tag size="small" :type="getDifficultyTagType(question.difficulty)">
-                {{ question.difficulty === 'easy' ? '简单' : question.difficulty === 'medium' ? '中等' : '困难' }}
-              </el-tag>
-              <el-tag size="small" type="info">{{ question.position_level }}</el-tag>
-              <span class="meta-item">
-                <el-icon size="14"><View /></el-icon>
-                {{ question.view_count }}
-              </span>
-              <span class="meta-item">
-                <el-icon size="14"><Star /></el-icon>
-                {{ question.collect_count }}
-              </span>
-              <span class="company" v-if="question.company">
-                {{ question.company }}
-              </span>
-            </div>
-            <div class="tags" v-if="question.tags && question.tags.length > 0">
-              <el-tag size="small" v-for="tag in question.tags" :key="tag" type="info" effect="plain">
-                {{ tag }}
-              </el-tag>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="pagination-container" v-if="total > 0">
-        <el-pagination
-          v-model:current-page="currentPage"
-          :page-size="perPage"
-          :total="total"
-          layout="prev, pager, next, total"
-          @current-change="fetchQuestions"
-        />
-      </div>
-
-      <div class="empty-state" v-if="questions.length === 0 && !loading">
-        <el-empty description="暂无题目" />
-      </div>
-
-      <div class="loading-state" v-if="loading">
-        <el-skeleton :rows="10" animated />
-      </div>
-
-      <!-- 题目详情弹窗 -->
-      <el-dialog 
-        v-model="showDetailDialog" 
-        title="题目详情"
-        width="800px"
-        class="question-detail-dialog"
-      >
-        <div v-if="currentQuestion" class="detail-content">
-          <div class="detail-header">
-            <div class="detail-title">{{ currentQuestion.title }}</div>
-            <div class="detail-meta">
-              <el-tag size="small" type="primary">{{ currentQuestion.category }}</el-tag>
-              <el-tag size="small" :type="getDifficultyTagType(currentQuestion.difficulty)">
-                {{ currentQuestion.difficulty === 'easy' ? '简单' : currentQuestion.difficulty === 'medium' ? '中等' : '困难' }}
-              </el-tag>
-              <span>浏览：{{ currentQuestion.view_count }}</span>
-              <span>收藏：{{ currentQuestion.collect_count }}</span>
-            </div>
-          </div>
-          
-          <div class="detail-section" v-if="currentQuestion.content">
-            <h4>题目描述</h4>
-            <div v-html="renderMarkdown(currentQuestion.content)"></div>
-          </div>
-          
-          <div class="detail-section">
-            <h4>参考答案</h4>
-            <div class="answer-content" v-html="renderMarkdown(currentQuestion.answer)"></div>
-          </div>
-        </div>
-        <template #footer>
-          <el-button @click="showDetailDialog = false">关闭</el-button>
-          <el-button 
-            type="primary" 
-            :icon="currentQuestion?.is_collected ? StarFilled : Star"
-            @click="toggleCollect(currentQuestion)"
-          >
-            {{ currentQuestion?.is_collected ? '取消收藏' : '收藏' }}
-          </el-button>
-        </template>
-      </el-dialog>
+      <el-button-group>
+        <el-button type="primary" @click="$router.push('/interview/simulate')">
+          <el-icon><VideoPlay /></el-icon>
+          模拟面试
+        </el-button>
+        <el-button @click="$router.push('/interview/my')">
+          <el-icon><Document /></el-icon>
+          我的面试
+        </el-button>
+      </el-button-group>
     </div>
+
+    <div class="filter-bar">
+      <el-row :gutter="16">
+        <el-col :span="4">
+          <el-select 
+            v-model="filters.difficulty" 
+            placeholder="难度" 
+            @change="fetchQuestions"
+            style="width: 100%;"
+            clearable
+          >
+            <el-option label="简单" value="easy" />
+            <el-option label="中等" value="medium" />
+            <el-option label="困难" value="hard" />
+          </el-select>
+        </el-col>
+        <el-col :span="13">
+          <el-input
+            v-model="filters.search"
+            placeholder="搜索题目..."
+            @keyup.enter="fetchQuestions"
+            style="width: 100%;"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+        </el-col>
+        <el-col :span="7">
+          <el-button type="primary" @click="fetchQuestions" style="width: 100%;">
+            <el-icon><Search /></el-icon>
+            搜索
+          </el-button>
+        </el-col>
+      </el-row>
+    </div>
+
+    <div class="tabs-container">
+      <el-tabs v-model="activeTab" @tab-change="fetchQuestions">
+        <el-tab-pane label="全部题目" name="all" />
+      </el-tabs>
+    </div>
+
+    <div class="question-list">
+      <div 
+        class="question-card" 
+        v-for="question in questions" 
+        :key="question.id"
+        @click="viewQuestion(question)"
+      >
+        <div class="card-header">
+          <div class="question-title">{{ question.title }}</div>
+        </div>
+        
+        <div class="card-body">
+          <div class="question-meta">
+            <el-tag size="small" type="primary">{{ question.category }}</el-tag>
+            <el-tag size="small" :type="getDifficultyTagType(question.difficulty)">
+              {{ question.difficulty === 'easy' ? '简单' : question.difficulty === 'medium' ? '中等' : '困难' }}
+            </el-tag>
+            <el-tag size="small" type="info">{{ question.position_level }}</el-tag>
+            <span class="meta-item">
+              <el-icon size="14"><View /></el-icon>
+              {{ question.view_count }}
+            </span>
+            <span class="meta-item">
+              <el-icon size="14"><Star /></el-icon>
+              {{ question.collect_count }}
+            </span>
+            <span class="company" v-if="question.company">
+              {{ question.company }}
+            </span>
+          </div>
+          <div class="tags" v-if="question.tags && question.tags.length > 0">
+            <el-tag size="small" v-for="tag in question.tags" :key="tag" type="info" effect="plain">
+              {{ tag }}
+            </el-tag>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pagination-container" v-if="total > 0">
+      <el-pagination
+        v-model:current-page="currentPage"
+        :page-size="perPage"
+        :total="total"
+        layout="prev, pager, next, total"
+        @current-change="fetchQuestions"
+      />
+    </div>
+
+    <div class="empty-state" v-if="questions.length === 0 && !loading">
+      <el-empty description="暂无题目" />
+    </div>
+
+    <div class="loading-state" v-if="loading">
+      <el-skeleton :rows="10" animated />
+    </div>
+
+    <!-- 题目详情弹窗 -->
+    <el-dialog 
+      v-model="showDetailDialog" 
+      title="题目详情"
+      width="800px"
+      class="question-detail-dialog"
+    >
+      <div v-if="currentQuestion" class="detail-content">
+        <div class="detail-header">
+          <div class="detail-title">{{ currentQuestion.title }}</div>
+          <div class="detail-meta">
+            <el-tag size="small" type="primary">{{ currentQuestion.category }}</el-tag>
+            <el-tag size="small" :type="getDifficultyTagType(currentQuestion.difficulty)">
+              {{ currentQuestion.difficulty === 'easy' ? '简单' : currentQuestion.difficulty === 'medium' ? '中等' : '困难' }}
+            </el-tag>
+            <span>浏览：{{ currentQuestion.view_count }}</span>
+            <span>收藏：{{ currentQuestion.collect_count }}</span>
+          </div>
+        </div>
+        
+        <div class="detail-section" v-if="currentQuestion.content">
+          <h4>题目描述</h4>
+          <div v-html="renderMarkdown(currentQuestion.content)"></div>
+        </div>
+        
+        <div class="detail-section">
+          <h4>参考答案</h4>
+          <div class="answer-content" v-html="renderMarkdown(currentQuestion.answer)"></div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showDetailDialog = false">关闭</el-button>
+        <el-button 
+          type="primary" 
+          :icon="currentQuestion?.is_collected ? StarFilled : Star"
+          @click="toggleCollect(currentQuestion)"
+        >
+          {{ currentQuestion?.is_collected ? '取消收藏' : '收藏' }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -233,20 +191,16 @@ const showDetailDialog = ref(false)
 const currentQuestion = ref(null)
 
 onMounted(() => {
-  // 新接口暂无分类数据，暂时不调用
-  // fetchCategories()
   fetchQuestions()
 })
 
 const fetchCategories = async () => {
-  // 新接口暂无分类数据，暂时返回空数组
   categories.value = []
 }
 
 const fetchQuestions = async () => {
   loading.value = true
   try {
-    // 构建新接口参数
     let params = {
       page: currentPage.value,
       size: perPage.value,
@@ -254,31 +208,22 @@ const fetchQuestions = async () => {
       keyword: filters.search.trim() || undefined
     }
 
-    // 新接口只支持全部题目，不支持收藏列表
     let url = '/interview/questions'
 
     const res = await request.get(url, { params })
 
-    // 新接口返回格式: { success: true, message: "...", data: { items: [...], total: X, page: X, size: X, pages: X } }
     if (res.success) {
-      // 转换数据格式，添加前端需要的字段
       const transformedItems = res.data.items.map(item => ({
         id: item.id,
         title: item.title,
-        slug: item.slug,
-        difficulty: item.difficulty,
-        // 新接口没有分类，使用默认值
-        category: '算法',
-        // 新接口没有级别，使用默认值
-        position_level: '中级',
-        // 新接口没有浏览和收藏数，使用默认值
-        view_count: 0,
-        collect_count: 0,
-        // 新接口没有公司信息
-        company: '',
-        // 新接口没有收藏状态
-        is_collected: false,
-        // 解析 tags 字段（JSON 字符串、逗号分隔字符串或数组）
+        slug: item.slug || `q-${item.id}`,
+        difficulty: item.difficulty || 'medium',
+        category: item.category || item.knowledge_point || '综合',
+        position_level: item.position_level || item.level || '中级',
+        view_count: item.view_count || 0,
+        collect_count: item.collect_count || 0,
+        company: item.company || '',
+        is_collected: item.is_collected || false,
         tags: parseTags(item.tags)
       }))
 
@@ -309,19 +254,15 @@ const viewQuestion = async (question) => {
     const res = await request.get(`/interview/questions/${question.id}`)
 
     if (res.success) {
-      // 转换数据格式，适配前端期望的字段
       const questionDetail = res.data
       currentQuestion.value = {
         id: questionDetail.id,
         title: questionDetail.title,
         slug: questionDetail.slug,
         difficulty: questionDetail.difficulty,
-        // 将 description 映射到 content
         content: questionDetail.description,
-        // 将 reference_solution 映射到 answer
         answer: questionDetail.reference_solution || '暂无参考答案',
-        // 其他字段使用默认值
-        category: '算法',
+        category: questionDetail.category || questionDetail.knowledge_point || '综合',
         view_count: 0,
         collect_count: 0,
         is_collected: false
@@ -337,9 +278,7 @@ const viewQuestion = async (question) => {
 }
 
 const toggleCollect = (question) => {
-  // 新接口暂无收藏功能
   ElMessage.info('收藏功能暂未开放，敬请期待')
-  // 暂时模拟收藏状态变化，用于UI展示
   question.is_collected = !question.is_collected
   if (question.is_collected) {
     question.collect_count += 1
@@ -347,13 +286,11 @@ const toggleCollect = (question) => {
     question.collect_count = Math.max(0, question.collect_count - 1)
   }
 
-  // 更新弹窗中的收藏状态
   if (currentQuestion.value && currentQuestion.value.id === question.id) {
     currentQuestion.value.is_collected = question.is_collected
     currentQuestion.value.collect_count = question.collect_count
   }
 }
-
 
 const parseTags = (tags) => {
   if (!tags) return []
@@ -363,7 +300,6 @@ const parseTags = (tags) => {
       const parsed = JSON.parse(tags)
       return Array.isArray(parsed) ? parsed : [tags]
     } catch {
-      // 可能是逗号分隔字符串
       return tags.split(',').map(t => t.trim()).filter(Boolean)
     }
   }
@@ -373,16 +309,9 @@ const parseTags = (tags) => {
 
 <style scoped>
 .interview-question-bank {
-  padding: 30px 0;
-  min-height: calc(100vh - 60px);
-  background-color: #09090B;
-}
-
-.container {
+  padding: 20px 0;
+  min-height: 100%;
   width: 100%;
-  max-width: 1440px;
-  padding: 0 24px;
-  margin: 0 auto;
   box-sizing: border-box;
 }
 
@@ -391,6 +320,7 @@ const parseTags = (tags) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
+  width: 100%;
 }
 
 .page-title {
@@ -398,6 +328,7 @@ const parseTags = (tags) => {
   font-weight: bold;
   color: var(--tm-text-primary);
   margin: 0 0 8px 0;
+  white-space: nowrap;
 }
 
 .page-subtitle {
@@ -410,20 +341,24 @@ const parseTags = (tags) => {
   background: var(--tm-card-bg);
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--tm-shadow-card);
   border: var(--tm-card-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   margin-bottom: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tabs-container {
   background: var(--tm-card-bg);
   border-radius: 12px 12px 0 0;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--tm-shadow-card);
   border: var(--tm-card-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 :deep(.el-tabs__header) {
@@ -433,11 +368,13 @@ const parseTags = (tags) => {
 .question-list {
   background: var(--tm-card-bg);
   border-radius: 0 0 12px 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--tm-shadow-card);
   border: var(--tm-card-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   padding: 0 20px 20px 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .question-card {
@@ -473,6 +410,7 @@ const parseTags = (tags) => {
   line-height: 1.6;
   flex: 1;
   margin-right: 12px;
+  word-break: break-word;
 }
 
 .question-meta {
@@ -494,7 +432,7 @@ const parseTags = (tags) => {
 .company {
   font-size: 13px;
   color: var(--tm-color-primary);
-  background: rgba(var(--tm-color-primary), 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
   padding: 2px 8px;
   border-radius: 4px;
 }
@@ -515,13 +453,14 @@ const parseTags = (tags) => {
   background: var(--tm-card-bg);
   padding: 60px 20px;
   border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--tm-shadow-card);
   border: var(--tm-card-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* 详情弹窗 */
 .question-detail-dialog :deep(.el-dialog__body) {
   max-height: 70vh;
   overflow-y: auto;
@@ -572,7 +511,6 @@ const parseTags = (tags) => {
   border-left: 4px solid #67c23a;
 }
 
-/* Markdown样式 */
 .detail-content p {
   margin: 12px 0;
   color: var(--tm-text-primary);
@@ -614,6 +552,14 @@ const parseTags = (tags) => {
   line-height: 1.6;
 }
 
+.cyber-grid-bg {
+  background-image: 
+    linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
+}
+
 @media (max-width: 768px) {
   .filter-bar .el-col {
     margin-bottom: 16px;
@@ -621,6 +567,12 @@ const parseTags = (tags) => {
 
   .question-meta {
     gap: 8px;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
   }
 }
 </style>

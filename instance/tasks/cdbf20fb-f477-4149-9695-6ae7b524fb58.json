@@ -1,0 +1,21 @@
+{
+  "task_id": "cdbf20fb-f477-4149-9695-6ae7b524fb58",
+  "scenario_id": 3,
+  "status": "failed",
+  "info": "任务已提交，正在后台执行",
+  "progress": {
+    "percent": 0,
+    "current": 0,
+    "total": 0,
+    "current_api": "等待执行..."
+  },
+  "created_at": 1779736699.889104,
+  "error": "local variable 'history_id' referenced before assignment",
+  "result": {
+    "task_id": "cdbf20fb-f477-4149-9695-6ae7b524fb58",
+    "scenario_id": 3,
+    "status": "failed",
+    "error": "local variable 'history_id' referenced before assignment"
+  },
+  "completed_at": 1779736706.2537873
+}

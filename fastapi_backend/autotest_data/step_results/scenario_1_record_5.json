@@ -1,0 +1,195 @@
+[
+  {
+    "step_id": 1,
+    "step_order": 0,
+    "api_case_id": 10,
+    "api_case_name": "步骤 1：获取随机生成的复杂用户信息",
+    "method": "GET",
+    "url": "https://randomuser.me/api/",
+    "headers": {},
+    "payload": {
+      "results": [
+        {
+          "gender": "female",
+          "name": {
+            "first": "John",
+            "last": "Doe"
+          },
+          "email": "john.doe@example.com",
+          "login": {
+            "uuid": "abc-123-xyz",
+            "username": "johndoe123"
+          }
+        }
+      ],
+      "info": {
+        "version": "1.3"
+      }
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 702,
+    "response": {
+      "status": 200,
+      "body": "{\"results\":[{\"gender\":\"female\",\"name\":{\"title\":\"Mrs\",\"first\":\"Beatrice\",\"last\":\"Olsson\"},\"location\":{\"street\":{\"number\":3446,\"name\":\"Konventveien\"},\"city\":\"Leknes\",\"state\":\"Oslo\",\"country\":\"Norway\",\"postcode\":\"2645\",\"coordinates\":{\"latitude\":\"43.1269\",\"longitude\":\"142.6487\"},\"timezone\":{\"offset\":\"-5:00\",\"description\":\"Eastern Time (US & Canada), Bogota, Lima\"}},\"email\":\"beatrice.olsson@example.com\",\"login\":{\"uuid\":\"2aa45779-a94d-4574-863e-4d0c9f6b3de9\",\"username\":\"tinyfish849\",\"password\":\"clips\",\"salt\":\"Kp2wDraA\",\"md5\":\"eb4ae499571e8940a8ea781304c1f383\",\"sha1\":\"0f60acc136582015cd5632637b1780ce22abe32e\",\"sha256\":\"6fe19477e7c7d500befb7878afac9430ca8dd95bc46006a095422cd60c4a323c\"},\"dob\":{\"date\":\"1947-04-11T04:58:05.807Z\",\"age\":79},\"registered\":{\"date\":\"2018-01-21T20:37:09.498Z\",\"age\":8},\"phone\":\"84628965\",\"cell\":\"48924301\",\"id\":{\"name\":\"FN\",\"value\":\"11044723869\"},\"picture\":{\"large\":\"https://randomuser.me/api/portraits/women/59.jpg\",\"medium\":\"https://randomuser.me/api/portraits/med/women/59.jpg\",\"thumbnail\":\"https://randomuser.me/api/portraits/thumb/women/59.jpg\"},\"nat\":\"NO\"}],\"info\":{\"seed\":\"e831648a33e17b02\",\"results\":1,\"page\":1,\"version\":\"1.4\"}}",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 12:02:53 GMT",
+        "content-type": "application/json; charset=utf-8",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "server": "cloudflare",
+        "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "*",
+        "cache-control": "no-cache",
+        "etag": "W/\"48a-Tn0JVIta7RkS+I3Ao9DAGM6L0+w\"",
+        "vary": "Accept-Encoding",
+        "content-encoding": "gzip",
+        "cf-cache-status": "DYNAMIC",
+        "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=h7820ItYgzrpPpQRqjezzFOuAm6BYbTHAHthfB%2FkbH8mSCUTZwmLFiIv2QuHTI%2Fpgw6hONZGs28Dyyl2werARIA536GoWe8y%2BtK5ATA2qSiPGBe7aeAxPiXhrnOQP%2FQb\"}]}",
+        "cf-ray": "9ec2906959ea0963-HKG",
+        "alt-svc": "h3=\":443\"; ma=86400"
+      },
+      "json": {
+        "results": [
+          {
+            "gender": "female",
+            "name": {
+              "title": "Mrs",
+              "first": "Beatrice",
+              "last": "Olsson"
+            },
+            "location": {
+              "street": {
+                "number": 3446,
+                "name": "Konventveien"
+              },
+              "city": "Leknes",
+              "state": "Oslo",
+              "country": "Norway",
+              "postcode": "2645",
+              "coordinates": {
+                "latitude": "43.1269",
+                "longitude": "142.6487"
+              },
+              "timezone": {
+                "offset": "-5:00",
+                "description": "Eastern Time (US & Canada), Bogota, Lima"
+              }
+            },
+            "email": "beatrice.olsson@example.com",
+            "login": {
+              "uuid": "2aa45779-a94d-4574-863e-4d0c9f6b3de9",
+              "username": "tinyfish849",
+              "password": "clips",
+              "salt": "Kp2wDraA",
+              "md5": "eb4ae499571e8940a8ea781304c1f383",
+              "sha1": "0f60acc136582015cd5632637b1780ce22abe32e",
+              "sha256": "6fe19477e7c7d500befb7878afac9430ca8dd95bc46006a095422cd60c4a323c"
+            },
+            "dob": {
+              "date": "1947-04-11T04:58:05.807Z",
+              "age": 79
+            },
+            "registered": {
+              "date": "2018-01-21T20:37:09.498Z",
+              "age": 8
+            },
+            "phone": "84628965",
+            "cell": "48924301",
+            "id": {
+              "name": "FN",
+              "value": "11044723869"
+            },
+            "picture": {
+              "large": "https://randomuser.me/api/portraits/women/59.jpg",
+              "medium": "https://randomuser.me/api/portraits/med/women/59.jpg",
+              "thumbnail": "https://randomuser.me/api/portraits/thumb/women/59.jpg"
+            },
+            "nat": "NO"
+          }
+        ],
+        "info": {
+          "seed": "e831648a33e17b02",
+          "results": 1,
+          "page": 1,
+          "version": "1.4"
+        }
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {
+      "target_email": "beatrice.olsson@example.com",
+      "target_uuid": "2aa45779-a94d-4574-863e-4d0c9f6b3de9"
+    },
+    "status": "success"
+  },
+  {
+    "step_id": 2,
+    "step_order": 1,
+    "api_case_id": 11,
+    "api_case_name": "步骤 2：用提取出来的数据组装全新的请求体",
+    "method": "POST",
+    "url": "https://httpbin.org/post",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "payload": {
+      "message": "报告！我已经成功抓获目标",
+      "suspect_email": "{{target_email}}",
+      "suspect_id": "{{target_uuid}}"
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 1069,
+    "response": {
+      "status": 200,
+      "body": "{\n  \"args\": {}, \n  \"data\": \"{\\\"message\\\":\\\"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\\\",\\\"suspect_email\\\":\\\"{{target_email}}\\\",\\\"suspect_id\\\":\\\"{{target_uuid}}\\\"}\", \n  \"files\": {}, \n  \"form\": {}, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate\", \n    \"Content-Length\": \"116\", \n    \"Content-Type\": \"application/json\", \n    \"Host\": \"httpbin.org\", \n    \"User-Agent\": \"python-httpx/0.28.1\", \n    \"X-Amzn-Trace-Id\": \"Root=1-69de2cee-500927946c5db7e46af4cbbc\"\n  }, \n  \"json\": {\n    \"message\": \"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\", \n    \"suspect_email\": \"{{target_email}}\", \n    \"suspect_id\": \"{{target_uuid}}\"\n  }, \n  \"origin\": \"34.96.134.66\", \n  \"url\": \"https://httpbin.org/post\"\n}\n",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 12:02:54 GMT",
+        "content-type": "application/json",
+        "content-length": "773",
+        "connection": "keep-alive",
+        "server": "gunicorn/19.9.0",
+        "access-control-allow-origin": "*",
+        "access-control-allow-credentials": "true"
+      },
+      "json": {
+        "args": {},
+        "data": "{\"message\":\"报告！我已经成功抓获目标\",\"suspect_email\":\"{{target_email}}\",\"suspect_id\":\"{{target_uuid}}\"}",
+        "files": {},
+        "form": {},
+        "headers": {
+          "Accept": "*/*",
+          "Accept-Encoding": "gzip, deflate",
+          "Content-Length": "116",
+          "Content-Type": "application/json",
+          "Host": "httpbin.org",
+          "User-Agent": "python-httpx/0.28.1",
+          "X-Amzn-Trace-Id": "Root=1-69de2cee-500927946c5db7e46af4cbbc"
+        },
+        "json": {
+          "message": "报告！我已经成功抓获目标",
+          "suspect_email": "{{target_email}}",
+          "suspect_id": "{{target_uuid}}"
+        },
+        "origin": "34.96.134.66",
+        "url": "https://httpbin.org/post"
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {
+      "target_email": "beatrice.olsson@example.com",
+      "target_uuid": "2aa45779-a94d-4574-863e-4d0c9f6b3de9"
+    },
+    "status": "success"
+  }
+]

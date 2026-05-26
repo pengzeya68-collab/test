@@ -1,10 +1,8 @@
 """
 面试代码执行服务 - 处理代码沙盒执行和AI评估
 """
-import asyncio
 import json
 import logging
-from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -379,7 +377,7 @@ class InterviewExecutionService:
             question_content = q_info["content"]
             reference_answer = q_info["reference_answer"]
 
-            ai_config_result = await db.execute(select(AIConfig).where(AIConfig.is_active == True))
+            ai_config_result = await db.execute(select(AIConfig).where(AIConfig.is_active))
             ai_config = ai_config_result.scalar_one_or_none()
 
             if not ai_config:
@@ -474,7 +472,7 @@ class InterviewExecutionService:
             update_data = SubmissionUpdate(
                 ai_evaluation_status="failed",
                 score=50,
-                feedback=f"AI评估过程中发生异常，请稍后重试。"
+                feedback="AI评估过程中发生异常，请稍后重试。"
             )
             await self._update_submission(db, submission, update_data)
 

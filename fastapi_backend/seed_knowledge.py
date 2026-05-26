@@ -8,7 +8,6 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -135,7 +134,7 @@ LEARNING_PATHS_DATA = [
                 "knowledge_point": "SQL基础查询",
                 "time_estimate": 5,
                 "exercise_type": "sql",
-                "test_cases": "[{\"input\": \"CREATE TABLE students(id INT, name VARCHAR(50), age INT, grade VARCHAR(10)); INSERT INTO students VALUES(1,'张三',20,'A'),(2,'李四',17,'B'),(3,'王五',19,'A');\", \"expected_output\": \"张三|20\\n王五|19\"}]",
+                "test_cases": "[{\'input\': \'CREATE TABLE students(id INT, name VARCHAR(50), age INT, grade VARCHAR(10)); INSERT INTO students VALUES(1,'张三',20,'A'),(2,'李四',17,'B'),(3,'王五',19,'A');\', \'expected_output\': \'张三|20\\n王五|19\'}]",
                 "code_template": "-- 请编写SQL查询\nSELECT",
                 "expected_output": "张三|20\n王五|19",
             },
@@ -509,7 +508,7 @@ LEARNING_PATHS_DATA = [
                 "knowledge_point": "Python列表",
                 "time_estimate": 10,
                 "exercise_type": "code",
-                "test_cases": "[{\"input\": \"[1,2,3,4,5]\", \"expected_output\": \"[4, 16]\"}, {\"input\": \"[1,3,5]\", \"expected_output\": \"[]\"}]",
+                "test_cases": "[{\'input\': \'[1,2,3,4,5]\', \'expected_output\': \'[4, 16]\'}, {\'input\': \'[1,3,5]\', \'expected_output\': \'[]\'}]",
                 "code_template": "def even_squares(lst):\n    # 请在此处编写代码\n    pass",
                 "expected_output": "[4, 16]",
             },
@@ -660,7 +659,7 @@ LEARNING_PATHS_DATA = [
         "exercises": [
             {
                 "title": "Requests发送POST请求",
-                "description": "使用Python Requests库发送一个POST请求到 https://api.example.com/login，传递JSON数据{\"username\": \"admin\", \"password\": \"123456\"}，并获取响应的JSON数据。",
+                "description": "使用Python Requests库发送一个POST请求到 https://api.example.com/login，传递JSON数据{\'username\': \'admin\', \'password\': \'123456\'}，并获取响应的JSON数据。",
                 "instructions": "编写使用Requests发送POST请求的代码",
                 "solution": "import requests\n\nresponse = requests.post(\n    'https://api.example.com/login',\n    json={'username': 'admin', 'password': '123456'}\n)\ndata = response.json()",
                 "difficulty": "intermediate",

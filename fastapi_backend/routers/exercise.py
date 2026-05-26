@@ -5,8 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, or_
@@ -14,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.models import User, Exercise, Submission, Progress, ExerciseSubmissionRecord
+from fastapi_backend.models.models import User, Exercise, Progress, ExerciseSubmissionRecord
 from fastapi_backend.schemas.common import SuccessResponse
 from fastapi_backend.schemas.exercise import ExerciseSubmission, ExerciseEvaluationResponse
 from fastapi_backend.services.ai_tutor_service import AITutorService
@@ -139,6 +138,7 @@ async def _execute_and_judge(
 @router.post("/evaluate", response_model=SuccessResponse[ExerciseEvaluationResponse])
 async def evaluate_exercise_code(
     submission: ExerciseSubmission,
+    current_user: User = Depends(get_current_user),
     tutor: AITutorService = Depends(get_ai_tutor),
     sandbox: CodeSandbox = Depends(get_sandbox),
 ):
@@ -328,6 +328,15 @@ async def submit_exercise(
             "summary": "答案正确" if is_correct else "答案不正确",
         }
 
+    before_scores = {}
+    if is_correct:
+        try:
+            from fastapi_backend.routers.skills import _calculate_skill_score, SKILL_CATEGORY_MAP, SKILL_DIMENSIONS
+            for skill_key in SKILL_CATEGORY_MAP:
+                before_scores[skill_key] = await _calculate_skill_score(current_user.id, skill_key, db)
+        except Exception as e:
+            logger.warning(f"计算提交前技能分数失败: {e}")
+
     try:
         submission_record = ExerciseSubmissionRecord(
             user_id=current_user.id,
@@ -349,14 +358,14 @@ async def submit_exercise(
             progress.completed = is_correct
             progress.score = 100 if is_correct else 0
             if is_correct:
-                progress.completed_at = datetime.utcnow()
+                progress.completed_at = datetime.now(timezone.utc)
         else:
             progress = Progress(
                 user_id=current_user.id,
                 exercise_id=ex.id,
                 completed=is_correct,
                 score=100 if is_correct else 0,
-                completed_at=datetime.utcnow() if is_correct else None,
+                completed_at=datetime.now(timezone.utc) if is_correct else None,
             )
             db.add(progress)
 
@@ -366,13 +375,8 @@ async def submit_exercise(
         await db.rollback()
 
     skill_change = None
-    if is_correct:
+    if is_correct and before_scores:
         try:
-            from fastapi_backend.routers.skills import _calculate_skill_score, SKILL_CATEGORY_MAP, SKILL_DIMENSIONS
-            before_scores = {}
-            for skill_key in SKILL_CATEGORY_MAP:
-                before_scores[skill_key] = await _calculate_skill_score(current_user.id, skill_key, db)
-
             after_scores = {}
             for skill_key in SKILL_CATEGORY_MAP:
                 after_scores[skill_key] = await _calculate_skill_score(current_user.id, skill_key, db)
@@ -543,9 +547,9 @@ async def get_daily_tasks(
     db: AsyncSession = Depends(get_db),
 ):
     """获取今日任务和完成情况"""
-    from datetime import datetime, timedelta
+    from datetime import datetime, timezone
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     today_submissions_stmt = select(ExerciseSubmissionRecord).where(
@@ -560,7 +564,7 @@ async def get_daily_tasks(
 
     progress_stmt = select(Progress).where(
         Progress.user_id == current_user.id,
-        Progress.completed == True,  # noqa: E712
+        Progress.completed,
     )
     progress_result = await db.execute(progress_stmt)
     total_completed = len(progress_result.scalars().all())

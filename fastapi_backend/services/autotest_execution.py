@@ -8,27 +8,25 @@
 - 调用 Pytest 执行测试
 - 返回执行结果
 """
-import os
 import json
 import time
 import subprocess
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 import requests
 
-_logger = logging.getLogger(__name__)
-
 from fastapi_backend.utils.autotest_helpers import extract_jsonpath_value
-from fastapi_backend.services.autotest_variable_service import save_variables_to_db
-
+# from fastapi_backend.services.autotest_variable_service import save_variables_to_db
 from fastapi_backend.utils.parser import replace_variables
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment, AutoTestGlobalVariable
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
 from sqlalchemy import select
 from fastapi_backend.utils.encryption import decrypt
+
+_logger = logging.getLogger(__name__)
 
 # 项目根目录
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -67,7 +65,6 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
     variables = {}
 
     # 加载全局变量
-    from fastapi_backend.models.autotest import AutoTestGlobalVariable
     async def load_global_variables():
         async with AsyncSessionLocal() as session:
             result = await session.execute(select(AutoTestGlobalVariable))
@@ -371,7 +368,11 @@ def execute_assertions(assert_rules: Any, status_code: int, response: Any) -> Di
                 has_status_code_assertion = True
 
             operator = rule.get("operator", "") or rule.get("condition", "equals")
-            expected = rule.get("expectedValue") or rule.get("value", "")
+            expected = rule.get("expectedValue")
+            if expected is None:
+                expected = rule.get("expected")
+            if expected is None:
+                expected = rule.get("value", "")
 
             actual = get_field_value(field, status_code, response)
             passed = compare_values(actual, operator, expected)
@@ -397,7 +398,11 @@ def execute_assertions(assert_rules: Any, status_code: int, response: Any) -> Di
 
             if isinstance(expected, dict):
                 operator = expected.get("operator", "equals")
-                expected_value = expected.get("expectedValue") or expected.get("eq")
+                expected_value = expected.get("expectedValue")
+                if expected_value is None:
+                    expected_value = expected.get("expected")
+                if expected_value is None:
+                    expected_value = expected.get("eq")
 
                 if operator == "range":
                     range_text = str(expected_value).lower()
@@ -486,12 +491,17 @@ def get_field_value(field: str, status_code: int, response: Any) -> Any:
         return status_code
     elif field == "response_time":
         return None
-    elif field == "body" or field == "response_body":
+    elif field in ("body", "response_body", "json_body"):
         return response
     elif field == "headers":
         return None
-    elif field.startswith("body.") or field.startswith("response."):
-        keys = field.replace("body.", "").replace("response.", "").split(".")
+    elif field.startswith("body.") or field.startswith("response.") or field.startswith("json_body."):
+        if field.startswith("json_body."):
+            keys = field[len("json_body."):].split(".")
+        elif field.startswith("response."):
+            keys = field[len("response."):].split(".")
+        else:
+            keys = field[len("body."):].split(".")
         value = response
         for key in keys:
             if isinstance(value, dict) and key in value:
@@ -507,30 +517,30 @@ def compare_values(actual: Any, operator: str, expected: Any) -> bool:
     if actual is None:
         return False
 
-    if operator in ("equals", "eq"):
+    if operator in ("equals", "eq", "=="):
         return str(actual) == str(expected)
-    elif operator in ("not_equals", "ne"):
+    elif operator in ("not_equals", "ne", "!="):
         return str(actual) != str(expected)
     elif operator == "contains":
         return str(expected) in str(actual)
     elif operator == "not_contains":
         return str(expected) not in str(actual)
-    elif operator == "gt":
+    elif operator in ("gt", ">"):
         try:
             return float(actual) > float(expected)
         except Exception:
             return False
-    elif operator == "lt":
+    elif operator in ("lt", "<"):
         try:
             return float(actual) < float(expected)
         except Exception:
             return False
-    elif operator == "gte":
+    elif operator in ("gte", ">="):
         try:
             return float(actual) >= float(expected)
         except Exception:
             return False
-    elif operator == "lte":
+    elif operator in ("lte", "<="):
         try:
             return float(actual) <= float(expected)
         except Exception:
@@ -549,10 +559,12 @@ def compare_values(actual: Any, operator: str, expected: Any) -> bool:
 def get_operator_text(operator: str) -> str:
     """获取操作符的中文描述"""
     mapping = {
-        "equals": "等于", "eq": "等于", "not_equals": "不等于", "ne": "不等于",
-        "contains": "包含", "not_contains": "不包含", "gt": "大于",
-        "lt": "小于", "gte": "大于等于", "lte": "小于等于",
-        "regex": "正则匹配", "json_exists": "存在"
+        "equals": "等于", "eq": "等于", "==": "等于",
+        "not_equals": "不等于", "ne": "不等于", "!=": "不等于",
+        "contains": "包含", "not_contains": "不包含",
+        "gt": "大于", ">": "大于", "lt": "小于", "<": "小于",
+        "gte": "大于等于", ">=": "大于等于", "lte": "小于等于", "<=": "小于等于",
+        "regex": "正则匹配", "json_exists": "存在",
     }
     return mapping.get(operator, operator)
 
@@ -620,7 +632,6 @@ async def save_variables_to_db(variables: Dict[str, str]) -> bool:
         return False
 
     from fastapi_backend.core.autotest_database import AsyncSessionLocal
-    from fastapi_backend.models.autotest import AutoTestGlobalVariable
     from sqlalchemy import select
 
     try:
@@ -633,12 +644,12 @@ async def save_variables_to_db(variables: Dict[str, str]) -> bool:
 
                 if existing_var:
                     existing_var.value = str(var_value)
-                    existing_var.updated_at = datetime.now(timezone.utc)()
+                    existing_var.updated_at = datetime.now(timezone.utc)
                 else:
                     new_var = AutoTestGlobalVariable(
                         name=var_name,
                         value=str(var_value),
-                        description=f"从测试用例提取",
+                        description="从测试用例提取",
                         is_encrypted=False
                     )
                     session.add(new_var)

@@ -2,17 +2,16 @@
 后台管理子路由 - 用户管理
 从 admin_manage.py 拆分
 """
-from typing import Optional, Any
-from datetime import datetime
+import logging
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy import select, func, or_, and_, desc
+from sqlalchemy import select, func, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db, AsyncSessionLocal
-from fastapi_backend.core.exceptions import NotFoundException
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Exercise, LearningPath, Exam, ExamQuestion, Post, Comment, InterviewQuestion, Submission, Progress
+from fastapi_backend.models.models import User, Exercise, LearningPath, Post, Comment, Submission
 from fastapi_backend.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-用户管理"])
@@ -151,13 +150,15 @@ async def create_user(
     db.add(new_user)
     try:
         await db.flush()
-    except Exception:
+    except Exception as e:
         await db.rollback()
+        logging.getLogger(__name__).error(f"创建用户时数据库冲突: {e}")
         raise HTTPException(status_code=409, detail="用户名或邮箱已存在（并发冲突）")
     try:
         await db.commit()
-    except Exception:
+    except Exception as e:
         await db.rollback()
+        logging.getLogger(__name__).error(f"创建用户失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="用户创建失败，事务已回滚")
     await db.refresh(new_user)
     return {"message": "创建成功", "id": new_user.id}
@@ -195,8 +196,9 @@ async def update_user(
 
     try:
         await db.commit()
-    except Exception:
+    except Exception as e:
         await db.rollback()
+        logging.getLogger(__name__).error(f"更新用户失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="用户更新失败，事务已回滚")
     return {"message": "更新成功"}
 
@@ -217,25 +219,26 @@ async def delete_user(
         raise HTTPException(status_code=404, detail="用户不存在")
 
     from fastapi_backend.models.models import (
-        Post, Comment, Submission, InterviewSession, ExamAttempt, UserProgress
+        Post, InterviewSession, ExamAttempt, UserProgress
     )
     for model in [Comment, Submission, InterviewSession, ExamAttempt, UserProgress]:
         try:
             related = await db.execute(select(model).where(model.user_id == user_id))
             for obj in related.scalars().all():
                 await db.delete(obj)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"删除用户时清理 {model.__name__} 关联数据失败: {e}")
 
-    related_posts = await db.execute(select(Post).where(Post.author_id == user_id))
+    related_posts = await db.execute(select(Post).where(Post.user_id == user_id))
     for post in related_posts.scalars().all():
         await db.delete(post)
 
     await db.delete(user)
     try:
         await db.commit()
-    except Exception:
+    except Exception as e:
         await db.rollback()
+        logging.getLogger(__name__).error(f"删除用户失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="删除失败，事务已回滚")
     return {"message": "删除成功"}
 

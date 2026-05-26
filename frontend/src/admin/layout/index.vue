@@ -61,9 +61,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Brush, ArrowDown } from '@element-plus/icons-vue'
 import { themes, applyTheme, loadSavedTheme } from '@/utils/ThemeConfig'
+import { useAdminStore } from '@/stores/admin'
 
 const route = useRoute()
 const router = useRouter()
+const adminStore = useAdminStore()
 
 const adminInfo = ref(null)
 
@@ -91,15 +93,7 @@ const changeTheme = (themeId) => {
 }
 
 onMounted(() => {
-  const info = localStorage.getItem('admin_info')
-  if (info) {
-    try {
-      adminInfo.value = JSON.parse(info)
-    } catch (e) {
-      console.error('解析用户信息失败', e)
-    }
-  }
-  // 加载保存的主题
+  adminInfo.value = adminStore.adminInfo
   const savedThemeId = loadSavedTheme()
   applyTheme(savedThemeId)
 })
@@ -111,8 +105,7 @@ const logout = async () => {
     type: 'warning'
   })
 
-  localStorage.removeItem('admin_token')
-  localStorage.removeItem('admin_info')
+  await adminStore.clearAdminInfo()
   ElMessage.success('退出成功')
   router.push('/admin/login')
 }

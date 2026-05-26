@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -67,8 +67,7 @@ class AIConfigOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 def _mask_api_key(key: str) -> str:
@@ -207,7 +206,7 @@ async def test_ai_config(
         raise HTTPException(status_code=404, detail="AI配置不存在")
 
     http_client = _make_clean_http_client(timeout=cfg.timeout_seconds)
-
+    client = None
     try:
         from openai import AsyncOpenAI
 
@@ -241,9 +240,7 @@ async def test_ai_config(
         content = response.choices[0].message.content if response.choices else ""
         model_name = response.model if hasattr(response, "model") else cfg.model
 
-        await client.close()
-
-        cfg.last_test_at = datetime.utcnow()
+        cfg.last_test_at = datetime.now(timezone.utc)
         cfg.last_test_result = "success"
         await db.commit()
 
@@ -257,11 +254,7 @@ async def test_ai_config(
             message="AI连接测试成功",
         )
     except Exception as e:
-        try:
-            await http_client.aclose()
-        except Exception:
-            pass
-        cfg.last_test_at = datetime.utcnow()
+        cfg.last_test_at = datetime.now(timezone.utc)
         cfg.last_test_result = "failed"
         await db.commit()
 
@@ -273,6 +266,16 @@ async def test_ai_config(
             },
             message=f"AI连接测试失败: {str(e)}",
         )
+    finally:
+        if client:
+            try:
+                await client.close()
+            except Exception:
+                pass
+        try:
+            await http_client.aclose()
+        except Exception:
+            pass
 
 
 @router.get("/{config_id}/quota", response_model=SuccessResponse[dict])
@@ -306,7 +309,7 @@ async def get_ai_quota(
 
                     cfg.quota_total = total
                     cfg.quota_used = used
-                    cfg.quota_updated_at = datetime.utcnow()
+                    cfg.quota_updated_at = datetime.now(timezone.utc)
                     await db.commit()
 
                     return SuccessResponse(

@@ -1,116 +1,111 @@
 <template>
-  <div class="interview-my">
-    <div class="container">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">我的面试</h1>
-          <p class="page-subtitle">查看历史面试记录和成绩分析</p>
-        </div>
-        <el-button type="primary" @click="$router.push('/interview/simulate')">
-          <el-icon><VideoPlay /></el-icon>
-          开始新面试
-        </el-button>
+  <div class="my-interviews-page">
+    <header class="page-header">
+      <div class="header-titles">
+        <h1 class="page-title">我的面试</h1>
+        <p class="page-desc">查看历史面试记录和成绩分析</p>
       </div>
+      <button class="btn-primary" @click="$router.push('/interview/simulate')">+ 开始新面试</button>
+    </header>
 
-      <div class="filter-bar">
-        <el-tabs v-model="activeTab" @tab-change="fetchSessions">
-          <el-tab-pane label="全部记录" name="all" />
-          <el-tab-pane label="进行中" name="in_progress" />
-          <el-tab-pane label="已完成" name="completed" />
-        </el-tabs>
+    <div class="tabs-container">
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'all' }"
+        @click="activeTab = 'all'; fetchSessions()"
+      >全部记录</div>
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'in_progress' }"
+        @click="activeTab = 'in_progress'; fetchSessions()"
+      >进行中</div>
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'completed' }"
+        @click="activeTab = 'completed'; fetchSessions()"
+      >已完成</div>
+    </div>
+
+    <div class="content-area" v-if="loading">
+      <div class="loading-skeleton">
+        <div class="sk-line" v-for="i in 6" :key="i"></div>
       </div>
+    </div>
 
+    <div class="content-area" v-else-if="sessions.length === 0">
+      <div class="empty-content">
+        <div class="empty-icon">📦</div>
+        <p class="empty-text">暂无面试记录，快去开始第一次模拟面试吧~</p>
+        <button class="btn-primary" @click="$router.push('/interview/simulate')">开始面试</button>
+      </div>
+    </div>
+
+    <div class="content-area session-area" v-else>
       <div class="session-list">
-        <div 
-          class="session-card" 
-          v-for="session in sessions" 
+        <div
+          class="session-card"
+          v-for="session in sessions"
           :key="session.id"
           @click="viewSession(session)"
         >
           <div class="card-header">
-            <div class="session-title">{{ session.title }}</div>
-            <el-tag :type="session.status === 'completed' ? 'success' : 'warning'" size="small">
+            <span class="session-title">{{ session.title }}</span>
+            <span class="status-tag" :class="session.status === 'completed' ? 'done' : 'ongoing'">
               {{ session.status === 'completed' ? '已完成' : '进行中' }}
-            </el-tag>
+            </span>
           </div>
-          
+
           <div class="card-body">
-            <div class="session-info">
-              <div class="info-item">
-                <el-icon size="14"><Position /></el-icon>
-                <span>{{ session.position }}</span>
-              </div>
-              <div class="info-item">
-                <el-icon size="14"><Rank /></el-icon>
-                <span>{{ session.level }}</span>
-              </div>
-              <div class="info-item">
-                <el-icon size="14"><Tickets /></el-icon>
-                <span>{{ session.interview_type }}</span>
-              </div>
-              <div class="info-item">
-                <el-icon size="14"><List /></el-icon>
-                <span>{{ session.question_count }}题</span>
-              </div>
+            <div class="session-meta">
+              <span class="meta-item">📍 {{ session.position }}</span>
+              <span class="meta-item">📊 {{ session.level }}</span>
+              <span class="meta-item">🎫 {{ session.interview_type }}</span>
+              <span class="meta-item">📝 {{ session.question_count }}题</span>
             </div>
-            
-            <div class="score-section" v-if="session.status === 'completed' && session.user_score !== null">
-              <div class="score-display">
-                <span class="score-label">得分：</span>
-                <span class="score-value" :class="getScoreClass(session.user_score)">
-                  {{ session.user_score }} / {{ session.total_score }}
-                </span>
-                <el-tag
-                  :type="session.user_score >= 60 ? 'success' : 'danger'"
-                  size="small"
-                  class="result-tag"
-                >
-                  {{ session.user_score >= 60 ? '通过' : '未通过' }}
-                </el-tag>
-              </div>
+
+            <div class="score-row" v-if="session.status === 'completed' && session.user_score !== null">
+              <span class="score-label">得分：</span>
+              <span class="score-value" :class="getScoreClass(session.user_score)">
+                {{ session.user_score }} / {{ session.total_score }}
+              </span>
+              <span class="result-badge" :class="session.user_score >= 60 ? 'pass' : 'fail'">
+                {{ session.user_score >= 60 ? '通过' : '未通过' }}
+              </span>
             </div>
-            <div class="score-section" v-else-if="session.status === 'completed'">
-              <div class="score-display">
-                <span class="score-label">状态：</span>
-                <span class="score-value">已完成，待评分</span>
-              </div>
+            <div class="score-row" v-else-if="session.status === 'completed'">
+              <span class="score-label">状态：</span>
+              <span class="score-value pending">已完成，待评分</span>
             </div>
-            
-            <div class="progress-section" v-else>
+
+            <div class="progress-row" v-else>
               <span>继续上次面试</span>
-              <el-progress :percentage="50" :show-text="false" style="width: 120px;" />
+              <div class="mini-progress-bar">
+                <div class="mini-progress-fill" style="width: 50%;"></div>
+              </div>
             </div>
           </div>
-          
+
           <div class="card-footer">
-            <span class="time">{{ session.start_time }}</span>
-            <el-button type="primary" size="small">
+            <span class="footer-time">{{ session.start_time }}</span>
+            <button class="btn-sm">
               {{ session.status === 'completed' ? '查看详情' : '继续面试' }}
-            </el-button>
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="pagination-container" v-if="total > 0">
-        <el-pagination
-          v-model:current-page="currentPage"
-          :page-size="perPage"
-          :total="total"
-          layout="prev, pager, next, total"
-          @current-change="fetchSessions"
-        />
-      </div>
-
-      <div class="empty-state" v-if="sessions.length === 0 && !loading">
-        <el-empty description="暂无面试记录，快去开始第一次模拟面试吧~">
-          <el-button type="primary" @click="$router.push('/interview/simulate')">
-            开始面试
-          </el-button>
-        </el-empty>
-      </div>
-
-      <div class="loading-state" v-if="loading">
-        <el-skeleton :rows="6" animated />
+      <div class="pagination-bar" v-if="total > 0">
+        <button
+          class="page-btn"
+          :disabled="currentPage <= 1"
+          @click="currentPage--; fetchSessions()"
+        >上一页</button>
+        <span class="page-info">第 {{ currentPage }} 页 / 共 {{ Math.ceil(total / perPage) }} 页（{{ total }} 条）</span>
+        <button
+          class="page-btn"
+          :disabled="currentPage >= Math.ceil(total / perPage)"
+          @click="currentPage++; fetchSessions()"
+        >下一页</button>
       </div>
     </div>
   </div>
@@ -120,9 +115,6 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { 
-  VideoPlay, Position, Rank, Tickets, List 
-} from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -139,28 +131,24 @@ onMounted(() => {
 })
 
 const fetchSessions = async () => {
+  currentPage.value = 1
   loading.value = true
   try {
-    // 构建fastapi_backend接口参数
     const params = {
       page: currentPage.value,
-      size: perPage.value
+      size: perPage.value,
     }
 
-    // 状态筛选映射
     if (activeTab.value !== 'all') {
       if (activeTab.value === 'in_progress') {
-        params.status_filter = 'started'  // 也可以考虑'submitted'
+        params.status_filter = 'started'
       } else if (activeTab.value === 'completed') {
         params.status_filter = 'finished'
       }
     }
 
-    console.log('请求fastapi_backend参数:', params)
     const res = await request.get('/interview/sessions', { params })
-    console.log('fastapi_backend接口返回:', res)
 
-    // 检查响应结构
     if (res.data && res.data.items) {
       sessions.value = res.data.items.map(session => {
         let frontendStatus = 'in_progress'
@@ -168,26 +156,24 @@ const fetchSessions = async () => {
           frontendStatus = 'completed'
         }
 
-        const difficultyMap = { 'easy': '初级', 'medium': '中级', 'hard': '高级' }
+        const difficultyMap = { easy: '初级', medium: '中级', hard: '高级' }
 
         return {
           id: session.id,
-          title: session.question_title || '模拟面试',
-          position: '测试工程师',
-          level: difficultyMap[session.question_difficulty] || '中级',
-          interview_type: '技术面',
+          title: session.title || session.question_title || '模拟面试',
+          position: session.position || '测试工程师',
+          level: session.level || difficultyMap[session.question_difficulty] || '中级',
+          interview_type: session.interview_type || '技术面',
           status: frontendStatus,
           user_score: session.latest_score,
           total_score: 100,
           start_time: session.started_at ? formatDateTime(session.started_at) : formatDateTime(session.created_at),
-          question_count: 1,
+          question_count: session.question_count || 1,
           raw_status: session.status,
         }
       })
       total.value = res.data.total || 0
     } else {
-      // 如果响应结构不符合预期，使用原始数据
-      console.warn('响应结构不符合预期，使用原始数据:', res)
       sessions.value = res.items || []
       total.value = res.total || 0
     }
@@ -201,7 +187,6 @@ const fetchSessions = async () => {
   }
 }
 
-// 格式化日期时间
 const formatDateTime = (dateTimeStr) => {
   if (!dateTimeStr) return ''
   try {
@@ -212,10 +197,9 @@ const formatDateTime = (dateTimeStr) => {
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     }).replace(/\//g, '-')
-  } catch (e) {
-    console.error('日期格式化错误:', e)
+  } catch {
     return dateTimeStr
   }
 }
@@ -228,206 +212,301 @@ const getScoreClass = (score) => {
 }
 
 const viewSession = (session) => {
-  if (session.raw_status === 'started' || session.raw_status === 'submitted') {
-    router.push(`/interview/simulate?session_id=${session.id}`)
-  } else {
-    router.push(`/interview/simulate?session_id=${session.id}`)
-  }
+  router.push(`/interview/simulate?session_id=${session.id}`)
 }
 </script>
 
 <style scoped>
-.interview-my {
-  padding: 30px 0;
-  min-height: calc(100vh - 60px);
-  background-color: #09090B;
-}
-
-.container {
+.my-interviews-page {
   width: 100%;
-  max-width: none;
-  margin: 0 auto;
-  padding: 0 20px;
+  min-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  padding: 40px;
   box-sizing: border-box;
+  background-color: var(--tm-bg-page);
+  color: var(--tm-text-primary);
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  flex-shrink: 0;
+}
+
+.header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .page-title {
-  font-size: 32px;
-  font-weight: bold;
-  color: var(--tm-text-primary);
-  margin: 0 0 8px 0;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: var(--tm-text-secondary);
+  font-size: 24px;
+  font-weight: 700;
   margin: 0;
 }
 
-.filter-bar {
+.page-desc {
+  font-size: 14px;
+  color: var(--tm-text-regular);
+  margin: 0;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  color: #fff;
+  border: none;
+  padding: 11px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(var(--tm-color-primary-rgb), 0.3);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(var(--tm-color-primary-rgb), 0.45);
+}
+
+/* Tabs */
+.tabs-container {
+  display: flex;
+  gap: 28px;
+  border-bottom: 1px solid #27272a;
+  margin-bottom: 32px;
+  flex-shrink: 0;
+}
+
+.tab-item {
+  padding: 12px 0;
+  color: var(--tm-text-regular);
+  cursor: pointer;
+  position: relative;
+  font-size: 15px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.tab-item:hover { color: var(--tm-color-primary); }
+.tab-item.active {
+  color: var(--tm-color-primary);
+  font-weight: 600;
+}
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--tm-color-primary);
+  border-radius: 1px;
+}
+
+/* Content Area */
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+}
+
+.session-area {
   background: var(--tm-card-bg);
-  border-radius: 12px 12px 0 0;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--tm-border-light);
+  padding: 20px 24px;
 }
 
-:deep(.el-tabs__header) {
-  margin: 0 20px;
+/* Loading */
+.loading-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 40px;
+}
+.sk-line {
+  height: 18px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  animation: skPulse 1.6s ease-in-out infinite;
+}
+@keyframes skPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
 }
 
+/* Empty */
+.content-area:has(.empty-content) {
+  justify-content: center;
+  align-items: center;
+  background: var(--tm-card-bg);
+  border: 1px dashed var(--tm-border-light);
+}
+.empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 0;
+}
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 8px;
+}
+.empty-text {
+  color: var(--tm-text-regular);
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+/* Session List */
 .session-list {
-  background: var(--tm-card-bg);
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: 0 20px 20px 20px;
+  display: flex;
+  flex-direction: column;
 }
-
 .session-card {
-  padding: 24px 0;
+  padding: 20px 16px;
   border-bottom: 1px solid var(--tm-border-light);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
+  border-radius: 10px;
 }
-
+.session-card:last-child { border-bottom: none; }
 .session-card:hover {
-  background: var(--tm-bg-hover);
-  margin: 0 -20px;
-  padding-left: 20px;
-  padding-right: 20px;
-  border-radius: 8px;
-}
-
-.session-card:last-child {
-  border-bottom: none;
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
-
 .session-title {
-  font-size: 18px;
-  font-weight: bold;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--tm-text-primary);
   flex: 1;
   margin-right: 12px;
 }
+.status-tag {
+  padding: 3px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.status-tag.ongoing { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
+.status-tag.done { background: rgba(52, 211, 153, 0.12); color: #34d399; }
 
-.session-info {
+.session-meta {
   display: flex;
-  gap: 24px;
-  margin-bottom: 16px;
+  gap: 20px;
+  margin-bottom: 14px;
   flex-wrap: wrap;
 }
+.meta-item { font-size: 13px; color: var(--tm-text-regular); }
 
-.info-item {
+.score-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  color: var(--tm-text-secondary);
+  gap: 10px;
+  margin-bottom: 14px;
 }
-
-.score-section {
-  display: flex;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.score-display {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.score-label {
-  font-size: 14px;
-  color: var(--tm-text-secondary);
-}
-
+.score-label { font-size: 13px; color: var(--tm-text-secondary); }
 .score-value {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 22px;
+  font-weight: 800;
 }
+.score-value.excellent { color: #34d399; }
+.score-value.good { color: #fbbf24; }
+.score-value.poor { color: #f87171; }
+.score-value.pending { font-size: 14px; color: var(--tm-text-regular); font-weight: 500; }
 
-.score-value.excellent {
-  color: #67c23a;
+.result-badge {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
 }
+.result-badge.pass { background: rgba(52, 211, 153, 0.12); color: #34d399; }
+.result-badge.fail { background: rgba(248, 113, 113, 0.12); color: #f87171; }
 
-.score-value.good {
-  color: #e6a23c;
-}
-
-.score-value.poor {
-  color: #f56c6c;
-}
-
-.result-tag {
-  margin-left: 12px;
-}
-
-.progress-section {
+.progress-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 14px;
+  gap: 10px;
+  font-size: 13px;
   color: var(--tm-text-secondary);
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+}
+.mini-progress-bar {
+  width: 120px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.mini-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  border-radius: 3px;
 }
 
 .card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 16px;
-  border-top: 1px solid var(--tm-border-light);
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
+.footer-time { font-size: 12px; color: #52525b; }
 
-.time {
+.btn-sm {
+  padding: 7px 18px;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  border: none;
+  border-radius: 6px;
+  color: #fff;
   font-size: 13px;
-  color: var(--tm-text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-sm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
-.pagination-container {
+/* Pagination */
+.pagination-bar {
   display: flex;
   justify-content: center;
-  margin-top: 30px;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--tm-border-light);
 }
-
-.empty-state, .loading-state {
-  background: var(--tm-card-bg);
-  padding: 60px 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+.page-btn {
+  padding: 7px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--tm-border-light);
+  border-radius: 6px;
+  color: var(--tm-text-regular);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
+.page-btn:hover:not(:disabled) { border-color: var(--tm-color-primary); color: var(--tm-color-primary); }
+.page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.page-info { font-size: 13px; color: var(--tm-text-secondary); }
 
 @media (max-width: 768px) {
-  .session-info {
-    gap: 12px;
-  }
-
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
+  .my-interviews-page { padding: 24px; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .session-meta { gap: 12px; }
 }
 </style>

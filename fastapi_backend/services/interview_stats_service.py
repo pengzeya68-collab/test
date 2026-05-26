@@ -3,9 +3,8 @@ Interview 统计与报告服务
 从 routers/interview.py 下沉的业务逻辑
 """
 import logging
-import random
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 
 from sqlalchemy import select, func, case, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,7 +83,7 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
             InterviewQuestion.difficulty,
             func.count(Submission.id).label("count")
         )
-        .join(InterviewQuestion, Submission.question_id == InterviewQuestion.id)
+        .outerjoin(InterviewQuestion, Submission.question_id == InterviewQuestion.id)
         .where(Submission.user_id == user_id)
         .group_by(InterviewQuestion.difficulty)
     )
@@ -92,6 +91,9 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
     for difficulty, count in difficulty_result.all():
         if difficulty:
             difficulty_distribution[difficulty] = count
+        else:
+            unknown_key = "exercise"
+            difficulty_distribution[unknown_key] = difficulty_distribution.get(unknown_key, 0) + count
 
     daily_submissions = []
     for i in range(6, -1, -1):
@@ -233,6 +235,10 @@ async def complete_session(session_id: int, user_id: int, db: AsyncSession) -> O
     if not session:
         return None
 
+    if session.status not in ("started", "submitted"):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=f"当前状态为 {session.status}，无法完成面试")
+
     now = datetime.now(timezone.utc)
     session.status = "finished"
     session.finished_at = now
@@ -295,14 +301,14 @@ async def get_interview_history(
 
     if start_date is not None:
         try:
-            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
             query = query.where(Submission.created_at >= start_dt)
         except ValueError:
             return {"error": "开始日期格式无效，请使用 YYYY-MM-DD 格式"}
 
     if end_date is not None:
         try:
-            end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc) + timedelta(days=1)
             query = query.where(Submission.created_at < end_dt)
         except ValueError:
             return {"error": "结束日期格式无效，请使用 YYYY-MM-DD 格式"}
@@ -355,7 +361,7 @@ async def get_submission_result_detail(submission_id: int, user_id: int, db: Asy
             InterviewQuestion.test_cases.label("question_test_cases"),
         )
         .join(InterviewSession, Submission.session_id == InterviewSession.id)
-        .join(InterviewQuestion, Submission.question_id == InterviewQuestion.id)
+        .outerjoin(InterviewQuestion, Submission.question_id == InterviewQuestion.id)
         .where(
             Submission.id == submission_id,
             Submission.user_id == user_id,

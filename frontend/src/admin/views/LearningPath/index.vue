@@ -219,19 +219,21 @@ const handleSubmit = async () => {
 }
 
 const handleDelete = async (row) => {
-  await ElMessageBox.confirm('确定要删除这个学习路径吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
-
   try {
+    await ElMessageBox.confirm('确定要删除这个学习路径吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
     await request.delete(`/admin/paths/${row.id}`)
     ElMessage.success('删除成功')
     fetchList()
   } catch (e) {
-    console.error('删除失败:', e)
-    ElMessage.error('删除失败：' + (e.response?.data?.error || e.message))
+    if (e !== 'cancel') {
+      console.error('删除失败:', e)
+      ElMessage.error('删除失败：' + (e.response?.data?.error || e.message))
+    }
   }
 }
 

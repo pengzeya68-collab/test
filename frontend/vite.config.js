@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd() + '/frontend', '')
+  const env = loadEnv(mode, process.cwd(), '')
   const unifiedBackend =
     env.VITE_FASTAPI_BASE_URL ||
     env.VITE_API_BASE_URL ||
@@ -11,6 +11,13 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [vue()],
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: 'modern-compiler'
+        }
+      }
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src')
@@ -48,6 +55,20 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           ws: false
+        }
+      }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            // 仅对真正独立且体积较大的库做显式分包，避免循环 chunk 依赖
+            if (id.includes('node_modules/element-plus')) return 'element-plus'
+            if (id.includes('node_modules/echarts')) return 'echarts'
+            if (id.includes('node_modules/xlsx')) return 'xlsx'
+            if (id.includes('node_modules/papaparse')) return 'papaparse'
+            if (id.includes('node_modules/vuedraggable') || id.includes('node_modules/sortablejs')) return 'draggable'
+          }
         }
       }
     }

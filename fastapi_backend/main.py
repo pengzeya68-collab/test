@@ -1,7 +1,7 @@
 """
 Unified FastAPI entrypoint for the TestMaster platform.
 
-This app is the single public entry. All Flask and legacy AutoTest routes
+This app is the single public entry. All FastAPI routes
 have been natively migrated — no bridge middleware is needed.
 """
 from __future__ import annotations
@@ -30,21 +30,17 @@ from fastapi_backend.routers.admin_paths import router as admin_paths_router
 from fastapi_backend.routers.admin_exams import router as admin_exams_router
 from fastapi_backend.routers.admin_community import router as admin_community_router
 from fastapi_backend.routers.admin_system import router as admin_system_router
+from fastapi_backend.routers.admin_system_mgmt import router as admin_system_mgmt_router
 from fastapi_backend.routers.auth import router as auth_router
-from fastapi_backend.routers.cases import router as cases_router
 from fastapi_backend.routers.community import router as community_router
-from fastapi_backend.routers.environments import router as envs_router
 from fastapi_backend.routers.exam import router as exam_router
 from fastapi_backend.routers.exercises import router as exercises_router
 from fastapi_backend.routers.ai_tutor import router as ai_tutor_router
 from fastapi_backend.routers.ai_config import router as ai_config_router
 from fastapi_backend.routers.backup import router as backup_router
-from fastapi_backend.routers.execution import router as execution_router
 from fastapi_backend.routers.exercise import router as exercise_router
-from fastapi_backend.routers.groups import router as groups_router
 from fastapi_backend.routers.interview import router as interview_router
 from fastapi_backend.routers.learning_paths import router as learning_paths_router
-from fastapi_backend.routers.plans import router as plans_router
 from fastapi_backend.routers.sandbox import router as sandbox_router
 from fastapi_backend.routers.skills import router as skills_router
 from fastapi_backend.routers.assessment import router as assessment_router
@@ -54,6 +50,8 @@ from fastapi_backend.routers.leaderboard import router as leaderboard_router
 from fastapi_backend.routers.report import router as report_router
 from fastapi_backend.routers.notes import router as notes_router
 from fastapi_backend.routers.certificates import router as certificates_router
+from fastapi_backend.routers.rbac import router as rbac_router
+from fastapi_backend.routers.projects import router as projects_router
 
 # AutoTest 原生路由（Phase B 迁移）
 from fastapi_backend.routers.autotest_groups import router as autotest_groups_router
@@ -63,8 +61,21 @@ from fastapi_backend.routers.autotest_scenarios import router as autotest_scenar
 from fastapi_backend.routers.autotest_execution import router as autotest_execution_router
 from fastapi_backend.routers.autotest_diagnostic import router as autotest_diagnostic_router
 from fastapi_backend.routers.autotest_global_variables import router as autotest_global_vars_router
+from fastapi_backend.routers.autotest_jmeter import router as autotest_jmeter_router
+from fastapi_backend.routers.autotest_data_factory import router as autotest_data_factory_router
+from fastapi_backend.routers.notifications import router as notifications_router
+from fastapi_backend.routers.favorites import router as favorites_router
+from fastapi_backend.routers.search import router as search_router
+from fastapi_backend.routers.tools import router as tools_router
+from fastapi_backend.routers.reports import router as reports_router
+from fastapi_backend.routers.mock_api import router as mock_api_router
+from fastapi_backend.routers.assert_templates import router as assert_templates_router
+from fastapi_backend.routers.autotest_diff import router as autotest_diff_router
+from fastapi_backend.routers.autotest_suites import router as autotest_suites_router
+from fastapi_backend.routers.autotest_health import router as autotest_health_router
 
 from fastapi_backend.schemas.common import ErrorResponse
+from fastapi_backend.middleware.request_stats import request_stats_middleware
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -89,104 +100,25 @@ def _cleanup_stale_temp_files(directory: Path, max_age_hours: int = 24) -> None:
 
 
 async def create_tables() -> None:
-    """Create tables only when AUTO_CREATE_TABLES_ON_STARTUP is explicitly set to 'true' or '1'.
-    This prevents bypassing migration system during normal startup."""
+    """创建数据库表 - 仅用于开发/测试环境快速初始化。
+    生产环境务必使用 Alembic 迁移管理数据库变更。"""
     if not getattr(settings, 'AUTO_CREATE_TABLES_ON_STARTUP', False):
         return
+    _logger.warning(
+        "⚠️ AUTO_CREATE_TABLES_ON_STARTUP 已启用，正在使用 create_all() 创建表。"
+        "生产环境请使用 `alembic upgrade head` 替代此选项。"
+    )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        await _migrate_remove_foreign_keys(conn)
 
 
-async def _migrate_remove_foreign_keys(conn) -> None:
-    """移除 submissions 和 interview_sessions 表中 question_id 的外键约束
-    SQLite 不支持 ALTER TABLE DROP CONSTRAINT，需要重建表
-    同时添加 submissions.question_source 列"""
-    from sqlalchemy import text as sa_text, inspect as sa_inspect
+async def ensure_dev_tables() -> None:
+    """在非生产环境补齐主库缺失的新表，不改已有表结构。"""
+    if settings.ENVIRONMENT == "production":
+        return
 
-    try:
-        def _do_migrate(sync_conn):
-            try:
-                insp = sa_inspect(sync_conn)
-                sub_cols = [c["name"] for c in insp.get_columns("submissions")]
-                if "question_source" not in sub_cols:
-                    sync_conn.execute(sa_text(
-                        "ALTER TABLE submissions ADD COLUMN question_source VARCHAR(20) DEFAULT 'interview_question'"
-                    ))
-                    _logger.info("[迁移] 已添加 submissions.question_source 列")
-            except Exception as e:
-                _logger.debug(f"[迁移] 添加 question_source 列时出错（可忽略）: {e}")
-
-            for table_name, fk_col, fk_ref_table in [
-                ("submissions", "question_id", "interview_questions"),
-                ("interview_sessions", "question_id", "interview_questions"),
-            ]:
-                try:
-                    insp = sa_inspect(sync_conn)
-                    fks = insp.get_foreign_keys(table_name)
-                    target_fk = None
-                    for fk in fks:
-                        if fk.get("constrained_columns") and fk_col in fk["constrained_columns"]:
-                            if fk.get("referred_table") == fk_ref_table:
-                                target_fk = fk
-                                break
-                    if not target_fk:
-                        continue
-
-                    cols_info = insp.get_columns(table_name)
-                    col_defs = []
-                    for c in cols_info:
-                        cd = f'"{c["name"]}" {c["type"]}'
-                        if not c.get("nullable", True):
-                            cd += " NOT NULL"
-                        if c.get("default") is not None:
-                            cd += f' DEFAULT {c["default"]}'
-                        col_defs.append(cd)
-
-                    pk_info = insp.get_pk_constraint(table_name)
-                    if pk_info and pk_info.get("constrained_columns"):
-                        pk_cols = ", ".join(f'"{c}"' for c in pk_info["constrained_columns"])
-                        col_defs.append(f"PRIMARY KEY ({pk_cols})")
-
-                    remaining_fks = [fk for fk in fks if fk is not target_fk]
-                    for fk in remaining_fks:
-                        fk_cols = ", ".join(f'"{c}"' for c in fk["constrained_columns"])
-                        ref_cols = ", ".join(f'"{c}"' for c in fk["referred_columns"])
-                        col_defs.append(
-                            f'FOREIGN KEY({fk_cols}) REFERENCES "{fk["referred_table"]}"({ref_cols})'
-                        )
-
-                    col_defs_str = ",\n  ".join(col_defs)
-                    tmp_name = f"_tmp_migrate_{table_name}"
-
-                    sync_conn.execute(sa_text(f"ALTER TABLE \"{table_name}\" RENAME TO \"{tmp_name}\""))
-                    sync_conn.execute(sa_text(
-                        f'CREATE TABLE "{table_name}" (\n  {col_defs_str}\n)'
-                    ))
-                    orig_cols = [c["name"] for c in cols_info]
-                    cols_str = ", ".join(f'"{c}"' for c in orig_cols)
-                    sync_conn.execute(sa_text(
-                        f'INSERT INTO "{table_name}" ({cols_str}) SELECT {cols_str} FROM "{tmp_name}"'
-                    ))
-                    sync_conn.execute(sa_text(f'DROP TABLE "{tmp_name}"'))
-
-                    idxs = insp.get_indexes(table_name)
-                    for idx in idxs:
-                        try:
-                            idx_cols = ", ".join(f'"{c}"' for c in idx["column_names"])
-                            sync_conn.execute(sa_text(
-                                f'CREATE INDEX IF NOT EXISTS "{idx["name"]}" ON "{table_name}"({idx_cols})'
-                            ))
-                        except Exception:
-                            pass
-
-                    _logger.info(f"[迁移] 已移除 {table_name}.{fk_col} 的外键约束")
-                except Exception as e:
-                    _logger.debug(f"[迁移] 处理 {table_name}.{fk_col} 时出错（可忽略）: {e}")
-
-        await conn.run_sync(_do_migrate)
-    except Exception as e:
-        _logger.debug(f"[迁移] 外键迁移过程出错（可忽略）: {e}")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 async def init_auto_test_runtime() -> None:
@@ -223,8 +155,18 @@ async def init_auto_test_runtime() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    from pathlib import Path
+    log_dir = Path(__file__).parent.parent / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    if settings.ENVIRONMENT == "testing":
+        yield
+        return
+
     if settings.AUTO_CREATE_TABLES_ON_STARTUP:
         await create_tables()
+    else:
+        await ensure_dev_tables()
     await init_auto_test_runtime()
     from fastapi_backend.services.autotest_task_store import start_cleanup_task, stop_cleanup_task
     start_cleanup_task()
@@ -250,6 +192,11 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "version": settings.VERSION}
 
 
 async def business_exception_handler(request: Request, exc: BusinessException) -> JSONResponse:
@@ -288,9 +235,16 @@ async def validation_exception_handler(
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     import logging
     _logger = logging.getLogger(__name__)
-    _logger.exception(f"未处理异常: {type(exc).__name__}")
+    _logger.exception(f"未处理异常: {type(exc).__name__}: {str(exc)}")
 
-    detail = "Internal server error"
+    # 生产环境不返回详细错误信息，防止信息泄露
+    from fastapi_backend.core.config import settings
+    if settings.ENVIRONMENT == "production":
+        detail = "Internal server error"
+    else:
+        # 开发环境返回详细错误信息便于调试
+        detail = f"{type(exc).__name__}: {str(exc)}"
+    
     payload = ErrorResponse(
         detail=detail,
         code="INTERNAL_SERVER_ERROR",
@@ -306,11 +260,20 @@ app.add_exception_handler(Exception, generic_exception_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Trace-ID", "X-Request-ID"],
 )
+
+# 请求统计中间件（必须在 AI 速率限制之前注册）
+app.middleware("http")(request_stats_middleware)
+
+from fastapi_backend.middleware.ai_rate_limiter import ai_rate_limit_middleware
+
+# 测试环境跳过 AI 速率限制中间件，避免 429 影响测试
+if settings.ENVIRONMENT != "testing":
+    app.middleware("http")(ai_rate_limit_middleware)
 
 # ========== 路由分组注册 ==========
 app.include_router(auth_router)
@@ -323,15 +286,10 @@ admin_router_group.include_router(admin_paths_router)
 admin_router_group.include_router(admin_exams_router)
 admin_router_group.include_router(admin_community_router)
 admin_router_group.include_router(admin_system_router)
+admin_router_group.include_router(admin_system_mgmt_router)
 admin_router_group.include_router(ai_config_router)
 admin_router_group.include_router(backup_router)
-
-legacy_test_router = APIRouter()
-legacy_test_router.include_router(groups_router)
-legacy_test_router.include_router(cases_router)
-legacy_test_router.include_router(envs_router)
-legacy_test_router.include_router(plans_router)
-legacy_test_router.include_router(execution_router)
+admin_router_group.include_router(rbac_router)
 
 autotest_router = APIRouter()
 autotest_router.include_router(autotest_groups_router)
@@ -341,6 +299,8 @@ autotest_router.include_router(autotest_scenarios_router)
 autotest_router.include_router(autotest_execution_router)
 autotest_router.include_router(autotest_diagnostic_router)
 autotest_router.include_router(autotest_global_vars_router)
+autotest_router.include_router(autotest_jmeter_router)
+autotest_router.include_router(autotest_data_factory_router)
 
 learning_router = APIRouter()
 learning_router.include_router(learning_paths_router)
@@ -355,6 +315,7 @@ learning_router.include_router(certificates_router)
 learning_router.include_router(exam_router)
 learning_router.include_router(exercise_router)
 learning_router.include_router(exercises_router)
+learning_router.include_router(projects_router)
 
 ai_tools_router = APIRouter()
 ai_tools_router.include_router(interview_router)
@@ -363,10 +324,19 @@ ai_tools_router.include_router(ai_tutor_router)
 ai_tools_router.include_router(community_router)
 
 app.include_router(admin_router_group)
-app.include_router(legacy_test_router)
 app.include_router(autotest_router)
 app.include_router(learning_router)
 app.include_router(ai_tools_router)
+app.include_router(notifications_router)
+app.include_router(favorites_router)
+app.include_router(search_router)
+app.include_router(tools_router)
+app.include_router(reports_router)
+app.include_router(mock_api_router)
+app.include_router(assert_templates_router)
+app.include_router(autotest_diff_router)
+app.include_router(autotest_suites_router)
+app.include_router(autotest_health_router)
 
 # ========== Static files for Allure reports ==========
 REPORTS_DIR = AUTOTEST_DATA_DIR / "reports"

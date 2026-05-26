@@ -38,9 +38,26 @@
               <el-dropdown-menu>
                 <el-dropdown-item command="postman">Postman</el-dropdown-item>
                 <el-dropdown-item command="swagger">Swagger/OpenAPI</el-dropdown-item>
+                <el-dropdown-item command="jmeter">JMeter (.jmx)</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
+
+          <!-- JMeter 导出按钮 -->
+          <el-dropdown trigger="click" @command="handleExportCommand">
+            <el-button type="warning" plain>
+              <el-icon><Download /></el-icon>
+              导出用例
+              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="jmeter_selected">导出选中用例到 JMeter</el-dropdown-item>
+                <el-dropdown-item command="jmeter_all">导出全部用例到 JMeter</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+
           <el-button type="primary" @click="handleCreate">
             <el-icon><Plus /></el-icon>
             新建用例
@@ -74,7 +91,7 @@
               <span v-else class="no-run">未执行</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="160" fixed="right">
+          <el-table-column label="操作" width="220" fixed="right">
             <template #default="{ row }">
               <div style="display: flex; gap: 12px; align-items: center;">
                 <el-tooltip content="运行用例" placement="top" popper-class="action-tooltip">
@@ -83,6 +100,10 @@
 
                 <el-tooltip content="编辑用例" placement="top" popper-class="action-tooltip">
                   <span><el-button type="primary" link :icon="Edit" @click="handleEdit(row)" /></span>
+                </el-tooltip>
+
+                <el-tooltip content="导出到 JMeter" placement="top" popper-class="action-tooltip">
+                  <span><el-button type="warning" link :icon="Download" @click="handleExportSingleCase(row)" /></span>
                 </el-tooltip>
 
                 <el-tooltip content="删除用例" placement="top" popper-class="action-tooltip">
@@ -205,6 +226,58 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- JMeter 导入弹窗 -->
+    <el-dialog
+      v-model="jmeterImportDialogVisible"
+      title="导入 JMeter 脚本 (.jmx)"
+      width="600px"
+      :before-close="handleJMeterImportClose"
+    >
+      <div class="import-container" v-loading="jmeterImporting">
+        <el-alert
+          title="请选择 JMeter .jmx 文件，系统将解析并导入接口用例"
+          type="info"
+          show-icon
+          style="margin-bottom: 20px"
+        />
+
+        <el-form label-width="100px">
+          <el-form-item label="选择文件">
+            <el-upload
+              class="upload-demo"
+              drag
+              :auto-upload="false"
+              :limit="1"
+              :on-change="handleJMeterFileChange"
+              :on-remove="handleJMeterFileRemove"
+              accept=".jmx"
+            >
+              <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+              <div class="el-upload__text">
+                将文件拖到此处，或 <em>点击上传</em>
+              </div>
+              <template #tip>
+                <div class="el-upload__tip">只能上传 .jmx 格式文件，且不超过 10MB</div>
+              </template>
+            </el-upload>
+          </el-form-item>
+
+          <el-form-item label="目标分组" v-if="!props.groupId">
+            <el-alert title="将导入到默认分组（可在左侧分组树中创建新分组）" type="warning" :closable="false" />
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="handleJMeterImportClose">取消</el-button>
+          <el-button type="primary" @click="handleJMeterImport" :loading="jmeterImporting">
+            确认导入
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </el-card>
 </template>
 
@@ -220,11 +293,12 @@ import {
   Setting,
   Upload,
   ArrowDown,
-  UploadFilled
+  UploadFilled,
+  Download
 } from '@element-plus/icons-vue'
 import CaseEditorDrawer from './CaseEditorDrawer.vue'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
-import axios from 'axios'
+import autoTestRequest from '@/utils/autoTestRequest'
 
 const props = defineProps({
   groupId: {
@@ -258,6 +332,13 @@ const importType = ref('') // 'postman' or 'swagger'
 const importFile = ref(null)
 const importing = ref(false)
 const parsedData = ref(null) // 解析后的预览数据
+
+// ===== JMeter 导入/导出相关变量 =====
+const jmeterImportDialogVisible = ref(false)
+const jmeterImportFile = ref(null)
+const jmeterImporting = ref(false)
+const jmeterExporting = ref(false)
+const jmeterImportGroupId = ref(null) // JMeter 导入目标分组ID
 
 // 打开环境管理弹窗
 const openEnvManager = () => {
@@ -321,31 +402,7 @@ const formatStatus = (status) => {
   return labels[status] || status
 }
 
-// 创建独立的请求实例
-const autoTestRequest = axios.create({
-  baseURL: '',
-  timeout: 30000
-})
 
-// 添加请求拦截器，自动带上 token
-autoTestRequest.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
-    if (token && token !== 'undefined' && token !== 'null' && token !== '[object Object]') {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  error => {
-    return Promise.reject(error);
-  }
-)
-
-// 添加响应拦截器，统一返回 response.data
-autoTestRequest.interceptors.response.use(
-  response => response.data,
-  error => Promise.reject(error)
-)
 
 // 加载用例
 const loadCases = async () => {
@@ -361,7 +418,7 @@ const loadCases = async () => {
     if (searchKeyword.value) {
       params.keyword = searchKeyword.value
     }
-    const res = await autoTestRequest.get('/api/auto-test/cases', { params })
+    const res = await autoTestRequest.get('/auto-test/cases', { params })
     // 后端直接返回数组，或者返回 {items, total}
     if (Array.isArray(res)) {
       cases.value = res
@@ -423,16 +480,11 @@ const handleCreate = () => {
 
 // 编辑用例
 const handleEdit = (row) => {
-  // 🔥 核心修复：对所有数组字段做安全兜底，防止老数据/脏数据缺少字段导致 .map() 崩溃
+  // 保留后端原始结构，避免对象型 headers/assert_rules 在编辑时被误清空
   const safeRow = JSON.parse(JSON.stringify(row))
 
   currentCase.value = {
-    ...safeRow,
-    // 如果后端返回 null/undefined，强制给一个空数组 []，防止 .map() 崩溃！
-    headers: Array.isArray(safeRow.headers) ? safeRow.headers : [],
-    form_data: Array.isArray(safeRow.form_data) ? safeRow.form_data : [],
-    extractors: Array.isArray(safeRow.extractors) ? safeRow.extractors : [],
-    assert_rules: Array.isArray(safeRow.assert_rules) ? safeRow.assert_rules : [],
+    ...safeRow
   }
   isEdit.value = true
   currentGroupId.value = props.groupId
@@ -452,7 +504,6 @@ const handleRun = (row) => {
 // 删除用例
 const handleDelete = async (id) => {
   try {
-    // 弹出强阻断确认框，绝对不会点不动！
     await ElMessageBox.confirm(
       '确定要彻底删除该接口吗？此操作不可逆，如果该接口已被场景引用，请先在场景中移除引用！',
       '高危操作警告',
@@ -461,24 +512,21 @@ const handleDelete = async (id) => {
         cancelButtonText: '点错了',
         type: 'warning',
       }
-    );
-
-    // 发送删除请求
-    await autoTestRequest.delete(`/api/auto-test/cases/${id}`);
-
-    ElMessage.success('清理完毕！');
-    // 重新加载列表数据
-    loadCases();
-
-  } catch (error) {
-    // 如果是点击了取消，不报错；如果是后端返回错误，则弹出后端信息
-    if (error !== 'cancel') {
-      const realError = error.response?.data?.message || error.response?.data?.error || error.message || '删除遭遇异常';
-      console.error('👉 删除接口失败详情:', error.response?.data);
-      ElMessage.error(`❌ 删除失败原因: ${realError}`);
-    }
+    )
+  } catch {
+    return
   }
-};
+
+  try {
+    await autoTestRequest.delete(`/auto-test/cases/${id}`)
+    ElMessage.success('清理完毕！')
+    loadCases()
+  } catch (error) {
+    const realError = error.response?.data?.message || error.response?.data?.error || error.message || '删除遭遇异常'
+    console.error('👉 删除接口失败详情:', error.response?.data)
+    ElMessage.error(`❌ 删除失败原因: ${realError}`)
+  }
+}
 
 // 抽屉成功后刷新
 const handleDrawerSuccess = () => {
@@ -493,10 +541,138 @@ const handleRunCase = (caseData) => {
 // ===== 导入逻辑 =====
 
 const handleImportCommand = (command) => {
-  importType.value = command
-  importFile.value = null
-  parsedData.value = null
-  importDialogVisible.value = true
+  if (command === 'jmeter') {
+    // 打开 JMeter 导入对话框
+    jmeterImportDialogVisible.value = true
+    jmeterImportFile.value = null
+  } else {
+    // Postman 或 Swagger 导入
+    importType.value = command
+    importFile.value = null
+    parsedData.value = null
+    importDialogVisible.value = true
+  }
+}
+
+// ===== JMeter 导入逻辑 =====
+
+const handleJMeterFileChange = (file) => {
+  jmeterImportFile.value = file.raw
+}
+
+const handleJMeterFileRemove = () => {
+  jmeterImportFile.value = null
+}
+
+const handleJMeterImportClose = () => {
+  jmeterImportDialogVisible.value = false
+  jmeterImportFile.value = null
+}
+
+const handleJMeterImport = async () => {
+  if (!jmeterImportFile.value) {
+    ElMessage.warning('请先选择 JMeter .jmx 文件')
+    return
+  }
+
+  jmeterImporting.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', jmeterImportFile.value)
+    if (props.groupId) {
+      formData.append('group_id', props.groupId)
+    }
+
+    const res = await autoTestRequest.post('/auto-test/import/jmeter', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    ElMessage.success(res.message || '导入成功')
+    jmeterImportDialogVisible.value = false
+    loadCases() // 重新加载用例列表
+    emit('refresh-groups') // 通知父组件刷新分组树
+  } catch (error) {
+    console.error('JMeter 导入失败:', error)
+    ElMessage.error('导入失败: ' + (error.response?.data?.detail || error.message))
+  } finally {
+    jmeterImporting.value = false
+  }
+}
+
+// ===== JMeter 导出逻辑 =====
+
+const handleExportCommand = async (command) => {
+  if (command === 'jmeter_selected') {
+    // 导出选中用例（需要添加选择功能）
+    ElMessage.warning('请先在表格中勾选用例，再点击导出')
+    return
+  } else if (command === 'jmeter_all') {
+    // 导出全部用例
+    await exportCasesToJMeter()
+  }
+}
+
+const exportCasesToJMeter = async (caseIds = null) => {
+  jmeterExporting.value = true
+  try {
+    const params = {}
+    if (caseIds) {
+      params.case_ids = caseIds
+    } else if (props.groupId) {
+      // 导出当前分组的所有用例
+      params.group_id = props.groupId
+    } else if (filteredCases.value.length > 0) {
+      // 根目录下优先导出当前筛选结果，避免发送空请求导致 400
+      params.case_ids = filteredCases.value.map(item => item.id)
+    } else {
+      ElMessage.warning('当前没有可导出的用例')
+      return
+    }
+
+    const res = await autoTestRequest.post('/auto-test/export/jmeter/cases', params, {
+      responseType: 'blob'
+    })
+
+    // 下载文件
+    const blob = new Blob([res], { type: 'application/octet-stream' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `TestMaster_Export_${new Date().getTime()}.jmx`
+    link.click()
+    URL.revokeObjectURL(link.href)
+
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('JMeter 导出失败:', error)
+    ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
+  } finally {
+    jmeterExporting.value = false
+  }
+}
+
+// 导出单个用例到 JMeter
+const handleExportSingleCase = async (row) => {
+  jmeterExporting.value = true
+  try {
+    const res = await autoTestRequest.get(`/auto-test/export/jmeter/case/${row.id}`, {
+      responseType: 'blob'
+    })
+
+    // 下载文件
+    const blob = new Blob([res], { type: 'application/octet-stream' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${row.name.replace(/[\/\\:*?"<>|]/g, '_')}.jmx`
+    link.click()
+    URL.revokeObjectURL(link.href)
+
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('JMeter 导出失败:', error)
+    ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
+  } finally {
+    jmeterExporting.value = false
+  }
 }
 
 const handleFileChange = (file) => {
@@ -533,7 +709,7 @@ const handleParseFile = async () => {
     }
     formData.append('file', importFile.value)
 
-    const endpoint = importType.value === 'postman' ? '/api/auto-test/import/postman' : '/api/auto-test/import/swagger'
+    const endpoint = importType.value === 'postman' ? '/auto-test/import/postman' : '/auto-test/import/swagger'
 
     // 告诉后端只解析，不入库 (dry_run)
     formData.append('dry_run', 'true')
@@ -575,7 +751,7 @@ const handleConfirmImport = async () => {
 
     formData.append('file', importFile.value)
 
-    const endpoint = importType.value === 'postman' ? '/api/auto-test/import/postman' : '/api/auto-test/import/swagger'
+    const endpoint = importType.value === 'postman' ? '/auto-test/import/postman' : '/auto-test/import/swagger'
 
     // 真实导入 (dry_run=false)
     formData.append('dry_run', 'false')

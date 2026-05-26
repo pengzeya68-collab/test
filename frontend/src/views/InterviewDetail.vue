@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="interview-detail">
     <div class="container">
       <div class="back-btn" @click="$router.back()">
@@ -154,32 +154,8 @@ const fetchDetail = async () => {
     const res = await request.get(`/interview/sessions/${sessionId}`)
     
     if (res.session) {
-      // Flask 返回格式: {session: {...}, questions: [...]}
       session.value = res.session
       questions.value = res.questions || []
-
-      // 如果后端数据不完整，添加模拟数据用于展示
-      if (questions.value.length > 0) {
-        questions.value = questions.value.map(q => ({
-          ...q,
-          execution_status: q.execution_status || 'success',
-          ai_evaluation_status: q.ai_evaluation_status || 'completed',
-          score: q.score !== undefined ? q.score : 85,
-          execution_result: q.execution_result || JSON.stringify({
-            stdout: '代码执行成功\n输出结果: 测试用例全部通过',
-            stderr: '',
-            exit_code: 0,
-            judge_result: {
-              total_cases: 5,
-              passed_count: 5,
-              failed_count: 0,
-              pass_rate: 100,
-              all_passed: true,
-              summary: '所有测试用例均通过，代码质量良好。'
-            }
-          })
-        }))
-      }
     } else if (res.success && res.data) {
       // FastAPI 返回格式: {success: true, data: InterviewSessionDetail}
       const detail = res.data
@@ -228,31 +204,7 @@ const fetchDetail = async () => {
     }
   } catch (error) {
     console.error('获取面试详情失败:', error)
-    // Flask 获取失败，尝试从 FastAPI 获取
-    try {
-      const fastapiRes = await request.get(`/interview/sessions/${sessionId}`)
-      if (fastapiRes.success && fastapiRes.data) {
-        const detail = fastapiRes.data
-        session.value = {
-          id: detail.id,
-          title: detail.title || '面试会话',
-          position: detail.position || '测试工程师',
-          level: detail.level || '中级',
-          interview_type: detail.interview_type || '技术面',
-          total_score: detail.total_score || 100,
-          user_score: detail.latest_score || detail.user_score || 0,
-          status: detail.status,
-          start_time: detail.started_at ? formatDateTime(detail.started_at) : '',
-          end_time: detail.finished_at ? formatDateTime(detail.finished_at) : '',
-          feedback: detail.feedback || '',
-          improvement_suggestions: detail.improvement_suggestions || ''
-        }
-        questions.value = []
-      }
-    } catch (fastapiErr) {
-      console.error('FastAPI 获取面试详情也失败:', fastapiErr)
-      ElMessage.error('获取面试详情失败')
-    }
+    ElMessage.error('获取面试详情失败')
   } finally {
     loading.value = false
   }
@@ -314,15 +266,17 @@ const formatDateTime = (dateTimeStr) => {
 
 <style scoped>
 .interview-detail {
-  padding: 30px 0;
-  min-height: calc(100vh - 60px);
-  background-color: #09090B;
+  padding: 20px 0;
+  min-height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 20px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0;
+  padding: 0 16px;
 }
 
 .back-btn {

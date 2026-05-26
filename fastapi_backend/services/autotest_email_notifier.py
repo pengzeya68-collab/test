@@ -9,19 +9,10 @@ import logging
 import html as html_module
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi_backend.core.autotest_settings import (
-    EMAIL_ENABLED,
-    EMAIL_SMTP_HOST,
-    EMAIL_SMTP_PORT,
-    EMAIL_SMTP_USER,
-    EMAIL_SMTP_PASSWORD,
-    EMAIL_FROM,
-    EMAIL_ADMIN_TO,
-    EMAIL_ENABLE_SSL,
-)
+from fastapi_backend.core.autotest_settings import get_settings
 
 _logger = logging.getLogger(__name__)
 
@@ -41,20 +32,20 @@ class EmailNotifier:
         from_email: Optional[str] = None,
         enable_ssl: Optional[bool] = None,
     ):
-        import fastapi_backend.core.autotest_settings as _settings
-
-        self.smtp_host = smtp_host or getattr(_settings, "EMAIL_SMTP_HOST", "")
-        self.smtp_port = smtp_port or getattr(_settings, "EMAIL_SMTP_PORT", 465)
-        self.smtp_user = smtp_user or getattr(_settings, "EMAIL_SMTP_USER", "")
-        self.smtp_password = smtp_password or getattr(_settings, "EMAIL_SMTP_PASSWORD", "")
-        self.from_email = from_email or getattr(_settings, "EMAIL_FROM", self.smtp_user)
-        self.enable_ssl = enable_ssl if enable_ssl is not None else getattr(_settings, "EMAIL_ENABLE_SSL", True)
-        self.enabled = getattr(_settings, "EMAIL_ENABLED", True)
+        settings = get_settings()
+        self.smtp_host = smtp_host or getattr(settings, "EMAIL_SMTP_HOST", "")
+        self.smtp_port = smtp_port or getattr(settings, "EMAIL_SMTP_PORT", 465)
+        self.smtp_user = smtp_user or getattr(settings, "EMAIL_SMTP_USER", "")
+        self.smtp_password = smtp_password or getattr(settings, "EMAIL_SMTP_PASSWORD", "")
+        self.from_email = from_email or getattr(settings, "EMAIL_FROM_ADDRESS", self.smtp_user)
+        self.enable_ssl = enable_ssl if enable_ssl is not None else getattr(settings, "EMAIL_USE_SSL", True)
+        self.enabled = getattr(settings, "EMAIL_ENABLED", False)
 
     def _send_smtp(self, to_email: str, msg: MIMEMultipart) -> bool:
         """同步发送邮件（内部方法，含重试）"""
         max_retries = 3
         for attempt in range(1, max_retries + 1):
+            server = None
             try:
                 if self.enable_ssl:
                     server = smtplib.SMTP_SSL(self.smtp_host, self.smtp_port, timeout=10)
@@ -64,7 +55,6 @@ class EmailNotifier:
 
                 server.login(self.smtp_user, self.smtp_password)
                 server.sendmail(self.from_email, [to_email], msg.as_string())
-                server.quit()
 
                 _logger.info(f"邮件发送成功: -> {to_email}")
                 return True
@@ -77,7 +67,48 @@ class EmailNotifier:
             except Exception as e:
                 _logger.error(f"邮件发送异常: {e}")
                 return False
+            finally:
+                if server:
+                    try:
+                        server.quit()
+                    except Exception:
+                        pass
         return False
+
+    async def send_test_email(self, to_email: str, subject: str = "TestMaster 测试邮件") -> bool:
+        """
+        发送测试邮件，用于验证 SMTP 配置
+        不依赖 self.enabled，直接验证发信能力
+        """
+        if not self.smtp_host or not self.smtp_user or not self.smtp_password:
+            _logger.warning("[EmailNotifier] 邮件配置不完整，无法发送测试邮件")
+            return False
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>测试邮件</title></head>
+        <body>
+            <h2>TestMaster SMTP 配置测试</h2>
+            <p>这是一封测试邮件，用于验证您的 SMTP 配置是否正确。</p>
+            <p>发送时间: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}</p>
+            <p>SMTP 服务器: {self.smtp_host}:{self.smtp_port}</p>
+            <p>发件人: {self.from_email}</p>
+            <hr>
+            <p style="color: #666; font-size: 12px;">此邮件由 TestMaster 自动化测试平台发送</p>
+        </body>
+        </html>
+        """
+        
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = self.from_email
+        msg["To"] = to_email
+        
+        part = MIMEText(html_content, "html", "utf-8")
+        msg.attach(part)
+        
+        return await asyncio.to_thread(self._send_smtp, to_email, msg)
 
     async def send_scenario_result(
         self,
@@ -145,7 +176,7 @@ class EmailNotifier:
         total_time: int,
         report_url: str,
     ) -> str:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         total_time_seconds = total_time / 1000
 
         if status == "success":

@@ -1,6 +1,6 @@
 <template>
-  <div class="exercises">
-    <div class="container">
+  <div class="exercises" style="position: relative; z-index: 1;">
+    <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
       <!-- 顶部筛选 -->
       <div class="filter-bar">
         <h1 class="page-title">习题库</h1>
@@ -9,11 +9,16 @@
             v-model="currentModule" 
             placeholder="功能模块" 
             style="width: 140px;"
+            clearable
+            filterable
           >
             <el-option label="全部模块" value="" />
-            <el-option label="普通习题" value="normal" />
-            <el-option label="自动化测试" value="automation" />
-            <el-option label="接口测试" value="api" />
+            <el-option 
+              v-for="mod in availableModules" 
+              :key="mod" 
+              :label="mod" 
+              :value="mod" 
+            />
           </el-select>
           <el-radio-group v-model="currentStage">
             <el-radio-button :value="1">阶段1</el-radio-button>
@@ -35,13 +40,13 @@
           <el-select
             v-model="currentType"
             placeholder="题型筛选"
-            style="width: 120px;"
+            style="width: 130px;"
           >
             <el-option label="全部题型" value="" />
-            <el-option label="选择题" value="choice" />
+            <el-option label="单选题" value="single_choice" />
+            <el-option label="多选题" value="multiple_choice" />
+            <el-option label="判断题" value="true_false" />
             <el-option label="代码题" value="code" />
-            <el-option label="SQL题" value="sql" />
-            <el-option label="文本题" value="text" />
           </el-select>
           <el-input 
             v-model="searchKeyword" 
@@ -139,19 +144,19 @@
           @current-change="handleCurrentChange"
         />
       </div>
-    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Search, Timer, PriceTag, Collection, Loading } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 const exercises = ref([])
@@ -160,10 +165,19 @@ const currentModule = ref('')
 const currentStage = ref(1)
 const currentDifficulty = ref('')
 const currentType = ref('')
+const currentPathId = ref(null)
 const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(12)
 const exerciseProgress = ref({})
+
+const availableModules = computed(() => {
+  const modules = new Set()
+  exercises.value.forEach(e => {
+    if (e.module) modules.add(e.module)
+  })
+  return [...modules].sort()
+})
 
 // 阶段说明
 const stageInfos = {
@@ -204,7 +218,7 @@ const filteredExercises = computed(() => {
   
   // 按阶段筛选
   if (currentStage.value > 0) {
-    result = result.filter(item => item.stage === currentStage.value)
+    result = result.filter(item => item.stage === currentStage.value || item.stage === null || item.stage === undefined)
   }
   
   // 按难度筛选
@@ -219,14 +233,11 @@ const filteredExercises = computed(() => {
   }
 
   if (currentType.value) {
-    const typeMap = {
-      choice: ['choice', 'multiple_choice', 'true_false'],
-      code: ['code'],
-      sql: ['sql'],
-      text: ['text'],
-    }
-    const allowedTypes = typeMap[currentType.value] || [currentType.value]
-    result = result.filter(item => allowedTypes.includes(item.exercise_type))
+    result = result.filter(item => item.exercise_type === currentType.value)
+  }
+
+  if (currentPathId.value) {
+    result = result.filter(item => item.learning_path_id === currentPathId.value)
   }
   
   // 按关键词搜索
@@ -288,6 +299,11 @@ watch(searchKeyword, () => {
 })
 
 onMounted(() => {
+  const pathIdParam = route.query.pathId
+  if (pathIdParam) {
+    currentPathId.value = Number(pathIdParam)
+    currentStage.value = 0
+  }
   fetchExercises()
   if (userStore.isLoggedIn) {
     fetchProgress()
@@ -369,6 +385,7 @@ const getDifficultyText = (difficulty) => {
 const getExerciseTypeTagType = (type) => {
   const map = {
     choice: 'primary',
+    single_choice: 'primary',
     multiple_choice: 'primary',
     true_false: 'primary',
     code: 'warning',
@@ -381,6 +398,7 @@ const getExerciseTypeTagType = (type) => {
 const getExerciseTypeText = (type) => {
   const map = {
     choice: '选择题',
+    single_choice: '单选题',
     multiple_choice: '多选题',
     true_false: '判断题',
     code: '代码题',
@@ -398,17 +416,18 @@ const goToDetail = (id) => {
 
 <style scoped>
 .exercises {
-  padding: 40px 0;
-  min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-page);
+  padding: 20px 0;
+  min-height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.container {
-  width: 100%;
-  max-width: 1440px;
-  padding: 0 24px;
-  margin: 0 auto;
-  box-sizing: border-box;
+.cyber-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
 }
 
 .filter-bar {

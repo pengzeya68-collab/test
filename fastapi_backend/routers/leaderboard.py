@@ -1,7 +1,7 @@
 """排行榜路由 - 竞争激励系统"""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func, desc, case
@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.models import User, Progress, ExerciseSubmissionRecord, DailyCheckin
+from fastapi_backend.models.models import User, ExerciseSubmissionRecord, DailyCheckin
 
 router = APIRouter(prefix="/api/v1/leaderboard", tags=["排行榜"])
 
@@ -66,31 +66,29 @@ async def get_weekly_leaderboard(
     db: AsyncSession = Depends(get_db),
 ):
     """本周活跃排行榜（按本周完成习题数排名）"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     week_start = now - timedelta(days=now.weekday())
     week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
     stmt = (
         select(
             ExerciseSubmissionRecord.user_id,
+            User.username,
             func.count().label("submission_count"),
             func.sum(case((ExerciseSubmissionRecord.result == "pass", 1), else_=0)).label("correct_count"),
         )
+        .join(User, User.id == ExerciseSubmissionRecord.user_id)
         .where(ExerciseSubmissionRecord.created_at >= week_start)
-        .group_by(ExerciseSubmissionRecord.user_id)
+        .group_by(ExerciseSubmissionRecord.user_id, User.username)
         .order_by(desc("correct_count"))
         .limit(20)
     )
     result = await db.execute(stmt)
     rows = result.all()
 
-    user_ids = [r.user_id for r in rows]
     user_map = {}
-    if user_ids:
-        users_stmt = select(User).where(User.id.in_(user_ids))
-        users_result = await db.execute(users_stmt)
-        for u in users_result.scalars().all():
-            user_map[u.id] = u.username
+    for r in rows:
+        user_map[r.user_id] = r.username
 
     my_weekly_stmt = select(
         func.count().label("total"),
@@ -130,22 +128,20 @@ async def get_streak_leaderboard(
     stmt = (
         select(
             DailyCheckin.user_id,
+            User.username,
             func.max(DailyCheckin.streak_count).label("max_streak"),
         )
-        .group_by(DailyCheckin.user_id)
+        .join(User, User.id == DailyCheckin.user_id)
+        .group_by(DailyCheckin.user_id, User.username)
         .order_by(desc("max_streak"))
         .limit(20)
     )
     result = await db.execute(stmt)
     rows = result.all()
 
-    user_ids = [r.user_id for r in rows]
     user_map = {}
-    if user_ids:
-        users_stmt = select(User).where(User.id.in_(user_ids))
-        users_result = await db.execute(users_stmt)
-        for u in users_result.scalars().all():
-            user_map[u.id] = u.username
+    for r in rows:
+        user_map[r.user_id] = r.username
 
     my_streak = 0
     my_checkin_stmt = select(DailyCheckin).where(

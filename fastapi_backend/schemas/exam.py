@@ -17,6 +17,7 @@ class ExamGenerateRequest(BaseModel):
     difficulty: str = "medium"
     duration: int = 60
     knowledge_points: list[str] = []
+    learning_path_id: Optional[int] = None
     question_count: dict[str, int] = {
         "single_choice": 10,
         "multiple_choice": 5,

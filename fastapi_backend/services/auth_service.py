@@ -1,41 +1,99 @@
-import base64
-import hashlib
-import hmac
-import json
+import logging
 import secrets
 import time
-from typing import Any
+import warnings
+from datetime import datetime, timezone, timedelta
+from typing import Any, Dict, Optional
 
 import bcrypt
+import hashlib
+import jwt
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.config import settings
-from fastapi_backend.models.models import User
+from fastapi_backend.models.models import User, TokenBlacklist
 from fastapi_backend.schemas.auth import CurrentUserResponse, TokenResponse
+
+_logger = logging.getLogger(__name__)
 
 
 class AuthError(Exception):
     """Raised when token parsing or auth validation fails."""
 
 
-def _b64url_encode(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
-
-
-def _b64url_decode(data: str) -> bytes:
-    padding = "=" * (-len(data) % 4)
-    return base64.urlsafe_b64decode(data + padding)
-
-
 _DUMMY_HASH = bcrypt.hashpw(b"dummy", bcrypt.gensalt()).decode("utf-8")
 
 
 class AuthService:
-    def __init__(self):
+    _token_blacklist: Dict[str, float] = {}
+    _blacklist_max_age_seconds = 86400
+    _blacklist_max_size = 10000
+    _db_session: Optional[AsyncSession] = None
+
+    def __init__(self, db: Optional[AsyncSession] = None):
         self.secret_key = settings.SECRET_KEY
         self.access_ttl_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         self.refresh_ttl_seconds = settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60
+        self._db_session = db
+
+    @classmethod
+    def _cleanup_blacklist(cls):
+        now = time.time()
+        expired_keys = [k for k, v in cls._token_blacklist.items() if v < now]
+        for key in expired_keys:
+            del cls._token_blacklist[key]
+        if len(cls._token_blacklist) > cls._blacklist_max_size:
+            sorted_items = sorted(cls._token_blacklist.items(), key=lambda x: x[1])
+            for key, _ in sorted_items[:len(sorted_items) - cls._blacklist_max_size]:
+                del cls._token_blacklist[key]
+
+    async def add_to_blacklist(self, token: str, token_type: str = "access", user_id: int = None) -> None:
+        AuthService._cleanup_blacklist()
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        expires_at_ts = time.time() + self._blacklist_max_age_seconds
+        AuthService._token_blacklist[token_hash] = expires_at_ts
+
+        if self._db_session:
+            try:
+                expiry_dt = datetime.now(timezone.utc) + timedelta(seconds=self._blacklist_max_age_seconds)
+                existing = await self._db_session.execute(
+                    select(TokenBlacklist).where(TokenBlacklist.token_hash == token_hash)
+                )
+                if not existing.scalar_one_or_none():
+                    record = TokenBlacklist(
+                        token_hash=token_hash,
+                        token_type=token_type,
+                        user_id=user_id,
+                        expires_at=expiry_dt,
+                    )
+                    self._db_session.add(record)
+                    await self._db_session.commit()
+            except Exception as exc:
+                _logger.warning("token_blacklist DB write failed (memory blacklist still active): %s", exc)
+                try:
+                    await self._db_session.rollback()
+                except Exception:
+                    pass
+
+    async def is_blacklisted(self, token: str) -> bool:
+        AuthService._cleanup_blacklist()
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        if token_hash in AuthService._token_blacklist:
+            return True
+        return await self._is_blacklisted_in_db(token)
+
+    async def _is_blacklisted_in_db(self, token: str) -> bool:
+        if not self._db_session:
+            return False
+        try:
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            result = await self._db_session.execute(
+                select(TokenBlacklist).where(TokenBlacklist.token_hash == token_hash)
+            )
+            return result.scalar_one_or_none() is not None
+        except Exception:
+            return False
 
     @staticmethod
     def hash_password(password: str) -> str:
@@ -44,9 +102,36 @@ class AuthService:
     @staticmethod
     def verify_password(password: str, password_hash: str) -> bool:
         try:
-            return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+            if bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8")):
+                return True
         except Exception:
+            pass
+        try:
+            import werkzeug.security
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=r"The '' password method is deprecated.*",
+                    category=UserWarning,
+                )
+                if werkzeug.security.check_password_hash(password_hash, password):
+                    return True
+        except Exception:
+            pass
+        return False
+
+    @staticmethod
+    def is_werkzeug_hash(password_hash: str) -> bool:
+        return password_hash.startswith(("pbkdf2:", "sha256:"))
+
+    async def migrate_password_if_needed(self, db, user: User, password: str) -> bool:
+        if not self.verify_password(password, user.password_hash):
             return False
+        if self.is_werkzeug_hash(user.password_hash):
+            user.password_hash = self.hash_password(password)
+            await db.commit()
+            await db.refresh(user)
+        return True
 
     @staticmethod
     def to_user_response(user: User) -> CurrentUserResponse:
@@ -92,31 +177,21 @@ class AuthService:
             user=self.to_user_response(user),
         )
 
-    def decode_token(self, token: str, expected_type: str | None = None) -> dict[str, Any]:
-        try:
-            header_segment, payload_segment, signature_segment = token.split(".")
-        except ValueError as exc:
-            raise AuthError("令牌格式无效") from exc
-
-        signing_input = f"{header_segment}.{payload_segment}".encode("ascii")
-        expected_signature = hmac.new(
-            self.secret_key.encode("utf-8"),
-            signing_input,
-            hashlib.sha256,
-        ).digest()
+    async def decode_token(self, token: str, expected_type: str | None = None) -> dict[str, Any]:
+        if await self.is_blacklisted(token):
+            raise AuthError("令牌已被撤销")
 
         try:
-            provided_signature = _b64url_decode(signature_segment)
-            payload = json.loads(_b64url_decode(payload_segment))
-        except Exception as exc:
-            raise AuthError("令牌载荷无效") from exc
-
-        if not hmac.compare_digest(provided_signature, expected_signature):
-            raise AuthError("令牌签名无效")
-
-        now = int(time.time())
-        if int(payload.get("exp", 0)) < now:
-            raise AuthError("令牌已过期")
+            payload = jwt.decode(
+                token,
+                self.secret_key,
+                algorithms=["HS256"],
+                options={"verify_exp": True}
+            )
+        except jwt.ExpiredSignatureError as exc:
+            raise AuthError("令牌已过期") from exc
+        except jwt.InvalidTokenError as exc:
+            raise AuthError("令牌无效") from exc
 
         token_type = payload.get("type")
         if expected_type and token_type != expected_type:
@@ -135,16 +210,4 @@ class AuthService:
             "exp": now + ttl_seconds,
             "jti": secrets.token_hex(16),
         }
-        header = {"alg": "HS256", "typ": "JWT"}
-
-        header_segment = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
-        payload_segment = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
-        signing_input = f"{header_segment}.{payload_segment}".encode("ascii")
-        signature_segment = _b64url_encode(
-            hmac.new(
-                self.secret_key.encode("utf-8"),
-                signing_input,
-                hashlib.sha256,
-            ).digest()
-        )
-        return f"{header_segment}.{payload_segment}.{signature_segment}"
+        return jwt.encode(payload, self.secret_key, algorithm="HS256")

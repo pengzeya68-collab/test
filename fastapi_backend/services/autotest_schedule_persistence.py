@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 from typing import Any, Optional
+import logging
 
 from sqlalchemy import select, text
 from fastapi_backend.core.autotest_database import async_session
 from fastapi_backend.models.autotest import AutoTestScenario
+
+_logger = logging.getLogger(__name__)
 
 
 def _schedule_column_ddl() -> list[tuple[str, str]]:
@@ -110,7 +113,7 @@ async def restore_scheduler_jobs_from_db() -> None:
                 is_active=s.schedule_is_active if s.schedule_is_active is not None else True,
             )
         except Exception as e:
-            print(f"[Scheduler] 从数据库恢复任务失败 scenario_id={s.id}: {e}")
+            _logger.error(f"[Scheduler] 从数据库恢复任务失败 scenario_id={s.id}: {e}")
 
 
 def read_schedule_webhook_sync(scenario_id: int) -> Optional[str]:
@@ -136,5 +139,7 @@ def read_schedule_webhook_sync(scenario_id: int) -> Optional[str]:
             return s or None
         finally:
             con.close()
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"读取定时任务 webhook URL 失败: {e}")
         return None

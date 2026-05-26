@@ -1,6 +1,6 @@
 <template>
-  <div class="learning-paths">
-    <div class="container">
+  <div class="learning-paths" style="position: relative; z-index: 1;">
+    <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
       <!-- 顶部筛选 -->
       <div class="filter-bar">
         <h1 class="page-title">学习路径</h1>
@@ -100,7 +100,6 @@
       <div class="loading" v-if="loading">
         <el-icon class="is-loading" size="40"><Loading /></el-icon>
       </div>
-    </div>
   </div>
 </template>
 
@@ -236,17 +235,18 @@ const goToDetail = (id) => {
 
 <style scoped>
 .learning-paths {
-  padding: 40px 0;
-  min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-page);
+  padding: 20px 0;
+  min-height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.container {
-  width: 100%;
-  max-width: 1440px;
-  padding: 0 24px;
-  margin: 0 auto;
-  box-sizing: border-box;
+.cyber-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
 }
 
 .filter-bar {

@@ -1,8 +1,7 @@
 """Skills radar / detail / progress – migrated from Flask backend/api/skills.py."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_, select, func
@@ -300,11 +299,12 @@ async def get_skill_detail(
     score = await _calculate_skill_score(user_id, skill_key, db)
 
     # Recommended exercises for this skill
-    rec_stmt = (
-        select(Exercise)
-        .where(Exercise.category == config["name"], Exercise.is_public == True)  # noqa: E712
-        .limit(5)
-    )
+    mapping = SKILL_CATEGORY_MAP.get(skill_key, {})
+    categories: list[str] = mapping.get("categories", [])
+    rec_stmt = select(Exercise).where(Exercise.is_public == True)
+    if categories:
+        rec_stmt = rec_stmt.where(Exercise.category.in_(categories))
+    rec_stmt = rec_stmt.limit(5)
     rec_result = await db.execute(rec_stmt)
     recommended = rec_result.scalars().all()
 
@@ -336,7 +336,7 @@ async def get_skill_progress(
 ):
     """获取技能提升进度"""
     user_id = current_user.id
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     one_month_ago = now - timedelta(days=30)
 
     progress_data = []

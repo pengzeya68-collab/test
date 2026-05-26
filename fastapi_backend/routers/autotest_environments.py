@@ -4,7 +4,6 @@ AutoTest 统一路由 - 环境管理
 路径前缀: /api/auto-test/environments
 映射原 auto_test_platform 的 /api/environments
 """
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
@@ -32,7 +31,7 @@ def _env_to_dict(env):
     }
 
 
-@router.get("/")
+@router.get("")
 async def get_all_environments(db: AsyncSession = Depends(get_db)):
     """获取所有环境"""
     result = await db.execute(select(AutoTestEnvironment).order_by(AutoTestEnvironment.created_at))
@@ -50,13 +49,23 @@ async def get_environment(env_id: int, db: AsyncSession = Depends(get_db)):
     return _env_to_dict(env)
 
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 async def create_environment(
     env_in: AutoTestEnvironmentCreate,
     db: AsyncSession = Depends(get_db),
 ):
     """创建环境"""
-    env = AutoTestEnvironment(**env_in.model_dump())
+    data = env_in.model_dump()
+    if "name" in data:
+        data["env_name"] = data.pop("name")
+
+    if data.get("is_default"):
+        await db.execute(
+            update(AutoTestEnvironment)
+            .values(is_default=False)
+        )
+
+    env = AutoTestEnvironment(**data)
     db.add(env)
     await db.commit()
     await db.refresh(env)
@@ -83,6 +92,8 @@ async def update_environment(
         )
 
     for field, value in env_in.model_dump(exclude_unset=True).items():
+        if field == "name":
+            field = "env_name"
         setattr(env, field, value)
 
     await db.commit()

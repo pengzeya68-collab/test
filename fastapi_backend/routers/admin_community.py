@@ -2,18 +2,15 @@
 后台管理子路由 - 社区管理
 从 admin_manage.py 拆分
 """
-from typing import Optional, Any
-from datetime import datetime
+from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy import select, func, or_, and_, desc
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy import select, func, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi_backend.core.database import get_db, AsyncSessionLocal
-from fastapi_backend.core.exceptions import NotFoundException
+from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Exercise, LearningPath, Exam, ExamQuestion, Post, Comment, InterviewQuestion, Submission, Progress
-from fastapi_backend.services.auth_service import AuthService
+from fastapi_backend.models.models import User, Post, Comment
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-社区管理"])
 
@@ -110,7 +107,7 @@ async def toggle_post_top(
 
 
 @router.delete("/community/posts/{post_id}")
-async def delete_post(
+async def admin_delete_post(
     post_id: int,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
@@ -171,7 +168,7 @@ async def list_comments(
 
 
 @router.delete("/community/comments/{comment_id}")
-async def delete_comment(
+async def admin_delete_comment(
     comment_id: int,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)

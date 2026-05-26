@@ -3,8 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -30,10 +29,14 @@ PROMPT_TEMPLATES = {
 }
 
 _conversation_history: dict[int, list[dict]] = {}
+MAX_TRACKED_USERS = 1000
 
 
 def _get_history(user_id: int) -> list[dict]:
     if user_id not in _conversation_history:
+        if len(_conversation_history) >= MAX_TRACKED_USERS:
+            oldest = next(iter(_conversation_history))
+            del _conversation_history[oldest]
         _conversation_history[user_id] = [{"role": "system", "content": SYSTEM_PROMPT}]
     return _conversation_history[user_id]
 
@@ -58,6 +61,7 @@ async def _call_ai_with_config(messages: list[dict], config: AIConfig) -> str:
         trust_env=False,
     )
 
+    client = None
     try:
         client_kwargs = {"api_key": config.api_key, "http_client": http_client}
         base_url = config.base_url
@@ -80,17 +84,19 @@ async def _call_ai_with_config(messages: list[dict], config: AIConfig) -> str:
             extra_body=extra_body,
         )
 
-        await client.close()
-
         if response.choices:
             return response.choices[0].message.content
         raise ValueError("AI返回空响应")
-    except Exception:
+    finally:
+        if client:
+            try:
+                await client.close()
+            except Exception:
+                pass
         try:
             await http_client.aclose()
         except Exception:
             pass
-        raise
 
 
 async def _get_ai_response(messages: list[dict], db: AsyncSession = None) -> str:
@@ -138,7 +144,7 @@ async def ai_chat(
     answer = await _get_ai_response(history, db)
     history.append({"role": "assistant", "content": answer})
 
-    return {"answer": answer, "timestamp": datetime.now().isoformat()}
+    return {"answer": answer, "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @router.post("/code-review")
@@ -160,7 +166,7 @@ async def code_review(
     answer = await _get_ai_response(history, db)
     history.append({"role": "assistant", "content": answer})
 
-    return {"review_result": answer, "timestamp": datetime.now().isoformat()}
+    return {"review_result": answer, "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @router.get("/learning-advice")
@@ -181,7 +187,7 @@ async def learning_advice(
     _trim_history(current_user.id)
 
     answer = await _get_ai_response(history, db)
-    return {"advice": answer, "skill_data": skill_data, "timestamp": datetime.now().isoformat()}
+    return {"advice": answer, "skill_data": skill_data, "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @router.post("/explain-exercise")
@@ -214,7 +220,7 @@ async def explain_exercise(
         "explanation": answer,
         "exercise_title": ex.title,
         "correct_answer": ex.solution,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 

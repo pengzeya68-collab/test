@@ -213,15 +213,17 @@ const toggleTop = async (row) => {
 }
 
 const deletePost = async (row) => {
-  await ElMessageBox.confirm(`确定删除帖子「${row.title.slice(0, 20)}」吗？相关评论也会一并删除。`, '删除确认', {
-    confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning'
-  })
   try {
+    await ElMessageBox.confirm(`确定删除帖子「${row.title.slice(0, 20)}」吗？相关评论也会一并删除。`, '删除确认', {
+      confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning'
+    })
     await request.delete(`/admin/community/posts/${row.id}`)
     ElMessage.success('帖子已删除')
     fetchPosts()
   } catch (e) {
-    ElMessage.error('删除失败')
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
   }
 }
 
@@ -249,15 +251,17 @@ const fetchComments = async () => {
 }
 
 const deleteComment = async (row) => {
-  await ElMessageBox.confirm('确定删除该评论吗？', '删除确认', {
-    confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning'
-  })
   try {
+    await ElMessageBox.confirm('确定删除该评论吗？', '删除确认', {
+      confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning'
+    })
     await request.delete(`/admin/community/comments/${row.id}`)
     ElMessage.success('评论已删除')
     fetchComments()
   } catch (e) {
-    ElMessage.error('删除失败')
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
   }
 }
 

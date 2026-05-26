@@ -107,6 +107,7 @@ class AutoTestScenario(Base):
     schedule_webhook_url = Column(Text, nullable=True, comment="定时任务 Webhook 告警地址")
     schedule_task_name = Column(String(200), nullable=True, comment="定时任务显示名称")
     schedule_is_active = Column(Boolean, default=True, comment="定时任务是否启用（未暂停）")
+    project_id = Column(Integer, nullable=True, comment="关联的项目实战ID（NULL表示不限项目）")
 
     steps = relationship(
         "AutoTestScenarioStep",
@@ -170,6 +171,7 @@ class AutoTestScenarioExecutionRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     scenario_id = Column(Integer, ForeignKey("test_scenarios.id"), nullable=False, comment="场景ID")
+    env_id = Column(Integer, nullable=True, comment="执行环境ID")
     status = Column(String(20), nullable=False, comment="执行状态")
     total_steps = Column(Integer, nullable=False, default=0, comment="总步骤数")
     failed_steps = Column(Integer, nullable=False, default=0, comment="失败步骤数")
@@ -180,3 +182,150 @@ class AutoTestScenarioExecutionRecord(Base):
     created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="执行时间")
 
     scenario = relationship("AutoTestScenario", back_populates="execution_records")
+
+
+# ========== 性能测试模型 ==========
+
+class AutoTestPerformanceScenario(Base):
+    """性能测试场景表"""
+    __tablename__ = "performance_scenarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False, comment="场景名称")
+    description = Column(Text, nullable=True, comment="场景描述")
+    test_type = Column(String(20), nullable=False, default="load", comment="测试类型: load/stress/soak")
+    config = Column(JSON, nullable=True, default=dict, comment="测试配置")
+    status = Column(String(20), nullable=False, default="inactive", comment="状态: active/inactive")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+
+    # 关联关系
+    steps = relationship(
+        "AutoTestPerformanceScenarioStep",
+        back_populates="scenario",
+        cascade="all, delete-orphan",
+        order_by="AutoTestPerformanceScenarioStep.step_order",
+    )
+    executions = relationship(
+        "AutoTestPerformanceExecutionRecord",
+        back_populates="scenario",
+        cascade="all, delete-orphan",
+    )
+
+
+class AutoTestPerformanceScenarioStep(Base):
+    """性能测试场景步骤表（引用接口用例）"""
+    __tablename__ = "performance_scenario_steps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    scenario_id = Column(Integer, ForeignKey("performance_scenarios.id"), nullable=False, comment="所属场景ID")
+    api_case_id = Column(Integer, ForeignKey("api_cases.id"), nullable=False, comment="引用的接口ID")
+    step_order = Column(Integer, nullable=False, default=0, comment="执行顺序")
+    weight = Column(Integer, nullable=False, default=1, comment="权重（用于混合场景）")
+    think_time = Column(Integer, nullable=False, default=0, comment="思考时间(ms)")
+    is_active = Column(Boolean, default=True, comment="是否启用")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
+
+    # 关联关系
+    scenario = relationship("AutoTestPerformanceScenario", back_populates="steps")
+    api_case = relationship("AutoTestCase")
+
+
+class AutoTestPerformanceExecutionRecord(Base):
+    """性能测试执行记录表"""
+    __tablename__ = "performance_execution_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    scenario_id = Column(Integer, ForeignKey("performance_scenarios.id"), nullable=False, comment="场景ID")
+    status = Column(String(20), nullable=False, default="pending", comment="执行状态: pending/running/completed/failed")
+    start_time = Column(DateTime, nullable=True, comment="开始时间")
+    end_time = Column(DateTime, nullable=True, comment="结束时间")
+    
+    # 聚合指标
+    total_requests = Column(Integer, nullable=True, comment="总请求数")
+    failed_requests = Column(Integer, nullable=True, comment="失败请求数")
+    avg_response_time = Column(Integer, nullable=True, comment="平均响应时间(ms)")
+    min_response_time = Column(Integer, nullable=True, comment="最小响应时间(ms)")
+    max_response_time = Column(Integer, nullable=True, comment="最大响应时间(ms)")
+    p50_response_time = Column(Integer, nullable=True, comment="P50响应时间(ms)")
+    p95_response_time = Column(Integer, nullable=True, comment="P95响应时间(ms)")
+    p99_response_time = Column(Integer, nullable=True, comment="P99响应时间(ms)")
+    requests_per_second = Column(Integer, nullable=True, comment="每秒请求数(RPS)")
+    error_rate = Column(Integer, nullable=True, comment="错误率(%)")
+    
+    # 报告路径
+    report_url = Column(String(500), nullable=True, comment="报告路径")
+    report_data = Column(JSON, nullable=True, comment="报告数据（JSON格式）")
+    
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
+
+    # 关联关系
+    scenario = relationship("AutoTestPerformanceScenario", back_populates="executions")
+    metrics = relationship(
+        "AutoTestPerformanceMetrics",
+        back_populates="execution",
+        cascade="all, delete-orphan",
+    )
+
+
+class AutoTestPerformanceMetrics(Base):
+    """性能指标时序数据表"""
+    __tablename__ = "performance_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    execution_id = Column(Integer, ForeignKey("performance_execution_records.id"), nullable=False, comment="执行记录ID")
+    timestamp = Column(DateTime, nullable=False, comment="时间戳")
+    
+    # 实时指标
+    active_users = Column(Integer, nullable=True, comment="活跃用户数")
+    current_rps = Column(Integer, nullable=True, comment="当前RPS")
+    avg_response_time = Column(Integer, nullable=True, comment="平均响应时间(ms)")
+    min_response_time = Column(Integer, nullable=True, comment="最小响应时间(ms)")
+    max_response_time = Column(Integer, nullable=True, comment="最大响应时间(ms)")
+    p95_response_time = Column(Integer, nullable=True, comment="P95响应时间(ms)")
+    failed_requests = Column(Integer, nullable=True, comment="失败请求数")
+    
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
+
+    # 关联关系
+    execution = relationship("AutoTestPerformanceExecutionRecord", back_populates="metrics")
+
+
+# ========== 测试数据工厂模型 ==========
+
+class TestDataTemplate(Base):
+    """测试数据模板表"""
+    __tablename__ = "test_data_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False, comment="模板名称")
+    description = Column(Text, nullable=True, comment="模板描述")
+    user_id = Column(Integer, nullable=True, index=True, comment="创建者用户ID(跨库引用，非FK)")
+    scenario_id = Column(Integer, ForeignKey("test_scenarios.id"), nullable=True, comment="关联场景ID")
+    row_count = Column(Integer, default=10, comment="生成行数")
+    is_active = Column(Boolean, default=True, comment="是否启用")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+
+    fields = relationship(
+        "TestDataTemplateField",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        order_by="TestDataTemplateField.sort_order",
+    )
+
+
+class TestDataTemplateField(Base):
+    """测试数据模板字段规则表"""
+    __tablename__ = "test_data_template_fields"
+
+    id = Column(Integer, primary_key=True, index=True)
+    template_id = Column(Integer, ForeignKey("test_data_templates.id"), nullable=False, comment="所属模板ID")
+    field_name = Column(String(100), nullable=False, comment="字段名")
+    field_label = Column(String(200), nullable=True, comment="字段标签")
+    rule_type = Column(String(50), nullable=False, comment="规则类型: fixed/enum/increment/uuid/timestamp/date_offset/phone/email/username/env_ref")
+    rule_config = Column(JSON, nullable=True, comment="规则配置JSON")
+    sort_order = Column(Integer, default=0, comment="排序")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
+
+    template = relationship("TestDataTemplate", back_populates="fields")

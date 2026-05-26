@@ -5,21 +5,21 @@ AutoTest 统一路由 - 执行、历史、调度、邮件、导入导出
 映射原 auto_test_platform main.py 中的内联端点
 """
 import json
+import logging
 import subprocess
-import time
 import uuid
 import asyncio
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.models import User
 from fastapi_backend.models.autotest import (
     AutoTestCase,
     AutoTestEnvironment,
@@ -27,14 +27,11 @@ from fastapi_backend.models.autotest import (
     AutoTestScenario,
     AutoTestScenarioExecutionRecord,
     AutoTestGroup,
-    AutoTestGlobalVariable,
 )
-from fastapi_backend.utils.encryption import decrypt
 from fastapi_backend.schemas.autotest import (
     AutoTestHistoryResponse,
     CaseExecutionResult,
     CaseRunRequest,
-    AutoTestEnvironmentResponse,
     ScheduleTaskCreate,
     ScheduleTaskResponse,
     EmailConfig,
@@ -57,8 +54,98 @@ _task_store_lock = asyncio.Lock()
 
 # ========== 任务状态管理 ==========
 from fastapi_backend.services.autotest_task_store import (
-    get_task, update_task, delete_task, get_all_tasks
+    get_task, update_task
 )
+
+
+def _build_stored_task_result(stored: dict) -> Optional[dict]:
+    if not stored:
+        return None
+    if isinstance(stored.get("result"), dict):
+        return stored["result"]
+    result = {
+        key: value
+        for key, value in stored.items()
+        if key not in {"task_id", "status", "state", "info", "progress", "traceback", "created_at", "updated_at", "completed_at"}
+    }
+    return result or None
+
+
+def _should_run_scenario_locally() -> bool:
+    """开发环境兜底：没有可用 Celery worker 时，回退到当前 FastAPI 进程异步执行。"""
+    try:
+        from fastapi_backend.tasks import celery_app
+
+        broker_url = str(celery_app.conf.broker_url or "")
+        if broker_url.startswith("memory://"):
+            return True
+
+        inspect = celery_app.control.inspect(timeout=0.5)
+        active_workers = inspect.ping() or {}
+        return not bool(active_workers)
+    except Exception:
+        return True
+
+
+async def _run_scenario_locally(task_id: str, scenario_id: int, env_id: Optional[int]) -> None:
+    logger = logging.getLogger(__name__)
+
+    try:
+        from fastapi_backend.services.autotest_scenario_runner import (
+            run_scenario as execute_scenario_async,
+        )
+
+        def on_progress(current_step, total_steps, step_name):
+            percent = int((current_step / total_steps) * 100) if total_steps > 0 else 0
+            asyncio.create_task(update_task(task_id, {
+                "task_id": task_id,
+                "scenario_id": scenario_id,
+                "status": "PROGRESS",
+                "info": f"执行中: {step_name}",
+                "progress": {
+                    "percent": percent,
+                    "current": current_step,
+                    "total": total_steps,
+                    "current_api": step_name,
+                    "current_step": current_step,
+                    "total_steps": total_steps,
+                    "step_name": step_name,
+                },
+                "updated_at": time.time(),
+            }))
+
+        result = await execute_scenario_async(scenario_id, env_id, progress_callback=on_progress)
+        result["task_id"] = task_id
+        result["status"] = "completed"
+        result["scenario_id"] = scenario_id
+
+        await update_task(task_id, {
+            "task_id": task_id,
+            "scenario_id": scenario_id,
+            "status": "completed",
+            "info": "任务执行成功",
+            "progress": {
+                "percent": 100,
+                "current": result.get("total_steps", 0),
+                "total": result.get("total_steps", 0),
+                "current_api": "执行完成",
+                "current_step": result.get("total_steps", 0),
+                "total_steps": result.get("total_steps", 0),
+                "step_name": "执行完成",
+            },
+            "result": result,
+            "completed_at": time.time(),
+        })
+    except Exception as exc:
+        logger.error("本地异步执行场景失败 task_id=%s: %s", task_id, exc, exc_info=True)
+        await update_task(task_id, {
+            "task_id": task_id,
+            "scenario_id": scenario_id,
+            "status": "failed",
+            "info": f"任务失败: {str(exc)[:100]}",
+            "error": str(exc),
+            "completed_at": time.time(),
+        })
 
 # ========== 接口调试发送 ==========
 
@@ -90,22 +177,43 @@ async def send_request(payload: dict):
 
 @router.get("/tasks/{task_id}")
 async def get_task_status(task_id: str):
-    """获取Celery任务状态"""
+    """获取任务状态：非终态优先读 Celery 实时状态，终态读持久化存储"""
+    # 定义终态列表
+    TERMINAL_STATES = {"completed", "failed", "cancelled", "SUCCESS", "FAILURE"}
+    
+    # 1. 先查 Celery 实时状态（获取最新进度）
+    celery_state = None
+    celery_meta = {}
     try:
         from celery.result import AsyncResult
         from fastapi_backend.tasks import celery_app
-
         task_result = AsyncResult(task_id, app=celery_app)
-
-        if task_result.state == 'PENDING':
-            return {
-                "task_id": task_id,
-                "status": "PENDING",
-                "state": "PENDING",
-                "info": "任务等待中"
-            }
-        elif task_result.state == 'PROGRESS':
-            meta = task_result.info or {}
+        celery_state = task_result.state
+        celery_meta = task_result.info or {}
+    except Exception:
+        pass
+    
+    # 2. 再查持久化存储
+    stored = get_task(task_id)
+    
+    # 3. 如果 Celery 有实时状态且任务非终态，优先使用 Celery 状态
+    if celery_state and celery_state not in ("PENDING",):
+        if celery_state == 'PROGRESS':
+            meta = celery_meta if isinstance(celery_meta, dict) else {}
+            # 同时更新持久化存储
+            if stored:
+                stored["status"] = "PROGRESS"
+                stored["info"] = f"执行中: {meta.get('step_name', '...')}"
+                stored["progress"] = {
+                    "percent": meta.get('percent', 0),
+                    "current": meta.get('current', 0),
+                    "total": meta.get('total', 0),
+                    "current_api": meta.get('current_api', '执行中...'),
+                    "current_step": meta.get('current_step', 0),
+                    "total_steps": meta.get('total_steps', 0),
+                    "step_name": meta.get('step_name', '执行中...'),
+                }
+                await update_task(task_id, stored)
             return {
                 "task_id": task_id,
                 "status": "PROGRESS",
@@ -117,69 +225,110 @@ async def get_task_status(task_id: str):
                     "current_api": meta.get('current_api', '执行中...'),
                     "current_step": meta.get('current_step', 0),
                     "total_steps": meta.get('total_steps', 0),
-                    "step_name": meta.get('step_name', '执行中...')
+                    "step_name": meta.get('step_name', '执行中...'),
                 },
-                "info": "任务执行中"
+                "info": f"执行中: {meta.get('step_name', '...')}"
             }
-        elif task_result.state == 'STARTED':
+        elif celery_state == 'STARTED':
             return {
                 "task_id": task_id,
                 "status": "STARTED",
                 "state": "STARTED",
                 "progress": {"percent": 5, "current": 0, "total": 0, "current_api": '启动中...'},
-                "info": "任务执行中"
+                "info": "任务启动中"
             }
-        elif task_result.state == 'RETRY':
+        elif celery_state == 'SUCCESS':
+            result = celery_meta if not isinstance(celery_meta, Exception) else {}
             return {
                 "task_id": task_id,
-                "status": "RETRY",
-                "state": "RETRY",
-                "info": "任务重试中",
-                "traceback": task_result.traceback
-            }
-        elif task_result.state == 'SUCCESS':
-            return {
-                "task_id": task_id,
-                "status": "SUCCESS",
+                "status": "completed",
                 "state": "SUCCESS",
-                "result": task_result.result,
+                "result": result,
                 "progress": {"percent": 100, "current": 0, "total": 0, "current_api": '执行完成'},
                 "info": "任务执行成功"
             }
-        elif task_result.state == 'FAILURE':
+        elif celery_state == 'FAILURE':
+            error_str = str(celery_meta) if isinstance(celery_meta, Exception) else str(celery_meta)
             return {
                 "task_id": task_id,
-                "status": "FAILURE",
+                "status": "failed",
                 "state": "FAILURE",
-                "error": str(task_result.result),
-                "traceback": task_result.traceback
+                "error": error_str,
+                "info": f"任务失败: {error_str[:100]}"
             }
-        else:
-            return {
-                "task_id": task_id,
-                "status": "UNKNOWN",
-                "state": task_result.state
-            }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取任务状态失败: {str(e)}")
+    
+    # 4. 查持久化存储（终态或 Celery 无状态）
+    if stored is not None:
+        stored_status = stored.get("status", "UNKNOWN")
+        return {
+            "task_id": task_id,
+            "status": stored_status,
+            "state": stored_status,
+            "info": stored.get("info", ""),
+            "progress": stored.get("progress"),
+            "result": _build_stored_task_result(stored),
+            "error": stored.get("error"),
+            "traceback": stored.get("traceback"),
+        }
+    
+    # 5. 未知任务
+    return {
+        "task_id": task_id,
+        "status": "UNKNOWN",
+        "state": "UNKNOWN",
+        "info": "任务不存在或状态已失效"
+    }
 
 
 @router.post("/tasks/{task_id}/cancel")
-async def cancel_task(task_id: str):
-    """取消正在执行的Celery任务"""
+async def cancel_task(task_id: str, db: AsyncSession = Depends(get_db)):
+    """取消任务，优先更新持久化存储，同时撤销 Celery 任务"""
+    stored = get_task(task_id)
+
+    # 未知任务（不在持久化层也不在 Celery）直接返回
+    if stored is None:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+
+    current_status = stored.get("status", "")
+    if current_status in ("completed", "failed", "cancelled"):
+        return {"message": f"任务已处于 {current_status} 状态，无法取消", "task_id": task_id}
+
     try:
         from celery.result import AsyncResult
         from fastapi_backend.tasks import celery_app
 
         task_result = AsyncResult(task_id, app=celery_app)
-
         if not task_result.ready():
             task_result.revoke(terminate=True)
-            return {"message": "任务取消请求已提交", "task_id": task_id}
-        else:
-            return {"message": "任务已完成或已取消", "task_id": task_id}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"取消任务失败: {str(e)}")
+    except Exception:
+        pass  # Celery 撤销失败不影响最终结果
+
+    # 更新持久化状态
+    stored["status"] = "cancelled"
+    stored["info"] = "任务已被取消"
+    stored["completed_at"] = time.time()
+    await update_task(task_id, stored)
+
+    scenario_id = stored.get("scenario_id")
+    if scenario_id:
+        progress = stored.get("progress") or {}
+        current_steps = progress.get("current") or progress.get("current_step") or 0
+        total_steps = progress.get("total") or progress.get("total_steps") or 0
+        cancelled_record = AutoTestScenarioExecutionRecord(
+            scenario_id=scenario_id,
+            env_id=stored.get("env_id"),
+            status="cancelled",
+            total_steps=total_steps,
+            failed_steps=0,
+            success_steps=max(0, min(current_steps, total_steps)) if total_steps else 0,
+            skipped_steps=max(total_steps - current_steps, 0) if total_steps else 0,
+            total_time=None,
+            report_url=None,
+        )
+        db.add(cancelled_record)
+        await db.commit()
+
+    return {"message": "任务取消成功", "task_id": task_id}
 
 
 # ========== 报告详情 ==========
@@ -230,7 +379,7 @@ async def run_case(case_id: int, body: CaseRunRequest = None, db: AsyncSession =
         except (ValueError, TypeError):
             pass
     if env is None:
-        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True))
+        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default))
         env = result.scalar_one_or_none()
         if not env:
             result = await db.execute(select(AutoTestEnvironment))
@@ -392,19 +541,44 @@ async def run_scenario(scenario_id: int, body: CaseRunRequest = None, background
                 raise HTTPException(status_code=400, detail="场景已停用，禁止执行")
 
         from fastapi_backend.tasks import task_run_scenario
-        import logging
+        from fastapi_backend.services.autotest_task_store import update_task as seed_task
         logger = logging.getLogger(__name__)
 
-        # 创建Celery任务
-        logger.info(f"准备发送Celery任务: scenario_id={scenario_id}, env_id={env_id}")
-        task = task_run_scenario.delay(scenario_id, env_id)
-        if task is None:
-            raise ValueError("Celery任务创建失败，task为None")
-        task_id = task.id
-        if not task_id:
-            raise ValueError("Celery任务ID为空，任务可能未成功发送")
+        task_id = None
+        use_local_runner = _should_run_scenario_locally()
 
-        logger.info(f"Celery任务已发送，任务ID: {task_id}")
+        if use_local_runner:
+            task_id = str(uuid.uuid4())
+            logger.warning(
+                "未检测到可用 Celery worker，场景执行切换为本地异步模式: scenario_id=%s, env_id=%s, task_id=%s",
+                scenario_id,
+                env_id,
+                task_id,
+            )
+        else:
+            logger.info(f"准备发送Celery任务: scenario_id={scenario_id}, env_id={env_id}")
+            task = task_run_scenario.delay(scenario_id, env_id)
+            if task is None:
+                raise ValueError("Celery任务创建失败，task为None")
+            task_id = task.id
+            if not task_id:
+                raise ValueError("Celery任务ID为空，任务可能未成功发送")
+
+        # 写入初始持久化记录，确保查询接口能追踪到该任务
+        await seed_task(task_id, {
+            "task_id": task_id,
+            "scenario_id": scenario_id,
+            "status": "PROGRESS",
+            "info": "任务已提交，正在后台执行",
+            "progress": {"percent": 0, "current": 0, "total": 0, "current_api": "等待执行..."},
+            "created_at": time.time(),
+        })
+
+        if use_local_runner:
+            asyncio.create_task(_run_scenario_locally(task_id, scenario_id, env_id))
+            logger.info(f"本地异步任务已启动，任务ID: {task_id}")
+        else:
+            logger.info(f"Celery任务已发送，任务ID: {task_id}")
 
         # 立即返回任务ID，前端可以轮询状态
         return {
@@ -413,8 +587,9 @@ async def run_scenario(scenario_id: int, body: CaseRunRequest = None, background
             "status": "PROGRESS",
             "message": "任务已提交，正在后台执行"
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        import logging
         logging.getLogger(__name__).error(f"任务提交失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"任务提交失败: {str(e)}")
 
@@ -440,8 +615,16 @@ async def get_scenario_execution_history(
     )
 
     # 状态筛选
-    if status and status in ['completed', 'failed', 'running']:
-        query = query.where(AutoTestScenarioExecutionRecord.status == status)
+    if status:
+        normalized_status = {
+            "completed": "success",
+            "running": "running",
+            "success": "success",
+            "failed": "failed",
+            "error": "error",
+            "cancelled": "cancelled",
+        }.get(status, status)
+        query = query.where(AutoTestScenarioExecutionRecord.status == normalized_status)
 
     # 日期范围筛选
     if start_date:
@@ -471,6 +654,7 @@ async def get_scenario_execution_history(
         "items": [
             {
                 "id": rec.id,
+                "env_id": rec.env_id,
                 "status": rec.status,
                 "total_steps": rec.total_steps,
                 "success_steps": rec.success_steps,
@@ -534,8 +718,8 @@ async def run_scenario_data_driven(scenario_id: int, body: CaseRunRequest = None
         if allure_results_dir.exists():
             try:
                 _shutil.rmtree(str(allure_results_dir))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.getLogger(__name__).warning(f"清理 allure-results 目录失败: {e}")
         allure_results_dir.mkdir(parents=True, exist_ok=True)
 
         history_id = str(uuid.uuid4())[:8]
@@ -556,7 +740,6 @@ async def run_scenario_data_driven(scenario_id: int, body: CaseRunRequest = None
                 ["allure", "generate", str(allure_results_dir), "-o", str(report_dir), "--clean"],
                 capture_output=True,
                 timeout=60,
-                shell=True,
                 text=True,
                 encoding='utf-8',
                 errors='ignore'
@@ -565,12 +748,16 @@ async def run_scenario_data_driven(scenario_id: int, body: CaseRunRequest = None
                 result_data["report_url"] = f"/reports/scenario_{scenario_id}/index.html"
             else:
                 result_data["report_url"] = None
-        except (FileNotFoundError, Exception):
+        except FileNotFoundError:
+            result_data["report_url"] = None
+        except Exception:
             result_data["report_url"] = None
 
         return result_data
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"执行失败: {str(e)}")
 
@@ -590,7 +777,7 @@ def _scenario_id_from_scheduler_task_id(task_id: str) -> Optional[int]:
 async def list_scheduler_tasks():
     """获取所有定时任务"""
     from fastapi_backend.services.autotest_scheduler import get_all_scheduled_tasks
-    return get_all_tasks()
+    return get_all_scheduled_tasks()
 
 
 @router.get("/scheduler/tasks/{scenario_id}", response_model=List[ScheduleTaskResponse])
@@ -627,6 +814,8 @@ async def create_scheduler_task(task: ScheduleTaskCreate):
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"创建定时任务失败: {str(e)}")
 
@@ -679,6 +868,8 @@ async def run_scheduler_task_now(task_id: str):
 
         asyncio.create_task(_execute_job_safe())
         return {"message": "任务已触发执行"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"触发执行失败: {str(e)}")
 
@@ -700,6 +891,8 @@ async def toggle_scheduler_task(task_id: str):
         if sid is not None:
             await persist_schedule_is_active_db(int(sid), bool(result.get("is_active")))
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"切换状态失败: {str(e)}")
 
@@ -708,7 +901,7 @@ async def toggle_scheduler_task(task_id: str):
 
 @router.get("/email/config")
 async def get_email_config():
-    """获取当前邮件配置"""
+    """获取当前邮件配置（从持久化存储读取）"""
     from fastapi_backend.core.autotest_settings import get_settings
     settings = get_settings()
     return {
@@ -717,28 +910,34 @@ async def get_email_config():
         "smtpPort": getattr(settings, "EMAIL_SMTP_PORT", 465),
         "smtpUser": getattr(settings, "EMAIL_SMTP_USER", ""),
         "smtpPassword": getattr(settings, "EMAIL_SMTP_PASSWORD", ""),
-        "fromEmail": getattr(settings, "EMAIL_FROM", ""),
+        "fromEmail": getattr(settings, "EMAIL_FROM_ADDRESS", ""),
         "adminToEmail": getattr(settings, "EMAIL_ADMIN_TO", ""),
-        "enableSSL": getattr(settings, "EMAIL_ENABLE_SSL", True),
-        "baseUrl": getattr(settings, "BASE_URL", ""),
+        "enableSSL": getattr(settings, "EMAIL_USE_SSL", True),
+        "baseUrl": getattr(settings, "AUTO_TEST_BASE_URL", ""),
+        "testToEmail": getattr(settings, "EMAIL_TEST_TO", ""),
     }
 
 
 @router.post("/email/config")
 async def save_email_config(config: EmailConfig):
-    """保存邮件配置到内存"""
+    """保存邮件配置到持久化存储（system_config.json）"""
     from fastapi_backend.core.autotest_settings import get_settings
     settings = get_settings()
-    setattr(settings, "EMAIL_ENABLED", config.enabled)
-    setattr(settings, "EMAIL_SMTP_HOST", config.smtpHost)
-    setattr(settings, "EMAIL_SMTP_PORT", config.smtpPort)
-    setattr(settings, "EMAIL_SMTP_USER", config.smtpUser)
-    setattr(settings, "EMAIL_SMTP_PASSWORD", config.smtpPassword)
-    setattr(settings, "EMAIL_FROM", config.fromEmail)
-    setattr(settings, "EMAIL_ADMIN_TO", config.adminToEmail)
-    setattr(settings, "EMAIL_ENABLE_SSL", config.enableSSL)
-    setattr(settings, "BASE_URL", config.baseUrl)
+    settings.EMAIL_ENABLED = config.enabled
+    settings.EMAIL_SMTP_HOST = config.smtpHost
+    settings.EMAIL_SMTP_PORT = config.smtpPort
+    settings.EMAIL_SMTP_USER = config.smtpUser
+    settings.EMAIL_SMTP_PASSWORD = config.smtpPassword
+    settings.EMAIL_FROM_ADDRESS = config.fromEmail
+    settings.EMAIL_ADMIN_TO = config.adminToEmail
+    settings.EMAIL_USE_SSL = config.enableSSL
+    settings.EMAIL_TEST_TO = config.testToEmail
+    settings.AUTO_TEST_BASE_URL = config.baseUrl
+    
+    # 保存到持久化存储
+    settings.save_to_persistent()
 
+    # 重置邮件通知器单例，使新配置生效
     from fastapi_backend.services.autotest_email_notifier import get_email_notifier
     import fastapi_backend.services.autotest_email_notifier as email_notifier_module
     email_notifier_module._email_notifier_instance = None
@@ -749,34 +948,26 @@ async def save_email_config(config: EmailConfig):
 
 @router.post("/email/test")
 async def send_test_email(request: TestEmailRequest):
-    """发送测试邮件验证配置是否正确"""
+    """发送测试邮件验证 SMTP 配置是否正确"""
     from fastapi_backend.services.autotest_email_notifier import get_email_notifier
-    from fastapi_backend.core.autotest_settings import get_settings
-    settings = get_settings()
 
     notifier = get_email_notifier()
-    success = notifier.send_scenario_result(
-        to_email=request.to_email,
-        scenario_name="测试场景",
-        scenario_id=0,
-        status="success",
-        total_steps=3,
-        success_steps=3,
-        failed_steps=0,
-        skipped_steps=0,
-        total_time=1250,
-        report_url="",
-        base_url=settings.BASE_URL,
-    )
+    # 使用 send_test_email 方法，不依赖 EMAIL_ENABLED 开关
+    success = await notifier.send_test_email(to_email=request.to_email)
     if not success:
-        raise HTTPException(status_code=500, detail="测试邮件发送失败，请检查配置")
+        raise HTTPException(status_code=500, detail="测试邮件发送失败，请检查 SMTP 配置")
     return {"message": "测试邮件发送成功"}
 
 
 # ========== 导入导出 API ==========
 
 @router.post("/import/postman")
-async def import_postman(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+async def import_postman(
+    file: UploadFile = File(...),
+    dry_run: bool = Form(False),
+    target_group_id: Optional[int] = Form(None),
+    db: AsyncSession = Depends(get_db),
+):
     """导入 Postman Collection"""
     content = await file.read()
     try:
@@ -784,29 +975,23 @@ async def import_postman(file: UploadFile = File(...), db: AsyncSession = Depend
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"JSON 解析失败: {str(e)}")
 
-    # 确保 Postman 根分组
     root_name = data.get("info", {}).get("name", "Postman Import")
-    result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.name == root_name))
-    root_group = result.scalar_one_or_none()
-    if not root_group:
-        root_group = AutoTestGroup(name=root_name, parent_id=None)
-        db.add(root_group)
-        await db.commit()
-        await db.refresh(root_group)
-
+    parsed_cases = []
     imported_count = 0
 
-    async def _import_items(items, parent_id):
-        nonlocal imported_count
+    async def _import_items(items, parent_id=None):
+        nonlocal imported_count, parsed_cases
         for item in items:
             if "item" in item:
-                # 这是一个子文件夹
-                sub_group = AutoTestGroup(name=item.get("name", "SubFolder"), parent_id=parent_id)
-                db.add(sub_group)
-                await db.flush()
-                await _import_items(item["item"], sub_group.id)
+                sub_name = item.get("name", "SubFolder")
+                if dry_run:
+                    await _import_items(item["item"], parent_id=None)
+                else:
+                    sub_group = AutoTestGroup(name=sub_name, parent_id=parent_id)
+                    db.add(sub_group)
+                    await db.flush()
+                    await _import_items(item["item"], parent_id=sub_group.id)
             elif "request" in item:
-                # 这是一个请求
                 req = item["request"]
                 method = req.get("method", "GET")
                 url = ""
@@ -829,16 +1014,40 @@ async def import_postman(file: UploadFile = File(...), db: AsyncSession = Depend
                     except Exception:
                         payload = {"raw": body.get("raw", "")}
 
-                case = AutoTestCase(
-                    group_id=parent_id,
-                    name=item.get("name", "Unnamed"),
-                    method=method.upper(),
-                    url=url,
-                    headers=headers if headers else None,
-                    payload=payload,
-                )
-                db.add(case)
+                case_data = {
+                    "name": item.get("name", "Unnamed"),
+                    "method": method.upper(),
+                    "url": url,
+                    "headers": headers if headers else None,
+                    "payload": payload,
+                }
+                if dry_run:
+                    parsed_cases.append(case_data)
+                else:
+                    case = AutoTestCase(group_id=parent_id, **case_data)
+                    db.add(case)
                 imported_count += 1
+
+    if dry_run:
+        await _import_items(data.get("item", []))
+        return {
+            "message": f"解析成功，共识别 {len(parsed_cases)} 个用例",
+            "cases": parsed_cases,
+            "imported_count": 0,
+        }
+
+    if target_group_id is not None:
+        group_result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.id == target_group_id))
+        root_group = group_result.scalar_one_or_none()
+        if not root_group:
+            raise HTTPException(status_code=404, detail="目标分组不存在")
+    else:
+        result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.name == root_name, AutoTestGroup.parent_id.is_(None)))
+        root_group = result.scalar_one_or_none()
+        if not root_group:
+            root_group = AutoTestGroup(name=root_name, parent_id=None)
+            db.add(root_group)
+            await db.flush()
 
     await _import_items(data.get("item", []), root_group.id)
     await db.commit()
@@ -847,7 +1056,12 @@ async def import_postman(file: UploadFile = File(...), db: AsyncSession = Depend
 
 
 @router.post("/import/swagger")
-async def import_swagger(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+async def import_swagger(
+    file: UploadFile = File(...),
+    dry_run: bool = Form(False),
+    target_group_id: Optional[int] = Form(None),
+    db: AsyncSession = Depends(get_db),
+):
     """导入 Swagger/OpenAPI 文档"""
     content = await file.read()
     try:
@@ -856,21 +1070,29 @@ async def import_swagger(file: UploadFile = File(...), db: AsyncSession = Depend
         raise HTTPException(status_code=400, detail=f"JSON 解析失败: {str(e)}")
 
     root_name = data.get("info", {}).get("title", "Swagger Import")
-    result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.name == root_name))
-    root_group = result.scalar_one_or_none()
-    if not root_group:
-        root_group = AutoTestGroup(name=root_name, parent_id=None)
-        db.add(root_group)
-        await db.commit()
-        await db.refresh(root_group)
-
-    imported_count = 0
     paths = data.get("paths", {})
     base_url = ""
+    parsed_cases = []
 
     servers = data.get("servers", [])
     if servers:
         base_url = servers[0].get("url", "")
+
+    if not dry_run:
+        if target_group_id is not None:
+            group_result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.id == target_group_id))
+            root_group = group_result.scalar_one_or_none()
+            if not root_group:
+                raise HTTPException(status_code=404, detail="目标分组不存在")
+        else:
+            result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.name == root_name, AutoTestGroup.parent_id.is_(None)))
+            root_group = result.scalar_one_or_none()
+            if not root_group:
+                root_group = AutoTestGroup(name=root_name, parent_id=None)
+                db.add(root_group)
+                await db.flush()
+
+    imported_count = 0
 
     for path, methods in paths.items():
         for method, details in methods.items():
@@ -900,16 +1122,26 @@ async def import_swagger(file: UploadFile = File(...), db: AsyncSession = Depend
                         payload = {"schema": ct_details["schema"]}
                     break
 
-            case = AutoTestCase(
-                group_id=root_group.id,
-                name=summary,
-                method=method.upper(),
-                url=url,
-                headers=headers if headers else None,
-                payload=payload,
-            )
-            db.add(case)
+            case_data = {
+                "name": summary,
+                "method": method.upper(),
+                "url": url,
+                "headers": headers if headers else None,
+                "payload": payload,
+            }
+            if dry_run:
+                parsed_cases.append(case_data)
+            else:
+                case = AutoTestCase(group_id=root_group.id, **case_data)
+                db.add(case)
             imported_count += 1
+
+    if dry_run:
+        return {
+            "message": f"解析成功，共识别 {len(parsed_cases)} 个用例",
+            "cases": parsed_cases,
+            "imported_count": 0,
+        }
 
     await db.commit()
     return {"message": f"导入成功，共导入 {imported_count} 个用例", "imported_count": imported_count}

@@ -4,7 +4,6 @@ AutoTest 统一路由 - 分组管理
 路径前缀: /api/auto-test/groups
 映射原 auto_test_platform 的 /api/groups
 """
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -58,7 +57,7 @@ async def get_group_tree(db: AsyncSession = Depends(get_db)):
     return _build_tree(group_dicts)
 
 
-@router.get("/")
+@router.get("")
 async def get_all_groups(db: AsyncSession = Depends(get_db)):
     """获取所有分组列表（扁平结构）"""
     result = await db.execute(select(AutoTestGroup).order_by(AutoTestGroup.name))
@@ -90,7 +89,7 @@ async def get_group(group_id: int, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 async def create_group(group_in: AutoTestGroupCreate, db: AsyncSession = Depends(get_db)):
     """创建新分组"""
     group = AutoTestGroup(**group_in.model_dump())

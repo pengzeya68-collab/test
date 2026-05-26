@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <el-drawer
     :model-value="modelValue"
     :title="isEdit ? '编辑用例' : '新建用例'"
@@ -285,6 +285,10 @@
                 <el-icon><Plus /></el-icon>
                 添加断言
               </el-button>
+              <el-button size="small" type="success" @click="openAssertTemplateDialog" style="margin-left: 8px;">
+                <el-icon><Collection /></el-icon>
+                模板
+              </el-button>
             </div>
             <div class="assertions-hint">
               <el-alert type="info" :closable="false" show-icon>
@@ -416,15 +420,41 @@
       </div>
     </template>
   </el-drawer>
+
+  <!-- 断言模板选择对话框 -->
+  <el-dialog v-model="assertTemplateDialogVisible" title="选择断言模板" width="650px" destroy-on-close>
+    <div v-loading="assertTemplatesLoading">
+      <el-radio-group v-model="assertTemplateCategory" size="small" @change="loadAssertTemplates">
+        <el-radio-button label="">全部</el-radio-button>
+        <el-radio-button v-for="cat in assertTemplateCategories" :key="cat" :label="cat">{{ cat }}</el-radio-button>
+      </el-radio-group>
+
+      <div class="template-grid" style="margin-top: 16px;">
+        <div
+          v-for="tpl in assertTemplates"
+          :key="tpl.id"
+          class="template-card"
+          @click="applyAssertTemplate(tpl)"
+        >
+          <div class="template-header">
+            <el-tag size="small">{{ tpl.category }}</el-tag>
+            <span class="template-name">{{ tpl.name }}</span>
+          </div>
+          <p class="template-desc">{{ tpl.description }}</p>
+          <pre class="template-code">{{ tpl.code_snippet }}</pre>
+        </div>
+      </div>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup>
 import { ref, watch, toRaw, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy } from '@element-plus/icons-vue'
+import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy, Collection } from '@element-plus/icons-vue'
 import JsonEditor from './JsonEditor.vue'
 import draggable from 'vuedraggable'
-import axios from 'axios'
+import autoTestRequest from '@/utils/autoTestRequest'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -442,31 +472,6 @@ const availableVariables = ref([]) // 用于存储当前所有可用变量
 const showVarDrawer = ref(false)
 const varSearchQuery = ref('')
 
-const autoTestRequest = axios.create({
-  baseURL: '',
-  timeout: 30000
-})
-
-// 添加请求拦截器，自动带上 token
-autoTestRequest.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
-    if (token && token !== 'undefined' && token !== 'null' && token !== '[object Object]') {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  error => {
-    return Promise.reject(error);
-  }
-)
-
-// 添加响应拦截器，统一返回 response.data
-autoTestRequest.interceptors.response.use(
-  response => response.data,
-  error => Promise.reject(error)
-)
-
 // 记载环境变量字典（用于自动补全）
 const loadVariables = async () => {
   try {
@@ -474,8 +479,8 @@ const loadVariables = async () => {
     
     // 1. 加载全局变量
     try {
-      const globalVarsRes = await autoTestRequest.get('/api/auto-test/global-variables')
-      const globalVars = Array.isArray(globalVarsRes.data) ? globalVarsRes.data : (Array.isArray(globalVarsRes) ? globalVarsRes : [])
+      const globalVarsRes = await autoTestRequest.get('/auto-test/global-variables')
+      const globalVars = Array.isArray(globalVarsRes) ? globalVarsRes : []
       globalVars.forEach(varItem => {
         varMap.set(varItem.name, { 
           value: varItem.name, 
@@ -487,8 +492,8 @@ const loadVariables = async () => {
     }
     
     // 2. 加载环境变量（会覆盖全局变量）
-    const res = await autoTestRequest.get('/api/auto-test/environments')
-    const envs = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
+    const res = await autoTestRequest.get('/auto-test/environments')
+    const envs = Array.isArray(res) ? res : []
     envs.forEach(env => {
       // 获取 base_url
       if (env.base_url) {
@@ -590,6 +595,13 @@ const caseForm = ref({
   extractors: [],
   assertions: []
 })
+
+// 断言模板相关
+const assertTemplateDialogVisible = ref(false)
+const assertTemplateCategory = ref('')
+const assertTemplates = ref([])
+const assertTemplateCategories = ref([])
+const assertTemplatesLoading = ref(false)
 
 // === 变量补全逻辑 ===
 let currentInputPos = 0
@@ -794,7 +806,7 @@ watch(() => props.modelValue, async (visible) => {
     if (props.isEdit && props.caseData?.id) {
       // 编辑模式：先获取完整用例详情
       try {
-        const res = await autoTestRequest.get(`/api/auto-test/cases/${props.caseData.id}`)
+        const res = await autoTestRequest.get(`/auto-test/cases/${props.caseData.id}`)
         initFormData(res)
       } catch (e) {
         console.error('获取用例详情失败', e)
@@ -978,6 +990,44 @@ const addAssertion = () => {
   })
 }
 
+const openAssertTemplateDialog = async () => {
+  assertTemplateDialogVisible.value = true
+  await loadAssertTemplates()
+}
+
+const loadAssertTemplates = async () => {
+  assertTemplatesLoading.value = true
+  try {
+    const params = assertTemplateCategory.value ? { category: assertTemplateCategory.value } : {}
+    const res = await autoTestRequest.get('/v1/assert-templates', { params })
+    assertTemplates.value = res.templates || []
+
+    if (assertTemplateCategories.value.length === 0) {
+      const catRes = await autoTestRequest.get('/v1/assert-templates/categories')
+      assertTemplateCategories.value = catRes.categories || []
+    }
+  } catch (e) {
+    console.error('加载断言模板失败', e)
+  } finally {
+    assertTemplatesLoading.value = false
+  }
+}
+
+const applyAssertTemplate = (tpl) => {
+  // 应用模板规则到用例
+  for (const rule of (tpl.rules || [])) {
+    caseForm.value.assertions.push({
+      id: `ast_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      target: rule.type || 'status_code',
+      operator: rule.operator === 'eq' ? '==' : rule.operator === 'neq' ? '!=' : rule.operator === 'lt' ? '<' : rule.operator === 'gt' ? '>' : rule.operator === 'contains' ? 'contains' : rule.operator,
+      expected: String(rule.expected || ''),
+      expression: ''
+    })
+  }
+  assertTemplateDialogVisible.value = false
+  ElMessage.success(`已应用断言模板: ${tpl.name}`)
+}
+
 const removeAssertion = (index) => {
   caseForm.value.assertions.splice(index, 1)
 }
@@ -1109,14 +1159,14 @@ const handleSave = async () => {
 
     let createdCaseId = null
     if (props.isEdit) {
-      await autoTestRequest.put(`/api/auto-test/cases/${props.caseData.id}`, payload)
+      await autoTestRequest.put(`/auto-test/cases/${props.caseData.id}`, payload)
       ElMessage.success('更新成功')
       createdCaseId = props.caseData.id
     } else {
-      const response = await autoTestRequest.post('/api/auto-test/cases', payload)
+      const response = await autoTestRequest.post('/auto-test/cases', payload)
       ElMessage.success('创建成功')
       // 假设后端返回新建用例的ID
-      createdCaseId = response.id || response.data?.id || response.case_id
+      createdCaseId = response.id || response.case_id
       console.log('🔥 新建用例返回的响应:', response)
       console.log('🔥 新建用例ID:', createdCaseId)
     }
@@ -1278,7 +1328,7 @@ const handleSaveAndRun = async () => {
   right: 20px;
   top: 20px;
   background: var(--tm-color-primary);
-  color: white;
+  color: var(--tm-text-primary);
   width: 80px;
   height: 40px;
   display: flex;
@@ -1449,5 +1499,20 @@ const handleSaveAndRun = async () => {
 
 .assertion-cell:first-child {
   border-left: none;
+}
+
+/* 断言模板卡片 */
+.template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+.template-card {
+  border: 1px solid #e4e7ed; border-radius: 8px; padding: 14px; cursor: pointer;
+  transition: all .2s; background: #fafafa;
+}
+.template-card:hover { border-color: #409EFF; box-shadow: 0 2px 8px rgba(64,158,255,.1); transform: translateY(-1px); background: #fff; }
+.template-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.template-name { font-weight: 600; font-size: 13px; }
+.template-desc { font-size: 12px; color: #909399; margin-bottom: 8px; }
+.template-code {
+  background: #2d3436; color: #dfe6e9; padding: 8px 10px; border-radius: 4px;
+  font-size: 11px; overflow-x: auto; margin: 0; line-height: 1.5;
 }
 </style>

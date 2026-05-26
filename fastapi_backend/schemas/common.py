@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Any, Generic, Optional, TypeVar
-from pydantic import BaseModel
+from typing import Generic, Optional, TypeVar
+from pydantic import BaseModel, Field
 
 T = TypeVar("T")
 ItemT = TypeVar("ItemT")
@@ -15,7 +15,7 @@ class ErrorResponse(BaseModel):
     detail: str
     code: Optional[str] = None
     trace_id: Optional[str] = None
-    timestamp: datetime = datetime.now()
+    timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class SuccessResponse(BaseModel, Generic[T]):

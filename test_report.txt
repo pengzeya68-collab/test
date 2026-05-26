@@ -1,0 +1,2 @@
+[1] FAIL: http://localhost:5173/#/login?redirect=/auto-test?tab=debug
+[2] Scn NO

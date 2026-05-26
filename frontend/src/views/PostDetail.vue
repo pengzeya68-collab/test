@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿<template>
   <div class="post-detail">
     <div class="container">
       <div class="back-btn" @click="goBack">
@@ -365,15 +365,17 @@ const toggleCommentLike = async (comment) => {
 
 <style scoped>
 .post-detail {
-  padding: 30px 0;
-  min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-elevated);
+  padding: 20px 0;
+  min-height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 20px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0;
+  padding: 0 16px;
 }
 
 .back-btn {
@@ -381,7 +383,7 @@ const toggleCommentLike = async (comment) => {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #18181B;
+  background: var(--tm-card-bg);
   border-radius: 8px;
   margin-bottom: 20px;
   cursor: pointer;
@@ -397,7 +399,7 @@ const toggleCommentLike = async (comment) => {
 }
 
 .post-container {
-  background: #18181B;
+  background: var(--tm-card-bg);
   border-radius: 12px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -628,7 +630,7 @@ const toggleCommentLike = async (comment) => {
 }
 
 .loading-state {
-  background: #18181B;
+  background: var(--tm-card-bg);
   padding: 40px;
   border-radius: 12px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);

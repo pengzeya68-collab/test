@@ -1,161 +1,164 @@
 <template>
-  <div class="code-playground">
-    <div class="container">
-      <div class="page-header">
-        <h1 class="page-title">在线代码练习室</h1>
-        <p class="page-subtitle">Python / SQL / Shell 在线编程，随时练习</p>
-      </div>
+  <div class="code-playground" style="position: relative; z-index: 1;">
+    <!-- 背景特效 -->
+    <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
+    <div class="glow-orb" style="position: absolute; top: 5%; right: 5%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(59,130,246,0.12), transparent 70%); border-radius: 50%; z-index: -1; pointer-events: none;"></div>
 
-      <div class="playground-container">
-        <!-- 左侧题目列表 -->
-        <div class="left-panel">
-          <div class="panel-header">
-            <h3>代码习题</h3>
-            <el-select 
-              v-model="currentLanguageFilter" 
-              placeholder="筛选语言" 
-              size="small"
-              style="width: 100px;"
-            >
-              <el-option label="全部" value="" />
-              <el-option label="Python" value="Python" />
-              <el-option label="SQL" value="SQL" />
-              <el-option label="Shell" value="Shell" />
-            </el-select>
-          </div>
-          <div class="exercise-list">
-            <div 
-              class="exercise-item" 
-              v-for="exercise in filteredExercises" 
-              :key="exercise.id"
-              :class="{ active: selectedExercise?.id === exercise.id }"
-              @click="selectExercise(exercise)"
-            >
-              <el-tag :type="getDifficultyTagType(exercise.difficulty)" size="small">
-                {{ getDifficultyText(exercise.difficulty) }}
-              </el-tag>
-              <div class="exercise-info">
-                <div class="exercise-title">{{ exercise.title }}</div>
-                <div class="exercise-meta">
-                  <span>{{ exercise.language }}</span>
-                  <span>{{ exercise.time_estimate }}分钟</span>
-                </div>
+    <!-- 原始结构恢复 -->
+    <div class="page-header">
+      <h1 class="page-title">在线代码练习室</h1>
+      <p class="page-subtitle">Python / SQL / Shell 在线编程，随时练习</p>
+    </div>
+
+    <div class="playground-container">
+      <!-- 左侧题目列表 -->
+      <div class="left-panel">
+        <div class="panel-header">
+          <h3>代码习题</h3>
+          <el-select 
+            v-model="currentLanguageFilter" 
+            placeholder="筛选语言" 
+            size="small"
+            style="width: 100px;"
+          >
+            <el-option label="全部" value="" />
+            <el-option label="Python" value="Python" />
+            <el-option label="SQL" value="SQL" />
+            <el-option label="Shell" value="Shell" />
+          </el-select>
+        </div>
+        <div class="exercise-list">
+          <div 
+            class="exercise-item" 
+            v-for="exercise in filteredExercises" 
+            :key="exercise.id"
+            :class="{ active: selectedExercise?.id === exercise.id }"
+            @click="selectExercise(exercise)"
+          >
+            <el-tag :type="getDifficultyTagType(exercise.difficulty)" size="small">
+              {{ getDifficultyText(exercise.difficulty) }}
+            </el-tag>
+            <div class="exercise-info">
+              <div class="exercise-title">{{ exercise.title }}</div>
+              <div class="exercise-meta">
+                <span>{{ exercise.language }}</span>
+                <span>{{ exercise.time_estimate }}分钟</span>
               </div>
             </div>
           </div>
-          <div class="empty-state" v-if="filteredExercises.length === 0 && !loading">
-            <el-empty description="暂无习题" :image-size="60" />
+        </div>
+        <div class="empty-state" v-if="filteredExercises.length === 0 && !loading">
+          <el-empty description="暂无习题" :image-size="60" />
+        </div>
+      </div>
+
+      <!-- 右侧编程区域 -->
+      <div class="right-panel">
+        <!-- 题目描述 -->
+        <div class="problem-section" v-if="selectedExercise">
+          <div class="section-header">
+            <h2>{{ selectedExercise.title }}</h2>
+            <div class="section-meta">
+              <el-tag size="small">{{ selectedExercise.language }}</el-tag>
+              <el-tag size="small">{{ selectedExercise.knowledge_point }}</el-tag>
+              <span>难度：{{ getDifficultyText(selectedExercise.difficulty) }}</span>
+            </div>
+          </div>
+          <div class="problem-content">
+            <p class="description">{{ selectedExercise.description }}</p>
+            <div class="instructions" v-if="selectedExercise.instructions">
+              <h4>要求：</h4>
+              <pre>{{ selectedExercise.instructions }}</pre>
+            </div>
+            <div class="test-cases" v-if="selectedExercise.test_cases">
+              <h4>测试用例：</h4>
+              <pre>{{ selectedExercise.test_cases }}</pre>
+            </div>
           </div>
         </div>
 
-        <!-- 右侧编程区域 -->
-        <div class="right-panel">
-          <!-- 题目描述 -->
-          <div class="problem-section" v-if="selectedExercise">
-            <div class="section-header">
-              <h2>{{ selectedExercise.title }}</h2>
-              <div class="section-meta">
-                <el-tag size="small">{{ selectedExercise.language }}</el-tag>
-                <el-tag size="small">{{ selectedExercise.knowledge_point }}</el-tag>
-                <span>难度：{{ getDifficultyText(selectedExercise.difficulty) }}</span>
+        <!-- 代码编辑器 -->
+        <div class="editor-section" v-if="selectedExercise">
+          <CodeEditor
+            v-model="userCode"
+            :language="currentLanguage"
+            ref="editorRef"
+            @run="handleCodeRun"
+          />
+        </div>
+
+        <!-- 执行结果 -->
+        <div class="result-section" v-if="submitResult">
+          <el-alert
+            :title="submitResult.success ? '🎉 执行成功！' : '❌ 执行失败'"
+            :type="submitResult.success ? 'success' : 'error'"
+            show-icon
+            :closable="false"
+          >
+            <template #default>
+              <div v-if="submitResult.stdout" class="execution-result">
+                <p><strong>运行输出：</strong></p>
+                <pre>{{ submitResult.stdout }}</pre>
               </div>
-            </div>
-            <div class="problem-content">
-              <p class="description">{{ selectedExercise.description }}</p>
-              <div class="instructions" v-if="selectedExercise.instructions">
-                <h4>要求：</h4>
-                <pre>{{ selectedExercise.instructions }}</pre>
+              <div v-if="submitResult.stderr" class="execution-result">
+                <p><strong>错误输出：</strong></p>
+                <pre class="error">{{ submitResult.stderr }}</pre>
               </div>
-              <div class="test-cases" v-if="selectedExercise.test_cases">
-                <h4>测试用例：</h4>
-                <pre>{{ selectedExercise.test_cases }}</pre>
+
+              <!-- AI评估按钮 -->
+              <div class="ai-evaluation-section" v-if="submitResult.success">
+                <el-button
+                  type="primary"
+                  size="small"
+                  @click="getAIEvaluation"
+                  :loading="aiLoading"
+                  :disabled="aiLoading"
+                >
+                  <el-icon><ChatLineRound /></el-icon>
+                  {{ aiLoading ? 'AI评估中...' : '获取AI点评' }}
+                </el-button>
               </div>
-            </div>
-          </div>
+            </template>
+          </el-alert>
+        </div>
 
-          <!-- 代码编辑器 -->
-          <div class="editor-section">
-            <CodeEditor
-              v-model="userCode"
-              :language="currentLanguage"
-              ref="editorRef"
-              @run="handleCodeRun"
-            />
-          </div>
-
-          <!-- 执行结果 -->
-          <div class="result-section" v-if="submitResult">
-            <el-alert
-              :title="submitResult.success ? '🎉 执行成功！' : '❌ 执行失败'"
-              :type="submitResult.success ? 'success' : 'error'"
-              show-icon
-              :closable="false"
-            >
-              <template #default>
-                <div v-if="submitResult.stdout" class="execution-result">
-                  <p><strong>运行输出：</strong></p>
-                  <pre>{{ submitResult.stdout }}</pre>
+        <!-- AI评估结果 -->
+        <div class="result-section" v-if="aiEvaluationResult">
+          <el-alert
+            title="🤖 AI导师点评"
+            type="info"
+            show-icon
+            :closable="false"
+          >
+            <template #default>
+              <div class="ai-evaluation-result">
+                <div class="ai-score">
+                  <strong>评分：</strong>
+                  <span class="score-text">{{ aiEvaluationResult.score }}分 / 100分</span>
+                  <el-progress
+                    :percentage="aiEvaluationResult.score"
+                    :stroke-width="12"
+                    :width="120"
+                    :show-text="false"
+                    style="margin-left: 12px;"
+                  />
                 </div>
-                <div v-if="submitResult.stderr" class="execution-result">
-                  <p><strong>错误输出：</strong></p>
-                  <pre class="error">{{ submitResult.stderr }}</pre>
+                <div class="ai-feedback">
+                  <strong>反馈：</strong>
+                  <p>{{ aiEvaluationResult.feedback }}</p>
                 </div>
-
-                <!-- AI评估按钮 -->
-                <div class="ai-evaluation-section" v-if="submitResult.success">
-                  <el-button
-                    type="primary"
-                    size="small"
-                    @click="getAIEvaluation"
-                    :loading="aiLoading"
-                    :disabled="aiLoading"
-                  >
-                    <el-icon><ChatLineRound /></el-icon>
-                    {{ aiLoading ? 'AI评估中...' : '获取AI点评' }}
-                  </el-button>
+                <div v-if="aiEvaluationResult.optimized_code" class="ai-optimized-code">
+                  <strong>优化建议：</strong>
+                  <pre>{{ aiEvaluationResult.optimized_code }}</pre>
                 </div>
-              </template>
-            </el-alert>
-          </div>
+              </div>
+            </template>
+          </el-alert>
+        </div>
 
-          <!-- AI评估结果 -->
-          <div class="result-section" v-if="aiEvaluationResult">
-            <el-alert
-              title="🤖 AI导师点评"
-              type="info"
-              show-icon
-              :closable="false"
-            >
-              <template #default>
-                <div class="ai-evaluation-result">
-                  <div class="ai-score">
-                    <strong>评分：</strong>
-                    <span class="score-text">{{ aiEvaluationResult.score }}分 / 100分</span>
-                    <el-progress
-                      :percentage="aiEvaluationResult.score"
-                      :stroke-width="12"
-                      :width="120"
-                      :show-text="false"
-                      style="margin-left: 12px;"
-                    />
-                  </div>
-                  <div class="ai-feedback">
-                    <strong>反馈：</strong>
-                    <p>{{ aiEvaluationResult.feedback }}</p>
-                  </div>
-                  <div v-if="aiEvaluationResult.optimized_code" class="ai-optimized-code">
-                    <strong>优化建议：</strong>
-                    <pre>{{ aiEvaluationResult.optimized_code }}</pre>
-                  </div>
-                </div>
-              </template>
-            </el-alert>
-          </div>
-
-          <!-- 无习题选择提示 -->
-          <div class="empty-state" v-if="!selectedExercise">
-            <el-empty description="请选择一道习题开始练习" />
-          </div>
+        <!-- 无习题选择提示 -->
+        <div class="empty-state" v-if="!selectedExercise">
+          <el-empty description="请选择一道习题开始练习" />
         </div>
       </div>
     </div>
@@ -176,19 +179,14 @@ const userCode = ref('')
 const currentLanguageFilter = ref('')
 const submitResult = ref(null)
 const editorRef = ref(null)
-// AI评估相关状态
 const aiEvaluationResult = ref(null)
 const aiLoading = ref(false)
 
-// 筛选后的习题列表
 const filteredExercises = computed(() => {
   let result = exercises.value
-  
-  // 按语言筛选
   if (currentLanguageFilter.value) {
     result = result.filter(item => item.language === currentLanguageFilter.value)
   }
-  
   return result
 })
 
@@ -203,11 +201,8 @@ onMounted(() => {
 const fetchExercises = async () => {
   loading.value = true
   try {
-    // 获取全部代码习题，前端做筛选
     const res = await request.get('/exercises')
-    // 确保 res 是一个数组
     const exerciseList = Array.isArray(res) ? res : (res.data || [])
-    // 过滤出代码类型的习题
     exercises.value = exerciseList.filter(ex => ex.exercise_type === 'code' || ex.category?.includes('代码') || ex.category?.includes('编程'))
   } catch (error) {
     console.error('获取习题失败:', error)
@@ -225,9 +220,7 @@ const selectExercise = (exercise) => {
 }
 
 const handleCodeRun = (event) => {
-  // 保存执行结果
   submitResult.value = event.result
-  // 重置AI评估结果
   aiEvaluationResult.value = null
 }
 
@@ -248,7 +241,6 @@ const getAIEvaluation = async () => {
       expected_output: selectedExercise.value.expected_output
     })
 
-    // FastAPI 返回 {success, data, message}
     aiEvaluationResult.value = res.data || res
     ElMessage.success('AI评估完成')
   } catch (error) {
@@ -280,25 +272,21 @@ const getDifficultyText = (difficulty) => {
 
 <style scoped>
 .code-playground {
-  padding: 30px 0;
-  min-height: calc(100vh - 60px);
-  background-color: #09090B;
-}
-
-.container {
+  padding: 20px 0;
+  min-height: 100%;
   width: 100%;
-  max-width: 100%;
-  padding: 20px 32px;
-  margin: 0 auto;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .page-header {
-  margin-bottom: 30px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .page-title {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: bold;
   color: var(--tm-text-primary);
   margin: 0 0 8px 0;
@@ -312,21 +300,24 @@ const getDifficultyText = (difficulty) => {
 
 .playground-container {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 24px;
-  height: calc(100vh - 200px);
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .left-panel {
   background: var(--tm-card-bg);
   border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--tm-shadow-card);
   border: var(--tm-card-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  height: 100%;
 }
 
 .panel-header {
@@ -335,6 +326,7 @@ const getDifficultyText = (difficulty) => {
   align-items: center;
   padding: 16px 20px;
   border-bottom: 1px solid var(--tm-border-light);
+  flex-shrink: 0;
 }
 
 .panel-header h3 {
@@ -348,6 +340,7 @@ const getDifficultyText = (difficulty) => {
   flex: 1;
   overflow-y: auto;
   padding: 12px;
+  min-height: 0;
 }
 
 .exercise-item {
@@ -365,7 +358,7 @@ const getDifficultyText = (difficulty) => {
 }
 
 .exercise-item.active {
-  background-color: rgba(var(--tm-color-primary), 0.1);
+  background-color: rgba(var(--tm-color-primary-rgb), 0.1);
   border-color: var(--tm-color-primary);
 }
 
@@ -391,29 +384,32 @@ const getDifficultyText = (difficulty) => {
 .right-panel {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   overflow-y: auto;
+  height: 100%;
+  min-height: 0;
 }
 
 .problem-section {
   background: var(--tm-card-bg);
   border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  box-shadow: var(--tm-shadow-card);
   border: var(--tm-card-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  flex-shrink: 0;
 }
 
 .section-header {
-  margin-bottom: 20px;
-  padding-bottom: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--tm-border-light);
 }
 
 .section-header h2 {
   margin: 0 0 12px 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold;
   color: var(--tm-text-primary);
 }
@@ -434,7 +430,7 @@ const getDifficultyText = (difficulty) => {
   font-size: 15px;
   line-height: 1.8;
   color: var(--tm-text-primary);
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .problem-content h4 {
@@ -445,12 +441,12 @@ const getDifficultyText = (difficulty) => {
 }
 
 .instructions, .test-cases {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .instructions pre, .test-cases pre {
   background: rgba(var(--tm-bg-page-rgb), 0.5);
-  padding: 16px;
+  padding: 12px;
   border-radius: 8px;
   font-size: 13px;
   line-height: 1.6;
@@ -462,11 +458,18 @@ const getDifficultyText = (difficulty) => {
 
 .editor-section {
   flex: 1;
-  min-height: 400px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-section :deep(.code-editor) {
+  flex: 1;
+  min-height: 300px;
 }
 
 .result-section {
-  margin-top: 20px;
+  flex-shrink: 0;
 }
 
 .execution-result {
@@ -493,10 +496,14 @@ const getDifficultyText = (difficulty) => {
   background: var(--tm-card-bg);
   border-radius: 12px;
   padding: 60px 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--tm-shadow-card);
   border: var(--tm-card-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ai-evaluation-section {
@@ -548,14 +555,29 @@ const getDifficultyText = (difficulty) => {
   margin: 4px 0;
 }
 
+.cyber-grid-bg {
+  background-image: 
+    linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
+}
+
 @media (max-width: 1200px) {
   .playground-container {
     grid-template-columns: 1fr;
     height: auto;
+    overflow: visible;
   }
 
   .left-panel {
     max-height: 400px;
+    height: auto;
+  }
+  
+  .right-panel {
+    height: auto;
+    overflow: visible;
   }
 }
 </style>

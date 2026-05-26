@@ -191,28 +191,13 @@
 import { ref, computed, onMounted, onUnmounted, watch, shallowRef, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Document } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
-import axios from 'axios'
+import { use, init, getInstanceByDom } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { PieChart, LineChart } from 'echarts/charts'
+import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
+import request from '@/utils/request'
 
-// 单独创建 request 实例
-const request = axios.create({
-  baseURL: '/api',
-  timeout: 15000
-})
-
-// 添加请求拦截器，自动带上 token
-request.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
-    if (token && token !== 'undefined' && token !== 'null' && token !== '[object Object]') {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  error => {
-    return Promise.reject(error);
-  }
-)
+use([CanvasRenderer, PieChart, LineChart, TooltipComponent, LegendComponent, GridComponent])
 
 const activeTab = ref('backup')
 const backups = ref([])
@@ -503,11 +488,11 @@ const initCharts = async (chartData) => {
   const tableSpaceDom = document.getElementById('table-space-chart')
   // 增加判定：如果 DOM 不存在，或者高度为 0，坚决不初始化
   if (tableSpaceDom && tableSpaceDom.clientWidth > 0 && tableSpaceDom.clientHeight > 0) {
-    let myChart = echarts.getInstanceByDom(tableSpaceDom)
+    let myChart = getInstanceByDom(tableSpaceDom)
     if (myChart) {
       myChart.dispose() // 彻底销毁旧实例
     }
-    myChart = echarts.init(tableSpaceDom)
+    myChart = init(tableSpaceDom)
     tableSpaceChart.value = myChart // 存入 shallowRef
 
     const option = {
@@ -537,11 +522,11 @@ const initCharts = async (chartData) => {
   const systemLoadDom = document.getElementById('system-load-chart')
   // 同样增加尺寸校验，防止 0px 报错
   if (systemLoadDom && systemLoadDom.clientWidth > 0 && systemLoadDom.clientHeight > 0) {
-    let myChart = echarts.getInstanceByDom(systemLoadDom)
+    let myChart = getInstanceByDom(systemLoadDom)
     if (myChart) {
       myChart.dispose()
     }
-    myChart = echarts.init(systemLoadDom)
+    myChart = init(systemLoadDom)
     systemLoadChart.value = myChart
 
     // 数据处理
@@ -687,9 +672,11 @@ onUnmounted(() => {
 
 <style scoped>
 .backup-manager {
-  padding: 30px 0;
-  min-height: calc(100vh - 60px);
+  padding: 30px 24px;
+  min-height: auto;
   background-color: var(--tm-bg-elevated);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .layout-fluid {
@@ -718,7 +705,7 @@ onUnmounted(() => {
 }
 
 .db-tabs {
-  background: #18181B;
+  background: var(--tm-card-bg);
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   padding: 0 20px;

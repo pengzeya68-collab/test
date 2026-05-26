@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import platform
 import re
 import sys
 import tempfile
@@ -93,9 +94,18 @@ class CodeSandbox:
 
         if language == 'python':
             for mod in self.BLOCKED_MODULES:
-                if re.search(rf'\bimport\s+{mod}\b', code_lower) or \
-                   re.search(rf'\bfrom\s+{mod}\b', code_lower):
-                    return False, f"禁止导入模块: {mod}"
+                # 改进正则表达式，检测别名导入和多种导入方式
+                patterns = [
+                    rf'\bimport\s+{mod}\b',
+                    rf'\bfrom\s+{mod}\b',
+                    rf'\bimport\s+\w+\s+as\s+\w+',
+                    rf'\bfrom\s+\w+\s+import\s+\w+\s+as\s+\w+',
+                ]
+                for pattern in patterns:
+                    if re.search(pattern, code_lower):
+                        # 进一步检查是否包含被禁止的模块名
+                        if mod in code_lower:
+                            return False, f"禁止导入模块: {mod}"
 
             for builtin_name in self.BLOCKED_BUILTINS:
                 if re.search(rf'\b{builtin_name}\s*\(', code):
@@ -326,13 +336,17 @@ class CodeSandbox:
         if timeout is None:
             timeout = self.LANGUAGE_CONFIG['shell']['timeout']
 
+        shell_cmd = 'bash'
+        if platform.system() == 'Windows':
+            shell_cmd = 'powershell.exe'
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.sh', delete=False, encoding='utf-8') as f:
             f.write(code)
             temp_file = f.name
 
         try:
             process = await asyncio.create_subprocess_exec(
-                'bash', temp_file,
+                shell_cmd, temp_file,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 stdin=asyncio.subprocess.DEVNULL,

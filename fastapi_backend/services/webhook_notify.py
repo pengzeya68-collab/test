@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import httpx
 
@@ -17,8 +17,9 @@ def _is_feishu_webhook(webhook_url: str) -> bool:
 
 def _public_backend_base_url() -> str:
     try:
-        from fastapi_backend.core import autotest_settings as _s
-        base = getattr(_s, "AUTO_TEST_BASE_URL", None) or ""
+        from fastapi_backend.core.autotest_settings import get_settings
+        settings = get_settings()
+        base = getattr(settings, "AUTO_TEST_BASE_URL", None) or ""
         return (base or "http://localhost:5001").strip().rstrip("/")
     except Exception:
         return "http://localhost:5001"

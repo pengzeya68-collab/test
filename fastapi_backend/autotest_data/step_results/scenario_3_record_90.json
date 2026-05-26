@@ -1,0 +1,121 @@
+[
+  {
+    "step_id": 6,
+    "step_order": 0,
+    "api_case_id": 11,
+    "api_case_name": "步骤 2：用提取出来的数据组装全新的请求体",
+    "method": "POST",
+    "success": false,
+    "status": "failed",
+    "response_time": 2758,
+    "error": "断言失败: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 502"
+  },
+  {
+    "step_id": 7,
+    "step_order": 1,
+    "api_case_id": 10,
+    "api_case_name": "步骤 1：获取随机生成的复杂用户信息",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 1 失败而跳过"
+  },
+  {
+    "step_id": 8,
+    "step_order": 2,
+    "api_case_id": 9,
+    "api_case_name": "根据 ID 修改该用户信息",
+    "method": "PUT",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 1 失败而跳过"
+  },
+  {
+    "step_id": 9,
+    "step_order": 3,
+    "api_case_id": 8,
+    "api_case_name": "根据 ID 查询该用户的详细信息",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 1 失败而跳过"
+  },
+  {
+    "step_id": 10,
+    "step_order": 4,
+    "api_case_id": 7,
+    "api_case_name": "创建一条新用户记录，提取 ID",
+    "method": "POST",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 1 失败而跳过"
+  },
+  {
+    "step_id": 11,
+    "step_order": 5,
+    "api_case_id": 6,
+    "api_case_name": "GET bearer",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 1 失败而跳过"
+  },
+  {
+    "step_id": 12,
+    "step_order": 6,
+    "api_case_id": 5,
+    "api_case_name": "POST post",
+    "method": "POST",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 1 失败而跳过"
+  },
+  {
+    "step_id": 13,
+    "step_order": 7,
+    "api_case_id": 4,
+    "api_case_name": "GET get",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 1 失败而跳过"
+  },
+  {
+    "step_id": 14,
+    "step_order": 8,
+    "api_case_id": 2,
+    "api_case_name": "GET all.json",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 1 失败而跳过"
+  },
+  {
+    "step_id": 15,
+    "step_order": 9,
+    "api_case_id": 1,
+    "api_case_name": "GET users",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 1 失败而跳过"
+  }
+]

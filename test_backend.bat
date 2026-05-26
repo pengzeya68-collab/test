@@ -1,35 +1,21 @@
 @echo off
-chcp 65001 > nul
-echo ========================================
-echo   Unified FastAPI Backend Diagnostic
-echo ========================================
+chcp 65001 >nul
+echo ==========================================
+echo TestMaster 后端测试脚本
+echo ==========================================
 echo.
 
-cd /d "C:\Users\lenovo\Desktop\TestMasterProject"
-echo [1] Checking Python...
-python --version
-echo.
+cd /d %~dp0
 
-echo [2] Checking unified backend import...
-python -c "
-import sys
-sys.path.insert(0, '.')
-try:
-    from fastapi_backend.main import app
-    print('  [OK] fastapi_backend.main imported successfully')
-    print('  [OK] App title:', app.title)
-except Exception as e:
-    print('  [ERROR]', e)
-    import traceback
-    traceback.print_exc()
-"
-echo.
+echo [1/2] 运行指定测试文件...
+pytest fastapi_backend/tests/test_auth.py fastapi_backend/tests/test_sandbox.py fastapi_backend/tests/test_ai_evaluation.py fastapi_backend/tests/test_interview_session.py fastapi_backend/tests/test_submission.py -q
 
-echo [3] Checking unified service syntax...
-py -3 -m py_compile fastapi_backend\main.py
 echo.
+echo [2/2] 运行全部测试...
+pytest fastapi_backend/tests -q
 
-echo ========================================
-echo   Diagnostic complete
-echo ========================================
+echo.
+echo ==========================================
+echo 测试完成
+echo ==========================================
 pause

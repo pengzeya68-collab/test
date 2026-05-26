@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from pydantic import BaseModel, Field
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
@@ -26,10 +25,9 @@ from fastapi_backend.schemas.autotest import (
     ScenarioStepCreate,
     ScenarioStepUpdate,
     ScenarioStepResponse,
+    AutoTestDatasetBase,
     AutoTestDatasetCreate,
-    AutoTestDatasetUpdate,
     AutoTestDatasetResponse,
-    DataMatrix,
     InlineScenarioExecutionRequest,
 )
 
@@ -38,7 +36,7 @@ router = APIRouter(prefix="/api/auto-test/scenarios", tags=["AutoTest-场景"], 
 
 # ========== 场景 CRUD ==========
 
-@router.get("/", response_model=List[AutoTestScenarioResponse])
+@router.get("", response_model=List[AutoTestScenarioResponse])
 async def list_scenarios(db: AsyncSession = Depends(get_db)):
     """获取所有场景"""
     result = await db.execute(
@@ -91,7 +89,7 @@ async def get_scenario(scenario_id: int, db: AsyncSession = Depends(get_db)):
     return scenario
 
 
-@router.post("/", response_model=AutoTestScenarioResponse)
+@router.post("", response_model=AutoTestScenarioResponse)
 async def create_scenario(scenario: AutoTestScenarioCreate, db: AsyncSession = Depends(get_db)):
     """创建场景"""
     db_scenario = AutoTestScenario(**scenario.model_dump())
@@ -160,8 +158,9 @@ async def update_scenario_status(
         task_id = f"auto_sched_{scenario_id}"
         try:
             sched.pause_job(task_id)
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"暂停定时任务失败: {e}")
 
     return {"id": db_scenario.id, "is_active": db_scenario.is_active}
 
@@ -176,14 +175,17 @@ async def delete_scenario(scenario_id: int, db: AsyncSession = Depends(get_db)):
     try:
         from fastapi_backend.services.autotest_scheduler import remove_scheduled_task
         remove_scheduled_task(str(scenario_id))
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"移除定时任务失败: {e}")
 
     await db.delete(db_scenario)
     try:
         await db.commit()
-    except Exception:
+    except Exception as e:
         await db.rollback()
+        import logging
+        logging.getLogger(__name__).error(f"删除场景失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="删除失败，事务已回滚")
     return {"message": "删除成功"}
 
@@ -263,6 +265,15 @@ async def delete_step(scenario_id: int, step_id: int, db: AsyncSession = Depends
         raise HTTPException(status_code=404, detail="步骤不存在")
 
     await db.delete(db_step)
+    await db.flush()
+
+    reorder_result = await db.execute(
+        select(AutoTestScenarioStep)
+        .where(AutoTestScenarioStep.scenario_id == scenario_id)
+        .order_by(AutoTestScenarioStep.step_order.asc(), AutoTestScenarioStep.id.asc())
+    )
+    for index, step in enumerate(reorder_result.scalars().all()):
+        step.step_order = index
     await db.commit()
     return {"message": "删除成功"}
 
@@ -302,7 +313,7 @@ async def get_scenario_dataset(scenario_id: int, db: AsyncSession = Depends(get_
 @router.post("/{scenario_id}/dataset", response_model=AutoTestDatasetResponse)
 async def create_or_update_dataset(
     scenario_id: int,
-    dataset_data: AutoTestDatasetCreate,
+    dataset_data: AutoTestDatasetBase,
     db: AsyncSession = Depends(get_db),
 ):
     """创建或更新场景的数据集（Upsert）"""
@@ -418,5 +429,7 @@ async def run_scenario_with_pytest(
             "report_url": exec_result.get("report_url"),
             "error": exec_result.get("error"),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"执行失败: {str(e)}")

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿<template>
   <div class="exam-page">
     <div class="exam-header">
       <div class="container">
@@ -230,7 +230,7 @@
       :close-on-press-escape="false"
       :show-close="false"
     >
-      <p>距离考试结束还有 <strong>{{ remainingTime }}分钟</strong>，请合理安排时间。</p>
+      <p>距离考试结束还有 <strong>{{ Math.ceil(remainingTime / 60) }}分钟</strong>，请合理安排时间。</p>
       <template #footer>
         <el-button type="primary" @click="showTimeWarning = false">知道了</el-button>
       </template>
@@ -456,7 +456,7 @@ const submitExam = async () => {
 }
 
 .exam-header {
-  background: #18181B;
+  background: var(--tm-card-bg);
   border-bottom: 1px solid var(--tm-border-color);
   padding: 16px 0;
   position: sticky;
@@ -467,9 +467,9 @@ const submitExam = async () => {
 
 .container {
   width: 100%;
-  max-width: 1440px;
-  padding: 0 24px;
-  margin: 0 auto;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
   box-sizing: border-box;
 }
 
@@ -519,7 +519,7 @@ const submitExam = async () => {
 }
 
 .question-nav {
-  background: #18181B;
+  background: var(--tm-card-bg);
   border-radius: 12px;
   padding: 20px;
   height: fit-content;
@@ -616,7 +616,7 @@ const submitExam = async () => {
 }
 
 .question-content {
-  background: #18181B;
+  background: var(--tm-card-bg);
   border-radius: 12px;
   padding: 32px;
   min-height: 500px;
@@ -679,7 +679,7 @@ const submitExam = async () => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: #18181B;
+  background: var(--tm-card-bg);
   border-top: 1px solid var(--tm-border-color);
   padding: 16px 0;
   z-index: 100;

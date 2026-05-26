@@ -1,5 +1,4 @@
 """Community module schemas."""
-from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -97,11 +96,18 @@ class FavoriteResponse(BaseModel):
 
 # ── Stats ─────────────────────────────────────────────────
 
+class ActiveUserInfo(BaseModel):
+    id: int
+    username: str
+    post_count: int
+
+
 class CommunityStatsResponse(BaseModel):
     total_posts: int
     total_users: int
     today_posts: int
     online_users: int
+    active_users: list[ActiveUserInfo] = []
 
 
 # ── Admin ─────────────────────────────────────────────────

@@ -8,17 +8,15 @@ Pytest 数据驱动执行引擎（迁移自 auto_test_platform/services/pytest_e
 4. 提取器 (Extractors) 机制，上下文传递给下一步
 5. Allure 集成与报告生成
 """
-import os
 import re
 import json
 import time
-import asyncio
 import logging
 import yaml
-import requests
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
+from typing import Dict, Any, List
+from datetime import datetime, timezone
+import subprocess
 
 _logger = logging.getLogger(__name__)
 
@@ -44,7 +42,7 @@ class PytestDataDrivenEngine:
         self.allure_results_dir.mkdir(parents=True, exist_ok=True)
         self.report_dir.mkdir(parents=True, exist_ok=True)
 
-        self.run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
     def execute(self, steps: List[Dict], data_matrix: Dict[str, Any], env_vars: Dict[str, Any] = None) -> Dict[str, Any]:
         start_time = time.time()
@@ -108,7 +106,7 @@ class PytestDataDrivenEngine:
         code = f'''"""
 自动生成的场景测试文件
 场景: {self.scenario_name}
-生成时间: {datetime.now().isoformat()}
+生成时间: {datetime.now(timezone.utc).isoformat()}
 """
 import pytest
 import yaml
@@ -259,6 +257,7 @@ def test_scenario_iteration(test_data, allure_dir, request):
 
             step_start = time.time()
 
+            response = None
             try:
                 if method == "GET":
                     response = requests.get(url, headers=headers, timeout=30)
@@ -389,7 +388,7 @@ def pytest_addoption(parser):
         ]
 
         result = subprocess.run(cmd1, capture_output=True, text=True,
-                                cwd=str(self.temp_dir))
+                                cwd=str(self.temp_dir), timeout=300)
         result_files = list(self.allure_results_dir.glob("*.json"))
 
         if len(result_files) == 0 and result.returncode != 0 and "No module named pytest" in result.stderr:
@@ -400,7 +399,7 @@ def pytest_addoption(parser):
                 cmd2 = [str(pytest_exe), str(test_file), f"--data_file={data_file}",
                         f"--alluredir={allure_results_dir_abs}", "-v", "--tb=short", "--no-header", "-p", "no:warnings"]
                 result = subprocess.run(cmd2, capture_output=True, text=True,
-                                        cwd=str(self.temp_dir))
+                                        cwd=str(self.temp_dir), timeout=300)
                 result_files = list(self.allure_results_dir.glob("*.json"))
 
             if len(result_files) == 0:
@@ -455,11 +454,11 @@ def pytest_addoption(parser):
                 if index_html.exists():
                     return f"/reports/scenario_{self.scenario_id}/index.html"
             return None
-        except Exception:
+        except Exception as e:
+            _logger.warning(f"生成 Allure 报告失败: {e}")
             return None
 
     def cleanup(self):
-        import shutil
         try:
             for pattern in [f"*_{self.run_id}*"]:
                 for f in self.temp_dir.glob(pattern):
@@ -471,8 +470,8 @@ def pytest_addoption(parser):
                         f.unlink()
                     except OSError:
                         pass
-        except Exception:
-            pass
+        except Exception as e:
+            _logger.warning(f"清理临时文件失败: {e}")
 
 
 def run_scenario_pytest(scenario_id: int, scenario_name: str, steps: List[Dict], data_matrix: Dict[str, Any], env_vars: Dict[str, Any] = None) -> Dict[str, Any]:

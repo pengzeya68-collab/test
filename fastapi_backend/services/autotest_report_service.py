@@ -7,9 +7,9 @@ import json
 import logging
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,8 +20,7 @@ _logger = logging.getLogger(__name__)
 
 
 def get_autotest_data_dir() -> Path:
-    from fastapi_backend.core.autotest_database import INSTANCE_DIR
-    return INSTANCE_DIR
+    return Path(__file__).resolve().parent.parent / "autotest_data"
 
 
 def load_step_results_from_file(record: AutoTestScenarioExecutionRecord) -> List[Dict]:
@@ -31,14 +30,22 @@ def load_step_results_from_file(record: AutoTestScenarioExecutionRecord) -> List
         try:
             with open(step_results_file, "r", encoding="utf-8") as f:
                 step_results = json.load(f)
-        except Exception:
+        except Exception as e:
+            _logger.warning(f"加载步骤结果文件失败 {step_results_file}: {e}")
             step_results = []
     return step_results
 
 
-def parse_allure_step_results(scenario_id: int) -> List[Dict]:
+def parse_allure_step_results(scenario_id: int, report_url: Optional[str] = None) -> List[Dict]:
     step_results = []
-    allure_results_dir = get_autotest_data_dir() / "allure-results" / f"scenario_{scenario_id}"
+    allure_results_dir = None
+    if report_url:
+        report_path = Path(report_url.lstrip("/"))
+        report_dir_name = report_path.parent.name
+        if report_dir_name:
+            allure_results_dir = get_autotest_data_dir() / "allure-results" / report_dir_name
+    if allure_results_dir is None:
+        allure_results_dir = get_autotest_data_dir() / "allure-results" / f"scenario_{scenario_id}"
     if not allure_results_dir.exists():
         return step_results
 
@@ -67,8 +74,8 @@ def parse_allure_step_results(scenario_id: int) -> List[Dict]:
                                     resp_info = json.loads(att["body"])
                                     status_code = resp_info.get("status_code", 0)
                                     response_body = resp_info.get("body", "")
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    _logger.debug(f"解析 Allure 响应信息失败: {e}")
                     step_results.append({
                         "name": step_name,
                         "status": "skipped" if step_status == "skipped" else ("success" if step_status == "passed" else "failed"),
@@ -95,8 +102,8 @@ def parse_allure_step_results(scenario_id: int) -> List[Dict]:
                             "response": None,
                             "error": None
                         })
-        except Exception:
-            pass
+        except Exception as e:
+            _logger.debug(f"解析 Allure 结果文件失败 {json_file}: {e}")
 
     return step_results
 
@@ -115,7 +122,7 @@ async def get_report_detail(report_id: int, db: AsyncSession) -> Optional[Dict]:
         step_results = load_step_results_from_file(record)
 
         if not step_results and record.report_url:
-            step_results = parse_allure_step_results(record.scenario_id)
+            step_results = parse_allure_step_results(record.scenario_id, record.report_url)
 
         step_detail_available = bool(step_results)
         if not step_detail_available and record.total_steps > 0:

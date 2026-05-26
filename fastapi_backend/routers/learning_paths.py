@@ -5,13 +5,13 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_active_user
-from fastapi_backend.models.models import Exercise, LearningPath, User, Progress
+from fastapi_backend.models.models import Exercise, LearningPath, User, Progress, LessonSection
 from fastapi_backend.schemas.learning_paths import (
     AddExerciseRequest,
     LearningPathCreate,
@@ -36,7 +36,7 @@ async def get_learning_paths(
 ):
     """Get all public learning paths, optionally filtered by stage."""
     q = select(LearningPath).options(selectinload(LearningPath.exercises)).filter(
-        LearningPath.is_public == True
+        LearningPath.is_public
     )
     if stage is not None:
         q = q.filter(LearningPath.stage == stage)
@@ -391,3 +391,155 @@ async def get_learning_path_progress(
         "progress_percent": round(completed_count / total * 100, 1) if total > 0 else 0,
         "exercises": exercises,
     }
+
+
+# ── Lessons in a learning path ────────────────────────────
+
+@router.get("/{path_id}/lessons")
+async def get_path_lessons(
+    path_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all lesson sections for a learning path (without full content)."""
+    q = (
+        select(LearningPath)
+        .options(selectinload(LearningPath.lesson_sections))
+        .filter(LearningPath.id == path_id)
+    )
+    result = await db.execute(q)
+    path = result.scalar_one_or_none()
+
+    if not path:
+        raise HTTPException(status_code=404, detail="Learning path not found")
+    if not path.is_public:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    lessons = sorted(path.lesson_sections, key=lambda x: x.sort_order)
+    return {
+        "path_id": path.id,
+        "path_title": path.title,
+        "lessons": [
+            {
+                "id": sec.id,
+                "title": sec.title,
+                "sort_order": sec.sort_order,
+                "knowledge_point": sec.knowledge_point,
+                "time_estimate": sec.time_estimate,
+            }
+            for sec in lessons
+        ],
+    }
+
+
+@router.get("/{path_id}/lessons/{lesson_id}")
+async def get_path_lesson_detail(
+    path_id: int,
+    lesson_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single lesson section with full content."""
+    q = select(LessonSection).filter(
+        LessonSection.id == lesson_id,
+        LessonSection.learning_path_id == path_id,
+    )
+    result = await db.execute(q)
+    lesson = result.scalar_one_or_none()
+
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    path_result = await db.execute(
+        select(LearningPath).filter(LearningPath.id == path_id)
+    )
+    path = path_result.scalar_one_or_none()
+    if not path or not path.is_public:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    all_lessons_result = await db.execute(
+        select(LessonSection)
+        .filter(LessonSection.learning_path_id == path_id)
+        .order_by(LessonSection.sort_order)
+    )
+    all_lessons = all_lessons_result.scalars().all()
+
+    current_index = next(
+        (i for i, s in enumerate(all_lessons) if s.id == lesson_id), -1
+    )
+
+    prev_lesson = (
+        {"id": all_lessons[current_index - 1].id, "title": all_lessons[current_index - 1].title}
+        if current_index > 0 else None
+    )
+    next_lesson = (
+        {"id": all_lessons[current_index + 1].id, "title": all_lessons[current_index + 1].title}
+        if current_index < len(all_lessons) - 1 else None
+    )
+
+    return {
+        "id": lesson.id,
+        "title": lesson.title,
+        "content": lesson.content,
+        "sort_order": lesson.sort_order,
+        "knowledge_point": lesson.knowledge_point,
+        "time_estimate": lesson.time_estimate,
+        "path_id": path.id,
+        "path_title": path.title,
+        "prev_lesson": prev_lesson,
+        "next_lesson": next_lesson,
+        "total_lessons": len(all_lessons),
+        "current_index": current_index + 1,
+    }
+
+
+# ── Projects in a learning path ──
+
+@router.get("/{path_id}/projects")
+async def get_path_projects(
+    path_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi_backend.models.models import ProjectSpace, ProjectTask, ProjectSubmission
+    from sqlalchemy import select as sa_select
+    from sqlalchemy.orm import selectinload as sa_selectinload
+
+    q = sa_select(LearningPath).filter(LearningPath.id == path_id)
+    result = await db.execute(q)
+    path = result.scalar_one_or_none()
+
+    if not path:
+        raise HTTPException(status_code=404, detail="Learning path not found")
+    if not path.is_public and path.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    q2 = sa_select(ProjectSpace).options(
+        sa_selectinload(ProjectSpace.tasks),
+        sa_selectinload(ProjectSpace.submissions),
+    ).where(
+        ProjectSpace.learning_path_id == path_id,
+        ProjectSpace.status == "published",
+    ).order_by(ProjectSpace.sort_order)
+    projects_result = await db.execute(q2)
+    projects = projects_result.scalars().all()
+
+    project_list = []
+    for p in projects:
+        task_count = len(p.tasks) if p.tasks else 0
+        user_subs = [s for s in p.submissions if s.user_id == current_user.id]
+        submitted_count = len(set(s.task_id for s in user_subs))
+        project_list.append({
+            "id": p.id,
+            "title": p.title,
+            "description": p.description,
+            "difficulty": p.difficulty,
+            "estimated_hours": p.estimated_hours,
+            "task_count": task_count,
+            "sort_order": p.sort_order,
+            "progress": {
+                "total_tasks": task_count,
+                "completed_tasks": submitted_count,
+                "percent": round(submitted_count / task_count * 100, 1) if task_count > 0 else 0,
+            },
+        })
+
+    return {"path_id": path_id, "path_title": path.title, "projects": project_list}

@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: testmaster-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///app/instance/testmaster.db
+      - AUTO_CREATE_TABLES_ON_STARTUP=true
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    volumes:
+      - ./instance:/app/instance
+      - ./fastapi_backend/autotest_data:/app/fastapi_backend/autotest_data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - testmaster-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:5001/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: testmaster-celery
+    restart: unless-stopped
+    command: celery -A fastapi_backend.tasks worker --loglevel=info --concurrency=4
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///app/instance/testmaster.db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    volumes:
+      - ./instance:/app/instance
+      - ./fastapi_backend/autotest_data:/app/fastapi_backend/autotest_data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - testmaster-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: testmaster-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - testmaster-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  testmaster-net:
+    driver: bridge
+
+volumes:
+  redis_data:

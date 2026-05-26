@@ -1,12 +1,12 @@
 <template>
-  <div class="exam-list">
-    <div class="container">
+  <div class="exam-list" style="position: relative; z-index: 1;">
+    <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
       <div class="page-header">
         <div>
           <h1 class="page-title">在线考试中心</h1>
           <p class="page-subtitle">模拟真实考试场景，检验学习成果</p>
         </div>
-        <el-button type="primary" @click="showGenerateDialog = true">
+        <el-button type="primary" @click="openGenerateDialog">
           <el-icon><MagicStick /></el-icon>
           智能组卷
         </el-button>
@@ -166,6 +166,21 @@
               <el-option label="专项练习" value="专项练习" />
             </el-select>
           </el-form-item>
+          <el-form-item label="学习路径">
+            <el-select 
+              v-model="generateForm.learning_path_id" 
+              style="width: 360px;"
+              placeholder="全部路径（不限定）"
+              clearable
+            >
+              <el-option 
+                v-for="lp in learningPaths" 
+                :key="lp.id" 
+                :label="`[阶段${lp.stage}] ${lp.title}`" 
+                :value="lp.id" 
+              />
+            </el-select>
+          </el-form-item>
           <el-form-item label="难度">
             <el-select v-model="generateForm.difficulty" style="width: 200px;">
               <el-option label="简单" value="easy" />
@@ -203,7 +218,6 @@
           <el-button type="primary" @click="generateExam" :loading="generating">生成试卷</el-button>
         </template>
       </el-dialog>
-    </div>
   </div>
 </template>
 
@@ -219,6 +233,7 @@ import request from '@/utils/request'
 const router = useRouter()
 
 const exams = ref([])
+const learningPaths = ref([])
 const filters = reactive({
   type: '',
   difficulty: '',
@@ -235,6 +250,7 @@ const generateForm = reactive({
   exam_type: '模拟考试',
   difficulty: 'medium',
   duration: 60,
+  learning_path_id: null,
   question_count: {
     single_choice: 10,
     multiple_choice: 5,
@@ -246,6 +262,19 @@ const generateForm = reactive({
 onMounted(() => {
   fetchExams()
 })
+
+const fetchLearningPaths = async () => {
+  try {
+    const res = await request.get('/learning-paths', { _t: Date.now() })
+    learningPaths.value = Array.isArray(res) ? res : (res.data || res.list || [])
+  } catch {}
+}
+
+const openGenerateDialog = () => {
+  fetchLearningPaths()
+  generateForm.learning_path_id = null
+  showGenerateDialog.value = true
+}
 
 const fetchExams = async () => {
   loading.value = true
@@ -363,17 +392,18 @@ const deleteExam = async (exam) => {
 
 <style scoped>
 .exam-list {
-  padding: 40px 0;
-  min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-page);
+  padding: 20px 0;
+  min-height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.container {
-  width: 100%;
-  max-width: 1440px;
-  padding: 0 24px;
-  margin: 0 auto;
-  box-sizing: border-box;
+.cyber-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
 }
 
 .page-header {

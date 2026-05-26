@@ -43,7 +43,7 @@
         <template #default>
           <div class="environment-description">
             <p><strong>什么是环境变量？</strong> 环境变量是特定环境下的变量，例如开发环境、测试环境、生产环境等。</p>
-            <p><strong>如何使用？</strong> 在URL、Headers、Form Data等输入框中使用 {{变量名}} 格式引用变量。</p>
+            <p><strong>如何使用？</strong> 在URL、Headers、Form Data等输入框中使用 <span v-text="'{{变量名}}'" /> 格式引用变量。</p>
             <p><strong>变量优先级：</strong> 环境变量 > 全局变量。当环境变量和全局变量同名时，环境变量会覆盖全局变量。</p>
             <p><strong>基础URL：</strong> 环境的基础URL会被自动设置为 base_url 变量，可在URL中引用。</p>
             <p><strong>执行时加载：</strong> 执行用例时，系统会自动加载当前环境的变量，并替换用例中的变量占位符。</p>
@@ -103,10 +103,12 @@
       :title="isEdit ? '编辑环境' : '新建环境'"
       width="550px"
       custom-class="environment-dialog"
+      append-to-body
+      destroy-on-close
     >
       <el-form :model="formData" label-width="80px">
         <el-form-item label="环境名称" required>
-          <el-input v-model="formData.env_name" placeholder="例如：开发环境" />
+          <el-input v-model="formData.name" placeholder="例如：开发环境" />
         </el-form-item>
         <el-form-item label="基础URL">
           <el-input v-model="formData.base_url" placeholder="例如：http://api.example.com" />
@@ -116,7 +118,7 @@
         </el-form-item>
         <div class="section-title">自定义变量</div>
         <div class="var-editor">
-          <div class="var-item-editor" v-for="(item, index) in vars" :key="index">
+          <div class="var-item-editor" v-for="(item, index) in vars" :key="item.id || item.key || index">
             <el-input
               v-model="item.key"
               placeholder="变量名"
@@ -156,14 +158,8 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { Plus, Download, Upload } from '@element-plus/icons-vue'
-import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-
-const token = localStorage.getItem('token') || ''
-const autoTestRequest = axios.create({
-  timeout: 30000,
-  headers: token ? { Authorization: `Bearer ${token}` } : {}
-})
+import autoTestRequest from '@/utils/autoTestRequest'
 
 const props = defineProps({
   modelValue: {
@@ -186,7 +182,7 @@ const isEdit = ref(false)
 const editingId = ref(null)
 
 const formData = ref({
-  env_name: '',
+  name: '',
   base_url: '',
   is_default: false,
   variables: {}
@@ -215,8 +211,8 @@ const collectVars = () => {
 const fetchEnvs = async () => {
   loading.value = true
   try {
-    const res = await autoTestRequest.get('/api/auto-test/environments')
-    environments.value = res.data || res
+    const res = await autoTestRequest.get('/auto-test/environments')
+    environments.value = Array.isArray(res) ? res : []
     emit('changed', environments.value)
   } catch (err) {
     console.error('获取环境列表失败:', err)
@@ -230,7 +226,7 @@ const handleCreate = () => {
   isEdit.value = false
   editingId.value = null
   formData.value = {
-    env_name: '',
+    name: '',
     base_url: '',
     is_default: false,
     variables: {}
@@ -243,7 +239,7 @@ const handleEdit = (env) => {
   isEdit.value = true
   editingId.value = env.id
   formData.value = {
-    env_name: env.env_name || env.name || '',
+    name: env.name || env.env_name || '',
     base_url: env.base_url || '',
     is_default: env.is_default,
     variables: { ...(env.variables || {}) }
@@ -259,18 +255,23 @@ const handleEdit = (env) => {
 }
 
 const handleSave = async () => {
-  if (!formData.value.env_name.trim()) {
+  if (!formData.value.name?.trim()) {
     ElMessage.warning('请输入环境名称')
     return
   }
   collectVars()
 
+  const payload = {
+    ...formData.value,
+    name: formData.value.name.trim()
+  }
+
   try {
     if (isEdit.value) {
-      await autoTestRequest.put(`/api/auto-test/environments/${editingId.value}`, formData.value)
+      await autoTestRequest.put(`/auto-test/environments/${editingId.value}`, payload)
       ElMessage.success('修改成功')
     } else {
-      await autoTestRequest.post('/api/auto-test/environments', formData.value)
+      await autoTestRequest.post('/auto-test/environments', payload)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
@@ -289,7 +290,7 @@ const handleDelete = async (env) => {
       '确认删除',
       { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
     )
-    await autoTestRequest.delete(`/api/auto-test/environments/${env.id}`)
+    await autoTestRequest.delete(`/auto-test/environments/${env.id}`)
     ElMessage.success('删除成功')
     fetchEnvs()
   } catch {
@@ -324,18 +325,30 @@ const handleImportEnvironments = async (file) => {
       let importedCount = 0
       for (const envData of data) {
         try {
+          const normalizedName = envData.name || envData.env_name
+          if (!normalizedName) {
+            continue
+          }
+
+          const payload = {
+            ...envData,
+            name: normalizedName
+          }
+
           // 检查环境名称是否已存在
-          const existingEnv = environments.value.find(env => env.env_name === envData.env_name)
+          const existingEnv = environments.value.find(
+            env => (env.name || env.env_name) === normalizedName
+          )
           if (existingEnv) {
             // 如果存在，更新
-            await autoTestRequest.put(`/api/auto-test/environments/${existingEnv.id}`, envData)
+            await autoTestRequest.put(`/auto-test/environments/${existingEnv.id}`, payload)
           } else {
             // 如果不存在，创建
-            await autoTestRequest.post('/api/auto-test/environments/', envData)
+            await autoTestRequest.post('/auto-test/environments', payload)
           }
           importedCount++
         } catch (error) {
-          console.error(`导入环境 "${envData.env_name}" 失败:`, error)
+          console.error(`导入环境 "${envData.name || envData.env_name}" 失败:`, error)
         }
       }
 

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, func
@@ -10,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.models import User, Progress, ExerciseSubmissionRecord
+from fastapi_backend.models.models import User, Progress
 
 router = APIRouter(prefix="/api/v1/certificates", tags=["技能证书"])
 
@@ -91,8 +90,8 @@ CERTIFICATE_LEVELS = {
 
 
 def _generate_cert_id(user_id: int, cert_key: str) -> str:
-    raw = f"cert-{user_id}-{cert_key}-{datetime.utcnow().strftime('%Y%m%d')}"
-    return hashlib.md5(raw.encode()).hexdigest()[:12].upper()
+    raw = f"cert-{user_id}-{cert_key}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16].upper()
 
 
 @router.get("/")
@@ -135,7 +134,7 @@ async def get_certificates(
             "current_score": round(score, 1),
             "unlocked": unlocked,
             "cert_id": cert_id,
-            "issued_at": datetime.utcnow().strftime("%Y-%m-%d") if unlocked else None,
+            "issued_at": "已解锁" if unlocked else None,
         })
 
     unlocked_count = sum(1 for c in certificates if c["unlocked"])

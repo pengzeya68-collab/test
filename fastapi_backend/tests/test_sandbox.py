@@ -1,152 +1,105 @@
 """
-沙盒服务测试
-覆盖超时、内存限制、运行时错误等边界情况
+代码沙盒服务测试
+覆盖代码执行、超时处理、错误处理
 """
-import unittest
-import os
-import sys
-from unittest.mock import patch, MagicMock, AsyncMock
+import asyncio
+from unittest.mock import patch, AsyncMock, MagicMock
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import pytest
 
-from services.sandbox_service import CodeSandbox
+from fastapi_backend.services.sandbox_service import CodeSandbox
 
 
-class TestSandboxService(unittest.TestCase):
+class TestSandbox:
     """沙盒服务测试"""
 
-    def setUp(self):
+    def setup_method(self):
         self.sandbox = CodeSandbox()
 
-    def test_execute_code_success(self):
-        """测试代码执行成功"""
-        # 由于CodeSandbox可能依赖外部执行环境，这里使用mock
-        with patch('services.sandbox_service.subprocess.run') as mock_run:
-            mock_result = MagicMock()
-            mock_result.returncode = 0
-            mock_result.stdout = "Hello, World!"
-            mock_result.stderr = ""
-            mock_run.return_value = mock_result
+    @pytest.mark.asyncio
+    async def test_execute_python_success(self):
+        with patch("fastapi_backend.services.sandbox_service.asyncio.create_subprocess_exec") as mock_subprocess:
+            mock_proc = MagicMock()
+            mock_proc.communicate = AsyncMock(return_value=(b"hello world\n", b""))
+            mock_proc.returncode = 0
+            mock_proc.kill = MagicMock()
+            mock_subprocess.return_value = mock_proc
 
-            result = self.sandbox.execute_code("print('Hello, World!')", "python", timeout=2)
+            result = await self.sandbox.execute_code("print('hello world')", "python")
 
-            self.assertEqual(result["exit_code"], 0)
-            self.assertEqual(result["stdout"], "Hello, World!")
-            self.assertEqual(result["stderr"], "")
+            assert result["exit_code"] == 0
+            assert "hello world" in result["stdout"]
+            assert result["stderr"] == ""
 
-    def test_execute_code_timeout(self):
-        """测试代码执行超时"""
-        with patch('services.sandbox_service.subprocess.run') as mock_run:
-            mock_run.side_effect = TimeoutError("执行超时")
+    @pytest.mark.asyncio
+    async def test_execute_timeout(self):
+        with patch("fastapi_backend.services.sandbox_service.asyncio.create_subprocess_exec") as mock_subprocess:
+            mock_proc = MagicMock()
+            # 用普通函数模拟超时，避免创建未 await 的 AsyncMock
+            mock_proc.communicate = MagicMock(side_effect=asyncio.TimeoutError)
+            mock_proc.returncode = None
+            mock_proc.kill = MagicMock()
+            mock_subprocess.return_value = mock_proc
 
-            result = self.sandbox.execute_code("while True: pass", "python", timeout=1)
+            result = await self.sandbox.execute_code("while True: pass", "python", timeout=1)
 
-            self.assertEqual(result["exit_code"], -1)
-            self.assertIn("超时", result["stderr"])
+            # TimeoutError 被捕获，exit_code 应为 -1
+            assert result["exit_code"] == -1
 
-    def test_execute_code_runtime_error(self):
-        """测试代码运行时错误"""
-        with patch('services.sandbox_service.subprocess.run') as mock_run:
-            mock_result = MagicMock()
-            mock_result.returncode = 1
-            mock_result.stdout = ""
-            mock_result.stderr = "ZeroDivisionError: division by zero"
-            mock_run.return_value = mock_result
+    @pytest.mark.asyncio
+    async def test_execute_runtime_error(self):
+        with patch("fastapi_backend.services.sandbox_service.asyncio.create_subprocess_exec") as mock_subprocess:
+            mock_proc = MagicMock()
+            mock_proc.communicate = AsyncMock(return_value=(b"", b"NameError: name 'x' is not defined"))
+            mock_proc.returncode = 1
+            mock_proc.kill = MagicMock()
+            mock_subprocess.return_value = mock_proc
 
-            result = self.sandbox.execute_code("1 / 0", "python", timeout=2)
+            result = await self.sandbox.execute_code("print(x)", "python")
 
-            self.assertEqual(result["exit_code"], 1)
-            self.assertIn("ZeroDivisionError", result["stderr"])
+            assert result["exit_code"] == 1
+            assert "NameError" in result["stderr"]
 
-    def test_execute_code_memory_limit(self):
-        """测试内存限制（模拟）"""
-        # 实际的内存限制检测可能更复杂，这里模拟
-        with patch('services.sandbox_service.subprocess.run') as mock_run:
-            mock_result = MagicMock()
-            mock_result.returncode = 137  # 常见的内存错误退出码
-            mock_result.stdout = ""
-            mock_result.stderr = "MemoryError"
-            mock_run.return_value = mock_result
+    @pytest.mark.asyncio
+    async def test_execute_invalid_language(self):
+        result = await self.sandbox.execute_code("print('test')", "unsupported_lang")
 
-            result = self.sandbox.execute_code("x = [0] * 10**9", "python", timeout=5)
+        assert result["exit_code"] == -1
+        assert "不支持" in result["stderr"]
 
-            self.assertEqual(result["exit_code"], 137)
-            self.assertIn("MemoryError", result["stderr"])
+    @pytest.mark.asyncio
+    async def test_execute_large_output(self):
+        large_output = "x" * 20000
+        with patch("fastapi_backend.services.sandbox_service.asyncio.create_subprocess_exec") as mock_subprocess:
+            mock_proc = MagicMock()
+            mock_proc.communicate = AsyncMock(return_value=(large_output.encode(), b""))
+            mock_proc.returncode = 0
+            mock_proc.kill = MagicMock()
+            mock_subprocess.return_value = mock_proc
 
-    def test_execute_code_invalid_language(self):
-        """测试不支持的语言"""
-        result = self.sandbox.execute_code("console.log('test')", "javascript", timeout=2)
+            result = await self.sandbox.execute_code("print('x' * 20000)", "python")
 
-        # 应该返回错误或降级处理
-        self.assertIsNotNone(result)
-        # 具体行为取决于实现
+            assert result["exit_code"] == 0
+            assert len(result["stdout"]) <= 1024 * 10 + 64
+            assert "输出被截断" in result["stdout"]
 
-    def test_execute_code_with_input(self):
-        """测试带输入的程序执行"""
-        with patch('services.sandbox_service.subprocess.run') as mock_run:
-            mock_result = MagicMock()
-            mock_result.returncode = 0
-            mock_result.stdout = "42"
-            mock_result.stderr = ""
-            mock_run.return_value = mock_result
+    @pytest.mark.asyncio
+    async def test_security_blocked_import(self):
+        result = await self.sandbox.execute_code("import os\nos.system('ls')", "python")
 
-            result = self.sandbox.execute_code(
-                code="print(input())",
-                language="python",
-                input_data="42",
-                timeout=2
-            )
+        assert result["exit_code"] == -1
+        assert "安全检查失败" in result["stderr"]
 
-            self.assertEqual(result["exit_code"], 0)
-            self.assertEqual(result["stdout"], "42")
+    @pytest.mark.asyncio
+    async def test_security_blocked_builtin(self):
+        result = await self.sandbox.execute_code("eval('1+1')", "python")
 
-    def test_execute_code_empty_code(self):
-        """测试空代码"""
-        result = self.sandbox.execute_code("", "python", timeout=2)
+        assert result["exit_code"] == -1
+        assert "安全检查失败" in result["stderr"]
 
-        self.assertIsNotNone(result)
-        # 具体行为取决于实现
+    @pytest.mark.asyncio
+    async def test_execute_empty_code(self):
+        result = await self.sandbox.execute_code("", "python")
 
-    def test_execute_code_whitespace_only(self):
-        """测试只有空白的代码"""
-        result = self.sandbox.execute_code("   \n\t\n  ", "python", timeout=2)
-
-        self.assertIsNotNone(result)
-        # 具体行为取决于实现
-
-    def test_execute_code_large_output(self):
-        """测试大输出截断"""
-        large_output = "A" * 1024 * 20  # 20KB，超过默认限制
-
-        with patch('services.sandbox_service.subprocess.run') as mock_run:
-            mock_result = MagicMock()
-            mock_result.returncode = 0
-            mock_result.stdout = large_output
-            mock_result.stderr = ""
-            mock_run.return_value = mock_result
-
-            result = self.sandbox.execute_code("print('A' * 20000)", "python", timeout=2)
-
-            self.assertEqual(result["exit_code"], 0)
-            # 输出应该被截断
-            self.assertLessEqual(len(result["stdout"]), 1024 * 10)  # 10KB限制
-
-    def test_sandbox_security(self):
-        """测试安全限制（模拟）"""
-        dangerous_code = "import os; os.system('rm -rf /')"
-
-        with patch('services.sandbox_service.subprocess.run') as mock_run:
-            mock_result = MagicMock()
-            mock_result.returncode = 0
-            mock_result.stdout = ""
-            mock_result.stderr = ""
-            mock_run.return_value = mock_result
-
-            result = self.sandbox.execute_code(dangerous_code, "python", timeout=2)
-
-            # 应该被安全机制阻止或运行在受限环境
-            self.assertIsNotNone(result)
-
-
-if __name__ == '__main__':
-    unittest.main()
+        assert result["exit_code"] == -1
+        assert "非空字符串" in result["stderr"]

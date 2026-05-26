@@ -273,7 +273,7 @@
           请将以下 cURL 命令复制到您的 <strong>GitLab CI / Jenkins Pipeline</strong> 中。<br>
           每次代码部署完成后，会自动触发该场景进行回归测试。
         </p>
-        <div style="background: #1e1e1e; padding: 15px; border-radius: 6px; color: #d4d4d4; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; word-break: break-all; margin-bottom: 16px;">
+        <div style="background: var(--tm-card-bg); padding: 15px; border-radius: 6px; color: #d4d4d4; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; word-break: break-all; margin-bottom: 16px;">
           <template v-if="curlCommand">
             {{ curlCommand }}
           </template>
@@ -335,6 +335,7 @@
               <el-option label="运行中" value="running" />
               <el-option label="已完成" value="completed" />
               <el-option label="已失败" value="failed" />
+              <el-option label="已取消" value="cancelled" />
             </el-select>
           </el-form-item>
           <el-form-item label="日期范围">
@@ -627,38 +628,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, VideoPlay, Delete, Search, ArrowRight, Document, Link, DocumentCopy, Clock, DataAnalysis, Edit, Timer, Refresh, Loading, Setting, QuestionFilled } from '@element-plus/icons-vue'
-import axios from 'axios'
+import autoTestRequest from '@/utils/autoTestRequest'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
 import ScenarioExecutionDialog from '@/components/ScenarioExecutionDialog.vue'
-
-const autoTestRequest = axios.create({
-  baseURL: '',
-  timeout: 30000
-})
-
-// 添加请求拦截器，自动带上 token
-autoTestRequest.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
-    if (token && token !== 'undefined' && token !== 'null' && token !== '[object Object]') {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  error => {
-    return Promise.reject(error);
-  }
-)
-
-// 添加响应拦截器，自动处理 response.data
-autoTestRequest.interceptors.response.use(
-  response => {
-    return response.data;
-  },
-  error => {
-    return Promise.reject(error);
-  }
-)
 
 const loading = ref(false)
 const scenarios = ref([])
@@ -716,7 +688,7 @@ const curlCommand = computed(() => {
     return ''
   }
   const baseUrl = window.location.origin
-  return `curl -X POST "${baseUrl}/api/auto-test/scenarios/webhook/${currentCiCdScene.value.webhook_token}" \\
+  return `curl -X POST "${baseUrl}/auto-test/scenarios/webhook/${currentCiCdScene.value.webhook_token}" \\
      -H "Content-Type: application/json" \\
      -d '{"env_id": 替换为实际环境ID}'`
 })
@@ -816,7 +788,7 @@ const environments = ref([])
 // 加载环境列表 - 使用正确的 API 路径
 const loadEnvironments = async () => {
   try {
-    const res = await autoTestRequest.get('/api/auto-test/environments')
+    const res = await autoTestRequest.get('/auto-test/environments')
     environments.value = res || []
   } catch (error) {
     console.error('加载环境列表失败:', error)
@@ -841,12 +813,12 @@ const handleEnvManagerClose = () => {
 }
 
 const getStatusType = (status) => {
-  const types = { success: 'success', completed: 'success', failed: 'danger', error: 'warning', running: 'primary' }
+  const types = { success: 'success', completed: 'success', failed: 'danger', error: 'warning', running: 'primary', cancelled: 'info' }
   return types[status] || 'info'
 }
 
 const getStatusText = (status) => {
-  const texts = { success: '成功', completed: '成功', failed: '失败', error: '异常', running: '运行中' }
+  const texts = { success: '成功', completed: '成功', failed: '失败', error: '异常', running: '运行中', cancelled: '已取消' }
   return texts[status] || status
 }
 
@@ -873,7 +845,7 @@ const loadExecutionHistory = async () => {
       params.end_date = historyFilterEndDate.value
     }
 
-    const res = await autoTestRequest.get(`/api/auto-test/scenarios/${currentHistoryScenarioId.value}/history`, { params })
+    const res = await autoTestRequest.get(`/auto-test/scenarios/${currentHistoryScenarioId.value}/history`, { params })
 
     // 计算统计数据
     const items = res.items || []
@@ -888,10 +860,11 @@ const loadExecutionHistory = async () => {
     }
 
     const successCount = items.filter(item => item.status === 'success' || item.status === 'completed').length
+    const failedCount = items.filter(item => item.status === 'failed' || item.status === 'error').length
     executionHistory.value = {
       total: res.total || 0,
       success_count: successCount,
-      failed_count: items.length - successCount,
+      failed_count: failedCount,
       items: items
     }
   } catch (error) {
@@ -924,7 +897,7 @@ const deleteHistoryRecord = async (historyId) => {
     if (!currentHistoryScenarioId.value) {
       throw new Error('未找到当前场景ID')
     }
-    await autoTestRequest.delete(`/api/auto-test/scenarios/${currentHistoryScenarioId.value}/history/${historyId}`)
+    await autoTestRequest.delete(`/auto-test/scenarios/${currentHistoryScenarioId.value}/history/${historyId}`)
     ElMessage.success('删除成功')
     await loadExecutionHistory()
   } catch (error) {
@@ -944,7 +917,7 @@ const openReport = (reportUrl) => {
 // 再次运行历史报告对应的场景
 const reRunHistory = async (historyRow) => {
   const scenarioId = historyRow.scenario_id || currentHistoryScenarioId.value;
-  const envId = historyRow.env_id || selectedEnvId.value;
+  const envId = historyRow.env_id ?? selectedEnvId.value;
 
   if (!scenarioId) {
       ElMessage.error('无法获取场景 ID，请从场景列表运行');
@@ -1031,12 +1004,8 @@ const formatResponseBody = (response) => {
 const loadScenarios = async () => {
   loading.value = true
   try {
-    const res = await autoTestRequest.get('/api/auto-test/scenarios')
+    const res = await autoTestRequest.get('/auto-test/scenarios')
     scenarios.value = res || []
-    // #region agent log
-    // 注释掉这个调试请求，因为没有服务在 7444 端口运行
-    // fetch('http://127.0.0.1:7444/ingest/5081c6b5-d6af-4e32-8f31-9f3bb44e7710',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d60346'},body:JSON.stringify({sessionId:'d60346',runId:'run1',hypothesisId:'H4',location:'ScenarioList.vue:loadScenarios',message:'frontend_scenarios_shape',data:{count:(res||[]).length,sample:(res||[]).slice(0,3).map(s=>({id:s.id,step_count:s.step_count,steps_len:Array.isArray(s.steps)?s.steps.length:null,keys:Object.keys(s||{}).slice(0,10)}))},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
   } catch (error) {
     console.error('加载场景失败:', error)
   } finally {
@@ -1065,10 +1034,10 @@ const handleSave = async () => {
   }
   try {
     if (isEdit.value) {
-      await autoTestRequest.put(`/api/auto-test/scenarios/${currentScenarioId.value}`, scenarioForm.value)
+      await autoTestRequest.put(`/auto-test/scenarios/${currentScenarioId.value}`, scenarioForm.value)
       ElMessage.success('更新成功')
     } else {
-      await autoTestRequest.post('/api/auto-test/scenarios', scenarioForm.value)
+      await autoTestRequest.post('/auto-test/scenarios', scenarioForm.value)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
@@ -1080,7 +1049,6 @@ const handleSave = async () => {
 
 const handleDelete = async (id) => {
   try {
-    // 弹出强阻断确认框，绝对不会点不动！
     await ElMessageBox.confirm(
       '确定要彻底删除该场景及其所有关联记录吗？此操作不可逆！',
       '高危操作警告',
@@ -1089,28 +1057,25 @@ const handleDelete = async (id) => {
         cancelButtonText: '点错了',
         type: 'warning',
       }
-    );
-
-    // 发送删除请求
-    await autoTestRequest.delete(`/api/auto-test/scenarios/${id}`);
-
-    ElMessage.success('清理完毕！');
-    // 重新加载列表数据
-    loadScenarios();
-
-  } catch (error) {
-    // 如果是点击了取消，不报错；如果是后端返回错误，则弹出后端信息
-    if (error !== 'cancel') {
-      const msg = error.response?.data?.message || error.response?.data?.error || '删除遭遇异常，请检查关联数据！';
-      ElMessage.error(msg);
-    }
+    )
+  } catch {
+    return
   }
-};
+
+  try {
+    await autoTestRequest.delete(`/auto-test/scenarios/${id}`)
+    ElMessage.success('清理完毕！')
+    loadScenarios()
+  } catch (error) {
+    const msg = error.response?.data?.message || error.response?.data?.error || '删除遭遇异常，请检查关联数据！'
+    ElMessage.error(msg)
+  }
+}
 
 // 定时计划相关方法
 const loadScheduleTasks = async () => {
   try {
-    const res = await autoTestRequest.get('/api/auto-test/scheduler/tasks')
+    const res = await autoTestRequest.get('/auto-test/scheduler/tasks')
     // 按场景 ID 分组，添加 statusLoading 字段
     const grouped = {}
     for (const task of res || []) {
@@ -1138,7 +1103,7 @@ const handleToggleTaskStatus = async (task) => {
   const originalStatus = task.is_active
   task.statusLoading = true
   try {
-    await autoTestRequest.post(`/api/auto-test/scheduler/tasks/${task.task_id}/toggle`)
+    await autoTestRequest.post(`/auto-test/scheduler/tasks/${task.task_id}/toggle`)
     ElMessage.success(`任务已${task.is_active ? '启用' : '暂停'}`)
     // 重新加载任务列表
     await loadScheduleTasks()
@@ -1194,7 +1159,7 @@ const openScheduleDialog = async (row) => {
   }
   // 加载该场景已有的定时任务
   try {
-    const res = await autoTestRequest.get('/api/auto-test/scheduler/tasks')
+    const res = await autoTestRequest.get('/auto-test/scheduler/tasks')
     // 找到该场景下的任务
     const existingTasks = (res || []).filter(t => t.scenario_id === row.id)
     if (existingTasks.length > 0) {
@@ -1216,11 +1181,11 @@ const handleScheduleSubmit = async () => {
     // 先删除该场景的所有现有任务
     const existingTasks = scheduleTasks.value[scheduleForm.value.scenario_id] || []
     for (const task of existingTasks) {
-      await autoTestRequest.delete(`/api/auto-test/scheduler/tasks/${task.task_id}`)
+      await autoTestRequest.delete(`/auto-test/scheduler/tasks/${task.task_id}`)
     }
 
     // 创建新任务
-    await autoTestRequest.post('/api/auto-test/scheduler/tasks', {
+    await autoTestRequest.post('/auto-test/scheduler/tasks', {
       scenario_id: scheduleForm.value.scenario_id,
       cron_expression: scheduleForm.value.cron_expression,
       env_id: scheduleForm.value.env_id,
@@ -1244,7 +1209,7 @@ const handleDeleteSchedule = async (scenarioId) => {
     console.log("[DEBUG] 准备删除定时任务，scenarioId=", scenarioId, "tasks=", tasks)
     for (const task of tasks) {
       console.log("[DEBUG] 删除任务ID:", task.task_id)
-      await autoTestRequest.delete(`/api/auto-test/scheduler/tasks/${task.task_id}`)
+      await autoTestRequest.delete(`/auto-test/scheduler/tasks/${task.task_id}`)
     }
     ElMessage.success('删除成功')
     loadScheduleTasks()
@@ -1272,7 +1237,7 @@ const pollTaskStatus = async (taskId, scenarioName) => {
   const signal = pollingAbortController.signal
   pollingTimer = setInterval(async () => {
     try {
-      const res = await autoTestRequest.get(`/api/auto-test/tasks/${taskId}`, { signal })
+      const res = await autoTestRequest.get(`/auto-test/tasks/${taskId}`, { signal })
       const state = res.status
 
       if (state === 'PROGRESS') {
@@ -1317,7 +1282,7 @@ const pollTaskStatus = async (taskId, scenarioName) => {
         }
       }
     } catch (error) {
-      if (axios.isCancel(error)) return
+      if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
       stopPolling()
       stopFakeProgress()
       isRunning.value = false
@@ -1329,7 +1294,7 @@ const pollTaskStatus = async (taskId, scenarioName) => {
 const handleToggleStatus = async (row, val) => {
   const oldVal = row.is_active
   try {
-    await autoTestRequest.put(`/api/auto-test/scenarios/${row.id}/status`, {
+    await autoTestRequest.put(`/auto-test/scenarios/${row.id}/status`, {
       is_active: val
     })
     row.is_active = val
@@ -1390,7 +1355,7 @@ const handleCancelTask = async () => {
 
   try {
     isCanceling.value = true
-    await autoTestRequest.post(`/api/auto-test/tasks/${currentTaskId}/cancel`)
+    await autoTestRequest.post(`/auto-test/tasks/${currentTaskId}/cancel`)
     stopPolling()
     isRunning.value = false
     isCanceling.value = false
@@ -1406,14 +1371,7 @@ const handleCancelTask = async () => {
 
 const openAllureReport = () => {
   const resultData = runResult.value || reportDetailData.value || {};
-
-  let url = resultData.report_url;
-  if (!url && resultData.execution_record_id) {
-    url = `/reports/scenario_${resultData.scenario_id || 'unknown'}/index.html`;
-  }
-  if (!url && resultData.report_id) {
-    url = `/reports/${resultData.report_id}/index.html`;
-  }
+  const url = resultData.report_url;
 
   if (url) {
     window.open(resolveReportUrl(url), '_blank');
@@ -1428,7 +1386,7 @@ const viewReportDetail = async (reportId) => {
     reportDetailLoading.value = true
     reportDetailData.value = null
     expandedDetailSteps.value = []
-    const res = await autoTestRequest.get(`/api/auto-test/reports/${reportId}`)
+    const res = await autoTestRequest.get(`/auto-test/reports/${reportId}`)
     reportDetailData.value = res
     // 默认展开第一个失败步骤
     if (res.step_results) {
@@ -1469,6 +1427,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopPolling()
+  stopFakeProgress()
 })
 </script>
 
@@ -1588,7 +1547,7 @@ onUnmounted(() => {
   height: 24px;
   border-radius: 50%;
   background: var(--tm-color-primary);
-  color: #fff;
+  color: var(--tm-text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1689,7 +1648,7 @@ onUnmounted(() => {
 }
 
 .body-display {
-  background: #1e1e1e;
+  background: var(--tm-card-bg);
   color: #d4d4d4;
   padding: 16px;
   border-radius: var(--tm-radius-small);
@@ -1736,7 +1695,7 @@ onUnmounted(() => {
 }
 
 .allure-btn {
-  background: linear-gradient(135deg, var(--tm-color-primary) 0%, #0066cc 100%);
+  background: linear-gradient(135deg, var(--tm-color-primary) 0%, var(--tm-color-primary-dark) 100%);
   border: none;
   font-size: 15px;
 }
@@ -1965,7 +1924,7 @@ onUnmounted(() => {
 }
 
 .code-block {
-  background: #1e1e1e;
+  background: var(--tm-card-bg);
   color: #d4d4d4;
   padding: 12px;
   border-radius: var(--tm-radius-small);

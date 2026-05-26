@@ -241,9 +241,9 @@ body {
 }
 .el-table th.el-table__cell {
   background-color: var(--bg-surface);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--tm-text-primary);
   padding: 12px 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -260,7 +260,7 @@ body {
   transition: background-color 0.2s;
 }
 .el-table .el-table__row:hover > td.el-table__cell {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(var(--tm-color-primary-rgb), 0.08) !important;
 }
 
 .el-tag {
@@ -409,17 +409,89 @@ body {
   color: var(--tm-text-secondary);
 }
 
-.page-container {
-  padding: 24px;
+/* ========== 通用页面布局 ========== */
+.page-wrapper {
+  padding: 24px 28px 40px;
+  min-height: 100%;
+  background: var(--tm-bg-page, #09090B);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.page-wrapper--compact {
+  padding: 16px 24px 32px;
 }
 
 .page-header {
-  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 16px;
 }
-.page-header__title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--tm-text-primary);
+
+.page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--tm-text-primary, #FAFAFA);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.page-title--gradient {
+  background: linear-gradient(135deg, #EC4899, #9333EA);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: var(--tm-text-secondary, #71717A);
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 22px;
+  }
+}
+
+/* ========== 通用卡片样式 ========== */
+.card-glass {
+  background: var(--tm-glass-bg, rgba(24, 24, 27, 0.8));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--tm-shadow-card, 0 4px 24px rgba(0, 0, 0, 0.2));
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-glass:hover {
+  box-shadow: var(--tm-shadow-hover, 0 8px 32px rgba(0, 0, 0, 0.3));
+}
+
+/* ========== 通用网格布局 ========== */
+.grid-auto-fill {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.grid-2-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .grid-2-col {
+    grid-template-columns: 1fr;
+  }
 }
 
 .card-section {
@@ -573,13 +645,14 @@ body {
 
 .el-table th.el-table__cell {
   background-color: transparent !important;
-  color: var(--tm-text-secondary) !important;
+  color: var(--tm-text-primary) !important;
+  font-weight: 600;
 }
 
 .el-input__wrapper,
 .el-select .el-input__wrapper,
 .el-textarea__inner {
-  background-color: rgba(0, 0, 0, 0.2) !important;
+  background-color: var(--tm-card-bg) !important;
   border: 1px solid var(--tm-border-light) !important;
   box-shadow: none !important;
 }
@@ -638,7 +711,7 @@ body {
 }
 
 .el-switch__core {
-  background-color: rgba(var(--tm-border-light), 0.5) !important;
+  border: 1px solid var(--tm-border-light) !important;
 }
 
 .el-checkbox__label {
@@ -668,7 +741,7 @@ body {
 .el-button:not(.el-button--primary):not(.el-button--danger):not(.el-button--success):not(.el-button--warning):not(.el-button--text) {
   border-color: var(--tm-border-light) !important;
   color: var(--tm-text-secondary) !important;
-  background-color: rgba(0, 0, 0, 0.1) !important;
+  background-color: var(--tm-card-bg) !important;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
@@ -759,7 +832,7 @@ body {
 }
 
 .el-button {
-  background-color: rgba(0, 0, 0, 0.3) !important; /* 赛博朋克风格半透明底 */
+  background-color: var(--tm-card-bg) !important;
   border: 1px solid var(--tm-border-light) !important;
   color: var(--tm-text-primary, #fff) !important;
   backdrop-filter: blur(10px) !important;
@@ -861,6 +934,42 @@ body {
 .el-popper__arrow::before {
   background-color: var(--tm-card-bg, rgba(30, 30, 30, 0.8)) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ========== 浅色主题全局修复 ========== */
+[data-theme="sakura"],
+[data-theme="mojito-green"],
+[data-theme="apple-light"] {
+  .el-switch__core {
+    background-color: #d1d5db !important;
+    border: 1px solid #9ca3af !important;
+  }
+  .el-switch.is-checked .el-switch__core {
+    background-color: var(--tm-color-primary-dark) !important;
+    border-color: var(--tm-color-primary-dark) !important;
+  }
+  .el-switch__label {
+    color: var(--tm-text-primary) !important;
+  }
+
+  .el-table th.el-table__cell {
+    background-color: var(--tm-bg-card) !important;
+  }
+
+  .el-input__wrapper,
+  .el-select .el-input__wrapper,
+  .el-textarea__inner {
+    background-color: #ffffff !important;
+    border-color: #d1d5db !important;
+  }
+
+  .el-tag--success { color: #166534 !important; background-color: #dcfce7 !important; border-color: #bbf7d0 !important; }
+  .el-tag--danger { color: #991b1b !important; background-color: #fee2e2 !important; border-color: #fecaca !important; }
+  .el-tag--warning { color: #92400e !important; background-color: #fef3c7 !important; border-color: #fde68a !important; }
+  .el-tag--info { color: #1e40af !important; background-color: #dbeafe !important; border-color: #bfdbfe !important; }
+
+  .el-checkbox__inner { background-color: #ffffff !important; border-color: #d1d5db !important; }
+  .el-radio__inner { background-color: #ffffff !important; border-color: #d1d5db !important; }
 }
 
 /*# sourceMappingURL=global.css.map */

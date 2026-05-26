@@ -2,7 +2,7 @@
 AutoTest Pydantic Schema 模型
 用于请求校验和响应序列化
 """
-from pydantic import BaseModel, Field, BeforeValidator, ConfigDict
+from pydantic import BaseModel, Field, BeforeValidator, ConfigDict, field_validator, model_validator
 from typing import Optional, List, Dict, Any, Annotated
 from datetime import datetime
 
@@ -65,7 +65,14 @@ class AutoTestCaseBase(BaseModel):
 
 
 class AutoTestCaseCreate(AutoTestCaseBase):
-    group_id: Any = Field(..., description="所属分组ID")
+    folder_id: Optional[Any] = Field(None, description="所属文件夹ID")
+    group_id: Optional[Any] = Field(None, description="所属分组ID，兼容旧前端字段")
+
+    @model_validator(mode="after")
+    def validate_group_or_folder(self):
+        if self.folder_id in (None, "") and self.group_id in (None, ""):
+            raise ValueError("folder_id 或 group_id 必须提供一个")
+        return self
 
 
 class AutoTestCaseUpdate(BaseModel):
@@ -80,6 +87,7 @@ class AutoTestCaseUpdate(BaseModel):
     assert_rules: Optional[Any] = Field(None, alias="assertions", description="断言规则")
     extractors: Optional[List[Dict[str, Any]]] = Field(None, description="变量提取规则")
     description: Optional[str] = None
+    folder_id: Optional[Any] = None
     group_id: Optional[Any] = None
 
     model_config = ConfigDict(populate_by_name=True)
@@ -87,7 +95,8 @@ class AutoTestCaseUpdate(BaseModel):
 
 class AutoTestCaseResponse(AutoTestCaseBase):
     id: int
-    group_id: Any
+    folder_id: Optional[Any] = None
+    group_id: Optional[Any] = None
     updated_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
@@ -97,10 +106,17 @@ class AutoTestCaseResponse(AutoTestCaseBase):
 # ========== AutoTestEnvironment Schema ==========
 
 class AutoTestEnvironmentBase(BaseModel):
-    env_name: str = Field(..., min_length=1, max_length=100, description="环境名称")
+    name: str = Field(..., min_length=1, max_length=100, description="环境名称")
     base_url: Optional[str] = Field(None, description="基础路径")
     variables: Dict[str, Any] = Field(default_factory=dict, description="全局变量")
     is_default: bool = Field(False, description="是否为默认环境")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_env_name(cls, data):
+        if isinstance(data, dict) and "name" not in data and data.get("env_name"):
+            data = {**data, "name": data["env_name"]}
+        return data
 
 
 class AutoTestEnvironmentCreate(AutoTestEnvironmentBase):
@@ -108,10 +124,17 @@ class AutoTestEnvironmentCreate(AutoTestEnvironmentBase):
 
 
 class AutoTestEnvironmentUpdate(BaseModel):
-    env_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
     base_url: Optional[str] = None
     variables: Optional[Dict[str, Any]] = None
     is_default: Optional[bool] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_env_name(cls, data):
+        if isinstance(data, dict) and "name" not in data and data.get("env_name"):
+            data = {**data, "name": data["env_name"]}
+        return data
 
 
 class AutoTestEnvironmentResponse(AutoTestEnvironmentBase):
@@ -209,8 +232,6 @@ class AutoTestScenarioResponse(AutoTestScenarioBase):
 
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
-    model_config = ConfigDict(from_attributes=True)
-
 
 class ScenarioExecutionResult(BaseModel):
     scenario_id: int
@@ -237,13 +258,14 @@ class AutoTestDatasetBase(BaseModel):
 
 
 class AutoTestDatasetCreate(AutoTestDatasetBase):
-    scenario_id: Any = Field(..., description="所属场景ID")
+    scenario_id: Optional[Any] = Field(None, description="所属场景ID；通常由路径参数提供")
 
 
 class AutoTestDatasetUpdate(BaseModel):
-    name: Optional[str] = Field(None, description="数据集名称")
+    name: Optional[str] = Field(None, min_length=1, max_length=200, description="数据集名称")
     data_matrix: Optional[DataMatrix] = Field(None, description="数据矩阵")
     description: Optional[str] = None
+    scenario_id: Optional[Any] = Field(None, description="所属场景ID")
 
 
 class AutoTestDatasetResponse(AutoTestDatasetBase):
@@ -333,6 +355,100 @@ class InlineScenarioExecutionRequest(BaseModel):
     steps: List[dict] = Field(..., description="步骤列表")
     data_matrix: DataMatrix = Field(..., description="数据矩阵")
     env_vars: Optional[Dict[str, Any]] = Field(default_factory=dict, description="环境变量")
+
+
+# ========== 测试数据工厂 Schema ==========
+
+VALID_RULE_TYPES = {
+    "fixed", "enum", "increment", "uuid", "timestamp",
+    "date_offset", "phone", "email", "username", "env_ref",
+}
+
+class TemplateFieldRuleCreate(BaseModel):
+    field_name: str = Field(..., min_length=1, max_length=100, description="字段名")
+    field_label: Optional[str] = Field(None, max_length=200, description="字段标签")
+    rule_type: str = Field(
+        ...,
+        description="规则类型: fixed/enum/increment/uuid/timestamp/date_offset/phone/email/username/env_ref",
+    )
+    rule_config: Optional[Dict[str, Any]] = Field(None, description="规则配置")
+    sort_order: int = Field(default=0, ge=0, description="排序")
+
+    @field_validator("rule_type")
+    @classmethod
+    def validate_rule_type(cls, v):
+        if v not in VALID_RULE_TYPES:
+            raise ValueError(f"不支持的规则类型: {v}")
+        return v
+
+
+class TemplateFieldRuleResponse(TemplateFieldRuleCreate):
+    id: int
+    template_id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TestDataTemplateCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200, description="模板名称")
+    description: Optional[str] = Field(None, description="模板描述")
+    scenario_id: Optional[int] = Field(None, gt=0, description="关联场景ID")
+    row_count: int = Field(default=10, ge=1, le=100, description="生成行数(1-100)")
+    fields: List[TemplateFieldRuleCreate] = Field(
+        default_factory=list, min_length=1, max_length=20, description="字段规则列表(1-20个)"
+    )
+
+    @field_validator("fields")
+    @classmethod
+    def validate_fields(cls, v):
+        for f in v:
+            if f.rule_type not in VALID_RULE_TYPES:
+                raise ValueError(f"不支持的规则类型: {f.rule_type}，支持的类型: {', '.join(sorted(VALID_RULE_TYPES))}")
+        return v
+
+
+class TestDataTemplateUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200, description="模板名称")
+    description: Optional[str] = None
+    scenario_id: Optional[int] = Field(None, gt=0, description="关联场景ID")
+    row_count: Optional[int] = Field(None, ge=1, le=100, description="生成行数(1-100)")
+    fields: Optional[List[TemplateFieldRuleCreate]] = Field(
+        None, min_length=1, max_length=20, description="字段规则列表(1-20个)"
+    )
+
+    @field_validator("fields")
+    @classmethod
+    def validate_fields(cls, v):
+        if v is None:
+            return v
+        for f in v:
+            if f.rule_type not in VALID_RULE_TYPES:
+                raise ValueError(f"不支持的规则类型: {f.rule_type}，支持的类型: {', '.join(sorted(VALID_RULE_TYPES))}")
+        return v
+
+
+class TestDataTemplateResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    user_id: Optional[int] = None
+    scenario_id: Optional[int] = None
+    row_count: int = 10
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime
+    fields: List[TemplateFieldRuleResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GeneratedDatasetResponse(BaseModel):
+    dataset_id: int
+    name: str
+    columns: List[str] = []
+    rows: List[List[Any]] = []
+    row_count: int = 0
 
 
 # 重建前向引用

@@ -4,7 +4,6 @@ AutoTest 诊断路由 - 数据完整性检查
 
 路径前缀: /api/auto-test/diagnose
 """
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession

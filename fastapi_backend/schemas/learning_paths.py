@@ -1,10 +1,9 @@
 """Schemas for learning paths – migrated from Flask backend/api/learning_paths.py."""
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 # ── Exercise schemas ──────────────────────────────────────
@@ -73,3 +72,33 @@ class LearningPathDetail(LearningPathResponse):
 
 class AddExerciseRequest(BaseModel):
     exercise_id: int
+
+
+# ── Project practice schemas (admin) ──────────────────────
+
+class ProjectTaskCreate(BaseModel):
+    title: str = ""
+    description: str = ""
+    task_type: str = "test_case_design"
+    requirements: str = ""
+    hints: str = ""
+    score: int = 10
+
+
+class ProjectResourceCreate(BaseModel):
+    title: str = ""
+    resource_type: str = "document"
+    content: str = ""
+    url: str = ""
+
+
+class ProjectCreateRequest(BaseModel):
+    title: str = "新项目"
+    description: str = ""
+    overview: str = ""
+    difficulty: str = "medium"
+    status: str = "published"
+    estimated_hours: int = 8
+    sort_order: int = 0
+    tasks: list[ProjectTaskCreate] = []
+    resources: list[ProjectResourceCreate] = []

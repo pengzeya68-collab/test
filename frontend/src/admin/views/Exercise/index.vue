@@ -44,7 +44,7 @@
       <div style="padding: 20px 0;">
         <el-upload
           ref="uploadRef"
-          action="/api/admin/exercises/import"
+          action="/api/v1/admin/exercises/import"
           :headers="headers"
           :show-file-list="true"
           :limit="1"
@@ -71,7 +71,7 @@
           <div v-if="importResult.fail_reasons.length > 0" style="margin-top: 10px; max-height: 200px; overflow-y: auto;">
             <p style="font-weight: bold; margin-bottom: 5px; color: #e0e0e0;">失败原因：</p>
             <ul>
-              <li v-for="(reason, index) in importResult.fail_reasons" :key="index" style="color: #f56c6c; font-size: 12px;">
+              <li v-for="(reason, index) in importResult.fail_reasons" :key="reason || index" style="color: #f56c6c; font-size: 12px;">
                 {{ reason }}
               </li>
             </ul>
@@ -276,19 +276,21 @@ const handleSubmit = async () => {
 }
 
 const handleDelete = async (row) => {
-  await ElMessageBox.confirm('确定要删除这个习题吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
-
   try {
+    await ElMessageBox.confirm('确定要删除这个习题吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
     await request.delete(`/admin/exercises/${row.id}`)
     ElMessage.success('删除成功')
     fetchList()
   } catch (e) {
-    console.error('删除失败:', e)
-    ElMessage.error('删除失败：' + (e.response?.data?.error || e.message))
+    if (e !== 'cancel') {
+      console.error('删除失败:', e)
+      ElMessage.error('删除失败：' + (e.response?.data?.error || e.message))
+    }
   }
 }
 

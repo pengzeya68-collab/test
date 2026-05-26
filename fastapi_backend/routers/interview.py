@@ -1,6 +1,6 @@
 from typing import Optional
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func, or_
@@ -12,7 +12,7 @@ from fastapi_backend.core.database import get_db
 from fastapi_backend.core.exceptions import NotFoundException
 from fastapi_backend.deps.auth import get_current_active_user, require_admin
 from fastapi_backend.models.models import InterviewQuestion, InterviewSession, Submission, User, Exercise
-from fastapi_backend.schemas.common import MessageResponse, SuccessResponse, PaginationResponse
+from fastapi_backend.schemas.common import SuccessResponse, PaginationResponse
 from fastapi_backend.schemas.interview import CodeSubmission, AIEvaluationResponse, UserInterviewStatistics
 from fastapi_backend.schemas.interview_question import (
     InterviewQuestionDetail,
@@ -22,13 +22,11 @@ from fastapi_backend.schemas.interview_question import (
 from fastapi_backend.schemas.interview_session import (
     InterviewSessionCreate,
     InterviewSessionDetail,
-    InterviewSessionList,
     InterviewSessionWithQuestion
 )
 from fastapi_backend.schemas.submission import (
     SubmissionCreate,
     SubmissionDetail,
-    SubmissionUpdate,
     SubmissionResultDetail,
     SubmissionHistoryItem
 )
@@ -76,7 +74,7 @@ async def list_interview_questions(
 
     # 根据用户角色过滤发布状态
     if not current_user.is_admin:
-        query = query.where(InterviewQuestion.is_published == True)
+        query = query.where(InterviewQuestion.is_published)
 
     # 关键词搜索
     if keyword:
@@ -278,7 +276,7 @@ async def create_batch_interview_session(
 
     if len(selected) < body.question_count:
         remaining = body.question_count - len(selected)
-        iq_query = select(InterviewQuestion).where(InterviewQuestion.is_published == True)
+        iq_query = select(InterviewQuestion).where(InterviewQuestion.is_published)
         if body.categories:
             valid_cats = [c for c in body.categories if c != "其他"]
             if valid_cats:
@@ -312,7 +310,7 @@ async def create_batch_interview_session(
                 source_type = "mixed"
 
     if not selected:
-        fallback_eq = select(Exercise).where(Exercise.is_public == True).limit(50)
+        fallback_eq = select(Exercise).where(Exercise.is_public).limit(50)
         fr = await db.execute(fallback_eq)
         fallback_exercises = fr.scalars().all()
         if fallback_exercises:
@@ -359,7 +357,7 @@ async def create_batch_interview_session(
         position=body.position,
         level=body.level,
         interview_type=body.type,
-        start_time=datetime.utcnow(),
+        start_time=datetime.now(timezone.utc),
     )
     db.add(session)
     await db.commit()
@@ -440,7 +438,11 @@ async def list_my_interview_sessions(
             "created_at": session.created_at,
             "updated_at": session.updated_at,
             "question_title": question_title,
-            "question_difficulty": question_difficulty
+            "question_difficulty": question_difficulty,
+            "title": getattr(session, "title", None),
+            "position": getattr(session, "position", None),
+            "level": getattr(session, "level", None),
+            "interview_type": getattr(session, "interview_type", None),
         }
         sessions_with_question.append(InterviewSessionWithQuestion(**session_dict))
 
@@ -576,6 +578,12 @@ async def create_submission(
     if not session:
         raise NotFoundException("会话不存在或您没有权限访问")
 
+    if session.status not in ("started", "submitted"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"当前会话状态为 {session.status}，无法提交代码"
+        )
+
     # 2. 验证题目存在（通过session关联的question）
     qid = session.question_id
     question = None
@@ -584,14 +592,14 @@ async def create_submission(
 
     iq_query = select(InterviewQuestion).where(InterviewQuestion.id == qid)
     if not current_user.is_admin:
-        iq_query = iq_query.where(InterviewQuestion.is_published == True)
+        iq_query = iq_query.where(InterviewQuestion.is_published)
     iq_result = await db.execute(iq_query)
     question = iq_result.scalar_one_or_none()
 
     if not question:
         ex_query = select(Exercise).where(Exercise.id == qid)
         if not current_user.is_admin:
-            ex_query = ex_query.where(Exercise.is_public == True)
+            ex_query = ex_query.where(Exercise.is_public)
         ex_result = await db.execute(ex_query)
         exercise = ex_result.scalar_one_or_none()
         if exercise:
@@ -629,8 +637,9 @@ async def create_submission(
     try:
         await db.flush()
         await db.commit()
-    except Exception:
+    except Exception as e:
         await db.rollback()
+        logger.error(f"提交保存失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="提交保存失败，事务已回滚")
     await db.refresh(new_submission)
 
@@ -754,7 +763,7 @@ async def generate_follow_up_question(
 
 
 @router.post("/report")
-async def generate_interview_report(
+async def interview_report_route(
     body: dict,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -769,7 +778,7 @@ async def generate_interview_report(
 
 
 @router.post("/questions/generate-answers", response_model=SuccessResponse[dict])
-async def generate_reference_answers(
+async def generate_reference_answers_route(
     body: Optional[dict] = None,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),

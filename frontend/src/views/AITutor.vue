@@ -1,254 +1,209 @@
-﻿﻿﻿﻿<template>
-  <div class="ai-tutor">
-    <div class="container">
-      <div class="page-header">
-        <h1 class="page-title">AI智能导师</h1>
-        <p class="page-subtitle">你的专属测试学习私人教练，随时解答你的问题</p>
+<template>
+  <div class="ai-tutor-page">
+    <header class="page-header">
+      <div class="header-titles">
+        <h1 class="page-title">🤖 AI智能导师</h1>
+        <p class="page-desc">你的专属测试学习私人教练，随时解答你的问题</p>
       </div>
+    </header>
 
-      <div class="tutor-container">
-        <!-- 左侧功能面板 -->
-        <div class="left-panel">
-          <div class="panel-card">
-            <h3 class="panel-title">功能列表</h3>
-            <div class="function-list">
-              <div 
-                class="function-item" 
-                :class="{ active: currentMode === 'chat' }"
-                @click="switchMode('chat')"
-              >
-                <el-icon size="20"><ChatDotRound /></el-icon>
-                <span>学习答疑</span>
-              </div>
-              <div 
-                class="function-item" 
-                :class="{ active: currentMode === 'code' }"
-                @click="switchMode('code')"
-              >
-                <el-icon size="20"><Cpu /></el-icon>
-                <span>代码审查</span>
-              </div>
-              <div 
-                class="function-item" 
-                :class="{ active: currentMode === 'advice' }"
-                @click="getLearningAdvice"
-              >
-                <el-icon size="20"><Guide /></el-icon>
-                <span>学习建议</span>
-              </div>
-              <div 
-                class="function-item" 
-                :class="{ active: currentMode === 'interview' }"
-                @click="switchMode('interview')"
-              >
-                <el-icon size="20"><User /></el-icon>
-                <span>面试模拟</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel-card">
-            <h3 class="panel-title">快捷提问</h3>
-            <div class="quick-questions">
-              <el-button 
-                type="info" 
-                size="small" 
-                @click="quickQuestion('怎么学习Python自动化测试？')"
-              >
-                Python自动化学习
-              </el-button>
-              <el-button 
-                type="info" 
-                size="small" 
-                @click="quickQuestion('接口测试需要掌握哪些技能？')"
-              >
-                接口测试学习
-              </el-button>
-              <el-button 
-                type="info" 
-                size="small" 
-                @click="quickQuestion('测试工程师学习路径是什么？')"
-              >
-                学习路径规划
-              </el-button>
-              <el-button 
-                type="info" 
-                size="small" 
-                @click="quickQuestion('测试工程师简历怎么写？')"
-              >
-                简历优化建议
-              </el-button>
-              <el-button 
-                type="info" 
-                size="small" 
-                @click="quickQuestion('功能测试怎么转自动化测试？')"
-              >
-                转自动化经验
-              </el-button>
-            </div>
-          </div>
-
-          <div class="panel-card">
-            <h3 class="panel-title">使用说明</h3>
-            <div class="usage-tips">
-              <p><strong>💡 学习答疑：</strong>有任何测试相关的问题都可以提问</p>
-              <p><strong>💡 代码审查：</strong>粘贴你的代码，AI会帮你审查并给出优化建议</p>
-              <p><strong>💡 学习建议：</strong>根据你的技能情况给出个性化学习规划</p>
-              <p><strong>💡 面试模拟：</strong>模拟真实面试场景，提升面试能力</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 右侧对话区域 -->
-        <div class="right-panel">
-          <!-- 对话内容 -->
-          <div class="chat-container" ref="chatContainer">
-            <div class="welcome-message" v-if="messages.length === 0">
-              <div class="welcome-avatar">
-                <el-icon size="48" color="#409eff"><Monitor /></el-icon>
-              </div>
-              <h2>你好！我是你的AI测试导师 TestMaster</h2>
-              <p>我有10年软件测试行业经验，精通功能测试、接口测试、自动化测试、性能测试等技术。</p>
-              <p>有什么问题都可以问我，我会尽力为你解答！</p>
-            </div>
-
-            <div 
-              class="message-item" 
-              v-for="(msg, index) in messages" 
-              :key="index"
-              :class="msg.role"
+    <div class="tutor-container">
+      <aside class="left-panel">
+        <div class="panel-card">
+          <h3 class="panel-title">功能列表</h3>
+          <div class="function-list">
+            <div
+              class="function-item"
+              :class="{ active: currentMode === 'chat' }"
+              @click="switchMode('chat')"
             >
-              <div class="message-avatar">
-                <el-icon size="24" v-if="msg.role === 'assistant'" color="#409eff"><Monitor /></el-icon>
-                <el-icon size="24" v-else color="#67c23a"><User /></el-icon>
-              </div>
-              <div class="message-content">
-                <div class="message-header">
-                  <span class="message-name">{{ msg.role === 'assistant' ? 'AI导师' : '我' }}</span>
-                  <span class="message-time">{{ msg.time }}</span>
-                </div>
-                <div class="message-text" v-if="!msg.loading">
-                  <div class="markdown-content" v-html="renderMarkdown(msg.content)"></div>
-                </div>
-                <div class="message-loading" v-else>
-                  <el-icon class="is-loading" size="20"><Loading /></el-icon>
-                  <span>正在思考中...</span>
-                </div>
-              </div>
+              <span class="func-icon">💬</span>
+              <span>学习答疑</span>
+            </div>
+            <div
+              class="function-item"
+              :class="{ active: currentMode === 'code' }"
+              @click="switchMode('code')"
+            >
+              <span class="func-icon">🔍</span>
+              <span>代码审查</span>
+            </div>
+            <div
+              class="function-item"
+              :class="{ active: currentMode === 'advice' }"
+              @click="getLearningAdvice"
+            >
+              <span class="func-icon">📈</span>
+              <span>学习建议</span>
+            </div>
+            <div
+              class="function-item"
+              :class="{ active: currentMode === 'interview' }"
+              @click="switchMode('interview')"
+            >
+              <span class="func-icon">🎤</span>
+              <span>面试模拟</span>
             </div>
           </div>
+        </div>
 
-          <!-- 输入区域 -->
-          <div class="input-container">
-            <!-- 普通聊天模式 -->
-            <div v-if="currentMode === 'chat'">
-              <el-input
-                v-model="inputMessage"
-                type="textarea"
-                :rows="3"
-                placeholder="有什么问题都可以问我哦..."
-                @keydown.ctrl.enter="sendMessage"
-              />
-              <div class="input-actions">
-                <el-button @click="clearHistory">
-                  <el-icon><Delete /></el-icon>
-                  清空对话
-                </el-button>
-                <el-button type="primary" @click="sendMessage" :loading="sending">
-                  <el-icon><Promotion /></el-icon>
-                  发送
-                </el-button>
-              </div>
+        <div class="panel-card">
+          <h3 class="panel-title">快捷提问</h3>
+          <div class="quick-questions">
+            <button class="btn-quick" @click="quickQuestion('怎么学习Python自动化测试？')">Python自动化学习</button>
+            <button class="btn-quick" @click="quickQuestion('接口测试需要掌握哪些技能？')">接口测试学习</button>
+            <button class="btn-quick" @click="quickQuestion('测试工程师学习路径是什么？')">学习路径规划</button>
+            <button class="btn-quick" @click="quickQuestion('测试工程师简历怎么写？')">简历优化建议</button>
+            <button class="btn-quick" @click="quickQuestion('功能测试怎么转自动化测试？')">转自动化经验</button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <h3 class="panel-title">使用说明</h3>
+          <div class="usage-tips">
+            <p><strong>💡 学习答疑：</strong>有任何测试相关的问题都可以提问</p>
+            <p><strong>💡 代码审查：</strong>粘贴你的代码，AI会帮你审查并给出优化建议</p>
+            <p><strong>💡 学习建议：</strong>根据你的技能情况给出个性化学习规划</p>
+            <p><strong>💡 面试模拟：</strong>模拟真实面试场景，提升面试能力</p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="right-panel">
+        <div class="chat-container" ref="chatContainer">
+          <div class="welcome-message" v-if="messages.length === 0">
+            <div class="welcome-icon">🤖</div>
+            <h2>你好！我是你的AI测试导师 TestMaster</h2>
+            <p>我有10年软件测试行业经验，精通功能测试、接口测试、自动化测试、性能测试等技术。</p>
+            <p>有什么问题都可以问我，我会尽力为你解答！</p>
+          </div>
+
+          <div
+            class="message-item"
+            v-for="(msg, index) in messages"
+            :key="index"
+            :class="msg.role"
+          >
+            <div class="message-avatar">
+              <span v-if="msg.role === 'assistant'">🤖</span>
+              <span v-else>👤</span>
             </div>
-
-            <!-- 代码审查模式 -->
-            <div v-if="currentMode === 'code'">
-              <div class="code-header">
-                <el-select v-model="codeLanguage" size="small" style="width: 120px;">
-                  <el-option label="Python" value="python" />
-                  <el-option label="SQL" value="sql" />
-                  <el-option label="Shell" value="shell" />
-                  <el-option label="JavaScript" value="javascript" />
-                </el-select>
-                <span class="code-tip">粘贴你的代码，我会帮你审查优化</span>
+            <div class="message-content">
+              <div class="message-header">
+                <span class="message-name">{{ msg.role === 'assistant' ? 'AI导师' : '我' }}</span>
+                <span class="message-time">{{ msg.time }}</span>
               </div>
-              <el-input
-                v-model="codeContent"
-                type="textarea"
-                :rows="8"
-                placeholder="请粘贴要审查的代码..."
-              />
-              <div class="input-actions">
-                <el-button @click="clearCode">
-                  <el-icon><Refresh /></el-icon>
-                  清空
-                </el-button>
-                <el-button type="primary" @click="reviewCode" :loading="sending">
-                  <el-icon><Check /></el-icon>
-                  提交审查
-                </el-button>
+              <div class="message-text" v-if="!msg.loading">
+                <div class="markdown-content" v-html="renderMarkdown(msg.content)"></div>
               </div>
-            </div>
-
-            <!-- 面试模拟模式 -->
-            <div v-if="currentMode === 'interview'">
-              <div class="interview-config" v-if="!interviewStarted">
-                <el-form :model="interviewForm" label-width="100px">
-                  <el-form-item label="目标岗位">
-                    <el-select v-model="interviewForm.position_level" style="width: 200px;">
-                      <el-option label="功能测试工程师" value="功能测试工程师" />
-                      <el-option label="自动化测试工程师" value="自动化测试工程师" />
-                      <el-option label="测试开发工程师" value="测试开发工程师" />
-                      <el-option label="性能测试工程师" value="性能测试工程师" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="工作经验">
-                    <el-select v-model="interviewForm.years_of_experience" style="width: 200px;">
-                      <el-option label="应届生" :value="0" />
-                      <el-option label="1-3年" :value="2" />
-                      <el-option label="3-5年" :value="4" />
-                      <el-option label="5年以上" :value="6" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="面试轮次">
-                    <el-select v-model="interviewForm.interview_round" style="width: 200px;">
-                      <el-option label="一面（技术基础）" value="一面" />
-                      <el-option label="二面（技术深度）" value="二面" />
-                      <el-option label="三面（综合能力）" value="三面" />
-                    </el-select>
-                  </el-form-item>
-                </el-form>
-                <el-button type="primary" @click="startInterview">开始模拟面试</el-button>
-              </div>
-
-              <div v-else>
-                <div class="interview-status">
-                  <el-alert 
-                    title="面试进行中" 
-                    type="info" 
-                    :closable="false"
-                    description="请认真回答面试官的问题，回答完点击提交按钮"
-                  />
-                </div>
-                <el-input
-                  v-model="inputMessage"
-                  type="textarea"
-                  :rows="5"
-                  placeholder="请输入你的回答..."
-                />
-                <div class="input-actions">
-                  <el-button @click="endInterview">
-                    结束面试
-                  </el-button>
-                  <el-button type="primary" @click="sendInterviewAnswer" :loading="sending">
-                    提交回答
-                  </el-button>
-                </div>
+              <div class="message-loading" v-else>
+                <span class="loading-dot"></span>
+                <span class="loading-dot"></span>
+                <span class="loading-dot"></span>
+                <span class="loading-text">思考中...</span>
               </div>
             </div>
           </div>
         </div>
-      </div>
+
+        <div class="input-container">
+          <template v-if="currentMode === 'chat'">
+            <textarea
+              v-model="inputMessage"
+              class="chat-textarea"
+              rows="3"
+              placeholder="有什么问题都可以问我哦... (Ctrl+Enter 发送)"
+              @keydown.ctrl.enter="sendMessage"
+            ></textarea>
+            <div class="input-actions">
+              <button class="btn-outline" @click="clearHistory">
+                <span>🗑️</span> 清空对话
+              </button>
+              <button class="btn-primary" @click="sendMessage" :disabled="sending">
+                <span>📨</span> {{ sending ? '发送中...' : '发送' }}
+              </button>
+            </div>
+          </template>
+
+          <template v-if="currentMode === 'code'">
+            <div class="code-header">
+              <select v-model="codeLanguage" class="native-select">
+                <option value="python">Python</option>
+                <option value="sql">SQL</option>
+                <option value="shell">Shell</option>
+                <option value="javascript">JavaScript</option>
+              </select>
+              <span class="code-tip">粘贴你的代码，我会帮你审查优化</span>
+            </div>
+            <textarea
+              v-model="codeContent"
+              class="chat-textarea code-textarea"
+              rows="8"
+              placeholder="请粘贴要审查的代码..."
+            ></textarea>
+            <div class="input-actions">
+              <button class="btn-outline" @click="clearCode">🔄 清空</button>
+              <button class="btn-primary" @click="reviewCode" :disabled="sending">
+                ✅ {{ sending ? '审查中...' : '提交审查' }}
+              </button>
+            </div>
+          </template>
+
+          <template v-if="currentMode === 'interview'">
+            <div class="interview-config" v-if="!interviewStarted">
+              <div class="form-group">
+                <label>目标岗位</label>
+                <select v-model="interviewForm.position_level" class="native-select full">
+                  <option value="功能测试工程师">功能测试工程师</option>
+                  <option value="自动化测试工程师">自动化测试工程师</option>
+                  <option value="测试开发工程师">测试开发工程师</option>
+                  <option value="性能测试工程师">性能测试工程师</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>工作经验</label>
+                <select v-model="interviewForm.years_of_experience" class="native-select full">
+                  <option :value="0">应届生</option>
+                  <option :value="2">1-3年</option>
+                  <option :value="4">3-5年</option>
+                  <option :value="6">5年以上</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>面试轮次</label>
+                <select v-model="interviewForm.interview_round" class="native-select full">
+                  <option value="一面">一面（技术基础）</option>
+                  <option value="二面">二面（技术深度）</option>
+                  <option value="三面">三面（综合能力）</option>
+                </select>
+              </div>
+              <button class="btn-primary btn-full" @click="startInterview">🚀 开始模拟面试</button>
+            </div>
+
+            <div v-else>
+              <div class="interview-status">
+                <span class="status-icon">⏳</span>
+                <div>
+                  <strong>面试进行中</strong>
+                  <p>请认真回答面试官的问题，回答完点击提交按钮</p>
+                </div>
+              </div>
+              <textarea
+                v-model="inputMessage"
+                class="chat-textarea"
+                rows="5"
+                placeholder="请输入你的回答..."
+              ></textarea>
+              <div class="input-actions">
+                <button class="btn-outline" @click="endInterview">🛑 结束面试</button>
+                <button class="btn-primary" @click="sendInterviewAnswer" :disabled="sending">
+                  📤 {{ sending ? '提交中...' : '提交回答' }}
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </main>
     </div>
   </div>
 </template>
@@ -256,10 +211,6 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { 
-  ChatDotRound, Guide, User, Delete, Promotion, 
-  Refresh, Check, Cpu, Monitor, Loading
-} from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { renderMarkdown } from '@/utils/markdown'
 import {
@@ -300,14 +251,14 @@ const quickQuestion = (question) => {
 const addMessage = (role, content, loading = false) => {
   const now = new Date()
   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-  
+
   messages.value.push({
     role,
     content,
     time,
     loading
   })
-  
+
   scrollToBottom()
 }
 
@@ -324,36 +275,25 @@ const sendMessage = async () => {
     ElMessage.warning('请输入问题')
     return
   }
-  
+
   const question = inputMessage.value.trim()
   inputMessage.value = ''
-  
-  // 添加用户消息
+
   addMessage('user', question)
-  
-  // 添加AI loading消息
   addMessage('assistant', '', true)
   sending.value = true
-  
-  try {
-    const res = await aiChat({
-      question,
-      type: 'general'
-    })
 
-    // 替换loading消息
+  try {
+    const res = await aiChat({ question, type: 'general' })
     messages.value[messages.value.length - 1] = {
       role: 'assistant',
       content: res.answer,
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       loading: false
     }
-
   } catch (error) {
     console.error('发送消息失败:', error)
     ElMessage.error('发送消息失败，请稍后重试')
-    
-    // 移除loading消息
     messages.value.pop()
   } finally {
     sending.value = false
@@ -366,35 +306,23 @@ const reviewCode = async () => {
     ElMessage.warning('请输入要审查的代码')
     return
   }
-  
+
   const code = codeContent.value.trim()
-  
-  // 添加用户消息
   addMessage('user', `请审查这段${codeLanguage.value}代码：\n\`\`\`${codeLanguage.value}\n${code}\n\`\`\``)
-  
-  // 添加AI loading消息
   addMessage('assistant', '', true)
   sending.value = true
-  
-  try {
-    const res = await aiCodeReview({
-      code,
-      language: codeLanguage.value
-    })
 
-    // 替换loading消息
+  try {
+    const res = await aiCodeReview({ code, language: codeLanguage.value })
     messages.value[messages.value.length - 1] = {
       role: 'assistant',
       content: res.review_result,
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       loading: false
     }
-
   } catch (error) {
     console.error('代码审查失败:', error)
     ElMessage.error('代码审查失败，请稍后重试')
-    
-    // 移除loading消息
     messages.value.pop()
   } finally {
     sending.value = false
@@ -404,30 +332,21 @@ const reviewCode = async () => {
 
 const getLearningAdvice = async () => {
   currentMode.value = 'advice'
-  
-  // 添加系统消息
   addMessage('user', '请根据我的技能情况给出学习建议')
-  
-  // 添加AI loading消息
   addMessage('assistant', '', true)
   sending.value = true
-  
+
   try {
     const res = await aiGetLearningAdvice()
-
-    // 替换loading消息
     messages.value[messages.value.length - 1] = {
       role: 'assistant',
       content: res.advice,
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       loading: false
     }
-
   } catch (error) {
     console.error('获取学习建议失败:', error)
     ElMessage.error('获取学习建议失败，请稍后重试')
-    
-    // 移除loading消息
     messages.value.pop()
   } finally {
     sending.value = false
@@ -437,12 +356,8 @@ const getLearningAdvice = async () => {
 
 const startInterview = async () => {
   interviewStarted.value = true
-
-  // 添加用户消息 - 保持原来的描述性消息
   const question = `我要模拟${interviewForm.position_level}面试，工作经验${interviewForm.years_of_experience}年，${interviewForm.interview_round}。请开始面试。`
   addMessage('user', question)
-
-  // 添加AI loading消息
   addMessage('assistant', '', true)
   sending.value = true
 
@@ -452,8 +367,6 @@ const startInterview = async () => {
       experience: interviewForm.years_of_experience,
       round: interviewForm.interview_round
     })
-
-    // 替换loading消息
     messages.value[messages.value.length - 1] = {
       role: 'assistant',
       content: res.answer,
@@ -475,31 +388,21 @@ const sendInterviewAnswer = async () => {
     ElMessage.warning('请输入你的回答')
     return
   }
-  
+
   const answer = inputMessage.value.trim()
   inputMessage.value = ''
-  
-  // 添加用户消息
   addMessage('user', answer)
-  
-  // 添加AI loading消息
   addMessage('assistant', '', true)
   sending.value = true
-  
-  try {
-    const res = await aiChat({
-      question: answer,
-      type: 'interview'
-    })
 
-    // 替换loading消息
+  try {
+    const res = await aiChat({ question: answer, type: 'interview' })
     messages.value[messages.value.length - 1] = {
       role: 'assistant',
       content: res.answer,
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       loading: false
     }
-
   } catch (error) {
     console.error('提交回答失败:', error)
     ElMessage.error('提交回答失败，请稍后重试')
@@ -532,350 +435,350 @@ const clearHistory = async () => {
 </script>
 
 <style scoped>
-.ai-tutor {
-  padding: 30px 0;
-  min-height: calc(100vh - 60px);
-  background-color: #09090B;
-}
-
-.container {
+.ai-tutor-page {
   width: 100%;
-  max-width: 1440px;
-  padding: 0 24px;
-  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 40px;
   box-sizing: border-box;
+  background-color: var(--tm-bg-page);
+  color: var(--tm-text-primary);
+  gap: 24px;
 }
 
 .page-header {
-  margin-bottom: 30px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #27272a;
 }
-
+.header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .page-title {
-  font-size: 32px;
-  font-weight: bold;
+  font-size: 26px;
+  font-weight: 800;
   color: var(--tm-text-primary);
-  margin: 0 0 8px 0;
+  margin: 0;
 }
-
-.page-subtitle {
+.page-desc {
   font-size: 14px;
-  color: var(--tm-text-secondary);
+  color: var(--tm-text-regular);
   margin: 0;
 }
 
 .tutor-container {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 24px;
-  height: calc(100vh - 200px);
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
 }
 
+/* Left Panel */
 .left-panel {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
-
 .panel-card {
   background: var(--tm-card-bg);
+  border: 1px solid var(--tm-border-light);
   border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  padding: 18px;
 }
-
 .panel-title {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--tm-text-primary);
-  margin: 0 0 16px 0;
+  margin: 0 0 14px 0;
 }
 
 .function-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
-
 .function-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
   font-size: 14px;
-  color: var(--tm-text-secondary);
+  color: var(--tm-text-regular);
 }
-
 .function-item:hover {
-  background: var(--tm-bg-hover);
-  color: var(--tm-color-primary);
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
+  color: var(--tm-text-regular);
 }
-
 .function-item.active {
-  background: rgba(var(--tm-color-primary), 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
   color: var(--tm-color-primary);
+  font-weight: 600;
 }
+.func-icon { font-size: 16px; }
 
 .quick-questions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
 }
-
-.quick-questions .el-button {
+.btn-quick {
   width: 100%;
-  justify-content: flex-start;
+  text-align: left;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--tm-border-light);
+  border-radius: 6px;
+  color: var(--tm-text-regular);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-quick:hover {
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.2);
+  color: var(--tm-text-regular);
 }
 
 .usage-tips {
-  font-size: 13px;
-  line-height: 2;
+  font-size: 12px;
+  line-height: 1.8;
   color: var(--tm-text-secondary);
 }
+.usage-tips p { margin: 0 0 6px 0; }
+.usage-tips strong { color: var(--tm-text-regular); }
 
-.usage-tips p {
-  margin: 0 0 8px 0;
-}
-
+/* Right Panel */
 .right-panel {
   background: var(--tm-card-bg);
-  border-radius: 12px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--tm-border-light);
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .chat-container {
   flex: 1;
   padding: 24px;
   overflow-y: auto;
-  background: rgba(var(--tm-bg-page-rgb), 0.5);
-  /* 聊天气泡最佳阅读宽度限制，居中显示 */
-  max-width: 900px;
-  margin: 0 auto;
-  width: 100%;
+  background: rgba(9, 9, 11, 0.3);
+  min-height: 0;
 }
 
 .welcome-message {
   text-align: center;
   padding: 60px 20px;
-  color: var(--tm-text-secondary);
 }
-
-.welcome-avatar {
+.welcome-icon {
+  font-size: 52px;
   margin-bottom: 20px;
+  animation: float 3s ease-in-out infinite;
 }
-
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
 .welcome-message h2 {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 22px;
+  font-weight: 800;
   color: var(--tm-text-primary);
-  margin: 0 0 16px 0;
+  margin: 0 0 14px 0;
 }
-
 .welcome-message p {
   font-size: 14px;
   line-height: 1.8;
-  margin: 0 0 8px 0;
-  color: var(--tm-text-secondary);
+  margin: 0 0 6px 0;
+  color: var(--tm-text-regular);
 }
 
+/* Messages */
 .message-item {
   display: flex;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
-
 .message-item.user {
   flex-direction: row-reverse;
 }
-
 .message-avatar {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: var(--tm-card-bg);
+  border: 1px solid var(--tm-border-light);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.1);
+  font-size: 18px;
 }
-
 .message-content {
-  max-width: 70%;
+  max-width: 72%;
 }
-
 .message-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 6px;
 }
-
 .message-item.user .message-header {
   flex-direction: row-reverse;
 }
-
 .message-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--tm-text-secondary);
-}
-
-.message-time {
   font-size: 12px;
+  font-weight: 600;
   color: var(--tm-text-secondary);
 }
-
+.message-time {
+  font-size: 11px;
+  color: #52525b;
+}
 .message-text {
   background: var(--tm-card-bg);
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-radius: 12px;
-  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08);
-  line-height: 1.8;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  line-height: 1.7;
   font-size: 14px;
+  color: var(--tm-text-regular);
+}
+.message-item.user .message-text {
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.15);
   color: var(--tm-text-primary);
 }
 
-.message-item.user .message-text {
-  background: rgba(var(--tm-color-primary), 0.1);
-}
-
+/* Loading dots */
 .message-loading {
   background: var(--tm-card-bg);
   padding: 16px 20px;
   border-radius: 12px;
-  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 6px;
+}
+.loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tm-color-primary);
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+.loading-text {
+  margin-left: 8px;
+  font-size: 13px;
   color: var(--tm-text-secondary);
 }
 
-/* Markdown样式 */
-.markdown-content {
-  line-height: 1.8;
-}
-
+/* Markdown */
+.markdown-content { line-height: 1.7; }
 .markdown-content h1,
 .markdown-content h2,
 .markdown-content h3,
 .markdown-content h4 {
-  margin: 16px 0 8px 0;
-  font-weight: bold;
+  margin: 14px 0 8px 0;
+  font-weight: 700;
   color: var(--tm-text-primary);
 }
-
-.markdown-content h1 {
-  font-size: 20px;
-  border-bottom: 1px solid var(--tm-border-light);
-  padding-bottom: 8px;
-}
-
-.markdown-content h2 {
-  font-size: 18px;
-}
-
-.markdown-content h3 {
-  font-size: 16px;
-}
-
-.markdown-content p {
-  margin: 8px 0;
-  color: var(--tm-text-primary);
-}
-
+.markdown-content h1 { font-size: 18px; border-bottom: 1px solid #27272a; padding-bottom: 6px; }
+.markdown-content h2 { font-size: 16px; }
+.markdown-content h3 { font-size: 15px; }
+.markdown-content p { margin: 8px 0; color: var(--tm-text-regular); }
 .markdown-content ul,
-.markdown-content ol {
-  margin: 8px 0;
-  padding-left: 24px;
-  color: var(--tm-text-primary);
-}
-
-.markdown-content li {
-  margin: 4px 0;
-  color: var(--tm-text-primary);
-}
-
+.markdown-content ol { margin: 8px 0; padding-left: 22px; color: var(--tm-text-regular); }
+.markdown-content li { margin: 4px 0; }
 .markdown-content code {
-  background: rgba(var(--tm-bg-page-rgb), 0.5);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
-  color: #e6a23c;
+  color: #c084fc;
 }
-
 .markdown-content pre {
-  background: #282c34;
-  padding: 16px;
+  background: var(--tm-card-bg);
+  padding: 14px;
   border-radius: 8px;
   overflow-x: auto;
-  margin: 12px 0;
+  margin: 10px 0;
+  border: 1px solid #27272a;
 }
-
 .markdown-content pre code {
   background: none;
   padding: 0;
-  color: #abb2bf;
+  color: var(--tm-text-primary);
   line-height: 1.6;
 }
-
 .markdown-content blockquote {
-  border-left: 4px solid var(--tm-color-primary);
-  padding-left: 16px;
-  margin: 12px 0;
-  color: var(--tm-text-secondary);
-  background: rgba(var(--tm-bg-page-rgb), 0.5);
-  padding: 12px 16px;
+  border-left: 3px solid var(--tm-color-primary);
+  padding-left: 14px;
+  margin: 10px 0;
+  color: var(--tm-text-regular);
+  background: rgba(var(--tm-color-primary-rgb), 0.04);
+  padding: 10px 14px;
   border-radius: 0 8px 8px 0;
 }
-
 .markdown-content table {
   border-collapse: collapse;
   width: 100%;
-  margin: 12px 0;
+  margin: 10px 0;
 }
-
 .markdown-content th,
 .markdown-content td {
-  border: 1px solid var(--tm-border-light);
-  padding: 8px 12px;
+  border: 1px solid #27272a;
+  padding: 6px 10px;
   text-align: left;
 }
-
 .markdown-content th {
-  background: rgba(var(--tm-bg-page-rgb), 0.5);
-  font-weight: bold;
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 700;
+  color: var(--tm-text-primary);
 }
 
+/* Input Container */
 .input-container {
-  padding: 20px;
+  padding: 18px;
   border-top: 1px solid var(--tm-border-light);
   background: var(--tm-card-bg);
 }
 
-.code-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+.chat-textarea {
+  width: 100%;
+  resize: none;
+  background: rgba(9, 9, 11, 0.8);
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  padding: 14px;
+  color: var(--tm-text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.6;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s;
 }
-
-.code-tip {
-  font-size: 13px;
-  color: var(--tm-text-secondary);
+.chat-textarea:focus {
+  border-color: var(--tm-color-primary);
+}
+.chat-textarea::placeholder {
+  color: #52525b;
+}
+.code-textarea {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
 }
 
 .input-actions {
@@ -885,31 +788,119 @@ const clearHistory = async () => {
   margin-top: 12px;
 }
 
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--tm-text-regular);
+  border: 1px solid var(--tm-border-light);
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-outline:hover {
+  border-color: var(--tm-color-primary);
+  color: var(--tm-text-regular);
+}
+
+/* Code mode */
+.code-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.native-select {
+  background: rgba(9, 9, 11, 0.8);
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--tm-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+}
+.native-select.full { width: 100%; }
+.code-tip {
+  font-size: 13px;
+  color: var(--tm-text-secondary);
+}
+
+/* Interview */
 .interview-config {
-  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.form-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.form-group label {
+  width: 80px;
+  font-size: 13px;
+  color: var(--tm-text-regular);
+  text-align: right;
+  flex-shrink: 0;
+}
+.form-group select {
+  flex: 1;
+}
+.btn-full {
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
+  font-size: 15px;
 }
 
 .interview-status {
-  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+.status-icon { font-size: 20px; flex-shrink: 0; }
+.interview-status strong {
+  display: block;
+  font-size: 14px;
+  color: var(--tm-text-primary);
+  margin-bottom: 2px;
+}
+.interview-status p {
+  font-size: 13px;
+  color: var(--tm-text-regular);
+  margin: 0;
 }
 
-@media (max-width: 1200px) {
-  .tutor-container {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
-
-  .left-panel {
-    order: 2;
-  }
-
-  .right-panel {
-    order: 1;
-    min-height: 500px;
-  }
-
-  .message-content {
-    max-width: 85%;
-  }
+@media (max-width: 1000px) {
+  .tutor-container { grid-template-columns: 1fr; }
+  .left-panel { order: 2; }
+  .right-panel { order: 1; min-height: 500px; }
+  .message-content { max-width: 88%; }
+  .ai-tutor-page { padding: 20px 16px; }
 }
 </style>

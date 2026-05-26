@@ -6,12 +6,13 @@ AutoTest 统一路由 - 全局变量管理
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, delete
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
+from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestGlobalVariable
 from fastapi_backend.utils.encryption import encrypt, decrypt
 
-router = APIRouter(prefix="/api/auto-test/global-variables", tags=["AutoTest-全局变量"])
+router = APIRouter(prefix="/api/auto-test/global-variables", tags=["AutoTest-全局变量"], dependencies=[Depends(get_current_user)])
 
 
 def _variable_to_dict(variable):
@@ -32,7 +33,7 @@ def _variable_to_dict(variable):
     }
 
 
-@router.get("/")
+@router.get("")
 async def get_all_global_variables(db: AsyncSession = Depends(get_db)):
     """获取所有全局变量"""
     result = await db.execute(select(AutoTestGlobalVariable).order_by(AutoTestGlobalVariable.name))
@@ -50,7 +51,7 @@ async def get_global_variable(variable_id: int, db: AsyncSession = Depends(get_d
     return _variable_to_dict(variable)
 
 
-@router.post("/", status_code=201)
+@router.post("/global-variables", status_code=201)
 async def create_global_variable(
     variable_in: dict,
     db: AsyncSession = Depends(get_db),

@@ -164,6 +164,10 @@ export function applyTheme(themeId) {
   root.style.setProperty('--tm-card-border', theme.cardBorder)
   root.style.setProperty('--tm-border-light', extractBorderColor(theme.cardBorder))
 
+  // 玻璃态（跟随卡片背景）
+  root.style.setProperty('--tm-glass-bg', theme.isDark ? 'rgba(24, 24, 27, 0.8)' : 'rgba(255, 255, 255, 0.7)')
+  root.style.setProperty('--tm-glass-border', `1px solid ${extractBorderColor(theme.cardBorder)}`)
+
   // 文字
   root.style.setProperty('--tm-text-primary', theme.textPrimary)
   root.style.setProperty('--tm-text-secondary', theme.textSecondary)

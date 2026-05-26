@@ -4,14 +4,12 @@ from __future__ import annotations
 import os
 import shutil
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi_backend.core.database import get_db
-from fastapi_backend.deps.auth import require_admin, get_current_user
+from fastapi_backend.deps.auth import require_admin
 from fastapi_backend.models.models import User
 
 router = APIRouter(prefix="/api/v1/admin/backups", tags=["backup-management"])
@@ -47,19 +45,29 @@ def _create_backup() -> tuple[str | None, str | None]:
     src = _db_path()
     if not os.path.exists(src):
         return None, "数据库文件不存在"
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     name = f"testmaster_backup_{ts}.db"
     dst = str(BACKUP_DIR / name)
+    source = None
+    backup_conn = None
     try:
         source = sqlite3.connect(src)
-        backup = sqlite3.connect(dst)
-        with backup:
-            source.backup(backup)
-        source.close()
-        backup.close()
+        backup_conn = sqlite3.connect(dst)
+        with backup_conn:
+            source.backup(backup_conn)
         return name, None
     except Exception as e:
+        if os.path.exists(dst):
+            try:
+                os.remove(dst)
+            except OSError:
+                pass
         return None, str(e)
+    finally:
+        if source:
+            source.close()
+        if backup_conn:
+            backup_conn.close()
 
 
 def _delete_backup(name: str) -> tuple[bool, str | None]:
@@ -120,14 +128,16 @@ async def restore_backup(
     current_user: User = Depends(require_admin),
 ):
     """恢复备份"""
-    backup_path = BACKUP_DIR / backup_name
+    backup_path = (BACKUP_DIR / backup_name).resolve()
+    if not str(backup_path).startswith(str(BACKUP_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="无效的备份文件名")
     if not backup_path.exists():
         raise HTTPException(status_code=404, detail="备份文件不存在")
 
     src_db = _db_path()
     # Create emergency backup before restore
     if os.path.exists(src_db):
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         shutil.copy2(src_db, str(BACKUP_DIR / f"testmaster_emergency_{ts}.db"))
 
     try:
@@ -143,6 +153,9 @@ async def delete_backup(
     current_user: User = Depends(require_admin),
 ):
     """删除备份"""
+    backup_path = (BACKUP_DIR / backup_name).resolve()
+    if not str(backup_path).startswith(str(BACKUP_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="无效的备份文件名")
     ok, error = _delete_backup(backup_name)
     if error:
         raise HTTPException(status_code=500, detail=f"删除失败: {error}")

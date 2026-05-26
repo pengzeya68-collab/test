@@ -1,16 +1,14 @@
 """成就系统路由 - 经验值 + 徽章 + 成长"""
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.models import User, Achievement, UserAchievement, Submission, Progress
+from fastapi_backend.models.models import User, Achievement, UserAchievement, Progress
 
 router = APIRouter(prefix="/api/v1/achievements", tags=["成就系统"])
 
@@ -51,47 +49,89 @@ async def check_and_unlock_achievements(user_id: int, db: AsyncSession):
     unlocked_result = await db.execute(unlocked_stmt)
     unlocked_ids = {row[0] for row in unlocked_result.all()}
 
-    all_achievements_stmt = select(Achievement)
+    # 只查询未解锁的成就，减少数据量
+    all_achievements_stmt = select(Achievement).where(
+        Achievement.id.notin_(unlocked_ids) if unlocked_ids else True
+    )
     all_result = await db.execute(all_achievements_stmt)
     all_achievements = all_result.scalars().all()
+
+    if not all_achievements:
+        return []
+
+    # 批量预查询用户统计数据，避免N+1查询
+    from fastapi_backend.models.models import ExamAttempt, InterviewSession, DailyCheckin, Exam
+
+    progress_count_stmt = select(func.count()).select_from(Progress).where(
+        Progress.user_id == user_id, Progress.completed == True  # noqa: E712
+    )
+    progress_count_result = await db.execute(progress_count_stmt)
+    total_completed_exercises = progress_count_result.scalar_one()
+
+    exam_count_stmt = select(func.count()).select_from(ExamAttempt).where(
+        ExamAttempt.user_id == user_id
+    )
+    exam_count_result = await db.execute(exam_count_stmt)
+    exam_count = exam_count_result.scalar_one()
+
+    perfect_stmt = select(func.count()).select_from(ExamAttempt).join(
+        Exam, and_(ExamAttempt.exam_id == Exam.id, ExamAttempt.score == Exam.total_score)
+    ).where(
+        ExamAttempt.user_id == user_id
+    )
+    perfect_result = await db.execute(perfect_stmt)
+    perfect_count = perfect_result.scalar_one()
+
+    interview_count_stmt = select(func.count()).select_from(InterviewSession).where(
+        InterviewSession.user_id == user_id
+    )
+    interview_count_result = await db.execute(interview_count_stmt)
+    interview_count = interview_count_result.scalar_one()
+
+    streak_stmt = select(func.max(DailyCheckin.streak_count)).where(
+        DailyCheckin.user_id == user_id
+    )
+    streak_result = await db.execute(streak_stmt)
+    max_streak = streak_result.scalar_one_or_none() or 0
+
+    user_stmt = select(User.assessment_score).where(User.id == user_id)
+    user_result = await db.execute(user_stmt)
+    assessment_score = user_result.scalar_one_or_none()
 
     new_unlocks = []
 
     for ach in all_achievements:
-        if ach.id in unlocked_ids:
-            continue
-
         should_unlock = False
 
         if ach.key == "first_login":
-            should_unlock = True
-        elif ach.key == "first_exercise":
-            count_stmt = select(func.count()).select_from(Progress).where(
-                Progress.user_id == user_id, Progress.completed == True  # noqa: E712
-            )
-            count_result = await db.execute(count_stmt)
-            if count_result.scalar_one() >= 1:
+            should_unlock = not unlocked_ids
+        elif ach.key in ("first_exercise", "exercises_10", "exercises_50"):
+            if ach.key == "first_exercise" and total_completed_exercises >= 1:
                 should_unlock = True
-        elif ach.key == "exercises_10":
-            count_stmt = select(func.count()).select_from(Progress).where(
-                Progress.user_id == user_id, Progress.completed == True  # noqa: E712
-            )
-            count_result = await db.execute(count_stmt)
-            if count_result.scalar_one() >= 10:
+            elif ach.key == "exercises_10" and total_completed_exercises >= 10:
                 should_unlock = True
-        elif ach.key == "exercises_50":
-            count_stmt = select(func.count()).select_from(Progress).where(
-                Progress.user_id == user_id, Progress.completed == True  # noqa: E712
-            )
-            count_result = await db.execute(count_stmt)
-            if count_result.scalar_one() >= 50:
+            elif ach.key == "exercises_50" and total_completed_exercises >= 50:
                 should_unlock = True
         elif ach.key == "assessment_done":
-            user_stmt = select(User.score).where(User.id == user_id)
-            user_result = await db.execute(user_stmt)
-            score = user_result.scalar_one_or_none()
-            if score and score > 0:
+            if assessment_score is not None:
                 should_unlock = True
+        elif ach.key == "first_exam":
+            if exam_count >= 1:
+                should_unlock = True
+        elif ach.key == "first_interview":
+            if interview_count >= 1:
+                should_unlock = True
+        elif ach.key == "perfect_score":
+            if perfect_count >= 1:
+                should_unlock = True
+        elif ach.key == "interview_5":
+            if interview_count >= 5:
+                should_unlock = True
+        elif ach.key == "streak_7":
+            if max_streak >= 7:
+                should_unlock = True
+        elif ach.key in ("skill_80", "all_rounder"):
+            pass
 
         if should_unlock:
             ua = UserAchievement(user_id=user_id, achievement_id=ach.id)

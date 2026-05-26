@@ -219,7 +219,7 @@
               <!-- 选择题选项 -->
               <el-col :span="24" v-if="['single_choice', 'multiple_choice'].includes(q.question_type)">
                 <el-form-item label="选项" style="margin-bottom: 8px;">
-                  <div v-for="(opt, oi) in q.options" :key="oi" class="option-row">
+                  <div v-for="(opt, oi) in q.options" :key="opt || oi" class="option-row">
                     <span class="option-letter">{{ String.fromCharCode(65 + oi) }}.</span>
                     <el-input v-model="q.options[oi]" size="small" placeholder="选项内容" class="option-input" />
                     <el-button size="small" plain type="danger" @click="q.options.splice(oi, 1)">×</el-button>
@@ -246,7 +246,7 @@
                   </el-select>
                   <!-- 多选题 -->
                   <el-checkbox-group v-else-if="q.question_type === 'multiple_choice'" v-model="q.correctAnswerArr" size="small">
-                    <el-checkbox v-for="(opt, oi) in q.options" :key="oi" :value="String.fromCharCode(65+oi)">
+                    <el-checkbox v-for="(opt, oi) in q.options" :key="opt || oi" :value="String.fromCharCode(65+oi)">
                       {{ String.fromCharCode(65+oi) }}. {{ opt }}
                     </el-checkbox>
                   </el-checkbox-group>
@@ -327,17 +327,19 @@ const togglePublish = async (row) => {
 
 // ---- 删除 ----
 const handleDelete = async (row) => {
-  await ElMessageBox.confirm(`确定删除考试「${row.title}」吗？该操作不可撤销。`, '删除确认', {
-    confirmButtonText: '确定删除',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
   try {
+    await ElMessageBox.confirm(`确定删除考试「${row.title}」吗？该操作不可撤销。`, '删除确认', {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
     await request.delete(`/admin/exams/${row.id}`)
     ElMessage.success('删除成功')
     fetchList()
   } catch (e) {
-    ElMessage.error('删除失败')
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
   }
 }
 
@@ -447,9 +449,9 @@ const onQuestionTypeChange = (q) => {
 }
 
 const handleSubmit = async () => {
-  await formRef.value.validate()
   submitting.value = true
   try {
+    await formRef.value.validate()
     // 整理多选题答案
     const questions = form.questions.map(q => {
       const item = { ...q }

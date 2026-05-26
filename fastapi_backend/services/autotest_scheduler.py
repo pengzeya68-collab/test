@@ -6,18 +6,18 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import datetime
-
-_logger = logging.getLogger(__name__)
-
-from fastapi_backend.services.autotest_report_service import write_allure_results
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional, List
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 
+# from fastapi_backend.services.autotest_report_service import write_allure_results
 from fastapi_backend.core.autotest_database import INSTANCE_DIR
+
+_logger = logging.getLogger(__name__)
 
 # 项目根目录
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -89,7 +89,6 @@ def get_scheduler() -> AsyncIOScheduler:
 async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id: str):
     """执行场景任务的异步函数 - 通过Celery发送任务"""
     import subprocess
-    import asyncio
 
     _logger.info(f"[Scheduler] 开始执行任务 {task_id}, 场景 {scenario_id}")
 
@@ -111,7 +110,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
         _logger.info(f"[Scheduler] 检查场景状态失败: {e}")
 
     if task_id in scheduled_tasks:
-        scheduled_tasks[task_id]["last_run"] = datetime.now().isoformat()
+        scheduled_tasks[task_id]["last_run"] = datetime.now(timezone.utc).isoformat()
         scheduled_tasks[task_id]["status"] = "running"
 
     try:
@@ -178,8 +177,8 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
         if allure_results_dir.exists():
             try:
                 shutil.rmtree(str(allure_results_dir))
-            except Exception:
-                pass
+            except Exception as e:
+                _logger.warning(f"清理 allure-results 目录失败: {e}")
         allure_results_dir.mkdir(parents=True, exist_ok=True)
 
         history_id = str(uuid.uuid4())[:8]
@@ -262,7 +261,7 @@ def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dic
             try:
                 dt = datetime.fromisoformat(str(start_time).replace('Z', '+00:00'))
                 base_start_ms = int(dt.timestamp() * 1000)
-            except:
+            except ValueError:
                 base_start_ms = int(time_module.time() * 1000)
     else:
         base_start_ms = int(time_module.time() * 1000)
@@ -456,7 +455,7 @@ def add_scheduled_task(
         "cron_expression": cron_expression,
         "webhook_url": webhook_url,
         "name": task_name or f"场景 {scenario_id} 定时执行",
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "last_run": None,
         "last_status": None,
         "last_error": None,
@@ -480,7 +479,8 @@ def remove_scheduled_task(task_id: str) -> bool:
         if task_id in scheduled_tasks:
             del scheduled_tasks[task_id]
         return True
-    except Exception:
+    except Exception as e:
+        _logger.error(f"删除定时任务失败 {task_id}: {e}")
         return False
 
 
@@ -553,7 +553,7 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
             "cron_expression": cron_expr or meta.get("cron_expression") or "",
             "webhook_url": meta.get("webhook_url"),
             "name": (meta.get("name") or job.name or f"场景 {scenario_id} 定时执行"),
-            "created_at": datetime.now().isoformat(),  # 无法获取原始创建时间
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "last_run": None,
             "last_status": None,
             "last_error": None,
@@ -598,7 +598,7 @@ def get_all_scheduled_tasks() -> List[Dict[str, Any]]:
                 "cron_expression": cron_expr or meta.get("cron_expression") or "",
                 "webhook_url": meta.get("webhook_url"),
                 "name": (meta.get("name") or job.name or f"场景 {scenario_id} 定时执行"),
-                "created_at": datetime.now().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
                 "last_run": None,
                 "last_status": None,
                 "last_error": None,
@@ -619,8 +619,8 @@ def get_all_scheduled_tasks() -> List[Dict[str, Any]]:
             # 更新活动状态
             if job:
                 task_info["is_active"] = not job.pending
-        except Exception:
-            pass
+        except Exception as e:
+            _logger.warning(f"更新任务 next_run_time 失败 {task_id}: {e}")
         sid = task_info.get("scenario_id")
         if sid is not None and not (task_info.get("webhook_url") or "").strip():
             m = _schedule_meta_from_db(int(sid))

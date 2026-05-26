@@ -1,0 +1,29 @@
+{
+  "cache": {
+    "enabled": true,
+    "ttl_seconds": 300,
+    "max_size": 1000
+  },
+  "rate_limit": {
+    "enabled": true,
+    "requests_per_minute": 60,
+    "burst_size": 10
+  },
+  "ai_rate_limit": {
+    "enabled": true,
+    "requests_per_window": 10,
+    "window_seconds": 60
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "json",
+    "output": "file"
+  },
+  "features": {
+    "email_notifications": false,
+    "webhook_notifications": false,
+    "ai_tutor": true,
+    "code_sandbox": true,
+    "auto_test": true
+  }
+}

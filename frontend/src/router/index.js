@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { adminLoginRoute, adminRoutes } from './admin'
 import { useUserStore } from '@/stores/user'
+import { useAdminStore } from '@/stores/admin'
 
 const routes = [
   adminLoginRoute,
@@ -35,6 +36,11 @@ const routes = [
     path: '/learning-paths/:id',
     name: 'LearningPathDetail',
     component: () => import('@/views/LearningPathDetail.vue')
+  },
+  {
+    path: '/learning-paths/:pathId/lessons/:lessonId',
+    name: 'LearningPathLesson',
+    component: () => import('@/views/LearningPathLesson.vue')
   },
   {
     path: '/exercises',
@@ -162,6 +168,28 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/notifications',
+    name: 'Notifications',
+    component: () => import('@/views/Notifications.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/search',
+    name: 'SearchResults',
+    component: () => import('@/views/SearchResults.vue'),
+  },
+  {
+    path: '/tools',
+    name: 'TestingTools',
+    component: () => import('@/views/TestingTools.vue'),
+  },
+  {
+    path: '/favorites',
+    name: 'Favorites',
+    component: () => import('@/views/Favorites.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue')
@@ -182,12 +210,13 @@ const router = createRouter({
 
 // 全局路由守卫
 router.beforeEach(async (to, from, next) => {
-  if (to.meta.requiresAuth) {
-    if (to.path.startsWith('/admin')) {
-      const adminToken = localStorage.getItem('admin_token')
-      const adminInfo = localStorage.getItem('admin_info')
-      
-      if (!adminToken || !adminInfo) {
+  const adminStore = useAdminStore()
+  const userStore = useUserStore()
+
+  // 1. 检查管理员路由权限
+  if (to.path.startsWith('/admin')) {
+    if (to.meta.requiresAuth) {
+      if (!adminStore.isLoggedIn) {
         ElMessage.warning('请先登录管理员账号')
         next({
           path: '/admin/login',
@@ -196,32 +225,39 @@ router.beforeEach(async (to, from, next) => {
         return
       }
     } else {
-      const token = localStorage.getItem('token')
-      const user = localStorage.getItem('user')
-      
-      if (!token || !user) {
-        ElMessage.warning('你当前未登录，请登录后操作')
-        next({
-          path: '/login',
-          query: { redirect: to.fullPath }
-        })
+      if (adminStore.isLoggedIn && to.path === '/admin/login') {
+        next({ path: '/admin/dashboard' })
         return
       }
-
-      if (!to.meta.isAssessment) {
-        try {
-          const userStore = useUserStore()
-          if (!userStore.assessmentCompleted) {
-            const completed = await userStore.checkAssessmentStatus()
-            if (!completed) {
-              ElMessage.info('请先完成入学测评，我们将为你定制学习计划')
-              next({ path: '/assessment' })
-              return
-            }
+    }
+    next()
+    return
+  }
+  
+  // 2. 检查普通用户路由权限
+  if (to.meta.requiresAuth) {
+    if (!userStore.isLoggedIn) {
+      ElMessage.warning('你当前未登录，请登录后操作')
+      next({
+        path: '/login',
+        query: { redirect: to.fullPath }
+      })
+      return
+    }
+    
+    // 3. 检查测评状态
+    if (!to.meta.isAssessment) {
+      try {
+        if (!userStore.assessmentCompleted) {
+          const completed = await userStore.checkAssessmentStatus()
+          if (!completed) {
+            ElMessage.info('请先完成入学测评，我们将为你定制学习计划')
+            next({ path: '/assessment' })
+            return
           }
-        } catch (error) {
-          console.warn('路由守卫: 检查测评状态失败，放行导航', error)
         }
+      } catch (error) {
+        console.warn('路由守卫: 检查测评状态失败，放行导航', error)
       }
     }
   }

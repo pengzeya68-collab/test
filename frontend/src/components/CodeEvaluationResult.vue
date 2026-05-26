@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿<template>
   <div class="code-evaluation-result">
     <!-- 状态指示器 -->
     <div class="status-indicator" :class="statusClass">
@@ -53,7 +53,7 @@
         <div class="test-cases-list">
           <div
             v-for="(testCase, index) in testCaseResults"
-            :key="index"
+            :key="testCase.name || testCase.input || index"
             class="test-case-item"
             :class="testCase.passed ? 'passed' : 'failed'"
           >

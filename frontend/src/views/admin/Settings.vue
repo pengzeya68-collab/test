@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+<template>
   <div class="settings-page-dark">
     <div class="page-header">
       <h1 class="page-title">系统设置</h1>
@@ -137,13 +137,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import axios from 'axios'
-
-const token = localStorage.getItem('token') || ''
-const autoTestRequest = axios.create({
-  timeout: 30000,
-  headers: token ? { Authorization: `Bearer ${token}` } : {}
-})
+import autoTestRequest from '@/utils/autoTestRequest'
 
 const activeTab = ref('basic')
 const emailSaving = ref(false)
@@ -206,7 +200,7 @@ const saveBasicSettings = () => {
 
 const loadEmailSettings = async () => {
   try {
-    const res = await autoTestRequest.get('/api/auto-test/email/config')
+    const res = await autoTestRequest.get('/auto-test/email/config')
     if (res) {
       Object.assign(emailSettings, res)
     }
@@ -218,7 +212,7 @@ const loadEmailSettings = async () => {
 const saveEmailSettings = async () => {
   emailSaving.value = true
   try {
-    await autoTestRequest.post('/api/auto-test/email/config', emailSettings)
+    await autoTestRequest.post('/auto-test/email/config', emailSettings)
     ElMessage.success('邮件配置保存成功')
   } catch (error) {
     ElMessage.error('保存失败: ' + (error.response?.data?.detail || error.message))
@@ -234,7 +228,7 @@ const testEmail = async () => {
   }
   emailTesting.value = true
   try {
-    await autoTestRequest.post('/api/auto-test/email/test', {
+    await autoTestRequest.post('/auto-test/email/test', {
       to_email: emailSettings.testToEmail
     })
     ElMessage.success('测试邮件发送成功，请查收')
@@ -284,18 +278,18 @@ onMounted(() => {
 }
 
 .dark-tabs :deep(.el-tabs__item.is-active) {
-  color: #00b4d8;
+  color: var(--tm-color-primary-dark);
 }
 
 .dark-tabs :deep(.el-tabs__active-bar) {
-  background-color: #00b4d8;
+  background-color: var(--tm-color-primary);
 }
 
 .settings-card {
   background: var(--tm-card-bg);
   padding: 30px;
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
   margin-top: 20px;
   border: var(--tm-card-border);
   backdrop-filter: blur(10px);
@@ -310,11 +304,11 @@ onMounted(() => {
     position: relative;
     overflow: hidden;
     transition: all 0.3s;
-    background: #363636;
+    background: var(--tm-card-bg);
   }
 
   :deep(.el-upload:hover) {
-    border-color: #00b4d8;
+    border-color: var(--tm-color-primary);
   }
 
   .avatar-uploader-icon {
@@ -352,36 +346,36 @@ onMounted(() => {
 }
 
 .dark-input :deep(.el-input__inner) {
-  color: #e0e0e0;
+  color: var(--tm-text-primary);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #0f766e, #00b4d8);
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
   border: none;
-  box-shadow: 0 2px 10px rgba(0, 180, 216, 0.3);
+  box-shadow: 0 2px 10px rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #0d9488, #0096c7);
-  box-shadow: 0 4px 15px rgba(0, 180, 216, 0.4);
+  background: linear-gradient(135deg, var(--tm-color-primary-dark), var(--tm-color-primary));
+  box-shadow: 0 4px 15px rgba(var(--tm-color-primary-rgb), 0.4);
 }
 
 .btn-outline {
-  color: #00b4d8;
-  border: 1px solid #00b4d8;
+  color: var(--tm-color-primary);
+  border: 1px solid var(--tm-color-primary);
   background: transparent;
 }
 
 .btn-outline:hover {
-  background: rgba(0, 180, 216, 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .dark-radio :deep(.el-radio__label) {
-  color: #e0e0e0;
+  color: var(--tm-text-primary);
 }
 
 .dark-radio :deep(.el-radio__input.is-checked .el-radio__inner) {
-  background: #00b4d8;
-  border-color: #00b4d8;
+  background: var(--tm-color-primary-dark);
+  border-color: var(--tm-color-primary-dark);
 }
 </style>

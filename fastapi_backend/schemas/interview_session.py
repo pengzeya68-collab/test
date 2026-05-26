@@ -68,5 +68,9 @@ class InterviewSessionWithQuestion(BaseModel):
     updated_at: Optional[datetime] = None
     question_title: Optional[str] = None
     question_difficulty: Optional[str] = None
+    title: Optional[str] = None
+    position: Optional[str] = None
+    level: Optional[str] = None
+    interview_type: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

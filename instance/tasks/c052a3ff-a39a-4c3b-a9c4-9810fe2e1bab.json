@@ -1,0 +1,13 @@
+{
+  "task_id": "c052a3ff-a39a-4c3b-a9c4-9810fe2e1bab",
+  "scenario_id": 1,
+  "status": "cancelled",
+  "info": "任务已被取消",
+  "progress": {
+    "percent": 0,
+    "current": 0,
+    "total": 0,
+    "current_api": "等待执行..."
+  },
+  "created_at": 1779732032.535614
+}

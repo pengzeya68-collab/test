@@ -1,13 +1,14 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, case
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timedelta, timezone
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.core.exceptions import NotFoundException
 from fastapi_backend.deps.auth import require_admin
 from fastapi_backend.models.models import InterviewQuestion, User, TestCase, Submission
-from fastapi_backend.schemas.common import MessageResponse, SuccessResponse, PaginationResponse
+from fastapi_backend.schemas.common import MessageResponse, SuccessResponse
 from fastapi_backend.schemas.interview_question import (
     InterviewQuestionCreate,
     InterviewQuestionUpdate,
@@ -21,15 +22,12 @@ from fastapi_backend.schemas.test_case import (
     TestCaseDetail,
     TestCaseList,
     TestCaseListResponse,
-    TestCaseBatchCreate,
-    TestCaseBatchUpdate
+    TestCaseBatchCreate
 )
 from fastapi_backend.schemas.interview_statistics import (
     QuestionStatistics,
     QuestionStatisticsListResponse,
-    OverallStatistics,
-    SubmissionTrendResponse,
-    DifficultyAnalysisResponse
+    OverallStatistics
 )
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
@@ -474,10 +472,7 @@ async def get_question_statistics(
     db: AsyncSession = Depends(get_db)
 ):
     """获取题目维度统计信息"""
-    from datetime import timedelta
-    from sqlalchemy import case
-
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
     thirty_days_ago = now - timedelta(days=30)
 
@@ -585,10 +580,7 @@ async def get_overall_statistics(
     db: AsyncSession = Depends(get_db)
 ):
     """获取整体题库统计信息"""
-    from datetime import timedelta
-    from sqlalchemy import case
-
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
     thirty_days_ago = now - timedelta(days=30)
 
@@ -607,7 +599,7 @@ async def get_overall_statistics(
 
     total_questions = await db.scalar(select(func.count(InterviewQuestion.id))) or 0
     published_questions = await db.scalar(
-        select(func.count(InterviewQuestion.id)).where(InterviewQuestion.is_published == True)
+        select(func.count(InterviewQuestion.id)).where(InterviewQuestion.is_published)
     ) or 0
 
     total_submissions = await db.scalar(select(func.count(Submission.id)).where(*submission_filters)) or 0

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="global-variable-manager">
     <el-card>
       <template #header>
@@ -133,6 +133,8 @@
         v-model="dialogVisible"
         title="添加全局变量"
         width="500px"
+        append-to-body
+        destroy-on-close
       >
         <el-form :model="form" label-width="80px">
           <el-form-item label="变量名" required>
@@ -190,6 +192,8 @@
         v-model="debugDialogVisible"
         title="变量调试"
         width="600px"
+        append-to-body
+        destroy-on-close
       >
         <div class="debug-content">
           <div class="debug-section">
@@ -236,15 +240,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, ElDialog, ElInput, ElButton, ElDivider, ElTag } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Download, Upload, Delete, View } from '@element-plus/icons-vue'
-import axios from 'axios'
-
-const token = localStorage.getItem('token') || ''
-const autoTestRequest = axios.create({
-  timeout: 30000,
-  headers: token ? { Authorization: `Bearer ${token}` } : {}
-})
+import autoTestRequest from '@/utils/autoTestRequest'
 
 const variables = ref([])
 const dialogVisible = ref(false)
@@ -270,8 +268,8 @@ const debugForm = ref({
 // 加载全局变量
 const loadVariables = async () => {
   try {
-    const res = await autoTestRequest.get('/api/auto-test/global-variables')
-    variables.value = res.data || []
+    const res = await autoTestRequest.get('/auto-test/global-variables')
+    variables.value = Array.isArray(res) ? res : []
   } catch (error) {
     console.error('加载全局变量失败:', error)
     ElMessage.error('加载全局变量失败')
@@ -301,8 +299,8 @@ const handleSubmit = async () => {
   }
 
   try {
-    const res = await autoTestRequest.post('/api/auto-test/global-variables', form.value)
-    variables.value.push(res.data)
+    const res = await autoTestRequest.post('/auto-test/global-variables', form.value)
+    variables.value.push(res)
     dialogVisible.value = false
     ElMessage.success('添加成功')
   } catch (error) {
@@ -324,10 +322,10 @@ const handleEdit = (row) => {
 // 保存编辑
 const handleSaveEdit = async (id) => {
   try {
-    const res = await autoTestRequest.put(`/api/auto-test/global-variables/${id}`, editForm.value)
+    const res = await autoTestRequest.put(`/auto-test/global-variables/${id}`, editForm.value)
     const index = variables.value.findIndex(v => v.id === id)
     if (index !== -1) {
-      variables.value[index] = res.data
+      variables.value[index] = res
     }
     editingRowId.value = null
     ElMessage.success('更新成功')
@@ -340,7 +338,7 @@ const handleSaveEdit = async (id) => {
 // 删除变量
 const handleDelete = async (id) => {
   try {
-    await autoTestRequest.delete(`/api/auto-test/global-variables/${id}`)
+    await autoTestRequest.delete(`/auto-test/global-variables/${id}`)
     variables.value = variables.value.filter(v => v.id !== id)
     ElMessage.success('删除成功')
   } catch (error) {
@@ -380,9 +378,10 @@ const handleImport = async (file) => {
         is_encrypted: item.is_encrypted || false
       }))
 
-      const res = await autoTestRequest.post('/api/auto-test/global-variables/batch', variablesToImport)
-      variables.value = [...variables.value, ...res.data]
-      ElMessage.success(`成功导入 ${res.data.length} 个变量`)
+      const res = await autoTestRequest.post('/auto-test/global-variables/batch', variablesToImport)
+      const imported = Array.isArray(res) ? res : []
+      variables.value = [...variables.value, ...imported]
+      ElMessage.success(`成功导入 ${imported.length} 个变量`)
     } catch (error) {
       console.error('导入变量失败:', error)
       ElMessage.error('导入变量失败')
@@ -411,7 +410,7 @@ const handleBatchDelete = async () => {
     )
 
     const ids = selectedVariables.value.map(v => v.id)
-    await autoTestRequest.delete('/api/auto-test/global-variables/batch', {
+    await autoTestRequest.delete('/auto-test/global-variables/batch', {
       data: ids
     })
 

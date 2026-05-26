@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿<template>
   <div class="code-editor-container">
     <!-- 工具栏 -->
     <div class="editor-toolbar">
@@ -100,6 +100,7 @@ const outputResult = ref(null)
 const languageExtensions = {}
 try { languageExtensions.python = python() } catch(e) { console.warn('Python lang not loaded') }
 try { languageExtensions.sql = sql() } catch(e) { console.warn('SQL lang not loaded') }
+// shell 使用 Python 语法高亮作为回退，但保持 shell 标识
 languageExtensions.shell = languageExtensions.python
 
 // 创建编辑器
@@ -162,6 +163,7 @@ const onLanguageChange = () => {
   if (editorView.value) {
     const currentContent = editorView.value.state.doc.toString()
     editorView.value.destroy()
+    editorView.value = null
   }
   createEditor()
 }

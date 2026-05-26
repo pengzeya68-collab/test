@@ -2,7 +2,7 @@
 数据模型 - 与实际数据库表名和列名匹配
 """
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Float, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from fastapi_backend.core.database import Base
 
@@ -21,15 +21,33 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     is_super_admin = Column(Boolean, default=False)
+    # RBAC: 关联角色（为 NULL 时回退到 is_admin 判断）
+    role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True, comment="关联角色ID")
     level = Column(Integer, default=1)
     score = Column(Integer, default=0)
+    assessment_score = Column(Integer, nullable=True)
     study_time = Column(Integer, default=0)
     avatar = Column(String(500))
 
+    # RBAC 关联
+    role_obj = relationship("Role", back_populates="users")
+
     @property
     def role(self) -> str:
-        """用户角色：'admin' 或 'user'"""
+        """用户角色：优先从 role_obj 获取，回退到 is_admin 字段"""
+        if self.role_obj:
+            return self.role_obj.name
         return "admin" if self.is_admin else "user"
+
+    @property
+    def permissions(self) -> list:
+        """获取用户所有权限代码列表"""
+        if self.role_obj:
+            return [p.code for p in self.role_obj.permissions]
+        # 向后兼容：旧管理员拥有所有权限
+        if self.is_admin:
+            return ["*"]
+        return []
 
     def __repr__(self):
         return f"<User {self.username}>"
@@ -230,13 +248,17 @@ class InterviewSession(Base):
     started_at = Column(DateTime, default=datetime.now(timezone.utc), comment="开始时间")
     finished_at = Column(DateTime, nullable=True, comment="结束时间")
     latest_score = Column(Integer, nullable=True, comment="最新成绩 (0-100)")
-    latest_submission_id = Column(Integer, ForeignKey("submissions.id"), nullable=True, comment="最新提交记录ID")
+    latest_submission_id = Column(Integer, ForeignKey("submissions.id", use_alter=True), nullable=True, comment="最新提交记录ID")
     created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
 
     # 关联关系
     user = relationship("User", backref="interview_sessions")
     latest_submission = relationship("Submission", foreign_keys=[latest_submission_id], post_update=True)
+
+    __table_args__ = (
+        Index("idx_interview_session_user_status", "user_id", "status"),
+    )
 
     def __repr__(self):
         return f"<InterviewSession {self.id} user:{self.user_id} question:{self.question_id} status:{self.status}>"
@@ -264,6 +286,11 @@ class Submission(Base):
     # 关联关系
     session = relationship("InterviewSession", backref="submissions", foreign_keys=[session_id])
     user = relationship("User", backref="submissions", foreign_keys=[user_id])
+
+    __table_args__ = (
+        Index("idx_submission_user_created", "user_id", "created_at"),
+        Index("idx_submission_user_status", "user_id", "execution_status"),
+    )
 
     def __repr__(self):
         return f"<Submission {self.id} session:{self.session_id} user:{self.user_id} language:{self.language}>"
@@ -294,6 +321,7 @@ class LearningPath(Base):
     # Relationships
     exercises = relationship("Exercise", backref="learning_path", lazy="selectin")
     creator = relationship("User", foreign_keys=[user_id], backref="learning_paths")
+    lesson_sections = relationship("LessonSection", back_populates="learning_path", lazy="selectin")
 
     def __repr__(self):
         return f"<LearningPath {self.title}>"
@@ -333,6 +361,26 @@ class Exercise(Base):
         return f"<Exercise {self.title}>"
 
 
+class LessonSection(Base):
+    """课程章节表 - 存储学习路径的实际教程正文"""
+    __tablename__ = "lesson_sections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    learning_path_id = Column(Integer, ForeignKey("learning_paths.id"), nullable=False)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False, comment="教程正文(Markdown格式)")
+    sort_order = Column(Integer, default=0)
+    knowledge_point = Column(String(200))
+    time_estimate = Column(Integer, default=15, comment="预计学习时间(分钟)")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+
+    learning_path = relationship("LearningPath", back_populates="lesson_sections")
+
+    def __repr__(self):
+        return f"<LessonSection {self.title}>"
+
+
 class Progress(Base):
     """学习进度表"""
     __tablename__ = "progress"
@@ -346,6 +394,11 @@ class Progress(Base):
     attempts = Column(Integer, default=0)
     completed_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("idx_progress_user_exercise", "user_id", "exercise_id", unique=True),
+        Index("idx_progress_user_completed", "user_id", "completed"),
+    )
 
 
 class Post(Base):
@@ -398,19 +451,32 @@ class Like(Base):
     comment_id = Column(Integer, ForeignKey("comments.id"))
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
+    user = relationship("User", backref="likes")
+    post = relationship("Post", backref="likes")
+    comment = relationship("Comment", backref="likes")
+
     __table_args__ = (
-        # 注意：SQLite 不支持命名约束的 partial unique index，这里只做模型层面约束
+        UniqueConstraint("user_id", "post_id", name="uq_likes_user_post"),
+        UniqueConstraint("user_id", "comment_id", name="uq_likes_user_comment"),
     )
 
 
 class Favorite(Base):
-    """收藏表"""
+    """收藏表 - 支持帖子/习题/笔记"""
     __tablename__ = "favorites"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=True)
+    exercise_id = Column(Integer, ForeignKey("exercises.id"), nullable=True)
+    note_id = Column(Integer, ForeignKey("notes.id"), nullable=True)
+    item_type = Column(String(20), nullable=False, default="post", comment="收藏类型: post/exercise/note")
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    user = relationship("User", backref="favorites")
+    post = relationship("Post", backref="favorites")
+    exercise = relationship("Exercise")
+    note = relationship("Note")
 
 
 class TestCase(Base):
@@ -573,6 +639,11 @@ class ExerciseSubmissionRecord(Base):
     score = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
+    __table_args__ = (
+        Index("idx_exercise_sub_user_created", "user_id", "created_at"),
+        Index("idx_exercise_sub_user_exercise", "user_id", "exercise_id"),
+    )
+
 
 class Note(Base):
     """学习笔记表"""
@@ -609,3 +680,244 @@ class AIConfig(Base):
     last_test_result = Column(String(20), nullable=True, comment="最后测试结果: success/failed")
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+
+
+# ============ RBAC 权限模型 ============
+
+class Role(Base):
+    """角色表"""
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False, comment="角色标识: admin/tester/viewer")
+    display_name = Column(String(100), nullable=False, comment="角色显示名称")
+    description = Column(Text, nullable=True, comment="角色描述")
+    is_system = Column(Boolean, default=False, comment="是否为系统内置角色（不可删除）")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+
+    users = relationship("User", back_populates="role_obj")
+    permissions = relationship("Permission", secondary="role_permissions", back_populates="roles")
+
+
+class Permission(Base):
+    """权限表"""
+    __tablename__ = "permissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(100), unique=True, nullable=False, comment="权限代码: exercise:create")
+    name = Column(String(100), nullable=False, comment="权限名称")
+    description = Column(Text, nullable=True, comment="权限描述")
+    module = Column(String(50), nullable=False, comment="所属模块: exercise/user/exam等")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    roles = relationship("Role", secondary="role_permissions", back_populates="permissions")
+
+
+class RolePermissionMapping(Base):
+    """角色-权限关联表（多对多）"""
+    __tablename__ = "role_permissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    role_id = Column(Integer, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False)
+    permission_id = Column(Integer, ForeignKey("permissions.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("idx_rbac_role_perm", "role_id", "permission_id", unique=True),
+    )
+
+
+class TokenBlacklist(Base):
+    """Token 黑名单表 - 持久化吊销的 JWT token"""
+    __tablename__ = "token_blacklist"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token_hash = Column(String(64), unique=True, nullable=False, index=True, comment="token 的 SHA256 哈希")
+    token_type = Column(String(20), default="access", comment="token 类型: access/refresh")
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, comment="关联用户ID")
+    expires_at = Column(DateTime, nullable=False, comment="token 原始过期时间")
+    blacklisted_at = Column(DateTime, default=datetime.now(timezone.utc), comment="加入黑名单时间")
+
+    __table_args__ = (
+        Index("idx_token_blacklist_hash", "token_hash"),
+        Index("idx_token_blacklist_expires", "expires_at"),
+    )
+
+
+# ========== 测试项目实战空间模型 ==========
+
+class ProjectSpace(Base):
+    """项目实战空间表"""
+    __tablename__ = "project_spaces"
+
+    id = Column(Integer, primary_key=True, index=True)
+    learning_path_id = Column(Integer, ForeignKey("learning_paths.id"), nullable=False, comment="所属学习路径ID")
+    title = Column(String(200), nullable=False, comment="项目名称")
+    description = Column(Text, nullable=True, comment="项目描述")
+    overview = Column(Text, nullable=True, comment="项目概述(背景/目标)")
+    difficulty = Column(String(20), default="medium", comment="难度: easy/medium/hard")
+    status = Column(String(20), default="draft", comment="状态: draft/published/archived")
+    estimated_hours = Column(Integer, default=8, comment="预计完成时间(小时)")
+    sort_order = Column(Integer, default=0, comment="排序")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+
+    learning_path = relationship("LearningPath", backref="project_spaces")
+    tasks = relationship("ProjectTask", back_populates="project", cascade="all, delete-orphan", order_by="ProjectTask.sort_order")
+    resources = relationship("ProjectResource", back_populates="project", cascade="all, delete-orphan", order_by="ProjectResource.sort_order")
+    submissions = relationship("ProjectSubmission", back_populates="project", cascade="all, delete-orphan")
+    evaluations = relationship("ProjectEvaluation", back_populates="project", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<ProjectSpace {self.title}>"
+
+
+class ProjectTask(Base):
+    """项目任务表"""
+    __tablename__ = "project_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("project_spaces.id"), nullable=False, comment="所属项目ID")
+    title = Column(String(200), nullable=False, comment="任务名称")
+    description = Column(Text, nullable=True, comment="任务描述")
+    task_type = Column(String(50), nullable=False, comment="任务类型: test_point_design/test_case_design/api_debug/auto_execution/defect_analysis/project_summary")
+    requirements = Column(Text, nullable=True, comment="任务要求")
+    hints = Column(Text, nullable=True, comment="提示/参考资料")
+    score = Column(Integer, default=10, comment="任务分值")
+    sort_order = Column(Integer, default=0, comment="排序")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    project = relationship("ProjectSpace", back_populates="tasks")
+    submissions = relationship("ProjectSubmission", back_populates="task")
+
+    TASK_TYPE_LABELS = {
+        "test_point_design": "测试点设计",
+        "test_case_design": "测试用例设计",
+        "api_debug": "接口调试",
+        "auto_execution": "自动化执行",
+        "defect_analysis": "缺陷分析",
+        "project_summary": "项目总结",
+    }
+
+    def __repr__(self):
+        return f"<ProjectTask {self.title}>"
+
+
+class ProjectResource(Base):
+    """项目资料表"""
+    __tablename__ = "project_resources"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("project_spaces.id"), nullable=False, comment="所属项目ID")
+    title = Column(String(200), nullable=False, comment="资料名称")
+    resource_type = Column(String(50), default="document", comment="资料类型: document/api_doc/test_data/reference/link")
+    content = Column(Text, nullable=True, comment="内容(Markdown)")
+    url = Column(Text, nullable=True, comment="外部链接")
+    sort_order = Column(Integer, default=0, comment="排序")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    project = relationship("ProjectSpace", back_populates="resources")
+
+    RESOURCE_TYPE_LABELS = {
+        "document": "项目文档",
+        "api_doc": "接口文档",
+        "test_data": "测试数据",
+        "reference": "参考资料",
+        "link": "外部链接",
+    }
+
+    def __repr__(self):
+        return f"<ProjectResource {self.title}>"
+
+
+class ProjectSubmission(Base):
+    """项目提交记录表"""
+    __tablename__ = "project_submissions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "task_id", name="uq_submission_user_task"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("project_spaces.id"), nullable=False, comment="所属项目ID")
+    task_id = Column(Integer, ForeignKey("project_tasks.id"), nullable=False, comment="所属任务ID")
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, comment="提交用户ID")
+    content = Column(Text, nullable=True, comment="提交内容")
+    attachments = Column(Text, nullable=True, comment="附件JSON")
+    status = Column(String(20), default="submitted", comment="状态: submitted/reviewed/accepted/rejected")
+    score = Column(Integer, nullable=True, comment="评分")
+    feedback = Column(Text, nullable=True, comment="反馈")
+    submitted_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    project = relationship("ProjectSpace", back_populates="submissions")
+    task = relationship("ProjectTask", back_populates="submissions")
+    user = relationship("User", backref="project_submissions")
+
+    def __repr__(self):
+        return f"<ProjectSubmission {self.id} task:{self.task_id}>"
+
+
+class ProjectEvaluation(Base):
+    """项目验收评价表"""
+    __tablename__ = "project_evaluations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "project_id", name="uq_evaluation_user_project"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("project_spaces.id"), nullable=False, comment="所属项目ID")
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, comment="评价用户ID")
+    total_score = Column(Integer, default=0, comment="总分")
+    task_scores = Column(Text, nullable=True, comment="各任务得分JSON")
+    comment = Column(Text, nullable=True, comment="总评语")
+    strengths = Column(Text, nullable=True, comment="优点")
+    improvements = Column(Text, nullable=True, comment="改进建议")
+    is_passed = Column(Boolean, default=False, comment="是否通过")
+    evaluated_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    project = relationship("ProjectSpace", back_populates="evaluations")
+    user = relationship("User", backref="project_evaluations")
+
+    def __repr__(self):
+        return f"<ProjectEvaluation {self.id} project:{self.project_id}>"
+
+
+# ========== 通知系统 ==========
+
+NOTIFICATION_TYPES = {
+    "reply": "新回复",
+    "exam_start": "考试开始",
+    "exam_deadline": "考试截止",
+    "project_feedback": "项目反馈",
+    "achievement": "获得成就",
+    "system": "系统公告",
+    "learning_reminder": "学习提醒",
+}
+
+
+class Notification(Base):
+    """通知表"""
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, comment="接收用户ID")
+    title = Column(String(200), nullable=False, comment="通知标题")
+    content = Column(Text, nullable=True, comment="通知内容")
+    type = Column(String(30), default="system", comment="通知类型")
+    link = Column(String(500), nullable=True, comment="跳转链接")
+    is_read = Column(Boolean, default=False, comment="是否已读")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    user = relationship("User", backref="notifications")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "content": self.content,
+            "type": self.type,
+            "type_label": NOTIFICATION_TYPES.get(self.type, self.type),
+            "link": self.link,
+            "is_read": self.is_read,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

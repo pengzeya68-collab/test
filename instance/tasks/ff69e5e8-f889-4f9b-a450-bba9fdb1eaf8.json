@@ -1,0 +1,13 @@
+{
+  "task_id": "ff69e5e8-f889-4f9b-a450-bba9fdb1eaf8",
+  "scenario_id": 3,
+  "status": "PROGRESS",
+  "info": "任务已提交，正在后台执行",
+  "progress": {
+    "percent": 0,
+    "current": 0,
+    "total": 0,
+    "current_api": "等待执行..."
+  },
+  "created_at": 1779733508.6442075
+}

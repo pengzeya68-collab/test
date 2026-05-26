@@ -1,16 +1,16 @@
 """学习周报路由 - 学习数据复盘"""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func, and_, case, Integer
+from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.models import (
-    User, Progress, Exercise, ExerciseSubmissionRecord, DailyCheckin,
+    User, Exercise, ExerciseSubmissionRecord, DailyCheckin,
 )
 
 router = APIRouter(prefix="/api/v1/report", tags=["学习报告"])
@@ -22,7 +22,7 @@ async def get_weekly_report(
     db: AsyncSession = Depends(get_db),
 ):
     """获取本周学习报告"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     week_start = now - timedelta(days=now.weekday())
     week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
     last_week_start = week_start - timedelta(days=7)
@@ -152,7 +152,7 @@ async def get_learning_heatmap(
     db: AsyncSession = Depends(get_db),
 ):
     """获取学习热力图数据（过去365天）"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     start_date = now - timedelta(days=365)
 
     stmt = select(

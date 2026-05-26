@@ -2,25 +2,26 @@
 后台管理子路由 - 备份/审计/系统
 从 admin_manage.py 拆分
 """
-from typing import Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy import select, func, or_, and_, desc
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi_backend.core.database import get_db, AsyncSessionLocal
-from fastapi_backend.core.exceptions import NotFoundException
+from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Exercise, LearningPath, Exam, ExamQuestion, Post, Comment, InterviewQuestion, Submission, Progress
-from fastapi_backend.services.auth_service import AuthService
+from fastapi_backend.models.models import User, Exercise, LearningPath, Exam, InterviewQuestion, Submission
 import os
 import shutil
-import json
 import platform
 import asyncio
 from fastapi.responses import FileResponse
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-系统管理"])
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+BACKUP_DIR = PROJECT_ROOT / "backups"
+BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.get("/backups")
 async def list_backups(
@@ -47,7 +48,7 @@ async def create_backup(
 ):
     """创建数据库备份"""
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     backup_name = f"backup_{timestamp}.db"
 
     db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "instance", "testmaster.db")

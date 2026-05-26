@@ -1,6 +1,55 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+import re
+
+
+class RegisterRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=20)
+    email: str = Field(...)
+    phone: str = ""
+    password: str = Field(..., min_length=8)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, v):
+            raise ValueError("邮箱格式不正确")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        if not re.search(r'[A-Za-z]', v) or not re.search(r'\d', v):
+            raise ValueError("密码必须包含字母和数字")
+        return v
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        if not re.search(r'[A-Za-z]', v) or not re.search(r'\d', v):
+            raise ValueError("密码必须包含字母和数字")
+        return v
+
+
+class ForgotPasswordRequest(BaseModel):
+    phone: str = Field(..., min_length=1)
+    code: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        if not re.search(r'[A-Za-z]', v) or not re.search(r'\d', v):
+            raise ValueError("密码必须包含字母和数字")
+        return v
 
 
 class LoginRequest(BaseModel):

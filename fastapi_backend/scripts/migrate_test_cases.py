@@ -15,7 +15,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from fastapi_backend.core.config import settings
-from fastapi_backend.core.database import Base, get_db
 from fastapi_backend.models.models import InterviewQuestion, TestCase
 
 
@@ -102,7 +101,7 @@ async def migrate_test_cases():
                     total_skipped += 1
                     continue
 
-            print(f"\n迁移完成!")
+            print("\n迁移完成!")
             print(f"成功迁移: {total_migrated} 个题目")
             print(f"跳过: {total_skipped} 个题目")
 

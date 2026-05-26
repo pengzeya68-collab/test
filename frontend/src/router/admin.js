@@ -51,6 +51,10 @@ const adminRoutes = {
       }
     },
     {
+      path: 'learning-paths',
+      redirect: '/admin/paths'
+    },
+    {
       path: 'users',
       name: 'UserManage',
       component: () => import('@/admin/views/User/index.vue'),
@@ -111,4 +115,3 @@ const adminRoutes = {
 
 export { adminLoginRoute, adminRoutes }
 export default [adminLoginRoute, adminRoutes]
-

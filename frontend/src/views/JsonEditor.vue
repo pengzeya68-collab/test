@@ -152,7 +152,7 @@ defineExpose({
   flex-direction: column;
   border: 1px solid var(--tm-border-color);
   border-radius: 4px;
-  background: #1e1e1e;
+  background: var(--tm-card-bg);
 }
 
 .editor-toolbar {
@@ -215,7 +215,7 @@ defineExpose({
   font-size: 13px;
   line-height: 1.5;
   color: #d4d4d4;
-  background: #1e1e1e;
+  background: var(--tm-card-bg);
   border: none;
   margin: 0;
   pointer-events: none;

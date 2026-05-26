@@ -332,7 +332,7 @@ const skipAssessment = () => {
 <style scoped>
 .assessment-page {
   min-height: 100vh;
-  background: #0a0a14;
+  background: var(--tm-bg-page);
   background-image: radial-gradient(ellipse at 30% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
                     radial-gradient(ellipse at 70% 80%, rgba(217, 70, 239, 0.05) 0%, transparent 50%);
   display: flex;
@@ -487,7 +487,7 @@ const skipAssessment = () => {
 .question-text {
   font-size: 20px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--tm-text-primary);
   line-height: 1.6;
   margin: 0 0 28px 0;
 }
@@ -538,7 +538,7 @@ const skipAssessment = () => {
 
 .option-item.selected .option-label {
   background: linear-gradient(135deg, #8b5cf6, #d946ef);
-  color: white;
+  color: var(--tm-text-primary);
 }
 
 .option-text {
@@ -675,7 +675,7 @@ const skipAssessment = () => {
 .section-label {
   font-size: 18px;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--tm-text-primary);
   margin: 0 0 20px 0;
 }
 
@@ -706,7 +706,7 @@ const skipAssessment = () => {
 .dim-name {
   font-size: 14px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--tm-text-primary);
 }
 
 .dim-score {
@@ -791,7 +791,7 @@ const skipAssessment = () => {
 .rec-title {
   font-size: 15px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--tm-text-primary);
   margin: 0 0 4px 0;
 }
 

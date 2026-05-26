@@ -14,7 +14,6 @@ _logger = logging.getLogger(__name__)
 from cryptography.fernet import Fernet
 
 _FERNET_KEY_ENV = "TESTMASTER_ENCRYPTION_KEY"
-_FALLBACK_KEY = "testmaster-dev-encryption-key-2024"
 
 
 def _derive_fernet_key(seed: str) -> bytes:
@@ -22,7 +21,21 @@ def _derive_fernet_key(seed: str) -> bytes:
     return base64.urlsafe_b64encode(derived)
 
 
-_KEY_SEED = os.environ.get(_FERNET_KEY_ENV, _FALLBACK_KEY)
+_KEY_SEED = os.environ.get(_FERNET_KEY_ENV)
+if _KEY_SEED is None:
+    env = os.environ.get("ENVIRONMENT", "development")
+    if env == "production":
+        raise RuntimeError(
+            f"生产环境必须设置 {_FERNET_KEY_ENV}，"
+            f"请在 .env 文件中配置 TESTMASTER_ENCRYPTION_KEY"
+        )
+    else:
+        import secrets
+        _KEY_SEED = secrets.token_urlsafe(32)
+        _logger.warning(
+            "开发环境使用随机生成的加密密钥，生产环境请务必在 .env 中设置 %s",
+            _FERNET_KEY_ENV,
+        )
 KEY = _derive_fernet_key(_KEY_SEED)
 fernet = Fernet(KEY)
 
@@ -33,11 +46,15 @@ def encrypt(data: str) -> str:
     return fernet.encrypt(data.encode()).decode()
 
 
+class DecryptionError(Exception):
+    pass
+
+
 def decrypt(data: str) -> str:
     if not data:
         return data
     try:
         return fernet.decrypt(data.encode()).decode()
     except Exception:
-        _logger.warning("解密失败，返回原始数据（可能是密钥变更前的密文）")
-        return data
+        _logger.error("解密失败，密文损坏或密钥不匹配")
+        raise DecryptionError("解密失败，密文损坏或密钥不匹配")

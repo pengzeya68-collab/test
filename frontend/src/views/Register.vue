@@ -233,12 +233,12 @@ const goToLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #09090B;
+  background: var(--tm-bg-page);
   padding: 20px;
 }
 
 .register-card {
-  background: #18181B;
+  background: var(--tm-card-bg);
   border-radius: 16px;
   padding: 48px;
   width: 100%;
@@ -255,13 +255,17 @@ const goToLogin = () => {
 .title {
   font-size: 32px;
   font-weight: bold;
-  color: #FAFAFA;
+  color: var(--tm-text-primary, #FAFAFA);
   margin: 0 0 10px 0;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #71717A;
+  color: var(--tm-text-secondary, #71717A);
   margin: 0;
 }
 
@@ -272,7 +276,11 @@ const goToLogin = () => {
 .register-footer {
   text-align: center;
   font-size: 14px;
-  color: #A1A1AA;
+  color: var(--tm-text-secondary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
 }
 
 @media (max-width: 768px) {

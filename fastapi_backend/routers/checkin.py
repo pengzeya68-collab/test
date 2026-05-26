@@ -1,7 +1,7 @@
 """每日签到路由 - 连续学习激励系统"""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, func
@@ -38,7 +38,7 @@ async def daily_checkin(
     db: AsyncSession = Depends(get_db),
 ):
     """执行每日签到"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     existing_stmt = select(DailyCheckin).where(
@@ -47,10 +47,16 @@ async def daily_checkin(
     )
     existing_result = await db.execute(existing_stmt)
     if existing_result.scalar_one_or_none():
+        streak_stmt = select(func.max(DailyCheckin.streak_count)).where(
+            DailyCheckin.user_id == current_user.id
+        )
+        streak_result = await db.execute(streak_stmt)
+        actual_streak = streak_result.scalar_one_or_none() or 0
+
         return {
             "checked_in": False,
             "message": "今日已签到",
-            "streak": 0,
+            "streak": actual_streak,
             "exp_earned": 0,
         }
 
@@ -96,7 +102,7 @@ async def checkin_status(
     db: AsyncSession = Depends(get_db),
 ):
     """获取签到状态"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     today_stmt = select(DailyCheckin).where(

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+<template>
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
@@ -62,10 +62,11 @@
         </el-form-item>
       </el-form>
       
-      <div class="login-footer" style="display: flex; justify-content: space-between;">
+      <div class="login-footer">
         <span>还没有账号？</span>
-        <el-link type="primary" @click="goToRegister">立即注册</el-link>
-        <el-link type="primary" @click="goToForgotPassword">忘记密码？</el-link>
+        <router-link to="/register" class="footer-link">立即注册</router-link>
+        <span class="footer-divider">|</span>
+        <router-link to="/forgot-password" class="footer-link">忘记密码？</router-link>
       </div>
       
       <div class="demo-account">
@@ -132,13 +133,6 @@ const handleLogin = async () => {
   })
 }
 
-const goToRegister = () => {
-  router.push('/register')
-}
-
-const goToForgotPassword = () => {
-  router.push('/forgot-password')
-}
 </script>
 
 <style scoped>
@@ -147,18 +141,18 @@ const goToForgotPassword = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--tm-bg-page);
+  background: var(--tm-bg-page, #09090B);
   padding: 20px;
 }
 
 .login-card {
-  background: var(--tm-bg-card);
+  background: var(--tm-bg-card, #18181B);
   border-radius: 16px;
   padding: 48px;
   width: 100%;
   max-width: 400px;
   box-shadow: 0 20px 60px 0 rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--tm-border-primary);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .login-header {
@@ -169,9 +163,9 @@ const goToForgotPassword = () => {
 .title {
   font-size: 36px;
   font-weight: bold;
-  color: var(--tm-text-primary);
+  color: var(--tm-text-primary, #FAFAFA);
   margin: 0 0 10px 0;
-  background: var(--tm-gradient-brand, linear-gradient(135deg, #EC4899, #9333EA));
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -179,7 +173,7 @@ const goToForgotPassword = () => {
 
 .subtitle {
   font-size: 14px;
-  color: var(--tm-text-secondary);
+  color: var(--tm-text-secondary, #71717A);
   margin: 0;
 }
 
@@ -190,7 +184,26 @@ const goToForgotPassword = () => {
 .login-footer {
   text-align: center;
   font-size: 14px;
-  color: var(--tm-text-tertiary);
+  color: var(--tm-text-secondary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-link {
+  color: var(--tm-color-primary, #EC4899);
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.footer-link:hover {
+  opacity: 0.8;
+}
+
+.footer-divider {
+  color: var(--tm-text-secondary);
 }
 
 .demo-account {

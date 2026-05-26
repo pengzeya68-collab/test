@@ -1,295 +1,228 @@
-﻿﻿<template>
-  <div class="interview-simulate">
-    <div class="container">
-      <div class="back-btn" @click="$router.back()">
-        <el-icon><ArrowLeft /></el-icon>
-        返回
-      </div>
-
-      <div class="setup-card" v-if="!sessionId">
-        <h2 class="card-title">创建模拟面试</h2>
-        <el-form :model="form" label-width="120px">
-          <el-form-item label="应聘岗位">
-            <el-input v-model="form.position" placeholder="例如：测试工程师" />
-          </el-form-item>
-          <el-form-item label="岗位级别">
-            <el-select v-model="form.level" style="width: 200px;">
-              <el-option label="初级" value="初级" />
-              <el-option label="中级" value="中级" />
-              <el-option label="高级" value="高级" />
-              <el-option label="专家" value="专家" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="面试类型">
-            <el-select v-model="form.type" style="width: 200px;">
-              <el-option label="技术面试" value="技术面" />
-              <el-option label="HR面试" value="HR面" />
-              <el-option label="综合面试" value="综合面" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="题目数量">
-            <el-input-number v-model="form.question_count" :min="5" :max="20" />
-          </el-form-item>
-          <el-form-item label="考察范围">
-            <el-checkbox-group v-model="form.categories">
-              <el-checkbox 
-                v-for="cat in categories" 
-                :key="cat.value" 
-                :value="cat.value"
-              >
-                {{ cat.label }}
-              </el-checkbox>
-            </el-checkbox-group>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="createSession" :loading="creating">
-              开始面试
-            </el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-
-      <div class="interview-card" v-if="sessionId && session && questions.length > 0">
-        <div class="interview-header">
-          <div class="interview-info">
-            <h2>{{ session.title }}</h2>
-            <div class="interview-progress">
-              <span>第 {{ currentQuestionIndex + 1 }} 题 / 共 {{ questions.length }} 题</span>
-              <el-progress 
-                :percentage="Math.round((currentQuestionIndex + 1) / questions.length * 100)" 
-                :show-text="false"
-                style="width: 200px; margin-left: 16px;"
-              />
-            </div>
-          </div>
-          <div class="interview-actions">
-            <el-button type="danger" @click="showCompleteConfirm = true">
-              结束面试
-            </el-button>
-          </div>
-        </div>
-
-        <div class="question-section" v-if="currentQuestion">
-          <div class="question-header">
-            <div class="question-meta">
-              <el-tag size="small" type="primary">{{ currentQuestion.category }}</el-tag>
-              <el-tag size="small" :type="getDifficultyTagType(currentQuestion.difficulty)">
-                {{ currentQuestion.difficulty === 'easy' ? '简单' : currentQuestion.difficulty === 'medium' ? '中等' : '困难' }}
-              </el-tag>
-            </div>
-          </div>
-          
-          <div class="question-content">
-            <h3>{{ currentQuestion.title }}</h3>
-            <div v-if="currentQuestion.content" class="question-desc" v-html="renderMarkdown(currentQuestion.content)"></div>
-          </div>
-
-          <div class="answer-section">
-            <div class="answer-header">
-              <h4>你的回答</h4>
-              <el-button 
-                link 
-                @click="showAnswerHint = !showAnswerHint"
-                :style="{ color: showAnswerHint ? '#e6a23c' : 'var(--tm-text-secondary)' }"
-              >
-                {{ showAnswerHint ? '隐藏提示' : '提示一下' }}
-              </el-button>
-            </div>
-            
-            <div class="hint-box" v-if="showAnswerHint">
-              <el-alert
-                title="答题提示"
-                type="warning"
-                :closable="false"
-                show-icon
-              >
-                <template #default>
-                  请尽量详细地回答问题，体现你的思考过程。回答完成后点击提交按钮，AI会自动为你评分和点评。
-                </template>
-              </el-alert>
-            </div>
-            
-            <div v-if="needsCodeEditor">
-              <CodeEditor
-                v-model="currentAnswer"
-                :language="'python'"
-                :template="getCodeTemplate()"
-              />
-              <div style="font-size: 12px; color: var(--tm-text-secondary); margin-top: 8px;">
-                💡 此题目为编程题，请编写代码完成要求的功能。
-              </div>
-            </div>
-            <el-input
-              v-else
-              v-model="currentAnswer"
-              type="textarea"
-              :rows="8"
-              placeholder="请输入你的回答..."
-              maxlength="5000"
-              show-word-limit
-            />
-            
-            <!-- AI点评结果 -->
-            <div class="feedback-section" v-if="currentQuestion.is_answered">
-              <el-divider content-position="left">AI点评</el-divider>
-              <div class="score-display">
-                <span>得分：</span>
-                <el-rate 
-                  v-model="currentQuestion.score" 
-                  disabled 
-                  :max="10" 
-                  show-score
-                  style="font-size: 20px;"
-                />
-                <span class="score-text">/ 10分</span>
-              </div>
-              <div class="feedback-content">
-                <p>{{ currentQuestion.ai_feedback }}</p>
-              </div>
-              
-              <!-- 追问区域 -->
-              <div class="follow-up-section" v-if="currentQuestion.follow_up_question">
-                <el-divider content-position="left">🔍 面试官追问</el-divider>
-                <div class="follow-up-question">
-                  <el-alert
-                    :title="currentQuestion.follow_up_question"
-                    type="warning"
-                    :closable="false"
-                    show-icon
-                  >
-                    <template #default>
-                      <span class="follow-up-hint">{{ currentQuestion.follow_up_hint }}</span>
-                    </template>
-                  </el-alert>
-                </div>
-                <el-input
-                  v-model="currentQuestion.follow_up_answer"
-                  type="textarea"
-                  :rows="4"
-                  placeholder="请输入你的追问回答..."
-                  maxlength="3000"
-                  show-word-limit
-                  style="margin-top: 12px;"
-                />
-                <el-button
-                  type="warning"
-                  size="small"
-                  @click="submitFollowUp"
-                  :loading="followUpSubmitting"
-                  style="margin-top: 8px;"
-                >
-                  提交追问回答
-                </el-button>
-                <div v-if="currentQuestion.follow_up_feedback" class="follow-up-feedback">
-                  <el-alert
-                    :title="currentQuestion.follow_up_feedback"
-                    type="success"
-                    :closable="false"
-                    show-icon
-                  />
-                </div>
-              </div>
-
-              <!-- 追问按钮 -->
-              <div class="follow-up-trigger" v-if="!currentQuestion.follow_up_question && !currentQuestion.follow_up_skipped">
-                <el-button
-                  type="warning"
-                  plain
-                  size="small"
-                  @click="requestFollowUp"
-                  :loading="followUpLoading"
-                >
-                  🔍 面试官追问
-                </el-button>
-                <el-button
-                  size="small"
-                  @click="currentQuestion.follow_up_skipped = true"
-                >
-                  跳过追问
-                </el-button>
-              </div>
-              
-              <el-collapse>
-                <el-collapse-item title="查看参考答案">
-                  <div v-html="renderMarkdown(currentQuestion.answer)"></div>
-                </el-collapse-item>
-              </el-collapse>
-            </div>
-          </div>
-
-          <div class="action-buttons">
-            <el-button 
-              :disabled="currentQuestionIndex === 0"
-              @click="prevQuestion"
-            >
-              上一题
-            </el-button>
-            <el-button 
-              v-if="!currentQuestion.is_answered"
-              type="primary" 
-              @click="submitAnswer"
-              :loading="submitting"
-            >
-              提交回答
-            </el-button>
-            <el-button 
-              v-else
-              type="primary" 
-              :disabled="currentQuestionIndex === questions.length - 1"
-              @click="nextQuestion"
-            >
-              下一题
-            </el-button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 面试结果弹窗 -->
-      <el-dialog 
-        v-model="showResultDialog" 
-        title="面试结束"
-        width="700px"
-        :close-on-click-modal="false"
-        :close-on-press-escape="false"
-      >
-        <div v-if="result" class="result-content">
-          <div class="result-score">
-            <div class="score-circle" :class="result.score >= 60 ? 'passed' : 'failed'">
-              <div class="score-number">{{ result.score }}</div>
-              <div class="score-label">分</div>
-            </div>
-            <div class="score-info">
-              <h3>面试评分</h3>
-              <p>{{ result.feedback }}</p>
-            </div>
-          </div>
-          
-          <div class="suggestions-section">
-            <h4>改进建议</h4>
-            <div class="suggestions-content">
-              <p v-html="renderMarkdown(result.suggestions)"></p>
-            </div>
-          </div>
-        </div>
-        <template #footer>
-          <el-button @click="goToDetail">查看详情</el-button>
-          <el-button type="primary" @click="restart">再来一次</el-button>
-        </template>
-      </el-dialog>
-
-      <!-- 结束面试确认弹窗 -->
-      <el-dialog 
-        v-model="showCompleteConfirm" 
-        title="确认结束面试"
-        width="400px"
-      >
-        <p>你确定要结束本次面试吗？结束后将无法继续答题。</p>
-        <template #footer>
-          <el-button @click="showCompleteConfirm = false">取消</el-button>
-          <el-button type="danger" @click="completeInterview" :loading="completing">确认结束</el-button>
-        </template>
-      </el-dialog>
+<template>
+  <div class="interview-simulate-container">
+    <div class="back-action-bar">
+      <button class="btn-back" @click="$router.back()">&lt; 返回</button>
     </div>
+
+    <div class="center-card-wrapper" v-if="!sessionId">
+      <div class="mock-interview-card">
+        <h2 class="card-title">创建模拟面试</h2>
+
+        <div class="form-group">
+          <label>应聘岗位</label>
+          <input type="text" v-model="form.position" placeholder="例如：测试工程师" />
+        </div>
+
+        <div class="form-group">
+          <label>岗位级别</label>
+          <select v-model="form.level">
+            <option value="">请选择</option>
+            <option value="初级">初级</option>
+            <option value="中级">中级</option>
+            <option value="高级">高级</option>
+            <option value="专家">专家</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>面试类型</label>
+          <select v-model="form.type">
+            <option value="">请选择</option>
+            <option value="技术面">技术面试</option>
+            <option value="HR面">HR面试</option>
+            <option value="综合面">综合面试</option>
+          </select>
+        </div>
+
+        <div class="form-group row-group">
+          <label>题目数量</label>
+          <div class="number-input-wrap">
+            <button class="num-btn" @click="form.question_count = Math.max(5, form.question_count - 1)">−</button>
+            <input type="number" v-model.number="form.question_count" class="num-input" />
+            <button class="num-btn" @click="form.question_count = Math.min(20, form.question_count + 1)">+</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>考察范围</label>
+          <div class="checkbox-list">
+            <label
+              v-for="cat in categories"
+              :key="cat.value"
+              class="checkbox-item"
+            >
+              <input type="checkbox" :value="cat.value" v-model="form.categories" />
+              <span>{{ cat.label }}</span>
+            </label>
+            <span v-if="categories.length === 0" class="empty-hint">暂无范围可选</span>
+          </div>
+        </div>
+
+        <button class="btn-start-interview" @click="createSession" :disabled="creating">
+          {{ creating ? '创建中...' : '开始面试' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="interview-session-wrapper" v-if="sessionId && session && questions.length > 0">
+      <div class="interview-session-header">
+        <div class="session-header-left">
+          <h2 class="session-title">{{ session.title }}</h2>
+          <div class="session-progress-bar">
+            <span class="progress-label">第 {{ currentQuestionIndex + 1 }} 题 / 共 {{ questions.length }} 题</span>
+            <div class="progress-track">
+              <div class="progress-fill" :style="{ width: Math.round((currentQuestionIndex + 1) / questions.length * 100) + '%' }"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-end-session" @click="showCompleteConfirm = true">结束面试</button>
+      </div>
+
+      <div class="question-section" v-if="currentQuestion">
+        <div class="question-meta-row">
+          <span class="q-tag cat">{{ currentQuestion.category }}</span>
+          <span class="q-tag" :class="'diff-' + currentQuestion.difficulty">
+            {{ currentQuestion.difficulty === 'easy' ? '简单' : currentQuestion.difficulty === 'medium' ? '中等' : '困难' }}
+          </span>
+        </div>
+
+        <div class="question-content">
+          <h3 class="q-title">{{ currentQuestion.title }}</h3>
+          <div v-if="currentQuestion.content" class="q-desc" v-html="renderMarkdown(currentQuestion.content)"></div>
+        </div>
+
+        <div class="answer-section">
+          <div class="answer-top-row">
+            <h4 class="answer-label">你的回答</h4>
+            <button class="btn-hint" @click="showAnswerHint = !showAnswerHint">
+              {{ showAnswerHint ? '收起提示' : '💡 提示一下' }}
+            </button>
+          </div>
+
+          <div class="hint-box" v-if="showAnswerHint">
+            请尽量详细地回答问题，体现你的思考过程。回答完成后点击提交按钮，AI 会自动为你评分和点评。
+          </div>
+
+          <div v-if="needsCodeEditor">
+            <CodeEditor
+              v-model="currentAnswer"
+              :language="'python'"
+              :template="getCodeTemplate()"
+            />
+            <p class="code-notice">💡 此题目为编程题，请编写代码完成要求的功能。</p>
+          </div>
+          <textarea
+            v-else
+            v-model="currentAnswer"
+            class="answer-textarea"
+            placeholder="请输入你的回答..."
+            rows="8"
+          ></textarea>
+
+          <div class="feedback-block" v-if="currentQuestion.is_answered">
+            <div class="feedback-divider">AI 点评</div>
+            <div class="score-row">
+              <span>得分：</span>
+              <span class="star-score">{{ currentQuestion.score || 0 }}/10</span>
+            </div>
+            <div class="feedback-text">{{ currentQuestion.ai_feedback }}</div>
+
+            <div class="follow-up-block" v-if="currentQuestion.follow_up_question">
+              <div class="feedback-divider">🔍 面试官追问</div>
+              <div class="follow-up-q">
+                <p>{{ currentQuestion.follow_up_question }}</p>
+                <p class="follow-up-hint">{{ currentQuestion.follow_up_hint }}</p>
+              </div>
+              <textarea
+                v-model="currentQuestion.follow_up_answer"
+                class="answer-textarea"
+                rows="3"
+                placeholder="请输入你的追问回答..."
+              ></textarea>
+              <button class="btn-submit-follow" @click="submitFollowUp" :disabled="followUpSubmitting">
+                {{ followUpSubmitting ? '提交中...' : '提交追问回答' }}
+              </button>
+              <div v-if="currentQuestion.follow_up_feedback" class="follow-up-result">
+                {{ currentQuestion.follow_up_feedback }}
+              </div>
+            </div>
+
+            <div class="follow-up-trigger" v-if="!currentQuestion.follow_up_question && !currentQuestion.follow_up_skipped">
+              <button class="btn-follow-up" @click="requestFollowUp" :disabled="followUpLoading">
+                {{ followUpLoading ? '获取中...' : '🔍 面试官追问' }}
+              </button>
+              <button class="btn-skip" @click="currentQuestion.follow_up_skipped = true">跳过追问</button>
+            </div>
+
+            <details class="ref-answer">
+              <summary>查看参考答案</summary>
+              <div v-html="renderMarkdown(currentQuestion.answer)"></div>
+            </details>
+          </div>
+        </div>
+
+        <div class="question-nav-buttons">
+          <button :disabled="currentQuestionIndex === 0" @click="prevQuestion">上一题</button>
+          <button
+            v-if="!currentQuestion.is_answered"
+            class="btn-submit"
+            @click="submitAnswer"
+            :disabled="submitting"
+          >
+            {{ submitting ? '提交中...' : '提交回答' }}
+          </button>
+          <button
+            v-else
+            class="btn-submit"
+            :disabled="currentQuestionIndex === questions.length - 1"
+            @click="nextQuestion"
+          >
+            下一题
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <el-dialog
+      v-model="showResultDialog"
+      title="面试结束"
+      width="600px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+    >
+      <div v-if="result" class="result-content">
+        <div class="result-score-row">
+          <div class="score-badge" :class="result.score >= 60 ? 'passed' : 'failed'">
+            <div class="big-score">{{ result.score }}</div>
+            <div class="score-unit">分</div>
+          </div>
+          <div class="result-info">
+            <h3>面试评分</h3>
+            <p>{{ result.feedback }}</p>
+          </div>
+        </div>
+        <div class="suggestions-box">
+          <h4>改进建议</h4>
+          <div v-html="renderMarkdown(result.suggestions)"></div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="goToDetail">查看详情</el-button>
+        <el-button type="primary" @click="restart">再来一次</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="showCompleteConfirm"
+      title="确认结束面试"
+      width="400px"
+    >
+      <p>你确定要结束本次面试吗？结束后将无法继续答题。</p>
+      <template #footer>
+        <el-button @click="showCompleteConfirm = false">取消</el-button>
+        <el-button type="danger" @click="completeInterview" :disabled="completing">确认结束</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -297,9 +230,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import {
-  ArrowLeft, VideoPlay, Star
-} from '@element-plus/icons-vue'
+import { ArrowLeft, VideoPlay, Star } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { renderMarkdown } from '@/utils/markdown'
 import CodeEditor from '@/components/CodeEditor.vue'
@@ -356,7 +287,6 @@ onMounted(() => {
 const fetchCategories = async () => {
   try {
     const res = await request.get('/interview/questions', { params: { page: 1, size: 100 } })
-    // 将题目分类映射为前端需要的格式
     const fetchedQuestions = res.items || res.data?.items || []
     const categorySet = new Set(fetchedQuestions.map(q => q.category || '其他').filter(Boolean))
     categories.value = Array.from(categorySet).map(c => ({ label: c, value: c }))
@@ -371,7 +301,7 @@ const createSession = async () => {
     ElMessage.warning('请至少选择一个考察范围')
     return
   }
-  
+
   creating.value = true
   try {
     const res = await request.post('/interview/sessions/batch', form)
@@ -379,11 +309,11 @@ const createSession = async () => {
     sessionId.value = data.session_id
     session.value = data.session
     questions.value = data.questions || []
-    
+
     if (questions.value.length > 0) {
       currentAnswer.value = questions.value[0].user_answer || ''
     }
-    
+
     ElMessage.success(`面试会话创建成功！共${data.total_questions || questions.value.length}道题目`)
   } catch (error) {
     console.error('创建面试会话失败:', error)
@@ -415,21 +345,15 @@ const fetchSession = async () => {
 }
 
 const getDifficultyTagType = (difficulty) => {
-  const map = {
-    'easy': 'success',
-    'medium': 'warning',
-    'hard': 'danger'
-  }
+  const map = { 'easy': 'success', 'medium': 'warning', 'hard': 'danger' }
   return map[difficulty] || 'info'
 }
 
 const prevQuestion = () => {
   if (currentQuestionIndex.value > 0) {
-    // 保存当前答案
     if (currentQuestion.value) {
       currentQuestion.value.user_answer = currentAnswer.value
     }
-    
     currentQuestionIndex.value -= 1
     currentAnswer.value = questions.value[currentQuestionIndex.value].user_answer || ''
   }
@@ -437,11 +361,9 @@ const prevQuestion = () => {
 
 const nextQuestion = () => {
   if (currentQuestionIndex.value < questions.value.length - 1) {
-    // 保存当前答案
     if (currentQuestion.value) {
       currentQuestion.value.user_answer = currentAnswer.value
     }
-    
     currentQuestionIndex.value += 1
     currentAnswer.value = questions.value[currentQuestionIndex.value].user_answer || ''
     showAnswerHint.value = false
@@ -453,7 +375,7 @@ const submitAnswer = async () => {
     ElMessage.warning('请输入你的回答')
     return
   }
-  
+
   submitting.value = true
   try {
     const isCode = needsCodeEditor.value
@@ -462,7 +384,7 @@ const submitAnswer = async () => {
       language: isCode ? 'python' : 'text',
       source_code: currentAnswer.value.trim(),
     }, { timeout: 120000 })
-    
+
     const subData = res.data || res
     currentQuestion.value.is_answered = true
     currentQuestion.value.record_id = subData.id
@@ -519,7 +441,6 @@ const goToDetail = () => {
 }
 
 const restart = () => {
-  // 重置状态
   sessionId.value = null
   session.value = null
   questions.value = []
@@ -533,7 +454,6 @@ const restart = () => {
 const getCodeTemplate = () => {
   if (!currentQuestion.value) return ''
   const content = currentQuestion.value.content || ''
-  // 简单的模板提取逻辑
   if (content.includes('def ') || content.includes('function')) {
     return content
   }
@@ -582,194 +502,531 @@ const submitFollowUp = async () => {
     followUpSubmitting.value = false
   }
 }
-
 </script>
 
 <style scoped>
-.interview-simulate {
-  padding: 30px 0;
-  min-height: calc(100vh - 60px);
-  background-color: #09090B;
-}
-
-.container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-.back-btn {
-  display: inline-flex;
+.interview-simulate-container {
+  width: 100%;
+  min-height: calc(100vh - 80px);
+  position: relative;
+  display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: var(--tm-card-bg);
-  border-radius: 8px;
-  margin-bottom: 20px;
+  padding: 40px;
+  box-sizing: border-box;
+  background-color: var(--tm-bg-page);
+}
+
+.back-action-bar {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+}
+
+.btn-back {
+  background: transparent;
+  color: var(--tm-text-regular);
+  border: 1px solid var(--tm-border-light);
+  padding: 8px 18px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
   font-size: 14px;
-  color: var(--tm-text-secondary);
-  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+}
+.btn-back:hover {
+  color: var(--tm-text-primary);
+  border-color: var(--tm-color-primary);
 }
 
-.back-btn:hover {
-  color: var(--tm-color-primary);
-  transform: translateX(-4px);
+.center-card-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
-.setup-card, .interview-card {
+.mock-interview-card {
+  width: 480px;
   background: var(--tm-card-bg);
+  border: 1px solid #27272a;
   border-radius: 12px;
   padding: 40px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-shadow: 0 0 20px rgba(var(--tm-color-primary-rgb), 0.05);
 }
 
 .card-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: var(--tm-text-primary);
-  margin: 0 0 30px 0;
   text-align: center;
+  color: var(--tm-text-primary);
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px;
 }
 
-.interview-header {
+.form-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.form-group label {
+  width: 80px;
+  color: var(--tm-text-regular);
+  font-size: 14px;
+  text-align: right;
+  padding-top: 8px;
+  flex-shrink: 0;
+}
+.form-group input,
+.form-group select {
+  flex: 1;
+  background: var(--tm-bg-page);
+  border: 1px solid #27272a;
+  color: var(--tm-text-primary);
+  padding: 10px 12px;
+  border-radius: 6px;
+  outline: none;
+  font-size: 14px;
+}
+.form-group input:focus,
+.form-group select:focus {
+  border-color: rgba(var(--tm-color-primary-rgb), 0.4);
+}
+
+.row-group .number-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.num-btn {
+  background: var(--bg-surface-hover);
+  border: none;
+  color: var(--tm-text-regular);
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.num-btn:hover { background: var(--bg-surface-hover); }
+.num-input {
+  width: 60px !important;
+  text-align: center;
+  flex: none !important;
+}
+
+.checkbox-list {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 2px;
+}
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--tm-text-regular);
+  font-size: 13px;
+  cursor: pointer;
+}
+.checkbox-item input[type="checkbox"] {
+  accent-color: var(--tm-color-primary);
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.empty-hint {
+  color: #52525b;
+  font-size: 13px;
+}
+
+.btn-start-interview {
+  margin-top: 8px;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  color: #fff;
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(var(--tm-color-primary-rgb), 0.3);
+  transition: all 0.3s ease;
+}
+.btn-start-interview:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(var(--tm-color-primary-rgb), 0.45);
+}
+.btn-start-interview:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ========== Interview Session ========== */
+.interview-session-wrapper {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.interview-session-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--tm-border-light);
+  align-items: flex-start;
+  gap: 20px;
+  padding: 24px 28px;
+  background: var(--tm-card-bg);
+  border: 1px solid #27272a;
+  border-radius: 12px;
 }
 
-.interview-info h2 {
+.session-header-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-title {
   font-size: 20px;
-  font-weight: bold;
+  font-weight: 700;
   color: var(--tm-text-primary);
-  margin: 0 0 12px 0;
+  margin: 0 0 14px;
 }
 
-.interview-progress {
+.session-progress-bar {
   display: flex;
   align-items: center;
-  font-size: 14px;
-  color: var(--tm-text-secondary);
+  gap: 16px;
+}
+.progress-label {
+  font-size: 13px;
+  color: var(--tm-text-regular);
+  white-space: nowrap;
+}
+.progress-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  border-radius: 3px;
+  transition: width 0.4s ease;
 }
 
+.btn-end-session {
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  color: #f87171;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-end-session:hover {
+  background: rgba(248, 113, 113, 0.25);
+}
+
+/* ========== Question Section ========== */
 .question-section {
+  background: var(--tm-card-bg);
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  padding: 32px;
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.question-header {
-  margin-bottom: 16px;
-}
-
-.question-content h3 {
-  font-size: 18px;
-  font-weight: bold;
-  color: var(--tm-text-primary);
-  line-height: 1.8;
-  margin: 0 0 16px 0;
-}
-
-.question-desc {
-  font-size: 15px;
-  line-height: 2;
-  color: var(--tm-text-secondary);
-  padding: 16px;
-  background: rgba(var(--tm-bg-page-rgb), 0.5);
-  border-radius: 8px;
-  border-left: 4px solid var(--tm-border-light);
-}
-
-.answer-section {
-  margin-top: 20px;
-}
-
-.answer-header {
+.question-meta-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
-
-.answer-header h4 {
-  font-size: 16px;
-  font-weight: bold;
-  color: var(--tm-text-primary);
-  margin: 0;
-}
-
-.hint-box {
-  margin-bottom: 16px;
-}
-
-.feedback-section {
-  margin-top: 24px;
-}
-
-.score-display {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  font-size: 16px;
+.q-tag {
+  padding: 3px 12px;
+  border-radius: 4px;
+  font-size: 12px;
   font-weight: 500;
+  background: var(--bg-surface-hover);
+  color: var(--tm-text-regular);
+}
+.q-tag.cat { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; }
+.q-tag.diff-easy, .q-tag.diff-beginner { background: rgba(52, 211, 153, 0.12); color: #34d399; }
+.q-tag.diff-medium, .q-tag.diff-intermediate { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
+.q-tag.diff-hard, .q-tag.diff-advanced { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+
+.q-title {
+  font-size: 18px;
+  font-weight: 700;
   color: var(--tm-text-primary);
+  line-height: 1.8;
+  margin: 0 0 12px;
 }
 
-.score-text {
-  color: var(--tm-text-secondary);
-  font-weight: normal;
-}
-
-.feedback-content {
+.q-desc {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--tm-text-regular);
   padding: 16px;
-  background: rgba(var(--tm-color-primary), 0.1);
+  background: var(--tm-card-bg);
   border-radius: 8px;
-  border-left: 4px solid var(--tm-color-primary);
+  border-left: 3px solid #27272a;
+}
+
+/* ========== Answer ========== */
+.answer-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.answer-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tm-text-primary);
+  margin: 0;
+}
+.btn-hint {
+  background: none;
+  border: none;
+  color: #fbbf24;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.hint-box {
+  padding: 14px 16px;
+  background: rgba(251, 191, 36, 0.06);
+  border-radius: 8px;
+  border: 1px solid rgba(251, 191, 36, 0.15);
+  font-size: 13px;
+  color: #fcd34d;
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+
+.answer-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--tm-bg-page);
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  color: var(--tm-text-regular);
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.8;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+}
+.answer-textarea:focus {
+  border-color: rgba(var(--tm-color-primary-rgb), 0.4);
+}
+.code-notice {
+  font-size: 12px;
+  color: var(--tm-text-secondary);
+  margin-top: 8px;
+}
+
+/* ========== Feedback ========== */
+.feedback-block {
+  margin-top: 24px;
+}
+.feedback-divider {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tm-text-primary);
+  padding-bottom: 10px;
+  border-bottom: 1px solid #27272a;
+  margin-bottom: 14px;
+}
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  color: var(--tm-text-regular);
+  margin-bottom: 14px;
+}
+.star-score {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--tm-color-primary);
+}
+.feedback-text {
+  padding: 16px;
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
+  border-radius: 8px;
+  border-left: 3px solid var(--tm-color-primary);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--tm-text-regular);
   margin-bottom: 16px;
 }
 
-.feedback-content p {
+/* ========== Follow Up ========== */
+.follow-up-block {
+  margin-top: 16px;
+}
+.follow-up-q {
+  padding: 14px 16px;
+  background: rgba(251, 191, 36, 0.06);
+  border-radius: 8px;
+  border: 1px solid rgba(251, 191, 36, 0.15);
+  margin-bottom: 14px;
+}
+.follow-up-q p {
   margin: 0;
-  line-height: 1.8;
-  color: var(--tm-text-primary);
+  color: #fcd34d;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.follow-up-hint {
+  font-size: 12px !important;
+  color: var(--tm-text-regular) !important;
+  margin-top: 6px !important;
+}
+.btn-submit-follow {
+  margin-top: 8px;
+  padding: 8px 22px;
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-submit-follow:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(251,191,36,0.3); }
+.btn-submit-follow:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.follow-up-result {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: rgba(52, 211, 153, 0.06);
+  border-radius: 8px;
+  font-size: 14px;
+  color: #34d399;
+  line-height: 1.6;
 }
 
-.action-buttons {
+.follow-up-trigger {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.btn-follow-up {
+  padding: 8px 18px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-follow-up:hover { background: rgba(251, 191, 36, 0.2); }
+.btn-follow-up:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-skip {
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid var(--tm-border-light);
+  color: var(--tm-text-regular);
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-skip:hover { border-color: var(--tm-color-primary); color: var(--tm-color-primary); }
+
+/* ========== Reference Answer ========== */
+.ref-answer {
+  margin-top: 16px;
+}
+.ref-answer summary {
+  font-size: 14px;
+  color: var(--tm-text-regular);
+  cursor: pointer;
+  font-weight: 500;
+  padding: 8px 0;
+}
+.ref-answer summary:hover { color: var(--tm-color-primary); }
+.ref-answer > div {
+  padding: 16px;
+  background: var(--tm-card-bg);
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--tm-text-regular);
+}
+
+/* ========== Nav Buttons ========== */
+.question-nav-buttons {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid var(--tm-border-light);
+  align-items: center;
   padding-top: 24px;
-  margin-top: 24px;
+  border-top: 1px solid #27272a;
+}
+.question-nav-buttons button {
+  padding: 10px 28px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--tm-border-light);
+  color: var(--tm-text-regular);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.question-nav-buttons button:hover:not(:disabled) {
+  border-color: var(--tm-color-primary);
+  color: var(--tm-color-primary);
+}
+.question-nav-buttons button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-submit {
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark)) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 2px 12px rgba(var(--tm-color-primary-rgb), 0.3);
+}
+.btn-submit:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(var(--tm-color-primary-rgb), 0.45) !important;
+  transform: translateY(-1px);
 }
 
-/* 结果弹窗样式 */
+/* ========== Result Modal ========== */
 .result-content {
-  padding: 20px 0;
+  padding: 10px 0;
 }
-
-.result-score {
+.result-score-row {
   display: flex;
   align-items: center;
-  gap: 40px;
-  margin-bottom: 32px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--tm-border-light);
+  gap: 30px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #27272a;
 }
-
-.score-circle {
-  width: 120px;
-  height: 120px;
+.score-badge {
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
@@ -777,114 +1034,82 @@ const submitFollowUp = async () => {
   justify-content: center;
   flex-shrink: 0;
 }
-
-.score-circle.passed {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+.score-badge.passed {
+  background: linear-gradient(135deg, #34d399, #059669);
 }
-
-.score-circle.failed {
-  background: linear-gradient(135deg, #f56c6c 0%, #f78989 100%);
+.score-badge.failed {
+  background: linear-gradient(135deg, #f87171, #dc2626);
 }
-
-.score-number {
-  font-size: 36px;
-  font-weight: bold;
-  color: white;
+.big-score {
+  font-size: 34px;
+  font-weight: 900;
+  color: #fff;
   line-height: 1;
-  margin-bottom: 4px;
 }
-
-.score-label {
-  font-size: 14px;
-  color: white;
-  opacity: 0.9;
+.score-unit {
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
 }
-
-.score-info h3 {
+.result-info h3 {
   font-size: 20px;
-  font-weight: bold;
+  font-weight: 700;
   color: var(--tm-text-primary);
-  margin: 0 0 12px 0;
+  margin: 0 0 10px;
 }
-
-.score-info p {
+.result-info p {
   font-size: 15px;
+  color: var(--tm-text-regular);
   line-height: 1.8;
-  color: var(--tm-text-secondary);
   margin: 0;
 }
-
-.suggestions-section h4 {
-  font-size: 16px;
-  font-weight: bold;
-  color: var(--tm-text-primary);
-  margin: 0 0 16px 0;
-}
-
-.suggestions-content {
+.suggestions-box {
   padding: 20px;
-  background: rgba(230, 162, 60, 0.1);
+  background: rgba(251, 191, 36, 0.06);
   border-radius: 8px;
-  border-left: 4px solid #e6a23c;
+  border-left: 3px solid #fbbf24;
 }
-
-.suggestions-content p {
-  margin: 0;
-  line-height: 2;
+.suggestions-box h4 {
+  font-size: 16px;
+  font-weight: 700;
   color: var(--tm-text-primary);
+  margin: 0 0 14px;
+}
+.suggestions-box div {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--tm-text-regular);
   white-space: pre-line;
 }
 
-/* Markdown样式 */
-.question-desc, .feedback-content, .suggestions-content {
-  line-height: 2;
+/* ========== Markdown in dialogs ========== */
+.question-section :deep(p),
+.suggestions-box :deep(p),
+.ref-answer :deep(p) {
+  margin: 10px 0;
 }
-
-.question-desc p, .feedback-content p, .suggestions-content p {
-  margin: 12px 0;
-  color: var(--tm-text-primary);
-}
-
-.question-desc ul,
-.question-desc ol,
-.feedback-content ul,
-.feedback-content ol {
-  margin: 12px 0;
-  padding-left: 24px;
-  color: var(--tm-text-primary);
-}
-
-.question-desc li,
-.feedback-content li {
-  margin: 8px 0;
-  color: var(--tm-text-primary);
-}
-
-.question-desc code,
-.feedback-content code {
-  background: rgba(var(--tm-bg-page-rgb), 0.5);
+.question-section :deep(code),
+.suggestions-box :deep(code),
+.ref-answer :deep(code) {
+  background: var(--tm-card-bg);
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: 'Courier New', monospace;
   font-size: 13px;
-  color: #e6a23c;
+  color: #fbbf24;
+}
+.question-section :deep(ul),
+.question-section :deep(ol),
+.suggestions-box :deep(ul),
+.suggestions-box :deep(ol) {
+  padding-left: 24px;
 }
 
 @media (max-width: 768px) {
-  .setup-card, .interview-card {
-    padding: 20px;
-  }
-
-  .interview-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-
-  .result-score {
-    flex-direction: column;
-    gap: 20px;
-    text-align: center;
-  }
+  .interview-simulate-container { padding: 24px; }
+  .back-action-bar { top: 24px; left: 24px; }
+  .mock-interview-card { padding: 24px; }
+  .interview-session-header { flex-direction: column; }
+  .question-section { padding: 20px; }
+  .result-score-row { flex-direction: column; text-align: center; }
 }
 </style>

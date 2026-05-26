@@ -1,0 +1,10 @@
+{
+  "login": false,
+  "tests": [],
+  "error": "Login failed, url=http://localhost:5173/#/assessment",
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1
+  }
+}

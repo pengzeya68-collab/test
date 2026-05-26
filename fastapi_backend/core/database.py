@@ -13,12 +13,34 @@ def _normalize_async_database_url(database_url: str) -> str:
     return database_url
 
 
+def _build_engine_kwargs(database_url: str) -> dict:
+    """根据数据库类型构建引擎参数"""
+    normalized = _normalize_async_database_url(database_url)
+    is_sqlite = normalized.startswith("sqlite+")
+    
+    kwargs = {
+        "echo": False,
+    }
+    
+    if is_sqlite:
+        # SQLite 只支持这些参数
+        kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        # MySQL/PostgreSQL 支持连接池参数
+        kwargs.update({
+            "pool_pre_ping": True,
+            "pool_recycle": 3600,
+            "pool_size": 10,
+            "max_overflow": 20,
+            "pool_timeout": 30,
+        })
+    
+    return kwargs
+
+
 engine = create_async_engine(
     _normalize_async_database_url(settings.DATABASE_URL),
-    echo=False,
-    connect_args={"check_same_thread": False},
-    pool_pre_ping=True,
-    pool_recycle=3600,
+    **_build_engine_kwargs(settings.DATABASE_URL),
 )
 
 AsyncSessionLocal = sessionmaker(

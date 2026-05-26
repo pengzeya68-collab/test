@@ -1,6 +1,6 @@
 <template>
-  <div class="community">
-    <div class="container">
+  <div class="community" style="position: relative; z-index: 1;">
+    <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
       <div class="page-header">
         <h1 class="page-title">测试学习社区</h1>
         <p class="page-subtitle">分享经验、交流问题、共同成长</p>
@@ -286,7 +286,6 @@
           <el-button type="primary" @click="submitPost" :loading="submitting">发布</el-button>
         </template>
       </el-dialog>
-    </div>
   </div>
 </template>
 
@@ -328,13 +327,7 @@ const stats = ref({
   online_users: 0
 })
 
-const activeUsers = ref([
-  { id: 1, username: '测试老司机', post_count: 128 },
-  { id: 2, username: '自动化大神', post_count: 96 },
-  { id: 3, username: '性能测试专家', post_count: 78 },
-  { id: 4, username: '职场老阿姨', post_count: 65 },
-  { id: 5, username: '刚入行的小白', post_count: 42 }
-])
+const activeUsers = ref([])
 
 const postForm = ref({
   title: '',
@@ -346,7 +339,13 @@ const postForm = ref({
 const fetchStats = async () => {
   try {
     const res = await request.get('/community/stats')
-    stats.value = res
+    stats.value = {
+      total_posts: res.total_posts,
+      total_users: res.total_users,
+      today_posts: res.today_posts,
+      online_users: res.online_users
+    }
+    activeUsers.value = res.active_users || []
   } catch (error) {
     console.error('获取统计数据失败:', error)
   }
@@ -514,17 +513,18 @@ const submitPost = async () => {
 
 <style scoped>
 .community {
-  padding: 30px 0;
-  min-height: calc(100vh - 60px);
-  background-color: #09090B;
+  padding: 20px 0;
+  min-height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.container {
-  width: 100%;
-  max-width: 1440px;
-  padding: 0 24px;
-  margin: 0 auto;
-  box-sizing: border-box;
+.cyber-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
 }
 
 .page-header {
@@ -771,7 +771,7 @@ const submitPost = async () => {
 }
 
 .stats-card {
-  background: #18181B;
+  background: var(--tm-card-bg);
   border-radius: 12px;
   padding: 20px;
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -833,7 +833,7 @@ const submitPost = async () => {
 }
 
 .empty-state, .loading-state {
-  background: #18181B;
+  background: var(--tm-card-bg);
   padding: 60px 20px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);

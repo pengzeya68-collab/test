@@ -1,0 +1,35 @@
+# Supervisor 配置 - 用于生产环境进程管理
+# 安装: apt-get install supervisor 或 yum install supervisor
+# 放置位置: /etc/supervisor/conf.d/testmaster.conf
+
+[program:testmaster-backend]
+command=uvicorn fastapi_backend.main:app --host 0.0.0.0 --port 5001 --workers 4
+directory=/opt/testmaster/fastapi_backend
+user=appuser
+autostart=true
+autorestart=unexpected
+exitcodes=0,2
+startsecs=5
+startretries=3
+stopwaitsecs=30
+redirect_stderr=true
+stdout_logfile=/var/log/testmaster/backend.log
+stdout_logfile_maxbytes=50MB
+stdout_logfile_backups=10
+environment=PYTHONPATH="/opt/testmaster",PATH="/opt/testmaster/venv/bin:%(ENV_PATH)s"
+
+[program:testmaster-celery]
+command=celery -A fastapi_backend.tasks worker --loglevel=info --concurrency=4
+directory=/opt/testmaster/fastapi_backend
+user=appuser
+autostart=true
+autorestart=unexpected
+exitcodes=0,2
+startsecs=5
+startretries=3
+stopwaitsecs=30
+redirect_stderr=true
+stdout_logfile=/var/log/testmaster/celery.log
+stdout_logfile_maxbytes=50MB
+stdout_logfile_backups=10
+environment=PYTHONPATH="/opt/testmaster",PATH="/opt/testmaster/venv/bin:%(ENV_PATH)s"

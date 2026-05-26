@@ -5,6 +5,7 @@ AutoTest 任务状态持久化服务
 import asyncio
 import json
 import logging
+import threading
 import time
 from pathlib import Path
 from typing import Dict, Optional
@@ -12,7 +13,16 @@ from typing import Dict, Optional
 _logger = logging.getLogger(__name__)
 
 _task_store: Dict[str, dict] = {}
-_task_store_lock = asyncio.Lock()
+_async_lock = asyncio.Lock()
+_sync_lock = threading.Lock()
+
+def _get_store_lock():
+    """根据当前执行环境返回合适的锁：异步环境用 asyncio.Lock，同步环境用 threading.Lock"""
+    try:
+        asyncio.get_running_loop()
+        return _async_lock
+    except RuntimeError:
+        return _sync_lock
 
 TASK_TTL_SECONDS = 24 * 60 * 60
 CLEANUP_INTERVAL_SECONDS = 60 * 60
@@ -82,13 +92,13 @@ def get_task(task_id: str) -> Optional[dict]:
 async def update_task(task_id: str, task_info: dict) -> None:
     if "created_at" not in task_info:
         task_info["created_at"] = time.time()
-    async with _task_store_lock:
+    async with _async_lock:
         _task_store[task_id] = task_info
         _save_task_to_file(task_id, task_info)
 
 
 async def delete_task(task_id: str) -> None:
-    async with _task_store_lock:
+    async with _async_lock:
         _task_store.pop(task_id, None)
         _delete_task_file(task_id)
 
@@ -103,7 +113,7 @@ async def _cleanup_expired_tasks() -> None:
         try:
             now = time.time()
             expired_ids = []
-            async with _task_store_lock:
+            async with _async_lock:
                 for task_id, task_info in list(_task_store.items()):
                     status = task_info.get("status", "")
                     if status in ("completed", "failed", "cancelled"):

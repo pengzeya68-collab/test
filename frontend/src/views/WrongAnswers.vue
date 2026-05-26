@@ -1,99 +1,125 @@
 <template>
   <div class="wrong-answers-page">
-    <div class="container">
-      <div class="page-header">
+    <header class="page-header">
+      <div class="header-titles">
         <h1 class="page-title">📖 错题本</h1>
         <p class="page-desc">回顾错题，查漏补缺，避免重复犯错</p>
       </div>
+      <div class="title-glow-line"></div>
+    </header>
 
-      <div class="stats-bar">
-        <div class="stat-chip wrong">
-          <span class="stat-num">{{ wrongData.wrong_count }}</span>
+    <div class="stats-bar">
+      <div class="stat-chip stat-wrong">
+        <div class="stat-icon-box stat-icon-wrong">✗</div>
+        <div class="stat-info">
+          <span class="stat-num stat-num-wrong">{{ wrongData.wrong_count }}</span>
           <span class="stat-label">待复习</span>
         </div>
-        <div class="stat-chip mastered">
-          <span class="stat-num">{{ wrongData.mastered_count }}</span>
+      </div>
+      <div class="stat-chip stat-mastered">
+        <div class="stat-icon-box stat-icon-mastered">✓</div>
+        <div class="stat-info">
+          <span class="stat-num stat-num-mastered">{{ wrongData.mastered_count }}</span>
           <span class="stat-label">已掌握</span>
         </div>
       </div>
+    </div>
 
-      <el-tabs v-model="activeTab">
-        <el-tab-pane label="待复习" name="wrong">
-          <div class="exercise-list" v-if="wrongData.wrong_answers.length > 0">
-            <div
-              v-for="item in wrongData.wrong_answers"
-              :key="item.id"
-              class="wrong-card"
-              @click="goToExercise(item.id)"
-            >
-              <div class="wrong-card-left">
-                <div class="wrong-icon">✗</div>
+    <div class="tabs-container">
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'wrong' }"
+        @click="activeTab = 'wrong'"
+      >❌ 待复习</div>
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'mastered' }"
+        @click="activeTab = 'mastered'"
+      >✅ 已掌握</div>
+    </div>
+
+    <div class="tab-content">
+      <template v-if="activeTab === 'wrong'">
+        <div class="card-list" v-if="wrongData.wrong_answers.length > 0">
+          <div
+            v-for="item in wrongData.wrong_answers"
+            :key="item.id"
+            class="wrong-card"
+          >
+            <div class="card-left">
+              <div class="card-status-icon icon-fail">✗</div>
+            </div>
+            <div class="card-body" @click="goToExercise(item.id)">
+              <div class="card-title-row">
+                <h3 class="card-title">{{ item.title }}</h3>
               </div>
-              <div class="wrong-card-body">
-                <div class="wrong-card-header">
-                  <h3 class="wrong-title">{{ item.title }}</h3>
-                  <div class="wrong-badges">
-                    <el-tag type="danger" size="small">错 {{ item.wrong_count }} 次</el-tag>
-                    <el-tag :type="getDifficultyType(item.difficulty)" size="small">
-                      {{ getDifficultyText(item.difficulty) }}
-                    </el-tag>
-                  </div>
-                </div>
-                <div class="wrong-meta">
-                  <span v-if="item.knowledge_point" class="meta-tag">
-                    <el-icon size="14"><PriceTag /></el-icon>
-                    {{ item.knowledge_point }}
-                  </span>
-                  <span v-if="item.category" class="meta-tag">
-                    <el-icon size="14"><Collection /></el-icon>
-                    {{ item.category }}
-                  </span>
-                  <span class="meta-tag">
-                    <el-icon size="14"><Clock /></el-icon>
-                    {{ item.last_wrong_at }}
-                  </span>
-                </div>
-              </div>
-              <div class="wrong-card-action">
-                <el-button type="primary" size="small" plain>重做</el-button>
+              <div class="card-meta">
+                <span v-if="item.knowledge_point" class="meta-tag">
+                  <span class="meta-emoji">🏷️</span>
+                  {{ item.knowledge_point }}
+                </span>
+                <span v-if="item.category" class="meta-tag">
+                  <span class="meta-emoji">📁</span>
+                  {{ item.category }}
+                </span>
+                <span class="meta-tag">
+                  <span class="meta-emoji">⏰</span>
+                  {{ item.last_wrong_at }}
+                </span>
               </div>
             </div>
-          </div>
-          <el-empty v-else description="没有错题，继续保持！" />
-        </el-tab-pane>
-
-        <el-tab-pane label="已掌握" name="mastered">
-          <div class="exercise-list" v-if="wrongData.mastered.length > 0">
-            <div
-              v-for="item in wrongData.mastered"
-              :key="item.id"
-              class="wrong-card mastered-card"
-              @click="goToExercise(item.id)"
-            >
-              <div class="wrong-card-left">
-                <div class="mastered-icon">✓</div>
-              </div>
-              <div class="wrong-card-body">
-                <div class="wrong-card-header">
-                  <h3 class="wrong-title">{{ item.title }}</h3>
-                  <el-tag type="success" size="small">已掌握</el-tag>
-                </div>
-                <div class="wrong-meta">
-                  <span v-if="item.knowledge_point" class="meta-tag">
-                    <el-icon size="14"><PriceTag /></el-icon>
-                    {{ item.knowledge_point }}
-                  </span>
-                  <span v-if="item.category" class="meta-tag">
-                    <el-icon size="14"><Collection /></el-icon>
-                    {{ item.category }}
-                  </span>
-                </div>
-              </div>
+            <div class="card-right">
+              <span class="badge badge-danger">错 {{ item.wrong_count }} 次</span>
+              <span class="badge" :class="'badge-' + getDifficultyType(item.difficulty)">
+                {{ getDifficultyText(item.difficulty) }}
+              </span>
+              <button class="redo-btn" @click.stop="goToExercise(item.id)">重做</button>
             </div>
           </div>
-          <el-empty v-else description="还没有从错题中掌握的题目" />
-        </el-tab-pane>
-      </el-tabs>
+        </div>
+        <div v-else class="empty-state">
+          <div class="empty-emoji">🎉</div>
+          <p class="empty-title">没有错题，继续保持！</p>
+          <p class="empty-desc">你的知识掌握得很扎实</p>
+        </div>
+      </template>
+
+      <template v-if="activeTab === 'mastered'">
+        <div class="card-list" v-if="wrongData.mastered.length > 0">
+          <div
+            v-for="item in wrongData.mastered"
+            :key="item.id"
+            class="wrong-card mastered-card"
+          >
+            <div class="card-left">
+              <div class="card-status-icon icon-pass">✓</div>
+            </div>
+            <div class="card-body" @click="goToExercise(item.id)">
+              <div class="card-title-row">
+                <h3 class="card-title">{{ item.title }}</h3>
+              </div>
+              <div class="card-meta">
+                <span v-if="item.knowledge_point" class="meta-tag">
+                  <span class="meta-emoji">🏷️</span>
+                  {{ item.knowledge_point }}
+                </span>
+                <span v-if="item.category" class="meta-tag">
+                  <span class="meta-emoji">📁</span>
+                  {{ item.category }}
+                </span>
+              </div>
+            </div>
+            <div class="card-right">
+              <span class="badge badge-success">已掌握</span>
+            </div>
+          </div>
+        </div>
+        <div v-else class="empty-state">
+          <div class="empty-emoji">📝</div>
+          <p class="empty-title">还没有从错题中掌握的题目</p>
+          <p class="empty-desc">继续复习错题，把它们变成你的强项</p>
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -101,7 +127,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { PriceTag, Collection, Clock } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -143,127 +168,189 @@ const getDifficultyText = (d) => {
 
 <style scoped>
 .wrong-answers-page {
-  padding: 40px 0;
-  min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-page);
-}
-
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 24px;
+  width: 100%;
+  padding: 40px 60px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: var(--tm-bg-page);
 }
 
 .page-header {
-  margin-bottom: 36px;
+  margin-bottom: 32px;
+}
+
+.header-titles {
+  margin-bottom: 4px;
 }
 
 .page-title {
-  font-size: 32px;
-  font-weight: 700;
-  background: var(--tm-gradient-brand);
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 
 .page-desc {
-  font-size: 16px;
-  color: var(--tm-text-secondary);
+  font-size: 14px;
+  color: var(--tm-text-regular);
   margin: 0;
+}
+
+.title-glow-line {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary-dark), transparent);
+  margin-top: 16px;
+  border-radius: 1px;
 }
 
 .stats-bar {
   display: flex;
-  gap: 20px;
-  margin-bottom: 36px;
+  gap: 16px;
+  margin-bottom: 28px;
 }
 
 .stat-chip {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 20px 28px;
-  border-radius: 16px;
-  background: var(--tm-glass-bg);
-  backdrop-filter: var(--tm-glass-blur);
-  -webkit-backdrop-filter: var(--tm-glass-blur);
-  border: var(--tm-glass-border);
-  box-shadow: var(--tm-shadow-card);
-  flex: 1;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 14px;
+  background: var(--tm-card-bg);
+  border: 1px solid var(--tm-border-light);
   transition: all 0.3s ease;
 }
 
 .stat-chip:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--tm-shadow-glow);
+  border-color: var(--border-subtle);
+  background: var(--tm-card-bg);
 }
 
-.stat-chip.wrong {
-  border-left: 3px solid rgba(255, 107, 107, 0.6);
+.stat-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  flex-shrink: 0;
 }
 
-.stat-chip.mastered {
-  border-left: 3px solid rgba(81, 207, 102, 0.6);
+.stat-icon-wrong {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}
+
+.stat-icon-mastered {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .stat-num {
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
-.stat-chip.wrong .stat-num {
-  color: #FF6B6B;
+.stat-num-wrong {
+  color: #f87171;
 }
 
-.stat-chip.mastered .stat-num {
-  color: #51CF66;
+.stat-num-mastered {
+  color: #34d399;
 }
 
 .stat-label {
-  font-size: 14px;
-  color: var(--tm-text-secondary);
+  font-size: 13px;
+  color: var(--tm-text-regular);
 }
 
-.exercise-list {
+.tabs-container {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--tm-border-light);
+  padding-bottom: 0;
+}
+
+.tab-item {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tm-text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.25s ease;
+  user-select: none;
+}
+
+.tab-item:hover {
+  color: var(--tm-text-regular);
+}
+
+.tab-item.active {
+  color: var(--tm-text-primary);
+  border-bottom-color: var(--tm-color-primary);
+  font-weight: 600;
+}
+
+.tab-content {
+  min-height: 400px;
+}
+
+.card-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .wrong-card {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px 24px;
-  background: var(--tm-glass-bg);
-  backdrop-filter: var(--tm-glass-blur);
-  -webkit-backdrop-filter: var(--tm-glass-blur);
-  border-radius: 14px;
-  border: var(--tm-glass-border);
-  box-shadow: var(--tm-shadow-card);
-  cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 18px 22px;
+  background: var(--tm-card-bg);
+  border: 1px solid var(--tm-border-light);
+  border-radius: 12px;
+  transition: all 0.3s ease;
 }
 
 .wrong-card:hover {
-  transform: translateY(-3px) translateX(4px);
-  box-shadow: var(--tm-shadow-glow), var(--tm-shadow-hover);
-  border-color: rgba(214, 51, 108, 0.2);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.25);
+  background: var(--tm-card-bg);
+  transform: translateX(4px);
 }
 
-.wrong-card-left {
+.mastered-card {
+  opacity: 0.6;
+}
+
+.mastered-card:hover {
+  opacity: 1;
+}
+
+.card-left {
   flex-shrink: 0;
 }
 
-.wrong-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(255, 107, 107, 0.1);
-  color: #FF6B6B;
+.card-status-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -271,33 +358,28 @@ const getDifficultyText = (d) => {
   font-weight: 800;
 }
 
-.mastered-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(81, 207, 102, 0.1);
-  color: #51CF66;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 800;
+.icon-fail {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
 }
 
-.wrong-card-body {
+.icon-pass {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+}
+
+.card-body {
   flex: 1;
   min-width: 0;
+  cursor: pointer;
 }
 
-.wrong-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+.card-title-row {
+  margin-bottom: 6px;
 }
 
-.wrong-title {
-  font-size: 16px;
+.card-title {
+  font-size: 15px;
   font-weight: 600;
   color: var(--tm-text-primary);
   margin: 0;
@@ -306,35 +388,103 @@ const getDifficultyText = (d) => {
   text-overflow: ellipsis;
 }
 
-.wrong-badges {
+.card-meta {
   display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.wrong-meta {
-  display: flex;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
 .meta-tag {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--tm-text-secondary);
 }
 
-.wrong-card-action {
+.meta-emoji {
+  font-size: 12px;
+}
+
+.card-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
 }
 
-.mastered-card {
-  opacity: 0.7;
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.mastered-card:hover {
-  opacity: 1;
+.badge-danger {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+}
+
+.badge-success {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+}
+
+.badge-warning {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
+.badge-info {
+  background: rgba(var(--tm-color-primary-rgb), 0.15);
+  color: var(--tm-color-primary);
+}
+
+.redo-btn {
+  padding: 7px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.4);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
+  color: var(--tm-color-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.redo-btn:hover {
+  background: rgba(var(--tm-color-primary-rgb), 0.2);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.6);
+  color: var(--tm-color-primary);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.empty-emoji {
+  font-size: 56px;
+  margin-bottom: 16px;
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--tm-text-regular);
+  margin: 0 0 6px;
+}
+
+.empty-desc {
+  font-size: 13px;
+  color: var(--tm-text-secondary);
+  margin: 0;
 }
 </style>

@@ -2,18 +2,15 @@
 后台管理子路由 - 习题管理
 从 admin_manage.py 拆分
 """
-from typing import Optional, Any
-from datetime import datetime
+from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy import select, func, or_, and_, desc
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy import select, func, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi_backend.core.database import get_db, AsyncSessionLocal
-from fastapi_backend.core.exceptions import NotFoundException
+from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Exercise, LearningPath, Exam, ExamQuestion, Post, Comment, InterviewQuestion, Submission, Progress
-from fastapi_backend.services.auth_service import AuthService
+from fastapi_backend.models.models import User, Exercise
 from fastapi import UploadFile, File
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-习题管理"])
 

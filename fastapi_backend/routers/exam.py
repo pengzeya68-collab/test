@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import random
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -13,13 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.database import get_db
-from fastapi_backend.deps.auth import get_current_user, require_admin
+from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.models import (
     Exam,
     ExamAnswer,
     ExamAttempt,
     ExamQuestion,
     Exercise,
+    LearningPath,
     User,
 )
 from fastapi_backend.schemas.exam import (
@@ -27,16 +28,12 @@ from fastapi_backend.schemas.exam import (
     ExamSubmitRequest,
     ExamBrief,
     ExamListResponse,
-    ExamDetailResponse,
     ExamStartResponse,
     ExamSubmitResponse,
-    ExamResultResponse,
     MyAttemptsResponse,
     AttemptBrief,
-    AuthorBrief,
     QuestionBrief,
     AnswerResult,
-    AttemptInfo,
     ExamGenerateResponse,
 )
 
@@ -68,11 +65,11 @@ def _fmt_exam(exam: Exam, user_id: int | None = None) -> dict:
             "username": exam.user.username if exam.user else "unknown",
         },
     }
-    # The caller may attach attempt info separately
     if hasattr(exam, "_attempt_status"):
         data["attempt_status"] = exam._attempt_status
         data["attempt_score"] = exam._attempt_score
         data["attempt_id"] = exam._attempt_id
+        data["is_passed"] = getattr(exam, "_attempt_is_passed", None)
     return data
 
 
@@ -166,10 +163,9 @@ async def _calculate_score(attempt: ExamAttempt, db: AsyncSession) -> int:
                             user_code, question.correct_answer, question.score
                         )
                     except Exception as e:
-                        answer.score, answer.is_correct, answer.feedback = _simple_code_scoring(
-                            user_code, question.correct_answer, question.score
-                        )
-                        answer.feedback = (answer.feedback or "") + f" (判题异常: {e})"
+                        answer.score = 0
+                        answer.is_correct = False
+                        answer.feedback = f"判题异常: {e}"
                 else:
                     answer.score, answer.is_correct, answer.feedback = _simple_code_scoring(
                         user_code, question.correct_answer, question.score
@@ -220,7 +216,7 @@ async def get_exams(
     db: AsyncSession = Depends(get_db),
 ):
     """获取考试列表"""
-    stmt = select(Exam).where(Exam.is_published == True).options(selectinload(Exam.user), selectinload(Exam.questions))  # noqa: E712
+    stmt = select(Exam).where(Exam.is_published).options(selectinload(Exam.user), selectinload(Exam.questions))  # noqa: E712
 
     if type:
         stmt = stmt.where(Exam.exam_type == type)
@@ -232,7 +228,7 @@ async def get_exams(
     stmt = stmt.order_by(Exam.created_at.desc())
 
     # Count total
-    count_stmt = select(func.count()).select_from(Exam).where(Exam.is_published == True)  # noqa: E712
+    count_stmt = select(func.count()).select_from(Exam).where(Exam.is_published)  # noqa: E712
     if type:
         count_stmt = count_stmt.where(Exam.exam_type == type)
     if difficulty:
@@ -260,6 +256,7 @@ async def get_exams(
                 d["attempt_status"] = att.status
                 d["attempt_score"] = att.score
                 d["attempt_id"] = att.id
+                d["is_passed"] = att.is_passed
         items.append(d)
 
     return ExamListResponse(list=items, total=total, page=page, per_page=per_page)
@@ -293,6 +290,7 @@ async def get_exam_detail(
             data["attempt_status"] = att.status
             data["attempt_score"] = att.score
             data["attempt_id"] = att.id
+            data["is_passed"] = att.is_passed
 
     questions = sorted(exam.questions, key=lambda q: q.sort_order)
     data["questions"] = [_fmt_question(q) for q in questions]
@@ -349,7 +347,7 @@ async def get_exam_questions(
     if not exam.is_published:
         raise HTTPException(status_code=403, detail="考试未发布")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if exam.start_time and now < exam.start_time:
         raise HTTPException(status_code=403, detail="考试尚未开始")
     if exam.end_time and now > exam.end_time:
@@ -408,7 +406,7 @@ async def submit_exam(
         )
         db.add(answer)
 
-    attempt.end_time = datetime.utcnow()
+    attempt.end_time = datetime.now(timezone.utc)
     attempt.status = "submitted"
     await db.commit()
 
@@ -482,7 +480,8 @@ async def get_exam_result(
             question_types[q_type]["correct"] += 1
         question_types[q_type]["score"] += item["score"] or 0
 
-    correct_count = sum(1 for i in result_items if i["is_correct"])
+    correct_count = sum(1 for i in result_items if i["is_correct"] is True)
+    wrong_count = sum(1 for i in result_items if i["is_correct"] is False)
     score_rate = round(attempt.score / exam.total_score * 100, 1) if exam and exam.total_score > 0 else 0
 
     return {
@@ -500,7 +499,7 @@ async def get_exam_result(
         "statistics": {
             "total_questions": len(result_items),
             "correct_count": correct_count,
-            "wrong_count": len(result_items) - correct_count,
+            "wrong_count": wrong_count,
             "score_rate": score_rate,
             "question_type_stats": question_types,
         },
@@ -563,21 +562,23 @@ async def generate_exam(
     used_ids: set[int] = set()
 
     difficulty = body.difficulty
+    lp_id = body.learning_path_id
+
+    def _base_stmt(etype: str):
+        stmt = select(Exercise).where(
+            Exercise.exercise_type == etype,
+            Exercise.difficulty == difficulty,
+            Exercise.is_public == True,  # noqa: E712
+        )
+        if lp_id:
+            stmt = stmt.where(Exercise.learning_path_id == lp_id)
+        return stmt
 
     # Single choice
     sc_count = body.question_count.get("single_choice", 0)
     if sc_count > 0:
-        stmt = select(Exercise).where(
-            Exercise.exercise_type == "multiple_choice",
-            Exercise.difficulty == difficulty,
-            Exercise.is_public == True,  # noqa: E712
-        )
-        result = await db.execute(stmt)
-        all_mc = result.scalars().all()
-        single_choices = [
-            e for e in all_mc
-            if e.solution and len(e.solution.strip()) == 1 and e.solution.strip() in "ABCDEF"
-        ]
+        result = await db.execute(_base_stmt("single_choice"))
+        single_choices = result.scalars().all()
         if len(single_choices) > sc_count:
             single_choices = random.sample(single_choices, sc_count)
         for q in single_choices:
@@ -596,17 +597,9 @@ async def generate_exam(
     # Multiple choice
     mc_count = body.question_count.get("multiple_choice", 0)
     if mc_count > 0:
-        stmt = select(Exercise).where(
-            Exercise.exercise_type == "multiple_choice",
-            Exercise.difficulty == difficulty,
-            Exercise.is_public == True,  # noqa: E712
-        )
-        result = await db.execute(stmt)
+        result = await db.execute(_base_stmt("multiple_choice"))
         all_mc = result.scalars().all()
-        multi_choices = [
-            e for e in all_mc
-            if e.solution and ("," in e.solution or len(e.solution.strip()) > 1) and e.id not in used_ids
-        ]
+        multi_choices = [e for e in all_mc if e.id not in used_ids]
         if len(multi_choices) > mc_count:
             multi_choices = random.sample(multi_choices, mc_count)
         for q in multi_choices:
@@ -628,19 +621,14 @@ async def generate_exam(
     # True/False
     tf_count = body.question_count.get("true_false", 0)
     if tf_count > 0:
-        stmt = select(Exercise).where(
-            Exercise.exercise_type == "true_false",
-            Exercise.difficulty == difficulty,
-            Exercise.is_public == True,  # noqa: E712
-        )
-        result = await db.execute(stmt)
+        result = await db.execute(_base_stmt("true_false"))
         all_tf = [e for e in result.scalars().all() if e.id not in used_ids]
         if len(all_tf) > tf_count:
             all_tf = random.sample(all_tf, tf_count)
         for q in all_tf:
             used_ids.add(q.id)
-            ans = q.solution.strip().lower() if q.solution else "false"
-            if ans in ("true", "t", "yes", "y", "正确", "对", "是"):
+            ans = q.solution.strip().upper() if q.solution else "B"
+            if ans == "A":
                 ans = "true"
             else:
                 ans = "false"
@@ -656,12 +644,7 @@ async def generate_exam(
     # Code questions
     code_count = body.question_count.get("code", 0)
     if code_count > 0:
-        stmt = select(Exercise).where(
-            Exercise.exercise_type == "code",
-            Exercise.difficulty == difficulty,
-            Exercise.is_public == True,  # noqa: E712
-        )
-        result = await db.execute(stmt)
+        result = await db.execute(_base_stmt("code"))
         all_code = [e for e in result.scalars().all() if e.id not in used_ids]
         if len(all_code) > code_count:
             all_code = random.sample(all_code, code_count)
@@ -690,10 +673,20 @@ async def generate_exam(
     tf_n = sum(1 for q in questions_data if q["type"] == "true_false")
     code_n = sum(1 for q in questions_data if q["type"] == "code")
 
+    lp_title = ""
+    if lp_id:
+        lp_stmt = select(LearningPath.title).where(LearningPath.id == lp_id)
+        lp_result = await db.execute(lp_stmt)
+        lp_row = lp_result.scalar_one_or_none()
+        lp_title = f" — {lp_row}" if lp_row else ""
+
+    exam_title = f"{difficulty}难度{body.exam_type}{lp_title}"
+    exam_desc = f"自动生成的{difficulty}难度{body.exam_type}{lp_title}，包含{len(questions_data)}道题" \
+                f"（单选{sc_n}道、多选{mc_n}道、判断{tf_n}道、代码{code_n}道）"
+
     exam = Exam(
-        title=f"{difficulty}难度{body.exam_type}",
-        description=f"自动生成的{difficulty}难度{body.exam_type}，包含{len(questions_data)}道题"
-                    f"（单选{sc_n}道、多选{mc_n}道、判断{tf_n}道、代码{code_n}道）",
+        title=exam_title,
+        description=exam_desc,
         exam_type=body.exam_type,
         difficulty=difficulty,
         duration=body.duration,

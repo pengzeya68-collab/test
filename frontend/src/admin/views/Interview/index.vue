@@ -282,9 +282,9 @@ const handleEdit = async (row) => {
 }
 
 const handleSubmit = async () => {
-  await formRef.value.validate()
   submitting.value = true
   try {
+    await formRef.value.validate()
     if (isEdit.value) {
       await request.put(`/admin/interview/questions/${form.id}`, form)
       ElMessage.success('面试题更新成功')

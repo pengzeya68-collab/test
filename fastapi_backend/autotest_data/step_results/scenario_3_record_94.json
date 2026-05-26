@@ -1,0 +1,287 @@
+[
+  {
+    "step_id": 6,
+    "step_order": 0,
+    "api_case_id": 11,
+    "api_case_name": "步骤 2：用提取出来的数据组装全新的请求体",
+    "method": "POST",
+    "url": "https://httpbin.org/post",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "payload": {
+      "message": "报告！我已经成功抓获目标",
+      "suspect_email": "{{target_email}}",
+      "suspect_id": "{{target_uuid}}"
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 1123,
+    "response": {
+      "status": 200,
+      "body": "{\n  \"args\": {}, \n  \"data\": \"{\\\"message\\\":\\\"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\\\",\\\"suspect_email\\\":\\\"{{target_email}}\\\",\\\"suspect_id\\\":\\\"{{target_uuid}}\\\"}\", \n  \"files\": {}, \n  \"form\": {}, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate\", \n    \"Content-Length\": \"116\", \n    \"Content-Type\": \"application/json\", \n    \"Host\": \"httpbin.org\", \n    \"User-Agent\": \"python-httpx/0.28.1\", \n    \"X-Amzn-Trace-Id\": \"Root=1-69de5185-3ebe22504cae142203a88fd8\"\n  }, \n  \"json\": {\n    \"message\": \"\\u62a5\\u544a\\uff01\\u6211\\u5df2\\u7ecf\\u6210\\u529f\\u6293\\u83b7\\u76ee\\u6807\", \n    \"suspect_email\": \"{{target_email}}\", \n    \"suspect_id\": \"{{target_uuid}}\"\n  }, \n  \"origin\": \"34.80.75.224\", \n  \"url\": \"https://httpbin.org/post\"\n}\n",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 14:39:01 GMT",
+        "content-type": "application/json",
+        "content-length": "773",
+        "connection": "keep-alive",
+        "server": "gunicorn/19.9.0",
+        "access-control-allow-origin": "*",
+        "access-control-allow-credentials": "true"
+      },
+      "json": {
+        "args": {},
+        "data": "{\"message\":\"报告！我已经成功抓获目标\",\"suspect_email\":\"{{target_email}}\",\"suspect_id\":\"{{target_uuid}}\"}",
+        "files": {},
+        "form": {},
+        "headers": {
+          "Accept": "*/*",
+          "Accept-Encoding": "gzip, deflate",
+          "Content-Length": "116",
+          "Content-Type": "application/json",
+          "Host": "httpbin.org",
+          "User-Agent": "python-httpx/0.28.1",
+          "X-Amzn-Trace-Id": "Root=1-69de5185-3ebe22504cae142203a88fd8"
+        },
+        "json": {
+          "message": "报告！我已经成功抓获目标",
+          "suspect_email": "{{target_email}}",
+          "suspect_id": "{{target_uuid}}"
+        },
+        "origin": "34.80.75.224",
+        "url": "https://httpbin.org/post"
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {},
+    "status": "success"
+  },
+  {
+    "step_id": 7,
+    "step_order": 1,
+    "api_case_id": 10,
+    "api_case_name": "步骤 1：获取随机生成的复杂用户信息",
+    "method": "GET",
+    "url": "https://randomuser.me/api/",
+    "headers": {},
+    "payload": {
+      "results": [
+        {
+          "gender": "female",
+          "name": {
+            "first": "John",
+            "last": "Doe"
+          },
+          "email": "john.doe@example.com",
+          "login": {
+            "uuid": "abc-123-xyz",
+            "username": "johndoe123"
+          }
+        }
+      ],
+      "info": {
+        "version": "1.3"
+      }
+    },
+    "success": true,
+    "status_code": 200,
+    "response_time": 400,
+    "response": {
+      "status": 200,
+      "body": "{\"results\":[{\"gender\":\"male\",\"name\":{\"title\":\"Mr\",\"first\":\"Ümit\",\"last\":\"Atakol\"},\"location\":{\"street\":{\"number\":1155,\"name\":\"Istiklal Cd\"},\"city\":\"Sinop\",\"state\":\"Manisa\",\"country\":\"Turkey\",\"postcode\":13082,\"coordinates\":{\"latitude\":\"67.6275\",\"longitude\":\"-55.2688\"},\"timezone\":{\"offset\":\"+10:00\",\"description\":\"Eastern Australia, Guam, Vladivostok\"}},\"email\":\"umit.atakol@example.com\",\"login\":{\"uuid\":\"e1f17b80-0612-46f1-80ff-9dbf4b278f5b\",\"username\":\"yellowzebra641\",\"password\":\"2005\",\"salt\":\"bBfiA0fr\",\"md5\":\"da02d129b76bbdb5329b1c3f1b8fc2ef\",\"sha1\":\"94e27a6541e773bfd6109d8a87d2969427eeeb07\",\"sha256\":\"af03595daae1b074d73dd6bbc6d3f61835c33718cca9e546fa5f20c1987bb644\"},\"dob\":{\"date\":\"1994-04-24T09:04:15.521Z\",\"age\":31},\"registered\":{\"date\":\"2016-12-22T04:05:00.787Z\",\"age\":9},\"phone\":\"(271)-459-3743\",\"cell\":\"(856)-185-2979\",\"id\":{\"name\":\"\",\"value\":null},\"picture\":{\"large\":\"https://randomuser.me/api/portraits/men/99.jpg\",\"medium\":\"https://randomuser.me/api/portraits/med/men/99.jpg\",\"thumbnail\":\"https://randomuser.me/api/portraits/thumb/men/99.jpg\"},\"nat\":\"TR\"}],\"info\":{\"seed\":\"51966dd9c0e0bfeb\",\"results\":1,\"page\":1,\"version\":\"1.4\"}}",
+      "headers": {
+        "date": "Tue, 14 Apr 2026 14:39:02 GMT",
+        "content-type": "application/json; charset=utf-8",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "server": "cloudflare",
+        "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "*",
+        "cache-control": "no-cache",
+        "etag": "W/\"479-SVZEz1ANXtU5mnvs2HjryRdNfck\"",
+        "vary": "Accept-Encoding",
+        "content-encoding": "gzip",
+        "cf-cache-status": "DYNAMIC",
+        "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=GW7oQaTZRaYdWFRIFHFZ3SDBYAeqKL5E37o7Bhpbp%2BjjZjitBnVWgV56ugc2IvTO3voPHdtj%2FfX8ue90b3QMly%2B0n5QsDQsDwJb5j%2FmWd9ZZY7WqpE98BqTXOK%2Ft3Iqq\"}]}",
+        "cf-ray": "9ec37526daee4a60-TPE",
+        "alt-svc": "h3=\":443\"; ma=86400"
+      },
+      "json": {
+        "results": [
+          {
+            "gender": "male",
+            "name": {
+              "title": "Mr",
+              "first": "Ümit",
+              "last": "Atakol"
+            },
+            "location": {
+              "street": {
+                "number": 1155,
+                "name": "Istiklal Cd"
+              },
+              "city": "Sinop",
+              "state": "Manisa",
+              "country": "Turkey",
+              "postcode": 13082,
+              "coordinates": {
+                "latitude": "67.6275",
+                "longitude": "-55.2688"
+              },
+              "timezone": {
+                "offset": "+10:00",
+                "description": "Eastern Australia, Guam, Vladivostok"
+              }
+            },
+            "email": "umit.atakol@example.com",
+            "login": {
+              "uuid": "e1f17b80-0612-46f1-80ff-9dbf4b278f5b",
+              "username": "yellowzebra641",
+              "password": "2005",
+              "salt": "bBfiA0fr",
+              "md5": "da02d129b76bbdb5329b1c3f1b8fc2ef",
+              "sha1": "94e27a6541e773bfd6109d8a87d2969427eeeb07",
+              "sha256": "af03595daae1b074d73dd6bbc6d3f61835c33718cca9e546fa5f20c1987bb644"
+            },
+            "dob": {
+              "date": "1994-04-24T09:04:15.521Z",
+              "age": 31
+            },
+            "registered": {
+              "date": "2016-12-22T04:05:00.787Z",
+              "age": 9
+            },
+            "phone": "(271)-459-3743",
+            "cell": "(856)-185-2979",
+            "id": {
+              "name": "",
+              "value": null
+            },
+            "picture": {
+              "large": "https://randomuser.me/api/portraits/men/99.jpg",
+              "medium": "https://randomuser.me/api/portraits/med/men/99.jpg",
+              "thumbnail": "https://randomuser.me/api/portraits/thumb/men/99.jpg"
+            },
+            "nat": "TR"
+          }
+        ],
+        "info": {
+          "seed": "51966dd9c0e0bfeb",
+          "results": 1,
+          "page": 1,
+          "version": "1.4"
+        }
+      }
+    },
+    "assertions": {
+      "total": 0,
+      "passed": 0,
+      "failed": []
+    },
+    "extracted_vars": {
+      "target_email": "umit.atakol@example.com",
+      "target_uuid": "e1f17b80-0612-46f1-80ff-9dbf4b278f5b"
+    },
+    "status": "success"
+  },
+  {
+    "step_id": 8,
+    "step_order": 2,
+    "api_case_id": 9,
+    "api_case_name": "根据 ID 修改该用户信息",
+    "method": "PUT",
+    "success": false,
+    "status": "failed",
+    "response_time": 2277,
+    "error": "断言失败: 默认断言失败: 期望 2xx/3xx (< 400), 实际返回 500"
+  },
+  {
+    "step_id": 9,
+    "step_order": 3,
+    "api_case_id": 8,
+    "api_case_name": "根据 ID 查询该用户的详细信息",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 10,
+    "step_order": 4,
+    "api_case_id": 7,
+    "api_case_name": "创建一条新用户记录，提取 ID",
+    "method": "POST",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 11,
+    "step_order": 5,
+    "api_case_id": 6,
+    "api_case_name": "GET bearer",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 12,
+    "step_order": 6,
+    "api_case_id": 5,
+    "api_case_name": "POST post",
+    "method": "POST",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 13,
+    "step_order": 7,
+    "api_case_id": 4,
+    "api_case_name": "GET get",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 14,
+    "step_order": 8,
+    "api_case_id": 2,
+    "api_case_name": "GET all.json",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  },
+  {
+    "step_id": 15,
+    "step_order": 9,
+    "api_case_id": 1,
+    "api_case_name": "GET users",
+    "method": "GET",
+    "success": true,
+    "status": "skipped",
+    "response_time": 0,
+    "error": null,
+    "skipped_reason": "因 Step 3 失败而跳过"
+  }
+]

@@ -1,253 +1,125 @@
-# TestMaster 在线学习平台
+# TestMaster - 智能测试管理平台
 
-一个功能完整的软件测试在线学习平台，包含前台学习系统和后台管理系统。
+基于 FastAPI + Vue 3 的全栈智能测试管理平台。
 
 ## 项目结构
 
 ```
-TestMasterProject/
-├── fastapi_backend/              # FastAPI 统一后端（学习平台 + 自动化测试，端口 5001）
-│   ├── __init__.py
-│   ├── app.py                   # 应用工厂
-│   ├── config.py                # 配置
-│   ├── extensions.py            # 扩展初始化
-│   ├── models/                  # 数据模型
-│   │   └── models.py
-│   └── api/                     # API 路由模块
-│       ├── auth.py              # 用户认证
-│       ├── admin.py             # 后台管理
-│       ├── exercises.py         # 习题管理
-│       ├── learning_paths.py    # 学习路径
-│       ├── interview.py         # 面试系统
-│       ├── exam.py             # 考试系统
-│       ├── code_executor.py     # 代码执行沙箱
-│       ├── skills.py            # 技能统计
-│       ├── ai_tutor.py          # AI导师
-│       ├── interface_test.py    # 接口测试（旧版）
-│       ├── auto_test.py         # 自动化测试入口
-│       └── community.py         # 社区
-├── frontend/                    # 前端（Vue 3 + Vite，端口 5173）
-│   └── src/
-│       ├── views/              # 页面组件
-│       ├── api/                # API 调用
-│       └── ...
-├── fastapi_backend/            # 统一FastAPI后端模块（端口 5001）
-│   ├── main.py                 # FastAPI 主入口
-│   ├── models.py               # 数据模型
-│   ├── schemas.py              # Pydantic schemas
-│   ├── database.py             # 数据库连接
-│   ├── routers/                # API 路由
-│   │   ├── groups.py           # 分组管理
-│   │   ├── cases.py            # 用例管理
-│   │   ├── environments.py     # 环境管理
-│   │   └── scenarios.py        # 场景管理
-│   ├── services/               # 核心服务
-│   │   ├── execution.py        # 断言执行
-│   │   ├── pytest_engine.py     # Pytest 引擎
-│   │   ├── scenario_runner.py   # 场景执行引擎
-│   │   └── scheduler.py         # 定时任务调度
-│   ├── allure-results/         # Allure 测试结果
-│   └── reports/                # Allure HTML 报告
-├── scripts/                    # 数据库初始化脚本
-│   ├── init_all.py             # 完整初始化
-│   ├── init_db.py              # 数据库初始化
-│   └── ...
-├── migrations/                 # 数据库迁移
-├── instance/                   # SQLite 数据库文件
-├── docs/                       # 项目文档
-├── requirements.txt            # 学习平台依赖
-├── auto_test_platform/requirements.txt  # 自动化测试依赖
-└── README.md
+TestMaster/
+├── fastapi_backend/          # FastAPI 后端
+├── frontend/                 # Vue 3 主前端（端口 5173）
+├── workspace/                # React 辅助前端（端口 5174）
+├── start_backend.bat         # 启动后端
+├── start_frontend.bat        # 启动主前端
+├── start_workspace.bat       # 启动辅助前端
+├── test_backend.bat          # 运行后端测试
+└── requirements.txt          # Python 依赖
 ```
 
-## 技术栈
+## 快速开始
 
-- **后端**：Python FastAPI + SQLAlchemy Async + JWT + APScheduler
-- **前端**：Vue 3 + TypeScript + Vite + Element Plus + ECharts
-- **数据库**：SQLite（开发）
-- **自动化测试**：Pytest + Allure Report + 数据驱动测试
+### 1. 环境准备
 
-## 功能模块
+- Python >= 3.10
+- Node.js >= 18
+- （可选）Redis（用于 Celery 任务队列）
 
-### 前台学习
-- [x] 用户注册/登录（短信验证码）
-- [x] 首页展示
-- [x] 学习路径浏览
-- [x] 在线做题（支持代码在线执行）
-- [x] 面试系统
-- [x] 技能雷达图统计
-- [x] 个人中心
-- [ ] 社区讨论
+### 2. 配置环境变量
 
-### 后台管理
-- [x] 管理员登录
-- [x] 数据仪表盘（数据统计图表）
-- [x] 习题管理（CRUD + 批量导入）
-- [x] 学习路径管理（关联习题）
-- [x] 用户管理（权限控制）
-- [x] 面试题库管理
-- [x] 考试管理
+复制 `.env.example` 为 `.env`：
 
-### 自动化测试模块（auto_test_platform）
-- [x] 接口分组管理（树形结构）
-- [x] 接口用例管理（CRUD + 批量导入）
-- [x] 环境配置管理（base_url、全局变量）
-- [x] 场景编排执行（多步骤串联、变量传递）
-- [x] 数据驱动执行（CSV/Excel 导入）
-- [x] 定时任务调度（APScheduler + Cron 表达式）
-- [x] Allure 测试报告生成
-- [x] 断言规则配置（支持新旧两种格式）
-
-## 本地开发
-
-### ⚠️ 重要：安全修复后的启动步骤
-
-由于安全修复要求强制设置密钥，**首次启动前必须完成以下步骤**：
-
-#### 步骤 1：设置环境变量
-
-**Windows (PowerShell):**
-```powershell
-# 设置环境变量（每次新窗口都需要执行）
-$env:SECRET_KEY="your-super-secret-key-change-this-in-production"
-$env:JWT_SECRET_KEY="your-jwt-secret-key-change-this-in-production"
-
-# 可选：AI导师功能需要
-$env:OPENAI_API_KEY="your-openai-api-key"  # 可选
-$env:OPENAI_BASE_URL="https://api.openai.com/v1"  # 可选
-```
-
-**Windows (CMD):**
-```cmd
-set SECRET_KEY=your-super-secret-key-change-this-in-production
-set JWT_SECRET_KEY=your-jwt-secret-key-change-this-in-production
-```
-
-**Linux/Mac:**
 ```bash
-export SECRET_KEY="your-super-secret-key-change-this-in-production"
-export JWT_SECRET_KEY="your-jwt-secret-key-change-this-in-production"
-```
-
-**或使用 .env 文件（推荐）:**
-```bash
-# 复制环境变量模板
 cp .env.example .env
-
-# 编辑 .env 文件，填入你的密钥
-# 注意：.env 文件已添加到 .gitignore，不会被提交
 ```
 
-#### 步骤 2：初始化数据库（FastAPI版本）
+编辑 `.env` 中的数据库、AI API Key 等配置。
 
-使用新的FastAPI兼容初始化脚本：
+### 3. 安装后端依赖
 
 ```bash
-# 使用新的FastAPI初始化脚本
-python scripts/init_fastapi.py
-
-# 或者手动步骤：
-# 1. 备份现有数据库（脚本自动完成）
-# 2. 创建所有表
-# 3. 创建管理员用户（admin/admin123）和测试用户（testuser/password123）
+pip install -r requirements.txt
 ```
 
-注意：旧的Flask初始化脚本已重命名为 `init_all_flask_deprecated.py`
+### 4. 启动后端
 
-#### 步骤 3：启动服务
-
-**后端启动（FastAPI）：**
 ```bash
-# 确保环境变量已设置
-# 进入项目目录
-cd TestMasterProject
-
-# 创建虚拟环境（可选推荐）
-python -m venv venv
-source venvin/Scripts/activate  # Windows（注意：venv\Scripts\activate）
-# 或: source venv/bin/activate  # Linux/Mac
-
-# 安装依赖（使用FastAPI后端依赖）
-pip install -r fastapi_backend/requirements.txt
-
-# 启动FastAPI开发服务器
-python -m uvicorn fastapi_backend.main:app --host 0.0.0.0 --port 5001 --reload
-# 或使用提供的批处理文件：.\start_all.bat
+start_backend.bat
 ```
-后端服务运行在 http://localhost:5001
-API文档：http://localhost:5001/api/docs
 
-**前端启动：**
+或手动：
+
+```bash
+cd fastapi_backend
+python -m uvicorn main:app --host 0.0.0.0 --port 5001 --reload
+```
+
+后端默认运行在 http://localhost:5001。
+
+### 5. 启动主前端
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-前端服务运行在 http://localhost:5173
 
-**自动化测试平台：**
-自动化测试功能已集成到统一的FastAPI后端中，无需单独启动。
+主前端运行在 http://localhost:5173。
 
-访问自动化测试功能：
-1. 启动统一后端（如上所述）
-2. 访问前端界面中的自动化测试模块
-3. 或直接访问API端点
+### 6. 启动辅助前端（可选）
 
-### 默认账号
-
-- **管理员**：admin / admin123
-- **测试用户**：testuser / password123
-
-## 生产部署
-
-### 使用 Gunicorn + Nginx 部署
-
-1. **上传代码到服务器**
-
-2. **安装依赖**
 ```bash
-pip install -r requirements.txt
+cd workspace
+npm install
+npm run dev
 ```
 
-3. **配置环境变量**
+辅助前端运行在 http://localhost:5174。
+
+## 测试
+
+### 后端测试
+
 ```bash
-cp .env.example .env
-# 编辑 .env 修改密钥和数据库配置
+test_backend.bat
 ```
 
-4. **初始化数据库（FastAPI版本）**
+或手动：
+
 ```bash
-python scripts/init_fastapi.py
+pytest fastapi_backend/tests -q
 ```
 
-5. **使用 Gunicorn 启动（FastAPI）**
+### 前端代码检查
+
 ```bash
-# 注意：FastAPI需要异步worker
-gunicorn --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 127.0.0.1:5001 fastapi_backend.main:app
+cd frontend
+npm run lint
 ```
 
-6. **Nginx 配置**
-```nginx
-# 前端静态文件
-location / {
-    root /path/to/TestMasterProject/frontend/dist;
-    try_files $uri $uri/ /index.html;
-}
+## 数据库
 
-# 后端 API 反向代理
-location /api {
-    proxy_pass http://127.0.0.1:5001;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-}
-```
+- 开发环境可使用 SQLite（默认）
+- 生产环境建议使用 PostgreSQL/MySQL
+- 数据库迁移使用 Alembic
 
-详细部署文档请看 [docs/deployment.md](docs/deployment.md)
+## 环境变量说明
 
-## 时区
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| DATABASE_URL | 数据库连接 | sqlite+aiosqlite:///./instance/testmaster.db |
+| SECRET_KEY | JWT 密钥 | 必填 |
+| CORS_ORIGINS | 允许跨域域名 | http://localhost:5173 |
+| AI_API_KEY | OpenAI API Key | 必填 |
+| CELERY_BROKER_URL | Celery Broker | redis://localhost:6379/0 |
 
-项目默认使用 **东八区（Asia/Shanghai）** 时区，日志和时间戳都会使用本地时间。
+## 技术栈
 
-## 许可证
+- 后端：FastAPI, SQLAlchemy, Alembic, Celery
+- 主前端：Vue 3, Vite, Element Plus, Pinia
+- 辅助前端：React, Vite
 
-MIT
+## 开发说明
+
+- 后端 `.env` 放在项目根目录
+- 前端开发代理已配置在 `vite.config.js` 中
+- 测试环境设置 `ENVIRONMENT=testing` 可避免启动副作用

@@ -1,7 +1,7 @@
 """Exercises CRUD + SQL execution – migrated from Flask backend/api/exercises.py."""
 from __future__ import annotations
 
-import sqlite3
+import aiosqlite
 import time
 from typing import Optional
 
@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.models import Exercise, User
-from fastapi_backend.schemas.common import SuccessResponse
 
 router = APIRouter(prefix="/api/v1", tags=["exercises"])
 
@@ -357,29 +356,28 @@ async def execute_sql(
     if not user_sql:
         raise HTTPException(status_code=400, detail="请输入SQL语句")
 
-    # Block dangerous SQL
-    dangerous = ["drop", "delete", "truncate", "alter", "create", "insert", "update", "pragma"]
+    dangerous = ["drop", "truncate", "alter", "pragma"]
     lower_sql = user_sql.lower()
     for kw in dangerous:
         if kw in lower_sql:
             raise HTTPException(status_code=400, detail=f"禁止执行包含 {kw} 关键字的SQL语句")
 
     start_time = time.time()
-    conn = sqlite3.connect(":memory:")
-    cursor = conn.cursor()
+    conn = await aiosqlite.connect(":memory:")
+    cursor = await conn.cursor()
 
     try:
         if setup_sql.strip():
-            cursor.executescript(setup_sql)
-            conn.commit()
+            await cursor.executescript(setup_sql)
+            await conn.commit()
 
-        cursor.execute(user_sql)
+        await cursor.execute(user_sql)
 
-        if user_sql.lower().startswith(("select", "show", "describe", "explain")):
+        if user_sql.lower().lstrip().startswith(("select", "show", "describe", "explain")):
             columns = [d[0] for d in cursor.description] if cursor.description else []
-            rows = cursor.fetchall()
-            conn.commit()
-            conn.close()
+            rows = await cursor.fetchall()
+            await conn.commit()
+            await conn.close()
             elapsed_ms = int((time.time() - start_time) * 1000)
             return {
                 "success": True,
@@ -389,9 +387,9 @@ async def execute_sql(
                 "elapsed_ms": elapsed_ms,
             }
         else:
-            conn.commit()
+            await conn.commit()
             row_count = cursor.rowcount
-            conn.close()
+            await conn.close()
             elapsed_ms = int((time.time() - start_time) * 1000)
             return {
                 "success": True,
@@ -399,7 +397,7 @@ async def execute_sql(
                 "row_count": row_count,
                 "elapsed_ms": elapsed_ms,
             }
-    except sqlite3.Error as e:
-        conn.close()
+    except aiosqlite.Error as e:
+        await conn.close()
         elapsed_ms = int((time.time() - start_time) * 1000)
         return {"success": False, "error": str(e), "elapsed_ms": elapsed_ms}

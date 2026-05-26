@@ -2,18 +2,16 @@
 后台管理子路由 - 考试管理
 从 admin_manage.py 拆分
 """
-from typing import Optional, Any
-from datetime import datetime
+import logging
+from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy import select, func, or_, and_, desc
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi_backend.core.database import get_db, AsyncSessionLocal
-from fastapi_backend.core.exceptions import NotFoundException
+from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Exercise, LearningPath, Exam, ExamQuestion, Post, Comment, InterviewQuestion, Submission, Progress
-from fastapi_backend.services.auth_service import AuthService
+from fastapi_backend.models.models import User, Exam, ExamQuestion
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-考试管理"])
 
@@ -161,8 +159,9 @@ async def create_exam(
 
     try:
         await db.commit()
-    except Exception:
+    except Exception as e:
         await db.rollback()
+        logging.getLogger(__name__).error(f"创建考试失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="考试创建失败，事务已回滚")
     return {"message": "考试创建成功", "id": new_exam.id}
 
@@ -209,8 +208,9 @@ async def update_exam(
 
     try:
         await db.commit()
-    except Exception:
+    except Exception as e:
         await db.rollback()
+        logging.getLogger(__name__).error(f"更新考试失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="考试更新失败，事务已回滚")
     return {"message": "考试更新成功"}
 
@@ -237,8 +237,9 @@ async def delete_exam(
     await db.delete(exam)
     try:
         await db.commit()
-    except Exception:
+    except Exception as e:
         await db.rollback()
+        logging.getLogger(__name__).error(f"删除考试失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="考试删除失败，事务已回滚")
     return {"message": "删除成功"}
 

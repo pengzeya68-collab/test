@@ -1,2 +1,0 @@
-﻿Root error: timed out
-Docs error: HTTP Error 404: Not Found

@@ -5,8 +5,9 @@ import math
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -25,8 +26,8 @@ async def get_optional_user(
         scheme, _, token = authorization.partition(" ")
         if scheme.lower() != "bearer" or not token:
             return None
-        auth_service = AuthService()
-        payload = auth_service.decode_token(token, expected_type="access")
+        auth_service = AuthService(db=db)
+        payload = await auth_service.decode_token(token, expected_type="access")
         user_id = int(payload["sub"])
         user = await auth_service.get_user_by_id(db, user_id)
         if user and user.is_active:
@@ -181,16 +182,16 @@ async def get_post_detail(post_id: int, current_user: Optional[User] = Depends(g
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="帖子不存在")
+        raise HTTPException(status_code=404, detail="帖子不存在")
     if not post.is_approved:
         if not user_id:
-            from fastapi import HTTPException; raise HTTPException(status_code=404, detail="不存在或未通过审核")
+            raise HTTPException(status_code=404, detail="不存在或未通过审核")
         user_q = await db.execute(select(User).filter_by(id=user_id))
         user = user_q.scalar_one_or_none()
         is_admin = user and user.is_admin
         is_author = user_id == post.user_id
         if not is_admin and not is_author:
-            from fastapi import HTTPException; raise HTTPException(status_code=404, detail="不存在或未通过审核")
+            raise HTTPException(status_code=404, detail="不存在或未通过审核")
     post.view_count += 1
     await db.commit()
     return await _format_post(post, user_id, db)
@@ -199,7 +200,7 @@ async def get_post_detail(post_id: int, current_user: Optional[User] = Depends(g
 @router.post("/posts", response_model=PostListResponse, status_code=201)
 async def create_post(payload: PostCreateRequest, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
     if payload.category not in _VALID_CATEGORIES:
-        from fastapi import HTTPException; raise HTTPException(status_code=400, detail="分类不正确")
+        raise HTTPException(status_code=400, detail="分类不正确")
     tags_str = ",".join([t.strip() for t in payload.tags if t.strip()]) if payload.tags else ""
     post = Post(title=payload.title.strip(), content=payload.content.strip(), summary=payload.summary.strip() if payload.summary else "", tags=tags_str, category=payload.category, user_id=current_user.id)
     db.add(post)
@@ -217,9 +218,9 @@ async def update_post(post_id: int, payload: PostUpdateRequest, current_user: Us
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="帖子不存在")
+        raise HTTPException(status_code=404, detail="帖子不存在")
     if post.user_id != current_user.id:
-        from fastapi import HTTPException; raise HTTPException(status_code=403, detail="无权限修改此帖子")
+        raise HTTPException(status_code=403, detail="无权限修改此帖子")
     if payload.title is not None: post.title = payload.title.strip()
     if payload.content is not None: post.content = payload.content.strip()
     if payload.summary is not None: post.summary = payload.summary.strip()
@@ -241,9 +242,9 @@ async def delete_post(post_id: int, current_user: User = Depends(get_current_act
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="帖子不存在")
+        raise HTTPException(status_code=404, detail="帖子不存在")
     if post.user_id != current_user.id:
-        from fastapi import HTTPException; raise HTTPException(status_code=403, detail="无权限删除此帖子")
+        raise HTTPException(status_code=403, detail="无权限删除此帖子")
     await db.delete(post)
     await db.commit()
     return {"message": "帖子删除成功"}
@@ -255,14 +256,17 @@ async def like_post(post_id: int, current_user: User = Depends(get_current_activ
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="帖子不存在")
+        raise HTTPException(status_code=404, detail="帖子不存在")
     like_q = await db.execute(select(Like).filter_by(user_id=current_user.id, post_id=post_id))
     like = like_q.scalar_one_or_none()
     if like:
         await db.delete(like); post.like_count = max(0, post.like_count - 1); action = "unliked"
     else:
         like = Like(user_id=current_user.id, post_id=post_id); db.add(like); post.like_count += 1; action = "liked"
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
     return LikeResponse(message="点赞成功" if action == "liked" else "取消点赞成功", action=action, like_count=post.like_count)
 
 
@@ -272,7 +276,7 @@ async def favorite_post(post_id: int, current_user: User = Depends(get_current_a
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="帖子不存在")
+        raise HTTPException(status_code=404, detail="帖子不存在")
     fav_q = await db.execute(select(Favorite).filter_by(user_id=current_user.id, post_id=post_id))
     fav = fav_q.scalar_one_or_none()
     if fav:
@@ -288,7 +292,7 @@ async def get_comments(post_id: int, current_user: Optional[User] = Depends(get_
     user_id = current_user.id if current_user else None
     post_q = await db.execute(select(Post).filter_by(id=post_id))
     if not post_q.scalar_one_or_none():
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="帖子不存在")
+        raise HTTPException(status_code=404, detail="帖子不存在")
     q = select(Comment).options(selectinload(Comment.user), selectinload(Comment.replies)).filter(Comment.post_id == post_id, Comment.parent_id == None).order_by(Comment.created_at.desc())
     result = await db.execute(q)
     comments = result.scalars().all()
@@ -300,11 +304,11 @@ async def create_comment(post_id: int, payload: CommentCreateRequest, current_us
     post_q = await db.execute(select(Post).filter_by(id=post_id))
     post = post_q.scalar_one_or_none()
     if not post:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="帖子不存在")
+        raise HTTPException(status_code=404, detail="帖子不存在")
     if payload.parent_id:
         parent_q = await db.execute(select(Comment).filter_by(id=payload.parent_id, post_id=post_id))
         if not parent_q.scalar_one_or_none():
-            from fastapi import HTTPException; raise HTTPException(status_code=404, detail="父评论不存在")
+            raise HTTPException(status_code=404, detail="父评论不存在")
     comment = Comment(content=payload.content.strip(), user_id=current_user.id, post_id=post_id, parent_id=payload.parent_id)
     db.add(comment); post.comment_count += 1; await db.commit(); await db.refresh(comment)
     q = select(Comment).options(selectinload(Comment.user)).filter(Comment.id == comment.id)
@@ -319,14 +323,17 @@ async def like_comment(comment_id: int, current_user: User = Depends(get_current
     result = await db.execute(q)
     comment = result.scalar_one_or_none()
     if not comment:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="评论不存在")
+        raise HTTPException(status_code=404, detail="评论不存在")
     like_q = await db.execute(select(Like).filter_by(user_id=current_user.id, comment_id=comment_id))
     like = like_q.scalar_one_or_none()
     if like:
         await db.delete(like); comment.like_count = max(0, comment.like_count - 1); action = "unliked"
     else:
         like = Like(user_id=current_user.id, comment_id=comment_id); db.add(like); comment.like_count += 1; action = "liked"
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
     return LikeResponse(message="点赞成功" if action == "liked" else "取消点赞成功", action=action, like_count=comment.like_count)
 
 
@@ -335,7 +342,7 @@ async def get_user_posts(user_id: int, page: int = Query(1, ge=1), per_page: int
     me = current_user.id if current_user else None
     user_q = await db.execute(select(User).filter_by(id=user_id))
     if not user_q.scalar_one_or_none():
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="用户不存在")
+        raise HTTPException(status_code=404, detail="用户不存在")
     q = select(Post).options(selectinload(Post.user)).filter_by(user_id=user_id).order_by(Post.created_at.desc())
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
@@ -380,7 +387,7 @@ async def admin_toggle_essence(post_id: int, _admin: User = Depends(require_admi
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="帖子不存在")
+        raise HTTPException(status_code=404, detail="帖子不存在")
     post.is_essence = not post.is_essence; await db.commit(); return {"message": "操作成功"}
 
 
@@ -390,7 +397,7 @@ async def admin_toggle_top(post_id: int, _admin: User = Depends(require_admin), 
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="帖子不存在")
+        raise HTTPException(status_code=404, detail="帖子不存在")
     post.is_top = not post.is_top; await db.commit(); return {"message": "操作成功"}
 
 
@@ -400,7 +407,7 @@ async def admin_delete_post(post_id: int, _admin: User = Depends(require_admin),
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="帖子不存在")
+        raise HTTPException(status_code=404, detail="帖子不存在")
     await db.delete(post); await db.commit(); return {"message": "帖子已删除"}
 
 
@@ -425,5 +432,5 @@ async def admin_delete_comment(comment_id: int, _admin: User = Depends(require_a
     result = await db.execute(q)
     comment = result.scalar_one_or_none()
     if not comment:
-        from fastapi import HTTPException; raise HTTPException(status_code=404, detail="评论不存在")
+        raise HTTPException(status_code=404, detail="评论不存在")
     await db.delete(comment); await db.commit(); return {"message": "评论已删除"}

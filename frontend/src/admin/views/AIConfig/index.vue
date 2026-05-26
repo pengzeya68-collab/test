@@ -480,9 +480,9 @@ const handleEdit = (cfg) => {
 }
 
 const handleSubmit = async () => {
-  await formRef.value.validate()
   submitting.value = true
   try {
+    await formRef.value.validate()
     const payload = { ...form }
     if (!payload.base_url) delete payload.base_url
     if (!payload.group_id) delete payload.group_id

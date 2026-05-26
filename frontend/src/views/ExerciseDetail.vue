@@ -1,364 +1,265 @@
-﻿﻿﻿﻿<template>
-  <div class="exercise-detail">
-    <div class="container">
-      <!-- 加载状态 -->
-      <div class="loading" v-if="loading">
-        <el-icon class="is-loading" size="40"><Loading /></el-icon>
+<template>
+  <div class="exercise-detail-container">
+    <div class="exercise-header-panel" v-if="!loading && exercise">
+      <div class="tag-group">
+        <span class="tag-badge type">{{ getModuleName(exercise.module) }}</span>
+        <span class="tag-badge stage">阶段{{ exercise.stage }}</span>
+        <span class="tag-badge level">{{ getDifficultyText(exercise.difficulty) }}</span>
+        <span class="tag-badge subject" v-if="exercise.knowledge_point">{{ exercise.knowledge_point }}</span>
       </div>
-
-      <!-- 习题详情 -->
-      <div v-if="!loading && exercise" class="exercise-content">
-        <!-- 头部信息 -->
-        <div class="exercise-header">
-          <div class="exercise-basic">
-            <div class="exercise-tags">
-              <el-tag :type="getModuleTagType(exercise.module)" size="large">
-                {{ getModuleName(exercise.module) }}
-              </el-tag>
-              <el-tag :type="getStageTagType(exercise.stage)" size="large">
-                阶段{{ exercise.stage }}
-              </el-tag>
-              <el-tag :type="getDifficultyTagType(exercise.difficulty)" size="large">
-                {{ getDifficultyText(exercise.difficulty) }}
-              </el-tag>
-              <el-tag type="info" size="large" v-if="exercise.knowledge_point">
-                {{ exercise.knowledge_point }}
-              </el-tag>
-            </div>
-            <h1 class="exercise-title">{{ exercise.title }}</h1>
-            <div class="exercise-meta">
-              <div class="meta-item">
-                <el-icon size="16"><Timer /></el-icon>
-                <span>预计 {{ exercise.time_estimate }} 分钟</span>
-              </div>
-              <div class="meta-item">
-                <el-icon size="16"><Collection /></el-icon>
-                <span>{{ exercise.category }}</span>
-              </div>
-              <div class="meta-item">
-                <el-icon size="16"><Calendar /></el-icon>
-                <span>更新于 {{ formatDate(exercise.updated_at) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 题目描述 -->
-        <div class="section">
-          <h2 class="section-title">
-            <el-icon size="24"><Document /></el-icon>
-            题目描述
-          </h2>
-          <div class="content-card">
-            <p class="description" style="white-space: pre-wrap;">{{ exercise.description }}</p>
-          </div>
-        </div>
-
-        <!-- 答题要求 -->
-        <div class="section" v-if="exercise.instructions">
-          <h2 class="section-title">
-            <el-icon size="24"><List /></el-icon>
-            答题要求
-          </h2>
-          <div class="content-card">
-            <pre class="instructions">{{ exercise.instructions }}</pre>
-          </div>
-        </div>
-
-        <!-- 答题区域 -->
-        <div class="section">
-          <h2 class="section-title">
-            <el-icon size="24"><Edit /></el-icon>
-            我的答案
-          </h2>
-          <div class="content-card">
-            <!-- 代码习题 -->
-            <CodeEditor 
-              v-if="exercise?.exercise_type === 'code'"
-              v-model="userCode"
-              :language="exercise.language?.toLowerCase() || 'python'"
-              :template="exercise.code_template"
-              @run="onCodeRun"
-            />
-
-            <!-- 选择题 -->
-            <div v-else-if="isChoiceType" class="choice-area">
-              <el-radio-group v-model="userAnswer" class="choice-group">
-                <el-radio
-                  v-for="opt in choiceOptions"
-                  :key="opt.key"
-                  :value="opt.key"
-                  class="choice-option"
-                  size="large"
-                >
-                  <span class="choice-label">{{ opt.key }}.</span>
-                  <span class="choice-text">{{ opt.text }}</span>
-                </el-radio>
-              </el-radio-group>
-              <div class="answer-actions">
-                <el-button type="primary" @click="showSolution = true">
-                  查看答案
-                </el-button>
-                <el-button type="success" @click="submitAnswer" :loading="submitting">
-                  {{ submitting ? '判题中...' : '提交答案' }}
-                </el-button>
-              </div>
-            </div>
-            
-            <!-- SQL习题 - 支持在线运行 -->
-            <div v-else-if="exercise?.language?.toLowerCase() === 'sql'">
-              <CodeEditor 
-                v-model="userSql"
-                language="sql"
-                :template="''"
-                @run="runSql"
-              />
-              <div class="sql-actions">
-                <el-button type="success" @click="runSql" :loading="sqlRunning">
-                  <el-icon><VideoPlay /></el-icon>
-                  运行SQL
-                </el-button>
-                <el-button type="primary" @click="showSolution = true">
-                  查看答案
-                </el-button>
-                <el-button type="success" @click="submitAnswer" :loading="submitting">
-                  {{ submitting ? '判题中...' : '提交答案' }}
-                </el-button>
-              </div>
-              
-              <!-- SQL执行结果 -->
-              <div v-if="sqlResult" class="sql-result">
-                <div class="result-header">
-                  <span>执行结果 ({{ sqlResult.elapsed_ms }}ms)</span>
-                  <el-tag :type="sqlResult.success ? 'success' : 'danger'">
-                    {{ sqlResult.success ? '成功' : '失败' }}
-                  </el-tag>
-                </div>
-                <!-- 错误信息 -->
-                <div v-if="!sqlResult.success" class="result-error">
-                  {{ sqlResult.error }}
-                </div>
-                <!-- 查询结果表格 -->
-                <div v-if="sqlResult.success && sqlResult.columns && sqlResult.columns.length > 0" class="result-table">
-                  <el-table :data="sqlResult.rows" border stripe>
-                    <el-table-column 
-                      v-for="col in sqlResult.columns" 
-                      :key="col" 
-                      :prop="col" 
-                      :label="col"
-                      min-width="120"
-                    />
-                  </el-table>
-                  <div class="result-summary">
-                    返回 {{ sqlResult.row_count }} 行记录
-                  </div>
-                </div>
-                <!-- 非查询执行结果 -->
-                <div v-if="sqlResult.success && sqlResult.message" class="result-message">
-                  {{ sqlResult.message }}
-                </div>
-              </div>
-            </div>
-            
-            <!-- 普通文本习题 -->
-            <el-input
-              v-else
-              v-model="userAnswer"
-              type="textarea"
-              :rows="8"
-              placeholder="请在此输入你的答案..."
-            />
-            
-            <div class="answer-actions" v-if="exercise?.language?.toLowerCase() !== 'sql'">
-              <el-button type="primary" @click="showSolution = true">
-                查看答案
-              </el-button>
-              <el-button type="success" @click="submitAnswer" :loading="submitting">
-                {{ submitting ? '判题中...' : '提交答案' }}
-              </el-button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 判题结果 -->
-        <div class="section" v-if="submitResult">
-          <h2 class="section-title">
-            <el-icon size="24"><Check /></el-icon>
-            判题结果
-          </h2>
-          <div class="content-card judge-card" :class="{ 'judge-pass': submitResult.correct, 'judge-fail': !submitResult.correct }">
-            <div class="judge-header">
-              <el-tag :type="submitResult.correct ? 'success' : 'danger'" size="large" effect="dark">
-                {{ submitResult.correct ? '✓ 通过' : '✗ 未通过' }}
-              </el-tag>
-              <span class="judge-message">{{ submitResult.message }}</span>
-            </div>
-            <div v-if="submitResult.judge_result" class="judge-details">
-              <div class="judge-stats">
-                <span>通过 {{ submitResult.judge_result.passed_count }}/{{ submitResult.judge_result.total_cases }} 个测试用例</span>
-                <span>通过率 {{ submitResult.judge_result.pass_rate }}%</span>
-              </div>
-              <div v-if="submitResult.judge_result.details?.length" class="case-list">
-                <div
-                  v-for="detail in submitResult.judge_result.details"
-                  :key="detail.case_index"
-                  class="case-item"
-                  :class="{ 'case-pass': detail.passed, 'case-fail': !detail.passed }"
-                >
-                  <span class="case-label">用例 {{ detail.case_index }}</span>
-                  <el-tag :type="detail.passed ? 'success' : 'danger'" size="small">
-                    {{ detail.passed ? '通过' : '未通过' }}
-                  </el-tag>
-                  <div v-if="!detail.passed" class="case-detail">
-                    <div class="case-row"><span>预期：</span><code>{{ detail.expected }}</code></div>
-                    <div class="case-row"><span>实际：</span><code>{{ detail.actual }}</code></div>
-                    <div v-if="detail.error" class="case-row case-error"><span>错误：</span><code>{{ detail.error }}</code></div>
-                  </div>
-                </div>
-              </div>
-              <div class="judge-summary">{{ submitResult.judge_result.summary }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 技能分数变化 -->
-        <div class="section" v-if="submitResult?.correct && submitResult.skill_change?.length">
-          <h2 class="section-title">
-            <el-icon size="24"><TrendCharts /></el-icon>
-            技能提升
-          </h2>
-          <div class="content-card skill-change-card">
-            <div class="skill-change-list">
-              <div
-                v-for="sc in submitResult.skill_change"
-                :key="sc.key"
-                class="skill-change-item"
-              >
-                <span class="sc-name">{{ sc.name }}</span>
-                <div class="sc-bar-wrap">
-                  <div class="sc-bar-bg">
-                    <div class="sc-bar-before" :style="{ width: sc.before + '%' }"></div>
-                    <div class="sc-bar-after" :style="{ width: sc.after + '%' }"></div>
-                  </div>
-                </div>
-                <span class="sc-scores">{{ sc.before }} → {{ sc.after }}</span>
-                <span class="sc-change">+{{ sc.change }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 答案解析 -->
-        <div class="section" v-if="showSolution">
-          <h2 class="section-title">
-            <el-icon size="24"><Check /></el-icon>
-            参考答案
-          </h2>
-          <div class="content-card solution-card">
-            <pre class="solution">{{ exercise.solution }}</pre>
-          </div>
-        </div>
-
-        <!-- 学习笔记 -->
-        <div class="section">
-          <h2 class="section-title">
-            <el-icon size="24"><Edit /></el-icon>
-            学习笔记
-          </h2>
-          <div class="content-card notes-card">
-            <div class="notes-list" v-if="exerciseNotes.length > 0">
-              <div v-for="note in exerciseNotes" :key="note.id" class="note-item">
-                <div class="note-header">
-                  <span class="note-title">{{ note.title }}</span>
-                  <span class="note-time">{{ note.updated_at }}</span>
-                  <el-button type="danger" size="small" link @click="deleteNote(note.id)">删除</el-button>
-                </div>
-                <div class="note-content">{{ note.content }}</div>
-              </div>
-            </div>
-            <div class="note-form">
-              <el-input
-                v-model="newNoteTitle"
-                placeholder="笔记标题（如：关键知识点）"
-                size="small"
-                style="margin-bottom: 8px;"
-              />
-              <el-input
-                v-model="newNoteContent"
-                type="textarea"
-                placeholder="记录你的理解、思路、易错点..."
-                :rows="3"
-                size="small"
-              />
-              <el-button
-                type="primary"
-                size="small"
-                @click="saveNote"
-                :loading="noteSaving"
-                style="margin-top: 8px;"
-              >
-                保存笔记
-              </el-button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 推荐习题 -->
-        <div class="section" v-if="relatedExercises.length > 0">
-          <h2 class="section-title">
-            <el-icon size="24"><List /></el-icon>
-            相关推荐
-          </h2>
-          <div class="related-grid">
-            <div
-              v-for="rel in relatedExercises"
-              :key="rel.id"
-              class="related-card"
-              :class="{ 'related-done': rel.completed }"
-              @click="goToExercise(rel.id)"
-            >
-              <div class="related-header">
-                <span class="related-status">{{ rel.completed ? '✅' : '⬜' }}</span>
-                <h4 class="related-title">{{ rel.title }}</h4>
-              </div>
-              <div class="related-meta">
-                <el-tag :type="getDifficultyType(rel.difficulty)" size="small">
-                  {{ getDifficultyText(rel.difficulty) }}
-                </el-tag>
-                <span v-if="rel.knowledge_point" class="related-kp">{{ rel.knowledge_point }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 操作按钮 -->
-        <div class="bottom-actions">
-          <el-button @click="goBack">
-            返回列表
-          </el-button>
-          <el-button type="primary" @click="nextExercise" v-if="nextExerciseId">
-            下一题
-          </el-button>
-        </div>
-      </div>
-
-      <!-- 不存在 -->
-      <div class="empty-state" v-if="!loading && !exercise">
-        <el-empty description="习题不存在" />
-        <el-button type="primary" @click="goBack" style="margin-top: 20px;">
-          返回列表
-        </el-button>
+      <h1 class="exercise-main-title">{{ exercise.title }}</h1>
+      <div class="meta-info">
+        <span>⏱️ 预计 {{ exercise.time_estimate }} 分钟</span>
+        <span>📁 {{ exercise.category }}</span>
+        <span>📅 更新于 {{ formatDate(exercise.updated_at) }}</span>
       </div>
     </div>
+
+    <div class="loading-center" v-if="loading">
+      ⏳ 加载中...
+    </div>
+
+    <div class="empty-center" v-if="!loading && !exercise">
+      <p>习题不存在</p>
+      <button class="btn-purple-glow" @click="goBack">返回列表</button>
+    </div>
+
+    <template v-if="!loading && exercise">
+      <section class="exercise-content-section">
+        <div class="section-title-bar">
+          <h3>📝 题目描述</h3>
+        </div>
+        <div class="info-box-fallback">
+          <p style="white-space: pre-wrap;">{{ exercise.description }}</p>
+        </div>
+      </section>
+
+      <section class="exercise-content-section" v-if="exercise.instructions">
+        <div class="section-title-bar">
+          <h3>📋 答题要求</h3>
+        </div>
+        <div class="info-box-fallback">
+          <pre class="instructions-text">{{ exercise.instructions }}</pre>
+        </div>
+      </section>
+
+      <section class="exercise-content-section">
+        <div class="section-title-bar">
+          <h3>✍️ 我的答案</h3>
+        </div>
+
+        <div class="answer-block">
+          <CodeEditor
+            v-if="exercise?.exercise_type === 'code'"
+            v-model="userCode"
+            :language="exercise.language?.toLowerCase() || 'python'"
+            :template="exercise.code_template"
+            @run="onCodeRun"
+          />
+
+          <div v-else-if="isChoiceType" class="options-wrapper">
+            <div
+              v-for="opt in choiceOptions"
+              :key="opt.key"
+              class="option-item"
+              :class="{ active: userAnswer === opt.key }"
+              @click="userAnswer = opt.key"
+            >
+              <span class="option-radio">{{ opt.key }}.</span>
+              <span class="option-text">{{ opt.text }}</span>
+            </div>
+          </div>
+
+          <div v-else-if="exercise?.language?.toLowerCase() === 'sql'" class="sql-block">
+            <CodeEditor
+              v-model="userSql"
+              language="sql"
+              :template="''"
+              @run="runSql"
+            />
+            <div class="sql-result-panel" v-if="sqlResult">
+              <div class="sql-result-header">
+                <span>执行结果 ({{ sqlResult.elapsed_ms }}ms)</span>
+                <span class="sql-result-tag" :class="sqlResult.success ? 'success' : 'fail'">
+                  {{ sqlResult.success ? '成功' : '失败' }}
+                </span>
+              </div>
+              <div v-if="!sqlResult.success" class="sql-result-error">{{ sqlResult.error }}</div>
+              <div v-if="sqlResult.success && sqlResult.columns?.length" class="sql-result-table-wrap">
+                <table class="sql-result-table">
+                  <thead>
+                    <tr>
+                      <th v-for="col in sqlResult.columns" :key="col">{{ col }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, ri) in sqlResult.rows" :key="ri">
+                      <td v-for="col in sqlResult.columns" :key="col">{{ row[col] }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="sql-result-count">返回 {{ sqlResult.row_count }} 行记录</div>
+              </div>
+              <div v-if="sqlResult.success && sqlResult.message" class="sql-result-msg">{{ sqlResult.message }}</div>
+            </div>
+
+            <div class="action-button-group" style="margin-top: 16px;">
+              <button class="btn-purple-glow" @click="runSql" :disabled="sqlRunning">
+                {{ sqlRunning ? '运行中...' : '运行SQL' }}
+              </button>
+              <button class="btn-outline" @click="showSolution = true">查看答案</button>
+              <button class="btn-green-glow" @click="submitAnswer" :disabled="submitting">
+                {{ submitting ? '判题中...' : '提交答案' }}
+              </button>
+            </div>
+          </div>
+
+          <textarea
+            v-else
+            v-model="userAnswer"
+            class="answer-textarea"
+            placeholder="请在此输入你的答案..."
+            rows="8"
+          ></textarea>
+        </div>
+
+        <div class="action-button-group" v-if="!isChoiceType && exercise?.language?.toLowerCase() !== 'sql' && exercise?.exercise_type !== 'code'">
+          <button class="btn-purple-glow" @click="showSolution = true">查看答案</button>
+          <button class="btn-green-glow" @click="submitAnswer" :disabled="submitting">
+            {{ submitting ? '判题中...' : '提交答案' }}
+          </button>
+        </div>
+        <div class="action-button-group" v-if="isChoiceType">
+          <button class="btn-purple-glow" @click="showSolution = true">查看答案</button>
+          <button class="btn-green-glow" @click="submitAnswer" :disabled="submitting">
+            {{ submitting ? '判题中...' : '提交答案' }}
+          </button>
+        </div>
+      </section>
+
+      <section class="exercise-content-section" v-if="submitResult">
+        <div class="section-title-bar">
+          <h3>✅ 判题结果</h3>
+        </div>
+        <div class="judge-panel" :class="{ 'judge-pass': submitResult.correct, 'judge-fail': !submitResult.correct }">
+          <div class="judge-status-row">
+            <span class="judge-tag" :class="submitResult.correct ? 'success' : 'fail'">
+              {{ submitResult.correct ? '✓ 通过' : '✗ 未通过' }}
+            </span>
+            <span class="judge-msg">{{ submitResult.message }}</span>
+          </div>
+          <div v-if="submitResult.judge_result" class="judge-body">
+            <div class="judge-stats-row">
+              <span>通过 {{ submitResult.judge_result.passed_count }}/{{ submitResult.judge_result.total_cases }} 个测试用例</span>
+              <span>通过率 {{ submitResult.judge_result.pass_rate }}%</span>
+            </div>
+            <div v-if="submitResult.judge_result.details?.length" class="judge-case-list">
+              <div
+                v-for="detail in submitResult.judge_result.details"
+                :key="detail.case_index"
+                class="judge-case-item"
+                :class="detail.passed ? 'case-ok' : 'case-ng'"
+              >
+                <span class="case-index">用例 {{ detail.case_index }}</span>
+                <span class="case-badge" :class="detail.passed ? 'success' : 'fail'">{{ detail.passed ? '通过' : '未通过' }}</span>
+                <div v-if="!detail.passed" class="case-fail-detail">
+                  <div><span>预期：</span><code>{{ detail.expected }}</code></div>
+                  <div><span>实际：</span><code>{{ detail.actual }}</code></div>
+                  <div v-if="detail.error"><span>错误：</span><code class="code-warn">{{ detail.error }}</code></div>
+                </div>
+              </div>
+            </div>
+            <div class="judge-footer">{{ submitResult.judge_result.summary }}</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="exercise-content-section" v-if="submitResult?.correct && submitResult.skill_change?.length">
+        <div class="section-title-bar">
+          <h3>📈 技能提升</h3>
+        </div>
+        <div class="skill-panel">
+          <div class="skill-item" v-for="sc in submitResult.skill_change" :key="sc.key">
+            <span class="skill-name">{{ sc.name }}</span>
+            <div class="skill-bar-wrap">
+              <div class="skill-bar-bg">
+                <div class="skill-bar-before" :style="{ width: sc.before + '%' }"></div>
+                <div class="skill-bar-after" :style="{ width: sc.after + '%' }"></div>
+              </div>
+            </div>
+            <span class="skill-score">{{ sc.before }} → {{ sc.after }}</span>
+            <span class="skill-gain">+{{ sc.change }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="exercise-content-section" v-if="showSolution">
+        <div class="section-title-bar">
+          <h3>💡 参考答案</h3>
+        </div>
+        <div class="solution-card">
+          <pre class="solution-text">{{ exercise.solution }}</pre>
+        </div>
+      </section>
+
+      <section class="exercise-content-section">
+        <div class="section-title-bar">
+          <h3>📖 学习笔记</h3>
+        </div>
+        <div class="notebook-container">
+          <div class="note-list" v-if="exerciseNotes.length > 0">
+            <div v-for="note in exerciseNotes" :key="note.id" class="note-entry">
+              <div class="note-entry-header">
+                <span class="note-entry-title">{{ note.title }}</span>
+                <span class="note-entry-time">{{ note.updated_at }}</span>
+                <button class="note-delete-btn" @click="deleteNote(note.id)">删除</button>
+              </div>
+              <div class="note-entry-body">{{ note.content }}</div>
+            </div>
+          </div>
+          <input v-model="newNoteTitle" type="text" class="note-title-input" placeholder="笔记标题（如：关键知识点）" />
+          <textarea v-model="newNoteContent" class="note-content-textarea" placeholder="记录你的理解、思路、易错点..." rows="3"></textarea>
+          <button class="btn-save-note" @click="saveNote" :disabled="noteSaving">
+            {{ noteSaving ? '保存中...' : '保存笔记' }}
+          </button>
+        </div>
+      </section>
+
+      <section class="exercise-content-section" v-if="relatedExercises.length > 0">
+        <div class="section-title-bar">
+          <h3>📊 相关推荐</h3>
+        </div>
+        <div class="recommend-grid">
+          <div
+            v-for="rel in relatedExercises"
+            :key="rel.id"
+            class="recommend-card"
+            :class="{ 'rec-done': rel.completed }"
+            @click="goToExercise(rel.id)"
+          >
+            <span class="rec-status-icon">{{ rel.completed ? '✅' : '⬜' }}</span>
+            <h4 class="rec-card-title">{{ rel.title }}</h4>
+            <div class="rec-card-meta">
+              <span class="rec-badge-diff" :class="'diff-' + rel.difficulty">{{ getDifficultyText(rel.difficulty) }}</span>
+              <span class="rec-subject-text" v-if="rel.knowledge_point">{{ rel.knowledge_point }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="bottom-navigation-bar">
+        <button class="btn-outline" @click="goBack">返回列表</button>
+        <button class="btn-purple-glow" v-if="nextExerciseId" @click="nextExercise">下一题</button>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Timer, Collection, Calendar, Document, List, Edit, Check, Loading, VideoPlay, TrendCharts } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import CodeEditor from '@/components/CodeEditor.vue'
 import { useUserStore } from '@/stores/user'
 
@@ -386,7 +287,7 @@ const exerciseId = route.params.id
 
 const isChoiceType = computed(() => {
   const t = exercise.value?.exercise_type
-  return t === 'choice' || t === 'multiple_choice' || t === 'true_false'
+  return t === 'choice' || t === 'single_choice' || t === 'multiple_choice' || t === 'true_false'
 })
 
 const choiceOptions = computed(() => {
@@ -417,18 +318,17 @@ const fetchRelatedExercises = async () => {
   try {
     const res = await request.get(`/exercise/${exerciseId}/related`)
     relatedExercises.value = res.related || []
-  } catch {
-    // silently fail
-  }
+    if (relatedExercises.value.length > 0) {
+      nextExerciseId.value = relatedExercises.value[0].id
+    }
+  } catch {}
 }
 
 const fetchNotes = async () => {
   try {
     const res = await request.get('/notes/', { params: { exercise_id: exerciseId } })
     exerciseNotes.value = res.notes || []
-  } catch {
-    // silently fail
-  }
+  } catch {}
 }
 
 const saveNote = async () => {
@@ -473,14 +373,6 @@ const fetchExerciseDetail = async () => {
   try {
     const res = await request.get(`/exercises/${exerciseId}`)
     exercise.value = res
-    // 模拟下一题ID，实际项目中从后端获取
-    const currentId = parseInt(exerciseId)
-    // 只有小于等于7题的时候才显示下一题按钮
-    if (currentId < 7) {
-      nextExerciseId.value = currentId + 1
-    } else {
-      nextExerciseId.value = null
-    }
   } catch (error) {
     console.error('获取习题详情失败:', error)
     ElMessage.error('获取习题详情失败')
@@ -490,59 +382,16 @@ const fetchExerciseDetail = async () => {
   }
 }
 
-const getStageTagType = (stage) => {
-  const types = ['', 'primary', 'success', 'warning', 'danger', 'info']
-  return types[stage] || 'info'
-}
-
-const getDifficultyTagType = (difficulty) => {
-  const map = {
-    easy: 'success',
-    medium: 'warning',
-    hard: 'danger'
-  }
-  return map[difficulty] || 'info'
-}
-
 const getDifficultyText = (difficulty) => {
   const map = {
-    easy: '简单',
-    medium: '中等',
-    hard: '困难',
-    beginner: '初级',
-    intermediate: '中级',
-    advanced: '高级',
+    easy: '简单', medium: '中等', hard: '困难',
+    beginner: '初级', intermediate: '中级', advanced: '高级',
   }
   return map[difficulty] || difficulty
 }
 
-const getDifficultyType = (difficulty) => {
-  const map = {
-    easy: 'success',
-    medium: 'warning',
-    hard: 'danger',
-    beginner: 'success',
-    intermediate: 'warning',
-    advanced: 'danger',
-  }
-  return map[difficulty] || 'info'
-}
-
-const getModuleTagType = (module) => {
-  const map = {
-    normal: 'info',
-    automation: 'warning',
-    api: 'primary'
-  }
-  return map[module] || 'info'
-}
-
 const getModuleName = (module) => {
-  const map = {
-    normal: '普通习题',
-    automation: '自动化测试',
-    api: '接口测试'
-  }
+  const map = { normal: '普通习题', automation: '自动化测试', api: '接口测试' }
   return map[module] || module
 }
 
@@ -557,12 +406,10 @@ const submitAnswer = async () => {
   if (exercise.value?.language?.toLowerCase() === 'sql') {
     answerContent = userSql.value
   }
-
   if (!answerContent || !answerContent.trim()) {
     ElMessage.warning('请输入答案后再提交')
     return
   }
-
   submitting.value = true
   try {
     const res = await request.post('/exercise/submit', {
@@ -571,41 +418,30 @@ const submitAnswer = async () => {
       exercise_type: exercise.value?.exercise_type || 'text',
       language: exercise.value?.language || 'python',
     })
-
     submitResult.value = res
-
     if (res.correct) {
       ElMessage.success('答案正确！技能分数已更新')
       userStore.checkNewAchievements()
     } else {
       ElMessage.warning('答案不正确，再试试看！')
     }
-  } catch (error) {
-    console.error('提交答案失败:', error)
+  } catch {
     ElMessage.error('提交失败，请稍后重试')
   } finally {
     submitting.value = false
   }
 }
 
-const goBack = () => {
-  router.back()
-}
+const goBack = () => { router.back() }
+const onCodeRun = (result) => { console.log('代码运行结果:', result) }
 
-const onCodeRun = (result) => {
-  console.log('代码运行结果:', result)
-}
-
-// 运行SQL验证
 const runSql = async () => {
   if (!userSql.value || !userSql.value.trim()) {
     ElMessage.warning('请输入SQL语句')
     return
   }
-  
   sqlRunning.value = true
   sqlResult.value = null
-  
   try {
     const res = await request.post('/exercises/execute-sql', {
       setup_sql: exercise.value.test_cases || '',
@@ -617,8 +453,7 @@ const runSql = async () => {
     } else {
       ElMessage.error('SQL执行失败，请检查语法')
     }
-  } catch (err) {
-    console.error('执行SQL失败:', err)
+  } catch {
     ElMessage.error('执行请求失败，请稍后重试')
   } finally {
     sqlRunning.value = false
@@ -633,529 +468,534 @@ const nextExercise = () => {
 </script>
 
 <style scoped>
-.exercise-detail {
-  padding: 40px 0;
-  min-height: calc(100vh - 60px);
-  background-color: var(--tm-bg-elevated);
-}
-
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-.loading {
-  text-align: center;
-  padding: 100px 0;
-}
-
-.exercise-header {
-  background: #18181B;
-  border-radius: 12px;
-  padding: 40px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  margin-bottom: 30px;
-}
-
-.exercise-tags {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.exercise-title {
-  font-size: 28px;
-  font-weight: bold;
+.exercise-detail-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--tm-bg-page);
   color: var(--tm-text-primary);
-  margin-bottom: 20px;
+  padding: 40px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+/* ========== Header ========== */
+.exercise-header-panel {
+  background: var(--tm-card-bg);
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  padding: 28px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.tag-group { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.tag-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-surface-hover);
+  color: var(--tm-text-regular);
+}
+.tag-badge.type { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; }
+.tag-badge.stage { background: rgba(52, 211, 153, 0.12); color: #6ee7b7; }
+.tag-badge.level { background: rgba(251, 191, 36, 0.12); color: #fcd34d; }
+.tag-badge.subject { background: rgba(var(--tm-color-primary-rgb), 0.12); color: var(--tm-color-primary); }
+
+.exercise-main-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--tm-text-primary);
+  margin: 0 0 14px;
   line-height: 1.4;
 }
-
-.exercise-meta {
-  display: flex;
-  gap: 30px;
-  flex-wrap: wrap;
-  padding-top: 20px;
-  border-top: 1px solid #ebeef5;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--tm-text-secondary);
-}
-
-.section {
-  margin-bottom: 30px;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  font-weight: bold;
-  color: var(--tm-text-primary);
-  margin-bottom: 16px;
-}
-
-.content-card {
-  background: #18181B;
-  border-radius: 12px;
-  padding: 30px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-
-.description {
-  font-size: 16px;
-  line-height: 1.8;
-  color: var(--tm-text-primary);
-  margin: 0;
-}
-
-.instructions {
-  font-size: 14px;
-  line-height: 1.8;
-  color: var(--tm-text-regular);
-  margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  background-color: var(--tm-bg-elevated);
-  padding: 16px;
-  border-radius: 8px;
-  font-family: monospace;
-}
-
-.answer-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 16px;
-  margin-top: 20px;
-}
-
-.solution-card {
-  border-left: 4px solid #67c23a;
-}
-
-.solution {
-  font-size: 15px;
-  line-height: 1.8;
-  color: var(--tm-text-primary);
-  margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  background-color: #f0f9ff;
-  padding: 20px;
-  border-radius: 8px;
-  font-family: monospace;
-}
-
-.bottom-actions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 40px;
-}
-
-.empty-state {
-  padding: 80px 0;
-  text-align: center;
-}
-
-@media (max-width: 768px) {
-  .exercise-header,
-  .content-card {
-    padding: 24px;
-  }
-  
-  .exercise-title {
-    font-size: 22px;
-  }
-  
-  .exercise-meta {
-    gap: 20px;
-  }
-  
-  .section-title {
-    font-size: 18px;
-  }
-}
-
-.sql-actions {
-  display: flex;
-  justify-content: flex-start;
-  gap: 16px;
-  margin-top: 16px;
-  margin-bottom: 20px;
-}
-
-.sql-result {
-  margin-top: 20px;
-  border: 1px solid var(--tm-border-color);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.result-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background-color: var(--tm-bg-elevated);
-  border-bottom: 1px solid var(--tm-border-color);
-  font-weight: 600;
-}
-
-.result-error {
-  padding: 16px;
-  background-color: #fef0f0;
-  color: #f56c6c;
-  font-family: monospace;
-  white-space: pre-wrap;
-}
-
-.result-table {
-  padding: 16px;
-}
-
-.result-summary {
-  padding: 12px 16px;
-  background-color: var(--tm-bg-elevated);
-  color: var(--tm-text-secondary);
-  font-size: 13px;
-  text-align: right;
-}
-
-.result-message {
-  padding: 16px;
-  background-color: #f0f9eb;
-  color: #67c23a;
-}
-
-.judge-card {
-  border-radius: 12px;
-  padding: 24px;
-}
-
-.judge-pass {
-  border: 1px solid rgba(103, 194, 58, 0.3);
-  background: rgba(103, 194, 58, 0.05);
-}
-
-.judge-fail {
-  border: 1px solid rgba(245, 108, 108, 0.3);
-  background: rgba(245, 108, 108, 0.05);
-}
-
-.judge-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.judge-message {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--tm-text-primary);
-}
-
-.judge-stats {
+.meta-info {
   display: flex;
   gap: 24px;
-  font-size: 14px;
-  color: var(--tm-text-secondary);
-  margin-bottom: 16px;
-}
-
-.case-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.case-item {
-  padding: 12px 16px;
-  border-radius: 8px;
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-.case-pass {
-  background: rgba(103, 194, 58, 0.06);
-  border: 1px solid rgba(103, 194, 58, 0.15);
-}
-
-.case-fail {
-  background: rgba(245, 108, 108, 0.06);
-  border: 1px solid rgba(245, 108, 108, 0.15);
-}
-
-.case-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--tm-text-primary);
-  min-width: 60px;
-}
-
-.case-detail {
-  width: 100%;
-  margin-top: 8px;
-  padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 6px;
   font-size: 13px;
-}
-
-.case-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 4px;
   color: var(--tm-text-secondary);
 }
 
-.case-row code {
-  color: #f56c6c;
+.loading-center, .empty-center {
+  text-align: center;
+  padding: 80px 0;
+  color: #52525b;
+}
+
+/* ========== Sections ========== */
+.exercise-content-section {
+  width: 100%;
+}
+.section-title-bar {
+  width: 100%;
+  margin-bottom: 14px;
+}
+.section-title-bar h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--tm-text-primary);
+  margin: 0;
+}
+.info-box-fallback {
+  background: var(--tm-card-bg);
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.info-box-fallback p {
+  margin: 0;
+  color: var(--tm-text-regular);
+  line-height: 1.8;
+  font-size: 15px;
+}
+.instructions-text {
+  margin: 0;
+  color: var(--tm-text-regular);
   font-family: 'Courier New', monospace;
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.case-error code {
-  color: #e6a23c;
-}
-
-.judge-summary {
   font-size: 14px;
-  color: var(--tm-text-secondary);
-  padding-top: 12px;
-  border-top: 1px solid var(--tm-border-light);
+  line-height: 1.8;
+  white-space: pre-wrap;
 }
 
-.skill-change-card {
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  background: rgba(139, 92, 246, 0.03);
+/* ========== Answer Block ========== */
+.answer-block {
+  width: 100%;
+}
+.answer-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--tm-card-bg);
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  color: var(--tm-text-regular);
+  padding: 16px;
+  font-size: 15px;
+  line-height: 1.8;
+  resize: vertical;
+  outline: none;
+  font-family: 'Courier New', monospace;
+}
+.answer-textarea:focus {
+  border-color: rgba(var(--tm-color-primary-rgb), 0.4);
 }
 
-.skill-change-list {
+/* ========== Options - FULL WIDTH ROWS ========== */
+.options-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.skill-change-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.sc-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--tm-text-primary);
-  min-width: 80px;
-}
-
-.sc-bar-wrap {
-  flex: 1;
-}
-
-.sc-bar-bg {
-  height: 12px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.06);
-  position: relative;
-  overflow: hidden;
-}
-
-.sc-bar-before {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  background: rgba(139, 92, 246, 0.2);
-  border-radius: 6px;
-  transition: width 0.5s ease;
-}
-
-.sc-bar-after {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  background: linear-gradient(90deg, #8b5cf6, #d946ef);
-  border-radius: 6px;
-  transition: width 0.8s ease;
-  animation: scBarGrow 0.8s ease-out;
-}
-
-@keyframes scBarGrow {
-  from { width: 0 !important; }
-}
-
-.sc-scores {
-  font-size: 13px;
-  color: var(--tm-text-secondary);
-  min-width: 80px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.sc-change {
-  font-size: 16px;
-  font-weight: 800;
-  color: #67c23a;
-  min-width: 40px;
-  text-align: right;
-}
-
-.related-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
+  width: 100%;
 }
-
-.related-card {
-  padding: 16px;
-  background: var(--tm-bg-card);
+.option-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 20px;
+  background: var(--tm-card-bg);
+  border: 2px solid #27272a;
   border-radius: 10px;
-  border: 1px solid var(--tm-border-light);
   cursor: pointer;
   transition: all 0.2s ease;
 }
-
-.related-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);
-  border-color: rgba(139, 92, 246, 0.2);
+.option-item:hover {
+  border-color: rgba(var(--tm-color-primary-rgb), 0.3);
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
+}
+.option-item.active {
+  border-color: var(--tm-color-primary);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
+}
+.option-radio {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tm-color-primary);
+  flex-shrink: 0;
+  min-width: 24px;
+  line-height: 1.6;
+}
+.option-text {
+  font-size: 15px;
+  color: var(--tm-text-regular);
+  line-height: 1.6;
 }
 
-.related-card.related-done {
-  border-left: 3px solid #67c23a;
-  opacity: 0.75;
-}
-
-.related-header {
+/* ========== Action Buttons - LEFT ALIGNED ========== */
+.action-button-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 16px;
+  margin-top: 20px;
+  justify-content: flex-start;
 }
 
-.related-status {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.related-title {
+.btn-purple-glow {
+  padding: 10px 28px;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  border: none;
+  border-radius: 8px;
+  color: #fff;
   font-size: 14px;
   font-weight: 600;
-  color: var(--tm-text-primary);
-  margin: 0;
-  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 14px rgba(var(--tm-color-primary-rgb), 0.3);
+  transition: all 0.3s ease;
+}
+.btn-purple-glow:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(var(--tm-color-primary-rgb), 0.45); }
+.btn-purple-glow:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-green-glow {
+  padding: 10px 28px;
+  background: linear-gradient(135deg, #34d399, #059669);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 14px rgba(52, 211, 153, 0.3);
+  transition: all 0.3s ease;
+}
+.btn-green-glow:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(52, 211, 153, 0.45); }
+.btn-green-glow:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-outline {
+  padding: 10px 24px;
+  background: transparent;
+  border: 1px solid var(--tm-border-light);
+  border-radius: 8px;
+  color: var(--tm-text-regular);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.btn-outline:hover { border-color: var(--tm-color-primary); color: var(--tm-color-primary); }
+
+/* ========== SQL ========== */
+.sql-block { width: 100%; }
+.sql-result-panel {
+  margin-top: 16px;
+  border: 1px solid #27272a;
+  border-radius: 10px;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
-
-.related-meta {
+.sql-result-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid #27272a;
+  font-size: 14px;
+  color: var(--tm-text-regular);
+  font-weight: 600;
 }
-
-.related-kp {
+.sql-result-tag {
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.sql-result-tag.success { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+.sql-result-tag.fail { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.sql-result-error {
+  padding: 14px 16px;
+  background: rgba(248, 113, 113, 0.06);
+  color: #f87171;
+  font-family: monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.sql-result-table-wrap { padding: 12px; }
+.sql-result-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.sql-result-table th, .sql-result-table td {
+  border: 1px solid #27272a;
+  padding: 8px 12px;
+  text-align: left;
+  color: var(--tm-text-regular);
+}
+.sql-result-table th {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+  color: var(--tm-text-primary);
+}
+.sql-result-count {
+  text-align: right;
+  padding: 10px 12px;
   font-size: 12px;
   color: var(--tm-text-secondary);
 }
-
-.notes-card {
-  padding: 20px;
+.sql-result-msg {
+  padding: 14px 16px;
+  background: rgba(52, 211, 153, 0.06);
+  color: #34d399;
+  font-size: 14px;
 }
 
-.notes-list {
-  margin-bottom: 16px;
+/* ========== Judge Panel ========== */
+.judge-panel {
+  padding: 24px;
+  border-radius: 10px;
+  border: 1px solid #27272a;
+  width: 100%;
+  box-sizing: border-box;
 }
-
-.note-item {
-  padding: 12px 16px;
-  background: rgba(139, 92, 246, 0.03);
-  border-radius: 8px;
-  border: 1px solid rgba(139, 92, 246, 0.08);
-  margin-bottom: 8px;
-}
-
-.note-header {
+.judge-panel.judge-pass { border-color: rgba(52, 211, 153, 0.25); background: rgba(52, 211, 153, 0.04); }
+.judge-panel.judge-fail { border-color: rgba(248, 113, 113, 0.25); background: rgba(248, 113, 113, 0.04); }
+.judge-status-row {
   display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.judge-tag {
+  padding: 4px 14px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.judge-tag.success { background: rgba(52, 211, 153, 0.18); color: #34d399; }
+.judge-tag.fail { background: rgba(248, 113, 113, 0.18); color: #f87171; }
+.judge-msg { font-size: 15px; font-weight: 600; color: var(--tm-text-primary); }
+.judge-stats-row {
+  display: flex;
+  gap: 24px;
+  font-size: 13px;
+  color: var(--tm-text-regular);
+  margin-bottom: 14px;
+}
+.judge-case-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.judge-case-item {
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  margin-bottom: 6px;
 }
-
-.note-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--tm-text-primary);
-}
-
-.note-time {
+.judge-case-item.case-ok { background: rgba(52, 211, 153, 0.06); border: 1px solid rgba(52, 211, 153, 0.12); }
+.judge-case-item.case-ng { background: rgba(248, 113, 113, 0.06); border: 1px solid rgba(248, 113, 113, 0.12); }
+.case-index { font-size: 14px; font-weight: 600; color: var(--tm-text-primary); min-width: 60px; }
+.case-badge {
+  padding: 2px 10px;
+  border-radius: 4px;
   font-size: 12px;
-  color: var(--tm-text-secondary);
+  font-weight: 600;
+}
+.case-badge.success { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+.case-badge.fail { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.case-fail-detail {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: rgba(var(--tm-bg-page-rgb), 0.5);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--tm-text-regular);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.case-fail-detail code {
+  color: #f87171;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: rgba(var(--tm-bg-page-rgb), 0.5);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.code-warn { color: #fbbf24 !important; }
+.judge-footer {
+  font-size: 14px;
+  color: var(--tm-text-regular);
+  padding-top: 12px;
+  border-top: 1px solid #27272a;
 }
 
-.note-content {
-  font-size: 13px;
-  color: var(--tm-text-secondary);
-  line-height: 1.6;
+/* ========== Skill Panel ========== */
+.skill-panel {
+  background: rgba(var(--tm-color-primary-rgb), 0.04);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.12);
+  border-radius: 10px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.skill-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.skill-name { font-size: 14px; font-weight: 600; color: var(--tm-text-primary); min-width: 80px; }
+.skill-bar-wrap { flex: 1; }
+.skill-bar-bg {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--tm-border-light);
+  position: relative;
+  overflow: hidden;
+}
+.skill-bar-before {
+  position: absolute; top: 0; left: 0;
+  height: 100%;
+  background: rgba(var(--tm-color-primary-rgb), 0.2);
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+.skill-bar-after {
+  position: absolute; top: 0; left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  border-radius: 6px;
+  transition: width 0.8s ease;
+  animation: barAnim 0.8s ease-out;
+}
+@keyframes barAnim { from { width: 0 !important; } }
+.skill-score { font-size: 13px; color: var(--tm-text-regular); min-width: 80px; text-align: center; font-variant-numeric: tabular-nums; }
+.skill-gain { font-size: 16px; font-weight: 800; color: #34d399; min-width: 40px; text-align: right; }
+
+/* ========== Solution ========== */
+.solution-card {
+  border-left: 4px solid #34d399;
+  padding: 20px 24px;
+  background: rgba(52, 211, 153, 0.04);
+  border-radius: 0 10px 10px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.solution-text {
+  margin: 0;
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  color: var(--tm-text-regular);
+  line-height: 1.8;
   white-space: pre-wrap;
 }
 
-.note-form {
-  border-top: 1px solid var(--tm-border-light);
-  padding-top: 16px;
+/* ========== Notes ========== */
+.notebook-container {
+  width: 100%;
 }
-
-.choice-area {
-  padding: 8px 0;
-}
-
-.choice-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.choice-option {
-  padding: 14px 20px;
+.note-list { margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
+.note-entry {
+  padding: 14px 16px;
+  background: rgba(var(--tm-color-primary-rgb), 0.04);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.08);
   border-radius: 10px;
-  border: 2px solid var(--tm-border-light);
-  transition: all 0.2s ease;
-  margin: 0;
 }
-
-.choice-option:hover {
-  border-color: rgba(139, 92, 246, 0.3);
-  background: rgba(139, 92, 246, 0.03);
+.note-entry-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.note-entry-title { font-size: 14px; font-weight: 600; color: var(--tm-text-primary); }
+.note-entry-time { font-size: 12px; color: var(--tm-text-secondary); }
+.note-delete-btn {
+  background: none;
+  border: none;
+  color: #f87171;
+  font-size: 12px;
+  cursor: pointer;
 }
-
-.choice-option.is-active {
-  border-color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.06);
+.note-entry-body { font-size: 13px; color: var(--tm-text-regular); line-height: 1.6; white-space: pre-wrap; }
+.note-title-input, .note-content-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--tm-card-bg);
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  color: var(--tm-text-regular);
+  padding: 10px 14px;
+  font-size: 14px;
+  outline: none;
+  margin-bottom: 10px;
 }
+.note-content-textarea { resize: vertical; font-family: inherit; min-height: 80px; }
+.note-title-input:focus, .note-content-textarea:focus { border-color: rgba(var(--tm-color-primary-rgb), 0.4); }
+.btn-save-note {
+  padding: 8px 22px;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.btn-save-note:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(var(--tm-color-primary-rgb), 0.3); }
 
-.choice-label {
+/* ========== Recommend Grid - 3 COLS ========== */
+.recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+.recommend-card {
+  padding: 20px;
+  background: var(--tm-card-bg);
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.recommend-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.25);
+  box-shadow: 0 6px 20px rgba(var(--tm-color-primary-rgb), 0.1);
+}
+.recommend-card.rec-done {
+  border-left: 3px solid #34d399;
+  opacity: 0.75;
+}
+.rec-status-icon { font-size: 14px; margin-right: 6px; }
+.rec-card-title {
+  font-size: 15px;
   font-weight: 700;
-  color: #8b5cf6;
-  margin-right: 8px;
+  color: var(--tm-text-primary);
+  margin: 8px 0 10px;
+  line-height: 1.4;
+}
+.rec-card-meta { display: flex; align-items: center; gap: 8px; }
+.rec-badge-diff {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.rec-badge-diff.diff-easy, .rec-badge-diff.diff-beginner { background: rgba(52, 211, 153, 0.12); color: #34d399; }
+.rec-badge-diff.diff-medium, .rec-badge-diff.diff-intermediate { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
+.rec-badge-diff.diff-hard, .rec-badge-diff.diff-advanced { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+.rec-subject-text { font-size: 12px; color: var(--tm-text-secondary); }
+
+/* ========== Bottom Bar ========== */
+.bottom-navigation-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 24px;
+  border-top: 1px solid #27272a;
 }
 
-.choice-text {
-  color: var(--tm-text-primary);
-  line-height: 1.6;
+/* ========== Responsive ========== */
+@media (max-width: 1000px) {
+  .recommend-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .exercise-detail-container { padding: 20px; gap: 24px; }
+  .recommend-grid { grid-template-columns: 1fr; }
+  .exercise-main-title { font-size: 20px; }
+  .meta-info { gap: 14px; }
 }
 </style>

@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-import os
 from typing import Optional, Dict, Any
 
 from fastapi_backend.schemas.interview import CodeSubmission, AIEvaluationResponse
@@ -29,7 +28,7 @@ class AITutorService:
             return None
         from sqlalchemy import select
         from fastapi_backend.models.models import AIConfig
-        result = await self.db.execute(select(AIConfig).where(AIConfig.is_active == True))
+        result = await self.db.execute(select(AIConfig).where(AIConfig.is_active))
         self._config = result.scalar_one_or_none()
         return self._config
 
@@ -48,29 +47,43 @@ class AITutorService:
             if not settings.AI_API_KEY or settings.AI_API_KEY == "your_model_api_key_here":
                 logger.warning("AI API密钥未配置，返回模拟评估结果")
                 return await self._get_mock_evaluation()
-            self.api_key = settings.AI_API_KEY
-            self.base_url = settings.AI_BASE_URL
-            self.model = settings.AI_MODEL
-            self.timeout = settings.AI_TIMEOUT_SECONDS
-            self.max_tokens = settings.AI_MAX_TOKENS
-            self.temperature = settings.AI_TEMPERATURE
-            self.provider = settings.AI_PROVIDER.lower()
+            api_key = settings.AI_API_KEY
+            base_url = settings.AI_BASE_URL
+            model = settings.AI_MODEL
+            timeout = settings.AI_TIMEOUT_SECONDS
+            max_tokens = settings.AI_MAX_TOKENS
+            temperature = settings.AI_TEMPERATURE
+            provider = settings.AI_PROVIDER.lower()
+            group_id = None
         else:
-            self.api_key = config.api_key
-            self.base_url = config.base_url
-            self.model = config.model
-            self.timeout = config.timeout_seconds
-            self.max_tokens = config.max_tokens
-            self.temperature = config.temperature
-            self.provider = config.provider.lower()
-            self.group_id = getattr(config, 'group_id', None)
+            api_key = config.api_key
+            base_url = config.base_url
+            model = config.model
+            timeout = config.timeout_seconds
+            max_tokens = config.max_tokens
+            temperature = config.temperature
+            provider = config.provider.lower()
+            group_id = getattr(config, 'group_id', None)
 
         try:
-            return await self._evaluate_with_real_ai(
-                submission=submission,
-                question_prompt=question_prompt,
-                judge_result=judge_result
+            return await asyncio.wait_for(
+                self._evaluate_with_real_ai(
+                    submission=submission,
+                    question_prompt=question_prompt,
+                    judge_result=judge_result,
+                    api_key=api_key,
+                    base_url=base_url,
+                    model=model,
+                    provider=provider,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    group_id=group_id
+                ),
+                timeout=timeout + 10
             )
+        except asyncio.TimeoutError:
+            logger.error(f"AI评估超时 (timeout={timeout}s)")
+            return await self._get_fallback_evaluation(judge_result)
         except Exception as exc:
             logger.error(f"AI评估失败，使用fallback: {exc}")
             return await self._get_fallback_evaluation(judge_result)
@@ -79,9 +92,16 @@ class AITutorService:
         self,
         submission: CodeSubmission,
         question_prompt: Optional[str] = None,
-        judge_result: Optional[Dict[str, Any]] = None
+        judge_result: Optional[Dict[str, Any]] = None,
+        api_key: str = None,
+        base_url: str = None,
+        model: str = None,
+        provider: str = None,
+        max_tokens: int = 2000,
+        temperature: float = 0.7,
+        group_id: Optional[str] = None,
     ) -> AIEvaluationResponse:
-        logger.info(f"开始真实AI评估，使用provider: {self.provider}, model: {self.model}")
+        logger.info(f"开始真实AI评估，使用provider: {provider}, model: {model}")
 
         prompt = self._build_evaluation_prompt(
             submission=submission,
@@ -89,14 +109,14 @@ class AITutorService:
             judge_result=judge_result
         )
 
-        if self.provider in ("openai", "minimax", "custom"):
-            return await self._call_openai_api(prompt)
-        elif self.provider == "anthropic":
+        if provider in ("openai", "minimax", "custom"):
+            return await self._call_openai_api(prompt, api_key, base_url, model, provider, max_tokens, temperature, group_id)
+        elif provider == "anthropic":
             return await self._call_anthropic_api(prompt)
-        elif self.provider == "azure":
+        elif provider == "azure":
             return await self._call_azure_openai_api(prompt)
         else:
-            logger.warning(f"未知的AI provider: {self.provider}，使用fallback")
+            logger.warning(f"未知的AI provider: {provider}，使用fallback")
             return await self._get_fallback_evaluation(judge_result)
 
     def _build_evaluation_prompt(
@@ -156,7 +176,9 @@ class AITutorService:
 
         return "\n".join(prompt_parts)
 
-    async def _call_openai_api(self, prompt: str) -> AIEvaluationResponse:
+    async def _call_openai_api(self, prompt: str, api_key: str, base_url: str,
+                                model: str, provider: str, max_tokens: int,
+                                temperature: float, group_id: Optional[str] = None) -> AIEvaluationResponse:
         try:
             import openai
             import httpx
@@ -165,36 +187,36 @@ class AITutorService:
             raise RuntimeError("openai库未安装")
 
         http_client = httpx.AsyncClient(
-            timeout=self.timeout,
+            timeout=30.0,
             trust_env=False,
         )
 
         try:
             client_kwargs = {
-                "api_key": self.api_key,
+                "api_key": api_key,
                 "http_client": http_client,
             }
-            base_url = self.base_url
-            if base_url:
-                if not base_url.endswith("/v1"):
-                    base_url = base_url.rstrip("/") + "/v1"
-                client_kwargs["base_url"] = base_url
+            resolved_base_url = base_url
+            if resolved_base_url:
+                if not resolved_base_url.endswith("/v1"):
+                    resolved_base_url = resolved_base_url.rstrip("/") + "/v1"
+                client_kwargs["base_url"] = resolved_base_url
 
             client = openai.AsyncOpenAI(**client_kwargs)
 
             extra_body = None
-            if getattr(self, 'provider', '') == 'minimax' and getattr(self, 'group_id', None):
-                extra_body = {"group_id": self.group_id}
+            if provider == 'minimax' and group_id:
+                extra_body = {"group_id": group_id}
 
             try:
                 response = await client.chat.completions.create(
-                    model=self.model,
+                    model=model,
                     messages=[
                         {"role": "system", "content": "你是一个专业的编程面试官，请评估代码质量。"},
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
                     response_format={"type": "json_object"},
                     extra_body=extra_body,
                 )

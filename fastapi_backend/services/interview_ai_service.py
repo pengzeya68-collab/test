@@ -15,7 +15,7 @@ _logger = logging.getLogger(__name__)
 
 
 async def _get_active_ai_config(db: AsyncSession) -> Optional[AIConfig]:
-    result = await db.execute(select(AIConfig).where(AIConfig.is_active == True))
+    result = await db.execute(select(AIConfig).where(AIConfig.is_active))
     return result.scalar_one_or_none()
 
 
@@ -68,7 +68,7 @@ async def _call_openai_chat(
 def _extract_follow_up_question(content: str) -> str:
     if not content:
         return ""
-    lines = [l.strip() for l in content.split('\n') if l.strip()]
+    lines = [line.strip() for line in content.split('\n') if line.strip()]
     question_text = ""
     for line in lines:
         if (

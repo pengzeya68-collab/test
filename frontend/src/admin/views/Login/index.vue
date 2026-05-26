@@ -59,13 +59,16 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
-import request from '@/utils/request'
+import request, { setToken } from '@/utils/request'
+import { setAdminToken, setAdminInfo } from '@/utils/auth'
+import { useAdminStore } from '@/stores/admin'
 import { loadSavedTheme, applyTheme } from '@/utils/ThemeConfig'
 
 const router = useRouter()
 const route = useRoute()
 const formRef = ref()
 const loading = ref(false)
+const adminStore = useAdminStore()
 
 const form = ref({
   username: '',
@@ -103,13 +106,18 @@ const handleLogin = async () => {
           return
         }
 
-        if (adminUser && !adminUser.is_admin && !adminUser.is_super_admin) {
+        if (adminUser && !adminUser.is_admin) {
           ElMessage.error('该账号不是管理员，无权访问后台')
           return
         }
 
-        localStorage.setItem('admin_token', adminToken)
-        localStorage.setItem('admin_info', JSON.stringify(adminUser))
+        // 使用 auth 工具函数正确存储 token
+        setAdminToken(adminToken)
+        setAdminInfo(adminUser)
+        // 更新 Pinia store 响应式状态
+        adminStore.setAdminInfo(adminUser, adminToken)
+        // 设置 axios 默认 Authorization 头
+        setToken(adminToken)
 
         ElMessage.success('登录成功')
 

@@ -10,11 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.autotest import AutoTestCase, AutoTestGroup, AutoTestHistory
+from fastapi_backend.models.autotest import AutoTestCase, AutoTestHistory
 from fastapi_backend.schemas.autotest import (
     AutoTestCaseCreate,
     AutoTestCaseUpdate,
-    CaseExecutionResult,
 )
 
 router = APIRouter(prefix="/api/auto-test/cases", tags=["AutoTest-用例"], dependencies=[Depends(get_current_user)])
@@ -40,10 +39,10 @@ def _case_to_dict(case):
     }
 
 
-@router.get("/")
+@router.get("")
 async def list_cases(
     page: int = Query(1, ge=1, description="页码"),
-    size: int = Query(20, ge=1, le=100, description="每页数量"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     group_id: Optional[int] = Query(None, description="按分组筛选"),
     keyword: str = Query(None, description="搜索关键词"),
     db: AsyncSession = Depends(get_db),
@@ -65,29 +64,45 @@ async def list_cases(
     count_result = await db.execute(select(func.count()).select_from(query.subquery()))
     total = count_result.scalar_one()
 
-    query = query.order_by(AutoTestCase.updated_at.desc()).offset((page - 1) * size).limit(size)
+    query = query.order_by(AutoTestCase.updated_at.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)
     cases = result.scalars().all()
 
-    # 获取每个用例的最近执行状态
+    # 批量查询每个用例的最近执行状态（避免 N+1 查询）
+    case_ids = [case.id for case in cases]
+    if case_ids:
+        # 查询每个 case_id 的最新历史记录
+        # 先获取所有 case_id 的最大 created_at
+        max_time_subq = (
+            select(AutoTestHistory.case_id, func.max(AutoTestHistory.created_at).label("max_time"))
+            .where(AutoTestHistory.case_id.in_(case_ids))
+            .group_by(AutoTestHistory.case_id)
+            .subquery()
+        )
+        latest_history_stmt = select(AutoTestHistory).join(
+            max_time_subq,
+            (AutoTestHistory.case_id == max_time_subq.c.case_id) &
+            (AutoTestHistory.created_at == max_time_subq.c.max_time)
+        )
+        latest_history_result = await db.execute(latest_history_stmt)
+        history_map = {h.case_id: h for h in latest_history_result.scalars().all()}
+    else:
+        history_map = {}
+
     cases_with_status = []
     for case in cases:
-        # 查询最近的执行历史
-        history_query = select(AutoTestHistory).where(AutoTestHistory.case_id == case.id).order_by(AutoTestHistory.created_at.desc()).limit(1)
-        history_result = await db.execute(history_query)
-        last_history = history_result.scalar_one_or_none()
-        
         case_dict = _case_to_dict(case)
+        last_history = history_map.get(case.id)
         case_dict["lastRunStatus"] = last_history.status if last_history else None
         cases_with_status.append(case_dict)
 
-    pages = (total + size - 1) // size if size > 0 else 0
+    pages = (total + page_size - 1) // page_size if page_size > 0 else 0
 
     return {
         "total": total,
         "items": cases_with_status,
         "page": page,
-        "size": size,
+        "size": page_size,
         "pages": pages,
     }
 
@@ -104,15 +119,29 @@ async def get_all_cases(
     result = await db.execute(query)
     cases = result.scalars().all()
     
-    # 获取每个用例的最近执行状态
+    # 批量查询每个用例的最近执行状态（避免 N+1 查询）
+    case_ids = [case.id for case in cases]
+    if case_ids:
+        max_time_subq = (
+            select(AutoTestHistory.case_id, func.max(AutoTestHistory.created_at).label("max_time"))
+            .where(AutoTestHistory.case_id.in_(case_ids))
+            .group_by(AutoTestHistory.case_id)
+            .subquery()
+        )
+        latest_history_stmt = select(AutoTestHistory).join(
+            max_time_subq,
+            (AutoTestHistory.case_id == max_time_subq.c.case_id) &
+            (AutoTestHistory.created_at == max_time_subq.c.max_time)
+        )
+        latest_history_result = await db.execute(latest_history_stmt)
+        history_map = {h.case_id: h for h in latest_history_result.scalars().all()}
+    else:
+        history_map = {}
+    
     cases_with_status = []
     for case in cases:
-        # 查询最近的执行历史
-        history_query = select(AutoTestHistory).where(AutoTestHistory.case_id == case.id).order_by(AutoTestHistory.created_at.desc()).limit(1)
-        history_result = await db.execute(history_query)
-        last_history = history_result.scalar_one_or_none()
-        
         case_dict = _case_to_dict(case)
+        last_history = history_map.get(case.id)
         case_dict["lastRunStatus"] = last_history.status if last_history else None
         cases_with_status.append(case_dict)
     
@@ -141,9 +170,15 @@ async def get_case(case_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("/", status_code=201)
 async def create_case(case_in: AutoTestCaseCreate, db: AsyncSession = Depends(get_db)):
     """创建新用例"""
-    data = case_in.model_dump()
+    data = case_in.model_dump(exclude_none=True)
     if "assertions" in data:
         data["assert_rules"] = data.pop("assertions")
+    if data.get("folder_id") is not None:
+        data["group_id"] = data.pop("folder_id")
+    else:
+        data.pop("folder_id", None)
+    if data.get("group_id") in ("", None):
+        data.pop("group_id", None)
     # extractors 字段已添加到数据库，不再移除
     case = AutoTestCase(**data)
     db.add(case)
@@ -164,9 +199,15 @@ async def update_case(
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
 
-    update_data = case_in.model_dump(exclude_unset=True)
+    update_data = case_in.model_dump(exclude_unset=True, exclude_none=True)
     if "assertions" in update_data:
         update_data["assert_rules"] = update_data.pop("assertions")
+    if update_data.get("folder_id") is not None:
+        update_data["group_id"] = update_data.pop("folder_id")
+    else:
+        update_data.pop("folder_id", None)
+    if update_data.get("group_id") in ("", None):
+        update_data.pop("group_id", None)
     # extractors 字段已添加到数据库，不再移除
 
     for field, value in update_data.items():

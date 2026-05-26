@@ -1,39 +1,84 @@
-node_modules/
-.env
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-*.pyc
-instance/*.db
-*.db
-.vscode/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDEs
 .idea/
+.vscode/
 *.swp
 *.swo
-*.log
+*~
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database files
+instance/*.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
 logs/
-backups/
-auto_test_platform/__pycache__/
-auto_test_platform/*.pyc
-auto_test_platform/allure-results/
-auto_test_platform/reports/
-auto_test_platform/temp_run_data/
-auto_test_platform/temp_pytest_tests/
-fastapi_backend/autotest_data/temp_pytest_tests/
-fastapi_backend/autotest_data/allure-results/
-fastapi_backend/autotest_data/temp_run_data/
-fastapi_backend/autotest_data/reports/
-fastapi_backend/autotest_data/backups/
-fastapi_backend/autotest_data/step_results/
-fastapi_backend/instance/tasks/
+*.log
+
+# Test outputs
 .pytest_cache/
 .coverage
 htmlcov/
-frontend/dist/
-frontend/.DS_Store
-celerybeat-schedule*
-scheduler_jobs.db
-*.backup*
-instance/*.backup*
+allure-results/
+allure-report/
+test-results/
+
+# Node.js
+node_modules/
+.npm
+.yarn
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# AutoTest data (runtime generated)
+fastapi_backend/autotest_data/reports/
+fastapi_backend/autotest_data/screenshots/
+fastapi_backend/autotest_data/logs/
+
+# Keep example data
+!fastapi_backend/autotest_data/.gitkeep

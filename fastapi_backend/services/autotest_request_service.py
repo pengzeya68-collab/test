@@ -28,13 +28,14 @@ def validate_url_safety(url: str) -> None:
     try:
         parsed = urllib.parse.urlparse(url)
         hostname = parsed.hostname
-        if hostname:
-            resolved_ip = socket.gethostbyname(hostname)
-            ip = ipaddress.ip_address(resolved_ip)
-            if ip.is_private or ip.is_loopback or ip.is_reserved:
-                raise ValueError("不允许访问内网或保留地址")
+        if hostname is None:
+            raise ValueError("无效的 URL: 无法解析主机名")
+        resolved_ip = socket.gethostbyname(hostname)
+        ip = ipaddress.ip_address(resolved_ip)
+        if ip.is_private or ip.is_loopback or ip.is_reserved:
+            raise ValueError("不允许访问内网或保留地址")
     except (ValueError, socket.gaierror) as e:
-        if isinstance(e, ValueError) and "不允许" in str(e):
+        if isinstance(e, ValueError):
             raise
         pass
 
@@ -135,7 +136,7 @@ async def execute_http_request(
     start_time = time.time()
     try:
         req_kwargs = {"headers": headers, "timeout": 30, "params": params}
-        processed_body = convert_to_dict(body) if body_type == "form" else body
+        processed_body = convert_to_dict(body) if body_type in ("form", "form-data") else body
         if body_type == "json" and processed_body:
             if isinstance(processed_body, str):
                 try:
@@ -143,7 +144,7 @@ async def execute_http_request(
                 except json.JSONDecodeError as e:
                     return {"error": f"请求体 JSON 格式校验失败: {e}", "execution_time": 0}
             req_kwargs["json"] = processed_body
-        elif body_type == "form" and processed_body:
+        elif body_type in ("form", "form-data") and processed_body:
             req_kwargs["data"] = processed_body
         elif processed_body:
             if isinstance(processed_body, str):
@@ -164,14 +165,19 @@ async def execute_http_request(
         return {
             "status_code": resp.status_code,
             "response_content": response_content,
+            "data": response_content,
+            "body": response_content,
+            "headers": dict(resp.headers),
+            "content_length": len(resp.content or b""),
             "execution_time": execution_time,
+            "elapsed_ms": execution_time,
             "success": 200 <= resp.status_code < 400,
         }
     except _requests.exceptions.Timeout:
-        return {"error": "请求超时", "execution_time": int((time.time() - start_time) * 1000)}
+        return {"success": False, "error": "请求超时", "execution_time": int((time.time() - start_time) * 1000)}
     except _requests.exceptions.ConnectionError:
-        return {"error": "连接失败，请检查网络或服务地址", "execution_time": int((time.time() - start_time) * 1000)}
+        return {"success": False, "error": "连接失败，请检查网络或服务地址", "execution_time": int((time.time() - start_time) * 1000)}
     except ValueError as e:
-        return {"error": str(e), "execution_time": int((time.time() - start_time) * 1000)}
+        return {"success": False, "error": str(e), "execution_time": int((time.time() - start_time) * 1000)}
     except Exception as e:
-        return {"error": str(e), "execution_time": int((time.time() - start_time) * 1000)}
+        return {"success": False, "error": str(e), "execution_time": int((time.time() - start_time) * 1000)}

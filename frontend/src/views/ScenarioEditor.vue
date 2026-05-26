@@ -84,7 +84,7 @@
                       <el-button size="small" text>
                         <el-icon><Download /></el-icon>
                         提取变量
-                        <el-badge v-if="getExtractorCount(element.extractors) > 0" :value="getExtractorCount(element.extractors)" />
+                        <el-badge v-if="getExtractorCount(element) > 0" :value="getExtractorCount(element)" />
                       </el-button>
                     </template>
                     <div class="extractors-panel">
@@ -293,6 +293,7 @@
                         v-model="datasetRows[rowIndex][colIndex]"
                         size="small"
                         placeholder="值"
+                        @change="handleDatasetChange"
                       />
                     </td>
                     <td class="action-col">
@@ -488,10 +489,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, VideoPlay, Delete, Rank, Setting, Back, Search, Grid, Upload, Refresh, ArrowRight, Download } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
+import autoTestRequest from '@/utils/autoTestRequest'
 import axios from 'axios'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
@@ -505,35 +508,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['back'])
-
-const autoTestRequest = axios.create({
-  baseURL: '',
-  timeout: 30000
-})
-
-// 添加请求拦截器，自动带上 token
-autoTestRequest.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
-    if (token && token !== 'undefined' && token !== 'null' && token !== '[object Object]') {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  error => {
-    return Promise.reject(error);
-  }
-)
-
-// 添加响应拦截器，自动处理 response.data
-autoTestRequest.interceptors.response.use(
-  response => {
-    return response.data;
-  },
-  error => {
-    return Promise.reject(error);
-  }
-)
 
 const scenarioForm = ref({
   name: '',
@@ -553,6 +527,7 @@ const runResult = ref(null)
 let pollingTimer = null
 let pollingAbortController = null
 let datasetSaveTimer = null
+let datasetDirty = false
 const runningTaskProgress = ref(null)
 
 // 标签页
@@ -600,9 +575,26 @@ const getMethodType = (method) => {
   return types[method] || 'info'
 }
 
+const resetEditorState = () => {
+  scenarioForm.value = {
+    name: '',
+    description: '',
+    is_active: true
+  }
+  steps.value = []
+  datasetColumns.value = []
+  datasetRows.value = []
+  executionHistory.value = {
+    total: 0,
+    success_count: 0,
+    failed_count: 0,
+    items: []
+  }
+}
+
 const loadScenario = async () => {
   try {
-    const res = await autoTestRequest.get(`/api/auto-test/scenarios/${props.scenarioId}`)
+    const res = await autoTestRequest.get(`/auto-test/scenarios/${props.scenarioId}`)
     scenarioForm.value = {
       name: res.name,
       description: res.description,
@@ -618,7 +610,7 @@ const loadScenario = async () => {
 
 const loadDataset = async () => {
   try {
-    const res = await autoTestRequest.get(`/api/auto-test/scenarios/${props.scenarioId}/dataset`)
+    const res = await autoTestRequest.get(`/auto-test/scenarios/${props.scenarioId}/dataset`)
     if (res && res.data_matrix) {
       datasetColumns.value = res.data_matrix.columns || []
       datasetRows.value = res.data_matrix.rows || []
@@ -635,24 +627,35 @@ const loadDataset = async () => {
 
 const saveDataset = async () => {
   try {
-    await autoTestRequest.post(`/api/auto-test/scenarios/${props.scenarioId}/dataset`, {
+    await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/dataset`, {
       name: '默认数据集',
       data_matrix: {
         columns: datasetColumns.value,
         rows: datasetRows.value
       }
     })
+    datasetDirty = false
   } catch (error) {
     console.error('保存数据集失败:', error)
   }
 }
 
+const flushDatasetSave = async () => {
+  if (datasetSaveTimer) {
+    clearTimeout(datasetSaveTimer)
+    datasetSaveTimer = null
+  }
+  if (!datasetDirty) return
+  await saveDataset()
+}
+
 const handleDatasetChange = () => {
   // 数据变化时自动保存（防抖）
+  datasetDirty = true
   clearTimeout(datasetSaveTimer)
   datasetSaveTimer = setTimeout(() => {
     saveDataset()
-  }, 1000)
+  }, 300)
 }
 
 const addDataRow = () => {
@@ -678,7 +681,7 @@ const clearDataset = async () => {
     datasetColumns.value = []
     datasetRows.value = []
     // 调用后端删除
-    await autoTestRequest.delete(`/api/auto-test/scenarios/${props.scenarioId}/dataset`)
+    await autoTestRequest.delete(`/auto-test/scenarios/${props.scenarioId}/dataset`)
     ElMessage.success('已清空')
   } catch (error) {
     if (error !== 'cancel') console.error('清空数据集失败:', error)
@@ -833,7 +836,7 @@ const handleRunDataDriven = async () => {
     return
   }
   try {
-    const res = await autoTestRequest.post(`/api/auto-test/scenarios/${props.scenarioId}/run-data-driven`)
+    const res = await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/run-data-driven`)
     dataDrivenResult.value = res
     dataDrivenResultDialogVisible.value = true
   } catch (error) {
@@ -843,7 +846,7 @@ const handleRunDataDriven = async () => {
 
 const handleSaveBasic = async () => {
   try {
-    await autoTestRequest.put(`/api/auto-test/scenarios/${props.scenarioId}`, scenarioForm.value)
+    await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}`, scenarioForm.value)
   } catch (error) {
     ElMessage.error('保存失败')
   }
@@ -866,7 +869,7 @@ const loadAvailableCases = async () => {
     if (caseSearchKeyword.value) {
       params.keyword = caseSearchKeyword.value
     }
-    const res = await autoTestRequest.get('/api/auto-test/scenarios/available-cases', { params })
+    const res = await autoTestRequest.get('/auto-test/scenarios/available-cases', { params })
     availableCases.value = res || []
   } catch (error) {
     console.error('加载接口列表失败:', error)
@@ -888,11 +891,14 @@ const handleConfirmAddSteps = async () => {
   }
 
   try {
+    const currentMaxOrder = steps.value.length > 0
+      ? Math.max(...steps.value.map(step => Number(step.step_order) || 0))
+      : -1
     for (let i = 0; i < selectedCases.value.length; i++) {
       const caseItem = selectedCases.value[i]
-      await autoTestRequest.post(`/api/auto-test/scenarios/${props.scenarioId}/steps`, {
+      await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/steps`, {
         api_case_id: caseItem.id,
-        step_order: steps.value.length + i,
+        step_order: currentMaxOrder + i + 1,
         is_active: true
       })
     }
@@ -907,7 +913,7 @@ const handleConfirmAddSteps = async () => {
 const handleRemoveStep = async (step) => {
   try {
     await ElMessageBox.confirm('确定要移除此步骤吗？', '提示', { type: 'warning' })
-    await autoTestRequest.delete(`/api/auto-test/scenarios/${props.scenarioId}/steps/${step.id}`)
+    await autoTestRequest.delete(`/auto-test/scenarios/${props.scenarioId}/steps/${step.id}`)
     ElMessage.success('移除成功')
     await loadScenario()
   } catch (error) {
@@ -917,7 +923,7 @@ const handleRemoveStep = async (step) => {
 
 const handleStepActiveChange = async (step) => {
   try {
-    await autoTestRequest.put(`/api/auto-test/scenarios/${props.scenarioId}/steps/${step.id}`, {
+    await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}/steps/${step.id}`, {
       is_active: step.is_active
     })
   } catch (error) {
@@ -931,7 +937,7 @@ const handleDragEnd = async () => {
       step_id: step.id,
       step_order: index
     }))
-    await autoTestRequest.put(`/api/auto-test/scenarios/${props.scenarioId}/steps/reorder`, stepOrders)
+    await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}/steps/reorder`, stepOrders)
   } catch (error) {
     ElMessage.error('保存排序失败')
     await loadScenario()
@@ -988,7 +994,7 @@ const saveOverrides = async (step) => {
   }
 
   try {
-    await autoTestRequest.put(`/api/auto-test/scenarios/${props.scenarioId}/steps/${step.id}`, {
+    await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}/steps/${step.id}`, {
       variable_overrides: Object.keys(overrides).length > 0 ? overrides : null
     })
     step.variable_overrides = Object.keys(overrides).length > 0 ? overrides : null
@@ -1000,14 +1006,14 @@ const saveOverrides = async (step) => {
 
 // ========== 提取响应变量方法 ==========
 
-const getExtractorCount = (extractors) => {
-  if (!extractors) return 0
+const getExtractorCount = (step) => {
+  const extractors = step?.api_case?.extractors || step?.extractors || []
   return Array.isArray(extractors) ? extractors.length : 0
 }
 
 const loadExtractors = (step) => {
   currentExtractorStep.value = step
-  const extractors = step.extractors || []
+  const extractors = step.api_case?.extractors || step.extractors || []
   if (extractors.length > 0) {
     extractorForm.value = [...extractors]
   } else {
@@ -1035,10 +1041,14 @@ const saveExtractors = async () => {
   )
 
   try {
-    await autoTestRequest.put(`/api/auto-test/scenarios/${props.scenarioId}/steps/${currentExtractorStep.value.id}`, {
+    await autoTestRequest.put(`/auto-test/cases/${currentExtractorStep.value.api_case_id}`, {
       extractors: validExtractors.length > 0 ? validExtractors : null
     })
-    currentExtractorStep.value.extractors = validExtractors.length > 0 ? validExtractors : null
+    if (currentExtractorStep.value.api_case) {
+      currentExtractorStep.value.api_case.extractors = validExtractors.length > 0 ? validExtractors : null
+    } else {
+      currentExtractorStep.value.extractors = validExtractors.length > 0 ? validExtractors : null
+    }
     ElMessage.success('保存成功')
   } catch (error) {
     ElMessage.error('保存失败')
@@ -1063,7 +1073,7 @@ const pollTaskStatus = async (taskId) => {
   const signal = pollingAbortController.signal
   pollingTimer = setInterval(async () => {
     try {
-      const res = await autoTestRequest.get(`/api/auto-test/tasks/${taskId}`, { signal })
+      const res = await autoTestRequest.get(`/auto-test/tasks/${taskId}`, { signal })
       const state = res.status  // Celery 任务状态: 'PENDING' | 'PROGRESS' | 'completed' | 'SUCCESS' | 'FAILURE' | 'REVOKED'
 
       if (state === 'completed' || state === 'SUCCESS') {
@@ -1107,7 +1117,7 @@ const handleRun = async () => {
     ElMessage.warning('请先选择执行环境！')
     return
   }
-  if (scenario.value && !scenario.value.is_active) {
+  if (scenarioForm.value && !scenarioForm.value.is_active) {
     ElMessage.warning('该场景已停用，无法运行！')
     return
   }
@@ -1128,7 +1138,7 @@ const handleCancelTask = async () => {
 
   try {
     isCanceling.value = true
-    await autoTestRequest.post(`/api/auto-test/tasks/${currentTaskId}/cancel`)
+    await autoTestRequest.post(`/auto-test/tasks/${currentTaskId}/cancel`)
     stopPolling()
     isRunning.value = false
     isCanceling.value = false
@@ -1188,39 +1198,28 @@ const resolveReportUrl = (reportUrl) => {
 
 // 打开 Allure 详细报告
 const openAllureReport = () => {
-  console.log('--- 终极接管 Allure 按钮 ---', runResult.value);
-
-  // 尝试获取当前运行结果 或 历史详情数据
-  const resultData = runResult.value || {};
-
-  // 第一优先级：后端传了 report_url
-  // 第二优先级：前端自己用 report_id 拼装！
-  let url = resultData.report_url;
-  if (!url && resultData.report_id) {
-    url = `/reports/${resultData.report_id}/index.html`;
-  }
-
+  const resultData = runResult.value || {}
+  const url = resultData.report_url
   if (url) {
-    console.log('即将打开报告地址:', url);
-    // 强行补齐前缀并打开
-    window.open(resolveReportUrl(url), '_blank');
+    window.open(resolveReportUrl(url), '_blank')
   } else {
-    ElMessage.error('执行结果中缺失 report_id，无法拼接报告地址！');
+    ElMessage.error('执行结果中缺失 report_url，当前无法打开报告。请重新执行或检查后端日志。')
   }
-};
+}
 
 // ========== 执行历史相关 ==========
 const loadExecutionHistory = async () => {
   historyLoading.value = true
   try {
-    const res = await autoTestRequest.get(`/api/auto-test/scenarios/${props.scenarioId}/history`)
+    const res = await autoTestRequest.get(`/auto-test/scenarios/${props.scenarioId}/history`)
     const items = res.items || []
     // 统计成功失败 - 后端使用 completed 表示成功完成
     const successCount = items.filter(item => item.status === 'success' || item.status === 'completed').length
+    const failedCount = items.filter(item => item.status === 'failed' || item.status === 'error').length
     executionHistory.value = {
       total: res.total || 0,
       success_count: successCount,
-      failed_count: items.length - successCount,
+      failed_count: failedCount,
       items: items
     }
   } catch (error) {
@@ -1236,12 +1235,12 @@ const refreshExecutionHistory = () => {
 }
 
 const getStatusType = (status) => {
-  const types = { success: 'success', completed: 'success', failed: 'danger', error: 'warning', running: 'primary' }
+  const types = { success: 'success', completed: 'success', failed: 'danger', error: 'warning', running: 'primary', cancelled: 'info' }
   return types[status] || 'info'
 }
 
 const getStatusText = (status) => {
-  const texts = { success: '成功', completed: '成功', failed: '失败', error: '异常', running: '运行中' }
+  const texts = { success: '成功', completed: '成功', failed: '失败', error: '异常', running: '运行中', cancelled: '已取消' }
   return texts[status] || status
 }
 
@@ -1254,7 +1253,7 @@ const openReport = (reportUrl) => {
 // 加载环境列表
 const loadEnvironments = async () => {
   try {
-    const res = await autoTestRequest.get('/api/auto-test/environments')
+    const res = await autoTestRequest.get('/auto-test/environments')
     environments.value = res || []
     // 默认选中第一个
     if (environments.value.length > 0) {
@@ -1271,17 +1270,33 @@ const loadEnvironments = async () => {
 }
 
 onMounted(() => {
-  loadScenario()
-  loadExecutionHistory()
   loadEnvironments()
+  window.addEventListener('pagehide', flushDatasetSave)
 })
+
+watch(
+  () => props.scenarioId,
+  async () => {
+    stopPolling()
+    if (datasetSaveTimer) {
+      clearTimeout(datasetSaveTimer)
+      datasetSaveTimer = null
+    }
+    resetEditorState()
+    await loadScenario()
+    await loadExecutionHistory()
+  },
+  { immediate: true }
+)
 
 onUnmounted(() => {
   stopPolling()
-  if (datasetSaveTimer) {
-    clearTimeout(datasetSaveTimer)
-    datasetSaveTimer = null
-  }
+  window.removeEventListener('pagehide', flushDatasetSave)
+  flushDatasetSave()
+})
+
+onBeforeRouteLeave(async () => {
+  await flushDatasetSave()
 })
 </script>
 
@@ -1370,7 +1385,7 @@ onUnmounted(() => {
   height: 28px;
   border-radius: 50%;
   background: var(--tm-color-primary);
-  color: #fff;
+  color: var(--tm-text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1687,7 +1702,7 @@ onUnmounted(() => {
   height: 24px;
   border-radius: 50%;
   background: var(--tm-color-primary);
-  color: #fff;
+  color: var(--tm-text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1765,7 +1780,7 @@ onUnmounted(() => {
 }
 
 .body-display {
-  background: #1e1e1e;
+  background: var(--tm-card-bg);
   color: #d4d4d4;
   padding: 16px;
   border-radius: var(--tm-radius-small);
