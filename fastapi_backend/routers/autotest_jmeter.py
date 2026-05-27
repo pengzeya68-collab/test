@@ -543,6 +543,7 @@ async def _run_bench(task_id: str, config: dict):
     body_samples = []
     _body_captured_count = {}
     _sample_seq = [0]
+    start_time = time.time()
 
     async def worker(worker_id: int):
         timeout_obj = aiohttp.ClientTimeout(total=8, connect=3)
