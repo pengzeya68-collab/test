@@ -95,8 +95,32 @@
       </div>
     </div>
 
-    <!-- ==================== Step 2: 配置参数 ==================== -->
+    <!-- ==================== Step 2: 配置压测参数 ==================== -->
     <div v-show="currentStep === 2" class="step-body">
+
+      <!-- ⭐ 自然语言概要提示 - 顶部大 banner -->
+      <div class="summary-banner" v-if="scriptTree.children.length > 0">
+        <div class="summary-banner-icon">{{ summaryEmoji }}</div>
+        <div class="summary-banner-body">
+          <div class="summary-banner-title">{{ summaryTitle }}</div>
+          <div class="summary-banner-text">{{ naturalLanguageSummary }}</div>
+          <div class="summary-banner-stats">
+            <el-tag size="small" effect="plain">👥 {{ totalThreads }} 线程</el-tag>
+            <el-tag size="small" effect="plain">🌐 {{ totalSamplers }} 请求</el-tag>
+            <el-tag v-if="totalAssertions > 0" size="small" effect="plain">✅ {{ totalAssertions }} 断言</el-tag>
+            <el-tag v-if="totalExtractors > 0" size="small" effect="plain">🔍 {{ totalExtractors }} 提取器</el-tag>
+            <el-tag v-if="totalTimers > 0" size="small" effect="plain">⏰ {{ totalTimers }} 定时器</el-tag>
+            <el-tag v-if="totalListeners > 0" size="small" effect="plain">👁️ {{ totalListeners }} 监听器</el-tag>
+          </div>
+        </div>
+      </div>
+      <div class="summary-banner summary-banner-empty" v-else>
+        <div class="summary-banner-icon">💡</div>
+        <div class="summary-banner-body">
+          <div class="summary-banner-text">当前脚本是空的，去「选择接口」步骤导入接口，或点击左侧「+ 添加线程组」从零开始创建</div>
+        </div>
+      </div>
+
       <div class="step2-layout">
         <div class="panel tree-panel">
           <div class="panel-title">
@@ -152,21 +176,21 @@
             <!-- 线程组 -->
             <template v-if="selectedNode.type === 'ThreadGroup'">
               <div class="form-section">
-                <div class="section-hint">配置虚拟用户数、启动方式和运行时长</div>
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 虚拟用户数 = 模拟多少人同时访问；Ramp-Up = 多少秒内逐步启动完；持续时间 = 总共跑多久</div>
                 <div class="form-group"><label>线程组名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-row">
-                  <div class="form-group"><label>并发线程数</label><el-input-number v-model="selectedNode.props.threads" :min="1" :max="10000" size="small" /></div>
-                  <div class="form-group"><label>Ramp-Up (秒)</label><el-input-number v-model="selectedNode.props.rampUp" :min="0" :max="3600" size="small" /></div>
+                  <div class="form-group"><label>并发线程数</label><el-tooltip content="模拟多少个用户同时访问系统，50 = 50个虚拟用户" placement="top"><el-input-number v-model="selectedNode.props.threads" :min="1" :max="10000" size="small" /></el-tooltip></div>
+                  <div class="form-group"><label>Ramp-Up (秒)</label><el-tooltip content="多少秒内逐步启动完所有用户。5秒=5秒内逐步启动50个用户" placement="top"><el-input-number v-model="selectedNode.props.rampUp" :min="0" :max="3600" size="small" /></el-tooltip></div>
                 </div>
                 <div class="form-row">
-                  <div class="form-group"><label>循环次数</label><el-input-number v-model="selectedNode.props.loops" :min="1" :max="99999" size="small" /></div>
-                  <div class="form-group"><label>持续时间 (秒)</label><el-input-number v-model="selectedNode.props.duration" :min="0" :max="86400" size="small" /></div>
+                  <div class="form-group"><label>循环次数</label><el-tooltip content="每个用户跑完一遍后重复跑的次数。1=每人只跑1遍" placement="top"><el-input-number v-model="selectedNode.props.loops" :min="1" :max="99999" size="small" /></el-tooltip></div>
+                  <div class="form-group"><label>持续时间 (秒)</label><el-tooltip content="设置后循环次数不生效，到时间自动停止。60=跑60秒" placement="top"><el-input-number v-model="selectedNode.props.duration" :min="0" :max="86400" size="small" /></el-tooltip></div>
                 </div>
                 <el-alert v-if="selectedNode.props.loops >= 99999 && !selectedNode.props.duration"
                   title="⚠️ 此脚本将永久循环运行！请设置持续时间" type="error" :closable="false" show-icon />
               </div>
               <div class="form-section">
-                <div class="section-hint">添加监听器来查看测试结果</div>
+                <div class="section-hint"><el-icon><Monitor /></el-icon> 监听器用于查看测试结果，建议添加「查看结果树」和「聚合报告」</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
                   <el-button size="small" @click="addChildToCurrent('ViewResultsTree')">👁️ 查看结果树</el-button>
                   <el-button size="small" @click="addChildToCurrent('SummaryReport')">📈 聚合报告</el-button>
@@ -179,7 +203,7 @@
             <!-- HTTP 请求 -->
             <template v-if="selectedNode.type === 'HttpSampler'">
               <div class="form-section">
-                <div class="section-hint">配置要压测的接口地址和参数</div>
+                <div class="section-hint"><el-icon><Connection /></el-icon> 配置要压测的接口：选择方法、填写地址、添加请求头和请求体</div>
                 <div class="form-group"><label>请求名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-row">
                   <div class="form-group" style="flex:0 0 120px"><label>方法</label>
@@ -191,6 +215,7 @@
                 </div>
                 <el-collapse>
                   <el-collapse-item title="请求头 (Headers)" name="headers">
+                    <div class="section-hint" style="margin-bottom:6px">添加请求头，如 Content-Type: application/json、Authorization: Bearer xxx</div>
                     <div v-for="(h, hi) in (selectedNode.props.headers || [])" :key="hi" class="kv-row">
                       <el-input v-model="h.key" placeholder="Header名" size="small" style="width:40%" />
                       <el-input v-model="h.value" placeholder="值" size="small" style="width:50%" />
@@ -209,7 +234,7 @@
                 </el-collapse>
               </div>
               <div class="form-section">
-                <div class="section-hint">添加子元素：断言验证结果、提取器传递数据、定时器控制节奏</div>
+                <div class="section-hint"><el-icon><Coin /></el-icon> 添加断言验证返回结果是否正确，添加提取器从响应中提取数据传给下一个请求</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
                   <el-button size="small" @click="addChildToCurrent('ResponseAssertion')">✅ 响应断言</el-button>
                   <el-button size="small" @click="addChildToCurrent('JsonExtractor')">📤 JSON 提取器</el-button>
@@ -301,11 +326,6 @@
           <div class="editor-empty" v-else>
             <el-icon size="36"><EditPen /></el-icon>
             <p>选择左侧树中的元素<br/>开始编辑属性</p>
-          </div>
-          <!-- 自然语言描述 -->
-          <div class="summary-bar" v-if="scriptTree.children.length > 0">
-            <span class="summary-icon">💡</span>
-            <span class="summary-text">{{ naturalLanguageSummary }}</span>
           </div>
         </div>
       </div>
@@ -530,7 +550,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, Search, UploadFilled } from '@element-plus/icons-vue'
+import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import JmeterTreeNode from '@/components/JmeterTreeNode.vue'
 
@@ -635,6 +655,16 @@ const selectNode = (uid) => {
   selectedNode.value = findNode(scriptTree, uid)
 }
 
+const totalThreads = computed(() => {
+  let count = 0
+  const walk = (node) => {
+    if (node.type === 'ThreadGroup') count += (node.props.threads || 10)
+    ;(node.children || []).forEach(walk)
+  }
+  walk(scriptTree)
+  return count
+})
+
 const totalSamplers = computed(() => {
   let count = 0
   const walk = (node) => {
@@ -643,6 +673,58 @@ const totalSamplers = computed(() => {
   }
   walk(scriptTree)
   return count
+})
+
+const totalAssertions = computed(() => {
+  let count = 0
+  const walk = (node) => {
+    if (['ResponseAssertion','DurationAssertion','JsonAssertion'].includes(node.type)) count++
+    ;(node.children || []).forEach(walk)
+  }
+  walk(scriptTree)
+  return count
+})
+
+const totalExtractors = computed(() => {
+  let count = 0
+  const walk = (node) => {
+    if (['RegexExtractor','JsonExtractor'].includes(node.type)) count++
+    ;(node.children || []).forEach(walk)
+  }
+  walk(scriptTree)
+  return count
+})
+
+const totalTimers = computed(() => {
+  let count = 0
+  const walk = (node) => {
+    if (['ConstantTimer','UniformRandomTimer','GaussianRandomTimer','SyncTimer'].includes(node.type)) count++
+    ;(node.children || []).forEach(walk)
+  }
+  walk(scriptTree)
+  return count
+})
+
+const totalListeners = computed(() => {
+  let count = 0
+  const walk = (node) => {
+    if (['ViewResultsTree','SummaryReport','AggregateGraph'].includes(node.type)) count++
+    ;(node.children || []).forEach(walk)
+  }
+  walk(scriptTree)
+  return count
+})
+
+const summaryEmoji = computed(() => {
+  if (totalSamplers.value === 0) return '📭'
+  if (totalAssertions.value === 0) return '🧪'
+  return '🚀'
+})
+
+const summaryTitle = computed(() => {
+  if (totalSamplers.value === 0) return '还没有添加请求'
+  if (totalAssertions.value === 0) return '脚本已就绪，建议添加断言验证结果'
+  return '测试脚本已配置完整，可以去第3步验证并发或导出 .jmx'
 })
 
 // ===== 自然语言描述 =====
@@ -655,8 +737,14 @@ const naturalLanguageSummary = computed(() => {
     const ramp = tg.props.rampUp || 5
     const loops = tg.props.loops || 1
     const duration = tg.props.duration || 0
-    const samplers = []
-    const walk = (node) => { if (node.type === 'HttpSampler') samplers.push(node.name); (node.children || []).forEach(walk) }
+    const items = []
+    const walk = (node) => {
+      if (node.type === 'HttpSampler') {
+        const tag = node.props.responseAssertion ? '✅' : ''
+        items.push((node.props.method || 'GET') + ' ' + (node.name || node.props.url || ''))
+      }
+      (node.children || []).forEach(walk)
+    }
     walk(tg)
     let desc = `用 ${ramp} 秒逐步启动 ${threads} 个虚拟用户`
     if (duration > 0) {
@@ -664,8 +752,23 @@ const naturalLanguageSummary = computed(() => {
     } else {
       desc += `，每个用户循环执行 ${loops} 次`
     }
-    if (samplers.length > 0) {
-      desc += `，共 ${samplers.length} 个请求：${samplers.join('、')}`
+    if (items.length > 0) {
+      desc += `，共 ${items.length} 个请求：${items.join('、')}`
+    }
+    // 添加额外组件描述
+    const extras = []
+    const countExtras = (node) => {
+      if (['ResponseAssertion','DurationAssertion','JsonAssertion'].includes(node.type)) { if (!extras.includes('断言')) extras.push('断言') }
+      if (['RegexExtractor','JsonExtractor'].includes(node.type)) { if (!extras.includes('提取器')) extras.push('提取器') }
+      if (['ConstantTimer','UniformRandomTimer','GaussianRandomTimer'].includes(node.type)) { if (!extras.includes('定时器')) extras.push('定时器') }
+      if (node.type === 'SyncTimer') { if (!extras.includes('集合点')) extras.push('集合点') }
+      if (node.type === 'CSVDataSet') { if (!extras.includes('CSV数据驱动')) extras.push('CSV数据驱动') }
+      if (['ViewResultsTree','SummaryReport','AggregateGraph'].includes(node.type)) { if (!extras.includes('报告')) extras.push('报告') }
+      (node.children || []).forEach(countExtras)
+    }
+    countExtras(tg)
+    if (extras.length > 0) {
+      desc += `（含 ${extras.join('、')}）`
     }
     parts.push(desc)
   }
@@ -1159,7 +1262,7 @@ onMounted(() => {
 .import-count { font-size: 12px; color: var(--tm-text-secondary); }
 
 /* ===== Step 2 布局 ===== */
-.step2-layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; padding: 16px; height: 100%; overflow: hidden; }
+.step2-layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; padding: 0 16px 16px; height: calc(100% - 90px); overflow: hidden; }
 .tree-panel { display: flex; flex-direction: column; overflow: hidden; }
 .tree-body { flex: 1; overflow-y: auto; padding: 4px; }
 .tree-root-label { display: flex; align-items: center; gap: 6px; padding: 8px; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer; }
@@ -1170,13 +1273,21 @@ onMounted(() => {
 .editor-panel { display: flex; flex-direction: column; overflow: hidden; }
 .editor-body { flex: 1; overflow-y: auto; padding: 12px; }
 .editor-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--tm-text-secondary); gap: 8px; }
-.summary-bar { padding: 8px 12px; border-top: 1px solid var(--tm-border); font-size: 12px; color: var(--tm-text-secondary); display: flex; align-items: flex-start; gap: 6px; background: rgba(64,158,255,0.03); }
-.summary-icon { flex-shrink: 0; }
-.summary-text { line-height: 1.5; }
+/* ===== 自然语言概要 Banner（Step 2 顶部） ===== */
+.summary-banner { display: flex; align-items: flex-start; gap: 14px; padding: 14px 18px; margin: 0 16px 8px; border-radius: 12px; background: linear-gradient(135deg, rgba(64,158,255,0.1), rgba(64,158,255,0.04)); border: 1px solid rgba(64,158,255,0.15); }
+.summary-banner-empty { background: rgba(255,255,255,0.03); border-color: var(--tm-border); }
+.summary-banner-icon { font-size: 32px; line-height: 1; flex-shrink: 0; margin-top: 2px; }
+.summary-banner-body { flex: 1; min-width: 0; }
+.summary-banner-title { font-size: 13px; font-weight: 700; color: var(--tm-text-primary); margin-bottom: 4px; }
+.summary-banner-text { font-size: 14px; line-height: 1.6; color: var(--tm-text-primary); font-weight: 500; }
+.summary-banner-empty .summary-banner-text { font-size: 13px; font-weight: 400; color: var(--tm-text-secondary); }
+.summary-banner-stats { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.summary-banner-stats .el-tag { font-size: 12px; padding: 0 8px; }
 
 /* ===== 编辑器表单 ===== */
 .form-section { padding: 8px 0; }
-.section-hint { font-size: 11px; color: var(--tm-text-secondary); margin-bottom: 8px; }
+.section-hint { font-size: 11px; color: var(--tm-text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+.section-hint .el-icon { font-size: 13px; flex-shrink: 0; }
 .form-group { margin-bottom: 10px; }
 .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 3px; color: var(--tm-text-secondary); }
 .form-row { display: flex; gap: 8px; }
