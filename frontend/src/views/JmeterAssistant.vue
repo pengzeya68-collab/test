@@ -813,17 +813,17 @@
               </div>
               <div v-if="benchResult && benchResult.samples && benchResult.samples.length > 0" class="form-section vrt-inline-section">
                 <div class="section-hint" style="margin-bottom:8px"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的结果数据</div>
-                <div class="vrt-container">
-                  <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #e5e7eb;background:#f9fafb">
+                <div class="vrt-container" style="height:420px">
+                  <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #ccc;background:#f5f5f5">
                     <div class="vrt-toolbar">
-                      <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本..." size="small" clearable prefix-icon="Search" style="flex:1" />
-                      <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:90px">
-                        <el-option label="成功" value="success" />
-                        <el-option label="失败" value="error" />
-                        <el-option label="异常" value="exception" />
-                      </el-select>
+                      <span style="font-size:12px;color:#333;white-space:nowrap">查找:</span>
+                      <el-input v-model="sampleSearchQuery" size="small" clearable style="flex:1" @keyup.enter="doVrtSearch" />
+                      <el-checkbox v-model="searchCaseSensitive" size="small">区分大小写</el-checkbox>
+                      <el-checkbox v-model="searchRegex" size="small">正则表达式</el-checkbox>
+                      <el-button size="small" @click="doVrtSearch">查找</el-button>
+                      <el-button size="small" @click="resetVrtSearch">重置</el-button>
                     </div>
-                    <div class="vrt-sample-list" style="max-height:320px;overflow-y:auto">
+                    <div class="vrt-sample-list" style="flex:1;overflow-y:auto">
                       <div v-for="(s, si) in filteredSamples" :key="si"
                         class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
                         <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
@@ -1043,17 +1043,17 @@
                   <div><b>{{ benchResult.tps }}</b><small>TPS</small></div>
                 </div>
                 <!-- 查看结果树 -->
-                <div v-if="benchResult.samples && benchResult.samples.length > 0" class="vrt-container">
-                  <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #e5e7eb;background:#f9fafb">
+                <div v-if="benchResult.samples && benchResult.samples.length > 0" class="vrt-container" style="height:420px">
+                  <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #ccc;background:#f5f5f5">
                     <div class="vrt-toolbar">
-                      <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本..." size="small" clearable prefix-icon="Search" style="flex:1" />
-                      <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:90px">
-                        <el-option label="成功" value="success" />
-                        <el-option label="失败" value="error" />
-                        <el-option label="异常" value="exception" />
-                      </el-select>
+                      <span style="font-size:12px;color:#333;white-space:nowrap">查找:</span>
+                      <el-input v-model="sampleSearchQuery" size="small" clearable style="flex:1" @keyup.enter="doVrtSearch" />
+                      <el-checkbox v-model="searchCaseSensitive" size="small">区分大小写</el-checkbox>
+                      <el-checkbox v-model="searchRegex" size="small">正则表达式</el-checkbox>
+                      <el-button size="small" @click="doVrtSearch">查找</el-button>
+                      <el-button size="small" @click="resetVrtSearch">重置</el-button>
                     </div>
-                    <div class="vrt-sample-list" style="max-height:320px;overflow-y:auto">
+                    <div class="vrt-sample-list" style="flex:1;overflow-y:auto">
                       <div v-for="(s, si) in filteredSamples" :key="si"
                         class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
                         <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
@@ -1228,17 +1228,17 @@
                       🔍 查看结果树
                       <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">共 {{ benchResult.samples.length }} 条样本</span>
                     </h4>
-                    <div class="vrt-container">
-                      <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #e5e7eb;background:#f9fafb">
+                    <div class="vrt-container" style="height:420px">
+                      <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #ccc;background:#f5f5f5">
                         <div class="vrt-toolbar">
-                          <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本..." size="small" clearable prefix-icon="Search" style="flex:1" />
-                          <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:90px">
-                            <el-option label="成功" value="success" />
-                            <el-option label="失败" value="error" />
-                            <el-option label="异常" value="exception" />
-                          </el-select>
+                          <span style="font-size:12px;color:#333;white-space:nowrap">查找:</span>
+                          <el-input v-model="sampleSearchQuery" size="small" clearable style="flex:1" @keyup.enter="doVrtSearch" />
+                          <el-checkbox v-model="searchCaseSensitive" size="small">区分大小写</el-checkbox>
+                          <el-checkbox v-model="searchRegex" size="small">正则表达式</el-checkbox>
+                          <el-button size="small" @click="doVrtSearch">查找</el-button>
+                          <el-button size="small" @click="resetVrtSearch">重置</el-button>
                         </div>
-                        <div class="vrt-sample-list" style="max-height:320px;overflow-y:auto">
+                        <div class="vrt-sample-list" style="flex:1;overflow-y:auto">
                           <div v-for="(s, si) in filteredSamples" :key="si"
                             class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
                             <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
@@ -2086,7 +2086,8 @@ const selectedSampleTab = ref('sampler')
 const selectedRequestTab = ref('rbody')
 const selectedResponseTab = ref('resbody')
 const sampleSearchQuery = ref('')
-const sampleStatusFilter = ref('')
+const searchCaseSensitive = ref(false)
+const searchRegex = ref(false)
 let benchPollTimer = null
 
 const shortUrl = (url) => {
@@ -2103,21 +2104,29 @@ const selectedSample = computed(() => {
   return list[selectedSampleIdx.value]
 })
 
+const doVrtSearch = () => {}
+
+const resetVrtSearch = () => {
+  sampleSearchQuery.value = ''
+}
+
 const filteredSamples = computed(() => {
   if (!benchResult.value?.samples) return []
   let list = benchResult.value.samples
-  if (sampleStatusFilter.value) {
-    if (sampleStatusFilter.value === 'success') list = list.filter(s => s.status >= 200 && s.status < 400)
-    else if (sampleStatusFilter.value === 'error') list = list.filter(s => s.status >= 400 && s.status < 600)
-    else if (sampleStatusFilter.value === 'exception') list = list.filter(s => !s.status || s.status === 0)
-  }
   if (sampleSearchQuery.value) {
-    const q = sampleSearchQuery.value.toLowerCase()
-    list = list.filter(s =>
-      (s.name && s.name.toLowerCase().includes(q)) ||
-      (s.url && s.url.toLowerCase().includes(q)) ||
-      String(s.status).includes(q)
-    )
+    const q = sampleSearchQuery.value
+    if (searchRegex.value) {
+      try { const re = new RegExp(q, searchCaseSensitive.value ? 'g' : 'gi'); list = list.filter(s => re.test(s.name || '') || re.test(s.url || '')) }
+      catch { return list }
+    } else {
+      const target = searchCaseSensitive.value ? q : q.toLowerCase()
+      list = list.filter(s => {
+        const name = s.name || ''
+        const url = s.url || ''
+        const val = searchCaseSensitive.value ? (name + ' ' + url) : (name + ' ' + url).toLowerCase()
+        return val.includes(target)
+      })
+    }
   }
   return list
 })
@@ -2912,7 +2921,7 @@ const findParentSampler = (parent, uid) => {
 .vrt-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #6b7280; font-size: 10px; }
 .vrt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #1f2937; font-size: 11px; font-weight: 500; }
 .vrt-err { color: #dc2626; font-size: 10px; flex-shrink: 0; }
-.vrt-toolbar { display: flex; gap: 8px; padding: 6px 8px; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; align-items: center; flex-shrink: 0; }
+.vrt-toolbar { display: flex; gap: 6px; padding: 6px 8px; background: #e8eaed; border-bottom: 1px solid #ccc; align-items: center; flex-shrink: 0; }
 .vrt-detail-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .vrt-empty-detail { display: none; }
 .vrt-tabs { height: 100%; display: flex; flex-direction: column; }
