@@ -605,8 +605,8 @@ async def _run_bench(task_id: str, config: dict):
                                 "start_time": req_start_iso,
                                 "data_type": "text",
                                 "error": None,
-                                "request_body": (req_body[:5000] if req_body else ""),
-                                "response_body": raw_body[:15000].decode('utf-8', errors='replace') if body_len > 0 else "",
+                                "request_body": (req_body[:10000] if req_body else ""),
+                                "response_body": raw_body[:50000].decode('utf-8', errors='replace') if body_len > 0 else "",
                                 "request_headers": {k: v for k, v in headers.items()},
                                 "response_headers": resp_headers,
                                 "http_fields": {
@@ -621,7 +621,7 @@ async def _run_bench(task_id: str, config: dict):
                                 body_samples.append({
                                     "url": url, "name": name,
                                     "status": resp.status,
-                                    "body": raw_body[:10000].decode('utf-8', errors='replace'),
+                                    "body": raw_body[:30000].decode('utf-8', errors='replace'),
                                     "headers": resp_headers,
                                 })
                     except asyncio.CancelledError:
@@ -646,7 +646,7 @@ async def _run_bench(task_id: str, config: dict):
                             "start_time": req_start_iso if 'req_start_iso' in dir() else "-",
                             "data_type": "text",
                             "error": err_msg,
-                            "request_body": (target.get("body", "") or "")[:5000],
+                            "request_body": (target.get("body", "") or "")[:10000],
                             "response_body": f"[请求失败] {err_msg}",
                             "request_headers": dict(target.get("headers", {}) or {}),
                             "response_headers": {},
@@ -725,7 +725,7 @@ async def _run_bench(task_id: str, config: dict):
                 "max_ms": round(t[-1], 1),
             })
 
-        # 请求详情样本（≈ 查看结果树）：所有失败 + 每个 URL 前 10 个成功
+        # 请求详情样本（≈ 查看结果树）：所有失败 + 每个 URL 前 50 个成功
         seen_url_ok = {}
         samples = []
         for r in results:
@@ -735,7 +735,7 @@ async def _run_bench(task_id: str, config: dict):
             else:
                 u = r["url"]
                 seen_url_ok[u] = seen_url_ok.get(u, 0) + 1
-                if seen_url_ok[u] <= 10:
+                if seen_url_ok[u] <= 50:
                     samples.append(r)
             if len(samples) >= 200:
                 break
