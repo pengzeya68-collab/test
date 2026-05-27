@@ -840,12 +840,17 @@ defineExpose({
 
 <style scoped>
 .case-list-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
   border-radius: 8px;
   border: 1px solid var(--tm-border-light);
 }
 .case-list-card :deep(.el-card__body) {
-  height: calc(100vh - 130px);
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
