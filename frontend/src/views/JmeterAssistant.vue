@@ -387,9 +387,12 @@
               <div class="form-section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                   <label>BeanShell 脚本</label>
-                  <el-button size="small" type="primary" @click="aiGenerateAssert('BeanShell')" :loading="aiGenerating" plain>
-                    🤖 AI 帮写断言
-                  </el-button>
+                  <div style="display:flex;gap:6px">
+                    <el-button size="small" type="warning" @click="aiValidateScript('BeanShell')" :loading="aiValidating" plain>🔍 AI 校验</el-button>
+                    <el-button size="small" type="primary" @click="aiGenerateAssert('BeanShell')" :loading="aiGenerating" plain>
+                      🤖 AI 帮写断言
+                    </el-button>
+                  </div>
                 </div>
                 <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder="// 写你的断言逻辑..." size="small" style="font-family:Consolas,monospace;font-size:12px" />
               </div>
@@ -398,6 +401,20 @@
                 <div class="form-group"><label>参数</label><el-input v-model="selectedNode.props.parameters" placeholder="可选" size="small" /></div>
               </div>
               <div class="form-group"><label>每次重置解释器</label><el-switch v-model="selectedNode.props.resetInterpreter" size="small" /></div>
+              <div class="form-section" v-if="projectVariables.length > 0">
+                <div class="vars-panel">
+                  <div class="vars-panel-title">🔗 项目可用变量（点击插入）</div>
+                  <div class="vars-chips">
+                    <span v-for="v in projectVariables" :key="v.name" class="var-chip" @click="insertVariable(v.name)" :title="v.source">{{ v.name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-section" v-if="aiValidationResult">
+                <div class="ai-validation" :class="aiValidationResult.ok ? 'ai-validation-ok' : 'ai-validation-err'">
+                  <div class="ai-validation-header">{{ aiValidationResult.ok ? '✅ 校验通过' : '⚠️ 发现问题' }}</div>
+                  <div class="ai-validation-body">{{ aiValidationResult.message }}</div>
+                </div>
+              </div>
             </template>
 
             <!-- ===== JSR223 断言 ===== -->
@@ -427,11 +444,28 @@
               <div class="form-section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                   <label>脚本代码</label>
-                  <el-button size="small" type="primary" @click="aiGenerateAssert('JSR223')" :loading="aiGenerating" plain>
-                    🤖 AI 帮写断言
-                  </el-button>
+                  <div style="display:flex;gap:6px">
+                    <el-button size="small" type="warning" @click="aiValidateScript('JSR223')" :loading="aiValidating" plain>🔍 AI 校验</el-button>
+                    <el-button size="small" type="primary" @click="aiGenerateAssert('JSR223')" :loading="aiGenerating" plain>
+                      🤖 AI 帮写断言
+                    </el-button>
+                  </div>
                 </div>
                 <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='// Groovy脚本...' size="small" style="font-family:Consolas,monospace;font-size:12px" />
+              </div>
+              <div class="form-section" v-if="projectVariables.length > 0">
+                <div class="vars-panel">
+                  <div class="vars-panel-title">🔗 项目可用变量（点击插入）</div>
+                  <div class="vars-chips">
+                    <span v-for="v in projectVariables" :key="v.name" class="var-chip" @click="insertVariable(v.name)" :title="v.source">{{ v.name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-section" v-if="aiValidationResult">
+                <div class="ai-validation" :class="aiValidationResult.ok ? 'ai-validation-ok' : 'ai-validation-err'">
+                  <div class="ai-validation-header">{{ aiValidationResult.ok ? '✅ 校验通过' : '⚠️ 发现问题' }}</div>
+                  <div class="ai-validation-body">{{ aiValidationResult.message }}</div>
+                </div>
               </div>
             </template>
 
@@ -543,7 +577,45 @@
             <template v-if="selectedNode.type === 'BeanShellPreProcessor' || selectedNode.type === 'BeanShellPostProcessor'">
               <div class="form-section">
                 <div class="form-group"><label>脚本名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-                <div class="form-group"><label>BeanShell 脚本</label><el-input v-model="selectedNode.props.script" type="textarea" :rows="6" placeholder='long ts = System.currentTimeMillis(); vars.put("ts",String.valueOf(ts));' size="small" /></div>
+              </div>
+              <div class="section-hint assertion-teaching">
+                <div class="teaching-title">📖 BeanShell {{ selectedNode.type === 'BeanShellPreProcessor' ? '前置' : '后置' }}处理器教学</div>
+                <div class="teaching-body">
+                  <p><strong>{{ selectedNode.type === 'BeanShellPreProcessor' ? '前置处理器' : '后置处理器' }}是什么？</strong> {{ selectedNode.type === 'BeanShellPreProcessor' ? '在请求发送前执行，用于修改请求参数、添加签名等' : '在请求返回后执行，用于提取数据、修改变量等' }}</p>
+                  <p><strong>📌 核心变量速查：</strong></p>
+                  <table class="teaching-table">
+                    <tr><td><code>vars</code></td><td>JMeter变量字典，vars.put("k","v") 存 / vars.get("k") 取</td></tr>
+                    <tr><td><code>prev</code></td><td>上一个采样结果（后置可用），prev.getResponseDataAsString()</td></tr>
+                    <tr><td><code>log</code></td><td>日志对象，log.info("xxx") 打印日志</td></tr>
+                    <tr><td><code>ctx</code></td><td>JMeter上下文，ctx.getCurrentSampler() 获取当前采样器</td></tr>
+                    <tr v-if="selectedNode.type === 'BeanShellPostProcessor'"><td><code>ResponseData</code></td><td>响应体字节数组，new String(ResponseData) 转字符串</td></tr>
+                    <tr v-if="selectedNode.type === 'BeanShellPostProcessor'"><td><code>ResponseCode</code></td><td>HTTP状态码，如 "200"</td></tr>
+                  </table>
+                </div>
+              </div>
+              <div class="form-section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <label>BeanShell 脚本</label>
+                  <div style="display:flex;gap:6px">
+                    <el-button size="small" type="warning" @click="aiValidateScript('BeanShell')" :loading="aiValidating" plain>🔍 AI 校验</el-button>
+                    <el-button size="small" type="primary" @click="aiGenerateScript('BeanShellProcessor')" :loading="aiGenerating" plain>🤖 AI 帮写</el-button>
+                  </div>
+                </div>
+                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='long ts = System.currentTimeMillis(); vars.put("ts",String.valueOf(ts));' size="small" style="font-family:Consolas,monospace;font-size:12px" />
+              </div>
+              <div class="form-section" v-if="projectVariables.length > 0">
+                <div class="vars-panel">
+                  <div class="vars-panel-title">🔗 项目可用变量（点击插入）</div>
+                  <div class="vars-chips">
+                    <span v-for="v in projectVariables" :key="v.name" class="var-chip" @click="insertVariable(v.name)" :title="v.source">{{ v.name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-section" v-if="aiValidationResult">
+                <div class="ai-validation" :class="aiValidationResult.ok ? 'ai-validation-ok' : 'ai-validation-err'">
+                  <div class="ai-validation-header">{{ aiValidationResult.ok ? '✅ 校验通过' : '⚠️ 发现问题' }}</div>
+                  <div class="ai-validation-body">{{ aiValidationResult.message }}</div>
+                </div>
               </div>
             </template>
             <template v-if="selectedNode.type === 'JSR223PreProcessor' || selectedNode.type === 'JSR223PostProcessor'">
@@ -551,13 +623,49 @@
                 <div class="form-group"><label>脚本名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-group"><label>脚本语言</label>
                   <el-select v-model="selectedNode.props.language" size="small">
-                    <el-option label="Groovy" value="groovy" />
+                    <el-option label="Groovy（推荐，性能最好）" value="groovy" />
                     <el-option label="JavaScript" value="javascript" />
                     <el-option label="Python (Jython)" value="python" />
                     <el-option label="BeanShell" value="beanshell" />
                   </el-select>
                 </div>
-                <div class="form-group"><label>脚本代码</label><el-input v-model="selectedNode.props.script" type="textarea" :rows="6" placeholder='log.info("Hello JMeter")' size="small" /></div>
+              </div>
+              <div class="section-hint assertion-teaching">
+                <div class="teaching-title">📖 JSR223 {{ selectedNode.type === 'JSR223PreProcessor' ? '前置' : '后置' }}处理器教学</div>
+                <div class="teaching-body">
+                  <p><strong>推荐用 Groovy</strong>，比 BeanShell 快 10 倍。核心变量：</p>
+                  <table class="teaching-table">
+                    <tr><td><code>vars</code></td><td>JMeter变量字典，vars.put("k","v") / vars.get("k")</td></tr>
+                    <tr><td><code>prev</code></td><td>SampleResult，可调用 getResponseDataAsString()、getTime()</td></tr>
+                    <tr><td><code>log</code></td><td>日志对象，log.info("xxx")</td></tr>
+                    <tr><td><code>ctx</code></td><td>JMeter上下文</td></tr>
+                    <tr><td><code>out</code></td><td>System.out，调试用</td></tr>
+                  </table>
+                </div>
+              </div>
+              <div class="form-section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <label>脚本代码</label>
+                  <div style="display:flex;gap:6px">
+                    <el-button size="small" type="warning" @click="aiValidateScript('JSR223')" :loading="aiValidating" plain>🔍 AI 校验</el-button>
+                    <el-button size="small" type="primary" @click="aiGenerateScript('JSR223Processor')" :loading="aiGenerating" plain>🤖 AI 帮写</el-button>
+                  </div>
+                </div>
+                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='def ts = System.currentTimeMillis(); vars.put("ts", ts.toString())' size="small" style="font-family:Consolas,monospace;font-size:12px" />
+              </div>
+              <div class="form-section" v-if="projectVariables.length > 0">
+                <div class="vars-panel">
+                  <div class="vars-panel-title">🔗 项目可用变量（点击插入）</div>
+                  <div class="vars-chips">
+                    <span v-for="v in projectVariables" :key="v.name" class="var-chip" @click="insertVariable(v.name)" :title="v.source">{{ v.name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-section" v-if="aiValidationResult">
+                <div class="ai-validation" :class="aiValidationResult.ok ? 'ai-validation-ok' : 'ai-validation-err'">
+                  <div class="ai-validation-header">{{ aiValidationResult.ok ? '✅ 校验通过' : '⚠️ 发现问题' }}</div>
+                  <div class="ai-validation-body">{{ aiValidationResult.message }}</div>
+                </div>
               </div>
             </template>
             <template v-if="selectedNode.type === 'IfController'">
@@ -672,6 +780,10 @@
           <div class="editor-empty" v-else>
             <el-icon size="36"><EditPen /></el-icon>
             <p>选择左侧树中的元素<br/>开始编辑属性</p>
+            <div class="editor-empty-tips">
+              <div class="empty-tip" @click="addRootElement">➕ 添加线程组</div>
+              <div class="empty-tip" @click="currentStep = 1">📥 导入接口用例</div>
+            </div>
           </div>
         </div>
       </div>
@@ -927,7 +1039,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting, Document } from '@element-plus/icons-vue'
@@ -1582,6 +1694,8 @@ const saveCaseUrl = ref('')
 const saveGroupId = ref(null)
 const savingToCase = ref(false)
 const aiGenerating = ref(false)
+const aiValidating = ref(false)
+const aiValidationResult = ref(null)
 const caseGroups = ref([])
 
 const loadCaseGroups = async () => {
@@ -1631,6 +1745,109 @@ onMounted(() => {
     scriptTree.children.push(tg)
   }
 })
+
+const projectVariables = computed(() => {
+  const vars = []
+  const walk = (node) => {
+    if (node.type === 'JsonExtractor' || node.type === 'RegexExtractor') {
+      if (node.props.varName) vars.push({ name: node.props.varName, source: `${node.name} (${node.type === 'JsonExtractor' ? 'JSON提取' : '正则提取'})` })
+    }
+    if (node.type === 'CSVDataSet' && node.props.variableNames) {
+      node.props.variableNames.split(',').forEach(n => {
+        const trimmed = n.trim()
+        if (trimmed) vars.push({ name: trimmed, source: `${node.name} (CSV数据源)` })
+      })
+    }
+    if (node.type === 'TestPlan' && node.props.variables) {
+      node.props.variables.forEach(v => {
+        if (v.name) vars.push({ name: v.name, source: `测试计划变量` })
+      })
+    }
+    ;(node.children || []).forEach(walk)
+  }
+  walk(scriptTree)
+  return vars
+})
+
+const insertVariable = (varName) => {
+  if (!selectedNode.value?.props?.script && selectedNode.value?.props?.script !== '') return
+  const ref = '${' + varName + '}'
+  const el = document.querySelector('.editor-body textarea')
+  if (el) {
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const script = selectedNode.value.props.script
+    selectedNode.value.props.script = script.substring(0, start) + ref + script.substring(end)
+    nextTick(() => { el.focus(); el.setSelectionRange(start + ref.length, start + ref.length) })
+  } else {
+    selectedNode.value.props.script += ref
+  }
+}
+
+const aiGenerateScript = async (type) => {
+  const parentSampler = findParentSampler(scriptTree, selectedNode.value?.uid)
+  const method = parentSampler?.props?.method || 'GET'
+  const url = parentSampler?.props?.url || ''
+  const body = parentSampler?.props?.body || ''
+  const isPre = selectedNode.value?.type?.includes('Pre')
+  const varContext = projectVariables.value.length > 0 ? `\n\n项目中已有变量：${projectVariables.value.map(v => v.name).join(', ')}，可以在脚本中用 vars.get("变量名") 获取` : ''
+
+  let prompt = ''
+  if (type === 'BeanShellProcessor') {
+    prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个BeanShell${isPre ? '前置' : '后置'}处理器脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}${varContext}\n\n要求：\n1. 写一个完整的BeanShell脚本（Java语法）\n2. ${isPre ? '前置：修改请求参数、添加时间戳/签名等' : '后置：提取响应数据、设置变量等'}\n3. 使用 vars.put() 设置变量供后续使用\n4. 只输出代码，不要解释`
+  } else if (type === 'JSR223Processor') {
+    const lang = selectedNode.value?.props?.language || 'groovy'
+    prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个${lang === 'groovy' ? 'Groovy' : lang}语言的JSR223${isPre ? '前置' : '后置'}处理器脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}${varContext}\n\n要求：\n1. 写一个完整的${lang}脚本\n2. ${isPre ? '前置：修改请求参数、添加签名等' : '后置：提取响应数据、设置变量等'}\n3. 使用 vars.put() 设置变量\n4. 只输出代码，不要解释`
+  }
+
+  aiGenerating.value = true
+  try {
+    const res = await request.post('/ai/chat', { question: prompt })
+    const answer = res.answer || ''
+    const codeMatch = answer.match(/```(?:java|groovy|beanshell|javascript|python)?\n?([\s\S]*?)```/)
+    const code = codeMatch ? codeMatch[1].trim() : answer.trim()
+    selectedNode.value.props.script = code
+    ElMessage.success('🤖 AI 已为你生成脚本，可自行微调')
+  } catch (e) {
+    ElMessage.error('AI 生成失败，请检查 AI 配置或稍后重试')
+  }
+  finally { aiGenerating.value = false }
+}
+
+const aiValidateScript = async (type) => {
+  const script = selectedNode.value?.props?.script
+  if (!script || script.trim().length < 5) {
+    ElMessage.warning('脚本内容太少，请先编写或用 AI 生成后再校验')
+    return
+  }
+  const parentSampler = findParentSampler(scriptTree, selectedNode.value?.uid)
+  const method = parentSampler?.props?.method || 'GET'
+  const url = parentSampler?.props?.url || ''
+  const nodeType = selectedNode.value?.type || ''
+  const varContext = projectVariables.value.length > 0 ? `\n项目中已有变量：${projectVariables.value.map(v => v.name + '(' + v.source + ')').join(', ')}` : ''
+
+  const prompt = `你是一个JMeter脚本专家。请校验以下${type}脚本是否有问题。\n\n节点类型: ${nodeType}\n关联请求: ${method} ${url}${varContext}\n\n脚本内容：\n\`\`\`\n${script}\n\`\`\`\n\n请检查：\n1. 语法是否有错误\n2. 变量引用是否正确（如vars.get/put是否配对）\n3. 是否有常见陷阱（如字符串比较用==而非equals、ResponseData未转字符串等）\n4. 逻辑是否合理\n\n请用JSON格式回复：{"ok": true/false, "message": "校验结果说明"}`
+
+  aiValidating.value = true
+  aiValidationResult.value = null
+  try {
+    const res = await request.post('/ai/chat', { question: prompt })
+    const answer = res.answer || ''
+    try {
+      const jsonStart = answer.indexOf('{')
+      const jsonEnd = answer.lastIndexOf('}') + 1
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        aiValidationResult.value = JSON.parse(answer.substring(jsonStart, jsonEnd))
+      }
+    } catch (e) {
+      aiValidationResult.value = { ok: true, message: answer.trim().substring(0, 200) }
+    }
+    if (!aiValidationResult.value) aiValidationResult.value = { ok: true, message: '校验完成' }
+  } catch (e) {
+    aiValidationResult.value = { ok: false, message: 'AI 校验请求失败，请检查 AI 配置' }
+  }
+  finally { aiValidating.value = false }
+}
 
 const aiGenerateAssert = async (type) => {
   const parentSampler = findParentSampler(scriptTree, selectedNode.value?.uid)
@@ -1719,7 +1936,7 @@ const findParentSampler = (parent, uid) => {
 .guide-panel { padding: 8px 20px; }
 
 /* ===== Step 1 布局 ===== */
-.step1-layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; padding: 18px; height: 100%; }
+.step1-layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; padding: 18px; flex: 1; min-height: 0; overflow: hidden; }
 .step1-left { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
 .step1-templates { overflow: visible; }
 .step1-import-jmx { }
@@ -1813,9 +2030,10 @@ const findParentSampler = (parent, uid) => {
 /* ===== Step 2 布局 ===== */
 .step2-layout {
   display: grid; grid-template-columns: 320px 1fr; gap: 18px;
-  padding: 0 18px 18px; height: calc(100% - 72px); overflow: hidden;
+  padding: 0 18px 18px; flex: 1; min-height: 0; overflow: hidden;
 }
-.tree-panel { display: flex; flex-direction: column; overflow: hidden; }
+.tree-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.editor-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 .tree-body {
   flex: 1; overflow-y: auto; padding: 6px;
   scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.2) transparent;
@@ -1843,16 +2061,19 @@ const findParentSampler = (parent, uid) => {
 .editor-body::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.2); border-radius: 3px; }
 .editor-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 260px; color: #94a3b8; gap: 12px;
+  flex: 1; color: #94a3b8; gap: 12px;
 }
 .editor-empty p { font-size: 13.5px; line-height: 1.6; max-width: 200px; text-align: center; }
 .editor-empty .el-icon { color: #cbd5e1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.06)); }
+.editor-empty-tips { display: flex; gap: 10px; margin-top: 8px; }
+.empty-tip { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15); color: #6366f1; transition: all .2s; }
+.empty-tip:hover { background: rgba(99,102,241,0.12); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(99,102,241,0.1); }
 
 /* ===== 自然语言概要 Banner（Step 2 顶部） ===== */
 .summary-banner {
-  display: flex; align-items: flex-start; gap: 16px;
-  padding: 16px 20px; margin: 0 18px 10px;
-  border-radius: 14px;
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 12px 16px; margin: 0 18px 8px;
+  border-radius: 12px;
   background: linear-gradient(135deg, rgba(99,102,241,0.09) 0%, rgba(139,92,246,0.06) 40%, rgba(168,85,247,0.04) 100%);
   border: 1px solid rgba(99,102,241,0.18);
   box-shadow: 0 4px 16px rgba(99,102,241,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
@@ -1869,12 +2090,12 @@ const findParentSampler = (parent, uid) => {
   box-shadow: none;
 }
 .summary-banner-empty::before { display: none; }
-.summary-banner-icon { font-size: 34px; line-height: 1; flex-shrink: 0; margin-top: 2px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08)); z-index: 1; }
+.summary-banner-icon { font-size: 28px; line-height: 1; flex-shrink: 0; margin-top: 2px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08)); z-index: 1; }
 .summary-banner-body { flex: 1; min-width: 0; z-index: 1; }
-.summary-banner-title { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 5px; }
-.summary-banner-text { font-size: 13.5px; line-height: 1.65; color: #475569; font-weight: 500; }
-.summary-banner-empty .summary-banner-text { font-size: 13px; font-weight: 400; color: #64748b; }
-.summary-banner-stats { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+.summary-banner-title { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 3px; }
+.summary-banner-text { font-size: 12.5px; line-height: 1.55; color: #475569; font-weight: 500; }
+.summary-banner-empty .summary-banner-text { font-size: 12.5px; font-weight: 400; color: #64748b; }
+.summary-banner-stats { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .summary-banner-stats :deep(.el-tag) {
   font-size: 11.5px; padding: 3px 10px; border-radius: 7px;
   font-weight: 600; border: 1px solid rgba(99,102,241,0.15);
@@ -1934,7 +2155,7 @@ const findParentSampler = (parent, uid) => {
 }
 
 /* ===== Step 3 布局：主区域 + 窄侧边栏 ===== */
-.step3-layout { display: grid; grid-template-columns: 1fr 340px; gap: 18px; padding: 18px; height: 100%; overflow: hidden; }
+.step3-layout { display: grid; grid-template-columns: 1fr 340px; gap: 18px; padding: 18px; flex: 1; min-height: 0; overflow: hidden; }
 .step3-main { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .step3-sidebar {
   display: flex; flex-direction: column; overflow: hidden;
@@ -2074,7 +2295,7 @@ const findParentSampler = (parent, uid) => {
 
 .empty-state { text-align: center; padding: 36px; color: #94a3b8; font-size: 13px; line-height: 1.6; }
 
-.step-body { flex: 1; overflow: hidden; }
+.step-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 
 /* ===== Element Plus 覆盖增强 ===== */
 :deep(.el-button--primary) { font-weight: 600; border-radius: 8px; }
@@ -2090,4 +2311,17 @@ const findParentSampler = (parent, uid) => {
 :deep(.el-progress-bar__outer) { border-radius: 6px; }
 :deep(.el-progress-bar__inner) { border-radius: 6px; }
 :deep(.el-tag) { border-radius: 6px; font-weight: 500; }
+
+.vars-panel { padding: 10px 12px; background: linear-gradient(135deg, rgba(16,185,129,0.04), rgba(5,150,105,0.02)); border: 1px solid rgba(16,185,129,0.15); border-radius: 10px; }
+.vars-panel-title { font-size: 12px; font-weight: 700; color: #059669; margin-bottom: 8px; }
+.vars-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.var-chip { display: inline-flex; align-items: center; padding: 3px 10px; background: rgba(255,255,255,0.8); border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; font-size: 11.5px; font-weight: 600; color: #059669; cursor: pointer; transition: all .2s; font-family: 'Consolas','Monaco',monospace; }
+.var-chip:hover { background: rgba(16,185,129,0.1); border-color: #059669; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(16,185,129,0.15); }
+.ai-validation { padding: 12px 14px; border-radius: 10px; margin-top: 4px; }
+.ai-validation-ok { background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(5,150,105,0.03)); border: 1px solid rgba(16,185,129,0.2); }
+.ai-validation-err { background: linear-gradient(135deg, rgba(239,68,68,0.06), rgba(220,38,38,0.03)); border: 1px solid rgba(239,68,68,0.2); }
+.ai-validation-header { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+.ai-validation-ok .ai-validation-header { color: #059669; }
+.ai-validation-err .ai-validation-header { color: #dc2626; }
+.ai-validation-body { font-size: 12px; color: #475569; line-height: 1.7; white-space: pre-wrap; }
 </style>
