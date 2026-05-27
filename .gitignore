@@ -90,3 +90,6 @@ fastapi_backend/autotest_data/logs/
 
 # Keep example data
 !fastapi_backend/autotest_data/.gitkeep
+
+# Local deployment scripts (contain server passwords)
+_ssh_*.py

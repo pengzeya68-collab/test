@@ -210,6 +210,8 @@ const sidebarGroups = computed(() => {
         { name: 'AI导师', path: '/ai-tutor', icon: '🤖' },
         { name: '代码练习室', path: '/code-playground', icon: '💻' },
         { name: '自动化测试', path: '/auto-test', icon: '⚙️' },
+        { name: 'JMeter 助手', path: '/jmeter-assistant', icon: '⚡' },
+        { name: '测试工具导航', path: '/tools', icon: '🧭' },
       ],
     },
     {

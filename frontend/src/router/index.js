@@ -138,6 +138,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/jmeter-assistant',
+    name: 'JmeterAssistant',
+    component: () => import('@/views/JmeterAssistant.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/assessment',
     name: 'OnboardingAssessment',
     component: () => import('@/views/OnboardingAssessment.vue'),

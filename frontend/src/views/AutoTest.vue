@@ -43,6 +43,15 @@
             <span class="step-num">4</span>
             <span class="step-label">批量执行</span>
           </div>
+          <div class="guide-arrow">→</div>
+          <div
+            class="guide-step"
+            :class="{ active: guideStep >= 5, done: guideStep > 5 }"
+            @click="goToGuideStep(5)"
+          >
+            <span class="step-num">5</span>
+            <span class="step-label">JMeter压测</span>
+          </div>
         </div>
         <el-button text @click="dismissGuide" class="guide-close">✕</el-button>
       </div>
@@ -104,6 +113,14 @@
           <el-icon><Coin /></el-icon>
           <span>测试数据工厂</span>
         </div>
+        <div
+          class="tab-item jmeter-tab"
+          :class="{ 'active': activeTab === 'jmeter' }"
+          @click="activeTab = 'jmeter'; handleTabChange('jmeter')"
+        >
+          <el-icon><Connection /></el-icon>
+          <span>JMeter 助手 <el-tag size="small" type="danger" class="new-tag">新</el-tag></span>
+        </div>
       </div>
     </div>
 
@@ -146,6 +163,10 @@
       <DataFactory />
     </div>
 
+    <div v-if="activeTab === 'jmeter' || visitedTabs.has('jmeter')" v-show="activeTab === 'jmeter'" class="tab-content">
+      <JmeterAssistant :environment-list="environmentList" />
+    </div>
+
     <ExecutionResultDialog
       v-model="resultDialogVisible"
       :result="runResult"
@@ -157,13 +178,14 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Document, FolderOpened, Position, DataAnalysis, Coin } from '@element-plus/icons-vue'
+import { Document, FolderOpened, Position, DataAnalysis, Coin, Connection } from '@element-plus/icons-vue'
 import ScenarioList from './ScenarioList.vue'
 import ScenarioEditor from './ScenarioEditor.vue'
 import GlobalVariableManager from '../components/GlobalVariableManager.vue'
 import DataFactory from './DataFactory.vue'
 import ApiDebugger from './ApiDebugger.vue'
 import InterfaceLibrary from './InterfaceLibrary.vue'
+import JmeterAssistant from './JmeterAssistant.vue'
 import ExecutionResultDialog from './ExecutionResultDialog.vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 
@@ -332,8 +354,14 @@ const guideTips = {
   4: {
     title: '第四步：批量执行',
     desc: '创建好场景后，可以一键批量执行所有测试用例，生成测试报告。还可以设置定时任务，让测试自动运行。',
-    actionLabel: '完成引导',
-    action: () => { dismissGuide() },
+    actionLabel: '去场景管理',
+    action: () => { activeTab.value = 'scenarios' },
+  },
+  5: {
+    title: '第五步：JMeter 压测助手',
+    desc: '用可视化 IDE 生成 JMeter 脚本！支持线程组配置、断言、提取器、CSV数据驱动、JDBC等。不会写 JMX？让助手帮你自动生成，还可以从接口库一键导入~',
+    actionLabel: '打开助手',
+    action: () => { activeTab.value = 'jmeter' },
   },
 }
 
@@ -347,7 +375,7 @@ const initGuide = () => {
 }
 
 const nextGuideStep = () => {
-  if (guideStep.value < 4) {
+  if (guideStep.value < 5) {
     guideStep.value++
     const tip = guideTips[guideStep.value]
     if (tip?.action) {
@@ -614,6 +642,8 @@ watch(
   border-radius: 2px;
   box-shadow: 0 0 10px var(--tm-color-primary);
 }
+
+.new-tag { margin-left: 2px; vertical-align: super; font-size: 10px; transform: scale(0.85); }
 
 .tab-group :deep(.el-radio-button__inner) {
   display: flex;

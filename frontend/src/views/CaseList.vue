@@ -106,8 +106,12 @@
                   <span><el-button type="warning" link :icon="Timer" @click="handleShowHistory(row)" /></span>
                 </el-tooltip>
 
-                <el-tooltip content="导出到 JMeter" placement="top" popper-class="action-tooltip">
+                <el-tooltip content="导出到 JMeter (.jmx)" placement="top" popper-class="action-tooltip">
                   <span><el-button type="warning" link :icon="Download" @click="handleExportSingleCase(row)" /></span>
+                </el-tooltip>
+
+                <el-tooltip content="打开 JMeter IDE" placement="top" popper-class="action-tooltip">
+                  <span><el-button type="success" link :icon="Connection" @click="openJmeterIde" /></span>
                 </el-tooltip>
 
                 <el-tooltip content="删除用例" placement="top" popper-class="action-tooltip">
@@ -324,7 +328,8 @@ import {
   ArrowDown,
   UploadFilled,
   Download,
-  Timer
+  Timer,
+  Connection
 } from '@element-plus/icons-vue'
 import CaseEditorDrawer from './CaseEditorDrawer.vue'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
@@ -701,6 +706,10 @@ const exportCasesToJMeter = async (caseIds = null) => {
 }
 
 // 导出单个用例到 JMeter
+const openJmeterIde = () => {
+  window.open('/auto-test?tab=jmeter', '_blank')
+}
+
 const handleExportSingleCase = async (row) => {
   jmeterExporting.value = true
   try {
