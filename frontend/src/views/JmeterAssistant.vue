@@ -135,14 +135,14 @@
 
       <div class="step2-layout">
         <!-- 压测控制面板 -->
-      <div class="bench-control-panel">
-        <div class="bcp-top">
-          <div class="bcp-info">
+      <div class="bench-control-panel" :class="{ expanded: benchPanelExpanded }">
+        <div class="bcp-header" @click="benchPanelExpanded = !benchPanelExpanded">
+          <div class="bcp-header-left">
             <span class="bcp-plan-name">{{ scriptTree.name }}</span>
             <el-tag size="small" type="info">{{ totalSamplers }} 请求 · {{ totalNodes }} 元素</el-tag>
             <el-tag v-if="totalThreads" size="small" effect="plain">👥 {{ totalThreads }} 线程</el-tag>
           </div>
-          <div class="bcp-config">
+          <div class="bcp-header-center">
             <div class="bcp-config-item">
               <label>并发数</label>
               <el-input-number v-model="benchConcurrency" :min="1" :max="200" size="small" controls-position="right" style="width:90px" />
@@ -156,28 +156,31 @@
               <el-input-number v-model="benchRampUp" :min="0" :max="60" size="small" controls-position="right" style="width:90px" />
             </div>
           </div>
-          <div class="bcp-actions">
-            <el-button v-if="!benching" type="danger" @click="startBench" size="default" class="bcp-start-btn">
+          <div class="bcp-header-right">
+            <el-button v-if="!benching" type="danger" @click.stop="startBench" size="default" class="bcp-start-btn">
               ⚡ 启动压测（{{ benchConcurrency }}并发 × {{ benchDuration }}秒）
             </el-button>
             <template v-else>
-              <el-button :icon="VideoPause" @click="pauseRun" size="default" type="warning" :disabled="runStatus !== 'running'">⏸ 暂停</el-button>
-              <el-button :icon="VideoPlay" @click="resumeRun" size="default" type="success" :disabled="runStatus !== 'paused'">▶ 恢复</el-button>
-              <el-button :icon="SwitchButton" @click="stopBench" size="default" type="danger">⏹ 停止</el-button>
+              <el-button :icon="VideoPause" @click.stop="pauseRun" size="default" type="warning" :disabled="runStatus !== 'running'">⏸ 暂停</el-button>
+              <el-button :icon="VideoPlay" @click.stop="resumeRun" size="default" type="success" :disabled="runStatus !== 'paused'">▶ 恢复</el-button>
+              <el-button :icon="SwitchButton" @click.stop="stopBench" size="default" type="danger">⏹ 停止</el-button>
             </template>
-            <el-button size="default" @click="showBenchHistory = !showBenchHistory">
+            <el-button size="default" @click.stop="showBenchHistory = !showBenchHistory">
               📋 历史{{ benchHistory.length > 0 ? '(' + benchHistory.length + ')' : '' }}
             </el-button>
+            <el-icon class="bcp-toggle-icon" :class="{ rotate: benchPanelExpanded }"><ArrowDown /></el-icon>
           </div>
         </div>
+
+        <!-- 展开内容 -->
+        <div class="bcp-body" v-show="benchPanelExpanded">
 
         <!-- 接口列表 -->
          <div class="bcp-requests" v-if="allSamplers.length > 0">
            <span class="bcp-requests-label">压测接口：</span>
-           <el-tag v-for="(s, si) in allSamplers.slice(0, 8)" :key="si" size="small" effect="plain" type="info" class="bcp-req-tag" :title="s.url">
+           <el-tag v-for="(s, si) in allSamplers" :key="si" size="small" effect="plain" type="info" class="bcp-req-tag" :title="s.url">
              <b>{{ s.method }}</b> {{ s.name }}
            </el-tag>
-           <span v-if="allSamplers.length > 8" style="font-size:11px;color:#94a3b8">+{{ allSamplers.length - 8 }} 更多</span>
          </div>
 
         <!-- 进度条 -->
@@ -209,6 +212,7 @@
             <el-button link size="small" @click="aiAnalysisText = ''">✕</el-button>
           </div>
           <div class="bcp-ai-content">{{ aiAnalysisText }}</div>
+        </div>
         </div>
       </div>
 
@@ -2183,6 +2187,7 @@ const showBenchHistory = ref(false)
 const benchHistory = ref(JSON.parse(localStorage.getItem('benchHistory') || '[]'))
 const analyzing = ref(false)
 const aiAnalysisText = ref('')
+const benchPanelExpanded = ref(false)
 const treeWidth = ref(280)
 const rightPanelWidth = ref(380)
 const rightPanelVisible = ref(true)
@@ -2853,41 +2858,56 @@ const findParentSampler = (parent, uid) => {
 /* 压测控制面板 */
 .bench-control-panel {
   background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin: 8px 12px; flex-shrink: 0;
-  overflow: hidden;
+  overflow: hidden; transition: all 0.3s ease;
 }
-.bcp-top {
+.bench-control-panel.expanded {
+  height: 50vh; display: flex; flex-direction: column;
+}
+.bcp-header {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 10px 14px; flex-wrap: wrap;
+  padding: 10px 14px; flex-wrap: wrap; cursor: pointer; user-select: none;
+  transition: background 0.15s;
 }
-.bcp-info {
+.bcp-header:hover { background: #f1f5f9; }
+.bcp-header-left {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;
 }
-.bcp-plan-name { color: #1e293b; font-weight: 700; font-size: 14px; }
-.bcp-config {
+.bcp-header-center {
   display: flex; gap: 12px; align-items: center;
 }
+.bcp-header-right {
+  display: flex; gap: 6px; align-items: center; flex-shrink: 0;
+}
+.bcp-toggle-icon {
+  font-size: 16px; color: #94a3b8; transition: transform 0.3s ease; flex-shrink: 0;
+}
+.bcp-toggle-icon.rotate { transform: rotate(180deg); }
+.bcp-plan-name { color: #1e293b; font-weight: 700; font-size: 14px; }
 .bcp-config-item {
   display: flex; align-items: center; gap: 4px;
 }
 .bcp-config-item label { font-size: 11px; color: #64748b; white-space: nowrap; }
-.bcp-actions {
-  display: flex; gap: 6px; align-items: center; flex-shrink: 0;
-}
 .bcp-start-btn { font-weight: 700 !important; font-size: 14px !important; }
+
+/* 展开内容 */
+.bcp-body {
+  flex: 1; overflow-y: auto; min-height: 0;
+  display: flex; flex-direction: column;
+}
 .bcp-requests {
-  display: flex; align-items: center; gap: 6px; padding: 6px 14px 8px;
-  flex-wrap: wrap; border-top: 1px solid #e2e8f0; background: #f8fafc;
+  display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+  flex-wrap: wrap; border-top: 1px solid #e2e8f0; background: #f8fafc; flex-shrink: 0;
 }
 .bcp-requests-label { font-size: 11px; color: #64748b; white-space: nowrap; }
-.bcp-req-tag { cursor: default; font-size: 11px !important; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bcp-req-tag { cursor: default; font-size: 11px !important; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bcp-progress {
-  padding: 6px 14px; display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
 }
 .bcp-progress :deep(.el-progress) { flex: 1; }
 .bcp-progress-text { font-size: 11px; color: #64748b; white-space: nowrap; }
 .bcp-quick-stats {
-  display: flex; align-items: center; gap: 8px; padding: 6px 14px; flex-wrap: wrap;
-  border-top: 1px solid #e2e8f0; background: #fff;
+  display: flex; align-items: center; gap: 8px; padding: 8px 14px; flex-wrap: wrap;
+  border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
 }
 .bcp-stat {
   text-align: center; padding: 2px 8px; border-radius: 4px; background: #f1f5f9;
@@ -2898,6 +2918,7 @@ const findParentSampler = (parent, uid) => {
 .bcp-stat-lbl { font-size: 10px; color: #94a3b8; }
 .bcp-ai-analysis {
   padding: 10px 14px; border-top: 1px solid #e2e8f0; background: linear-gradient(135deg, #f0f9ff, #ecfeff);
+  flex: 1; overflow-y: auto; min-height: 0;
 }
 .bcp-ai-header {
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
@@ -2905,7 +2926,6 @@ const findParentSampler = (parent, uid) => {
 }
 .bcp-ai-content {
   font-size: 12px; line-height: 1.7; color: #334155; white-space: pre-wrap;
-  max-height: 400px; overflow-y: auto;
 }
 
 /* 历史记录面板 */
