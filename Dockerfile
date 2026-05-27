@@ -8,11 +8,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# 安装系统依赖
+# 安装系统依赖 (含 Java JRE + Allure CLI 用于生成 Allure 报告)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     curl \
+    wget \
+    default-jre-headless \
+    && wget -q https://github.com/allure-framework/allure2/releases/download/2.32.0/allure-2.32.0.tgz -O /tmp/allure.tgz \
+    && tar -xzf /tmp/allure.tgz -C /opt/ \
+    && ln -s /opt/allure-2.32.0/bin/allure /usr/local/bin/allure \
+    && rm /tmp/allure.tgz \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制并安装 Python 依赖

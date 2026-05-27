@@ -43,16 +43,24 @@
 
     <div class="result-content" v-else-if="runResult">
       <div class="result-header-stats">
-        <el-tag :type="(runResult.failed_count || runResult.failed_steps || 0) > 0 ? 'danger' : 'success'" size="large">
-          {{ (runResult.failed_count || runResult.failed_steps || 0) > 0 ? '❌ 有步骤失败' : '✅ 全部通过' }}
-        </el-tag>
-        <span style="margin-left: 15px; color: var(--tm-text-regular);">
-          总步骤: {{ runResult.total_steps || 0 }} |
-          成功: <span style="color: #67c23a">{{ runResult.success_count || runResult.success_steps || 0 }}</span> |
-          失败: <span style="color: #f56c6c">{{ runResult.failed_count || runResult.failed_steps || 0 }}</span> |
-          跳过: <span style="color: var(--tm-text-secondary)">{{ runResult.skipped_count || runResult.skipped_steps || 0 }}</span> |
-          总耗时: {{ formatTotalTime(runResult.total_time) }}
-        </span>
+        <div class="stats-row">
+          <el-tag :type="(runResult.failed_count || runResult.failed_steps || 0) > 0 ? 'danger' : 'success'" size="large">
+            {{ (runResult.failed_count || runResult.failed_steps || 0) > 0 ? '❌ 有步骤失败' : '✅ 全部通过' }}
+          </el-tag>
+          <span style="margin-left: 15px; color: var(--tm-text-regular);">
+            总步骤: {{ runResult.total_steps || 0 }} |
+            成功: <span style="color: #67c23a">{{ runResult.success_count || runResult.success_steps || 0 }}</span> |
+            失败: <span style="color: #f56c6c">{{ runResult.failed_count || runResult.failed_steps || 0 }}</span> |
+            跳过: <span style="color: var(--tm-text-secondary)">{{ runResult.skipped_count || runResult.skipped_steps || 0 }}</span> |
+            总耗时: {{ formatTotalTime(runResult.total_time) }}
+          </span>
+          <div class="header-actions">
+            <el-button type="primary" size="small" @click="openAllureReport" v-if="runResult.report_url">
+              📊 查看 Allure 详细报告
+            </el-button>
+            <el-button size="small" @click="dialogVisible = false">关闭</el-button>
+          </div>
+        </div>
       </div>
 
       <el-divider />
@@ -191,7 +199,7 @@
         >
           📊 查看 Allure 详细报告
         </el-button>
-        <el-button @click="dialogVisible = false">关闭</el-button>
+        <el-button type="danger" @click="dialogVisible = false">关闭弹窗</el-button>
       </span>
     </template>
   </el-dialog>
@@ -453,8 +461,10 @@ defineExpose({ startExecution })
 </script>
 
 <style scoped>
-.result-content { max-height: 70vh; overflow: auto; }
-.result-header-stats { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.result-content { max-height: 55vh; overflow: auto; }
+.result-header-stats { position: sticky; top: 0; z-index: 10; background: var(--tm-bg-card); padding: 12px 0 4px; }
+.stats-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.header-actions { display: flex; gap: 8px; margin-left: auto; }
 .step-results { display: flex; flex-direction: column; gap: 12px; }
 .step-result-card { border: 1px solid var(--tm-border-light); border-radius: var(--tm-radius-base); padding: 16px; background: var(--tm-bg-card); transition: all 0.3s; }
 .step-result-card.is-failed { border-color: rgba(245,108,108,0.4); background: rgba(245,108,108,0.02); }
@@ -465,7 +475,7 @@ defineExpose({ startExecution })
 .step-skipped-hint { color: var(--tm-text-secondary); font-size: 12px; font-style: italic; margin-left: 8px; }
 .toggle-icon { margin-left: auto; transition: transform 0.3s; }
 .toggle-icon.is-expanded { transform: rotate(90deg); }
-.step-order { width: 24px; height: 24px; border-radius: 50%; background: var(--tm-color-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+.step-order { width: 24px; height: 24px; border-radius: 50%; background: var(--tm-color-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
 .step-name { font-weight: 500; flex: 1; color: var(--tm-text-primary); }
 .step-detail { margin-top: 16px; padding-left: 36px; border-top: 1px solid var(--tm-border-light); padding-top: 16px; }
 .detail-url { font-family: 'Monaco','Menlo','Ubuntu Mono',monospace; font-size: 12px; color: var(--tm-text-regular); word-break: break-all; background: var(--tm-bg-page); padding: 8px 12px; border-radius: var(--tm-radius-small); margin-bottom: 12px; }
