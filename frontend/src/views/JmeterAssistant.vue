@@ -2091,8 +2091,10 @@ const shortUrl = (url) => {
 }
 
 const selectedSample = computed(() => {
-  if (selectedSampleIdx.value < 0 || !benchResult.value?.samples) return null
-  return benchResult.value.samples[selectedSampleIdx.value] || null
+  if (selectedSampleIdx.value < 0) return null
+  const list = filteredSamples.value
+  if (selectedSampleIdx.value >= list.length) return null
+  return list[selectedSampleIdx.value]
 })
 
 const filteredSamples = computed(() => {
