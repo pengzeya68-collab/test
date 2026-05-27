@@ -545,7 +545,7 @@ async def _run_bench(task_id: str, config: dict):
     _sample_seq = [0]
 
     async def worker(worker_id: int):
-        timeout_obj = aiohttp.ClientTimeout(total=30)
+        timeout_obj = aiohttp.ClientTimeout(total=8, connect=3)
         async with aiohttp.ClientSession(timeout=timeout_obj) as session:
             while True:
                 if time.time() - start_time > duration:
