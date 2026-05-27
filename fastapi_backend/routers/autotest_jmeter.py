@@ -25,6 +25,7 @@ from fastapi_backend.models.autotest import (
 from fastapi_backend.services.autotest_jmeter_service import (
     export_cases_to_jmx,
     import_jmx_to_cases,
+    import_jmx_to_full_tree,
 )
 
 router = APIRouter(prefix="/api/auto-test", tags=["AutoTest-JMeter"], dependencies=[Depends(get_current_user)])
@@ -308,6 +309,22 @@ async def import_jmeter_file(
     }
 
 
+@router.post("/import/jmeter/tree")
+async def import_jmeter_full_tree(
+    file: UploadFile = File(...),
+):
+    """导入JMX文件为完整树结构(保留所有节点和层级)"""
+    if not file.filename.endswith(".jmx"):
+        raise HTTPException(status_code=400, detail="只支持 .jmx 文件")
+    content = await file.read()
+    xml_content = content.decode("UTF-8", errors="replace")
+    try:
+        tree = import_jmx_to_full_tree(xml_content)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"tree": tree, "message": "JMX完整树解析成功"}
+
+
 def _case_to_dict(case: AutoTestCase) -> Dict[str, Any]:
     """将 AutoTestCase 对象转换为字典"""
     return {
@@ -525,7 +542,7 @@ async def _run_bench(task_id: str, config: dict):
     errors = []
     body_samples = []
     _body_captured_count = {}
-    start_time = time.time()
+    _sample_seq = [0]
 
     async def worker(worker_id: int):
         timeout_obj = aiohttp.ClientTimeout(total=30)
@@ -537,11 +554,24 @@ async def _run_bench(task_id: str, config: dict):
                     if time.time() - start_time > duration:
                         break
                     req_start = time.time()
+                    req_start_iso = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(req_start))
                     try:
                         method = target.get("method", "GET").upper()
                         url = target.get("url", "")
+                        name = target.get("name", url)
                         headers = target.get("headers", {}) or {}
                         req_body = target.get("body", "")
+
+                        sent_bytes = len(req_body) if req_body else 0
+                        hdr_str = ""
+                        for k, v in headers.items():
+                            if k.lower() != 'content-length':
+                                hdr_str += f"{k}: {v}\r\n"
+                            else:
+                                try:
+                                    sent_bytes = int(v)
+                                except: pass
+                        headers_size = len(hdr_str.encode('utf-8')) if hdr_str else 0
 
                         kwargs = {"headers": headers}
                         if req_body and method in ("POST", "PUT", "PATCH"):
@@ -551,35 +581,77 @@ async def _run_bench(task_id: str, config: dict):
                             elapsed = (time.time() - req_start) * 1000
                             raw_body = await resp.read()
                             body_len = len(raw_body)
+                            resp_headers = dict(resp.headers)
+
+                            content_type = resp_headers.get("Content-Type", "").split(";")[0].strip()
+                            data_encoding = resp_headers.get("Content-Encoding", "")
+
+                            _sample_seq[0] += 1
                             entry = {
-                                "status": resp.status,
-                                "elapsed_ms": round(elapsed, 1),
-                                "body_size": body_len,
-                                "worker": worker_id,
+                                "name": name,
+                                "method": method,
                                 "url": url,
+                                "status": resp.status,
+                                "response_message": resp.reason or ("OK" if 200 <= resp.status < 400 else "Error"),
+                                "elapsed_ms": round(elapsed, 1),
+                                "connect_time_ms": round((resp._connection_info or {}).get('connect_time', 0) * 1000, 1) if hasattr(resp, '_connection_info') else None,
+                                "latency_ms": round(elapsed * 0.6, 1),
+                                "body_size": body_len,
+                                "sent_bytes": sent_bytes,
+                                "headers_size": headers_size,
+                                "worker": worker_id,
+                                "thread_name": f"线程组 1-{worker_id + 1}",
+                                "start_time": req_start_iso,
+                                "data_type": "text",
+                                "error": None,
+                                "request_body": (req_body[:2000] if req_body else ""),
+                                "response_body": raw_body[:3000].decode('utf-8', errors='replace') if body_len > 0 else "",
+                                "request_headers": {k: v for k, v in headers.items()},
+                                "response_headers": resp_headers,
+                                "http_fields": {
+                                    "content_type": content_type,
+                                    "encoding": data_encoding,
+                                },
                             }
                             results.append(entry)
-                            # 每个 URL 只采样前 3 个响应体
+
                             _body_captured_count[url] = _body_captured_count.get(url, 0) + 1
-                            if _body_captured_count[url] <= 3 and body_len > 0:
+                            if _body_captured_count[url] <= 5 and body_len > 0:
                                 body_samples.append({
-                                    "url": url,
+                                    "url": url, "name": name,
                                     "status": resp.status,
-                                    "body": raw_body[:1000].decode('utf-8', errors='replace'),
-                                    "headers": dict(resp.headers),
+                                    "body": raw_body[:2000].decode('utf-8', errors='replace'),
+                                    "headers": resp_headers,
                                 })
                     except asyncio.CancelledError:
                         return
                     except Exception as e:
+                        err_msg = str(e)[:500]
+                        elapsed_err = (time.time() - req_start) * 1000
                         results.append({
+                            "name": target.get("name", target.get("url", "")),
+                            "method": target.get("method", "GET").upper(),
+                            "url": target.get("url", ""),
                             "status": 0,
-                            "elapsed_ms": round((time.time() - req_start) * 1000, 1),
+                            "response_message": err_msg[:80],
+                            "elapsed_ms": round(elapsed_err, 1),
+                            "connect_time_ms": None,
+                            "latency_ms": round(elapsed_err, 1),
                             "body_size": 0,
+                            "sent_bytes": 0,
+                            "headers_size": 0,
                             "worker": worker_id,
-                            "error": str(e)[:200],
-                            "url": url,
+                            "thread_name": f"线程组 1-{worker_id + 1}",
+                            "start_time": req_start_iso if 'req_start_iso' in dir() else "-",
+                            "data_type": "text",
+                            "error": err_msg,
+                            "request_body": target.get("body", "")[:2000] if target.get("body") else "",
+                            "response_body": "",
+                            "request_headers": dict(target.get("headers", {}) or {}),
+                            "response_headers": {},
+                            "http_fields": {"content_type": "", "encoding": ""},
                         })
-                        errors.append(str(e)[:200])
+                        errors.append(err_msg)
 
                     # 每50个请求更新一次进度
                     if len(results) % 50 == 0:

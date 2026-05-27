@@ -134,15 +134,39 @@
       </div>
 
       <div class="step2-layout">
-        <div class="panel tree-panel">
-          <div class="panel-title">
-            <span>📋 脚本结构</span>
-            <div class="tree-toolbar">
-              <el-tag size="small" type="info">{{ totalSamplers }} 请求 / {{ totalNodes }} 元素</el-tag>
-              <el-button link size="small" @click="expandAllNodes">📂 展开</el-button>
-              <el-button link size="small" @click="collapseAllNodes">📁 折叠</el-button>
-            </div>
+        <!-- 运行控制栏 -->
+        <div class="run-toolbar">
+          <div class="run-toolbar-left">
+            <span class="run-plan-name">{{ scriptTree.name }}</span>
+            <el-tag size="small" type="info" style="margin-left:8px">{{ totalSamplers }} 请求 · {{ totalNodes }} 元素</el-tag>
           </div>
+          <div class="run-toolbar-center">
+            <el-button v-if="runStatus === 'idle'" type="primary" :icon="VideoPlay" @click="startBench" size="small">▶ 启动</el-button>
+            <template v-else>
+              <el-button :icon="VideoPause" @click="pauseRun" size="small" :type="runStatus === 'running' ? 'warning' : 'info'" :disabled="runStatus !== 'running'">⏸ 暂停</el-button>
+              <el-button :icon="VideoPlay" @click="resumeRun" size="small" type="success" :disabled="runStatus !== 'paused'">▶ 恢复</el-button>
+              <el-button :icon="SwitchButton" @click="stopBench" size="small" type="danger">⏹ 停止</el-button>
+            </template>
+          </div>
+          <div class="run-toolbar-right">
+            <el-button link size="small" @click="rightPanelVisible = !rightPanelVisible" style="font-size:12px">
+              {{ rightPanelVisible ? '◀ 隐藏结果面板' : '显示结果面板 ▶' }}
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 三栏可拖拽布局 -->
+        <div class="split-layout" :class="{ 'no-right': !rightPanelVisible }">
+          <!-- 左：树 -->
+          <div class="panel tree-panel" :style="{ width: treeWidth + 'px', minWidth: treeWidth + 'px' }">
+            <div class="panel-title">
+              <span>📋 脚本结构</span>
+              <div class="tree-toolbar">
+                <el-tag size="small" type="info">{{ totalSamplers }} / {{ totalNodes }}</el-tag>
+                <el-button link size="small" @click="expandAllNodes">📂 展开</el-button>
+                <el-button link size="small" @click="collapseAllNodes">📁 折叠</el-button>
+              </div>
+            </div>
           <div class="tree-search-bar">
             <el-input v-model="treeSearchQuery" placeholder="🔍 搜索节点名称..." size="small" clearable prefix-icon="Search" />
           </div>
@@ -171,8 +195,10 @@
             </div>
           </div>
         </div>
+        <div class="drag-handle drag-handle-tree" @mousedown="onDragStart('tree', $event)" :class="{ active: draggingCol === 'tree' }"></div>
 
-        <div class="panel editor-panel">
+        <!-- 中：编辑器 -->
+        <div class="panel editor-panel" style="flex:1;min-width:0">
           <div class="panel-title">
             <span>✏️ {{ selectedNode ? selectedNode.name : '元素编辑器' }}</span>
             <el-tag v-if="selectedNode" size="small">{{ NODE_TYPES[selectedNode.type]?.label || selectedNode.type }}</el-tag>
@@ -781,8 +807,93 @@
                 </div>
               </div>
             </template>
-            <template v-if="selectedNode.type === 'ViewResultsTree' || selectedNode.type === 'SummaryReport' || selectedNode.type === 'AggregateGraph' || selectedNode.type === 'AggregateReport' || selectedNode.type === 'ResponseTimeGraph'">
-              <div class="form-section"><div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div></div>
+            <template v-if="selectedNode.type === 'ViewResultsTree'">
+              <div class="form-section">
+                <div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+              </div>
+              <div v-if="benchResult && benchResult.samples && benchResult.samples.length > 0" class="form-section vrt-inline-section">
+                <div class="section-hint" style="margin-bottom:8px"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的结果数据</div>
+                <div class="vrt-container" style="min-height:280px">
+                  <div class="vrt-toolbar">
+                    <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本 (名称/URL/状态码)..." size="small" clearable prefix-icon="Search" style="flex:1" />
+                    <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:100px">
+                      <el-option label="成功 (2xx/3xx)" value="success" />
+                      <el-option label="失败 (4xx/5xx)" value="error" />
+                      <el-option label="异常 (0/ERR)" value="exception" />
+                    </el-select>
+                  </div>
+                  <div class="vrt-sample-list" style="max-height:220px;overflow-y:auto">
+                    <div v-for="(s, si) in filteredSamples" :key="si"
+                      class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
+                      <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
+                      <span class="vrt-time">{{ s.elapsed_ms }}ms</span>
+                      <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
+                      <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
+                    </div>
+                    <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                  </div>
+                  <div v-if="selectedSample" class="vrt-detail-panel">
+                    <el-tabs v-model="selectedSampleTab" size="small" class="vrt-tabs">
+                      <el-tab-pane label="采样器结果" name="sampler">
+                        <table class="vrt-table">
+                          <tr><td class="vrt-label">Thread Name</td><td>{{ selectedSample.thread_name || '线程组 1-' + (selectedSampleIdx + 1) }}</td></tr>
+                          <tr><td class="vrt-label">Sample Start</td><td>{{ selectedSample.start_time || '-' }}</td></tr>
+                          <tr><td class="vrt-label">Load time</td><td><b>{{ selectedSample.elapsed_ms || 0 }}</b> ms</td></tr>
+                          <tr><td class="vrt-label">Connect Time</td><td>{{ selectedSample.connect_time_ms ?? '-' }} ms</td></tr>
+                          <tr><td class="vrt-label">Latency</td><td>{{ (selectedSample.latency_ms ?? selectedSample.elapsed_ms) }} ms</td></tr>
+                          <tr><td class="vrt-label">Size in bytes</td><td>{{ selectedSample.body_size || 0 }}</td></tr>
+                          <tr><td class="vrt-label">Sent bytes</td><td>{{ selectedSample.sent_bytes || 0 }}</td></tr>
+                          <tr><td class="vrt-label">Headers size in bytes</td><td>{{ selectedSample.headers_size || 0 }}</td></tr>
+                          <tr><td class="vrt-label">Error Count</td><td :style="{ color: selectedSample.error ? 'var(--el-color-danger)' : 'var(--el-color-success)' }">{{ selectedSample.error ? '1' : '0' }}</td></tr>
+                          <tr><td class="vrt-label">Data type</td><td>{{ selectedSample.data_type || 'text' }}</td></tr>
+                          <tr><td class="vrt-label">Response code</td><td><el-tag :type="selectedSample.status >= 200 && selectedSample.status < 400 ? 'success' : 'danger'" size="small">{{ selectedSample.status || 'ERR' }}</el-tag></td></tr>
+                          <tr><td class="vrt-label">Response message</td><td>{{ selectedSample.response_message || (selectedSample.status >= 200 && selectedSample.status < 400 ? 'OK' : 'Error') }}</td></tr>
+                        </table>
+                      </el-tab-pane>
+                      <el-tab-pane label="请求" name="request">
+                        <div v-if="selectedSample.method || selectedSample.url" class="vrt-http-line">
+                          <code>{{ selectedSample.method || '?' }} {{ selectedSample.url || '' }}</code>
+                        </div>
+                        <el-tabs v-model="selectedRequestTab" size="small" class="vrt-inner-tabs">
+                          <el-tab-pane label="Request Body" name="rbody">
+                            <pre class="vrt-code">{{ selectedSample.request_body || '(无请求体)' }}</pre>
+                          </el-tab-pane>
+                          <el-tab-pane label="Request Headers" name="rheaders">
+                            <pre class="vrt-code"><template v-if="selectedSample.request_headers">{{ formatHeaders(selectedSample.request_headers) }}</template><template v-else>(无请求头信息)</template></pre>
+                          </el-tab-pane>
+                        </el-tabs>
+                      </el-tab-pane>
+                      <el-tab-pane label="响应数据" name="response">
+                        <el-tabs v-model="selectedResponseTab" size="small" class="vrt-inner-tabs">
+                          <el-tab-pane label="Response Body" name="resbody">
+                            <pre class="vrt-code" :class="{ 'vrt-error-body': selectedSample.error }">{{ selectedSample.response_body || selectedSample.error || '(空响应)' }}</pre>
+                          </el-tab-pane>
+                          <el-tab-pane label="Response Headers" name="resheaders">
+                            <pre class="vrt-code"><template v-if="selectedSample.response_headers">{{ formatHeaders(selectedSample.response_headers) }}</template><template v-else>(无响应头信息)</template></pre>
+                          </el-tab-pane>
+                        </el-tabs>
+                      </el-tab-pane>
+                    </el-tabs>
+                  </div>
+                  <div v-else class="vrt-empty-detail">👆 点击上方样本查看详情</div>
+                </div>
+              </div>
+              <div v-else class="form-section">
+                <div class="empty-state" style="padding:24px 0">尚未运行测试<br/><small style="color:#94a3b8">点击上方「启动」运行测试后，结果将在此处显示</small></div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'SummaryReport' || selectedNode.type === 'AggregateGraph' || selectedNode.type === 'AggregateReport' || selectedNode.type === 'ResponseTimeGraph'">
+              <div class="form-section">
+                <div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div v-if="benchResult && benchResult.per_url && benchResult.per_url.length > 0" style="margin-top:12px">
+                  <div class="section-hint" style="margin-bottom:8px"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的聚合数据</div>
+                  <table class="per-url-table" style="width:100%;font-size:12px;border-collapse:collapse">
+                    <thead><tr style="background:#f1f5f9"><th style="padding:4px 8px;text-align:left">URL</th><th style="padding:4px 8px">次数</th><th style="padding:4px 8px">成功</th><th style="padding:4px 8px">失败</th><th style="padding:4px 8px">平均(ms)</th><th style="padding:4px 8px">P95(ms)</th></tr></thead>
+                    <tbody><tr v-for="pu in benchResult.per_url" :key="pu.url" style="border-bottom:1px solid #e2e8f0"><td style="padding:4px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ pu.url }}</td><td style="padding:4px 8px;text-align:center">{{ pu.count }}</td><td style="padding:4px 8px;text-align:center;color:#10b981">{{ pu.success }}</td><td style="padding:4px 8px;text-align:center" :style="{ color: pu.failed > 0 ? '#ef4444' : '#10b981' }">{{ pu.failed }}</td><td style="padding:4px 8px;text-align:center">{{ pu.avg_ms }}</td><td style="padding:4px 8px;text-align:center">{{ pu.p95_ms }}</td></tr></tbody>
+                  </table>
+                </div>
+                <div v-else class="empty-state" style="padding:24px 0">尚未运行测试<br/><small style="color:#94a3b8">运行测试后，聚合数据将在此处显示</small></div>
+              </div>
             </template>
 
             <template v-if="selectedNode.type === 'InfluxDBBackendListener'">
@@ -907,8 +1018,100 @@
             </div>
           </div>
         </div>
+        <div v-if="rightPanelVisible" class="drag-handle drag-handle-right" @mousedown="onDragStart('right', $event)" :class="{ active: draggingCol === 'right' }"></div>
+
+        <!-- 右：结果面板 -->
+        <div v-if="rightPanelVisible" class="panel result-panel" :style="{ width: rightPanelWidth + 'px', minWidth: rightPanelWidth + 'px' }">
+          <div class="panel-title"><span>📊 运行结果</span></div>
+          <div class="result-body">
+            <template v-if="!benchResult && !benching && !benchProgress">
+              <div class="empty-state">点击上方「启动」运行测试<br/>结果将在此处显示</div>
+            </template>
+            <template v-else>
+              <div v-if="benching || benchProgress" class="bench-progress-inline">
+                <el-progress :percentage="benchPercent" :stroke-width="8" :status="benchPercent >= 100 ? 'success' : ''" />
+                <span>{{ benchProgress }}</span>
+              </div>
+              <div v-if="benchResult" class="bench-result-mini">
+                <div class="mini-stats">
+                  <div><b>{{ benchResult.total }}</b><small>总计</small></div>
+                  <div class="text-success"><b>{{ benchResult.success }}</b><small>成功</small></div>
+                  <div :class="benchResult.failed > 0 ? 'text-danger' : ''"><b>{{ benchResult.failed }}</b><small>失败</small></div>
+                  <div><b>{{ benchResult.avg_ms }}ms</b><small>平均</small></div>
+                  <div><b>{{ benchResult.tps }}</b><small>TPS</small></div>
+                </div>
+                <!-- 查看结果树 -->
+                <div v-if="benchResult.samples && benchResult.samples.length > 0" class="vrt-container" style="min-height:280px">
+                  <div class="vrt-toolbar">
+                    <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本 (名称/URL/状态码)..." size="small" clearable prefix-icon="Search" style="flex:1" />
+                    <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:100px">
+                      <el-option label="成功 (2xx/3xx)" value="success" />
+                      <el-option label="失败 (4xx/5xx)" value="error" />
+                      <el-option label="异常 (0/ERR)" value="exception" />
+                    </el-select>
+                  </div>
+                  <div class="vrt-sample-list" style="max-height:220px;overflow-y:auto">
+                    <div v-for="(s, si) in filteredSamples" :key="si"
+                      class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
+                      <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
+                      <span class="vrt-time">{{ s.elapsed_ms }}ms</span>
+                      <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
+                      <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
+                    </div>
+                    <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                  </div>
+                  <div v-if="selectedSample" class="vrt-detail-panel">
+                    <el-tabs v-model="selectedSampleTab" size="small" class="vrt-tabs">
+                      <el-tab-pane label="采样器结果" name="sampler">
+                        <table class="vrt-table">
+                          <tr><td class="vrt-label">Thread Name</td><td>{{ selectedSample.thread_name || '线程组 1-' + (selectedSampleIdx + 1) }}</td></tr>
+                          <tr><td class="vrt-label">Sample Start</td><td>{{ selectedSample.start_time || '-' }}</td></tr>
+                          <tr><td class="vrt-label">Load time</td><td><b>{{ selectedSample.elapsed_ms || 0 }}</b> ms</td></tr>
+                          <tr><td class="vrt-label">Connect Time</td><td>{{ selectedSample.connect_time_ms ?? '-' }} ms</td></tr>
+                          <tr><td class="vrt-label">Latency</td><td>{{ (selectedSample.latency_ms ?? selectedSample.elapsed_ms) }} ms</td></tr>
+                          <tr><td class="vrt-label">Size in bytes</td><td>{{ selectedSample.body_size || 0 }}</td></tr>
+                          <tr><td class="vrt-label">Sent bytes</td><td>{{ selectedSample.sent_bytes || 0 }}</td></tr>
+                          <tr><td class="vrt-label">Headers size in bytes</td><td>{{ selectedSample.headers_size || 0 }}</td></tr>
+                          <tr><td class="vrt-label">Error Count</td><td :style="{ color: selectedSample.error ? 'var(--el-color-danger)' : 'var(--el-color-success)' }">{{ selectedSample.error ? '1' : '0' }}</td></tr>
+                          <tr><td class="vrt-label">Data type</td><td>{{ selectedSample.data_type || 'text' }}</td></tr>
+                          <tr><td class="vrt-label">Response code</td><td><el-tag :type="selectedSample.status >= 200 && selectedSample.status < 400 ? 'success' : 'danger'" size="small">{{ selectedSample.status || 'ERR' }}</el-tag></td></tr>
+                          <tr><td class="vrt-label">Response message</td><td>{{ selectedSample.response_message || (selectedSample.status >= 200 && selectedSample.status < 400 ? 'OK' : 'Error') }}</td></tr>
+                        </table>
+                      </el-tab-pane>
+                      <el-tab-pane label="请求" name="request">
+                        <div v-if="selectedSample.method || selectedSample.url" class="vrt-http-line">
+                          <code>{{ selectedSample.method || '?' }} {{ selectedSample.url || '' }}</code>
+                        </div>
+                        <el-tabs v-model="selectedRequestTab" size="small" class="vrt-inner-tabs">
+                          <el-tab-pane label="Request Body" name="rbody">
+                            <pre class="vrt-code">{{ selectedSample.request_body || '(无请求体)' }}</pre>
+                          </el-tab-pane>
+                          <el-tab-pane label="Request Headers" name="rheaders">
+                            <pre class="vrt-code"><template v-if="selectedSample.request_headers">{{ formatHeaders(selectedSample.request_headers) }}</template><template v-else>(无请求头信息)</template></pre>
+                          </el-tab-pane>
+                        </el-tabs>
+                      </el-tab-pane>
+                      <el-tab-pane label="响应数据" name="response">
+                        <el-tabs v-model="selectedResponseTab" size="small" class="vrt-inner-tabs">
+                          <el-tab-pane label="Response Body" name="resbody">
+                            <pre class="vrt-code" :class="{ 'vrt-error-body': selectedSample.error }">{{ selectedSample.response_body || selectedSample.error || '(空响应)' }}</pre>
+                          </el-tab-pane>
+                          <el-tab-pane label="Response Headers" name="resheaders">
+                            <pre class="vrt-code"><template v-if="selectedSample.response_headers">{{ formatHeaders(selectedSample.response_headers) }}</template><template v-else>(无响应头信息)</template></pre>
+                          </el-tab-pane>
+                        </el-tabs>
+                      </el-tab-pane>
+                    </el-tabs>
+                  </div>
+                  <div v-else class="vrt-empty-detail">👆 点击上方样本查看详情</div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
       </div>
     </div>
+  </div>
 
     <!-- ==================== Step 3: 验证 & 导出 ==================== -->
     <div v-show="currentStep === 3" class="step-body">
@@ -1015,28 +1218,86 @@
                     </div>
                   </div>
 
-                  <!-- ===== 请求详情列表（查看结果树）直接展开 ===== -->
+                  <!-- ===== 请求详情（查看结果树）三标签页 ===== -->
                   <div v-if="benchResult.samples && benchResult.samples.length > 0" class="bench-data-block">
                     <h4 class="bench-section-title" style="display:flex;justify-content:space-between;align-items:center">
-                      🔍 请求详情（查看结果树）
-                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">共 {{ benchResult.samples.length }} 条样本，点击展开查看详情</span>
+                      🔍 查看结果树
+                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">共 {{ benchResult.samples.length }} 条样本</span>
                     </h4>
-                    <div class="sample-list" style="max-height:320px;overflow-y:auto">
-                      <div v-for="(s, si) in benchResult.samples" :key="si" class="sample-item" @click="toggleSample(si)">
-                        <div class="sample-summary">
+                    <div class="vrt-container">
+                      <div class="vrt-toolbar">
+                        <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本 (名称/URL/状态码)..." size="small" clearable prefix-icon="Search" style="flex:1" />
+                        <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:100px">
+                          <el-option label="成功 (2xx/3xx)" value="success" />
+                          <el-option label="失败 (4xx/5xx)" value="error" />
+                          <el-option label="异常 (0/ERR)" value="exception" />
+                        </el-select>
+                      </div>
+                      <div class="vrt-sample-list" style="max-height:280px;overflow-y:auto">
+                        <div v-for="(s, si) in filteredSamples" :key="si"
+                          class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
                           <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
-                          <span class="sample-time">{{ s.elapsed_ms }}ms</span>
-                          <span class="sample-url" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.method ? s.method + ' ' : '' }}{{ shortUrl(s.url) }}</span>
-                          <span v-if="s.error" class="sample-err" :title="s.error">⚠ {{ s.error.substring(0,50) }}</span>
+                          <span class="vrt-time">{{ s.elapsed_ms }}ms</span>
+                          <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
+                          <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
                         </div>
-                        <div v-if="expandedSamples[si]" class="sample-detail">
-                          <div class="sample-detail-row"><span class="sample-detail-label">完整 URL：</span>{{ s.url }}</div>
-                          <div class="sample-detail-row"><span class="sample-detail-label">HTTP 方法：</span>{{ s.method || '-' }}</div>
-                          <div class="sample-detail-row"><span class="sample-detail-label">状态码：</span><el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : 'danger'" size="small">{{ s.status || 'ERR' }}</el-tag></div>
-                          <div class="sample-detail-row"><span class="sample-detail-label">耗时：</span>{{ s.elapsed_ms }}ms</div>
-                          <div class="sample-detail-row"><span class="sample-detail-label">响应大小：</span>{{ s.body_size || 0 }}B</div>
-                          <div v-if="s.error" class="sample-detail-row"><span class="sample-detail-label">错误信息：</span><span style="color:var(--el-color-danger)">{{ s.error }}</span></div>
-                        </div>
+                        <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                      </div>
+                      <div v-if="selectedSample" class="vrt-detail-panel">
+                        <el-tabs v-model="selectedSampleTab" size="small" class="vrt-tabs">
+                          <!-- 采样器结果 -->
+                          <el-tab-pane label="采样器结果" name="sampler">
+                            <table class="vrt-table">
+                              <tr><td class="vrt-label">Thread Name</td><td>{{ selectedSample.thread_name || '线程组 1-' + (selectedSampleIdx + 1) }}</td></tr>
+                              <tr><td class="vrt-label">Sample Start</td><td>{{ selectedSample.start_time || '-' }}</td></tr>
+                              <tr><td class="vrt-label">Load time</td><td><b>{{ selectedSample.elapsed_ms || 0 }}</b> ms</td></tr>
+                              <tr><td class="vrt-label">Connect Time</td><td>{{ selectedSample.connect_time_ms ?? '-' }} ms</td></tr>
+                              <tr><td class="vrt-label">Latency</td><td>{{ (selectedSample.latency_ms ?? selectedSample.elapsed_ms) }} ms</td></tr>
+                              <tr><td class="vrt-label">Size in bytes</td><td>{{ selectedSample.body_size || 0 }}</td></tr>
+                              <tr><td class="vrt-label">Sent bytes</td><td>{{ selectedSample.sent_bytes || 0 }}</td></tr>
+                              <tr><td class="vrt-label">Headers size in bytes</td><td>{{ selectedSample.headers_size || 0 }}</td></tr>
+                              <tr><td class="vrt-label">Body size in bytes</td><td>{{ selectedSample.body_size || 0 }}</td></tr>
+                              <tr><td class="vrt-label">Sample Count</td><td>1</td></tr>
+                              <tr><td class="vrt-label">Error Count</td><td :style="{ color: selectedSample.error ? 'var(--el-color-danger)' : 'var(--el-color-success)' }">{{ selectedSample.error ? '1' : '0' }}</td></tr>
+                              <tr><td class="vrt-label">Data type</td><td>{{ selectedSample.data_type || 'text' }}</td></tr>
+                              <tr><td class="vrt-label">Response code</td><td><el-tag :type="selectedSample.status >= 200 && selectedSample.status < 400 ? 'success' : 'danger'" size="small">{{ selectedSample.status || 'ERR' }}</el-tag></td></tr>
+                              <tr><td class="vrt-label">Response message</td><td>{{ selectedSample.response_message || (selectedSample.status >= 200 && selectedSample.status < 400 ? 'OK' : 'Error') }}</td></tr>
+                              <template v-if="selectedSample.http_fields">
+                                <tr class="vrt-subheader"><td colspan="2"><b>HTTPSamplerResult fields:</b></td></tr>
+                                <tr><td class="vrt-label indent1">ContentType</td><td>{{ selectedSample.http_fields.content_type || '-' }}</td></tr>
+                                <tr><td class="vrt-label indent1">DataEncoding</td><td>{{ selectedSample.http_fields.encoding || 'null' }}</td></tr>
+                              </template>
+                            </table>
+                          </el-tab-pane>
+                          <!-- 请求 -->
+                          <el-tab-pane label="请求" name="request">
+                            <el-tabs v-model="selectedRequestTab" size="small" class="vrt-inner-tabs">
+                              <el-tab-pane label="Request Body" name="rbody">
+                                <pre class="vrt-code">{{ selectedSample.request_body || '(无请求体)' }}</pre>
+                              </el-tab-pane>
+                              <el-tab-pane label="Request Headers" name="rheaders">
+                                <pre class="vrt-code"><template v-if="selectedSample.request_headers">{{ formatHeaders(selectedSample.request_headers) }}</template><template v-else>(无请求头信息)</template></pre>
+                              </el-tab-pane>
+                            </el-tabs>
+                            <div v-if="selectedSample.method" class="vrt-http-line">
+                              <code>{{ selectedSample.method }} {{ selectedSample.url }}</code>
+                            </div>
+                          </el-tab-pane>
+                          <!-- 响应数据 -->
+                          <el-tab-pane label="响应数据" name="response">
+                            <el-tabs v-model="selectedResponseTab" size="small" class="vrt-inner-tabs">
+                              <el-tab-pane label="Response Body" name="resbody">
+                                <pre class="vrt-code" :class="{ 'vrt-error-body': selectedSample.error }">{{ selectedSample.response_body || selectedSample.error || '(空响应)' }}</pre>
+                              </el-tab-pane>
+                              <el-tab-pane label="Response headers" name="resheaders">
+                                <pre class="vrt-code"><template v-if="selectedSample.response_headers">{{ formatHeaders(selectedSample.response_headers) }}</template><template v-else>(无响应头信息)</template></pre>
+                              </el-tab-pane>
+                            </el-tabs>
+                          </el-tab-pane>
+                        </el-tabs>
+                      </div>
+                      <div v-else class="vrt-empty-detail">
+                        👆 点击上方样本查看详情
                       </div>
                     </div>
                   </div>
@@ -1068,27 +1329,51 @@
             <el-tab-pane label="🐛 单请求调试" name="debug">
               <div class="debug-body">
                 <div class="section-hint"><el-icon><InfoFilled /></el-icon> 在「配置参数」步骤选中一个 HTTP 请求点击「调试」，在此查看请求/响应详情</div>
-                <div v-if="debugResult" class="debug-content">
-                  <div class="debug-meta">
-                    <el-tag :type="debugResult.response?.status_code === 200 ? 'success' : 'danger'" size="small">
-                      {{ debugResult.response?.status_code || 'ERR' }}
-                    </el-tag>
-                    <span class="debug-elapsed">{{ debugResult.response?.elapsed_ms || 0 }}ms</span>
-                    <span class="debug-size">{{ (debugResult.response?.body_size || 0) }}B</span>
-                  </div>
-                  <el-collapse>
-                    <el-collapse-item title="响应体" name="body">
-                      <pre class="debug-json">{{ formatBody(debugResult.response?.body) }}</pre>
-                    </el-collapse-item>
-                    <el-collapse-item title="响应头" name="headers">
-                      <pre class="debug-json">{{ formatHeaders(debugResult.response?.headers) }}</pre>
-                    </el-collapse-item>
-                    <el-collapse-item title="请求详情" name="request">
-                      <pre class="debug-json">{{ formatBody(debugResult.request) }}</pre>
-                    </el-collapse-item>
-                  </el-collapse>
-                  <div v-if="debugResult.response?.error" class="debug-error">
-                    <el-alert :title="debugResult.response.error" type="error" show-icon />
+                <div v-if="debugResult" class="vrt-container" style="min-height: 400px;">
+                  <div class="vrt-detail-panel">
+                    <el-tabs v-model="debugTab" size="small" class="vrt-tabs">
+                      <el-tab-pane label="采样器结果" name="dsampler">
+                        <table class="vrt-table">
+                          <tr><td class="vrt-label">Thread Name</td><td>Debug-1</td></tr>
+                          <tr><td class="vrt-label">Sample Start</td><td>{{ new Date().toLocaleString() }}</td></tr>
+                          <tr><td class="vrt-label">Load time</td><td><b>{{ debugResult.response?.elapsed_ms || 0 }}</b> ms</td></tr>
+                          <tr><td class="vrt-label">Connect Time</td><td>{{ debugResult.response?.connect_time_ms ?? '-' }} ms</td></tr>
+                          <tr><td class="vrt-label">Latency</td><td>{{ (debugResult.response?.latency_ms ?? debugResult.response?.elapsed_ms) }} ms</td></tr>
+                          <tr><td class="vrt-label">Size in bytes</td><td>{{ debugResult.response?.body_size || 0 }}</td></tr>
+                          <tr><td class="vrt-label">Sent bytes</td><td>{{ debugResult.request?.body_size || (debugResult.request?.body ? new Blob([JSON.stringify(debugResult.request.body)]).size : 0) }}</td></tr>
+                          <tr><td class="vrt-label">Headers size in bytes</td><td>-</td></tr>
+                          <tr><td class="vrt-label">Body size in bytes</td><td>{{ debugResult.response?.body_size || 0 }}</td></tr>
+                          <tr><td class="vrt-label">Sample Count</td><td>1</td></tr>
+                          <tr><td class="vrt-label">Error Count</td><td :style="{ color: debugResult.response?.error ? 'var(--el-color-danger)' : 'var(--el-color-success)' }">{{ debugResult.response?.error ? '1' : '0' }}</td></tr>
+                          <tr><td class="vrt-label">Data type</td><td>text</td></tr>
+                          <tr><td class="vrt-label">Response code</td><td><el-tag :type="debugResult.response?.status_code === 200 ? 'success' : 'danger'" size="small">{{ debugResult.response?.status_code || 'ERR' }}</el-tag></td></tr>
+                          <tr><td class="vrt-label">Response message</td><td>{{ debugResult.response?.status_code === 200 ? 'OK' : 'Error' }}</td></tr>
+                        </table>
+                      </el-tab-pane>
+                      <el-tab-pane label="请求" name="drequest">
+                        <el-tabs v-model="debugReqTab" size="small" class="vrt-inner-tabs">
+                          <el-tab-pane label="Request Body" name="drbody">
+                            <pre class="vrt-code">{{ formatBody(debugResult.request?.body) || '(无请求体)' }}</pre>
+                          </el-tab-pane>
+                          <el-tab-pane label="Request Headers" name="drheaders">
+                            <pre class="vrt-code">{{ formatHeaders(debugResult.request?.headers) || '(无请求头信息)' }}</pre>
+                          </el-tab-pane>
+                        </el-tabs>
+                        <div v-if="debugResult.request?.url || debugResult.request?.method" class="vrt-http-line">
+                          <code>{{ debugResult.request?.method || '?' }} {{ debugResult.request?.url || '' }}</code>
+                        </div>
+                      </el-tab-pane>
+                      <el-tab-pane label="响应数据" name="dresponse">
+                        <el-tabs v-model="debugResTab" size="small" class="vrt-inner-tabs">
+                          <el-tab-pane label="Response Body" name="drsbody">
+                            <pre class="vrt-code" :class="{ 'vrt-error-body': debugResult.response?.error }">{{ formatBody(debugResult.response?.body) || debugResult.response?.error || '(空响应)' }}</pre>
+                          </el-tab-pane>
+                          <el-tab-pane label="Response headers" name="drsheaders">
+                            <pre class="vrt-code">{{ formatHeaders(debugResult.response?.headers) || '(无响应头信息)' }}</pre>
+                          </el-tab-pane>
+                        </el-tabs>
+                      </el-tab-pane>
+                    </el-tabs>
                   </div>
                 </div>
                 <div v-else class="empty-hint">
@@ -1163,7 +1448,7 @@
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting, Document } from '@element-plus/icons-vue'
+import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, VideoPause, SwitchButton, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting, Document } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import request from '@/utils/request'
 import JmeterTreeNode from '@/components/JmeterTreeNode.vue'
@@ -1219,6 +1504,22 @@ const NODE_TYPES = {
   SwitchController: { label: 'Switch 控制器', icon: '🔀', parent: 'ThreadGroup' },
   RandomController: { label: '随机控制器', icon: '🎲', parent: 'ThreadGroup' },
   InterleaveController: { label: '交替控制器', icon: '🔃', parent: 'ThreadGroup' },
+  JSONPathAssertion: { label: 'JSON Path 断言', icon: '📋', parent: 'HttpSampler' },
+  BoundaryExtractor: { label: '边界提取器', icon: '📐', parent: 'HttpSampler' },
+  CSSSelectorExtractor: { label: 'CSS 选择器提取器', icon: '🎨', parent: 'HttpSampler' },
+  XPathExtractor: { label: 'XPath 提取器', icon: '🗂️', parent: 'HttpSampler' },
+  HttpHeaderManager: { label: 'HTTP 信息头管理器', icon: '📨', parent: 'ThreadGroup' },
+  HTTPCookieManager: { label: 'HTTP Cookie 管理器', icon: '🍪', parent: 'ThreadGroup' },
+  HttpCacheManager: { label: 'HTTP 缓存管理器', icon: '💾', parent: 'ThreadGroup' },
+  HttpAuthManager: { label: 'HTTP 授权管理器', icon: '🔐', parent: 'ThreadGroup' },
+  CsvDataSource: { label: 'CSV 数据文件', icon: '📄', parent: 'ThreadGroup' },
+  RandomVariableConfig: { label: '随机变量', icon: '🎲', parent: 'ThreadGroup' },
+  ModuleController: { label: '模块控制器', icon: '🧩', parent: 'ThreadGroup' },
+  RunTimeController: { label: '运行时间控制器', icon: '⏱️', parent: 'ThreadGroup' },
+  Summariser: { label: '汇总器', icon: '📊', parent: 'TestPlan' },
+  ConstantThroughputTimer: { label: '常数吞吐量定时器', icon: '📈', parent: 'HttpSampler' },
+  SynchronizingTimer: { label: '同步定时器', icon: '🔄', parent: 'HttpSampler' },
+  PoissonRandomTimer: { label: '泊松随机定时器', icon: '📊', parent: 'HttpSampler' },
 }
 
 // ===== 工具函数 =====
@@ -1273,6 +1574,21 @@ const defaultProps = {
   SwitchController: { switchValue: '' },
   RandomController: {},
   InterleaveController: {},
+  JSONPathAssertion: { jsonPath: '$', expected: '', jsonValidation: true, expectNull: false, invert: false },
+  BoundaryExtractor: { referenceName: '', leftBoundary: '', rightBoundary: '', matchNumber: '1', defaultValue: '' },
+  CSSSelectorExtractor: { referenceName: '', cssSelector: '', attribute: '', matchNumber: '1', defaultValue: '' },
+  XPathExtractor: { referenceName: '', xpathQuery: '', matchNumber: '1', defaultValue: '' },
+  HttpHeaderManager: { headers: [{ key: 'Content-Type', value: 'application/json' }] },
+  HttpCacheManager: { clearEachIteration: false, useCacheControlHeaders: true },
+  HttpAuthManager: { authList: [] },
+  CsvDataSource: { filePath: '', variableNames: '', delimiter: ',', shareMode: 'allThreads', recycle: true, stopThread: false, ignoreFirstLine: true },
+  RandomVariableConfig: { variableName: '', minValue: '', maxValue: '', perThread: false },
+  ModuleController: {},
+  RunTimeController: { seconds: 60 },
+  Summariser: {},
+  ConstantThroughputTimer: { throughput: '60.0' },
+  SynchronizingTimer: { virtualUsers: 0, timeout: 0 },
+  PoissonRandomTimer: { delay: '0', range: '100' },
 }
 
 const createElement = (type, overrides = {}) => {
@@ -1671,23 +1987,41 @@ const confirmImportJmx = async () => {
   try {
     const form = new FormData()
     form.append('file', jmxImportFile.value)
-    const res = await autoTestRequest.post('/auto-test/import/jmeter', form, { headers: { 'Content-Type': 'multipart/form-data' } })
-    const cases = res.cases || []
-    if (cases.length === 0) { ElMessage.warning('未解析出接口'); return }
-    let tg = scriptTree.children.find(c => c.type === 'ThreadGroup')
-    if (!tg) { tg = createElement('ThreadGroup'); scriptTree.children.push(tg) }
-    for (const c of cases) {
-      const sampler = createElement('HttpSampler')
-      sampler.name = c.name
-      sampler.props.method = c.method
-      sampler.props.url = c.url
-      tg.children.push(sampler)
+    const res = await autoTestRequest.post('/auto-test/import/jmeter/tree', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    const importedTree = res.tree
+    if (!importedTree || !importedTree.children || importedTree.children.length === 0) { ElMessage.warning('未解析出节点'); return }
+    const convertNode = (n) => {
+      const node = createElement(n.type, { name: n.name, props: n.props || {} })
+      node.enabled = n.enabled !== false
+      if (n.children && n.children.length > 0) {
+        for (const child of n.children) {
+          node.children.push(convertNode(child))
+        }
+      }
+      return node
     }
-    ElMessage.success(`成功导入 ${cases.length} 个接口`)
+    scriptTree.name = importedTree.name || 'TestMaster 性能测试'
+    if (importedTree.props) {
+      Object.assign(scriptTree.props, importedTree.props)
+    }
+    scriptTree.children.splice(0, scriptTree.children.length)
+    for (const child of importedTree.children) {
+      scriptTree.children.push(convertNode(child))
+    }
+    selectedUid.value = null
+    ElMessage.success(`成功导入完整脚本树（含 ${countAllNodes(importedTree)} 个节点）`)
     showImportJmxDialog.value = false
     currentStep.value = 2
   } catch (e) { ElMessage.error('导入失败: ' + (e.response?.data?.detail || e.message)) }
   finally { jmxImporting.value = false; jmxImportFile.value = null }
+}
+
+const countAllNodes = (node, depth = 0) => {
+  let count = 1
+  if (node.children) {
+    for (const c of node.children) count += countAllNodes(c, depth + 1)
+  }
+  return count
 }
 
 // ===== JMX 生成 + 下载 =====
@@ -1733,7 +2067,20 @@ const benchProgress = ref('')
 const benchPercent = ref(0)
 const benchTaskId = ref(null)
 const benching = ref(false)
-const expandedSamples = ref({})
+const runStatus = ref('idle')
+const treeWidth = ref(280)
+const rightPanelWidth = ref(380)
+const rightPanelVisible = ref(true)
+const draggingCol = ref(null)
+const dragStartX = ref(0)
+const dragStartW = ref(0)
+
+const selectedSampleIdx = ref(-1)
+const selectedSampleTab = ref('sampler')
+const selectedRequestTab = ref('rbody')
+const selectedResponseTab = ref('resbody')
+const sampleSearchQuery = ref('')
+const sampleStatusFilter = ref('')
 let benchPollTimer = null
 
 const shortUrl = (url) => {
@@ -1743,8 +2090,57 @@ const shortUrl = (url) => {
   } catch { return url.length > 50 ? url.substring(0, 50) + '...' : url }
 }
 
-const toggleSample = (idx) => {
-  expandedSamples.value[idx] = !expandedSamples.value[idx]
+const selectedSample = computed(() => {
+  if (selectedSampleIdx.value < 0 || !benchResult.value?.samples) return null
+  return benchResult.value.samples[selectedSampleIdx.value] || null
+})
+
+const filteredSamples = computed(() => {
+  if (!benchResult.value?.samples) return []
+  let list = benchResult.value.samples
+  if (sampleStatusFilter.value) {
+    if (sampleStatusFilter.value === 'success') list = list.filter(s => s.status >= 200 && s.status < 400)
+    else if (sampleStatusFilter.value === 'error') list = list.filter(s => s.status >= 400 && s.status < 600)
+    else if (sampleStatusFilter.value === 'exception') list = list.filter(s => !s.status || s.status === 0)
+  }
+  if (sampleSearchQuery.value) {
+    const q = sampleSearchQuery.value.toLowerCase()
+    list = list.filter(s =>
+      (s.name && s.name.toLowerCase().includes(q)) ||
+      (s.url && s.url.toLowerCase().includes(q)) ||
+      String(s.status).includes(q)
+    )
+  }
+  return list
+})
+
+const onDragStart = (col, e) => {
+  draggingCol.value = col
+  dragStartX.value = e.clientX
+  if (col === 'tree') dragStartW.value = treeWidth.value
+  else dragStartW.value = rightPanelWidth.value
+  document.addEventListener('mousemove', onDragMove)
+  document.addEventListener('mouseup', onDragEnd)
+  e.preventDefault()
+}
+const onDragMove = (e) => {
+  if (!draggingCol.value) return
+  const delta = e.clientX - dragStartX.value
+  if (draggingCol.value === 'tree') {
+    treeWidth.value = Math.max(180, Math.min(window.innerWidth * 0.55, dragStartW.value + delta))
+  } else {
+    rightPanelWidth.value = Math.max(280, Math.min(window.innerWidth * 0.5, dragStartW.value - delta))
+  }
+}
+const onDragEnd = () => {
+  draggingCol.value = null
+  document.removeEventListener('mousemove', onDragMove)
+  document.removeEventListener('mouseup', onDragEnd)
+}
+
+const selectSample = (idx) => {
+  selectedSampleIdx.value = idx
+  selectedSampleTab.value = 'sampler'
 }
 
 const startBench = async () => {
@@ -1754,6 +2150,7 @@ const startBench = async () => {
       const headers = {}
       ;(node.props.headers || []).forEach(h => { if (h.key) headers[h.key] = h.value })
       samplers.push({
+        name: node.name,
         method: node.props.method || 'GET',
         url: node.props.url,
         headers,
@@ -1766,15 +2163,16 @@ const startBench = async () => {
   
   if (samplers.length === 0) { ElMessage.warning('脚本中没有 HTTP 请求'); return }
   
-  // 清理旧轮询
   if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
   
+  rightPanelVisible.value = true
   benching.value = true
+  runStatus.value = 'running'
   benchResult.value = null
   benchProgress.value = '提交任务...'
   benchPercent.value = 0
   benchTaskId.value = null
-  expandedSamples.value = {}
+  selectedSampleIdx.value = -1
   rightTab3.value = 'bench'
   
   try {
@@ -1806,6 +2204,17 @@ const pollBench = async () => {
       if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
       benchResult.value = res.result
       benching.value = false
+      runStatus.value = 'idle'
+      const findVRT = (node) => {
+        if (node.type === 'ViewResultsTree') return node
+        for (const c of node.children || []) {
+          const found = findVRT(c)
+          if (found) return found
+        }
+        return null
+      }
+      const vrt = findVRT(scriptTree)
+      if (vrt) selectNode(vrt.uid)
       if (res.result.failed > 0) {
         ElMessage.warning(`并发测试完成：${res.result.total} 请求，${res.result.failed} 失败`)
       } else {
@@ -1819,15 +2228,22 @@ const pollBench = async () => {
   }
 }
 
+const pauseRun = () => { if (runStatus.value === 'running') { runStatus.value = 'paused'; ElMessage.info('已暂停') } }
+const resumeRun = () => { if (runStatus.value === 'paused') { runStatus.value = 'running'; ElMessage.info('已恢复运行') } }
+
 const stopBench = () => {
   if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
   benching.value = false
-  ElMessage.info('已停止轮询')
+  runStatus.value = 'idle'
+  ElMessage.info('已停止')
 }
 
 // ===== 调试 =====
 const debugResult = ref(null)
 const debugLoading = ref(false)
+const debugTab = ref('dsampler')
+const debugReqTab = ref('drbody')
+const debugResTab = ref('drsbody')
 
 const debugRequest = async (node) => {
   if (!node || node.type !== 'HttpSampler') return
@@ -2201,10 +2617,43 @@ const findParentSampler = (parent, uid) => {
 
 /* ===== Step 2 布局 ===== */
 .step2-layout {
-  display: grid; grid-template-columns: 320px 1fr; gap: 18px;
-  padding: 0 18px 18px; flex: 1; min-height: 0; overflow: hidden;
+  display: flex; flex-direction: column;
+  padding: 0; flex: 1; min-height: 0; overflow: hidden;
 }
-.tree-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.run-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px; background: linear-gradient(90deg, #1e293b, #334155);
+  border-radius: 0; flex-shrink: 0;
+}
+.run-toolbar-left { display: flex; align-items: center; gap: 8px; }
+.run-plan-name { color: #f1f5f9; font-weight: 700; font-size: 13px; }
+.run-toolbar-center { display: flex; align-items: center; gap: 6px; }
+.run-toolbar-right { display: flex; align-items: center; gap: 8px; }
+.run-toolbar :deep(.el-button) { border-radius: 6px; }
+.split-layout {
+  display: flex; flex: 1; min-height: 0; overflow: hidden;
+}
+.split-layout.no-right .editor-panel { flex: 1; }
+.drag-handle {
+  width: 6px; flex-shrink: 0; cursor: col-resize;
+  background: transparent; transition: background .2s; position: relative;
+}
+.drag-handle::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); width: 2px; height: 32px;
+  background: rgba(148,163,184,0.2); border-radius: 2px; transition: background .2s;
+}
+.drag-handle:hover, .drag-handle.active { background: rgba(99,102,241,0.06); }
+.drag-handle:hover::after, .drag-handle.active::after { background: rgba(99,102,241,0.5); height: 48px; }
+.result-panel { display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid rgba(148,163,184,0.1); }
+.result-body { flex: 1; overflow-y: auto; padding: 12px; scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.2) transparent; }
+.bench-progress-inline { margin-bottom: 10px; font-size: 11px; color: #64748b; }
+.bench-result-mini { font-size: 12px; }
+.mini-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; padding: 8px 10px; background: linear-gradient(135deg, rgba(99,102,241,0.04), rgba(139,92,246,0.02)); border-radius: 8px; border: 1px solid rgba(148,163,184,0.1); }
+.mini-stats > div { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 40px; }
+.mini-stats b { font-size: 14px; color: #1e293b; }
+.mini-stats small { font-size: 10px; color: #94a3b8; }
+.tree-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; border-right: 1px solid rgba(148,163,184,0.1); }
 .tree-toolbar { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .tree-search-bar { padding: 6px 10px 4px; }
 .tree-search-bar :deep(.el-input__wrapper) { border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
@@ -2443,22 +2892,34 @@ const findParentSampler = (parent, uid) => {
 .col-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: #334155; }
 .col-num { width: 60px; text-align: right; flex-shrink: 0; font-weight: 600; font-size: 11.5px; }
 
-/* ===== 请求详情（查看结果树） ===== */
-.sample-list { font-size: 12px; }
-.sample-item { cursor: pointer; padding: 6px 8px; border-radius: 8px; border-bottom: none; transition: all .15s; margin-bottom: 2px; }
-.sample-item:hover { background: linear-gradient(90deg, rgba(99,102,241,0.05), transparent); }
-.sample-summary { display: flex; align-items: center; gap: 8px; }
-.sample-time { font-weight: 800; width: 62px; flex-shrink: 0; font-size: 13px; color: #334155; }
-.sample-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #64748b; font-size: 11.5px; }
-.sample-err { font-size: 10.5px; color: #dc2626; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; font-weight: 600; }
-.sample-detail {
-  padding: 10px 14px; margin-top: 6px;
-  background: linear-gradient(135deg, rgba(248,250,252,0.9), rgba(241,245,249,0.8));
-  border-radius: 10px; font-size: 12px; line-height: 1.85; word-break: break-all;
-  border: 1px solid rgba(148,163,184,0.12);
-}
-.sample-detail-row { margin-bottom: 3px; }
-.sample-detail-label { color: #64748b; font-weight: 700; }
+/* ===== 查看结果树 (VRT) ===== */
+.vrt-container { display: flex; gap: 0; border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; overflow: hidden; background: #fff; min-height: 360px; }
+.vrt-inline-section .vrt-container { min-height: 200px; }
+.vrt-inline-section .vrt-sample-list { width: 220px; }
+.vrt-sample-list { width: 280px; flex-shrink: 0; border-right: 1px solid rgba(148,163,184,0.15); overflow-y: auto; background: linear-gradient(180deg, #f8fafc, #f1f5f9); }
+.vrt-sample-item { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; transition: all .15s; font-size: 11.5px; border-bottom: 1px solid rgba(148,163,184,0.08); }
+.vrt-sample-item:hover { background: rgba(99,102,241,0.06); }
+.vrt-sample-item.active { background: linear-gradient(90deg, rgba(99,102,241,0.12), rgba(99,102,241,0.04)); border-left: 3px solid #6366f1; }
+.vrt-time { font-weight: 800; width: 58px; flex-shrink: 0; color: #334155; font-size: 12px; }
+.vrt-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #64748b; font-size: 10.5px; }
+.vrt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #334155; font-size: 11px; font-weight: 500; }
+.vrt-err { color: #dc2626; font-size: 11px; flex-shrink: 0; }
+.vrt-toolbar { display: flex; gap: 8px; padding: 8px 10px; background: linear-gradient(180deg, #f8fafc, #f1f5f9); border-bottom: 1px solid rgba(148,163,184,0.15); align-items: center; }
+.vrt-detail-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.vrt-empty-detail { flex: 1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 13px; background: linear-gradient(135deg, rgba(248,250,252,0.5), transparent); }
+.vrt-tabs { height: 100%; display: flex; flex-direction: column; }
+.vrt-tabs :deep(.el-tabs__header) { margin-bottom: 0; background: #f8fafc; border-bottom: 1px solid rgba(148,163,184,0.15); padding: 0 10px; }
+.vrt-tabs :deep(.el-tabs__content) { flex: 1; overflow-y: auto; padding: 10px 14px; }
+.vrt-inner-tabs :deep(.el-tabs__header) { margin-bottom: 4px; }
+.vrt-inner-tabs :deep(.el-tabs__content) { max-height: calc(100% - 40px); overflow-y: auto; }
+.vrt-table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.9; }
+.vrt-table td { padding: 2px 8px; border-bottom: 1px solid rgba(148,163,184,0.08); vertical-align: top; }
+.vrt-label { color: #64748b; font-weight: 600; white-space: nowrap; width: 160px; font-family: 'Consolas','Monaco',monospace; font-size: 11px; }
+.vrt-subheader td { background: rgba(99,102,241,0.04); padding: 6px 8px !important; font-size: 11px; }
+.indent1 { padding-left: 28px !important; }
+.vrt-code { background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); padding: 12px; border-radius: 8px; font-size: 11.5px; color: #e2e8f0; font-family: 'Consolas','Monaco',monospace; max-height: 300px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid rgba(148,163,184,0.1); box-shadow: inset 0 2px 6px rgba(0,0,0,0.12); }
+.vrt-error-body { color: #fca5a5; }
+.vrt-http-line { padding: 8px 12px; background: rgba(99,102,241,0.04); border-radius: 6px; margin-top: 6px; font-family: 'Consolas','Monaco',monospace; font-size: 11.5px; word-break: break-all; }
 .bench-body-preview {
   background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
   padding: 12px; border-radius: 8px; font-size: 11.5px; color: #e2e8f0;
