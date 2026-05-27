@@ -10,6 +10,7 @@ import json
 from typing import List, Optional, Dict, Any
 from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body, Form
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -444,6 +445,7 @@ import time
 import uuid
 import logging
 import aiohttp
+import httpx
 
 # 压测任务状态存储（内存，不持久化）
 _bench_tasks: dict = {}
@@ -768,6 +770,170 @@ async def _run_bench(task_id: str, config: dict):
     await asyncio.sleep(600)
     async with _bench_lock:
         _bench_tasks.pop(task_id, None)
+
+
+class BenchAnalyzeRequest(BaseModel):
+    plan_name: str = ""
+    concurrency: int = 10
+    duration: int = 10
+    result: dict = {}
+
+@router.post("/analyze-result")
+async def analyze_bench_result(req: BenchAnalyzeRequest, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import select
+    from fastapi_backend.models.models import AIConfig
+    from fastapi_backend.core.config import settings
+    
+    try:
+        ai_result = await db.execute(select(AIConfig).where(AIConfig.is_active))
+        config = ai_result.scalar_one_or_none()
+    except Exception:
+        config = None
+
+    api_key = None
+    base_url = None
+    model = None
+    provider = "openai"
+
+    if config:
+        api_key = config.api_key
+        base_url = config.base_url
+        model = config.model
+        provider = config.provider.lower() if config.provider else "openai"
+    elif settings.AI_API_KEY and settings.AI_API_KEY != "your_model_api_key_here":
+        api_key = settings.AI_API_KEY
+        base_url = settings.AI_BASE_URL
+        model = settings.AI_MODEL
+        provider = getattr(settings, 'AI_PROVIDER', 'openai').lower()
+
+    if not api_key:
+        return {"analysis": _build_offline_analysis(req)}
+
+    r = req.result
+    per_url_text = ""
+    if r.get("per_url"):
+        for pu in r["per_url"]:
+            per_url_text += f"  - {pu.get('url','')}: {pu.get('count',0)}次, 成功{pu.get('success',0)}, 失败{pu.get('failed',0)}, 平均{pu.get('avg_ms',0)}ms, P95={pu.get('p95_ms',0)}ms\n"
+
+    errors_text = ""
+    if r.get("errors"):
+        for e in r["errors"][:10]:
+            errors_text += f"  - {e}\n"
+
+    status_text = ""
+    if r.get("status_distribution"):
+        for code, count in r["status_distribution"].items():
+            status_text += f"  HTTP {code}: {count}次\n"
+
+    prompt = f"""你是一个性能测试分析专家。请分析以下压测结果并给出专业建议。
+
+【压测概况】
+- 计划名称: {req.plan_name}
+- 并发用户数: {req.concurrency}
+- 持续时间: {req.duration}秒
+- 总请求数: {r.get('total', 0)}
+- 成功: {r.get('success', 0)} / 失败: {r.get('failed', 0)}
+- TPS (每秒事务数): {r.get('tps', 0)}
+- 平均响应时间: {r.get('avg_ms', 0)}ms
+- 中位数 P50: {r.get('p50_ms', 0)}ms
+- P95 响应时间: {r.get('p95_ms', 0)}ms
+- P99 响应时间: {r.get('p99_ms', 0)}ms
+- 最小响应时间: {r.get('min_ms', 0)}ms
+- 最大响应时间: {r.get('max_ms', 0)}ms
+
+【状态码分布】
+{status_text if status_text else "无"}
+
+【错误信息】
+{errors_text if errors_text else "无"}
+
+【按接口统计】
+{per_url_text if per_url_text else "无"}
+
+请从以下几个维度分析（用中文回答，简洁专业，300字以内）：
+1. 整体性能评估（优秀/良好/一般/较差）
+2. 是否存在性能瓶颈（P95和P99差距分析）
+3. 失败原因分析（如有失败）
+4. 优化建议（给出2-3条可操作建议）"""
+
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": "你是一个性能测试分析专家，回答简洁专业。"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 800,
+                    "temperature": 0.5,
+                }
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                return {"analysis": content.strip()}
+            else:
+                return {"analysis": _build_offline_analysis(req)}
+    except Exception:
+        return {"analysis": _build_offline_analysis(req)}
+
+
+def _build_offline_analysis(req) -> str:
+    r = req.result
+    total = r.get("total", 0)
+    failed = r.get("failed", 0)
+    success = r.get("success", 0)
+    tps = r.get("tps", 0)
+    avg = r.get("avg_ms", 0)
+    p95 = r.get("p95_ms", 0)
+    p99 = r.get("p99_ms", 0)
+    fail_rate = (failed / total * 100) if total > 0 else 0
+
+    lines = ["📊 离线分析报告（未配置AI，基于规则自动生成）", ""]
+
+    if fail_rate == 0:
+        lines.append("✅ 整体评估：优秀 - 所有请求均成功。")
+    elif fail_rate < 1:
+        lines.append(f"⚠️ 整体评估：良好 - 失败率 {fail_rate:.1f}%，在可接受范围内。")
+    elif fail_rate < 5:
+        lines.append(f"⚠️ 整体评估：一般 - 失败率 {fail_rate:.1f}%，建议排查失败原因。")
+    else:
+        lines.append(f"🔴 整体评估：较差 - 失败率 {fail_rate:.1f}%，系统可能存在严重问题。")
+
+    lines.append("")
+    lines.append(f"📈 性能指标：TPS={tps}, 平均响应={avg}ms, P95={p95}ms, P99={p99}ms")
+
+    if avg < 100:
+        lines.append("   → 平均响应时间优秀（<100ms）")
+    elif avg < 500:
+        lines.append("   → 平均响应时间良好（<500ms）")
+    elif avg < 1000:
+        lines.append("   → 平均响应时间一般（<1000ms）")
+    else:
+        lines.append("   → 平均响应时间较慢（>1000ms），建议优化")
+
+    if p95 > 0 and avg > 0 and p95 / max(avg, 1) > 3:
+        lines.append("   → P95远高于平均值，存在长尾延迟，可能有少数慢请求拖累整体")
+    if p99 > 0 and p95 > 0 and p99 / max(p95, 1) > 2:
+        lines.append("   → P99与P95差距大，存在极端慢请求（异常值）")
+
+    lines.append("")
+    lines.append("💡 优化建议：")
+    lines.append("   1. 关注失败请求，检查服务端日志排查具体错误原因")
+    if avg > 500:
+        lines.append("   2. 考虑优化数据库查询、增加缓存层降低响应时间")
+    if tps < 10:
+        lines.append("   3. TPS较低，检查是否有连接池限制或接口内部串行调用")
+    else:
+        lines.append("   3. 持续监控P95/P99指标，设置告警阈值及时发现问题")
+
+    return "\n".join(lines)
 
 
 def _count_elements(tree):
