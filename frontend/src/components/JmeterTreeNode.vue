@@ -15,11 +15,21 @@
             <el-dropdown-menu>
               <template v-if="node.type === 'TestPlan'">
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'ThreadGroup')">👥 添加线程组</el-dropdown-item>
+                <el-dropdown-item divided @click="$emit('add-child', node.uid, 'HTTPHeaderManager')">📨 HTTP 信息头管理器</el-dropdown-item>
               </template>
               <template v-if="node.type === 'ThreadGroup'">
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'HttpSampler')">🌐 添加 HTTP 请求</el-dropdown-item>
-                <el-dropdown-item @click="$emit('add-child', node.uid, 'CSVDataSet')">📄 添加 CSV 数据源</el-dropdown-item>
-                <el-dropdown-item divided @click="$emit('add-child', node.uid, 'JDBCSampler')">🗄️ 添加 JDBC 请求</el-dropdown-item>
+                <el-dropdown-item divided @click="$emit('add-child', node.uid, 'IfController')">🔀 如果(If)控制器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'LoopController')">🔄 循环控制器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'WhileController')">🔁 While 控制器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'TransactionController')">📦 事务控制器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'ThroughputController')">⏱️ 吞吐量控制器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'OnceOnlyController')">1️⃣ 仅一次控制器</el-dropdown-item>
+                <el-dropdown-item divided @click="$emit('add-child', node.uid, 'CSVDataSet')">📄 CSV 数据源</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'JDBCSampler')">🗄️ JDBC 请求</el-dropdown-item>
+                <el-dropdown-item divided @click="$emit('add-child', node.uid, 'HTTPRequestDefaults')">🎯 HTTP 请求默认值</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'HTTPHeaderManager')">📨 HTTP 信息头管理器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'HTTPCookieManager')">🍪 HTTP Cookie 管理器</el-dropdown-item>
               </template>
               <template v-if="node.type === 'HttpSampler'">
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'ResponseAssertion')">✅ 响应断言</el-dropdown-item>
@@ -33,12 +43,21 @@
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'SyncTimer')">🔄 同步定时器(集合点)</el-dropdown-item>
                 <el-dropdown-item divided @click="$emit('add-child', node.uid, 'BeanShellPreProcessor')">⚙️ BeanShell 前置处理</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'BeanShellPostProcessor')">⚙️ BeanShell 后置处理</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'JSR223PreProcessor')">🔥 JSR223 前置处理</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'JSR223PostProcessor')">🔥 JSR223 后置处理</el-dropdown-item>
+              </template>
+              <template v-if="node.type === 'IfController' || node.type === 'LoopController' || node.type === 'WhileController' || node.type === 'TransactionController' || node.type === 'ThroughputController' || node.type === 'OnceOnlyController'">
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'HttpSampler')">🌐 HTTP 请求</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'IfController')">🔀 如果控制器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'LoopController')">🔄 循环控制器</el-dropdown-item>
               </template>
               <template v-if="node.type === 'TestPlan' || node.type === 'ThreadGroup'">
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'JDBCConnection')">🗄️ JDBC 数据库连接</el-dropdown-item>
                 <el-dropdown-item divided @click="$emit('add-child', node.uid, 'ViewResultsTree')">👁️ 查看结果树</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'SummaryReport')">📈 聚合报告</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'AggregateGraph')">📉 聚合图表</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'AggregateReport')">📊 聚合报告(高级)</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'ResponseTimeGraph')">📉 响应时间图</el-dropdown-item>
               </template>
               <el-dropdown-item divided @click="$emit('duplicate', node.uid)">📋 复制</el-dropdown-item>
               <el-dropdown-item @click="$emit('remove', node.uid)" style="color:#F87171">🗑️ 删除</el-dropdown-item>

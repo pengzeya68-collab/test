@@ -572,16 +572,42 @@ def _build_tree_node(parent_hash_tree, node: Dict):
         _build_beanshell(parent_hash_tree, name, props, "pre")
     elif ntype == "BeanShellPostProcessor":
         _build_beanshell(parent_hash_tree, name, props, "post")
+    elif ntype == "JSR223PreProcessor":
+        _build_jsr223(parent_hash_tree, name, props, "pre")
+    elif ntype == "JSR223PostProcessor":
+        _build_jsr223(parent_hash_tree, name, props, "post")
     elif ntype == "JDBCConnection":
         _build_jdbc_connection(parent_hash_tree, name, props)
     elif ntype == "JDBCSampler":
         _build_jdbc_sampler(parent_hash_tree, name, props)
+    elif ntype == "HTTPHeaderManager":
+        _build_header_manager(parent_hash_tree, name, props)
+    elif ntype == "HTTPCookieManager":
+        _build_cookie_manager(parent_hash_tree, name, props)
+    elif ntype == "HTTPRequestDefaults":
+        _build_http_request_defaults(parent_hash_tree, name, props)
+    elif ntype == "IfController":
+        _build_if_controller(parent_hash_tree, name, props, children)
+    elif ntype == "LoopController":
+        _build_loop_controller(parent_hash_tree, name, props, children)
+    elif ntype == "WhileController":
+        _build_while_controller(parent_hash_tree, name, props, children)
+    elif ntype == "TransactionController":
+        _build_transaction_controller(parent_hash_tree, name, props, children)
+    elif ntype == "ThroughputController":
+        _build_throughput_controller(parent_hash_tree, name, props, children)
+    elif ntype == "OnceOnlyController":
+        _build_once_only_controller(parent_hash_tree, name, props, children)
     elif ntype == "ViewResultsTree":
         _build_listener(parent_hash_tree, name, "ViewResultsFullVisualizer", "ResultCollector")
     elif ntype == "SummaryReport":
         _build_listener(parent_hash_tree, name, "SummaryReport", "ResultCollector")
     elif ntype == "AggregateGraph":
         _build_listener(parent_hash_tree, name, "StatGraphVisualizer", "ResultCollector")
+    elif ntype == "AggregateReport":
+        _build_listener(parent_hash_tree, name, "StatAggregateVisualizer", "ResultCollector")
+    elif ntype == "ResponseTimeGraph":
+        _build_listener(parent_hash_tree, name, "RespTimeGraphVisualizer", "ResultCollector")
 
 
 def _build_thread_group(parent, name, props, children):
@@ -876,3 +902,140 @@ def _build_listener(parent, name, guiclass, testclass):
     v.set("class", "SampleSaveConfiguration")
     _add_save_config(v)
     ET.SubElement(parent, "hashTree")
+
+
+def _build_jsr223(parent, name, props, phase):
+    tag = "JSR223PreProcessor" if phase == "pre" else "JSR223PostProcessor"
+    gui = "TestBeanGUI"
+    p = ET.SubElement(parent, tag)
+    p.set("guiclass", gui)
+    p.set("testclass", tag)
+    p.set("testname", name or f"JSR223 {phase}")
+    p.set("enabled", "true")
+    _add_element_prop(p, "scriptLanguage", props.get("language", "groovy"))
+    _add_element_prop(p, "script", props.get("script", ""))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_header_manager(parent, name, props):
+    hm = ET.SubElement(parent, "HeaderManager")
+    hm.set("guiclass", "HeaderPanel")
+    hm.set("testclass", "HeaderManager")
+    hm.set("testname", name or "HTTP Header Manager")
+    hm.set("enabled", "true")
+    cp = ET.SubElement(hm, "collectionProp")
+    cp.set("name", "HeaderManager.headers")
+    for h in (props.get("headers") or []):
+        if not h.get("key"): continue
+        he = ET.SubElement(cp, "elementProp")
+        he.set("name", "")
+        he.set("elementType", "Header")
+        _add_element_prop(he, "Header.name", h["key"])
+        _add_element_prop(he, "Header.value", str(h.get("value", "")))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_cookie_manager(parent, name, props):
+    cm = ET.SubElement(parent, "CookieManager")
+    cm.set("guiclass", "CookiePanel")
+    cm.set("testclass", "CookieManager")
+    cm.set("testname", name or "HTTP Cookie Manager")
+    cm.set("enabled", "true")
+    _add_element_prop(cm, "CookieManager.clearEachIteration", "true" if props.get("clearEachIteration") else "false")
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_http_request_defaults(parent, name, props):
+    d = ET.SubElement(parent, "ConfigTestElement")
+    d.set("guiclass", "HttpDefaultsGui")
+    d.set("testclass", "ConfigTestElement")
+    d.set("testname", name or "HTTP Request Defaults")
+    d.set("enabled", "true")
+    url = props.get("url", "")
+    from urllib.parse import urlparse as up
+    pu = up(url) if url else None
+    _add_element_prop(d, "HTTPSampler.domain", pu.hostname if pu else "")
+    _add_element_prop(d, "HTTPSampler.port", str(pu.port) if pu and pu.port else "")
+    _add_element_prop(d, "HTTPSampler.protocol", pu.scheme if pu else "")
+    _add_element_prop(d, "HTTPSampler.contentEncoding", "UTF-8")
+    _add_element_prop(d, "HTTPSampler.path", "")
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_if_controller(parent, name, props, children):
+    c = ET.SubElement(parent, "IfController")
+    c.set("guiclass", "IfControllerPanel")
+    c.set("testclass", "IfController")
+    c.set("testname", name or "If Controller")
+    c.set("enabled", "true")
+    _add_element_prop(c, "IfController.condition", props.get("condition", "${JMeterThread.last_sample_ok}"))
+    _add_element_prop(c, "IfController.evaluateAll", "true" if props.get("evaluateAll") else "false")
+    _add_element_prop(c, "IfController.useExpression", "true" if props.get("useExpression") else "false")
+    sh = ET.SubElement(parent, "hashTree")
+    for child in children:
+        _build_tree_node(sh, child)
+
+
+def _build_loop_controller(parent, name, props, children):
+    c = ET.SubElement(parent, "LoopController")
+    c.set("guiclass", "LoopControlPanel")
+    c.set("testclass", "LoopController")
+    c.set("testname", name or "Loop Controller")
+    c.set("enabled", "true")
+    _add_element_prop(c, "LoopController.loops", str(props.get("loops", 3)))
+    _add_element_prop(c, "LoopController.continue_forever", "true" if props.get("forever") else "false")
+    sh = ET.SubElement(parent, "hashTree")
+    for child in children:
+        _build_tree_node(sh, child)
+
+
+def _build_while_controller(parent, name, props, children):
+    c = ET.SubElement(parent, "WhileController")
+    c.set("guiclass", "WhileControllerGui")
+    c.set("testclass", "WhileController")
+    c.set("testname", name or "While Controller")
+    c.set("enabled", "true")
+    _add_element_prop(c, "WhileController.condition", props.get("condition", ""))
+    sh = ET.SubElement(parent, "hashTree")
+    for child in children:
+        _build_tree_node(sh, child)
+
+
+def _build_transaction_controller(parent, name, props, children):
+    c = ET.SubElement(parent, "TransactionController")
+    c.set("guiclass", "TransactionControllerGui")
+    c.set("testclass", "TransactionController")
+    c.set("testname", name or "Transaction Controller")
+    c.set("enabled", "true")
+    _add_element_prop(c, "TransactionController.includeTimers", "true" if props.get("includeTimers") else "false")
+    _add_element_prop(c, "TransactionController.parent", "true" if props.get("parent") else "false")
+    sh = ET.SubElement(parent, "hashTree")
+    for child in children:
+        _build_tree_node(sh, child)
+
+
+def _build_throughput_controller(parent, name, props, children):
+    c = ET.SubElement(parent, "ThroughputController")
+    c.set("guiclass", "ThroughputControllerGui")
+    c.set("testclass", "ThroughputController")
+    c.set("testname", name or "Throughput Controller")
+    c.set("enabled", "true")
+    style_map = {"percent": "0", "total": "1", "perMinute": "2"}
+    _add_element_prop(c, "ThroughputController.style", style_map.get(props.get("style"), "0"))
+    _add_element_prop(c, "ThroughputController.percentThroughput", str(props.get("percent", 50)))
+    _add_element_prop(c, "ThroughputController.maxThroughput", str(props.get("maxThroughput", 1)))
+    _add_element_prop(c, "ThroughputController.perThread", "true" if props.get("perThread") else "false")
+    sh = ET.SubElement(parent, "hashTree")
+    for child in children:
+        _build_tree_node(sh, child)
+
+
+def _build_once_only_controller(parent, name, props, children):
+    c = ET.SubElement(parent, "OnceOnlyController")
+    c.set("guiclass", "OnceOnlyControllerGui")
+    c.set("testclass", "OnceOnlyController")
+    c.set("testname", name or "Once Only Controller")
+    c.set("enabled", "true")
+    sh = ET.SubElement(parent, "hashTree")
+    for child in children:
+        _build_tree_node(sh, child)

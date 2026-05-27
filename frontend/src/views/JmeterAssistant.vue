@@ -45,18 +45,33 @@
     <!-- ==================== Step 1: 选择接口 ==================== -->
     <div v-show="currentStep === 1" class="step-body">
       <div class="step1-layout">
-        <div class="panel step1-templates">
-          <div class="panel-title">📦 模板快速创建</div>
-          <div class="template-grid">
-            <div class="tpl-card" v-for="tpl in templates" :key="tpl.key" @click="applyTemplate(tpl)">
-              <div class="tpl-icon">{{ tpl.icon }}</div>
-              <div class="tpl-name">{{ tpl.name }}</div>
-              <div class="tpl-desc">{{ tpl.desc }}</div>
+        <!-- 左侧：模板 + 导入JMX -->
+        <div class="step1-left">
+          <div class="panel step1-templates">
+            <div class="panel-title">📦 模板快速创建</div>
+            <div class="template-grid">
+              <div class="tpl-card" v-for="tpl in templates" :key="tpl.key" @click="applyTemplate(tpl)">
+                <div class="tpl-icon">{{ tpl.icon }}</div>
+                <div class="tpl-name">{{ tpl.name }}</div>
+                <div class="tpl-desc">{{ tpl.desc }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="step1-import-jmx">
+            <div class="import-jmx-card" @click="showImportJmxDialog = true">
+              <div class="import-jmx-icon">📂</div>
+              <div class="import-jmx-body">
+                <div class="import-jmx-title">导入 .jmx 文件</div>
+                <div class="import-jmx-desc">已有 JMeter 脚本？直接导入 .jmx 文件解析为接口</div>
+              </div>
+              <el-icon size="20" style="color:var(--tm-text-secondary)"><Right /></el-icon>
             </div>
           </div>
         </div>
+        <!-- 右侧：从接口库导入 -->
         <div class="panel step1-import">
           <div class="panel-title">📋 从接口库导入</div>
+          <div class="section-hint"><el-icon><InfoFilled /></el-icon> 勾选已有的 API 接口，点击「导入到脚本」自动创建 HTTP 请求和线程组</div>
           <div class="import-controls">
             <el-select v-model="importGroupFilter" placeholder="按分组筛选" size="default" clearable filterable style="width:240px">
               <el-option v-for="g in importGroups" :key="g.id" :label="g.name" :value="g.id" />
@@ -65,9 +80,9 @@
           </div>
           <div class="import-case-list">
             <div v-if="allCases.length === 0" class="empty-state">
-              <el-icon size="28"><FolderDelete /></el-icon>
-              <p>当前分组没有接口用例</p>
-              <el-button link type="primary" size="small" @click="openInterfaceLib">去接口库创建</el-button>
+              <el-icon size="32"><FolderDelete /></el-icon>
+              <p style="margin:8px 0">当前分组没有接口用例</p>
+              <el-button type="primary" size="small" @click="openInterfaceLib">📝 去接口库创建</el-button>
             </div>
             <el-checkbox-group v-model="selectedImportCases" v-else>
               <div v-for="c in filteredImportCases" :key="c.id" class="import-case-item" @click="toggleCase(c.id)">
@@ -84,12 +99,9 @@
           </div>
           <div class="import-footer">
             <span class="import-count">已选 {{ selectedImportCases.length }} 个接口</span>
-            <div>
-              <el-button @click="showImportJmxDialog = true">📂 导入 .jmx 文件</el-button>
-              <el-button type="primary" :disabled="selectedImportCases.length === 0" @click="importSelectedCases">
-                导入到脚本 → <el-icon><Right /></el-icon>
-              </el-button>
-            </div>
+            <el-button type="primary" size="large" :disabled="selectedImportCases.length === 0" @click="importSelectedCases" style="font-weight:700">
+              🚀 导入到脚本 <el-icon><Right /></el-icon>
+            </el-button>
           </div>
         </div>
       </div>
@@ -192,10 +204,32 @@
               <div class="form-section">
                 <div class="section-hint"><el-icon><Monitor /></el-icon> 监听器用于查看测试结果，建议添加「查看结果树」和「聚合报告」</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <el-button size="small" @click="addChildToCurrent('HttpSampler')">🌐 HTTP 请求</el-button>
                   <el-button size="small" @click="addChildToCurrent('ViewResultsTree')">👁️ 查看结果树</el-button>
                   <el-button size="small" @click="addChildToCurrent('SummaryReport')">📈 聚合报告</el-button>
+                  <el-button size="small" @click="addChildToCurrent('AggregateReport')">📊 聚合报告(高级)</el-button>
+                  <el-button size="small" @click="addChildToCurrent('ResponseTimeGraph')">📉 响应时间图</el-button>
                   <el-button size="small" @click="addChildToCurrent('CSVDataSet')">📄 CSV 数据源</el-button>
                   <el-button size="small" @click="addChildToCurrent('JDBCSampler')">🗄️ JDBC 请求</el-button>
+                </div>
+              </div>
+              <div class="form-section">
+                <div class="section-hint"><el-icon><Lollipop /></el-icon> 逻辑控制器：控制请求的执行顺序和条件</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <el-button size="small" @click="addChildToCurrent('IfController')">🔀 如果控制器</el-button>
+                  <el-button size="small" @click="addChildToCurrent('LoopController')">🔄 循环控制器</el-button>
+                  <el-button size="small" @click="addChildToCurrent('WhileController')">🔁 While 控制器</el-button>
+                  <el-button size="small" @click="addChildToCurrent('TransactionController')">📦 事务控制器</el-button>
+                  <el-button size="small" @click="addChildToCurrent('ThroughputController')">⏱️ 吞吐量控制器</el-button>
+                  <el-button size="small" @click="addChildToCurrent('OnceOnlyController')">1️⃣ 仅一次控制器</el-button>
+                </div>
+              </div>
+              <div class="form-section">
+                <div class="section-hint"><el-icon><Setting /></el-icon> 配置元件：全局设置 HTTP 默认值、请求头、Cookie 等</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <el-button size="small" @click="addChildToCurrent('HTTPRequestDefaults')">🎯 HTTP 请求默认值</el-button>
+                  <el-button size="small" @click="addChildToCurrent('HTTPHeaderManager')">📨 HTTP 信息头管理器</el-button>
+                  <el-button size="small" @click="addChildToCurrent('HTTPCookieManager')">🍪 HTTP Cookie 管理器</el-button>
                 </div>
               </div>
             </template>
@@ -319,7 +353,126 @@
                 <div class="form-group"><label>BeanShell 脚本</label><el-input v-model="selectedNode.props.script" type="textarea" :rows="6" placeholder='long ts = System.currentTimeMillis(); vars.put("ts",String.valueOf(ts));' size="small" /></div>
               </div>
             </template>
-            <template v-if="selectedNode.type === 'ViewResultsTree' || selectedNode.type === 'SummaryReport' || selectedNode.type === 'AggregateGraph'">
+            <template v-if="selectedNode.type === 'JSR223PreProcessor' || selectedNode.type === 'JSR223PostProcessor'">
+              <div class="form-section">
+                <div class="form-group"><label>脚本名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>脚本语言</label>
+                  <el-select v-model="selectedNode.props.language" size="small">
+                    <el-option label="Groovy" value="groovy" />
+                    <el-option label="JavaScript" value="javascript" />
+                    <el-option label="Python (Jython)" value="python" />
+                    <el-option label="BeanShell" value="beanshell" />
+                  </el-select>
+                </div>
+                <div class="form-group"><label>脚本代码</label><el-input v-model="selectedNode.props.script" type="textarea" :rows="6" placeholder='log.info("Hello JMeter")' size="small" /></div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'IfController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 条件成立时才执行子元素。如 <code>${JMeterThread.last_sample_ok}</code> 表示上一个请求成功才执行</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>条件表达式</label><el-input v-model="selectedNode.props.condition" size="small" placeholder="${JMeterThread.last_sample_ok}" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>解释为变量表达式</label><el-switch v-model="selectedNode.props.useExpression" size="small" /></div>
+                  <div class="form-group"><label>对所有子级求值</label><el-switch v-model="selectedNode.props.evaluateAll" size="small" /></div>
+                </div>
+                <div class="form-group"><label>添加子元素到控制器中</label>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                    <el-button size="small" @click="addChildToCurrent('HttpSampler')">🌐 HTTP 请求</el-button>
+                    <el-button size="small" @click="addChildToCurrent('LoopController')">🔄 循环</el-button>
+                    <el-button size="small" @click="addChildToCurrent('IfController')">🔀 如果</el-button>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'LoopController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 将子元素重复执行指定次数。如循环 3 次 = 子元素执行 3 遍</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>循环次数</label><el-input-number v-model="selectedNode.props.loops" :min="1" :max="99999" size="small" /></div>
+                  <div class="form-group"><label>永久循环</label><el-switch v-model="selectedNode.props.forever" size="small" /></div>
+                </div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'WhileController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 条件为真时不断循环子元素。如 <code>${__javaScript(${counter} < 5)}</code></div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>条件</label><el-input v-model="selectedNode.props.condition" size="small" placeholder="${__javaScript(vars.get('counter') < 5)}" /></div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'TransactionController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 将子元素视为一个事务，统计总耗时作为该事务的响应时间</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>包含定时器时间</label><el-switch v-model="selectedNode.props.includeTimers" size="small" /></div>
+                  <div class="form-group"><label>生成父样本</label><el-switch v-model="selectedNode.props.parent" size="small" /></div>
+                </div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'ThroughputController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 控制子元素执行的频率/比例。如 50% = 一半线程执行、一半跳过</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>控制方式</label>
+                  <el-select v-model="selectedNode.props.style" size="small">
+                    <el-option label="按百分比" value="percent" />
+                    <el-option label="按总执行次数" value="total" />
+                    <el-option label="按每分钟执行次数" value="perMinute" />
+                  </el-select>
+                </div>
+                <div class="form-group" v-if="selectedNode.props.style === 'percent'"><label>百分比 (%)</label><el-input-number v-model="selectedNode.props.percent" :min="0" :max="100" size="small" /></div>
+                <div class="form-group" v-else><label>最大吞吐量</label><el-input-number v-model="selectedNode.props.maxThroughput" :min="1" :max="99999" size="small" /></div>
+                <div class="form-group"><label>按用户独立计算</label><el-switch v-model="selectedNode.props.perThread" size="small" /></div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'OnceOnlyController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 不管循环多少次，子元素只执行一次。常用于登录等只需执行一次的场景</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>添加子元素到控制器中</label>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                    <el-button size="small" @click="addChildToCurrent('HttpSampler')">🌐 HTTP 请求</el-button>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'HTTPHeaderManager'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 为所有 HTTP 请求统一添加请求头，自动继承到子元素</div>
+                <div class="form-group"><label>管理器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>请求头</label>
+                  <div v-for="(h, hi) in (selectedNode.props.headers || [])" :key="hi" class="kv-row">
+                    <el-input v-model="h.key" placeholder="Header名" size="small" style="width:40%" />
+                    <el-input v-model="h.value" placeholder="值" size="small" style="width:50%" />
+                    <el-button link size="small" type="danger" @click="selectedNode.props.headers.splice(hi,1)">×</el-button>
+                  </div>
+                  <el-button size="small" @click="selectedNode.props.headers.push({key:'',value:''})">+ 添加请求头</el-button>
+                </div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'HTTPCookieManager'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 自动管理 HTTP Cookie，模拟真实浏览器行为</div>
+                <div class="form-group"><label>管理器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>每次循环清空</label><el-switch v-model="selectedNode.props.clearEachIteration" size="small" /></div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'HTTPRequestDefaults'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 设置默认的协议、域名、端口和请求头，子元素可继承或覆盖这些配置</div>
+                <div class="form-group"><label>默认值名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>默认 URL 前缀</label><el-input v-model="selectedNode.props.url" size="small" placeholder="https://api.example.com" /></div>
+                <div class="form-group"><label>默认方法</label>
+                  <el-select v-model="selectedNode.props.method" size="small">
+                    <el-option v-for="m in ['GET','POST']" :key="m" :label="m" :value="m" />
+                  </el-select>
+                </div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'ViewResultsTree' || selectedNode.type === 'SummaryReport' || selectedNode.type === 'AggregateGraph' || selectedNode.type === 'AggregateReport' || selectedNode.type === 'ResponseTimeGraph'">
               <div class="form-section"><div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div></div>
             </template>
           </div>
@@ -582,16 +735,25 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin } from '@element-plus/icons-vue'
+import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting, Document } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import JmeterTreeNode from '@/components/JmeterTreeNode.vue'
+
+const router = useRouter()
 
 // ===== 组件类型定义 =====
 const NODE_TYPES = {
   TestPlan: { label: '测试计划', icon: '📋' },
   ThreadGroup: { label: '线程组', icon: '👥', parent: 'TestPlan' },
   HttpSampler: { label: 'HTTP 请求', icon: '🌐', parent: 'ThreadGroup' },
+  IfController: { label: '如果(If)控制器', icon: '🔀', parent: 'ThreadGroup' },
+  LoopController: { label: '循环控制器', icon: '🔄', parent: 'ThreadGroup' },
+  WhileController: { label: 'While 控制器', icon: '🔁', parent: 'ThreadGroup' },
+  TransactionController: { label: '事务控制器', icon: '📦', parent: 'ThreadGroup' },
+  ThroughputController: { label: '吞吐量控制器', icon: '⏱️', parent: 'ThreadGroup' },
+  OnceOnlyController: { label: '仅一次控制器', icon: '1️⃣', parent: 'ThreadGroup' },
   ResponseAssertion: { label: '响应断言', icon: '✅', parent: 'HttpSampler' },
   DurationAssertion: { label: '持续时间断言', icon: '⏱️', parent: 'HttpSampler' },
   JsonAssertion: { label: 'JSON 断言', icon: '📋', parent: 'HttpSampler' },
@@ -601,14 +763,21 @@ const NODE_TYPES = {
   UniformRandomTimer: { label: '均匀随机定时器', icon: '🎲', parent: 'HttpSampler' },
   GaussianRandomTimer: { label: '高斯随机定时器', icon: '📊', parent: 'HttpSampler' },
   SyncTimer: { label: '同步定时器(集合点)', icon: '🔄', parent: 'HttpSampler' },
-  CSVDataSet: { label: 'CSV 数据源', icon: '📄', parent: 'ThreadGroup' },
   BeanShellPreProcessor: { label: 'BeanShell 前置', icon: '⚙️', parent: 'HttpSampler' },
   BeanShellPostProcessor: { label: 'BeanShell 后置', icon: '⚙️', parent: 'HttpSampler' },
+  JSR223PreProcessor: { label: 'JSR223 前置处理器', icon: '🔥', parent: 'HttpSampler' },
+  JSR223PostProcessor: { label: 'JSR223 后置处理器', icon: '🔥', parent: 'HttpSampler' },
+  CSVDataSet: { label: 'CSV 数据源', icon: '📄', parent: 'ThreadGroup' },
   JDBCConnection: { label: 'JDBC 连接', icon: '🗄️', parent: 'TestPlan' },
   JDBCSampler: { label: 'JDBC 请求', icon: '🗄️', parent: 'ThreadGroup' },
+  HTTPHeaderManager: { label: 'HTTP 信息头管理器', icon: '📨', parent: 'ThreadGroup' },
+  HTTPCookieManager: { label: 'HTTP Cookie 管理器', icon: '🍪', parent: 'ThreadGroup' },
+  HTTPRequestDefaults: { label: 'HTTP 请求默认值', icon: '🎯', parent: 'ThreadGroup' },
   ViewResultsTree: { label: '查看结果树', icon: '👁️', parent: 'ThreadGroup' },
   SummaryReport: { label: '聚合报告', icon: '📈', parent: 'ThreadGroup' },
   AggregateGraph: { label: '聚合图表', icon: '📉', parent: 'ThreadGroup' },
+  AggregateReport: { label: '聚合报告(高级)', icon: '📊', parent: 'ThreadGroup' },
+  ResponseTimeGraph: { label: '响应时间图', icon: '📉', parent: 'ThreadGroup' },
 }
 
 // ===== 工具函数 =====
@@ -631,9 +800,22 @@ const defaultProps = {
   JDBCSampler: { sql: '' },
   BeanShellPreProcessor: { script: '' },
   BeanShellPostProcessor: { script: '' },
+  JSR223PreProcessor: { language: 'groovy', script: '' },
+  JSR223PostProcessor: { language: 'groovy', script: '' },
+  IfController: { condition: '${JMeterThread.last_sample_ok}', evaluateAll: false, useExpression: true },
+  LoopController: { loops: 3, forever: false },
+  WhileController: { condition: '${__javaScript(${counter} < 5)}' },
+  TransactionController: { includeTimers: false, parent: false },
+  ThroughputController: { style: 'percent', percent: 50, maxThroughput: 1, perThread: false },
+  OnceOnlyController: {},
+  HTTPHeaderManager: { headers: [{ key: 'Content-Type', value: 'application/json' }] },
+  HTTPCookieManager: { cookies: [], clearEachIteration: false },
+  HTTPRequestDefaults: { method: 'GET', url: '', headers: [], body: '', bodyType: 'json' },
   ViewResultsTree: {},
   SummaryReport: {},
   AggregateGraph: {},
+  AggregateReport: {},
+  ResponseTimeGraph: {},
 }
 
 const createElement = (type, overrides = {}) => {
@@ -741,7 +923,7 @@ const totalTimers = computed(() => {
 const totalListeners = computed(() => {
   let count = 0
   const walk = (node) => {
-    if (['ViewResultsTree','SummaryReport','AggregateGraph'].includes(node.type)) count++
+    if (['ViewResultsTree','SummaryReport','AggregateGraph','AggregateReport','ResponseTimeGraph'].includes(node.type)) count++
     ;(node.children || []).forEach(walk)
   }
   walk(scriptTree)
@@ -867,7 +1049,7 @@ const selectedImportCases = ref([])
 const allCases = ref([])
 const importGroups = ref([])
 
-const openInterfaceLib = () => { window.open('/auto-test?tab=interfaces', '_blank') }
+const openInterfaceLib = () => { router.push({ path: '/auto-test', query: { tab: 'interfaces' } }) }
 
 const toggleCase = (id) => {
   const idx = selectedImportCases.value.indexOf(id)
@@ -1269,7 +1451,15 @@ onMounted(() => {
 
 /* ===== Step 1 布局 ===== */
 .step1-layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; padding: 16px; height: 100%; }
-.step1-templates { overflow-y: auto; }
+.step1-left { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.step1-templates { overflow: visible; }
+.step1-import-jmx { }
+.import-jmx-card { display: flex; align-items: center; gap: 12px; padding: 14px; background: var(--tm-card-bg); border: 1px dashed var(--tm-color-primary); border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+.import-jmx-card:hover { background: rgba(64,158,255,0.06); border-color: var(--tm-color-primary); border-style: solid; }
+.import-jmx-icon { font-size: 28px; flex-shrink: 0; }
+.import-jmx-body { flex: 1; }
+.import-jmx-title { font-size: 13px; font-weight: 700; color: var(--tm-text-primary); }
+.import-jmx-desc { font-size: 11px; color: var(--tm-text-secondary); margin-top: 2px; }
 .step1-import { display: flex; flex-direction: column; overflow: hidden; }
 
 .template-grid { display: grid; gap: 8px; }
@@ -1296,7 +1486,7 @@ onMounted(() => {
 .import-count { font-size: 12px; color: var(--tm-text-secondary); }
 
 /* ===== Step 2 布局 ===== */
-.step2-layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; padding: 0 16px 16px; height: calc(100% - 90px); overflow: hidden; }
+.step2-layout { display: grid; grid-template-columns: 330px 1fr; gap: 16px; padding: 0 16px 16px; height: calc(100% - 90px); overflow: hidden; }
 .tree-panel { display: flex; flex-direction: column; overflow: hidden; }
 .tree-body { flex: 1; overflow-y: auto; padding: 4px; }
 .tree-root-label { display: flex; align-items: center; gap: 6px; padding: 8px; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer; }
