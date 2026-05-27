@@ -25,29 +25,32 @@ fi
 echo "[1/6] Docker: $(docker --version)"
 echo "       Compose: $($DOCKER_COMPOSE version 2>/dev/null || echo ok)"
 
-# 清理旧前端文件
-echo "[2/6] 清理旧前端文件..."
+# 构建前端
+echo "[2/6] 构建前端..."
 rm -rf frontend/dist
 mkdir -p frontend/dist
 
-# 构建前端
-echo "[3/6] 构建前端..."
-cd frontend
-if [ ! -d "node_modules" ] || [ ! -f "node_modules/.package-lock.json" ]; then
-    echo "  安装依赖..."
-    npm install
+if command -v npm >/dev/null 2>&1; then
+    cd frontend
+    if [ ! -d "node_modules" ] || [ ! -f "node_modules/.package-lock.json" ]; then
+        echo "  安装依赖..."
+        npm install
+    fi
+    npx vite build
+    cd ..
+    echo "  前端构建完成 ✓"
+else
+    echo "  未安装 npm，从 git 恢复 dist..."
+    git checkout HEAD -- frontend/dist/
+    echo "  前端 dist 已从 git 恢复 ✓"
 fi
-npx vite build
-cd ..
-echo "  前端构建完成 ✓"
 
 # 重建后端镜像并启动服务
-echo "[4/6] 启动 Docker 服务..."
+echo "[3/6] 启动 Docker 服务..."
 $DOCKER_COMPOSE up -d --build
 echo "  Docker 服务启动完成 ✓"
 
-# 健康检查
-echo "[5/6] 健康检查..."
+echo "[4/6] 健康检查..."
 sleep 3
 BACKEND_OK=false
 for i in {1..15}; do
@@ -66,7 +69,7 @@ if [ "$BACKEND_OK" = false ]; then
 fi
 
 # 验证 Nginx
-echo "[6/6] 验证 Nginx..."
+echo "[5/6] 验证 Nginx..."
 sleep 1
 NGINX_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ 2>/dev/null || echo "000")
 echo "  Nginx 状态码: $NGINX_STATUS"
