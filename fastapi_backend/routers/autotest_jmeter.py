@@ -8,6 +8,7 @@ AutoTest JMeter 导出/导入路由
 import io
 import json
 from typing import List, Optional, Dict, Any
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -324,15 +325,15 @@ def _case_to_dict(case: AutoTestCase) -> Dict[str, Any]:
 
 def _create_jmx_response(jmx_content: str, filename: str) -> StreamingResponse:
     """创建 JMeter .jmx 文件响应"""
-    # 创建文件流
     file_stream = io.BytesIO(jmx_content.encode("UTF-8"))
-    
-    # 返回文件响应
+
+    encoded_filename = quote(filename, safe='')
+
     return StreamingResponse(
         file_stream,
         media_type="application/octet-stream",
         headers={
-            "Content-Disposition": f"attachment; filename={filename}",
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
             "Access-Control-Expose-Headers": "Content-Disposition",
         },
     )

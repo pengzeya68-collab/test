@@ -414,41 +414,38 @@
             </template>
           </el-table-column>
           <el-table-column prop="created_at" label="执行时间" width="170" />
-          <el-table-column label="操作" width="260" align="center">
+          <el-table-column label="操作" min-width="320" align="left">
             <template #default="{ row }">
-              <el-button
-                size="small"
-                type="warning"
-                link
-                @click="reRunHistory(row)"
-              >
-                再次运行
-              </el-button>
-              <el-button
-                v-if="row.report_url"
-                size="small"
-                type="primary"
-                @click="openReport(row.report_url)"
-              >
-                <el-icon><View /></el-icon>
-                查看Allure报告
-              </el-button>
-              <el-button
-                size="small"
-                type="info"
-                link
-                @click="viewReportDetail(row.id)"
-              >
-                查看步骤详情
-              </el-button>
-              <el-button
-                size="small"
-                type="danger"
-                link
-                @click="deleteHistoryRecord(row.id)"
-              >
-                <el-icon><Delete /></el-icon>
-              </el-button>
+              <div class="history-actions">
+                <el-tooltip content="再次运行此场景" placement="top">
+                  <el-button size="small" type="warning" @click="reRunHistory(row)">
+                    <el-icon><VideoPlay /></el-icon>
+                    再次运行
+                  </el-button>
+                </el-tooltip>
+                <el-tooltip content="查看 Allure 详细报告" placement="top">
+                  <el-button
+                    v-if="row.report_url"
+                    size="small"
+                    type="primary"
+                    @click="openReport(row.report_url)"
+                  >
+                    <el-icon><View /></el-icon>
+                    Allure报告
+                  </el-button>
+                </el-tooltip>
+                <el-tooltip content="查看步骤详情（含请求/响应）" placement="top">
+                  <el-button size="small" type="info" @click="viewReportDetail(row.id)">
+                    <el-icon><Document /></el-icon>
+                    步骤详情
+                  </el-button>
+                </el-tooltip>
+                <el-tooltip content="删除此条历史记录" placement="top">
+                  <el-button size="small" type="danger" @click="deleteHistoryRecord(row.id)">
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
+                </el-tooltip>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -1775,6 +1772,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 12px;
+}
+
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .form-tip {

@@ -191,16 +191,7 @@
     </div>
 
     <template #footer>
-      <span class="dialog-footer">
-        <el-button
-          v-show="!isRunning && runResult"
-          type="primary"
-          @click="openAllureReport"
-        >
-          📊 查看 Allure 详细报告
-        </el-button>
-        <el-button type="danger" @click="dialogVisible = false">关闭弹窗</el-button>
-      </span>
+      <span></span>
     </template>
   </el-dialog>
 </template>

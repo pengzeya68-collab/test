@@ -356,7 +356,7 @@ class ScenarioExecutionEngine:
                 attachment_type=allure.attachment_type.JSON
             )
         with allure.step("3. 执行断言校验"):
-{assert_block}
+    {assert_block}
 '''.format(
     i_plus_1=i_plus_1,
     step_name_escaped=step_name_escaped,
