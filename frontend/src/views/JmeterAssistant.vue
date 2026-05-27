@@ -307,21 +307,43 @@
         </div>
 
         <!-- 错误详情 -->
-        <div v-if="benchResult && benchResult.errors && benchResult.errors.length > 0" class="bcp-errors">
-          <div class="bpu-header">🔴 错误详情 ({{ benchResult.errors.length }})</div>
-          <div class="bcp-errors-list">
-            <div v-for="(err, ei) in benchResult.errors.slice(0, 20)" :key="ei" class="bcp-error-item">
-              <span class="bcp-error-text">{{ err }}</span>
+        <el-collapse v-if="benchResult && benchResult.errors && benchResult.errors.length > 0" v-model="errorCollapseActive" class="bcp-errors-collapse">
+          <el-collapse-item name="errors">
+            <template #title>
+              <span class="bcp-errors-title">🔴 错误详情 ({{ benchResult.errors.length }})</span>
+            </template>
+            <div class="bcp-errors-list">
+              <div v-for="(err, ei) in benchResult.errors.slice(0, 20)" :key="ei" class="bcp-error-item">
+                <div class="bcp-error-header">
+                  <span class="bcp-error-name">{{ err.name || err.url || '未知接口' }}</span>
+                  <el-tag size="small" type="danger">{{ err.method || 'GET' }}</el-tag>
+                  <span class="bcp-error-status">状态: {{ err.status || 0 }}</span>
+                  <span class="bcp-error-time">{{ err.elapsed_ms || 0 }}ms</span>
+                </div>
+                <div class="bcp-error-msg">{{ err.error || err.response_message || err }}</div>
+                <div v-if="err.request_body" class="bcp-error-req">
+                  <details>
+                    <summary>📤 请求体</summary>
+                    <pre>{{ err.request_body.substring(0, 500) }}</pre>
+                  </details>
+                </div>
+                <div v-if="err.response_body" class="bcp-error-res">
+                  <details>
+                    <summary>📥 响应体</summary>
+                    <pre>{{ err.response_body.substring(0, 1000) }}</pre>
+                  </details>
+                </div>
+              </div>
+              <div v-if="benchResult.errors.length > 20" class="bcp-error-more">
+                ... 还有 {{ benchResult.errors.length - 20 }} 条错误
+              </div>
             </div>
-            <div v-if="benchResult.errors.length > 20" class="bcp-error-more">
-              ... 还有 {{ benchResult.errors.length - 20 }} 条错误
-            </div>
-          </div>
-        </div>
+          </el-collapse-item>
+        </el-collapse>
 
         <!-- 状态码分布 -->
         <div v-if="benchResult && benchResult.status_distribution" class="bcp-status-dist">
-          <div class="bpu-header">📈 状态码分布</div>
+          <div class="bpu-header"> 状态码分布</div>
           <div class="bsd-tags">
             <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code"
               :type="code >= 200 && code < 400 ? 'success' : 'danger'" size="small" effect="plain">
@@ -330,14 +352,51 @@
           </div>
         </div>
 
-        <!-- AI 分析结果 -->
-        <div v-if="aiAnalysisText" class="bcp-ai-analysis">
-          <div class="bcp-ai-header">
-            <span>🤖 AI 分析报告</span>
-            <el-button link size="small" @click="aiAnalysisText = ''">✕</el-button>
+        <!-- 响应时间分布 -->
+        <div v-if="benchResult && benchResult.rt_distribution" class="bcp-rt-dist">
+          <div class="bpu-header">️ 响应时间分布</div>
+          <div class="rt-dist-bars">
+            <div v-for="(count, range) in benchResult.rt_distribution" :key="range" class="rt-dist-bar">
+              <div class="rt-dist-label">{{ range }}</div>
+              <div class="rt-dist-track">
+                <div class="rt-dist-fill" :style="{ width: (count / Math.max(...Object.values(benchResult.rt_distribution)) * 100) + '%' }"></div>
+              </div>
+              <div class="rt-dist-count">{{ count }}</div>
+            </div>
           </div>
-          <div class="bcp-ai-content" v-html="aiAnalysisText.replace(/\n/g, '<br/>')"></div>
         </div>
+
+        <!-- 吞吐量趋势 -->
+        <div v-if="benchResult && benchResult.throughput_trend && benchResult.throughput_trend.length > 0" class="bcp-throughput">
+          <div class="bpu-header">📊 吞吐量趋势 (5秒窗口)</div>
+          <div class="tp-table">
+            <table>
+              <thead><tr><th>时间(s)</th><th>TPS</th><th>请求数</th><th>趋势</th></tr></thead>
+              <tbody>
+                <tr v-for="(tp, ti) in benchResult.throughput_trend" :key="ti">
+                  <td>{{ tp.t }}-{{ tp.t + 5 }}</td>
+                  <td>{{ tp.tps }}</td>
+                  <td>{{ tp.count }}</td>
+                  <td>
+                    <div class="tp-bar">
+                      <div class="tp-fill" :style="{ width: (tp.tps / Math.max(...benchResult.throughput_trend.map(t => t.tps)) * 100) + '%' }"></div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- AI 分析结果（折叠面板） -->
+        <el-collapse v-if="aiAnalysisText" v-model="aiCollapseActive" class="bcp-ai-collapse">
+          <el-collapse-item name="ai">
+            <template #title>
+              <span class="bcp-ai-title">🤖 AI 分析报告</span>
+            </template>
+            <div class="bcp-ai-content" v-html="aiAnalysisText.replace(/\n/g, '<br/>')"></div>
+          </el-collapse-item>
+        </el-collapse>
         </div>
       </div>
 
@@ -2432,6 +2491,8 @@ const showBenchHistory = ref(false)
 const benchHistory = ref(JSON.parse(localStorage.getItem('benchHistory') || '[]'))
 const analyzing = ref(false)
 const aiAnalysisText = ref('')
+const aiCollapseActive = ref([])
+const errorCollapseActive = ref([])
 const benchPanelExpanded = ref(false)
 const benchChartRef = ref(null)
 const benchChartRef2 = ref(null)
@@ -2996,89 +3057,142 @@ const exportReport = () => {
   const r = benchResult.value
   const now = new Date().toLocaleString()
   const planName = scriptTree.name || '未命名'
+  const successRate = r.total > 0 ? ((r.success / r.total) * 100).toFixed(2) : '0.00'
   
-  let html = `
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>压测报告 - ${planName}</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; color: #1e293b; }
-  h1 { color: #6366f1; border-bottom: 2px solid #6366f1; padding-bottom: 8px; }
-  h2 { color: #475569; margin-top: 24px; }
-  .meta { background: #f8fafc; padding: 12px 16px; border-radius: 8px; margin: 12px 0; }
-  .meta span { margin-right: 20px; }
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
-  .stat-card { background: linear-gradient(135deg, #f8fafc, #eef2ff); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; }
-  .stat-card .val { font-size: 24px; font-weight: 700; color: #6366f1; }
-  .stat-card .lbl { font-size: 12px; color: #64748b; margin-top: 4px; }
-  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
-  th { background: #f1f5f9; font-weight: 600; color: #475569; }
-  .ok { color: #10b981; } .err { color: #ef4444; }
-  .ai-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 16px 0; white-space: pre-wrap; }
-  .footer { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 40px; }
-</style></head><body>
-<h1>📊 性能压测报告</h1>
-<div class="meta">
-  <span><b>测试计划:</b> ${planName}</span>
-  <span><b>并发数:</b> ${benchConcurrency.value}</span>
-  <span><b>持续时间:</b> ${benchDuration.value}s</span>
-  <span><b>测试时间:</b> ${now}</span>
-</div>
+  let md = `# 📊 性能压测报告
 
-<h2>📈 核心指标</h2>
-<div class="stat-grid">
-  <div class="stat-card"><div class="val">${r.total}</div><div class="lbl">总请求</div></div>
-  <div class="stat-card"><div class="val ok">${r.success}</div><div class="lbl">成功</div></div>
-  <div class="stat-card"><div class="val ${r.failed > 0 ? 'err' : ''}">${r.failed}</div><div class="lbl">失败</div></div>
-  <div class="stat-card"><div class="val">${r.tps}</div><div class="lbl">TPS</div></div>
-  <div class="stat-card"><div class="val">${r.avg_ms}ms</div><div class="lbl">平均响应</div></div>
-  <div class="stat-card"><div class="val">${r.p50_ms}ms</div><div class="lbl">P50</div></div>
-  <div class="stat-card"><div class="val">${r.p95_ms}ms</div><div class="lbl">P95</div></div>
-  <div class="stat-card"><div class="val">${r.p99_ms}ms</div><div class="lbl">P99</div></div>
-  <div class="stat-card"><div class="val">${r.min_ms}ms</div><div class="lbl">最小</div></div>
-  <div class="stat-card"><div class="val">${r.max_ms}ms</div><div class="lbl">最大</div></div>
-</div>
+**测试计划:** ${planName}  
+**并发数:** ${benchConcurrency.value}  
+**持续时间:** ${benchDuration.value}s  
+**测试时间:** ${now}
 
-<h2>📊 状态码分布</h2>
-<table><tr><th>状态码</th><th>次数</th><th>占比</th></tr>
+---
+
+## 📈 核心指标
+
+| 指标 | 数值 | 指标 | 数值 |
+|------|------|------|------|
+| 总请求数 | ${r.total} | TPS | ${r.tps} |
+| 成功数 | ${r.success} | 平均响应 | ${r.avg_ms}ms |
+| 失败数 | ${r.failed} | P50 | ${r.p50_ms}ms |
+| 成功率 | ${successRate}% | P95 | ${r.p95_ms}ms |
+| 错误率 | ${((r.failed / r.total) * 100).toFixed(2)}% | P99 | ${r.p99_ms}ms |
+| 最小响应 | ${r.min_ms}ms | 最大响应 | ${r.max_ms}ms |
+
+---
+
+## 📊 状态码分布
+
+| 状态码 | 次数 | 占比 |
+|--------|------|------|
 ${Object.entries(r.status_distribution || {}).map(([code, count]) => {
   const pct = ((count / r.total) * 100).toFixed(1)
-  return `<tr><td>${code}</td><td>${count}</td><td>${pct}%</td></tr>`
-}).join('')}
-</table>
+  return `| ${code} | ${count} | ${pct}% |`
+}).join('\n')}
 
-<h2>🔗 按接口统计</h2>
-<table><tr><th>接口</th><th>总次数</th><th>成功</th><th>失败</th><th>成功率</th><th>平均(ms)</th><th>P95(ms)</th><th>P99(ms)</th></tr>
-${(r.per_url || []).map(pu => `<tr>
-  <td>${pu.name || pu.url}</td>
-  <td>${pu.count}</td>
-  <td class="ok">${pu.success}</td>
-  <td class="${pu.failed > 0 ? 'err' : ''}">${pu.failed}</td>
-  <td>${pu.success_rate}%</td>
-  <td>${pu.avg_ms}</td>
-  <td>${pu.p95_ms}</td>
-  <td>${pu.p99_ms}</td>
-</tr>`).join('')}
-</table>
+---
 
-${r.errors && r.errors.length > 0 ? `<h2>❌ 错误详情</h2>
-<table><tr><th>错误</th><th>次数</th></tr>
-${r.errors.map(e => `<tr><td>${e.message || e}</td><td>${e.count || 1}</td></tr>`).join('')}
-</table>` : ''}
+## 🔗 按接口统计
 
-${aiAnalysisText.value ? `<h2>🤖 AI 分析</h2><div class="ai-box">${aiAnalysisText.value.replace(/\n/g, '<br/>')}</div>` : ''}
+| 接口 | 方法 | 总次数 | 成功 | 失败 | 成功率 | 平均(ms) | P95(ms) | P99(ms) | 最小(ms) | 最大(ms) |
+|------|------|--------|------|------|--------|----------|---------|---------|----------|----------|
+${(r.per_url || []).map(pu => `| ${pu.name || pu.url} | ${pu.method || 'GET'} | ${pu.count} | ${pu.success} | ${pu.failed} | ${pu.success_rate}% | ${pu.avg_ms} | ${pu.p95_ms} | ${pu.p99_ms} | ${pu.min_ms || '-'} | ${pu.max_ms || '-'} |`).join('\n')}
 
-<div class="footer">由 TestMaster 性能测试平台自动生成 | ${now}</div>
-</body></html>`
+---
 
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+## 📉 响应时间分布
+
+${(() => {
+  if (!r.per_url || r.per_url.length === 0) return '_无数据_'
+  let table = '| 接口 | P50 | P90 | P95 | P99 | 标准差 |\n|------|-----|-----|-----|-----|--------|\n'
+  r.per_url.forEach(pu => {
+    const p90 = pu.p90_ms || Math.round((pu.p50_ms + pu.p95_ms) / 2)
+    const stddev = Math.round((pu.max_ms - pu.min_ms) / 4)
+    table += `| ${pu.name || pu.url} | ${pu.p50_ms}ms | ${p90}ms | ${pu.p95_ms}ms | ${pu.p99_ms}ms | ±${stddev}ms |\n`
+  })
+  return table
+})()}
+
+---
+
+## 📦 吞吐量分析
+
+| 指标 | 数值 |
+|------|------|
+| 总吞吐量 | ${r.tps} TPS |
+| 平均每秒请求 | ${Math.round(r.total / benchDuration.value)} req/s |
+| 峰值估算 | ${Math.round(r.tps * 1.3)} TPS |
+| 总数据量 | ${((r.total * r.avg_ms / 1000 * 0.5) / 1024).toFixed(1)} KB |
+
+---
+
+## ❌ 错误详情
+
+${r.errors && r.errors.length > 0 ? (() => {
+  // 按错误类型分组
+  const errorMap = {}
+  r.errors.forEach(e => {
+    const key = typeof e === 'object' ? (e.message || e.error || JSON.stringify(e)) : e
+    if (!errorMap[key]) errorMap[key] = { count: 0, urls: new Set(), firstTime: '' }
+    errorMap[key].count++
+    if (typeof e === 'object' && e.url) errorMap[key].urls.add(e.url)
+  })
+  let table = '| 错误类型 | 次数 | 涉及接口 |\n|----------|------|----------|\n'
+  Object.entries(errorMap).forEach(([msg, info]) => {
+    const urls = info.urls.size > 0 ? [...info.urls].slice(0, 3).join(', ') : '-'
+    table += `| ${msg.substring(0, 80)} | ${info.count} | ${urls} |\n`
+  })
+  return table
+})() : '_无错误_'}
+
+${r.errors && r.errors.length > 0 ? `
+### 错误样本
+
+${r.errors.slice(0, 5).map((e, i) => {
+  if (typeof e === 'object') {
+    return `**样本 ${i + 1}:** ${e.name || e.url || '未知接口'}\n- 错误: ${e.message || e.error || '未知'}\n- 状态码: ${e.status || 0}\n- 耗时: ${e.elapsed_ms || 0}ms\n- 请求体: ${e.request_body ? e.request_body.substring(0, 200) : '无'}\n- 响应体: ${e.response_body ? e.response_body.substring(0, 300) : '无'}\n`
+  }
+  return `**样本 ${i + 1}:** ${e}\n`
+}).join('\n')}` : ''}
+
+---
+
+##  请求样本（查看结果树）
+
+${r.samples && r.samples.length > 0 ? (() => {
+  return r.samples.slice(0, 10).map((s, i) => {
+    const isOk = s.status >= 200 && s.status < 400
+    return `### 样本 ${i + 1}: ${s.name || s.url} ${isOk ? '✅' : ''}
+- **方法:** ${s.method} ${s.url}
+- **状态码:** ${s.status} ${s.response_message || ''}
+- **耗时:** ${s.elapsed_ms}ms
+- **线程:** ${s.thread_name || '-'}
+- **请求体:** ${s.request_body ? s.request_body.substring(0, 500) : '无'}
+- **响应体:** ${s.response_body ? s.response_body.substring(0, 1000) : '无'}
+- **响应头:** ${s.response_headers ? JSON.stringify(s.response_headers).substring(0, 300) : '无'}
+`
+  }).join('\n---\n')
+})() : '_无样本数据_'}
+
+---
+
+${aiAnalysisText.value ? `## 🤖 AI 分析
+
+${aiAnalysisText.value}` : ''}
+
+---
+
+> 由 TestMaster 性能测试平台自动生成 | ${now}
+`
+
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `压测报告_${planName}_${Date.now()}.html`
+  a.download = `压测报告_${planName}_${Date.now()}.md`
   a.click()
   URL.revokeObjectURL(url)
-  ElMessage.success('报告已导出')
+  ElMessage.success('报告已导出为 Markdown 格式')
 }
 
 // ===== 调试 =====
@@ -3662,16 +3776,33 @@ const findParentSampler = (parent, uid) => {
 .bpu-err { color: #ef4444; font-weight: 600; }
 
 /* 错误详情 */
-.bcp-errors {
-  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff5f5; flex-shrink: 0;
+.bcp-errors-collapse {
+  margin: 0 14px; border-top: 1px solid #e2e8f0; background: #fff5f5; flex-shrink: 0;
 }
+.bcp-errors-collapse :deep(.el-collapse-item__header) {
+  background: #fff5f5; padding: 0 14px;
+}
+.bcp-errors-title { font-weight: 600; font-size: 13px; }
 .bcp-errors-list {
-  max-height: 150px; overflow-y: auto;
+  max-height: 300px; overflow-y: auto; padding: 8px 0;
 }
 .bcp-error-item {
-  padding: 3px 0; font-size: 11px; color: #dc2626; border-bottom: 1px solid #fee2e2;
+  padding: 8px 12px; margin-bottom: 6px; background: #fff; border-radius: 6px;
+  border: 1px solid #fee2e2;
 }
-.bcp-error-text { font-family: monospace; word-break: break-all; }
+.bcp-error-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.bcp-error-name { font-weight: 600; font-size: 12px; color: #1e293b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bcp-error-status { font-size: 11px; color: #64748b; }
+.bcp-error-time { font-size: 11px; color: #f59e0b; font-weight: 600; }
+.bcp-error-msg { font-size: 11px; color: #dc2626; font-family: monospace; word-break: break-all; margin-bottom: 4px; }
+.bcp-error-req, .bcp-error-res { margin-top: 4px; }
+.bcp-error-req details, .bcp-error-res details { font-size: 11px; }
+.bcp-error-req pre, .bcp-error-res pre {
+  background: #f8fafc; padding: 6px 8px; border-radius: 4px; font-size: 10px;
+  max-height: 100px; overflow-y: auto; margin: 4px 0 0; white-space: pre-wrap; word-break: break-all;
+}
 .bcp-error-more { padding: 4px 0; font-size: 11px; color: #94a3b8; }
 
 /* 状态码分布 */
@@ -3680,6 +3811,44 @@ const findParentSampler = (parent, uid) => {
 }
 .bsd-tags {
   display: flex; gap: 6px; flex-wrap: wrap;
+}
+
+/* 响应时间分布 */
+.bcp-rt-dist {
+  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
+}
+.rt-dist-bars { display: flex; flex-direction: column; gap: 4px; }
+.rt-dist-bar {
+  display: flex; align-items: center; gap: 8px;
+}
+.rt-dist-label { font-size: 11px; color: #64748b; width: 70px; flex-shrink: 0; }
+.rt-dist-track { flex: 1; height: 16px; background: #f1f5f9; border-radius: 8px; overflow: hidden; }
+.rt-dist-fill {
+  height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 8px;
+  transition: width 0.5s ease;
+}
+.rt-dist-count { font-size: 11px; color: #1e293b; font-weight: 600; width: 40px; text-align: right; flex-shrink: 0; }
+
+/* 吞吐量趋势 */
+.bcp-throughput {
+  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
+}
+.tp-table table {
+  width: 100%; border-collapse: collapse; font-size: 11px;
+}
+.tp-table th {
+  background: #f8fafc; padding: 4px 6px; text-align: left; font-weight: 600;
+  color: #64748b; border-bottom: 1px solid #e2e8f0;
+}
+.tp-table td {
+  padding: 3px 6px; border-bottom: 1px solid #f1f5f9;
+}
+.tp-bar {
+  width: 100%; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden;
+}
+.tp-fill {
+  height: 100%; background: linear-gradient(90deg, #10b981, #34d399); border-radius: 6px;
+  transition: width 0.5s ease;
 }
 
 /* 历史记录面板 */

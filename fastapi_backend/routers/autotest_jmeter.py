@@ -634,7 +634,7 @@ async def _run_bench(task_id: str, config: dict):
                     except Exception as e:
                         err_msg = str(e)[:500]
                         elapsed_err = (time.time() - req_start) * 1000
-                        results.append({
+                        err_entry = {
                             "name": target.get("name", target.get("url", "")),
                             "method": target.get("method", "GET").upper(),
                             "url": target.get("url", ""),
@@ -656,8 +656,9 @@ async def _run_bench(task_id: str, config: dict):
                             "request_headers": dict(target.get("headers", {}) or {}),
                             "response_headers": {},
                             "http_fields": {"content_type": "", "encoding": ""},
-                        })
-                        errors.append(err_msg)
+                        }
+                        results.append(err_entry)
+                        errors.append(err_entry)
 
                     # 每50个请求更新一次进度
                     if len(results) % 50 == 0:
@@ -767,10 +768,12 @@ async def _run_bench(task_id: str, config: dict):
                 "success_rate": round(s["success"] / s["count"] * 100, 1) if s["count"] > 0 else 0,
                 "avg_ms": round(sum(t) / len(t), 1),
                 "p50_ms": round(percentile(t, 50), 1),
+                "p90_ms": round(percentile(t, 90), 1),
                 "p95_ms": round(percentile(t, 95), 1),
                 "p99_ms": round(percentile(t, 99), 1),
                 "min_ms": round(t[0], 1),
                 "max_ms": round(t[-1], 1),
+                "stddev_ms": round((sum((x - sum(t)/len(t))**2 for x in t) / len(t)) ** 0.5, 1) if len(t) > 1 else 0,
             })
 
         # 请求详情样本（≈ 查看结果树）：所有失败 + 每个 URL 前 50 个成功
@@ -788,6 +791,26 @@ async def _run_bench(task_id: str, config: dict):
             if len(samples) >= 200:
                 break
 
+        # 响应时间分布区间统计
+        rt_buckets = {"<10ms": 0, "10-50ms": 0, "50-100ms": 0, "100-200ms": 0, "200-500ms": 0, "500-1000ms": 0, ">1000ms": 0}
+        for ms in elapsed_list:
+            if ms < 10: rt_buckets["<10ms"] += 1
+            elif ms < 50: rt_buckets["10-50ms"] += 1
+            elif ms < 100: rt_buckets["50-100ms"] += 1
+            elif ms < 200: rt_buckets["100-200ms"] += 1
+            elif ms < 500: rt_buckets["200-500ms"] += 1
+            elif ms < 1000: rt_buckets["500-1000ms"] += 1
+            else: rt_buckets[">1000ms"] += 1
+
+        # 吞吐量趋势（按5秒窗口）
+        throughput_trend = []
+        window = 5
+        for i in range(0, int(total_time), window):
+            w_start = start_time + i
+            w_end = w_start + window
+            w_count = sum(1 for r in results if w_start <= (start_time + r.get("elapsed_ms", 0) / 1000) < w_end)
+            throughput_trend.append({"t": i, "tps": round(w_count / window, 1), "count": w_count})
+
         result = {
             "total": len(results),
             "success": success_count,
@@ -796,10 +819,14 @@ async def _run_bench(task_id: str, config: dict):
             "min_ms": round(elapsed_sorted[0], 1),
             "max_ms": round(elapsed_sorted[-1], 1),
             "p50_ms": round(percentile(elapsed_sorted, 50), 1),
+            "p90_ms": round(percentile(elapsed_sorted, 90), 1),
             "p95_ms": round(percentile(elapsed_sorted, 95), 1),
             "p99_ms": round(percentile(elapsed_sorted, 99), 1),
+            "stddev_ms": round((sum((x - sum(elapsed_list)/len(elapsed_list))**2 for x in elapsed_list) / len(elapsed_list)) ** 0.5, 1) if len(elapsed_list) > 1 else 0,
             "tps": round(len(results) / total_time, 1) if total_time > 0 else 0,
             "status_distribution": status_dist,
+            "rt_distribution": rt_buckets,
+            "throughput_trend": throughput_trend,
             "errors": errors[:20],
             "per_url": per_url,
             "samples": samples,
