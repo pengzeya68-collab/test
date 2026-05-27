@@ -24,6 +24,9 @@
         <el-button size="small" type="success" @click="downloadJmx" :disabled="!jmxContent">
           <el-icon><Download /></el-icon> 下载 .jmx
         </el-button>
+        <el-button size="small" @click="showScriptHistory = !showScriptHistory">
+          <el-icon><FolderOpened /></el-icon> 脚本历史{{ scriptHistory.length > 0 ? '(' + scriptHistory.length + ')' : '' }}
+        </el-button>
         <el-button size="small" @click="showGuide = !showGuide">
           <el-icon><QuestionFilled /></el-icon> 帮助
         </el-button>
@@ -40,6 +43,39 @@
             <p style="margin:4px 0"><strong>第3步 · 导出 JMX</strong> — 生成预览并下载 .jmx 文件，用 JMeter 直接运行</p>
           </template>
         </el-alert>
+      </div>
+    </el-collapse-transition>
+
+    <!-- 脚本历史面板 -->
+    <el-collapse-transition>
+      <div v-if="showScriptHistory" class="script-history-panel">
+        <div class="shp-header">
+          <span>📂 脚本历史 ({{ scriptHistory.length }})</span>
+          <div>
+            <el-button size="small" type="primary" @click="createNewScript">
+              <el-icon><Plus /></el-icon> 新建脚本
+            </el-button>
+            <el-button size="small" @click="clearAllHistory" v-if="scriptHistory.length > 0">
+              清空全部
+            </el-button>
+          </div>
+        </div>
+        <div class="shp-list" v-if="scriptHistory.length > 0">
+          <div v-for="(h, hi) in scriptHistory" :key="hi" class="shp-item" @click="loadScriptFromHistory(h)">
+            <div class="shp-item-main">
+              <span class="shp-name">{{ h.name }}</span>
+              <span class="shp-time">{{ h.time }}</span>
+            </div>
+            <div class="shp-item-actions">
+              <el-tag size="small" type="info">{{ h.tree?.children?.length || 0 }} 线程组</el-tag>
+              <el-button link size="small" type="danger" @click.stop="deleteScriptFromHistory(h.name)">删除</el-button>
+            </div>
+          </div>
+        </div>
+        <div v-else class="shp-empty">
+          <p>暂无历史脚本</p>
+          <p style="font-size:12px;color:var(--tm-text-secondary)">脚本会自动保存，切换页面也不会丢失</p>
+        </div>
       </div>
     </el-collapse-transition>
 
@@ -1819,13 +1855,132 @@ const serializeTree = () => {
   return scriptTree.children.map(walk)
 }
 
+// ===== 状态持久化 =====
+const STORAGE_KEY = 'jmeter_scripts'
+const CURRENT_KEY = 'jmeter_current_script'
+const MAX_SCRIPTS = 20
+
+const loadScriptsList = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+const saveScriptsList = (list) => {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)) } catch {}
+}
+
+const loadCurrentScript = () => {
+  try {
+    const raw = localStorage.getItem(CURRENT_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
+const saveCurrentScript = () => {
+  try {
+    const data = {
+      tree: JSON.parse(JSON.stringify(scriptTree)),
+      step: currentStep.value,
+      time: new Date().toLocaleString(),
+    }
+    localStorage.setItem(CURRENT_KEY, JSON.stringify(data))
+    // 同时保存到历史记录
+    const list = loadScriptsList()
+    const idx = list.findIndex(s => s.tree.name === scriptTree.name)
+    const entry = { tree: JSON.parse(JSON.stringify(scriptTree)), time: new Date().toLocaleString(), name: scriptTree.name }
+    if (idx >= 0) list.splice(idx, 1)
+    list.unshift(entry)
+    if (list.length > MAX_SCRIPTS) list.length = MAX_SCRIPTS
+    saveScriptsList(list)
+  } catch {}
+}
+
+const deleteScriptFromHistory = (name) => {
+  const list = loadScriptsList().filter(s => s.name !== name)
+  saveScriptsList(list)
+}
+
+const clearAllHistory = () => {
+  saveScriptsList([])
+  localStorage.removeItem(CURRENT_KEY)
+}
+
 // ===== 状态 =====
 const currentStep = ref(1)
 const showGuide = ref(false)
+const showScriptHistory = ref(false)
+const scriptHistory = ref(loadScriptsList())
 
 const scriptTree = reactive(createElement('TestPlan', { name: 'TestMaster 性能测试' }))
 const selectedUid = ref(null)
 const selectedNode = ref(null)
+
+// 恢复上次会话
+const restoreLastSession = () => {
+  const saved = loadCurrentScript()
+  if (saved && saved.tree && saved.tree.children && saved.tree.children.length > 0) {
+    scriptTree.name = saved.tree.name || 'TestMaster 性能测试'
+    scriptTree.props = saved.tree.props || {}
+    scriptTree.children.splice(0, scriptTree.children.length)
+    const rebuildNode = (n) => {
+      const node = createElement(n.type, { name: n.name, props: n.props || {} })
+      node.uid = n.uid || node.uid
+      node.enabled = n.enabled !== false
+      if (n.children && n.children.length > 0) {
+        for (const child of n.children) {
+          node.children.push(rebuildNode(child))
+        }
+      }
+      return node
+    }
+    for (const child of saved.tree.children) {
+      scriptTree.children.push(rebuildNode(child))
+    }
+    currentStep.value = saved.step || 2
+    ElMessage.success(`已恢复上次会话：${scriptTree.name}`)
+  }
+}
+
+// 从历史记录加载脚本
+const loadScriptFromHistory = (h) => {
+  if (!h.tree || !h.tree.children) return
+  scriptTree.name = h.tree.name || 'TestMaster 性能测试'
+  scriptTree.props = h.tree.props || {}
+  scriptTree.children.splice(0, scriptTree.children.length)
+  const rebuildNode = (n) => {
+    const node = createElement(n.type, { name: n.name, props: n.props || {} })
+    node.uid = n.uid || node.uid
+    node.enabled = n.enabled !== false
+    if (n.children && n.children.length > 0) {
+      for (const child of n.children) {
+        node.children.push(rebuildNode(child))
+      }
+    }
+    return node
+  }
+  for (const child of h.tree.children) {
+    scriptTree.children.push(rebuildNode(child))
+  }
+  selectedUid.value = null
+  selectedNode.value = null
+  currentStep.value = 2
+  showScriptHistory.value = false
+  ElMessage.success(`已加载脚本：${h.name}`)
+}
+
+// 新建脚本
+const createNewScript = () => {
+  scriptTree.name = 'TestMaster 性能测试'
+  scriptTree.props = {}
+  scriptTree.children.splice(0, scriptTree.children.length)
+  selectedUid.value = null
+  selectedNode.value = null
+  currentStep.value = 1
+  showScriptHistory.value = false
+  ElMessage.success('已新建空白脚本')
+}
 
 const selectNode = (uid) => {
   selectedUid.value = uid
@@ -3025,6 +3180,7 @@ onMounted(() => {
   loadImportGroups()
   loadCases()
   loadCaseGroups()
+  restoreLastSession()
   if (scriptTree.children.length === 0) {
     const tg = createElement('ThreadGroup')
     tg.name = '线程组 1'
@@ -3033,6 +3189,25 @@ onMounted(() => {
     scriptTree.children.push(tg)
   }
   window.addEventListener('resize', resizeAllBenchCharts)
+})
+
+// 自动保存：脚本树变化时
+let saveTimer = null
+watch(() => JSON.stringify(scriptTree), () => {
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    saveCurrentScript()
+    scriptHistory.value = loadScriptsList()
+  }, 1500)
+}, { deep: true })
+
+// 自动保存：步骤变化时
+watch(currentStep, () => {
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    saveCurrentScript()
+    scriptHistory.value = loadScriptsList()
+  }, 500)
 })
 
 watch(benchPanelExpanded, (v) => {
@@ -3232,6 +3407,49 @@ const findParentSampler = (parent, uid) => {
 
 /* ===== 引导面板 ===== */
 .guide-panel { padding: 8px 20px; }
+
+/* ===== 脚本历史面板 ===== */
+.script-history-panel {
+  margin: 8px 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(148,163,184,0.18);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 4px 16px rgba(0,0,0,0.03);
+  overflow: hidden;
+}
+.shp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.shp-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+.shp-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid #f3f4f6;
+}
+.shp-item:hover { background: #f0f4ff; }
+.shp-item-main { display: flex; align-items: center; gap: 12px; }
+.shp-name { font-weight: 600; font-size: 13px; }
+.shp-time { font-size: 11px; color: var(--tm-text-secondary); }
+.shp-item-actions { display: flex; align-items: center; gap: 8px; }
+.shp-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--tm-text-secondary);
+  font-size: 13px;
+}
 
 /* ===== Step 1 布局 ===== */
 .step1-layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; padding: 18px; flex: 1; min-height: 0; overflow: hidden; }
