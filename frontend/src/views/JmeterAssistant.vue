@@ -813,24 +813,26 @@
               </div>
               <div v-if="benchResult && benchResult.samples && benchResult.samples.length > 0" class="form-section vrt-inline-section">
                 <div class="section-hint" style="margin-bottom:8px"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的结果数据</div>
-                <div class="vrt-container" style="min-height:280px">
-                  <div class="vrt-toolbar">
-                    <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本 (名称/URL/状态码)..." size="small" clearable prefix-icon="Search" style="flex:1" />
-                    <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:100px">
-                      <el-option label="成功 (2xx/3xx)" value="success" />
-                      <el-option label="失败 (4xx/5xx)" value="error" />
-                      <el-option label="异常 (0/ERR)" value="exception" />
-                    </el-select>
-                  </div>
-                  <div class="vrt-sample-list" style="max-height:220px;overflow-y:auto">
-                    <div v-for="(s, si) in filteredSamples" :key="si"
-                      class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
-                      <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
-                      <span class="vrt-time">{{ s.elapsed_ms }}ms</span>
-                      <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
-                      <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
+                <div class="vrt-container">
+                  <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #e5e7eb;background:#f9fafb">
+                    <div class="vrt-toolbar">
+                      <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本..." size="small" clearable prefix-icon="Search" style="flex:1" />
+                      <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:90px">
+                        <el-option label="成功" value="success" />
+                        <el-option label="失败" value="error" />
+                        <el-option label="异常" value="exception" />
+                      </el-select>
                     </div>
-                    <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                    <div class="vrt-sample-list" style="max-height:320px;overflow-y:auto">
+                      <div v-for="(s, si) in filteredSamples" :key="si"
+                        class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
+                        <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
+                        <span class="vrt-time">{{ s.elapsed_ms }}ms</span>
+                        <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
+                        <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
+                      </div>
+                      <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                    </div>
                   </div>
                   <div v-if="selectedSample" class="vrt-detail-panel">
                     <el-tabs v-model="selectedSampleTab" size="small" class="vrt-tabs">
@@ -1041,24 +1043,26 @@
                   <div><b>{{ benchResult.tps }}</b><small>TPS</small></div>
                 </div>
                 <!-- 查看结果树 -->
-                <div v-if="benchResult.samples && benchResult.samples.length > 0" class="vrt-container" style="min-height:280px">
-                  <div class="vrt-toolbar">
-                    <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本 (名称/URL/状态码)..." size="small" clearable prefix-icon="Search" style="flex:1" />
-                    <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:100px">
-                      <el-option label="成功 (2xx/3xx)" value="success" />
-                      <el-option label="失败 (4xx/5xx)" value="error" />
-                      <el-option label="异常 (0/ERR)" value="exception" />
-                    </el-select>
-                  </div>
-                  <div class="vrt-sample-list" style="max-height:220px;overflow-y:auto">
-                    <div v-for="(s, si) in filteredSamples" :key="si"
-                      class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
-                      <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
-                      <span class="vrt-time">{{ s.elapsed_ms }}ms</span>
-                      <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
-                      <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
+                <div v-if="benchResult.samples && benchResult.samples.length > 0" class="vrt-container">
+                  <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #e5e7eb;background:#f9fafb">
+                    <div class="vrt-toolbar">
+                      <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本..." size="small" clearable prefix-icon="Search" style="flex:1" />
+                      <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:90px">
+                        <el-option label="成功" value="success" />
+                        <el-option label="失败" value="error" />
+                        <el-option label="异常" value="exception" />
+                      </el-select>
                     </div>
-                    <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                    <div class="vrt-sample-list" style="max-height:320px;overflow-y:auto">
+                      <div v-for="(s, si) in filteredSamples" :key="si"
+                        class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
+                        <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
+                        <span class="vrt-time">{{ s.elapsed_ms }}ms</span>
+                        <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
+                        <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
+                      </div>
+                      <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                    </div>
                   </div>
                   <div v-if="selectedSample" class="vrt-detail-panel">
                     <el-tabs v-model="selectedSampleTab" size="small" class="vrt-tabs">
@@ -1225,23 +1229,25 @@
                       <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">共 {{ benchResult.samples.length }} 条样本</span>
                     </h4>
                     <div class="vrt-container">
-                      <div class="vrt-toolbar">
-                        <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本 (名称/URL/状态码)..." size="small" clearable prefix-icon="Search" style="flex:1" />
-                        <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:100px">
-                          <el-option label="成功 (2xx/3xx)" value="success" />
-                          <el-option label="失败 (4xx/5xx)" value="error" />
-                          <el-option label="异常 (0/ERR)" value="exception" />
-                        </el-select>
-                      </div>
-                      <div class="vrt-sample-list" style="max-height:280px;overflow-y:auto">
-                        <div v-for="(s, si) in filteredSamples" :key="si"
-                          class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
-                          <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
-                          <span class="vrt-time">{{ s.elapsed_ms }}ms</span>
-                          <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
-                          <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
+                      <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #e5e7eb;background:#f9fafb">
+                        <div class="vrt-toolbar">
+                          <el-input v-model="sampleSearchQuery" placeholder="🔍 筛选样本..." size="small" clearable prefix-icon="Search" style="flex:1" />
+                          <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="状态" style="width:90px">
+                            <el-option label="成功" value="success" />
+                            <el-option label="失败" value="error" />
+                            <el-option label="异常" value="exception" />
+                          </el-select>
                         </div>
-                        <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                        <div class="vrt-sample-list" style="max-height:320px;overflow-y:auto">
+                          <div v-for="(s, si) in filteredSamples" :key="si"
+                            class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
+                            <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
+                            <span class="vrt-time">{{ s.elapsed_ms }}ms</span>
+                            <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
+                            <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
+                          </div>
+                          <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                        </div>
                       </div>
                       <div v-if="selectedSample" class="vrt-detail-panel">
                         <el-tabs v-model="selectedSampleTab" size="small" class="vrt-tabs">
@@ -1329,7 +1335,7 @@
             <el-tab-pane label="🐛 单请求调试" name="debug">
               <div class="debug-body">
                 <div class="section-hint"><el-icon><InfoFilled /></el-icon> 在「配置参数」步骤选中一个 HTTP 请求点击「调试」，在此查看请求/响应详情</div>
-                <div v-if="debugResult" class="vrt-container" style="min-height: 400px;">
+                <div v-if="debugResult" class="vrt-container">
                   <div class="vrt-detail-panel">
                     <el-tabs v-model="debugTab" size="small" class="vrt-tabs">
                       <el-tab-pane label="采样器结果" name="dsampler">
@@ -2895,29 +2901,29 @@ const findParentSampler = (parent, uid) => {
 .col-num { width: 60px; text-align: right; flex-shrink: 0; font-weight: 600; font-size: 11.5px; }
 
 /* ===== 查看结果树 (VRT) ===== */
-.vrt-container { display: flex; gap: 0; border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; overflow: hidden; background: #fff; min-height: 360px; }
-.vrt-inline-section .vrt-container { min-height: 200px; }
+.vrt-container { display: flex; gap: 0; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; background: #fff; }
+.vrt-inline-section .vrt-container { }
 .vrt-inline-section .vrt-sample-list { width: 220px; }
-.vrt-sample-list { width: 280px; flex-shrink: 0; border-right: 1px solid rgba(148,163,184,0.15); overflow-y: auto; background: linear-gradient(180deg, #f8fafc, #f1f5f9); }
-.vrt-sample-item { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; transition: all .15s; font-size: 11.5px; border-bottom: 1px solid rgba(148,163,184,0.08); }
-.vrt-sample-item:hover { background: rgba(99,102,241,0.06); }
-.vrt-sample-item.active { background: linear-gradient(90deg, rgba(99,102,241,0.12), rgba(99,102,241,0.04)); border-left: 3px solid #6366f1; }
-.vrt-time { font-weight: 800; width: 58px; flex-shrink: 0; color: #334155; font-size: 12px; }
-.vrt-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #64748b; font-size: 10.5px; }
-.vrt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #334155; font-size: 11px; font-weight: 500; }
-.vrt-err { color: #dc2626; font-size: 11px; flex-shrink: 0; }
-.vrt-toolbar { display: flex; gap: 8px; padding: 8px 10px; background: linear-gradient(180deg, #f8fafc, #f1f5f9); border-bottom: 1px solid rgba(148,163,184,0.15); align-items: center; }
+.vrt-sample-list { width: 280px; flex-shrink: 0; border-right: 1px solid #e5e7eb; overflow-y: auto; background: #f9fafb; }
+.vrt-sample-item { display: flex; align-items: center; gap: 6px; padding: 4px 8px; cursor: pointer; transition: background .1s; font-size: 11px; border-bottom: 1px solid #f3f4f6; }
+.vrt-sample-item:hover { background: #eff6ff; }
+.vrt-sample-item.active { background: #dbeafe; border-left: 3px solid #3b82f6; }
+.vrt-time { font-weight: 700; width: 52px; flex-shrink: 0; color: #374151; font-size: 11px; }
+.vrt-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #6b7280; font-size: 10px; }
+.vrt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #1f2937; font-size: 11px; font-weight: 500; }
+.vrt-err { color: #dc2626; font-size: 10px; flex-shrink: 0; }
+.vrt-toolbar { display: flex; gap: 8px; padding: 6px 8px; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; align-items: center; flex-shrink: 0; }
 .vrt-detail-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-.vrt-empty-detail { flex: 1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 13px; background: linear-gradient(135deg, rgba(248,250,252,0.5), transparent); }
+.vrt-empty-detail { display: none; }
 .vrt-tabs { height: 100%; display: flex; flex-direction: column; }
-.vrt-tabs :deep(.el-tabs__header) { margin-bottom: 0; background: #f8fafc; border-bottom: 1px solid rgba(148,163,184,0.15); padding: 0 10px; }
-.vrt-tabs :deep(.el-tabs__content) { flex: 1; overflow-y: auto; padding: 10px 14px; }
+.vrt-tabs :deep(.el-tabs__header) { margin-bottom: 0; background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 0 8px; }
+.vrt-tabs :deep(.el-tabs__content) { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .vrt-inner-tabs :deep(.el-tabs__header) { margin-bottom: 4px; }
-.vrt-inner-tabs :deep(.el-tabs__content) { max-height: calc(100% - 40px); overflow-y: auto; }
-.vrt-table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.9; }
-.vrt-table td { padding: 2px 8px; border-bottom: 1px solid rgba(148,163,184,0.08); vertical-align: top; }
-.vrt-label { color: #64748b; font-weight: 600; white-space: nowrap; width: 160px; font-family: 'Consolas','Monaco',monospace; font-size: 11px; }
-.vrt-subheader td { background: rgba(99,102,241,0.04); padding: 6px 8px !important; font-size: 11px; }
+.vrt-inner-tabs :deep(.el-tabs__content) { max-height: calc(100% - 36px); overflow-y: auto; }
+.vrt-table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.8; }
+.vrt-table td { padding: 2px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+.vrt-label { color: #6b7280; font-weight: 600; white-space: nowrap; width: 150px; font-family: 'Consolas','Monaco',monospace; font-size: 11px; }
+.vrt-subheader td { background: #f9fafb; padding: 4px 8px !important; font-size: 11px; }
 .indent1 { padding-left: 28px !important; }
 .vrt-code { background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); padding: 12px; border-radius: 8px; font-size: 11.5px; color: #e2e8f0; font-family: 'Consolas','Monaco',monospace; max-height: 300px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid rgba(148,163,184,0.1); box-shadow: inset 0 2px 6px rgba(0,0,0,0.12); }
 .vrt-error-body { color: #fca5a5; }
