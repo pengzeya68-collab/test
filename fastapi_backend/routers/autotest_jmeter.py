@@ -605,8 +605,8 @@ async def _run_bench(task_id: str, config: dict):
                                 "start_time": req_start_iso,
                                 "data_type": "text",
                                 "error": None,
-                                "request_body": (req_body[:2000] if req_body else ""),
-                                "response_body": raw_body[:3000].decode('utf-8', errors='replace') if body_len > 0 else "",
+                                "request_body": (req_body[:5000] if req_body else ""),
+                                "response_body": raw_body[:15000].decode('utf-8', errors='replace') if body_len > 0 else "",
                                 "request_headers": {k: v for k, v in headers.items()},
                                 "response_headers": resp_headers,
                                 "http_fields": {
@@ -621,7 +621,7 @@ async def _run_bench(task_id: str, config: dict):
                                 body_samples.append({
                                     "url": url, "name": name,
                                     "status": resp.status,
-                                    "body": raw_body[:2000].decode('utf-8', errors='replace'),
+                                    "body": raw_body[:10000].decode('utf-8', errors='replace'),
                                     "headers": resp_headers,
                                 })
                     except asyncio.CancelledError:
@@ -646,8 +646,8 @@ async def _run_bench(task_id: str, config: dict):
                             "start_time": req_start_iso if 'req_start_iso' in dir() else "-",
                             "data_type": "text",
                             "error": err_msg,
-                            "request_body": target.get("body", "")[:2000] if target.get("body") else "",
-                            "response_body": "",
+                            "request_body": (target.get("body", "") or "")[:5000],
+                            "response_body": f"[请求失败] {err_msg}",
                             "request_headers": dict(target.get("headers", {}) or {}),
                             "response_headers": {},
                             "http_fields": {"content_type": "", "encoding": ""},
