@@ -620,6 +620,20 @@ def _build_tree_node(parent_hash_tree, node: Dict):
         _build_listener(parent_hash_tree, name, "StatAggregateVisualizer", "ResultCollector")
     elif ntype == "ResponseTimeGraph":
         _build_listener(parent_hash_tree, name, "RespTimeGraphVisualizer", "ResultCollector")
+    elif ntype == "InfluxDBBackendListener":
+        _build_influxdb_backend_listener(parent_hash_tree, name, props)
+    elif ntype == "UserParameters":
+        _build_user_parameters(parent_hash_tree, name, props)
+    elif ntype == "DebugSampler":
+        _build_debug_sampler(parent_hash_tree, name)
+    elif ntype == "ForEachController":
+        _build_foreach_controller(parent_hash_tree, name, props, children)
+    elif ntype == "SwitchController":
+        _build_switch_controller(parent_hash_tree, name, props, children)
+    elif ntype in ("RandomController", "InterleaveController"):
+        _build_random_interleave_controller(parent_hash_tree, ntype, name, children)
+    elif ntype == "IncludeController":
+        _build_include_controller(parent_hash_tree, name, props)
 
 
 def _build_thread_group(parent, name, props, children):
@@ -1128,4 +1142,139 @@ def _build_xml_assertion(parent, name, props):
     a.set("testclass", "XMLAssertion")
     a.set("testname", name or "XML Assertion")
     a.set("enabled", "true")
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_influxdb_backend_listener(parent, name, props):
+    el = ET.SubElement(parent, "BackendListener")
+    el.set("guiclass", "BackendListenerGui")
+    el.set("testclass", "BackendListener")
+    el.set("testname", name or "InfluxDB Backend Listener")
+    el.set("enabled", "true")
+    _add_element_prop(el, "classname", "org.apache.jmeter.visualizers.backend.influxdb.InfluxDBBackendListenerClient")
+    args = ET.SubElement(el, "elementProp")
+    args.set("name", "arguments")
+    args.set("elementType", "Arguments",)
+    args.set("guiclass", "ArgumentsPanel")
+    args.set("testclass", "Arguments")
+    coll = ET.SubElement(args, "collectionProp")
+    coll.set("name", "Arguments.arguments")
+    influxdb_args = [
+        ("influxdbUrl", props.get("influxdbUrl", "http://localhost:8086/write?db=jmeter")),
+        ("application", props.get("application", "test")),
+        ("measurement", props.get("measurement", "jmeter")),
+        ("summaryOnly", str(props.get("summaryOnly", False)).lower()),
+        ("samplersRegex", props.get("samplersRegex", "")),
+        ("percentiles", props.get("percentiles", "50;90;95;99")),
+        ("testTitle", props.get("testTitle", "")),
+        ("eventTags", props.get("eventTags", "")),
+        ("tagRandom", props.get("tagRandom", "")),
+    ]
+    for i, (aname, aval) in enumerate(influxdb_args):
+        arg = ET.SubElement(coll, "elementProp")
+        arg.set(f"Argument.name_{i}", aname)
+        arg.set("elementType", "Argument")
+        arg.set("guiclass", "ArgumentPanel")
+        arg.set("testclass", "Argument")
+        arg.set("enabled", "true")
+        sp = ET.SubElement(arg, "stringProp")
+        sp.set("name", "Argument.value")
+        sp.text = aval
+        sp2 = ET.SubElement(arg, "stringProp")
+        sp2.set("name", "Argument.metadata")
+        sp2.text = "="
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_user_parameters(parent, name, props):
+    el = ET.SubElement(parent, "UserParameters")
+    el.set("guiclass", "UserParametersGui")
+    el.set("testclass", "UserParameters")
+    el.set("testname", name or "User Parameters")
+    el.set("enabled", "true")
+    names = props.get("names", ["sid"])
+    users = props.get("users", [["user1"]])
+    per_iter = props.get("perIteration", False)
+    _add_element_prop(el, "UserNames_per_iteration", "true" if per_iter else "false")
+    names_coll = ET.SubElement(el, "collectionProp")
+    names_coll.set("name", "UserNames.names")
+    for n in names:
+        sp = ET.SubElement(names_coll, "stringProp")
+        sp.set("name", n if n else f"{len(names_coll)}")
+        sp.text = n
+    thread_users = ET.SubElement(el, "collectionProp")
+    thread_users.set("name", "UserUsers.thread_users")
+    for ui, user in enumerate(users):
+        up = ET.SubElement(thread_users, "collectionProp")
+        up.set(f"name_{ui}", f"{ui}")
+        for vi, val in enumerate(user):
+            sp = ET.SubElement(up, "stringProp")
+            sp.set(f"name_{vi}", val if val else "")
+            sp.text = val
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_debug_sampler(parent, name):
+    el = ET.SubElement(parent, "DebugSampler")
+    el.set("guiclass", "TestBeanGUI")
+    el.set("testclass", "DebugSampler")
+    el.set("testname", name or "Debug Sampler")
+    el.set("enabled", "true")
+    _add_element_prop(el, "displayJMeterProperties", "false")
+    _add_element_prop(el, "displayJMeterVariables", "true")
+    _add_element_prop(el, "displaySystemProperties", "false")
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_foreach_controller(parent, name, props, children):
+    c = ET.SubElement(parent, "ForeachController")
+    c.set("guiclass", "ForeachControlPanel")
+    c.set("testclass", "ForeachController")
+    c.set("testname", name or "For Each Controller")
+    c.set("enabled", "true")
+    _add_element_prop(c, "ForeachController.inputVar", props.get("inputVar", ""))
+    _add_element_prop(c, "ForeachController.outputVar", props.get("outputVar", ""))
+    _add_element_prop(c, "ForeachController.useSeparator", "true" if props.get("useSeparator") else "false")
+    _add_element_prop(c, "ForeachController.separator", props.get("separator", "_"))
+    sh = ET.SubElement(parent, "hashTree")
+    for child in children:
+        _build_tree_node(sh, child)
+
+
+def _build_switch_controller(parent, name, props, children):
+    c = ET.SubElement(parent, "SwitchController")
+    c.set("guiclass", "SwitchControllerGui")
+    c.set("testclass", "SwitchController")
+    c.set("testname", name or "Switch Controller")
+    c.set("enabled", "true")
+    _add_element_prop(c, "SwitchController.switch_value", props.get("switchValue", ""))
+    sh = ET.SubElement(parent, "hashTree")
+    for child in children:
+        _build_tree_node(sh, child)
+
+
+def _build_random_interleave_controller(parent, ntype, name, children):
+    if ntype == "RandomController":
+        guiclass, testclass = "RandomControlGui", "RandomController"
+        label = "Random Controller"
+    else:
+        guiclass, testclass = "InterleaveControlGui", "InterleaveControl"
+        label = "Interleave Controller"
+    c = ET.SubElement(parent, testclass)
+    c.set("guiclass", guiclass)
+    c.set("testclass", testclass)
+    c.set("testname", name or label)
+    c.set("enabled", "true")
+    sh = ET.SubElement(parent, "hashTree")
+    for child in children:
+        _build_tree_node(sh, child)
+
+
+def _build_include_controller(parent, name, props):
+    c = ET.SubElement(parent, "IncludeController")
+    c.set("guiclass", "IncludeControlGui")
+    c.set("testclass", "IncludeController")
+    c.set("testname", name or "Include Controller")
+    c.set("enabled", "true")
+    _add_element_prop(c, "IncludeController.includepath", props.get("includePath", ""))
     ET.SubElement(parent, "hashTree")

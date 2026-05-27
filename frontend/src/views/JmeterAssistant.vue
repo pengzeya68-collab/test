@@ -137,7 +137,14 @@
         <div class="panel tree-panel">
           <div class="panel-title">
             <span>📋 脚本结构</span>
-            <el-tag size="small" type="info">{{ totalSamplers }} 个请求</el-tag>
+            <div class="tree-toolbar">
+              <el-tag size="small" type="info">{{ totalSamplers }} 请求 / {{ totalNodes }} 元素</el-tag>
+              <el-button link size="small" @click="expandAllNodes">📂 展开</el-button>
+              <el-button link size="small" @click="collapseAllNodes">📁 折叠</el-button>
+            </div>
+          </div>
+          <div class="tree-search-bar">
+            <el-input v-model="treeSearchQuery" placeholder="🔍 搜索节点名称..." size="small" clearable prefix-icon="Search" />
           </div>
           <div class="tree-body">
             <div class="tree-root-label" @click="selectNode(scriptTree.uid)">
@@ -148,11 +155,12 @@
               </el-button>
             </div>
             <jmeter-tree-node
-              v-for="(node, idx) in scriptTree.children"
+              v-for="(node, idx) in filteredTreeChildren"
               :key="node.uid"
               :node="node"
               :depth="0"
               :selected-uid="selectedUid"
+              :search-query="treeSearchQuery"
               @select="selectNode"
               @remove="removeNodeByUid"
               @add-child="addChildNode"
@@ -776,6 +784,119 @@
             <template v-if="selectedNode.type === 'ViewResultsTree' || selectedNode.type === 'SummaryReport' || selectedNode.type === 'AggregateGraph' || selectedNode.type === 'AggregateReport' || selectedNode.type === 'ResponseTimeGraph'">
               <div class="form-section"><div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div></div>
             </template>
+
+            <template v-if="selectedNode.type === 'InfluxDBBackendListener'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 将 JMeter 测试指标实时推送到 InfluxDB 时序数据库，配合 Grafana 做可视化监控大屏。真实压测必备！</div>
+                <div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>InfluxDB URL</label><el-input v-model="selectedNode.props.influxdbUrl" placeholder="http://localhost:8086/write?db=jmeter" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>应用名</label><el-input v-model="selectedNode.props.application" placeholder="test" size="small" /></div>
+                  <div class="form-group"><label>测量名称</label><el-input v-model="selectedNode.props.measurement" placeholder="jmeter" size="small" /></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>仅汇总结果</label><el-switch v-model="selectedNode.props.summaryOnly" size="small" /></div>
+                  <div class="form-group"><label>采样器正则过滤</label><el-input v-model="selectedNode.props.samplersRegex" placeholder="留空=全部" size="small" /></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>百分位(分号分隔)</label><el-input v-model="selectedNode.props.percentiles" placeholder="50;90;95;99" size="small" /></div>
+                  <div class="form-group"><label>测试标题</label><el-input v-model="selectedNode.props.testTitle" placeholder="" size="small" /></div>
+                </div>
+                <div class="form-group"><label>事件标签</label><el-input v-model="selectedNode.props.eventTags" placeholder="TAG_Random=${__Random(0,999999999)}" size="small" /></div>
+              </div>
+            </template>
+
+            <template v-if="selectedNode.type === 'UserParameters'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 真实场景：多账号并发测试。每个线程使用不同的用户凭证，模拟真实多用户访问。比 CSV 数据源更直观地管理账号</div>
+                <div class="form-group"><label>参数名称（每行一个）</label>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <div v-for="(name, ni) in selectedNode.props.names" :key="ni" style="display:flex;gap:4px">
+                      <el-input v-model="selectedNode.props.names[ni]" placeholder="如 sid, password" size="small" />
+                      <el-button link size="small" type="danger" @click="selectedNode.props.names.splice(ni,1); selectedNode.props.users.forEach(u=>u.splice(ni,1))">×</el-button>
+                    </div>
+                    <el-button size="small" @click="selectedNode.props.names.push(''); selectedNode.props.users.forEach(u=>u.push(''))">+ 添加参数列</el-button>
+                  </div>
+                </div>
+                <div class="form-group"><label>用户数据（每行一个用户）</label>
+                  <div style="max-height:200px;overflow-y:auto;border:1px solid rgba(148,163,184,0.2);border-radius:8px;padding:8px;background:rgba(248,250,252,0.5)">
+                    <table style="width:100%;font-size:11.5px;border-collapse:collapse">
+                      <tr style="background:rgba(99,102,241,0.06)">
+                        <th style="padding:3px 6px;text-align:left;font-size:10px;color:#6366f1">用户#</th>
+                        <th v-for="(n, ni) in selectedNode.props.names" :key="'h'+ni" style="padding:3px 6px;text-align:left;font-size:10px;color:#6366f1">{{ n || '参数'+(ni+1) }}</th>
+                      </tr>
+                      <tr v-for="(user, ui) in selectedNode.props.users" :key="ui" style="border-top:1px solid rgba(148,163,184,0.1)">
+                        <td style="padding:3px 6px;font-weight:700;color:#94a3b8;font-size:10px">{{ ui+1 }}</td>
+                        <td v-for="(val, vi) in user" :key="vi" style="padding:2px">
+                          <el-input v-model="selectedNode.props.users[ui][vi]" size="small" style="width:100%" />
+                        </td>
+                        <td style="padding:2px">
+                          <el-button link size="small" type="danger" @click="selectedNode.props.users.splice(ui,1)" style="font-size:11px">×</el-button>
+                        </td>
+                      </tr>
+                    </table>
+                    <el-button size="small" @click="selectedNode.props.users.push(selectedNode.props.names.map(()=>''))" style="margin-top:6px;width:100%">+ 添加用户</el-button>
+                    <el-button size="small" @click="selectedNode.props.users = []" type="danger" plain style="margin-top:4px;width:100%">清空全部</el-button>
+                  </div>
+                </div>
+                <div class="form-group"><label>每次迭代取下一个</label><el-switch v-model="selectedNode.props.perIteration" size="small" /></div>
+              </div>
+            </template>
+
+            <template v-if="selectedNode.type === 'DebugSampler'">
+              <div class="form-section">
+                <div class="form-group"><label>采样器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+              </div>
+              <div class="section-hint"><el-icon><InfoFilled /></el-icon> 调试神器！运行时输出所有 JMeter 变量值到「查看结果树」中。排查变量是否正确设置时必用</div>
+            </template>
+
+            <template v-if="selectedNode.type === 'ForEachController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 遍历一组变量。如变量前缀为 item_ 则遍历 item_1, item_2, item_3... 常用于批量处理提取的数据</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>输入变量前缀</label><el-input v-model="selectedNode.props.inputVar" placeholder="item_" size="small" /><span class="form-hint">会遍历 item_1, item_2, ...</span></div>
+                <div class="form-group"><label>输出变量名</label><el-input v-model="selectedNode.props.outputVar" placeholder="currentItem" size="small" /><span class="form-hint">循环体内用 ${currentItem} 引用当前值</span></div>
+                <div class="form-row">
+                  <div class="form-group"><label>使用分隔符 "_"</label><el-switch v-model="selectedNode.props.useSeparator" size="small" /></div>
+                  <div class="form-group"><label>分隔符</label><el-input v-model="selectedNode.props.separator" placeholder="_" size="small" style="width:60px" /></div>
+                </div>
+              </div>
+            </template>
+
+            <template v-if="selectedNode.type === 'SwitchController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 根据表达式值选择执行哪个子元素。类似 Java switch-case，支持默认分支</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>Switch 值（表达式或数字）</label><el-input v-model="selectedNode.props.switchValue" placeholder="${status}" size="small" /></div>
+                <div class="form-group"><label>添加子元素</label>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                    <el-button size="small" @click="addChildToCurrent('HttpSampler')">🌐 HTTP 请求</el-button>
+                    <el-button size="small" @click="addChildToCurrent('IfController')">🔀 如果控制器</el-button>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template v-if="selectedNode.type === 'RandomController' || selectedNode.type === 'InterleaveController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> {{ selectedNode.type === 'RandomController' ? '每次随机选择一个子元素执行，模拟用户随机行为' : '按顺序轮换子元素执行，每个子元素轮流被选中一次' }}</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>添加子元素</label>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                    <el-button size="small" @click="addChildToCurrent('HttpSampler')">🌐 HTTP 请求</el-button>
+                    <el-button size="small" @click="addChildToCurrent('IfController')">🔀 如果控制器</el-button>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template v-if="selectedNode.type === 'IncludeController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 引入外部 .jmx 文件片段，实现模块化脚本复用。适合把公共逻辑（登录、公共请求头等）抽取为独立文件</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>.jmx 文件路径</label><el-input v-model="selectedNode.props.includePath" placeholder="common/login.jmx" size="small" /></div>
+              </div>
+            </template>
           </div>
           <div class="editor-empty" v-else>
             <el-icon size="36"><EditPen /></el-icon>
@@ -1090,6 +1211,14 @@ const NODE_TYPES = {
   AggregateGraph: { label: '聚合图表', icon: '📉', parent: 'ThreadGroup' },
   AggregateReport: { label: '聚合报告(高级)', icon: '📊', parent: 'ThreadGroup' },
   ResponseTimeGraph: { label: '响应时间图', icon: '📉', parent: 'ThreadGroup' },
+  InfluxDBBackendListener: { label: 'InfluxDB 后端监听器', icon: '📡', parent: 'TestPlan' },
+  UserParameters: { label: '用户参数(多账号)', icon: '👤', parent: 'ThreadGroup' },
+  DebugSampler: { label: '调试采样器', icon: '🐛', parent: 'ThreadGroup' },
+  ForEachController: { label: 'ForEach 控制器', icon: '🔁', parent: 'ThreadGroup' },
+  IncludeController: { label: 'Include 控制器', icon: '📂', parent: 'ThreadGroup' },
+  SwitchController: { label: 'Switch 控制器', icon: '🔀', parent: 'ThreadGroup' },
+  RandomController: { label: '随机控制器', icon: '🎲', parent: 'ThreadGroup' },
+  InterleaveController: { label: '交替控制器', icon: '🔃', parent: 'ThreadGroup' },
 }
 
 // ===== 工具函数 =====
@@ -1118,8 +1247,8 @@ const defaultProps = {
   CSVDataSet: { filename: 'data.csv', variableNames: '', delimiter: ',', recycle: true, csvContent: '' },
   JDBCConnection: { dbUrl: '', driver: 'com.mysql.cj.jdbc.Driver', dbUser: '', dbPass: '' },
   JDBCSampler: { sql: '' },
-  BeanShellPreProcessor: { script: '' },
-  BeanShellPostProcessor: { script: '' },
+  BeanShellPreProcessor: { script: '// 常用场景：修改请求参数、添加签名、设置时间戳\n// 示例：添加请求时间戳\nlong ts = System.currentTimeMillis();\nvars.put("requestTime", String.valueOf(ts));' },
+  BeanShellPostProcessor: { script: '// 常用场景：提取响应数据、写文件、修改变量\n// 示例：提取数据并写入CSV文件\nString data = prev.getResponseDataAsString();\n// FileWriter fstream = new FileWriter("D:/result.csv", true);\n// BufferedWriter out = new BufferedWriter(fstream);\n// out.write(vars.get("uniqueid") + "," + vars.get("token"));\n// out.write("\\r\\n");\n// out.close(); fstream.close();' },
   JSR223PreProcessor: { language: 'groovy', script: '' },
   JSR223PostProcessor: { language: 'groovy', script: '' },
   IfController: { condition: '${JMeterThread.last_sample_ok}', evaluateAll: false, useExpression: true },
@@ -1136,6 +1265,14 @@ const defaultProps = {
   AggregateGraph: {},
   AggregateReport: {},
   ResponseTimeGraph: {},
+  InfluxDBBackendListener: { influxdbUrl: 'http://localhost:8086/write?db=jmeter', application: 'test', measurement: 'jmeter', summaryOnly: false, samplersRegex: '', percentiles: '50;90;95;99', testTitle: '', eventTags: '', tagRandom: '' },
+  UserParameters: { names: ['sid', 'sid2'], users: [['user1_pass1', 'user2_pass2']], perIteration: false },
+  DebugSampler: {},
+  ForEachController: { inputVar: '', outputVar: '', useSeparator: true, separator: '_' },
+  IncludeController: { includePath: '' },
+  SwitchController: { switchValue: '' },
+  RandomController: {},
+  InterleaveController: {},
 }
 
 const createElement = (type, overrides = {}) => {
@@ -1243,12 +1380,47 @@ const totalTimers = computed(() => {
 const totalListeners = computed(() => {
   let count = 0
   const walk = (node) => {
-    if (['ViewResultsTree','SummaryReport','AggregateGraph','AggregateReport','ResponseTimeGraph'].includes(node.type)) count++
+    if (['ViewResultsTree','SummaryReport','AggregateGraph','AggregateReport','ResponseTimeGraph','InfluxDBBackendListener'].includes(node.type)) count++
     ;(node.children || []).forEach(walk)
   }
   walk(scriptTree)
   return count
 })
+
+const treeSearchQuery = ref('')
+const totalNodes = computed(() => {
+  let count = 0
+  const walk = (node) => {
+    count++
+    ;(node.children || []).forEach(walk)
+  }
+  walk(scriptTree)
+  return count
+})
+
+const filteredTreeChildren = computed(() => {
+  const q = (treeSearchQuery.value || '').toLowerCase().trim()
+  if (!q) return scriptTree.children
+  const matches = []
+  const search = (nodes) => {
+    nodes.forEach(node => {
+      if ((node.name || '').toLowerCase().includes(q)) matches.push(node)
+      if (node.children) search(node.children)
+    })
+  }
+  search(scriptTree.children)
+  return matches
+})
+
+const expandAllNodes = () => {
+  const setExpanded = (node) => { node._expanded = true; (node.children || []).forEach(setExpanded) }
+  setExpanded(scriptTree)
+}
+
+const collapseAllNodes = () => {
+  const setCollapsed = (node) => { node._expanded = false; (node.children || []).forEach(setCollapsed) }
+  setCollapsed(scriptTree)
+}
 
 const summaryEmoji = computed(() => {
   if (totalSamplers.value === 0) return '📭'
@@ -1794,10 +1966,10 @@ const aiGenerateScript = async (type) => {
 
   let prompt = ''
   if (type === 'BeanShellProcessor') {
-    prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个BeanShell${isPre ? '前置' : '后置'}处理器脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}${varContext}\n\n要求：\n1. 写一个完整的BeanShell脚本（Java语法）\n2. ${isPre ? '前置：修改请求参数、添加时间戳/签名等' : '后置：提取响应数据、设置变量等'}\n3. 使用 vars.put() 设置变量供后续使用\n4. 只输出代码，不要解释`
+    prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个BeanShell${isPre ? '前置' : '后置'}处理器脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}${varContext}\n\n要求（参考真实压测场景）：\n1. 写一个完整的BeanShell脚本（Java语法）\n2. ${isPre ? '前置常用：添加时间戳(vars.put("ts",...))、修改请求参数、计算签名、设置Cookie' : '后置常用：提取响应数据用正则/JSON解析、写CSV文件(FileWriter+BufferedWriter)、设置变量供后续引用、解析Cookie'}\n3. 使用 vars.put("变量名", 值) 设置变量，vars.get("变量名") 获取变量\n4. 后置处理器中可用: prev.getResponseDataAsString() 获取响应体，prev.getResponseCode() 获取状态码\n5. 写文件示例:\n   FileWriter fw = new FileWriter("D:/result.csv", true);\n   BufferedWriter bw = new BufferedWriter(fw);\n   bw.write(var1 + "," + var2); bw.write("\\r\\n"); bw.close(); fw.close();\n6. 只输出代码，不要解释`
   } else if (type === 'JSR223Processor') {
     const lang = selectedNode.value?.props?.language || 'groovy'
-    prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个${lang === 'groovy' ? 'Groovy' : lang}语言的JSR223${isPre ? '前置' : '后置'}处理器脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}${varContext}\n\n要求：\n1. 写一个完整的${lang}脚本\n2. ${isPre ? '前置：修改请求参数、添加签名等' : '后置：提取响应数据、设置变量等'}\n3. 使用 vars.put() 设置变量\n4. 只输出代码，不要解释`
+    prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个${lang === 'groovy' ? 'Groovy' : lang}语言的JSR223${isPre ? '前置' : '后置'}处理器脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}${varContext}\n\n要求：\n1. 写一个完整的${lang}脚本\n2. ${isPre ? '前置：修改请求参数、添加签名、设置时间戳' : '后置：提取响应数据、写文件、设置变量'}\n3. Groovy推荐用法: def json = new groovy.json.JsonSlurper().parseText(prev.getResponseDataAsString()) 解析JSON\n4. 使用 vars.put() 设置变量\n5. 只输出代码，不要解释`
   }
 
   aiGenerating.value = true
@@ -1858,7 +2030,7 @@ const aiGenerateAssert = async (type) => {
 
   let prompt = ''
   if (type === 'BeanShell') {
-    prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个BeanShell断言脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}\n${headers.length > 0 ? '- 请求头: ' + JSON.stringify(headers.slice(0, 3)) : ''}\n\n要求：\n1. 写一个完整的BeanShell断言（Java语法）\n2. 检查HTTP状态码是否为200\n3. 检查响应体是否包含"success"或类似成功标识\n4. 加上合理的中文FailureMessage\n5. 只输出代码，不要解释`
+    prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个BeanShell断言脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}\n${headers.length > 0 ? '- 请求头: ' + JSON.stringify(headers.slice(0, 3)) : ''}${varContext}\n\n要求（参考真实压测场景）：\n1. 写一个完整的BeanShell断言（Java语法）\n2. 检查HTTP状态码是否为200: if (!ResponseCode.equals("200")) { Failure = true; FailureMessage = "状态码异常: " + ResponseCode; }\n3. 检查响应体是否包含关键字或JSON字段\n4. 可用变量: ResponseCode(状态码), ResponseMessage, ResponseData(字节数组), prev(SampleResult)\n5. 设置失败: Failure=true; FailureMessage="原因";\n6. 只输出代码，不要解释`
   } else if (type === 'JSR223') {
     prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个Groovy语言的JSR223断言脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}\n\n要求：\n1. 写一个完整的Groovy断言\n2. 检查HTTP状态码是否为200（prev.getResponseCode()）\n3. 检查响应体是否非空\n4. 加上合理的中文FailureMessage\n5. 只输出代码，不要解释`
   } else if (type === 'Json') {
@@ -2033,6 +2205,9 @@ const findParentSampler = (parent, uid) => {
   padding: 0 18px 18px; flex: 1; min-height: 0; overflow: hidden;
 }
 .tree-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.tree-toolbar { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.tree-search-bar { padding: 6px 10px 4px; }
+.tree-search-bar :deep(.el-input__wrapper) { border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 .editor-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 .tree-body {
   flex: 1; overflow-y: auto; padding: 6px;

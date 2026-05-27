@@ -1,6 +1,6 @@
 <template>
   <div class="tree-node" :class="{ selected: node.uid === selectedUid }">
-    <div class="node-row" @click="$emit('select', node.uid)" :style="{ paddingLeft: depth * 18 + 4 + 'px' }">
+    <div class="node-row" @click="$emit('select', node.uid)" :style="{ paddingLeft: depth * 18 + 4 + 'px' }" :class="{ 'search-match': isMatched }">
       <span class="node-toggle" v-if="node.children && node.children.length > 0" @click.stop="expanded = !expanded">
         {{ expanded ? '▼' : '▶' }}
       </span>
@@ -25,6 +25,10 @@
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'TransactionController')">📦 事务控制器</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'ThroughputController')">⏱️ 吞吐量控制器</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'OnceOnlyController')">1️⃣ 仅一次控制器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'ForEachController')">🔁 ForEach 控制器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'SwitchController')">🔀 Switch 控制器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'RandomController')">🎲 随机控制器</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'InterleaveController')">🔃 交替控制器</el-dropdown-item>
                 <el-dropdown-item divided @click="$emit('add-child', node.uid, 'CSVDataSet')">📄 CSV 数据源</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'JDBCSampler')">🗄️ JDBC 请求</el-dropdown-item>
                 <el-dropdown-item divided @click="$emit('add-child', node.uid, 'HTTPRequestDefaults')">🎯 HTTP 请求默认值</el-dropdown-item>
@@ -59,11 +63,14 @@
               </template>
               <template v-if="node.type === 'TestPlan' || node.type === 'ThreadGroup'">
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'JDBCConnection')">🗄️ JDBC 数据库连接</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'InfluxDBBackendListener')">📡 InfluxDB 后端监听器</el-dropdown-item>
                 <el-dropdown-item divided @click="$emit('add-child', node.uid, 'ViewResultsTree')">👁️ 查看结果树</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'SummaryReport')">📈 聚合报告</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'AggregateGraph')">📉 聚合图表</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'AggregateReport')">📊 聚合报告(高级)</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'ResponseTimeGraph')">📉 响应时间图</el-dropdown-item>
+                <el-dropdown-item divided v-if="node.type === 'ThreadGroup'" @click="$emit('add-child', node.uid, 'UserParameters')">👤 用户参数(多账号)</el-dropdown-item>
+                <el-dropdown-item v-if="node.type === 'ThreadGroup'" @click="$emit('add-child', node.uid, 'DebugSampler')">🐛 调试采样器</el-dropdown-item>
               </template>
               <el-dropdown-item divided @click="$emit('duplicate', node.uid)">📋 复制</el-dropdown-item>
               <el-dropdown-item @click="$emit('remove', node.uid)" style="color:#F87171">🗑️ 删除</el-dropdown-item>
@@ -99,12 +106,19 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import draggable from 'vuedraggable'
 
-const props = defineProps({ node: Object, depth: Number, selectedUid: String })
+const props = defineProps({ node: Object, depth: Number, selectedUid: String, searchQuery: String })
 const emit = defineEmits(['select', 'remove', 'add-child', 'duplicate'])
-const expanded = ref(true)
+
+const expanded = ref(props.node._expanded !== undefined ? props.node._expanded : true)
+
+const isMatched = computed(() => {
+  const q = (props.searchQuery || '').toLowerCase().trim()
+  if (!q) return false
+  return (props.node.name || '').toLowerCase().includes(q)
+})
 
 const onDragChange = () => {
   // 触发 reactivity
@@ -140,6 +154,8 @@ const NODE_TYPES = {
 .node-row:hover { background: rgba(255,255,255,0.04); }
 .node-row:active { cursor: grabbing; }
 .tree-node.selected > .node-row { background: rgba(64,158,255,0.12); color: #60a5fa; }
+.node-row.search-match { background: rgba(250,204,21,0.15); border-left: 3px solid #f59e0b; }
+.tree-node.selected > .node-row.search-match { background: rgba(64,158,255,0.15); border-left-color: #409eff; }
 .node-toggle { font-size: 8px; width: 12px; color: var(--tm-text-secondary); cursor: pointer; }
 .node-icon { font-size: 13px; flex-shrink: 0; }
 .node-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
