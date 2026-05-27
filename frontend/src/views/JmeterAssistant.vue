@@ -1,4 +1,5 @@
 <template>
+  <!-- v20260528-multichart-4panel-fullscreen -->
   <div class="jmeter-workspace">
     <!-- 步骤导航 -->
     <div class="step-nav">
