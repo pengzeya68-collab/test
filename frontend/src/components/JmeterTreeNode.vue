@@ -47,28 +47,43 @@
         </el-dropdown>
       </div>
     </div>
-    <div v-if="expanded && node.children && node.children.length > 0">
-      <jmeter-tree-node
-        v-for="(child, idx) in node.children"
-        :key="child.uid"
-        :node="child"
-        :depth="depth + 1"
-        :selected-uid="selectedUid"
-        @select="$emit('select', $event)"
-        @remove="(uid) => $emit('remove', idx, node.uid)"
-        @add-child="$emit('add-child', $event[0], $event[1])"
-        @duplicate="$emit('duplicate', $event)"
-      />
-    </div>
+    <draggable
+      v-model="node.children"
+      :group="{ name: 'jmeter-tree', pull: false, put: true }"
+      :item-key="(c) => c.uid"
+      ghost-class="drag-ghost"
+      handle=".node-row"
+      :force-fallback="true"
+      fallback-class="drag-fallback"
+      @change="onDragChange"
+      v-if="expanded && node.children && node.children.length > 0"
+    >
+      <template #item="{ element: child }">
+        <jmeter-tree-node
+          :node="child"
+          :depth="depth + 1"
+          :selected-uid="selectedUid"
+          @select="$emit('select', $event)"
+          @remove="(uid) => $emit('remove', uid)"
+          @add-child="$emit('add-child', $event[0], $event[1])"
+          @duplicate="$emit('duplicate', $event)"
+        />
+      </template>
+    </draggable>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import draggable from 'vuedraggable'
 
 const props = defineProps({ node: Object, depth: Number, selectedUid: String })
 const emit = defineEmits(['select', 'remove', 'add-child', 'duplicate'])
 const expanded = ref(true)
+
+const onDragChange = () => {
+  // 触发 reactivity
+}
 
 const NODE_TYPES = {
   TestPlan: { label: '测试计划', icon: '📋' },
@@ -96,8 +111,9 @@ const NODE_TYPES = {
 
 <style scoped>
 .tree-node { font-size: 12px; user-select: none; }
-.node-row { display: flex; align-items: center; gap: 3px; padding: 5px 8px; border-radius: 4px; cursor: pointer; transition: background .1s; }
+.node-row { display: flex; align-items: center; gap: 3px; padding: 5px 8px; border-radius: 4px; cursor: grab; transition: background .1s; }
 .node-row:hover { background: rgba(255,255,255,0.04); }
+.node-row:active { cursor: grabbing; }
 .tree-node.selected > .node-row { background: rgba(64,158,255,0.12); color: #60a5fa; }
 .node-toggle { font-size: 8px; width: 12px; color: var(--tm-text-secondary); cursor: pointer; }
 .node-icon { font-size: 13px; flex-shrink: 0; }
@@ -105,4 +121,6 @@ const NODE_TYPES = {
 .node-type-tag { font-size: 10px; color: var(--tm-text-secondary); background: rgba(255,255,255,0.05); padding: 0 4px; border-radius: 2px; }
 .node-actions { flex-shrink: 0; display: none; }
 .node-row:hover .node-actions { display: block; }
+.drag-ghost { opacity: 0.4; background: rgba(64,158,255,0.1); border: 1px dashed var(--tm-color-primary); border-radius: 4px; }
+.drag-fallback { background: rgba(64,158,255,0.12); }
 </style>

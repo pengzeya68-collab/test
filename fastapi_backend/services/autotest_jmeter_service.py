@@ -417,7 +417,7 @@ def _add_response_assertion(parent, case, index, assert_type, expected):
     
     # 断言内容
     collection = ET.SubElement(assertion, "collectionProp")
-    collection.set("name", "Asserion.test_strings")
+    collection.set("name", "Assertion.test_strings")
     string_prop = ET.SubElement(collection, "stringProp")
     string_prop.set("name", "0")
     string_prop.text = str(expected)
@@ -714,7 +714,7 @@ def _build_assertion(parent, name, props):
     _add_element_prop(a, "Assertion.assume_success", "false")
     _add_element_prop(a, "Assertion.test_type", "2" if at == "contains" else "8" if at == "matches" else "8")
     cp = ET.SubElement(a, "collectionProp")
-    cp.set("name", "Asserion.test_strings")
+    cp.set("name", "Assertion.test_strings")
     sp = ET.SubElement(cp, "stringProp")
     sp.set("name", "0")
     sp.text = str(props.get("expected", "200"))

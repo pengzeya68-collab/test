@@ -420,6 +420,225 @@ async def export_tree_to_jmx(body: Dict[str, Any] = Body(...)):
     return {"jmx_content": jmx_content, "elements": _count_elements(tree)}
 
 
+# ========== 快速并发压测（在线验证） ==========
+
+import asyncio
+import time
+import uuid
+import logging
+import aiohttp
+
+# 压测任务状态存储（内存，不持久化）
+_bench_tasks: dict = {}
+_bench_lock = asyncio.Lock()
+
+
+@router.post("/jmeter/quick-bench")
+async def quick_benchmark_submit(body: Dict[str, Any] = Body(...)):
+    """
+    提交快速并发压测任务
+    立即返回 task_id，通过 GET /jmeter/quick-bench/{task_id} 轮询结果
+    
+    Request Body:
+        requests: [{"method", "url", "headers", "body"}, ...]
+        concurrency: 并发数（默认10，最大200）
+        duration: 持续秒数（默认10，最大60）
+        ramp_up: 预热秒数（默认2）
+    
+    Response:
+        task_id: 任务ID
+        status: pending / running / done
+    """
+    targets = body.get("requests", [])
+    if not targets:
+        raise HTTPException(status_code=400, detail="请提供至少一个请求")
+    
+    task_id = str(uuid.uuid4())
+    config = {
+        "targets": targets,
+        "concurrency": min(int(body.get("concurrency", 10)), 200),
+        "duration": min(int(body.get("duration", 10)), 60),
+        "ramp_up": min(int(body.get("ramp_up", 2)), 10),
+    }
+
+    async with _bench_lock:
+        _bench_tasks[task_id] = {
+            "status": "pending",
+            "progress": "等待执行",
+            "percent": 0,
+            "config": config,
+            "result": None,
+        }
+
+    # 后台异步执行，不阻塞当前请求
+    asyncio.create_task(_run_bench(task_id, config))
+
+    return {"task_id": task_id, "status": "pending"}
+
+
+@router.get("/jmeter/quick-bench/{task_id}")
+async def quick_benchmark_status(task_id: str):
+    """
+    查询压测任务状态
+    
+    Response (status=pending/running):
+        status, progress, percent
+    
+    Response (status=done):
+        status: "done"
+        result: { total, success, failed, avg_ms, min_ms, max_ms,
+                  p50_ms, p95_ms, p99_ms, tps, status_distribution, errors }
+    """
+    task = _bench_tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+
+    if task["status"] == "done":
+        return {
+            "status": "done",
+            "progress": "执行完成",
+            "percent": 100,
+            "result": task["result"],
+            "config": task["config"],
+        }
+
+    return {
+        "status": task["status"],
+        "progress": task["progress"],
+        "percent": task["percent"],
+        "config": task["config"],
+    }
+
+
+async def _run_bench(task_id: str, config: dict):
+    """后台执行压测任务"""
+    targets = config["targets"]
+    concurrency = config["concurrency"]
+    duration = config["duration"]
+    ramp_up = config["ramp_up"]
+
+    async with _bench_lock:
+        _bench_tasks[task_id]["status"] = "running"
+        _bench_tasks[task_id]["progress"] = f"正在启动 {concurrency} 个并发..."
+
+    results = []
+    errors = []
+    start_time = time.time()
+
+    async def worker(worker_id: int):
+        timeout_obj = aiohttp.ClientTimeout(total=30)
+        async with aiohttp.ClientSession(timeout=timeout_obj) as session:
+            while True:
+                if time.time() - start_time > duration:
+                    break
+                for target in targets:
+                    if time.time() - start_time > duration:
+                        break
+                    req_start = time.time()
+                    try:
+                        method = target.get("method", "GET").upper()
+                        url = target.get("url", "")
+                        headers = target.get("headers", {}) or {}
+                        req_body = target.get("body", "")
+
+                        kwargs = {"headers": headers}
+                        if req_body and method in ("POST", "PUT", "PATCH"):
+                            kwargs["data"] = req_body
+
+                        async with session.request(method, url, **kwargs) as resp:
+                            elapsed = (time.time() - req_start) * 1000
+                            body_len = len(await resp.read())
+                            results.append({
+                                "status": resp.status,
+                                "elapsed_ms": round(elapsed, 1),
+                                "body_size": body_len,
+                                "worker": worker_id,
+                                "url": url,
+                            })
+                    except asyncio.CancelledError:
+                        return
+                    except Exception as e:
+                        results.append({
+                            "status": 0,
+                            "elapsed_ms": round((time.time() - req_start) * 1000, 1),
+                            "body_size": 0,
+                            "worker": worker_id,
+                            "error": str(e)[:200],
+                            "url": url,
+                        })
+                        errors.append(str(e)[:200])
+
+                    # 每50个请求更新一次进度
+                    if len(results) % 50 == 0:
+                        async with _bench_lock:
+                            _bench_tasks[task_id]["percent"] = min(
+                                int((time.time() - start_time) / duration * 100), 99
+                            )
+                            _bench_tasks[task_id]["progress"] = (
+                                f"已发送 {len(results)} 请求，{len(errors)} 失败"
+                            )
+
+    workers = []
+    for i in range(concurrency):
+        w = asyncio.create_task(worker(i))
+        workers.append(w)
+        if ramp_up > 0 and i < concurrency - 1:
+            await asyncio.sleep(ramp_up / concurrency)
+
+    await asyncio.wait(workers, timeout=duration + 10)
+    total_time = time.time() - start_time
+
+    # 计算结果
+    if not results:
+        result = {
+            "total": 0, "success": 0, "failed": 0,
+            "avg_ms": 0, "min_ms": 0, "max_ms": 0,
+            "p50_ms": 0, "p95_ms": 0, "p99_ms": 0,
+            "tps": 0, "status_distribution": {}, "errors": errors[:20],
+        }
+    else:
+        elapsed_list = [r["elapsed_ms"] for r in results]
+        elapsed_sorted = sorted(elapsed_list)
+        success_count = sum(1 for r in results if 200 <= r["status"] < 400)
+
+        status_dist = {}
+        for r in results:
+            s = str(r.get("status", 0))
+            status_dist[s] = status_dist.get(s, 0) + 1
+
+        def percentile(data, p):
+            if not data:
+                return 0
+            idx = int(len(data) * p / 100)
+            return data[min(idx, len(data) - 1)]
+
+        result = {
+            "total": len(results),
+            "success": success_count,
+            "failed": len(results) - success_count,
+            "avg_ms": round(sum(elapsed_list) / len(elapsed_list), 1),
+            "min_ms": round(elapsed_sorted[0], 1),
+            "max_ms": round(elapsed_sorted[-1], 1),
+            "p50_ms": round(percentile(elapsed_sorted, 50), 1),
+            "p95_ms": round(percentile(elapsed_sorted, 95), 1),
+            "p99_ms": round(percentile(elapsed_sorted, 99), 1),
+            "tps": round(len(results) / total_time, 1) if total_time > 0 else 0,
+            "status_distribution": status_dist,
+            "errors": errors[:20],
+        }
+
+    async with _bench_lock:
+        _bench_tasks[task_id]["status"] = "done"
+        _bench_tasks[task_id]["progress"] = f"完成：{result['total']} 请求，{result['failed']} 失败"
+        _bench_tasks[task_id]["percent"] = 100
+        _bench_tasks[task_id]["result"] = result
+
+    # 10分钟后清理
+    await asyncio.sleep(600)
+    async with _bench_lock:
+        _bench_tasks.pop(task_id, None)
+
+
 def _count_elements(tree):
     """统计树中各类元素数量"""
     counts = {}
