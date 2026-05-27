@@ -523,6 +523,8 @@ async def _run_bench(task_id: str, config: dict):
 
     results = []
     errors = []
+    body_samples = []
+    _body_captured_count = {}
     start_time = time.time()
 
     async def worker(worker_id: int):
@@ -547,14 +549,25 @@ async def _run_bench(task_id: str, config: dict):
 
                         async with session.request(method, url, **kwargs) as resp:
                             elapsed = (time.time() - req_start) * 1000
-                            body_len = len(await resp.read())
-                            results.append({
+                            raw_body = await resp.read()
+                            body_len = len(raw_body)
+                            entry = {
                                 "status": resp.status,
                                 "elapsed_ms": round(elapsed, 1),
                                 "body_size": body_len,
                                 "worker": worker_id,
                                 "url": url,
-                            })
+                            }
+                            results.append(entry)
+                            # 每个 URL 只采样前 3 个响应体
+                            _body_captured_count[url] = _body_captured_count.get(url, 0) + 1
+                            if _body_captured_count[url] <= 3 and body_len > 0:
+                                body_samples.append({
+                                    "url": url,
+                                    "status": resp.status,
+                                    "body": raw_body[:1000].decode('utf-8', errors='replace'),
+                                    "headers": dict(resp.headers),
+                                })
                     except asyncio.CancelledError:
                         return
                     except Exception as e:
@@ -595,6 +608,7 @@ async def _run_bench(task_id: str, config: dict):
             "avg_ms": 0, "min_ms": 0, "max_ms": 0,
             "p50_ms": 0, "p95_ms": 0, "p99_ms": 0,
             "tps": 0, "status_distribution": {}, "errors": errors[:20],
+            "per_url": [], "samples": [],
         }
     else:
         elapsed_list = [r["elapsed_ms"] for r in results]
@@ -612,6 +626,47 @@ async def _run_bench(task_id: str, config: dict):
             idx = int(len(data) * p / 100)
             return data[min(idx, len(data) - 1)]
 
+        # 按 URL 统计（≈ 聚合报告）
+        url_map = {}
+        for r in results:
+            u = r.get("url", "")
+            if u not in url_map:
+                url_map[u] = {"url": u, "count": 0, "success": 0, "failed": 0, "times": []}
+            url_map[u]["count"] += 1
+            if 200 <= r["status"] < 400:
+                url_map[u]["success"] += 1
+            else:
+                url_map[u]["failed"] += 1
+            url_map[u]["times"].append(r["elapsed_ms"])
+        per_url = []
+        for u, s in url_map.items():
+            t = sorted(s["times"])
+            per_url.append({
+                "url": u,
+                "count": s["count"],
+                "success": s["success"],
+                "failed": s["failed"],
+                "avg_ms": round(sum(t) / len(t), 1),
+                "p95_ms": round(percentile(t, 95), 1),
+                "min_ms": round(t[0], 1),
+                "max_ms": round(t[-1], 1),
+            })
+
+        # 请求详情样本（≈ 查看结果树）：所有失败 + 每个 URL 前 10 个成功
+        seen_url_ok = {}
+        samples = []
+        for r in results:
+            is_ok = 200 <= r["status"] < 400
+            if not is_ok:
+                samples.append(r)
+            else:
+                u = r["url"]
+                seen_url_ok[u] = seen_url_ok.get(u, 0) + 1
+                if seen_url_ok[u] <= 10:
+                    samples.append(r)
+            if len(samples) >= 200:
+                break
+
         result = {
             "total": len(results),
             "success": success_count,
@@ -625,6 +680,9 @@ async def _run_bench(task_id: str, config: dict):
             "tps": round(len(results) / total_time, 1) if total_time > 0 else 0,
             "status_distribution": status_dist,
             "errors": errors[:20],
+            "per_url": per_url,
+            "samples": samples,
+            "body_samples": [{ "url": bs["url"], "status": bs["status"], "body": bs["body"][:500] } for bs in body_samples],
         }
 
     async with _bench_lock:

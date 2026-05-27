@@ -430,6 +430,67 @@
                       <el-alert v-for="(err, ei) in benchResult.errors.slice(0,5)" :key="ei" :title="err" type="error" :closable="false" show-icon style="margin-bottom:2px;font-size:11px" />
                     </div>
                   </div>
+
+                  <!-- ===== 按接口统计（≈ 聚合报告） ===== -->
+                  <el-collapse v-if="benchResult.per_url && benchResult.per_url.length > 0" style="margin-top:8px">
+                    <el-collapse-item title="📊 按接口统计（聚合报告）" name="per-url">
+                      <div class="per-url-table">
+                        <div class="per-url-header">
+                          <span class="col-url">接口</span>
+                          <span class="col-num">总数</span>
+                          <span class="col-num">成功</span>
+                          <span class="col-num">失败</span>
+                          <span class="col-num">平均</span>
+                          <span class="col-num">P95</span>
+                          <span class="col-num">最慢</span>
+                        </div>
+                        <div v-for="pu in benchResult.per_url" :key="pu.url" class="per-url-row">
+                          <span class="col-url" :title="pu.url">{{ shortUrl(pu.url) }}</span>
+                          <span class="col-num">{{ pu.count }}</span>
+                          <span class="col-num text-success">{{ pu.success }}</span>
+                          <span class="col-num" :class="pu.failed > 0 ? 'text-danger' : ''">{{ pu.failed }}</span>
+                          <span class="col-num">{{ pu.avg_ms }}ms</span>
+                          <span class="col-num">{{ pu.p95_ms }}ms</span>
+                          <span class="col-num">{{ pu.max_ms }}ms</span>
+                        </div>
+                      </div>
+                    </el-collapse-item>
+                  </el-collapse>
+
+                  <!-- ===== 请求详情列表（≈ 查看结果树） ===== -->
+                  <el-collapse v-if="benchResult.samples && benchResult.samples.length > 0" style="margin-top:4px">
+                    <el-collapse-item :title="`🔍 请求详情（${benchResult.samples.length} 条样本）`" name="samples">
+                      <div class="sample-list">
+                        <div v-for="(s, si) in benchResult.samples" :key="si" class="sample-item" @click="toggleSample(si)">
+                          <div class="sample-summary">
+                            <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
+                            <span class="sample-time">{{ s.elapsed_ms }}ms</span>
+                            <span class="sample-url">{{ shortUrl(s.url) }}</span>
+                            <span v-if="s.error" class="sample-err" :title="s.error">⚠ {{ s.error.substring(0,40) }}</span>
+                          </div>
+                          <div v-if="expandedSamples[si]" class="sample-detail">
+                            <div><strong>URL:</strong> {{ s.url }}</div>
+                            <div><strong>耗时:</strong> {{ s.elapsed_ms }}ms</div>
+                            <div><strong>大小:</strong> {{ s.body_size }}B</div>
+                            <div v-if="s.error"><strong>错误:</strong> {{ s.error }}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </el-collapse-item>
+                  </el-collapse>
+
+                  <!-- ===== 响应体采样 ===== -->
+                  <el-collapse v-if="benchResult.body_samples && benchResult.body_samples.length > 0" style="margin-top:4px">
+                    <el-collapse-item :title="`📄 响应体采样（${benchResult.body_samples.length} 个）`" name="body-samples">
+                      <div v-for="(bs, bi) in benchResult.body_samples" :key="bi" style="margin-bottom:6px">
+                        <div style="font-size:11px;color:var(--tm-text-secondary);margin-bottom:2px">
+                          <el-tag :type="bs.status >= 200 && bs.status < 400 ? 'success' : 'danger'" size="small">{{ bs.status }}</el-tag>
+                          {{ shortUrl(bs.url) }}
+                        </div>
+                        <pre class="bench-body-preview">{{ bs.body }}</pre>
+                      </div>
+                    </el-collapse-item>
+                  </el-collapse>
                 </div>
               </div>
             </el-tab-pane>
@@ -861,7 +922,19 @@ const benchProgress = ref('')
 const benchPercent = ref(0)
 const benchTaskId = ref(null)
 const benching = ref(false)
+const expandedSamples = ref({})
 let benchPollTimer = null
+
+const shortUrl = (url) => {
+  try {
+    const u = new URL(url)
+    return u.pathname + u.search || '/'
+  } catch { return url.length > 50 ? url.substring(0, 50) + '...' : url }
+}
+
+const toggleSample = (idx) => {
+  expandedSamples.value[idx] = !expandedSamples.value[idx]
+}
 
 const startBench = async () => {
   const samplers = []
@@ -890,6 +963,7 @@ const startBench = async () => {
   benchProgress.value = '提交任务...'
   benchPercent.value = 0
   benchTaskId.value = null
+  expandedSamples.value = {}
   rightTab3.value = 'bench'
   
   try {
@@ -1144,6 +1218,24 @@ onMounted(() => {
 .right-tabs .el-tabs__content { overflow: visible; }
 .right-tabs .el-tab-pane { height: 100%; display: flex; flex-direction: column; }
 .right-tabs .el-tabs__header { margin-bottom: 4px; }
+
+/* ===== 按接口统计（≈ 聚合报告） ===== */
+.per-url-table { font-size: 11px; }
+.per-url-header, .per-url-row { display: flex; gap: 4px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.per-url-header { font-weight: 600; color: var(--tm-text-secondary); }
+.col-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col-num { width: 48px; text-align: right; flex-shrink: 0; }
+
+/* ===== 请求详情（≈ 查看结果树） ===== */
+.sample-list { max-height: 300px; overflow-y: auto; font-size: 11px; }
+.sample-item { cursor: pointer; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.sample-item:hover { background: rgba(255,255,255,0.03); }
+.sample-summary { display: flex; align-items: center; gap: 6px; }
+.sample-time { font-weight: 600; width: 55px; flex-shrink: 0; }
+.sample-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tm-text-secondary); }
+.sample-err { font-size: 10px; color: #F87171; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+.sample-detail { padding: 6px 8px; margin-top: 3px; background: rgba(255,255,255,0.03); border-radius: 4px; font-size: 11px; line-height: 1.6; word-break: break-all; }
+.bench-body-preview { background: #0d1117; padding: 6px; border-radius: 4px; font-size: 10px; color: #c9d1d9; font-family: 'Consolas', monospace; max-height: 120px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; }
 
 /* ===== 面板通用 ===== */
 .panel { display: flex; flex-direction: column; background: var(--tm-card-bg); border: 1px solid var(--tm-border); border-radius: 10px; overflow: hidden; }
