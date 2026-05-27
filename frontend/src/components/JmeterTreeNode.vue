@@ -35,6 +35,12 @@
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'ResponseAssertion')">✅ 响应断言</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'DurationAssertion')">⏱️ 持续时间断言</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'JsonAssertion')">📋 JSON 断言</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'BeanShellAssertion')">💻 BeanShell 断言</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'JSR223Assertion')">🔥 JSR223 断言</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'SizeAssertion')">📏 响应大小断言</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'XPathAssertion')">🗂️ XPath 断言</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'CompareAssertion')">⚖️ 比较断言</el-dropdown-item>
+                <el-dropdown-item @click="$emit('add-child', node.uid, 'XMLAssertion')">📜 XML 断言</el-dropdown-item>
                 <el-dropdown-item divided @click="$emit('add-child', node.uid, 'RegexExtractor')">🔍 正则提取器</el-dropdown-item>
                 <el-dropdown-item @click="$emit('add-child', node.uid, 'JsonExtractor')">📤 JSON 提取器</el-dropdown-item>
                 <el-dropdown-item divided @click="$emit('add-child', node.uid, 'ConstantTimer')">⏰ 固定定时器</el-dropdown-item>

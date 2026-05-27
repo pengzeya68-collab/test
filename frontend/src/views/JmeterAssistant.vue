@@ -268,13 +268,33 @@
                 </el-collapse>
               </div>
               <div class="form-section">
-                <div class="section-hint"><el-icon><Coin /></el-icon> 添加断言验证返回结果是否正确，添加提取器从响应中提取数据传给下一个请求</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <div class="section-hint"><el-icon><Coin /></el-icon> 断言：验证返回结果是否正确（点击展开更多类型）</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
                   <el-button size="small" @click="addChildToCurrent('ResponseAssertion')">✅ 响应断言</el-button>
+                  <el-button size="small" @click="addChildToCurrent('JsonAssertion')">📋 JSON断言</el-button>
+                  <el-button size="small" @click="addChildToCurrent('DurationAssertion')">⏱️ 持续时间</el-button>
+                  <el-button size="small" @click="addChildToCurrent('BeanShellAssertion')">💻 BeanShell</el-button>
+                  <el-button size="small" @click="addChildToCurrent('JSR223Assertion')">🔥 JSR223</el-button>
+                  <el-button size="small" @click="addChildToCurrent('SizeAssertion')">📏 大小</el-button>
+                  <el-button size="small" @click="addChildToCurrent('XPathAssertion')">🗂️ XPath</el-button>
+                  <el-button size="small" @click="addChildToCurrent('CompareAssertion')">⚖️ 比较</el-button>
+                  <el-button size="small" @click="addChildToCurrent('XMLAssertion')">📜 XML</el-button>
+                </div>
+              </div>
+              <div class="form-section">
+                <div class="section-hint"><el-icon><Coin /></el-icon> 提取器：从响应中提取数据传给下一个请求</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
                   <el-button size="small" @click="addChildToCurrent('JsonExtractor')">📤 JSON 提取器</el-button>
                   <el-button size="small" @click="addChildToCurrent('RegexExtractor')">🔍 正则提取器</el-button>
+                </div>
+              </div>
+              <div class="form-section">
+                <div class="section-hint"><el-icon><Coin /></el-icon> 定时器与处理器</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
                   <el-button size="small" @click="addChildToCurrent('ConstantTimer')">⏰ 固定定时器</el-button>
-                  <el-button size="small" @click="addChildToCurrent('BeanShellPreProcessor')">⚙️ BeanShell</el-button>
+                  <el-button size="small" @click="addChildToCurrent('UniformRandomTimer')">🎲 随机定时器</el-button>
+                  <el-button size="small" @click="addChildToCurrent('BeanShellPreProcessor')">⚙️ BeanShell前置</el-button>
+                  <el-button size="small" @click="addChildToCurrent('JSR223PreProcessor')">🔥 JSR223前置</el-button>
                 </div>
               </div>
               <div class="form-section">
@@ -287,7 +307,7 @@
               </div>
             </template>
 
-            <!-- 子元素编辑器：断言 / 提取器 / 定时器 / CSV / JDBC / BeanShell / 监听器 -->
+            <!-- ===== 断言编辑器（支持7种断言类型+AI辅助） ===== -->
             <template v-if="selectedNode.type === 'ResponseAssertion'">
               <div class="form-section">
                 <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
@@ -295,16 +315,189 @@
                   <el-select v-model="selectedNode.props.assertType" size="small">
                     <el-option label="状态码" value="status_code" />
                     <el-option label="响应包含" value="contains" />
-                    <el-option label="响应匹配" value="matches" />
+                    <el-option label="响应匹配(正则)" value="matches" />
                     <el-option label="JSON Path" value="jsonpath" />
                     <el-option label="持续时间" value="duration" />
                   </el-select>
                 </div>
                 <div class="form-group" v-if="selectedNode.props.assertType === 'status_code'"><label>期望状态码</label><el-input-number v-model="selectedNode.props.expected" :min="100" :max="599" size="small" /></div>
-                <div class="form-group" v-if="selectedNode.props.assertType === 'contains' || selectedNode.props.assertType === 'matches'"><label>期望值</label><el-input v-model="selectedNode.props.expected" size="small" /></div>
+                <div class="form-group" v-if="selectedNode.props.assertType === 'contains' || selectedNode.props.assertType === 'matches'"><label>期望值</label><el-input v-model="selectedNode.props.expected" size="small" placeholder="200或success" /></div>
                 <div class="form-group" v-if="selectedNode.props.assertType === 'jsonpath'"><label>JSON Path</label><el-input v-model="selectedNode.props.jsonPath" placeholder="$.data.token" size="small" /><label style="margin-top:4px">期望值</label><el-input v-model="selectedNode.props.expected" size="small" /></div>
                 <div class="form-group" v-if="selectedNode.props.assertType === 'duration'"><label>最大响应时间 (ms)</label><el-input-number v-model="selectedNode.props.maxDuration" :min="1" :max="60000" size="small" /></div>
               </div>
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：状态码断言最常用，只需填期望的状态码如200。响应包含用于检查返回内容中是否有特定文字</div>
+              </div>
+            </template>
+
+            <template v-if="selectedNode.type === 'JsonAssertion'">
+              <div class="form-section">
+                <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>JSON Path</label><el-input v-model="selectedNode.props.jsonPath" placeholder="$.data.token" size="small" /></div>
+                <div class="form-group"><label>期望值</label><el-input v-model="selectedNode.props.expected" placeholder="12345" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>期望为null</label><el-switch v-model="selectedNode.props.expectNull" size="small" /></div>
+                  <div class="form-group"><label>取反</label><el-switch v-model="selectedNode.props.invert" size="small" /></div>
+                </div>
+              </div>
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：用于断言JSON响应中的某个字段值。例：$.data.status 期望值 "ok"</div>
+                <el-button size="small" @click="aiGenerateAssert('Json')" :loading="aiGenerating" style="margin-top:4px">
+                  🤖 AI 帮写
+                </el-button>
+              </div>
+            </template>
+
+            <template v-if="selectedNode.type === 'DurationAssertion'">
+              <div class="form-section">
+                <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>最大响应时间 (ms)</label><el-input-number v-model="selectedNode.props.maxDuration" :min="1" :max="60000" size="small" /></div>
+              </div>
+              <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：如果接口响应太慢就报错。如设置1000ms=超过1秒就失败</div>
+            </template>
+
+            <!-- ===== BeanShell 断言（核心！） ===== -->
+            <template v-if="selectedNode.type === 'BeanShellAssertion'">
+              <div class="form-section">
+                <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+              </div>
+              <div class="section-hint assertion-teaching">
+                <div class="teaching-title">📖 BeanShell 断言教学 — 小白也能写</div>
+                <div class="teaching-body">
+                  <p><strong>什么是 BeanShell 断言？</strong> 用 Java 代码自定义判断规则，只要你会写 if/else 就能用</p>
+                  <p><strong>📌 核心变量速查：</strong></p>
+                  <table class="teaching-table">
+                    <tr><td><code>ResponseCode</code></td><td>HTTP 状态码（字符串），如 "200"</td></tr>
+                    <tr><td><code>ResponseMessage</code></td><td>HTTP 消息，如 "OK"</td></tr>
+                    <tr><td><code>ResponseData</code></td><td>响应体（字节数组），转字符串用 <code>new String(ResponseData)</code></td></tr>
+                    <tr><td><code>SampleResult</code></td><td>采样结果对象</td></tr>
+                    <tr><td><code>Failure</code></td><td>设为 <code>true</code> 表示断言失败</td></tr>
+                    <tr><td><code>FailureMessage</code></td><td>失败时的错误描述</td></tr>
+                    <tr><td><code>prev</code></td><td>等同于 SampleResult（类型: SampleResult）</td></tr>
+                  </table>
+                  <p><strong>📌 常用示例：</strong></p>
+                  <table class="teaching-table">
+                    <tr><td>状态码断言</td><td><code>if (!ResponseCode.equals("200")) { Failure=true; FailureMessage="状态码不是200"; }</code></td></tr>
+                    <tr><td>响应包含</td><td><code>if (!new String(ResponseData).contains("success")) { Failure=true; FailureMessage="响应无success"; }</code></td></tr>
+                    <tr><td>响应时间</td><td><code>if (prev.getTime() > 3000) { Failure=true; FailureMessage="超过3秒"; }</code></td></tr>
+                    <tr><td>JSON断言</td><td><code>import org.json.*; JSONObject j=new JSONObject(new String(ResponseData)); if (!j.has("token")) { Failure=true; FailureMessage="缺少token"; }</code></td></tr>
+                  </table>
+                </div>
+              </div>
+              <div class="form-section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <label>BeanShell 脚本</label>
+                  <el-button size="small" type="primary" @click="aiGenerateAssert('BeanShell')" :loading="aiGenerating" plain>
+                    🤖 AI 帮写断言
+                  </el-button>
+                </div>
+                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder="// 写你的断言逻辑..." size="small" style="font-family:Consolas,monospace;font-size:12px" />
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>外部BeanShell文件</label><el-input v-model="selectedNode.props.filename" placeholder="可选" size="small" /></div>
+                <div class="form-group"><label>参数</label><el-input v-model="selectedNode.props.parameters" placeholder="可选" size="small" /></div>
+              </div>
+              <div class="form-group"><label>每次重置解释器</label><el-switch v-model="selectedNode.props.resetInterpreter" size="small" /></div>
+            </template>
+
+            <!-- ===== JSR223 断言 ===== -->
+            <template v-if="selectedNode.type === 'JSR223Assertion'">
+              <div class="form-section">
+                <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>脚本语言</label>
+                  <el-select v-model="selectedNode.props.language" size="small">
+                    <el-option label="Groovy（推荐，性能最好）" value="groovy" />
+                    <el-option label="JavaScript" value="javascript" />
+                    <el-option label="Python (Jython)" value="python" />
+                    <el-option label="BeanShell" value="beanshell" />
+                  </el-select>
+                </div>
+              </div>
+              <div class="section-hint assertion-teaching">
+                <div class="teaching-title">📖 JSR223 断言教学</div>
+                <div class="teaching-body">
+                  <p><strong>推荐用 Groovy</strong>，比 BeanShell 快 10 倍。核心变量：</p>
+                  <table class="teaching-table">
+                    <tr><td><code>prev</code></td><td>SampleResult，可调用 getResponseDataAsString()、getTime()等</td></tr>
+                    <tr><td><code>log</code></td><td>日志对象，log.info("xxx") 打印日志</td></tr>
+                    <tr><td><code>AssertionResult</code></td><td>断言结果，.setFailure(true) 标记失败</td></tr>
+                  </table>
+                </div>
+              </div>
+              <div class="form-section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <label>脚本代码</label>
+                  <el-button size="small" type="primary" @click="aiGenerateAssert('JSR223')" :loading="aiGenerating" plain>
+                    🤖 AI 帮写断言
+                  </el-button>
+                </div>
+                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='// Groovy脚本...' size="small" style="font-family:Consolas,monospace;font-size:12px" />
+              </div>
+            </template>
+
+            <!-- ===== 响应大小断言 ===== -->
+            <template v-if="selectedNode.type === 'SizeAssertion'">
+              <div class="form-section">
+                <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>比较方式</label>
+                    <el-select v-model="selectedNode.props.operator" size="small">
+                      <el-option label="响应大小 &gt; 指定值" value=">" />
+                      <el-option label="响应大小 &lt; 指定值" value="<" />
+                      <el-option label="响应大小 = 指定值" value="=" />
+                      <el-option label="响应大小 ≠ 指定值" value="≠" />
+                    </el-select>
+                  </div>
+                  <div class="form-group"><label>大小 (字节)</label><el-input-number v-model="selectedNode.props.size" :min="1" :max="99999999" size="small" /></div>
+                </div>
+              </div>
+              <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：检查响应体大小。如 &gt; 5000 字节 → 确保接口返回了足够的数据</div>
+            </template>
+
+            <!-- ===== XPath 断言 ===== -->
+            <template v-if="selectedNode.type === 'XPathAssertion'">
+              <div class="form-section">
+                <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>XPath 表达式</label><el-input v-model="selectedNode.props.xpath" placeholder="/html/body/h1 或 //result[@status='ok']" size="small" /></div>
+                <div class="form-group"><label>取反（不存在才通过）</label><el-switch v-model="selectedNode.props.negate" size="small" /></div>
+              </div>
+              <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：用于断言XML/HTML响应中某个节点存在。如 //result[@status='ok'] 表示检查是否存在status为ok的result节点</div>
+            </template>
+
+            <!-- ===== 比较断言 ===== -->
+            <template v-if="selectedNode.type === 'CompareAssertion'">
+              <div class="form-section">
+                <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>检查范围</label>
+                  <el-select v-model="selectedNode.props.testField" size="small">
+                    <el-option label="响应数据" value="Assertion.response_data" />
+                    <el-option label="响应代码" value="Assertion.response_code" />
+                    <el-option label="响应消息" value="Assertion.response_message" />
+                    <el-option label="请求头" value="Assertion.response_headers" />
+                    <el-option label="URL" value="Assertion.sample_label" />
+                  </el-select>
+                </div>
+                <div class="form-group"><label>比较规则</label>
+                  <el-select v-model="selectedNode.props.compareType" size="small">
+                    <el-option label="包含" value="contains" />
+                    <el-option label="等于" value="==" />
+                    <el-option label="匹配(正则)" value="matches" />
+                    <el-option label="不等于" value="≠" />
+                    <el-option label="子串" value="substring" />
+                  </el-select>
+                </div>
+                <div class="form-group"><label>期望值</label><el-input v-model="selectedNode.props.expected" placeholder="要匹配的值" size="small" /></div>
+              </div>
+              <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：灵活的比较断言，可以选择检查响应体/状态码/请求头等不同部位</div>
+            </template>
+
+            <!-- ===== XML 断言 ===== -->
+            <template v-if="selectedNode.type === 'XMLAssertion'">
+              <div class="form-section">
+                <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+              </div>
+              <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：自动验证响应体是否为合法XML。如果接口返回XML格式数据，加上这个断言确保格式正确</div>
             </template>
             <template v-if="selectedNode.type === 'RegexExtractor' || selectedNode.type === 'JsonExtractor'">
               <div class="form-section">
@@ -739,6 +932,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting, Document } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import request from '@/utils/request'
 import JmeterTreeNode from '@/components/JmeterTreeNode.vue'
 
 const router = useRouter()
@@ -757,6 +951,12 @@ const NODE_TYPES = {
   ResponseAssertion: { label: '响应断言', icon: '✅', parent: 'HttpSampler' },
   DurationAssertion: { label: '持续时间断言', icon: '⏱️', parent: 'HttpSampler' },
   JsonAssertion: { label: 'JSON 断言', icon: '📋', parent: 'HttpSampler' },
+  BeanShellAssertion: { label: 'BeanShell 断言', icon: '💻', parent: 'HttpSampler' },
+  JSR223Assertion: { label: 'JSR223 断言', icon: '🔥', parent: 'HttpSampler' },
+  SizeAssertion: { label: '响应大小断言', icon: '📏', parent: 'HttpSampler' },
+  XPathAssertion: { label: 'XPath 断言', icon: '🗂️', parent: 'HttpSampler' },
+  CompareAssertion: { label: '比较断言', icon: '⚖️', parent: 'HttpSampler' },
+  XMLAssertion: { label: 'XML 断言', icon: '📜', parent: 'HttpSampler' },
   RegexExtractor: { label: '正则提取器', icon: '🔍', parent: 'HttpSampler' },
   JsonExtractor: { label: 'JSON 提取器', icon: '📤', parent: 'HttpSampler' },
   ConstantTimer: { label: '固定定时器', icon: '⏰', parent: 'HttpSampler' },
@@ -789,6 +989,14 @@ const defaultProps = {
   ThreadGroup: { threads: 10, rampUp: 5, loops: 1, duration: 60 },
   TestPlan: { variables: [] },
   ResponseAssertion: { assertType: 'status_code', expected: 200, jsonPath: '', maxDuration: 1000 },
+  DurationAssertion: { maxDuration: 1000 },
+  JsonAssertion: { jsonPath: '$', expected: '', jsonValidation: true, expectNull: false, invert: false },
+  BeanShellAssertion: { script: '// BeanShell脚本\n// 可用变量: ResponseCode, ResponseMessage, ResponseData, SampleResult, Failure\n// 示例: 检查状态码是否为200\nif (!ResponseCode.equals("200")) {\n    Failure = true;\n    FailureMessage = "期望200, 实际" + ResponseCode;\n}', filename: '', parameters: '', resetInterpreter: false },
+  JSR223Assertion: { language: 'groovy', script: '// Groovy脚本\n// 可用变量: prev, log\n// 示例: 断言响应包含"success"\nif (!prev.getResponseDataAsString().contains("success")) {\n    AssertionResult.setFailure(true)\n    AssertionResult.setFailureMessage("响应中未找到 success")\n}' },
+  SizeAssertion: { size: 5000, operator: '>' },
+  XPathAssertion: { xpath: '/', negate: false },
+  CompareAssertion: { compareType: 'contains', expected: '', compareContent: false, testField: 'Assertion.response_data' },
+  XMLAssertion: {},
   RegexExtractor: { varName: 'token', regex: '"token":"(.*?)"', defaultValue: 'NOT_FOUND', jsonPath: '' },
   JsonExtractor: { varName: 'token', jsonPath: '$.data.token', defaultValue: 'NOT_FOUND', regex: '' },
   ConstantTimer: { delay: 1000 },
@@ -893,7 +1101,7 @@ const totalSamplers = computed(() => {
 const totalAssertions = computed(() => {
   let count = 0
   const walk = (node) => {
-    if (['ResponseAssertion','DurationAssertion','JsonAssertion'].includes(node.type)) count++
+    if (['ResponseAssertion','DurationAssertion','JsonAssertion','BeanShellAssertion','JSR223Assertion','SizeAssertion','XPathAssertion','CompareAssertion','XMLAssertion'].includes(node.type)) count++
     ;(node.children || []).forEach(walk)
   }
   walk(scriptTree)
@@ -973,7 +1181,7 @@ const naturalLanguageSummary = computed(() => {
     // 添加额外组件描述
     const extras = []
     const countExtras = (node) => {
-      if (['ResponseAssertion','DurationAssertion','JsonAssertion'].includes(node.type)) { if (!extras.includes('断言')) extras.push('断言') }
+      if (['ResponseAssertion','DurationAssertion','JsonAssertion','BeanShellAssertion','JSR223Assertion','SizeAssertion','XPathAssertion','CompareAssertion','XMLAssertion'].includes(node.type)) { if (!extras.includes('断言')) extras.push('断言') }
       if (['RegexExtractor','JsonExtractor'].includes(node.type)) { if (!extras.includes('提取器')) extras.push('提取器') }
       if (['ConstantTimer','UniformRandomTimer','GaussianRandomTimer'].includes(node.type)) { if (!extras.includes('定时器')) extras.push('定时器') }
       if (node.type === 'SyncTimer') { if (!extras.includes('集合点')) extras.push('集合点') }
@@ -1373,6 +1581,7 @@ const saveCaseMethod = ref('')
 const saveCaseUrl = ref('')
 const saveGroupId = ref(null)
 const savingToCase = ref(false)
+const aiGenerating = ref(false)
 const caseGroups = ref([])
 
 const loadCaseGroups = async () => {
@@ -1422,6 +1631,62 @@ onMounted(() => {
     scriptTree.children.push(tg)
   }
 })
+
+const aiGenerateAssert = async (type) => {
+  const parentSampler = findParentSampler(scriptTree, selectedNode.value?.uid)
+  const method = parentSampler?.props?.method || 'GET'
+  const url = parentSampler?.props?.url || ''
+  const body = parentSampler?.props?.body || ''
+  const headers = parentSampler?.props?.headers || []
+
+  let prompt = ''
+  if (type === 'BeanShell') {
+    prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个BeanShell断言脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}\n${headers.length > 0 ? '- 请求头: ' + JSON.stringify(headers.slice(0, 3)) : ''}\n\n要求：\n1. 写一个完整的BeanShell断言（Java语法）\n2. 检查HTTP状态码是否为200\n3. 检查响应体是否包含"success"或类似成功标识\n4. 加上合理的中文FailureMessage\n5. 只输出代码，不要解释`
+  } else if (type === 'JSR223') {
+    prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个Groovy语言的JSR223断言脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}\n\n要求：\n1. 写一个完整的Groovy断言\n2. 检查HTTP状态码是否为200（prev.getResponseCode()）\n3. 检查响应体是否非空\n4. 加上合理的中文FailureMessage\n5. 只输出代码，不要解释`
+  } else if (type === 'Json') {
+    const suggestedPath = body && body.includes('{') ? '$.data' : '$.status'
+    prompt = `你是一个API测试专家。请分析以下请求并建议合理的JSON断言。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n\n请输出JSON格式：{"jsonPath": "建议的JSONPath", "expected": "建议的期望值"}\n只输出JSON，不要解释`
+  }
+
+  aiGenerating.value = true
+  try {
+    const res = await request.post('/ai/chat', { question: prompt })
+    const answer = res.answer || ''
+    if (type === 'Json') {
+      try {
+        const jsonStart = answer.indexOf('{')
+        const jsonEnd = answer.lastIndexOf('}') + 1
+        if (jsonStart >= 0 && jsonEnd > jsonStart) {
+          const parsed = JSON.parse(answer.substring(jsonStart, jsonEnd))
+          if (parsed.jsonPath) selectedNode.value.props.jsonPath = parsed.jsonPath
+          if (parsed.expected) selectedNode.value.props.expected = parsed.expected
+        }
+      } catch (e) { /* fall though */ }
+    } else {
+      const codeMatch = answer.match(/```(?:java|groovy|beanshell)?\n?([\s\S]*?)```/)
+      const code = codeMatch ? codeMatch[1].trim() : answer.trim()
+      selectedNode.value.props.script = code
+    }
+    ElMessage.success('🤖 AI 已为你生成断言，可自行微调')
+  } catch (e) {
+    ElMessage.error('AI 生成失败，请检查 AI 配置或稍后重试')
+  }
+  finally { aiGenerating.value = false }
+}
+
+const findParentSampler = (parent, uid) => {
+  if (!uid) return null
+  for (const child of parent.children || []) {
+    if (child.uid === uid) return parent.type === 'HttpSampler' ? parent : null
+    if (child.children?.length) {
+      const found = findParentSampler(child, uid)
+      if (found) return found
+      if (child.type === 'HttpSampler' && child.children?.some(c => c.uid === uid)) return child
+    }
+  }
+  return null
+}
 </script>
 
 <style scoped>
@@ -1519,6 +1784,15 @@ onMounted(() => {
 .kv-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
 .form-hint { font-size: 11px; color: #6b7280; margin-bottom: 8px; }
 .form-hint code { background: rgba(255,255,255,0.06); padding: 1px 4px; border-radius: 3px; font-family: monospace; }
+.assertion-teaching { padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; margin-bottom: 8px; }
+.teaching-title { font-size: 13px; font-weight: 700; color: var(--tm-color-primary); margin-bottom: 6px; }
+.teaching-body { font-size: 11px; color: var(--tm-text-secondary); line-height: 1.7; }
+.teaching-body p { margin: 4px 0; }
+.teaching-body strong { color: var(--tm-text-primary); }
+.teaching-table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 10px; }
+.teaching-table td { padding: 3px 6px; border: 1px solid rgba(255,255,255,0.06); vertical-align: top; }
+.teaching-table td:first-child { color: var(--tm-text-primary); white-space: nowrap; width: 90px; font-weight: 600; }
+.teaching-table code { background: rgba(255,255,255,0.06); padding: 1px 3px; border-radius: 2px; font-family: Consolas, monospace; font-size: 10px; color: #c9d1d9; }
 
 /* ===== Step 3 布局：主区域 + 窄侧边栏 ===== */
 .step3-layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; padding: 16px; height: 100%; overflow: hidden; }

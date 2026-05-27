@@ -556,6 +556,18 @@ def _build_tree_node(parent_hash_tree, node: Dict):
         _build_duration_assertion(parent_hash_tree, name, props)
     elif ntype == "JsonAssertion":
         _build_json_assertion(parent_hash_tree, name, props)
+    elif ntype == "BeanShellAssertion":
+        _build_beanshell_assertion(parent_hash_tree, name, props)
+    elif ntype == "JSR223Assertion":
+        _build_jsr223_assertion(parent_hash_tree, name, props)
+    elif ntype == "SizeAssertion":
+        _build_size_assertion(parent_hash_tree, name, props)
+    elif ntype == "XPathAssertion":
+        _build_xpath_assertion(parent_hash_tree, name, props)
+    elif ntype == "CompareAssertion":
+        _build_compare_assertion(parent_hash_tree, name, props)
+    elif ntype == "XMLAssertion":
+        _build_xml_assertion(parent_hash_tree, name, props)
     elif ntype in ("RegexExtractor", "JsonExtractor"):
         _build_extractor(parent_hash_tree, ntype, name, props)
     elif ntype == "ConstantTimer":
@@ -1039,3 +1051,81 @@ def _build_once_only_controller(parent, name, props, children):
     sh = ET.SubElement(parent, "hashTree")
     for child in children:
         _build_tree_node(sh, child)
+
+
+def _build_beanshell_assertion(parent, name, props):
+    a = ET.SubElement(parent, "BeanShellAssertion")
+    a.set("guiclass", "BeanShellAssertionGui")
+    a.set("testclass", "BeanShellAssertion")
+    a.set("testname", name or "BeanShell Assertion")
+    a.set("enabled", "true")
+    _add_element_prop(a, "BeanShellAssertion.query", props.get("script", ""))
+    _add_element_prop(a, "BeanShellAssertion.filename", props.get("filename", ""))
+    _add_element_prop(a, "BeanShellAssertion.parameters", props.get("parameters", ""))
+    _add_element_prop(a, "BeanShellAssertion.resetInterpreter", "true" if props.get("resetInterpreter") else "false")
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_jsr223_assertion(parent, name, props):
+    a = ET.SubElement(parent, "JSR223Assertion")
+    a.set("guiclass", "TestBeanGUI")
+    a.set("testclass", "JSR223Assertion")
+    a.set("testname", name or "JSR223 Assertion")
+    a.set("enabled", "true")
+    _add_element_prop(a, "scriptLanguage", props.get("language", "groovy"))
+    _add_element_prop(a, "script", props.get("script", ""))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_size_assertion(parent, name, props):
+    a = ET.SubElement(parent, "SizeAssertion")
+    a.set("guiclass", "SizeAssertionGui")
+    a.set("testclass", "SizeAssertion")
+    a.set("testname", name or "Size Assertion")
+    a.set("enabled", "true")
+    cmp = {"<": "2", "=": "3", ">": "4", "≠": "5"}
+    _add_element_prop(a, "SizeAssertion.size", str(props.get("size", 5000)))
+    _add_element_prop(a, "SizeAssertion.operator", cmp.get(props.get("operator", ">"), "4"))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_xpath_assertion(parent, name, props):
+    a = ET.SubElement(parent, "XPathAssertion")
+    a.set("guiclass", "XPathAssertionGui")
+    a.set("testclass", "XPathAssertion")
+    a.set("testname", name or "XPath Assertion")
+    a.set("enabled", "true")
+    _add_element_prop(a, "XPathAssertion.xpath", props.get("xpath", "/"))
+    _add_element_prop(a, "XPathAssertion.validate", "true")
+    _add_element_prop(a, "XPathAssertion.whitespace", "true")
+    _add_element_prop(a, "XPathAssertion.tolerant", "false")
+    _add_element_prop(a, "XPathAssertion.namespace", "false")
+    _add_element_prop(a, "XPathAssertion.negate", "true" if props.get("negate") else "false")
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_compare_assertion(parent, name, props):
+    a = ET.SubElement(parent, "CompareAssertion")
+    a.set("guiclass", "TestBeanGUI")
+    a.set("testclass", "CompareAssertion")
+    a.set("testname", name or "Compare Assertion")
+    a.set("enabled", "true")
+    cmp = {"==": "8", "contains": "6", "matches": "2", "≠": "11", "substring": "7"}
+    _add_element_prop(a, "CompareAssertion.test_field", props.get("testField", "Assertion.response_data"))
+    _add_element_prop(a, "CompareAssertion.test_type", cmp.get(props.get("compareType", "contains"), "6"))
+    _add_element_prop(a, "CompareAssertion.compare_content", "true" if props.get("compareContent") else "false")
+    cp = ET.SubElement(a, "collectionProp")
+    cp.set("name", "CompareAssertion.test_strings")
+    sp = ET.SubElement(cp, "stringProp")
+    sp.set("name", "0")
+    sp.text = str(props.get("expected", ""))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_xml_assertion(parent, name, props):
+    a = ET.SubElement(parent, "XMLAssertion")
+    a.set("guiclass", "XMLAssertionGui")
+    a.set("testclass", "XMLAssertion")
+    a.set("testname", name or "XML Assertion")
+    a.set("enabled", "true")
+    ET.SubElement(parent, "hashTree")
