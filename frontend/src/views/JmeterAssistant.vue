@@ -813,7 +813,7 @@
               </div>
               <div v-if="benchResult && benchResult.samples && benchResult.samples.length > 0" class="form-section vrt-inline-section">
                 <div class="section-hint" style="margin-bottom:8px"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的结果数据</div>
-                <div class="vrt-container" style="height:420px">
+                <div class="vrt-container">
                   <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #ccc;background:#f5f5f5">
                     <div class="vrt-toolbar">
                       <span style="font-size:12px;color:#333;white-space:nowrap">查找:</span>
@@ -1043,7 +1043,7 @@
                   <div><b>{{ benchResult.tps }}</b><small>TPS</small></div>
                 </div>
                 <!-- 查看结果树 -->
-                <div v-if="benchResult.samples && benchResult.samples.length > 0" class="vrt-container" style="height:420px">
+                <div v-if="benchResult.samples && benchResult.samples.length > 0" class="vrt-container">
                   <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #ccc;background:#f5f5f5">
                     <div class="vrt-toolbar">
                       <span style="font-size:12px;color:#333;white-space:nowrap">查找:</span>
@@ -1228,7 +1228,7 @@
                       🔍 查看结果树
                       <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">共 {{ benchResult.samples.length }} 条样本</span>
                     </h4>
-                    <div class="vrt-container" style="height:420px">
+                    <div class="vrt-container">
                       <div class="vrt-left-col" style="display:flex;flex-direction:column;flex-shrink:0;width:280px;border-right:1px solid #ccc;background:#f5f5f5">
                         <div class="vrt-toolbar">
                           <span style="font-size:12px;color:#333;white-space:nowrap">查找:</span>
@@ -2663,7 +2663,7 @@ const findParentSampler = (parent, uid) => {
 .drag-handle:hover, .drag-handle.active { background: rgba(99,102,241,0.06); }
 .drag-handle:hover::after, .drag-handle.active::after { background: rgba(99,102,241,0.5); height: 48px; }
 .result-panel { display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid rgba(148,163,184,0.1); }
-.result-body { flex: 1; overflow-y: auto; padding: 12px; scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.2) transparent; }
+.result-body { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 12px; }
 .bench-progress-inline { margin-bottom: 10px; font-size: 11px; color: #64748b; }
 .bench-result-mini { font-size: 12px; }
 .mini-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; padding: 8px 10px; background: linear-gradient(135deg, rgba(99,102,241,0.04), rgba(139,92,246,0.02)); border-radius: 8px; border: 1px solid rgba(148,163,184,0.1); }
@@ -2910,7 +2910,7 @@ const findParentSampler = (parent, uid) => {
 .col-num { width: 60px; text-align: right; flex-shrink: 0; font-weight: 600; font-size: 11.5px; }
 
 /* ===== 查看结果树 (VRT) ===== */
-.vrt-container { display: flex; gap: 0; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; background: #fff; }
+.vrt-container { display: flex; gap: 0; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; background: #fff; flex: 1; min-height: 0; }
 .vrt-inline-section .vrt-container { }
 .vrt-inline-section .vrt-sample-list { width: 220px; }
 .vrt-sample-list { width: 280px; flex-shrink: 0; border-right: 1px solid #e5e7eb; overflow-y: auto; background: #f9fafb; }
