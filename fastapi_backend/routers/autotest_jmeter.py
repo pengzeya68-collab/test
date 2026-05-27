@@ -487,6 +487,7 @@ async def quick_benchmark_submit(body: Dict[str, Any] = Body(...)):
             "percent": 0,
             "config": config,
             "result": None,
+            "snapshots": [],
         }
 
     # 后台异步执行，不阻塞当前请求
@@ -519,6 +520,7 @@ async def quick_benchmark_status(task_id: str):
             "percent": 100,
             "result": task["result"],
             "config": task["config"],
+            "snapshots": task.get("snapshots", []),
         }
 
     return {
@@ -526,6 +528,7 @@ async def quick_benchmark_status(task_id: str):
         "progress": task["progress"],
         "percent": task["percent"],
         "config": task["config"],
+        "snapshots": task.get("snapshots", []),
     }
 
 
@@ -666,7 +669,37 @@ async def _run_bench(task_id: str, config: dict):
                                 f"已发送 {len(results)} 请求，{len(errors)} 失败"
                             )
 
+    async def snapshot_collector():
+        """每秒采集一次实时指标快照"""
+        last_count = 0
+        last_ts = start_time
+        while True:
+            await asyncio.sleep(1)
+            now = time.time()
+            if now - start_time > duration + 5:
+                break
+            elapsed_seconds = round(now - start_time, 1)
+            total_now = len(results)
+            err_now = len(errors)
+            delta_count = total_now - last_count
+            delta_sec = now - last_ts if now > last_ts else 1
+            tps_now = round(delta_count / delta_sec, 1) if delta_sec > 0 else 0
+            recent_elapsed = [r["elapsed_ms"] for r in results[-delta_count:]] if delta_count > 0 else []
+            avg_now = round(sum(recent_elapsed) / len(recent_elapsed), 1) if recent_elapsed else 0
+            async with _bench_lock:
+                _bench_tasks[task_id]["snapshots"].append({
+                    "t": elapsed_seconds,
+                    "tps": tps_now,
+                    "avg": avg_now,
+                    "total": total_now,
+                    "errors": err_now,
+                })
+            last_count = total_now
+            last_ts = now
+
     workers = []
+    snapshot_task = asyncio.create_task(snapshot_collector())
+
     for i in range(concurrency):
         w = asyncio.create_task(worker(i))
         workers.append(w)
@@ -706,7 +739,7 @@ async def _run_bench(task_id: str, config: dict):
         for r in results:
             u = r.get("url", "")
             if u not in url_map:
-                url_map[u] = {"url": u, "count": 0, "success": 0, "failed": 0, "times": []}
+                url_map[u] = {"url": u, "name": r.get("name", u), "method": r.get("method", "GET"), "count": 0, "success": 0, "failed": 0, "times": []}
             url_map[u]["count"] += 1
             if 200 <= r["status"] < 400:
                 url_map[u]["success"] += 1
@@ -718,6 +751,7 @@ async def _run_bench(task_id: str, config: dict):
             t = sorted(s["times"])
             per_url.append({
                 "url": u,
+                "name": s.get("name", u),
                 "method": s.get("method", "GET"),
                 "count": s["count"],
                 "success": s["success"],

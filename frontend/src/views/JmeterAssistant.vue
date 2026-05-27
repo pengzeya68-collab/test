@@ -187,6 +187,12 @@
           <span class="bcp-progress-text">{{ benchProgress }}</span>
         </div>
 
+        <!-- 实时性能图表 -->
+        <div v-if="benchSnapshots.length > 0" class="bcp-chart">
+          <div class="bpu-header">📈 实时性能曲线</div>
+          <div ref="benchChartRef" class="bcp-chart-box"></div>
+        </div>
+
         <!-- 运行中快速统计 -->
         <div v-if="benchResult" class="bcp-quick-stats">
           <div class="bcp-stat" :class="benchResult.failed > 0 ? 'bcp-stat-err' : 'bcp-stat-ok'">
@@ -224,7 +230,7 @@
             <tbody>
               <tr v-for="(pu, pi) in benchResult.per_url" :key="pi" :class="pu.failed > 0 ? 'bpu-row-err' : ''">
                 <td class="bpu-url" :title="pu.url">
-                  <b>{{ pu.method || 'GET' }}</b> {{ shortUrl(pu.url) }}
+                  <b>{{ pu.method || 'GET' }}</b> {{ pu.name || pu.url }}
                 </td>
                 <td>{{ pu.count }}</td>
                 <td class="bpu-ok">{{ pu.success }}</td>
@@ -1608,7 +1614,8 @@
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, VideoPause, SwitchButton, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting, Document } from '@element-plus/icons-vue'
+import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, VideoPause, SwitchButton, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting, Document, ArrowDown } from '@element-plus/icons-vue'
+import * as echarts from 'echarts'
 import autoTestRequest from '@/utils/autoTestRequest'
 import request from '@/utils/request'
 import JmeterTreeNode from '@/components/JmeterTreeNode.vue'
@@ -2249,6 +2256,9 @@ const benchHistory = ref(JSON.parse(localStorage.getItem('benchHistory') || '[]'
 const analyzing = ref(false)
 const aiAnalysisText = ref('')
 const benchPanelExpanded = ref(false)
+const benchChartRef = ref(null)
+const benchChartInstance = ref(null)
+const benchSnapshots = ref([])
 const treeWidth = ref(280)
 const rightPanelWidth = ref(380)
 const rightPanelVisible = ref(true)
@@ -2374,6 +2384,7 @@ const startBench = async () => {
   benchProgress.value = '提交任务...'
   benchPercent.value = 0
   benchTaskId.value = null
+  benchSnapshots.value = []
   selectedSampleIdx.value = -1
   rightTab3.value = 'bench'
   
@@ -2401,10 +2412,17 @@ const pollBench = async () => {
     const res = await autoTestRequest.get(`/auto-test/jmeter/quick-bench/${benchTaskId.value}`)
     benchProgress.value = res.progress || ''
     benchPercent.value = res.percent || 0
+
+    if (res.snapshots && res.snapshots.length > 0) {
+      benchSnapshots.value = res.snapshots
+      updateBenchChart()
+    }
     
     if (res.status === 'done') {
       if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
       benchResult.value = res.result
+      benchSnapshots.value = res.snapshots || []
+      updateBenchChart()
       benching.value = false
       runStatus.value = 'idle'
       const findVRT = (node) => {
@@ -2462,6 +2480,100 @@ const saveBenchHistory = (result) => {
   benchHistory.value.unshift(entry)
   if (benchHistory.value.length > 50) benchHistory.value = benchHistory.value.slice(0, 50)
   localStorage.setItem('benchHistory', JSON.stringify(benchHistory.value))
+}
+
+const initBenchChart = () => {
+  if (!benchChartRef.value) return
+  if (benchChartInstance.value) benchChartInstance.value.dispose()
+  const chart = echarts.init(benchChartRef.value)
+  benchChartInstance.value = chart
+}
+
+const updateBenchChart = () => {
+  if (!benchChartRef.value || !benchPanelExpanded.value) return
+  if (!benchChartInstance.value) initBenchChart()
+  const chart = benchChartInstance.value
+  if (!chart) return
+
+  const snaps = benchSnapshots.value
+  if (!snaps || snaps.length === 0) return
+
+  const times = snaps.map(s => s.t + 's')
+  const tpsData = snaps.map(s => s.tps)
+  const avgData = snaps.map(s => s.avg)
+  const errData = snaps.map(s => s.errors)
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross', crossStyle: { color: '#999' } },
+    },
+    legend: {
+      data: ['TPS', '平均响应(ms)', '累计错误'],
+      bottom: 0,
+      textStyle: { fontSize: 10, color: '#64748b' },
+    },
+    grid: { top: 10, right: 50, bottom: 30, left: 50 },
+    xAxis: {
+      type: 'category',
+      data: times,
+      axisLabel: { fontSize: 9, color: '#94a3b8', interval: Math.max(Math.floor(times.length / 10), 0) },
+      axisLine: { lineStyle: { color: '#e2e8f0' } },
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: 'TPS',
+        nameTextStyle: { fontSize: 10, color: '#3b82f6' },
+        axisLabel: { fontSize: 9, color: '#94a3b8' },
+        splitLine: { lineStyle: { color: '#f1f5f9' } },
+      },
+      {
+        type: 'value',
+        name: 'ms',
+        nameTextStyle: { fontSize: 10, color: '#f59e0b' },
+        axisLabel: { fontSize: 9, color: '#94a3b8' },
+        splitLine: { show: false },
+      },
+    ],
+    series: [
+      {
+        name: 'TPS',
+        type: 'bar',
+        data: tpsData,
+        itemStyle: { color: '#3b82f6', borderRadius: [2, 2, 0, 0] },
+        barMaxWidth: 16,
+      },
+      {
+        name: '平均响应(ms)',
+        type: 'line',
+        yAxisIndex: 1,
+        data: avgData,
+        smooth: true,
+        lineStyle: { color: '#f59e0b', width: 2 },
+        itemStyle: { color: '#f59e0b' },
+        symbol: 'circle',
+        symbolSize: 3,
+      },
+      {
+        name: '累计错误',
+        type: 'line',
+        yAxisIndex: 1,
+        data: errData,
+        step: 'end',
+        lineStyle: { color: '#ef4444', width: 1.5, type: 'dashed' },
+        itemStyle: { color: '#ef4444' },
+        symbol: 'none',
+      },
+    ],
+  }
+  chart.setOption(option, true)
+}
+
+const resizeBenchChart = () => {
+  if (benchChartInstance.value && benchPanelExpanded.value) {
+    benchChartInstance.value.resize()
+  }
 }
 
 const restoreHistoryResult = (h) => {
@@ -2627,6 +2739,16 @@ onMounted(() => {
     const sampler = createElement('HttpSampler', { name: '示例请求', props: { method: 'GET', url: 'https://httpbin.org/get' } })
     tg.children.push(sampler, createElement('ViewResultsTree'))
     scriptTree.children.push(tg)
+  }
+  window.addEventListener('resize', resizeBenchChart)
+})
+
+watch(benchPanelExpanded, (v) => {
+  if (v) {
+    nextTick(() => {
+      initBenchChart()
+      updateBenchChart()
+    })
   }
 })
 
@@ -2966,6 +3088,14 @@ const findParentSampler = (parent, uid) => {
 }
 .bcp-progress :deep(.el-progress) { flex: 1; }
 .bcp-progress-text { font-size: 11px; color: #64748b; white-space: nowrap; }
+
+/* 实时性能图表 */
+.bcp-chart {
+  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
+}
+.bcp-chart-box {
+  width: 100%; height: 180px;
+}
 .bcp-quick-stats {
   display: flex; align-items: center; gap: 8px; padding: 8px 14px; flex-wrap: wrap;
   border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
