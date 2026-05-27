@@ -13,6 +13,7 @@
               <el-dropdown-item command="createChild" :disabled="!currentGroup">新建子分组</el-dropdown-item>
               <el-dropdown-item command="editGroup" :disabled="!currentGroup">编辑分组</el-dropdown-item>
               <el-dropdown-item command="deleteGroup" :disabled="!currentGroup" divided>删除分组</el-dropdown-item>
+              <el-dropdown-item v-if="!currentGroup" disabled style="color: var(--el-color-info); font-size: 12px; cursor: default;">⚠ 请先在左侧选择一个分组</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>

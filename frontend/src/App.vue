@@ -1,5 +1,6 @@
 <template>
-  <div id="app" :class="{ 'has-sidebar': isLoggedIn && !isAuthPage }">
+  <el-config-provider :locale="zhCn">
+    <div id="app" :class="{ 'has-sidebar': isLoggedIn && !isAuthPage }">
     <!-- 顶部导航栏 -->
     <header class="navbar" v-if="!isAuthPage">
       <div class="container">
@@ -156,6 +157,7 @@
       </div>
     </el-dialog>
   </div>
+  </el-config-provider>
 </template>
 
 <script setup>
@@ -163,6 +165,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { User, ArrowDown, Brush, Calendar } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { themes, loadSavedTheme, applyTheme } from '@/utils/ThemeConfig'
 import { useUserStore } from '@/stores/user'
 import NotificationBell from '@/components/NotificationBell.vue'

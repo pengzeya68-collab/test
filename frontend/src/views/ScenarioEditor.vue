@@ -28,6 +28,10 @@
             :value="env.id"
           />
         </el-select>
+        <el-button type="primary" @click="handleSave" :loading="saving">
+          <el-icon><DocumentCopy /></el-icon>
+          保存
+        </el-button>
         <el-button @click="handleAddStep">
           <el-icon><Plus /></el-icon>
           添加步骤
@@ -492,7 +496,7 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, VideoPlay, Delete, Rank, Setting, Back, Search, Grid, Upload, Refresh, ArrowRight, Download } from '@element-plus/icons-vue'
+import { Plus, VideoPlay, Delete, Rank, Setting, Back, Search, Grid, Upload, Refresh, ArrowRight, Download, DocumentCopy } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
 import autoTestRequest from '@/utils/autoTestRequest'
 import axios from 'axios'
@@ -567,6 +571,7 @@ const selectedEnvId = ref(null)
 // 执行 loading 状态
 const isRunning = ref(false)
 const isCanceling = ref(false)
+const saving = ref(false)
 let currentTaskId = null  // 当前执行的任务 ID
 const expandedSteps = ref([])  // 展开的步骤详情
 
@@ -849,6 +854,18 @@ const handleSaveBasic = async () => {
     await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}`, scenarioForm.value)
   } catch (error) {
     ElMessage.error('保存失败')
+  }
+}
+
+const handleSave = async () => {
+  saving.value = true
+  try {
+    await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}`, scenarioForm.value)
+    ElMessage.success('保存成功')
+  } catch (error) {
+    ElMessage.error('保存失败: ' + (error.response?.data?.detail || error.message))
+  } finally {
+    saving.value = false
   }
 }
 

@@ -4,6 +4,7 @@ AutoTest 统一路由 - 场景管理
 路径前缀: /api/auto-test/scenarios
 映射原 auto_test_platform 的 /api/scenarios
 """
+import uuid
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -92,7 +93,9 @@ async def get_scenario(scenario_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("", response_model=AutoTestScenarioResponse)
 async def create_scenario(scenario: AutoTestScenarioCreate, db: AsyncSession = Depends(get_db)):
     """创建场景"""
-    db_scenario = AutoTestScenario(**scenario.model_dump())
+    data = scenario.model_dump()
+    data["webhook_token"] = str(uuid.uuid4())
+    db_scenario = AutoTestScenario(**data)
     db.add(db_scenario)
     await db.commit()
     await db.refresh(db_scenario)
@@ -118,6 +121,8 @@ async def update_scenario(
         raise HTTPException(status_code=404, detail="场景不存在")
 
     update_data = scenario.model_dump(exclude_unset=True)
+    if not db_scenario.webhook_token and "webhook_token" not in update_data:
+        update_data["webhook_token"] = str(uuid.uuid4())
     for key, value in update_data.items():
         setattr(db_scenario, key, value)
 

@@ -108,6 +108,7 @@ class AutoTestScenario(Base):
     schedule_task_name = Column(String(200), nullable=True, comment="定时任务显示名称")
     schedule_is_active = Column(Boolean, default=True, comment="定时任务是否启用（未暂停）")
     project_id = Column(Integer, nullable=True, comment="关联的项目实战ID（NULL表示不限项目）")
+    webhook_token = Column(String(64), nullable=True, comment="CI/CD Webhook 触发令牌", index=True, unique=True)
 
     steps = relationship(
         "AutoTestScenarioStep",

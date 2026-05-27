@@ -229,6 +229,7 @@ class AutoTestScenarioResponse(AutoTestScenarioBase):
     created_at: datetime
     updated_at: datetime
     steps: List[ScenarioStepResponse] = []
+    webhook_token: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
