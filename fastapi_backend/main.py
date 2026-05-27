@@ -73,6 +73,7 @@ from fastapi_backend.routers.assert_templates import router as assert_templates_
 from fastapi_backend.routers.autotest_diff import router as autotest_diff_router
 from fastapi_backend.routers.autotest_suites import router as autotest_suites_router
 from fastapi_backend.routers.autotest_health import router as autotest_health_router
+from fastapi_backend.routers.autotest_debug import router as autotest_debug_router
 
 from fastapi_backend.schemas.common import ErrorResponse
 from fastapi_backend.middleware.request_stats import request_stats_middleware
@@ -347,6 +348,7 @@ app.include_router(assert_templates_router)
 app.include_router(autotest_diff_router)
 app.include_router(autotest_suites_router)
 app.include_router(autotest_health_router)
+app.include_router(autotest_debug_router)
 
 # ========== Static files for Allure reports ==========
 REPORTS_DIR = AUTOTEST_DATA_DIR / "reports"

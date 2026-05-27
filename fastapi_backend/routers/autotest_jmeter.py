@@ -337,3 +337,95 @@ def _create_jmx_response(jmx_content: str, filename: str) -> StreamingResponse:
             "Access-Control-Expose-Headers": "Content-Disposition",
         },
     )
+
+
+@router.post("/preview/jmeter/jmx")
+async def preview_jmeter_jmx(
+    body: Dict[str, Any] = Body(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    预览生成的 JMeter JMX 脚本（不下载）
+    
+    Request Body:
+        case_ids: [1, 2, 3]
+        config: {
+            test_plan_name, num_threads, ramp_time, loop_count, duration,
+            think_time, timer_type (none/constant/uniform),
+            add_assertion, add_response_assertion,
+        }
+    """
+    case_ids = body.get("case_ids", [])
+    config = body.get("config", {})
+
+    if not case_ids:
+        raise HTTPException(status_code=400, detail="请提供 case_ids")
+
+    # 查询用例
+    result = await db.execute(
+        select(AutoTestCase).where(AutoTestCase.id.in_(case_ids))
+    )
+    cases = result.scalars().all()
+
+    if not cases:
+        raise HTTPException(status_code=404, detail="未找到用例")
+
+    case_dicts = [_case_to_dict(c) for c in cases]
+
+    # 构建线程组配置
+    tg_config = {
+        "num_threads": config.get("num_threads", 1),
+        "ramp_time": config.get("ramp_time", 1),
+        "loop_count": config.get("loop_count", 1),
+        "duration": config.get("duration", 60),
+        "think_time": config.get("think_time", 0),
+        "timer_type": config.get("timer_type", "none"),
+        "add_assertion": config.get("add_assertion", True),
+        "add_response_assertion": config.get("add_response_assertion", False),
+    }
+
+    jmx_content = export_cases_to_jmx(
+        cases=case_dicts,
+        test_plan_name=config.get("test_plan_name", "TestMaster Performance Test"),
+        thread_group_config=tg_config,
+    )
+
+    return {
+        "jmx_content": jmx_content,
+        "case_count": len(case_dicts),
+        "cases": [{"id": c.id, "name": c.name, "method": c.method, "url": c.url} for c in cases],
+    }
+
+
+# ========== 树形导出 ==========
+
+@router.post("/export/jmeter/tree")
+async def export_tree_to_jmx(body: Dict[str, Any] = Body(...)):
+    """
+    将树形脚本结构导出为 JMX
+    
+    Request Body:
+        tree: [{type: "ThreadGroup", name: "...", props: {...}, children: [...]}, ...]
+        plan_name: "Test Plan"
+        plan_variables: [{name: "BASE_URL", value: "..."}]
+    """
+    from fastapi_backend.services.autotest_jmeter_service import export_tree_to_jmx
+    
+    tree = body.get("tree", [])
+    plan_name = body.get("plan_name", "TestMaster Test Plan")
+    plan_variables = body.get("plan_variables", [])
+    
+    jmx_content = export_tree_to_jmx(tree, plan_name, plan_variables)
+    
+    return {"jmx_content": jmx_content, "elements": _count_elements(tree)}
+
+
+def _count_elements(tree):
+    """统计树中各类元素数量"""
+    counts = {}
+    def walk(nodes):
+        for n in nodes:
+            counts[n.get("type", "unknown")] = counts.get(n.get("type", "unknown"), 0) + 1
+            walk(n.get("children", []))
+    walk(tree)
+    return counts

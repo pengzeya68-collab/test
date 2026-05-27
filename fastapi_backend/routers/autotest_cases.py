@@ -42,7 +42,7 @@ def _case_to_dict(case):
 @router.get("")
 async def list_cases(
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    page_size: int = Query(20, ge=1, le=1000, description="每页数量"),
     group_id: Optional[int] = Query(None, description="按分组筛选"),
     keyword: str = Query(None, description="搜索关键词"),
     db: AsyncSession = Depends(get_db),
@@ -167,7 +167,7 @@ async def get_case(case_id: int, db: AsyncSession = Depends(get_db)):
     return case_dict
 
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 async def create_case(case_in: AutoTestCaseCreate, db: AsyncSession = Depends(get_db)):
     """创建新用例"""
     data = case_in.model_dump(exclude_none=True)
