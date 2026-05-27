@@ -188,9 +188,27 @@
         </div>
 
         <!-- 实时性能图表 -->
-        <div v-if="benchSnapshots.length > 0" class="bcp-chart">
-          <div class="bpu-header">📈 实时性能曲线</div>
-          <div ref="benchChartRef" class="bcp-chart-box"></div>
+        <div v-if="benchSnapshots.length > 0" class="bcp-charts">
+          <div class="bcp-charts-row">
+            <div class="bcp-chart-card">
+              <div class="bpu-header">📈 TPS/QPS 实时曲线</div>
+              <div ref="benchChartRef" class="bcp-chart-box"></div>
+            </div>
+            <div class="bcp-chart-card">
+              <div class="bpu-header">⏱️ 响应时间趋势</div>
+              <div ref="benchChartRef2" class="bcp-chart-box"></div>
+            </div>
+          </div>
+          <div class="bcp-charts-row">
+            <div class="bcp-chart-card">
+              <div class="bpu-header">📊 状态码分布</div>
+              <div ref="benchChartRef3" class="bcp-chart-box"></div>
+            </div>
+            <div class="bcp-chart-card">
+              <div class="bpu-header">🎯 各接口成功率</div>
+              <div ref="benchChartRef4" class="bcp-chart-box"></div>
+            </div>
+          </div>
         </div>
 
         <!-- 运行中快速统计 -->
@@ -206,6 +224,9 @@
           <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p99_ms }}ms</span><span class="bcp-stat-lbl">P99</span></div>
           <el-button v-if="benchResult" size="small" type="primary" plain @click="analyzeBenchResult" :loading="analyzing" style="margin-left:auto">
             🤖 AI 分析
+          </el-button>
+          <el-button v-if="benchResult" size="small" type="success" plain @click="exportReport">
+            📄 导出报告
           </el-button>
         </div>
 
@@ -278,7 +299,7 @@
             <span>🤖 AI 分析报告</span>
             <el-button link size="small" @click="aiAnalysisText = ''">✕</el-button>
           </div>
-          <div class="bcp-ai-content">{{ aiAnalysisText }}</div>
+          <div class="bcp-ai-content" v-html="aiAnalysisText.replace(/\n/g, '<br/>')"></div>
         </div>
         </div>
       </div>
@@ -2257,7 +2278,13 @@ const analyzing = ref(false)
 const aiAnalysisText = ref('')
 const benchPanelExpanded = ref(false)
 const benchChartRef = ref(null)
+const benchChartRef2 = ref(null)
+const benchChartRef3 = ref(null)
+const benchChartRef4 = ref(null)
 const benchChartInstance = ref(null)
+const benchChartInstance2 = ref(null)
+const benchChartInstance3 = ref(null)
+const benchChartInstance4 = ref(null)
 const benchSnapshots = ref([])
 const treeWidth = ref(280)
 const rightPanelWidth = ref(380)
@@ -2415,14 +2442,14 @@ const pollBench = async () => {
 
     if (res.snapshots && res.snapshots.length > 0) {
       benchSnapshots.value = res.snapshots
-      updateBenchChart()
+      updateAllBenchCharts()
     }
     
     if (res.status === 'done') {
       if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
       benchResult.value = res.result
       benchSnapshots.value = res.snapshots || []
-      updateBenchChart()
+      updateAllBenchCharts()
       benching.value = false
       runStatus.value = 'idle'
       const findVRT = (node) => {
@@ -2482,19 +2509,18 @@ const saveBenchHistory = (result) => {
   localStorage.setItem('benchHistory', JSON.stringify(benchHistory.value))
 }
 
-const initBenchChart = () => {
-  if (!benchChartRef.value) return
-  if (benchChartInstance.value) benchChartInstance.value.dispose()
-  const chart = echarts.init(benchChartRef.value)
-  benchChartInstance.value = chart
+const initAllBenchCharts = () => {
+  const refs = [benchChartRef, benchChartRef2, benchChartRef3, benchChartRef4]
+  const instances = [benchChartInstance, benchChartInstance2, benchChartInstance3, benchChartInstance4]
+  refs.forEach((ref, i) => {
+    if (!ref.value) return
+    if (instances[i].value) instances[i].value.dispose()
+    instances[i].value = echarts.init(ref.value)
+  })
 }
 
-const updateBenchChart = () => {
-  if (!benchChartRef.value || !benchPanelExpanded.value) return
-  if (!benchChartInstance.value) initBenchChart()
-  const chart = benchChartInstance.value
-  if (!chart) return
-
+const updateAllBenchCharts = () => {
+  if (!benchPanelExpanded.value) return
   const snaps = benchSnapshots.value
   if (!snaps || snaps.length === 0) return
 
@@ -2502,78 +2528,253 @@ const updateBenchChart = () => {
   const tpsData = snaps.map(s => s.tps)
   const avgData = snaps.map(s => s.avg)
   const errData = snaps.map(s => s.errors)
+  const totalData = snaps.map(s => s.total)
 
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'cross', crossStyle: { color: '#999' } },
-    },
-    legend: {
-      data: ['TPS', '平均响应(ms)', '累计错误'],
-      bottom: 0,
-      textStyle: { fontSize: 10, color: '#64748b' },
-    },
-    grid: { top: 10, right: 50, bottom: 30, left: 50 },
-    xAxis: {
-      type: 'category',
-      data: times,
-      axisLabel: { fontSize: 9, color: '#94a3b8', interval: Math.max(Math.floor(times.length / 10), 0) },
-      axisLine: { lineStyle: { color: '#e2e8f0' } },
-    },
-    yAxis: [
-      {
+  // Chart 1: TPS/QPS
+  const chart1 = benchChartInstance.value
+  if (chart1) {
+    chart1.setOption({
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(15,23,42,0.9)',
+        borderColor: '#334155',
+        textStyle: { color: '#f1f5f9', fontSize: 12 },
+        formatter: (params) => {
+          let tip = `<b style="color:#e2e8f0">${params[0]?.axisValue || ''}</b><br/>`
+          params.forEach(p => {
+            tip += `${p.marker} ${p.seriesName}: <b>${p.value}</b><br/>`
+          })
+          return tip
+        },
+      },
+      legend: {
+        data: ['TPS', '累计错误'],
+        bottom: 0,
+        textStyle: { fontSize: 10, color: '#64748b' },
+      },
+      grid: { top: 10, right: 50, bottom: 30, left: 50 },
+      xAxis: {
+        type: 'category',
+        data: times,
+        axisLabel: { fontSize: 9, color: '#94a3b8', interval: Math.max(Math.floor(times.length / 10), 0) },
+        axisLine: { lineStyle: { color: '#e2e8f0' } },
+      },
+      yAxis: [
+        {
+          type: 'value',
+          name: 'TPS',
+          nameTextStyle: { fontSize: 10, color: '#3b82f6' },
+          axisLabel: { fontSize: 9, color: '#94a3b8' },
+          splitLine: { lineStyle: { color: '#f1f5f9' } },
+        },
+        {
+          type: 'value',
+          name: '错误数',
+          nameTextStyle: { fontSize: 10, color: '#ef4444' },
+          axisLabel: { fontSize: 9, color: '#94a3b8' },
+          splitLine: { show: false },
+        },
+      ],
+      series: [
+        {
+          name: 'TPS',
+          type: 'bar',
+          data: tpsData,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#60a5fa' },
+              { offset: 1, color: '#3b82f6' },
+            ]),
+            borderRadius: [2, 2, 0, 0],
+          },
+          barMaxWidth: 16,
+        },
+        {
+          name: '累计错误',
+          type: 'line',
+          yAxisIndex: 1,
+          data: errData,
+          step: 'end',
+          lineStyle: { color: '#ef4444', width: 1.5, type: 'dashed' },
+          itemStyle: { color: '#ef4444' },
+          symbol: 'none',
+        },
+      ],
+    }, true)
+  }
+
+  // Chart 2: Response time trend
+  const chart2 = benchChartInstance2.value
+  if (chart2) {
+    chart2.setOption({
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(15,23,42,0.9)',
+        borderColor: '#334155',
+        textStyle: { color: '#f1f5f9', fontSize: 12 },
+        formatter: (params) => {
+          let tip = `<b style="color:#e2e8f0">${params[0]?.axisValue || ''}</b><br/>`
+          params.forEach(p => {
+            tip += `${p.marker} ${p.seriesName}: <b>${p.value}ms</b><br/>`
+          })
+          return tip
+        },
+      },
+      legend: {
+        data: ['平均响应', 'P95响应', 'P99响应'],
+        bottom: 0,
+        textStyle: { fontSize: 10, color: '#64748b' },
+      },
+      grid: { top: 10, right: 20, bottom: 30, left: 50 },
+      xAxis: {
+        type: 'category',
+        data: times,
+        axisLabel: { fontSize: 9, color: '#94a3b8', interval: Math.max(Math.floor(times.length / 10), 0) },
+        axisLine: { lineStyle: { color: '#e2e8f0' } },
+      },
+      yAxis: {
         type: 'value',
-        name: 'TPS',
-        nameTextStyle: { fontSize: 10, color: '#3b82f6' },
+        name: 'ms',
+        nameTextStyle: { fontSize: 10, color: '#64748b' },
         axisLabel: { fontSize: 9, color: '#94a3b8' },
         splitLine: { lineStyle: { color: '#f1f5f9' } },
       },
-      {
-        type: 'value',
-        name: 'ms',
-        nameTextStyle: { fontSize: 10, color: '#f59e0b' },
-        axisLabel: { fontSize: 9, color: '#94a3b8' },
-        splitLine: { show: false },
-      },
-    ],
-    series: [
-      {
-        name: 'TPS',
-        type: 'bar',
-        data: tpsData,
-        itemStyle: { color: '#3b82f6', borderRadius: [2, 2, 0, 0] },
-        barMaxWidth: 16,
-      },
-      {
-        name: '平均响应(ms)',
-        type: 'line',
-        yAxisIndex: 1,
-        data: avgData,
-        smooth: true,
-        lineStyle: { color: '#f59e0b', width: 2 },
-        itemStyle: { color: '#f59e0b' },
-        symbol: 'circle',
-        symbolSize: 3,
-      },
-      {
-        name: '累计错误',
-        type: 'line',
-        yAxisIndex: 1,
-        data: errData,
-        step: 'end',
-        lineStyle: { color: '#ef4444', width: 1.5, type: 'dashed' },
-        itemStyle: { color: '#ef4444' },
-        symbol: 'none',
-      },
-    ],
+      series: [
+        {
+          name: '平均响应',
+          type: 'line',
+          data: avgData,
+          smooth: true,
+          lineStyle: { color: '#f59e0b', width: 2 },
+          itemStyle: { color: '#f59e0b' },
+          symbol: 'circle',
+          symbolSize: 3,
+          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(245,158,11,0.3)' },
+            { offset: 1, color: 'rgba(245,158,11,0.02)' },
+          ])},
+        },
+        {
+          name: 'P95响应',
+          type: 'line',
+          data: snaps.map(s => s.p95 || 0),
+          smooth: true,
+          lineStyle: { color: '#ef4444', width: 1.5, type: 'dashed' },
+          itemStyle: { color: '#ef4444' },
+          symbol: 'none',
+        },
+        {
+          name: 'P99响应',
+          type: 'line',
+          data: snaps.map(s => s.p99 || 0),
+          smooth: true,
+          lineStyle: { color: '#dc2626', width: 1, type: 'dotted' },
+          itemStyle: { color: '#dc2626' },
+          symbol: 'none',
+        },
+      ],
+    }, true)
   }
-  chart.setOption(option, true)
+
+  // Chart 3: Status code distribution (pie)
+  const chart3 = benchChartInstance3.value
+  if (chart3 && benchResult.value && benchResult.value.status_distribution) {
+    const dist = benchResult.value.status_distribution
+    const pieData = Object.entries(dist).map(([code, count]) => ({
+      name: `${code}`,
+      value: count,
+    }))
+    chart3.setOption({
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: 'rgba(15,23,42,0.9)',
+        borderColor: '#334155',
+        textStyle: { color: '#f1f5f9', fontSize: 12 },
+        formatter: '{b}: {c}次 ({d}%)',
+      },
+      legend: {
+        orient: 'vertical',
+        right: 10,
+        top: 'center',
+        textStyle: { fontSize: 10, color: '#64748b' },
+      },
+      series: [{
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['40%', '50%'],
+        avoidLabelOverlap: true,
+        itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+        label: {
+          show: true,
+          fontSize: 10,
+          formatter: '{b}\n{d}%',
+        },
+        emphasis: {
+          label: { show: true, fontSize: 12, fontWeight: 'bold' },
+          itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' },
+        },
+        data: pieData,
+        color: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'],
+      }],
+    }, true)
+  }
+
+  // Chart 4: Per-URL success rate (horizontal bar)
+  const chart4 = benchChartInstance4.value
+  if (chart4 && benchResult.value && benchResult.value.per_url && benchResult.value.per_url.length > 0) {
+    const perUrl = benchResult.value.per_url
+    const names = perUrl.map(pu => pu.name || pu.url)
+    const rates = perUrl.map(pu => pu.success_rate)
+    chart4.setOption({
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(15,23,42,0.9)',
+        borderColor: '#334155',
+        textStyle: { color: '#f1f5f9', fontSize: 12 },
+        formatter: (params) => {
+          const p = params[0]
+          return `${p.name}<br/>成功率: <b>${p.value}%</b>`
+        },
+      },
+      grid: { top: 5, right: 20, bottom: 5, left: 120 },
+      xAxis: {
+        type: 'value',
+        max: 100,
+        axisLabel: { fontSize: 9, color: '#94a3b8', formatter: '{value}%' },
+        splitLine: { lineStyle: { color: '#f1f5f9' } },
+      },
+      yAxis: {
+        type: 'category',
+        data: names,
+        axisLabel: { fontSize: 9, color: '#64748b', width: 100, overflow: 'truncate' },
+        axisLine: { lineStyle: { color: '#e2e8f0' } },
+      },
+      series: [{
+        type: 'bar',
+        data: rates.map((r, i) => ({
+          value: r,
+          itemStyle: {
+            color: r >= 100 ? '#10b981' : r >= 90 ? '#f59e0b' : '#ef4444',
+            borderRadius: [0, 4, 4, 0],
+          },
+        })),
+        barMaxWidth: 20,
+        label: {
+          show: true,
+          position: 'right',
+          fontSize: 10,
+          formatter: '{c}%',
+          color: '#64748b',
+        },
+      }],
+    }, true)
+  }
 }
 
-const resizeBenchChart = () => {
-  if (benchChartInstance.value && benchPanelExpanded.value) {
-    benchChartInstance.value.resize()
-  }
+const resizeAllBenchCharts = () => {
+  [benchChartInstance, benchChartInstance2, benchChartInstance3, benchChartInstance4].forEach(inst => {
+    if (inst.value && benchPanelExpanded.value) inst.value.resize()
+  })
 }
 
 const restoreHistoryResult = (h) => {
@@ -2632,6 +2833,96 @@ const analyzeBenchResult = async () => {
   } finally {
     analyzing.value = false
   }
+}
+
+const exportReport = () => {
+  if (!benchResult.value) return
+  const r = benchResult.value
+  const now = new Date().toLocaleString()
+  const planName = scriptTree.name || '未命名'
+  
+  let html = `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>压测报告 - ${planName}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; color: #1e293b; }
+  h1 { color: #6366f1; border-bottom: 2px solid #6366f1; padding-bottom: 8px; }
+  h2 { color: #475569; margin-top: 24px; }
+  .meta { background: #f8fafc; padding: 12px 16px; border-radius: 8px; margin: 12px 0; }
+  .meta span { margin-right: 20px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
+  .stat-card { background: linear-gradient(135deg, #f8fafc, #eef2ff); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; }
+  .stat-card .val { font-size: 24px; font-weight: 700; color: #6366f1; }
+  .stat-card .lbl { font-size: 12px; color: #64748b; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+  th { background: #f1f5f9; font-weight: 600; color: #475569; }
+  .ok { color: #10b981; } .err { color: #ef4444; }
+  .ai-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 16px 0; white-space: pre-wrap; }
+  .footer { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 40px; }
+</style></head><body>
+<h1>📊 性能压测报告</h1>
+<div class="meta">
+  <span><b>测试计划:</b> ${planName}</span>
+  <span><b>并发数:</b> ${benchConcurrency.value}</span>
+  <span><b>持续时间:</b> ${benchDuration.value}s</span>
+  <span><b>测试时间:</b> ${now}</span>
+</div>
+
+<h2>📈 核心指标</h2>
+<div class="stat-grid">
+  <div class="stat-card"><div class="val">${r.total}</div><div class="lbl">总请求</div></div>
+  <div class="stat-card"><div class="val ok">${r.success}</div><div class="lbl">成功</div></div>
+  <div class="stat-card"><div class="val ${r.failed > 0 ? 'err' : ''}">${r.failed}</div><div class="lbl">失败</div></div>
+  <div class="stat-card"><div class="val">${r.tps}</div><div class="lbl">TPS</div></div>
+  <div class="stat-card"><div class="val">${r.avg_ms}ms</div><div class="lbl">平均响应</div></div>
+  <div class="stat-card"><div class="val">${r.p50_ms}ms</div><div class="lbl">P50</div></div>
+  <div class="stat-card"><div class="val">${r.p95_ms}ms</div><div class="lbl">P95</div></div>
+  <div class="stat-card"><div class="val">${r.p99_ms}ms</div><div class="lbl">P99</div></div>
+  <div class="stat-card"><div class="val">${r.min_ms}ms</div><div class="lbl">最小</div></div>
+  <div class="stat-card"><div class="val">${r.max_ms}ms</div><div class="lbl">最大</div></div>
+</div>
+
+<h2>📊 状态码分布</h2>
+<table><tr><th>状态码</th><th>次数</th><th>占比</th></tr>
+${Object.entries(r.status_distribution || {}).map(([code, count]) => {
+  const pct = ((count / r.total) * 100).toFixed(1)
+  return `<tr><td>${code}</td><td>${count}</td><td>${pct}%</td></tr>`
+}).join('')}
+</table>
+
+<h2>🔗 按接口统计</h2>
+<table><tr><th>接口</th><th>总次数</th><th>成功</th><th>失败</th><th>成功率</th><th>平均(ms)</th><th>P95(ms)</th><th>P99(ms)</th></tr>
+${(r.per_url || []).map(pu => `<tr>
+  <td>${pu.name || pu.url}</td>
+  <td>${pu.count}</td>
+  <td class="ok">${pu.success}</td>
+  <td class="${pu.failed > 0 ? 'err' : ''}">${pu.failed}</td>
+  <td>${pu.success_rate}%</td>
+  <td>${pu.avg_ms}</td>
+  <td>${pu.p95_ms}</td>
+  <td>${pu.p99_ms}</td>
+</tr>`).join('')}
+</table>
+
+${r.errors && r.errors.length > 0 ? `<h2>❌ 错误详情</h2>
+<table><tr><th>错误</th><th>次数</th></tr>
+${r.errors.map(e => `<tr><td>${e.message || e}</td><td>${e.count || 1}</td></tr>`).join('')}
+</table>` : ''}
+
+${aiAnalysisText.value ? `<h2>🤖 AI 分析</h2><div class="ai-box">${aiAnalysisText.value.replace(/\n/g, '<br/>')}</div>` : ''}
+
+<div class="footer">由 TestMaster 性能测试平台自动生成 | ${now}</div>
+</body></html>`
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `压测报告_${planName}_${Date.now()}.html`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('报告已导出')
 }
 
 // ===== 调试 =====
@@ -2740,14 +3031,14 @@ onMounted(() => {
     tg.children.push(sampler, createElement('ViewResultsTree'))
     scriptTree.children.push(tg)
   }
-  window.addEventListener('resize', resizeBenchChart)
+  window.addEventListener('resize', resizeAllBenchCharts)
 })
 
 watch(benchPanelExpanded, (v) => {
   if (v) {
     nextTick(() => {
-      initBenchChart()
-      updateBenchChart()
+      initAllBenchCharts()
+      updateAllBenchCharts()
     })
   }
 })
@@ -3044,7 +3335,7 @@ const findParentSampler = (parent, uid) => {
   overflow: hidden; transition: all 0.3s ease;
 }
 .bench-control-panel.expanded {
-  height: 50vh; display: flex; flex-direction: column;
+  height: 100vh; display: flex; flex-direction: column;
 }
 .bcp-header {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -3090,11 +3381,18 @@ const findParentSampler = (parent, uid) => {
 .bcp-progress-text { font-size: 11px; color: #64748b; white-space: nowrap; }
 
 /* 实时性能图表 */
-.bcp-chart {
+.bcp-charts {
   padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
 }
+.bcp-charts-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
+}
+.bcp-charts-row:last-child { margin-bottom: 0; }
+.bcp-chart-card {
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px;
+}
 .bcp-chart-box {
-  width: 100%; height: 180px;
+  width: 100%; height: 200px;
 }
 .bcp-quick-stats {
   display: flex; align-items: center; gap: 8px; padding: 8px 14px; flex-wrap: wrap;
@@ -3109,7 +3407,7 @@ const findParentSampler = (parent, uid) => {
 .bcp-stat-lbl { font-size: 10px; color: #94a3b8; }
 .bcp-ai-analysis {
   padding: 10px 14px; border-top: 1px solid #e2e8f0; background: linear-gradient(135deg, #f0f9ff, #ecfeff);
-  flex: 1; overflow-y: auto; min-height: 0;
+  flex: 1; overflow-y: auto; min-height: 0; max-height: 40vh;
 }
 .bcp-ai-header {
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
@@ -3117,6 +3415,7 @@ const findParentSampler = (parent, uid) => {
 }
 .bcp-ai-content {
   font-size: 12px; line-height: 1.7; color: #334155; white-space: pre-wrap;
+  background: rgba(255,255,255,0.7); padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;
 }
 
 /* 按接口统计表格 */

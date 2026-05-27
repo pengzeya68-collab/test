@@ -684,13 +684,21 @@ async def _run_bench(task_id: str, config: dict):
             delta_count = total_now - last_count
             delta_sec = now - last_ts if now > last_ts else 1
             tps_now = round(delta_count / delta_sec, 1) if delta_sec > 0 else 0
-            recent_elapsed = [r["elapsed_ms"] for r in results[-delta_count:]] if delta_count > 0 else []
+            recent_elapsed = sorted([r["elapsed_ms"] for r in results[-delta_count:]]) if delta_count > 0 else []
             avg_now = round(sum(recent_elapsed) / len(recent_elapsed), 1) if recent_elapsed else 0
+            def percentile(data, p):
+                if not data: return 0
+                idx = int(len(data) * p / 100)
+                return round(data[min(idx, len(data) - 1)], 1)
+            p95_now = percentile(recent_elapsed, 95)
+            p99_now = percentile(recent_elapsed, 99)
             async with _bench_lock:
                 _bench_tasks[task_id]["snapshots"].append({
                     "t": elapsed_seconds,
                     "tps": tps_now,
                     "avg": avg_now,
+                    "p95": p95_now,
+                    "p99": p99_now,
                     "total": total_now,
                     "errors": err_now,
                 })
