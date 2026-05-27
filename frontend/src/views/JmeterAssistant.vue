@@ -172,13 +172,13 @@
         </div>
 
         <!-- 接口列表 -->
-        <div class="bcp-requests" v-if="allSamplers.length > 0">
-          <span class="bcp-requests-label">压测接口：</span>
-          <el-tag v-for="(s, si) in allSamplers.slice(0, 6)" :key="si" size="small" effect="plain" type="info" class="bcp-req-tag" :title="s.url">
-            <b>{{ s.method }}</b> {{ shortUrl(s.url) }}
-          </el-tag>
-          <span v-if="allSamplers.length > 6" style="font-size:11px;color:#94a3b8">+{{ allSamplers.length - 6 }} 更多</span>
-        </div>
+         <div class="bcp-requests" v-if="allSamplers.length > 0">
+           <span class="bcp-requests-label">压测接口：</span>
+           <el-tag v-for="(s, si) in allSamplers.slice(0, 8)" :key="si" size="small" effect="plain" type="info" class="bcp-req-tag" :title="s.url">
+             <b>{{ s.method }}</b> {{ s.name }}
+           </el-tag>
+           <span v-if="allSamplers.length > 8" style="font-size:11px;color:#94a3b8">+{{ allSamplers.length - 8 }} 更多</span>
+         </div>
 
         <!-- 进度条 -->
         <div v-if="benching || benchProgress" class="bcp-progress">
@@ -1753,8 +1753,9 @@ const allSamplers = computed(() => {
   const walk = (node) => {
     if (node.type === 'HttpSampler') {
       list.push({
+        name: node.name || '',
         method: node.props?.method || 'GET',
-        url: node.props?.url || node.props?.path || node.name || ''
+        url: node.props?.url || node.props?.path || ''
       })
     }
     ;(node.children || []).forEach(walk)
@@ -2426,7 +2427,7 @@ const analyzeBenchResult = async () => {
   analyzing.value = true
   aiAnalysisText.value = ''
   try {
-    const res = await autoTestRequest.post('/auto-test/jmeter/analyze-result', {
+    const res = await autoTestRequest.post('/auto-test/analyze-result', {
       plan_name: scriptTree.name || '未命名',
       concurrency: benchConcurrency.value,
       duration: benchDuration.value,
@@ -2874,11 +2875,11 @@ const findParentSampler = (parent, uid) => {
 }
 .bcp-start-btn { font-weight: 700 !important; font-size: 14px !important; }
 .bcp-requests {
-  display: flex; align-items: center; gap: 6px; padding: 4px 14px 6px;
-  flex-wrap: wrap; border-top: 1px solid #e2e8f0; background: #f1f5f9;
+  display: flex; align-items: center; gap: 6px; padding: 6px 14px 8px;
+  flex-wrap: wrap; border-top: 1px solid #e2e8f0; background: #f8fafc;
 }
 .bcp-requests-label { font-size: 11px; color: #64748b; white-space: nowrap; }
-.bcp-req-tag { cursor: default; font-family: monospace; font-size: 11px !important; }
+.bcp-req-tag { cursor: default; font-size: 11px !important; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bcp-progress {
   padding: 6px 14px; display: flex; align-items: center; gap: 10px;
 }
