@@ -161,9 +161,7 @@
               ⚡ 启动压测（{{ benchConcurrency }}并发 × {{ benchDuration }}秒）
             </el-button>
             <template v-else>
-              <el-button :icon="VideoPause" @click.stop="pauseRun" size="default" type="warning" :disabled="runStatus !== 'running'">⏸ 暂停</el-button>
-              <el-button :icon="VideoPlay" @click.stop="resumeRun" size="default" type="success" :disabled="runStatus !== 'paused'">▶ 恢复</el-button>
-              <el-button :icon="SwitchButton" @click.stop="stopBench" size="default" type="danger">⏹ 停止</el-button>
+              <el-button :icon="SwitchButton" @click.stop="stopBench" size="default" type="danger"> 停止</el-button>
             </template>
             <el-button size="default" @click.stop="showBenchHistory = !showBenchHistory">
               📋 历史{{ benchHistory.length > 0 ? '(' + benchHistory.length + ')' : '' }}
@@ -203,6 +201,69 @@
           <el-button v-if="benchResult" size="small" type="primary" plain @click="analyzeBenchResult" :loading="analyzing" style="margin-left:auto">
             🤖 AI 分析
           </el-button>
+        </div>
+
+        <!-- 按接口统计 -->
+        <div v-if="benchResult && benchResult.per_url && benchResult.per_url.length > 0" class="bcp-per-url">
+          <div class="bpu-header">📊 按接口统计</div>
+          <table class="bpu-table">
+            <thead>
+              <tr>
+                <th>接口</th>
+                <th>总次数</th>
+                <th>成功</th>
+                <th>失败</th>
+                <th>成功率</th>
+                <th>平均(ms)</th>
+                <th>P95(ms)</th>
+                <th>P99(ms)</th>
+                <th>最小(ms)</th>
+                <th>最大(ms)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(pu, pi) in benchResult.per_url" :key="pi" :class="pu.failed > 0 ? 'bpu-row-err' : ''">
+                <td class="bpu-url" :title="pu.url">
+                  <b>{{ pu.method || 'GET' }}</b> {{ shortUrl(pu.url) }}
+                </td>
+                <td>{{ pu.count }}</td>
+                <td class="bpu-ok">{{ pu.success }}</td>
+                <td :class="pu.failed > 0 ? 'bpu-err' : ''">{{ pu.failed }}</td>
+                <td>
+                  <span :class="pu.success_rate < 100 ? 'bpu-err' : 'bpu-ok'">{{ pu.success_rate }}%</span>
+                </td>
+                <td>{{ pu.avg_ms }}</td>
+                <td>{{ pu.p95_ms }}</td>
+                <td>{{ pu.p99_ms }}</td>
+                <td>{{ pu.min_ms || '-' }}</td>
+                <td>{{ pu.max_ms || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 错误详情 -->
+        <div v-if="benchResult && benchResult.errors && benchResult.errors.length > 0" class="bcp-errors">
+          <div class="bpu-header">🔴 错误详情 ({{ benchResult.errors.length }})</div>
+          <div class="bcp-errors-list">
+            <div v-for="(err, ei) in benchResult.errors.slice(0, 20)" :key="ei" class="bcp-error-item">
+              <span class="bcp-error-text">{{ err }}</span>
+            </div>
+            <div v-if="benchResult.errors.length > 20" class="bcp-error-more">
+              ... 还有 {{ benchResult.errors.length - 20 }} 条错误
+            </div>
+          </div>
+        </div>
+
+        <!-- 状态码分布 -->
+        <div v-if="benchResult && benchResult.status_distribution" class="bcp-status-dist">
+          <div class="bpu-header">📈 状态码分布</div>
+          <div class="bsd-tags">
+            <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code"
+              :type="code >= 200 && code < 400 ? 'success' : 'danger'" size="small" effect="plain">
+              {{ code }}: {{ count }}次
+            </el-tag>
+          </div>
         </div>
 
         <!-- AI 分析结果 -->
@@ -2926,6 +2987,51 @@ const findParentSampler = (parent, uid) => {
 }
 .bcp-ai-content {
   font-size: 12px; line-height: 1.7; color: #334155; white-space: pre-wrap;
+}
+
+/* 按接口统计表格 */
+.bcp-per-url {
+  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
+}
+.bpu-header {
+  font-weight: 600; font-size: 12px; color: #1e293b; margin-bottom: 6px;
+}
+.bpu-table {
+  width: 100%; border-collapse: collapse; font-size: 11px;
+}
+.bpu-table th {
+  background: #f8fafc; padding: 4px 6px; text-align: left; font-weight: 600;
+  color: #64748b; border-bottom: 1px solid #e2e8f0; white-space: nowrap;
+}
+.bpu-table td {
+  padding: 4px 6px; border-bottom: 1px solid #f1f5f9; white-space: nowrap;
+}
+.bpu-table tr:hover { background: #f8fafc; }
+.bpu-row-err { background: #fff5f5; }
+.bpu-row-err:hover { background: #fef2f2; }
+.bpu-url { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bpu-ok { color: #10b981; font-weight: 600; }
+.bpu-err { color: #ef4444; font-weight: 600; }
+
+/* 错误详情 */
+.bcp-errors {
+  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff5f5; flex-shrink: 0;
+}
+.bcp-errors-list {
+  max-height: 150px; overflow-y: auto;
+}
+.bcp-error-item {
+  padding: 3px 0; font-size: 11px; color: #dc2626; border-bottom: 1px solid #fee2e2;
+}
+.bcp-error-text { font-family: monospace; word-break: break-all; }
+.bcp-error-more { padding: 4px 0; font-size: 11px; color: #94a3b8; }
+
+/* 状态码分布 */
+.bcp-status-dist {
+  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
+}
+.bsd-tags {
+  display: flex; gap: 6px; flex-wrap: wrap;
 }
 
 /* 历史记录面板 */

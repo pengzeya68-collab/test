@@ -718,11 +718,15 @@ async def _run_bench(task_id: str, config: dict):
             t = sorted(s["times"])
             per_url.append({
                 "url": u,
+                "method": s.get("method", "GET"),
                 "count": s["count"],
                 "success": s["success"],
                 "failed": s["failed"],
+                "success_rate": round(s["success"] / s["count"] * 100, 1) if s["count"] > 0 else 0,
                 "avg_ms": round(sum(t) / len(t), 1),
+                "p50_ms": round(percentile(t, 50), 1),
                 "p95_ms": round(percentile(t, 95), 1),
+                "p99_ms": round(percentile(t, 99), 1),
                 "min_ms": round(t[0], 1),
                 "max_ms": round(t[-1], 1),
             })
