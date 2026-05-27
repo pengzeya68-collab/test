@@ -331,34 +331,164 @@
       </div>
     </div>
 
-    <!-- ==================== Step 3: 导出 ==================== -->
+    <!-- ==================== Step 3: 验证 & 导出 ==================== -->
     <div v-show="currentStep === 3" class="step-body">
       <div class="step3-layout">
-        <div class="panel export-preview">
-          <div class="panel-title">
-            <span>🔮 JMX 预览</span>
-            <div>
-              <el-button size="small" @click="generatePreview" :loading="generating">
-                <el-icon><Refresh /></el-icon> 刷新
-              </el-button>
-              <el-button size="small" type="success" @click="downloadJmx" :disabled="!jmxContent">
-                <el-icon><Download /></el-icon> 下载 .jmx 文件
-              </el-button>
-            </div>
-          </div>
-          <div class="preview-body">
-            <pre v-if="jmxContent" class="xml-preview"><code>{{ jmxContent }}</code></pre>
-            <div v-else class="empty-hint">
-              <el-icon size="36"><Document /></el-icon>
-              <p>点击「生成预览」查看 JMX 内容</p>
-              <el-button type="primary" @click="generatePreview" :loading="generating">🔮 生成预览</el-button>
-            </div>
-          </div>
-        </div>
-        <div class="panel export-debug">
+
+        <!-- 主区域：并发验证 + 调试 -->
+        <div class="step3-main">
           <el-tabs v-model="rightTab3" class="right-tabs">
-            <el-tab-pane label="🐛 调试" name="debug">
+            <el-tab-pane label="⚡ 并发验证" name="bench">
+              <div class="bench-body">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 不依赖 JMeter，直接在平台内验证多个并发能否跑通。设置并发数、持续时间、预热时间，点击下方按钮开始</div>
+                <div class="bench-controls">
+                  <div class="form-group"><label>并发数</label><el-tooltip content="模拟多少个用户同时访问，如 50 = 50 个虚拟用户同时跑" placement="top"><el-input-number v-model="benchConcurrency" :min="1" :max="200" size="small" /></el-tooltip></div>
+                  <div class="form-group"><label>持续(秒)</label><el-tooltip content="总共跑多长时间，如 60 = 持续压测 60 秒" placement="top"><el-input-number v-model="benchDuration" :min="3" :max="60" size="small" /></el-tooltip></div>
+                  <div class="form-group"><label>预热(秒)</label><el-tooltip content="逐步启动的时间，避免瞬间压垮服务。如 5 = 5 秒内逐步启动完所有并发用户" placement="top"><el-input-number v-model="benchRampUp" :min="0" :max="10" size="small" /></el-tooltip></div>
+                </div>
+                <el-button v-if="!benching" type="danger" size="large" @click="startBench" style="width:100%;margin-bottom:8px;font-size:15px;font-weight:700">
+                  ⚡ 开始并发测试（{{ benchConcurrency }} 虚拟用户 × {{ benchDuration }}秒）
+                </el-button>
+                <el-button v-else type="warning" size="large" @click="stopBench" style="width:100%;margin-bottom:8px;font-size:15px;font-weight:700">
+                  ⏹ 停止轮询（测试仍在后台执行）
+                </el-button>
+                <div v-if="benching || benchProgress" class="bench-progress">
+                  <el-progress :percentage="benchPercent" :stroke-width="10" :status="benchPercent >= 100 ? 'success' : ''" />
+                  <span class="bench-progress-text">{{ benchProgress }}</span>
+                </div>
+
+                <!-- ===== 并发结果 ===== -->
+                <div v-if="benchResult" class="bench-result">
+                  <h4 class="bench-section-title">📊 总体统计</h4>
+                  <div class="bench-stats">
+                    <div class="bench-stat">
+                      <span class="bench-stat-value" :class="benchResult.failed > 0 ? 'text-danger' : 'text-success'">{{ benchResult.total }}</span>
+                      <span class="bench-stat-label">总请求数</span>
+                    </div>
+                    <div class="bench-stat">
+                      <span class="bench-stat-value text-success">{{ benchResult.success }}</span>
+                      <span class="bench-stat-label">成功</span>
+                    </div>
+                    <div class="bench-stat">
+                      <span class="bench-stat-value" :class="benchResult.failed > 0 ? 'text-danger' : ''">{{ benchResult.failed }}</span>
+                      <span class="bench-stat-label">失败</span>
+                    </div>
+                    <div class="bench-stat">
+                      <span class="bench-stat-value">{{ benchResult.tps }}</span>
+                      <span class="bench-stat-label">TPS（每秒请求数）</span>
+                    </div>
+                    <div class="bench-stat">
+                      <span class="bench-stat-value">{{ benchResult.avg_ms }}ms</span>
+                      <span class="bench-stat-label">平均响应时间</span>
+                    </div>
+                    <div class="bench-stat">
+                      <span class="bench-stat-value">{{ benchResult.p50_ms }}ms</span>
+                      <span class="bench-stat-label">P50（中位数）</span>
+                    </div>
+                    <div class="bench-stat">
+                      <span class="bench-stat-value">{{ benchResult.p95_ms }}ms</span>
+                      <span class="bench-stat-label">P95（95%的请求快于此）</span>
+                    </div>
+                    <div class="bench-stat">
+                      <span class="bench-stat-value">{{ benchResult.p99_ms }}ms</span>
+                      <span class="bench-stat-label">P99（99%的请求快于此）</span>
+                    </div>
+                  </div>
+
+                  <!-- 状态码分布 -->
+                  <div v-if="benchResult.status_distribution" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                    <span style="font-size:11px;color:var(--tm-text-secondary)">状态码：</span>
+                    <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code" :type="code === '200' ? 'success' : code >= '400' ? 'danger' : 'warning'" size="small">
+                      HTTP {{ code }}: {{ count }}
+                    </el-tag>
+                  </div>
+
+                  <!-- 错误信息 -->
+                  <div v-if="benchResult.errors && benchResult.errors.length > 0" style="margin-top:6px">
+                    <el-alert v-for="(err, ei) in benchResult.errors.slice(0,5)" :key="ei" :title="err" type="error" :closable="false" show-icon style="margin-bottom:2px;font-size:11px" />
+                  </div>
+
+                  <!-- ===== 按接口统计（聚合报告）直接展开 ===== -->
+                  <div v-if="benchResult.per_url && benchResult.per_url.length > 0" class="bench-data-block">
+                    <h4 class="bench-section-title" style="display:flex;justify-content:space-between;align-items:center">
+                      📊 按接口统计（聚合报告）
+                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">共 {{ benchResult.per_url.length }} 个接口</span>
+                    </h4>
+                    <div class="per-url-table">
+                      <div class="per-url-header">
+                        <span class="col-url">接口 URL</span>
+                        <span class="col-num">请求数</span>
+                        <span class="col-num">成功</span>
+                        <span class="col-num">失败</span>
+                        <span class="col-num">平均耗时</span>
+                        <span class="col-num">P95 耗时</span>
+                        <span class="col-num">最慢耗时</span>
+                      </div>
+                      <div v-for="pu in benchResult.per_url" :key="pu.url" class="per-url-row">
+                        <span class="col-url" :title="pu.url">{{ shortUrl(pu.url) }}</span>
+                        <span class="col-num">{{ pu.count }}</span>
+                        <span class="col-num text-success">{{ pu.success }}</span>
+                        <span class="col-num" :class="pu.failed > 0 ? 'text-danger' : ''">{{ pu.failed }}</span>
+                        <span class="col-num">{{ pu.avg_ms }}ms</span>
+                        <span class="col-num">{{ pu.p95_ms }}ms</span>
+                        <span class="col-num">{{ pu.max_ms }}ms</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ===== 请求详情列表（查看结果树）直接展开 ===== -->
+                  <div v-if="benchResult.samples && benchResult.samples.length > 0" class="bench-data-block">
+                    <h4 class="bench-section-title" style="display:flex;justify-content:space-between;align-items:center">
+                      🔍 请求详情（查看结果树）
+                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">共 {{ benchResult.samples.length }} 条样本，点击展开查看详情</span>
+                    </h4>
+                    <div class="sample-list" style="max-height:320px;overflow-y:auto">
+                      <div v-for="(s, si) in benchResult.samples" :key="si" class="sample-item" @click="toggleSample(si)">
+                        <div class="sample-summary">
+                          <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
+                          <span class="sample-time">{{ s.elapsed_ms }}ms</span>
+                          <span class="sample-url" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.method ? s.method + ' ' : '' }}{{ shortUrl(s.url) }}</span>
+                          <span v-if="s.error" class="sample-err" :title="s.error">⚠ {{ s.error.substring(0,50) }}</span>
+                        </div>
+                        <div v-if="expandedSamples[si]" class="sample-detail">
+                          <div class="sample-detail-row"><span class="sample-detail-label">完整 URL：</span>{{ s.url }}</div>
+                          <div class="sample-detail-row"><span class="sample-detail-label">HTTP 方法：</span>{{ s.method || '-' }}</div>
+                          <div class="sample-detail-row"><span class="sample-detail-label">状态码：</span><el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : 'danger'" size="small">{{ s.status || 'ERR' }}</el-tag></div>
+                          <div class="sample-detail-row"><span class="sample-detail-label">耗时：</span>{{ s.elapsed_ms }}ms</div>
+                          <div class="sample-detail-row"><span class="sample-detail-label">响应大小：</span>{{ s.body_size || 0 }}B</div>
+                          <div v-if="s.error" class="sample-detail-row"><span class="sample-detail-label">错误信息：</span><span style="color:var(--el-color-danger)">{{ s.error }}</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ===== 响应体采样 直接展开 ===== -->
+                  <div v-if="benchResult.body_samples && benchResult.body_samples.length > 0" class="bench-data-block">
+                    <h4 class="bench-section-title" style="display:flex;justify-content:space-between;align-items:center">
+                      📄 响应体采样
+                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">每个接口前 3 条响应内容，最多 1000 字符</span>
+                    </h4>
+                    <div v-for="(bs, bi) in benchResult.body_samples" :key="bi" style="margin-bottom:6px">
+                      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tm-text-secondary);margin-bottom:3px">
+                        <el-tag :type="bs.status >= 200 && bs.status < 400 ? 'success' : 'danger'" size="small">{{ bs.status }}</el-tag>
+                        <span style="word-break:break-all">{{ shortUrl(bs.url) }}</span>
+                      </div>
+                      <pre class="bench-body-preview">{{ bs.body }}</pre>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 还没跑过并发 -->
+                <div v-if="!benchResult && !benching && !benchProgress" class="bench-empty-hint">
+                  <el-icon size="40"><VideoPlay /></el-icon>
+                  <p>点击上方「⚡ 开始并发测试」按钮<br/>不依赖 JMeter，直接在平台内验证并发效果</p>
+                </div>
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="🐛 单请求调试" name="debug">
               <div class="debug-body">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 在「配置参数」步骤选中一个 HTTP 请求点击「调试」，在此查看请求/响应详情</div>
                 <div v-if="debugResult" class="debug-content">
                   <div class="debug-meta">
                     <el-tag :type="debugResult.response?.status_code === 200 ? 'success' : 'danger'" size="small">
@@ -387,134 +517,37 @@
                 </div>
               </div>
             </el-tab-pane>
-            <el-tab-pane label="⚡ 并发验证" name="bench">
-              <div class="bench-body">
-                <el-alert title="在线快速并发验证：不下 .jmx，不打开 JMeter，直接测试 N 个并发能否跑通" type="info" :closable="false" show-icon style="margin-bottom:8px;font-size:11px" />
-                <div class="bench-controls">
-                  <div class="form-group"><label>并发数</label><el-input-number v-model="benchConcurrency" :min="1" :max="200" size="small" /></div>
-                  <div class="form-group"><label>持续(秒)</label><el-input-number v-model="benchDuration" :min="3" :max="60" size="small" /></div>
-                  <div class="form-group"><label>预热(秒)</label><el-input-number v-model="benchRampUp" :min="0" :max="10" size="small" /></div>
-                </div>
-                <el-button v-if="!benching" type="danger" @click="startBench" style="width:100%;margin-bottom:8px">
-                  ⚡ 开始测试（{{ benchConcurrency }} 并发 × {{ benchDuration }}秒）
-                </el-button>
-                <el-button v-else type="warning" @click="stopBench" style="width:100%;margin-bottom:8px">
-                  ⏹ 停止轮询（测试仍在后台执行）
-                </el-button>
-                <div v-if="benching || benchProgress" class="bench-progress">
-                  <el-progress :percentage="benchPercent" :stroke-width="8" :status="benchPercent >= 100 ? 'success' : ''" />
-                  <span class="bench-progress-text">{{ benchProgress }}</span>
-                </div>
-                <div v-if="benchResult" class="bench-result">
-                  <div class="bench-stats">
-                    <div class="bench-stat">
-                      <span class="bench-stat-value" :class="benchResult.failed > 0 ? 'text-danger' : 'text-success'">{{ benchResult.total }}</span>
-                      <span class="bench-stat-label">总请求</span>
-                    </div>
-                    <div class="bench-stat">
-                      <span class="bench-stat-value text-success">{{ benchResult.success }}</span>
-                      <span class="bench-stat-label">成功</span>
-                    </div>
-                    <div class="bench-stat">
-                      <span class="bench-stat-value" :class="benchResult.failed > 0 ? 'text-danger' : ''">{{ benchResult.failed }}</span>
-                      <span class="bench-stat-label">失败</span>
-                    </div>
-                    <div class="bench-stat">
-                      <span class="bench-stat-value">{{ benchResult.tps }}</span>
-                      <span class="bench-stat-label">TPS</span>
-                    </div>
-                    <div class="bench-stat">
-                      <span class="bench-stat-value">{{ benchResult.avg_ms }}ms</span>
-                      <span class="bench-stat-label">平均</span>
-                    </div>
-                    <div class="bench-stat">
-                      <span class="bench-stat-value">{{ benchResult.p95_ms }}ms</span>
-                      <span class="bench-stat-label">P95</span>
-                    </div>
-                    <div class="bench-stat">
-                      <span class="bench-stat-value">{{ benchResult.p99_ms }}ms</span>
-                      <span class="bench-stat-label">P99</span>
-                    </div>
-                    <div class="bench-stat">
-                      <span class="bench-stat-value">{{ benchResult.min_ms }}ms</span>
-                      <span class="bench-stat-label">最慢</span>
-                    </div>
-                  </div>
-                  <div style="margin-top:8px">
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
-                      <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code" :type="code === '200' ? 'success' : code >= '400' ? 'danger' : 'warning'" size="small">
-                        HTTP {{ code }}: {{ count }}
-                      </el-tag>
-                    </div>
-                    <div v-if="benchResult.errors && benchResult.errors.length > 0" style="margin-top:4px">
-                      <el-alert v-for="(err, ei) in benchResult.errors.slice(0,5)" :key="ei" :title="err" type="error" :closable="false" show-icon style="margin-bottom:2px;font-size:11px" />
-                    </div>
-                  </div>
-
-                  <!-- ===== 按接口统计（≈ 聚合报告） ===== -->
-                  <el-collapse v-if="benchResult.per_url && benchResult.per_url.length > 0" style="margin-top:8px">
-                    <el-collapse-item title="📊 按接口统计（聚合报告）" name="per-url">
-                      <div class="per-url-table">
-                        <div class="per-url-header">
-                          <span class="col-url">接口</span>
-                          <span class="col-num">总数</span>
-                          <span class="col-num">成功</span>
-                          <span class="col-num">失败</span>
-                          <span class="col-num">平均</span>
-                          <span class="col-num">P95</span>
-                          <span class="col-num">最慢</span>
-                        </div>
-                        <div v-for="pu in benchResult.per_url" :key="pu.url" class="per-url-row">
-                          <span class="col-url" :title="pu.url">{{ shortUrl(pu.url) }}</span>
-                          <span class="col-num">{{ pu.count }}</span>
-                          <span class="col-num text-success">{{ pu.success }}</span>
-                          <span class="col-num" :class="pu.failed > 0 ? 'text-danger' : ''">{{ pu.failed }}</span>
-                          <span class="col-num">{{ pu.avg_ms }}ms</span>
-                          <span class="col-num">{{ pu.p95_ms }}ms</span>
-                          <span class="col-num">{{ pu.max_ms }}ms</span>
-                        </div>
-                      </div>
-                    </el-collapse-item>
-                  </el-collapse>
-
-                  <!-- ===== 请求详情列表（≈ 查看结果树） ===== -->
-                  <el-collapse v-if="benchResult.samples && benchResult.samples.length > 0" style="margin-top:4px">
-                    <el-collapse-item :title="`🔍 请求详情（${benchResult.samples.length} 条样本）`" name="samples">
-                      <div class="sample-list">
-                        <div v-for="(s, si) in benchResult.samples" :key="si" class="sample-item" @click="toggleSample(si)">
-                          <div class="sample-summary">
-                            <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
-                            <span class="sample-time">{{ s.elapsed_ms }}ms</span>
-                            <span class="sample-url">{{ shortUrl(s.url) }}</span>
-                            <span v-if="s.error" class="sample-err" :title="s.error">⚠ {{ s.error.substring(0,40) }}</span>
-                          </div>
-                          <div v-if="expandedSamples[si]" class="sample-detail">
-                            <div><strong>URL:</strong> {{ s.url }}</div>
-                            <div><strong>耗时:</strong> {{ s.elapsed_ms }}ms</div>
-                            <div><strong>大小:</strong> {{ s.body_size }}B</div>
-                            <div v-if="s.error"><strong>错误:</strong> {{ s.error }}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </el-collapse-item>
-                  </el-collapse>
-
-                  <!-- ===== 响应体采样 ===== -->
-                  <el-collapse v-if="benchResult.body_samples && benchResult.body_samples.length > 0" style="margin-top:4px">
-                    <el-collapse-item :title="`📄 响应体采样（${benchResult.body_samples.length} 个）`" name="body-samples">
-                      <div v-for="(bs, bi) in benchResult.body_samples" :key="bi" style="margin-bottom:6px">
-                        <div style="font-size:11px;color:var(--tm-text-secondary);margin-bottom:2px">
-                          <el-tag :type="bs.status >= 200 && bs.status < 400 ? 'success' : 'danger'" size="small">{{ bs.status }}</el-tag>
-                          {{ shortUrl(bs.url) }}
-                        </div>
-                        <pre class="bench-body-preview">{{ bs.body }}</pre>
-                      </div>
-                    </el-collapse-item>
-                  </el-collapse>
-                </div>
-              </div>
-            </el-tab-pane>
           </el-tabs>
+        </div>
+
+        <!-- 侧边栏：JMX 预览（compact） -->
+        <div class="step3-sidebar">
+          <div class="panel-title" @click="showJmxPreview = !showJmxPreview" style="cursor:pointer;user-select:none">
+            <span>📦 JMX 导出 {{ showJmxPreview ? '▲' : '▼' }}</span>
+          </div>
+          <div v-if="showJmxPreview" class="jmx-preview-compact">
+            <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+              <el-button size="small" @click="generatePreview" :loading="generating">
+                🔮 生成预览
+              </el-button>
+              <el-button size="small" type="success" @click="downloadJmx" :disabled="!jmxContent">
+                <el-icon><Download /></el-icon> 下载 .jmx
+              </el-button>
+            </div>
+            <pre v-if="jmxContent" class="xml-preview-compact"><code>{{ jmxContent }}</code></pre>
+            <div v-else class="empty-hint" style="padding:16px;font-size:12px">
+              <p>点击「生成预览」<br/>查看 JMX 内容<br/><span style="color:var(--tm-text-secondary);font-size:11px">导出后可导入 JMeter 运行</span></p>
+            </div>
+          </div>
+          <div v-else style="padding:12px;font-size:12px;color:var(--tm-text-secondary)">
+            📦 JMX 导出功能：生成 .jmx 文件，可用于 JMeter 或 CI/CD 中运行
+            <div style="margin-top:8px;display:flex;gap:6px">
+              <el-button size="small" @click="downloadJmx" :disabled="!jmxContent" type="success">
+                <el-icon><Download /></el-icon> 直接下载 .jmx
+              </el-button>
+              <el-button size="small" @click="showJmxPreview = true; generatePreview()">🔮 预览</el-button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -986,8 +1019,9 @@ const confirmImportJmx = async () => {
 // ===== JMX 生成 + 下载 =====
 const jmxContent = ref('')
 const generating = ref(false)
+const showJmxPreview = ref(false)
 
-const rightTab3 = ref('debug')
+const rightTab3 = ref('bench')
 
 const generatePreview = async () => {
   if (scriptTree.children.length === 0) { ElMessage.warning('请先添加接口'); return }
@@ -1296,12 +1330,16 @@ onMounted(() => {
 .form-hint { font-size: 11px; color: #6b7280; margin-bottom: 8px; }
 .form-hint code { background: rgba(255,255,255,0.06); padding: 1px 4px; border-radius: 3px; font-family: monospace; }
 
-/* ===== Step 3 布局 ===== */
-.step3-layout { display: grid; grid-template-columns: 1fr 380px; gap: 16px; padding: 16px; height: 100%; overflow: hidden; }
-.export-preview { display: flex; flex-direction: column; overflow: hidden; }
-.preview-body { flex: 1; overflow-y: auto; background: #0d1117; padding: 12px; }
-.xml-preview { margin: 0; white-space: pre-wrap; font-size: 11px; font-family: 'Consolas', monospace; color: #c9d1d9; }
-.export-debug { display: flex; flex-direction: column; overflow: hidden; }
+/* ===== Step 3 布局：主区域 + 窄侧边栏 ===== */
+.step3-layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; padding: 16px; height: 100%; overflow: hidden; }
+.step3-main { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.step3-sidebar { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--tm-border); border-radius: 10px; background: var(--tm-card-bg); }
+.step3-sidebar .panel-title { border-bottom: 1px solid var(--tm-border); }
+
+.jmx-preview-compact { flex: 1; overflow-y: auto; padding: 10px; }
+.xml-preview-compact { background: #0d1117; border-radius: 4px; padding: 8px; font-size: 10px; line-height: 1.4; margin: 0; overflow: auto; max-height: 400px; color: #c9d1d9; font-family: 'Consolas', monospace; white-space: pre-wrap; word-break: break-all; }
+.xml-preview-compact code { font-size: 10px; }
+
 .debug-body { flex: 1; overflow-y: auto; padding: 8px; }
 .debug-content { }
 .debug-meta { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px; }
@@ -1311,46 +1349,50 @@ onMounted(() => {
 .debug-error { margin-top: 8px; }
 .empty-hint { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--tm-text-secondary); gap: 8px; font-size: 13px; text-align: center; }
 
-/* ===== 并发压测 ===== */
+/* ===== 并发验证 ===== */
 .bench-body { padding: 8px; overflow-y: auto; flex: 1; }
-.bench-controls { display: flex; gap: 8px; margin-bottom: 8px; }
+.bench-controls { display: flex; gap: 10px; margin-bottom: 10px; }
 .bench-controls .form-group { flex: 1; }
-.bench-controls .form-group label { display: block; font-size: 11px; color: var(--tm-text-secondary); margin-bottom: 2px; }
+.bench-controls .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--tm-text-secondary); margin-bottom: 3px; }
 .bench-controls .el-input-number { width: 100%; }
-.bench-result { margin-top: 4px; }
-.bench-progress { margin-bottom: 8px; text-align: center; }
+.bench-result { margin-top: 6px; }
+.bench-progress { margin-bottom: 10px; text-align: center; }
 .bench-progress-text { font-size: 11px; color: var(--tm-text-secondary); margin-top: 4px; display: inline-block; }
-.bench-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.bench-stat { background: rgba(255,255,255,0.03); border-radius: 6px; padding: 8px 4px; text-align: center; }
-.bench-stat-value { display: block; font-size: 16px; font-weight: 700; }
-.bench-stat-label { display: block; font-size: 10px; color: var(--tm-text-secondary); margin-top: 1px; }
+.bench-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0; }
+.bench-stat { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 10px 6px; text-align: center; }
+.bench-stat-value { display: block; font-size: 18px; font-weight: 700; }
+.bench-stat-label { display: block; font-size: 10px; color: var(--tm-text-secondary); margin-top: 2px; }
+.bench-section-title { font-size: 13px; font-weight: 700; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px dashed var(--tm-border); }
+.bench-data-block { margin-top: 10px; }
+.bench-empty-hint { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; color: var(--tm-text-secondary); gap: 12px; text-align: center; font-size: 13px; }
 .text-success { color: #4ADE80; }
 .text-danger { color: #F87171; }
 .right-tabs .el-tabs__content { overflow: visible; }
 .right-tabs .el-tab-pane { height: 100%; display: flex; flex-direction: column; }
 .right-tabs .el-tabs__header { margin-bottom: 4px; }
 
-/* ===== 按接口统计（≈ 聚合报告） ===== */
-.per-url-table { font-size: 11px; }
-.per-url-header, .per-url-row { display: flex; gap: 4px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-.per-url-header { font-weight: 600; color: var(--tm-text-secondary); }
+/* ===== 按接口统计（聚合报告） ===== */
+.per-url-table { font-size: 12px; }
+.per-url-header, .per-url-row { display: flex; gap: 6px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.per-url-header { font-weight: 700; color: var(--tm-text-secondary); font-size: 11px; }
 .col-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.col-num { width: 48px; text-align: right; flex-shrink: 0; }
+.col-num { width: 56px; text-align: right; flex-shrink: 0; }
 
-/* ===== 请求详情（≈ 查看结果树） ===== */
-.sample-list { max-height: 300px; overflow-y: auto; font-size: 11px; }
-.sample-item { cursor: pointer; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+/* ===== 请求详情（查看结果树） ===== */
+.sample-list { font-size: 12px; }
+.sample-item { cursor: pointer; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
 .sample-item:hover { background: rgba(255,255,255,0.03); }
-.sample-summary { display: flex; align-items: center; gap: 6px; }
-.sample-time { font-weight: 600; width: 55px; flex-shrink: 0; }
+.sample-summary { display: flex; align-items: center; gap: 8px; }
+.sample-time { font-weight: 700; width: 60px; flex-shrink: 0; font-size: 13px; }
 .sample-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tm-text-secondary); }
-.sample-err { font-size: 10px; color: #F87171; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
-.sample-detail { padding: 6px 8px; margin-top: 3px; background: rgba(255,255,255,0.03); border-radius: 4px; font-size: 11px; line-height: 1.6; word-break: break-all; }
-.bench-body-preview { background: #0d1117; padding: 6px; border-radius: 4px; font-size: 10px; color: #c9d1d9; font-family: 'Consolas', monospace; max-height: 120px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; }
+.sample-err { font-size: 10px; color: #F87171; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.sample-detail { padding: 8px 10px; margin-top: 4px; background: rgba(255,255,255,0.04); border-radius: 6px; font-size: 12px; line-height: 1.8; word-break: break-all; }
+.sample-detail-row { margin-bottom: 2px; }
+.sample-detail-label { color: var(--tm-text-secondary); font-weight: 600; }
+.bench-body-preview { background: #0d1117; padding: 8px; border-radius: 4px; font-size: 11px; color: #c9d1d9; font-family: 'Consolas', monospace; max-height: 150px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; }
 
 /* ===== 面板通用 ===== */
-.panel { display: flex; flex-direction: column; background: var(--tm-card-bg); border: 1px solid var(--tm-border); border-radius: 10px; overflow: hidden; }
-.panel-title { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--tm-border); font-weight: 600; font-size: 13px; }
+.panel-title { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; font-weight: 600; font-size: 13px; }
 .empty-state { text-align: center; padding: 30px; color: var(--tm-text-secondary); font-size: 13px; }
 
 .step-body { flex: 1; overflow: hidden; }
