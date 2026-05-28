@@ -52,8 +52,8 @@
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="jmeter_selected">导出选中用例到 JMeter</el-dropdown-item>
-                <el-dropdown-item command="jmeter_all">导出全部用例到 JMeter</el-dropdown-item>
+                <el-dropdown-item command="jmeter_selected">导出选中用例到 JMeter (5.1.1+)</el-dropdown-item>
+                <el-dropdown-item command="jmeter_all">导出全部用例到 JMeter (5.1.1+)</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -106,7 +106,7 @@
                   <span><el-button type="warning" link :icon="Timer" @click="handleShowHistory(row)" /></span>
                 </el-tooltip>
 
-                <el-tooltip content="导出到 JMeter (.jmx)" placement="top" popper-class="action-tooltip">
+                <el-tooltip content="导出到 JMeter (.jmx) · 兼容 5.1.1+" placement="top" popper-class="action-tooltip">
                   <span><el-button type="warning" link :icon="Download" @click="handleExportSingleCase(row)" /></span>
                 </el-tooltip>
 
@@ -696,7 +696,7 @@ const exportCasesToJMeter = async (caseIds = null) => {
     link.click()
     URL.revokeObjectURL(link.href)
 
-    ElMessage.success('导出成功！兼容 JMeter 5.1.1+')
+    ElMessage.success('导出成功')
   } catch (error) {
     console.error('JMeter 导出失败:', error)
     ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
@@ -725,7 +725,7 @@ const handleExportSingleCase = async (row) => {
     link.click()
     URL.revokeObjectURL(link.href)
 
-    ElMessage.success('导出成功！兼容 JMeter 5.1.1+')
+    ElMessage.success('导出成功')
   } catch (error) {
     console.error('JMeter 导出失败:', error)
     ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))

@@ -21,7 +21,7 @@
         <el-button size="small" type="primary" @click="generatePreview" :loading="generating">
           <el-icon><Refresh /></el-icon> 生成预览
         </el-button>
-        <el-button size="small" type="success" @click="downloadJmx" :disabled="!jmxContent">
+        <el-button size="small" type="success" @click="downloadJmx" :disabled="!jmxContent" title="兼容 JMeter 5.1.1 / 5.2 / 5.3 / 5.4 / 5.5 / 5.6">
           <el-icon><Download /></el-icon> 下载 .jmx
         </el-button>
         <el-button size="small" @click="showScriptHistory = !showScriptHistory">
@@ -40,7 +40,7 @@
           <template #default>
             <p style="margin:4px 0"><strong>第1步 · 选择接口</strong> — 从接口库导入 API（推荐），或用模板快速创建脚本</p>
             <p style="margin:4px 0"><strong>第2步 · 配置压测参数</strong> — 设置并发线程数、循环次数、断言、提取器等</p>
-            <p style="margin:4px 0"><strong>第3步 · 导出 JMX</strong> — 生成预览并下载 .jmx 文件，用 JMeter 直接运行</p>
+            <p style="margin:4px 0"><strong>第3步 · 导出 JMX</strong> — 生成预览并下载 .jmx 文件，兼容 JMeter 5.1.1+</p>
           </template>
         </el-alert>
       </div>
@@ -1714,7 +1714,7 @@
               <el-button size="small" @click="generatePreview" :loading="generating">
                 🔮 生成预览
               </el-button>
-              <el-button size="small" type="success" @click="downloadJmx" :disabled="!jmxContent">
+              <el-button size="small" type="success" @click="downloadJmx" :disabled="!jmxContent" title="兼容 JMeter 5.1.1 / 5.2 / 5.3 / 5.4 / 5.5 / 5.6">
                 <el-icon><Download /></el-icon> 下载 .jmx
               </el-button>
             </div>
@@ -1724,9 +1724,9 @@
             </div>
           </div>
           <div v-else style="padding:12px;font-size:12px;color:var(--tm-text-secondary)">
-            📦 JMX 导出功能：生成 .jmx 文件，可用于 JMeter 或 CI/CD 中运行
+            📦 JMX 导出功能：生成 .jmx 文件，兼容 <strong>JMeter 5.1.1+</strong>
             <div style="margin-top:8px;display:flex;gap:6px">
-              <el-button size="small" @click="downloadJmx" :disabled="!jmxContent" type="success">
+              <el-button size="small" @click="downloadJmx" :disabled="!jmxContent" type="success" title="兼容 JMeter 5.1.1 / 5.2 / 5.3 / 5.4 / 5.5 / 5.6">
                 <el-icon><Download /></el-icon> 直接下载 .jmx
               </el-button>
               <el-button size="small" @click="showJmxPreview = true; generatePreview()">🔮 预览</el-button>
@@ -2533,7 +2533,7 @@ const downloadJmx = () => {
   a.download = `${scriptTree.name || 'testplan'}_${ts}.jmx`
   a.click()
   URL.revokeObjectURL(a.href)
-  ElMessage.success('✅ 下载成功！兼容 JMeter 5.1.1 / 5.2 / 5.3 / 5.4 / 5.5 / 5.6')
+  ElMessage.success('下载成功')
 }
 
 // ===== 快速并发压测验证 =====
