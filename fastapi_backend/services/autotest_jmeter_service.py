@@ -255,9 +255,7 @@ def _add_arguments_prop(parent, name, arguments):
         _add_element_prop(arg_elem, "Argument.value", arg.get("value", ""))
         _add_element_prop(arg_elem, "Argument.metadata", "=")
     
-    ET.SubElement(parent, "hashTree")
-
-
+    return prop
 def _add_save_config(parent):
     """添加保存配置（用于结果收集器）"""
     configs = {
