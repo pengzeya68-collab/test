@@ -9,7 +9,7 @@ import io
 import json
 from typing import List, Optional, Dict, Any
 from urllib.parse import quote
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body, Form, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -94,8 +94,7 @@ async def export_case_to_jmeter(
 
 @router.post("/export/jmeter/cases")
 async def export_cases_to_jmeter(
-    payload: Any = Body(default=None),
-    thread_group_config: Optional[Dict[str, Any]] = None,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -104,17 +103,23 @@ async def export_cases_to_jmeter(
     1. 直接传 [1,2,3]
     2. 传 { case_ids: [...], group_id: 1, thread_group_config: {...} }
     """
+    try:
+        body = await request.json()
+    except Exception:
+        body = None
+
     case_ids: List[int] = []
     group_id: Optional[int] = None
+    thread_group_config: Optional[Dict[str, Any]] = None
 
-    if isinstance(payload, list):
-        case_ids = [int(case_id) for case_id in payload]
-    elif isinstance(payload, dict):
-        raw_case_ids = payload.get("case_ids") or []
+    if isinstance(body, list):
+        case_ids = [int(case_id) for case_id in body]
+    elif isinstance(body, dict):
+        raw_case_ids = body.get("case_ids") or []
         if raw_case_ids:
             case_ids = [int(case_id) for case_id in raw_case_ids]
-        group_id = payload.get("group_id")
-        thread_group_config = payload.get("thread_group_config") or thread_group_config
+        group_id = body.get("group_id")
+        thread_group_config = body.get("thread_group_config")
 
     if not case_ids and group_id is not None:
         result = await db.execute(select(AutoTestCase).where(AutoTestCase.group_id == group_id))

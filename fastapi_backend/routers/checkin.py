@@ -123,7 +123,10 @@ async def checkin_status(
         current_streak = today_checkin.streak_count
     elif latest_checkin:
         yesterday = today - timedelta(days=1)
-        if latest_checkin.checkin_date >= yesterday:
+        checkin_date = latest_checkin.checkin_date
+        if checkin_date.tzinfo is None:
+            checkin_date = checkin_date.replace(tzinfo=timezone.utc)
+        if checkin_date >= yesterday:
             current_streak = latest_checkin.streak_count
 
     total_checkins_stmt = select(func.count()).select_from(DailyCheckin).where(
