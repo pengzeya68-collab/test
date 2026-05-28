@@ -43,10 +43,22 @@
             </template>
           </el-dropdown>
 
-          <el-button type="warning" plain @click="handleExportJmx" :loading="jmeterExporting">
+          <el-button v-if="!exportSelectMode" type="warning" plain @click="startExportSelect" :disabled="filteredCases.length === 0">
             <el-icon><Download /></el-icon>
-            {{ selectedCaseIds.length > 0 ? `导出选中 (${selectedCaseIds.length})` : '导出全部' }} JMX
+            导出 JMX
           </el-button>
+          <template v-else>
+            <el-button type="warning" @click="handleExportJmx" :loading="jmeterExporting" :disabled="selectedCaseIds.length === 0">
+              <el-icon><Download /></el-icon>
+              导出选中 ({{ selectedCaseIds.length }})
+            </el-button>
+            <el-button plain @click="handleExportAllJmx" :loading="jmeterExporting">
+              导出全部
+            </el-button>
+            <el-button plain @click="cancelExportSelect">
+              取消
+            </el-button>
+          </template>
 
           <el-button type="primary" @click="handleCreate">
             <el-icon><Plus /></el-icon>
@@ -67,7 +79,7 @@
           @row-dblclick="handleRowDblClick"
           @selection-change="handleSelectionChange"
         >
-          <el-table-column type="selection" width="45" />
+          <el-table-column v-if="exportSelectMode" type="selection" width="45" />
           <el-table-column prop="method" label="请求方法" width="100">
             <template #default="{ row }">
               <span :class="['api-method-tag', (row.method || '').toLowerCase()]">{{ row.method }}</span>
@@ -648,23 +660,26 @@ const handleJMeterImport = async () => {
 
 // ===== JMeter 导出逻辑 =====
 
+const exportSelectMode = ref(false)
 const selectedCaseIds = ref([])
+
+const startExportSelect = () => {
+  exportSelectMode.value = true
+  selectedCaseIds.value = []
+}
+
+const cancelExportSelect = () => {
+  exportSelectMode.value = false
+  selectedCaseIds.value = []
+}
 
 const handleSelectionChange = (selection) => {
   selectedCaseIds.value = selection.map(item => item.id)
 }
 
-const handleExportJmx = async () => {
-  if (filteredCases.value.length === 0) {
-    ElMessage.warning('当前没有可导出的用例')
-    return
-  }
+const doExportJmx = async (caseIds) => {
   jmeterExporting.value = true
   try {
-    const caseIds = selectedCaseIds.value.length > 0
-      ? selectedCaseIds.value
-      : filteredCases.value.map(item => item.id)
-
     const res = await autoTestRequest.post('/auto-test/export/jmeter/cases', {
       case_ids: caseIds,
     }, { responseType: 'blob' })
@@ -672,18 +687,36 @@ const handleExportJmx = async () => {
     const blob = new Blob([res], { type: 'application/octet-stream' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    const count = caseIds.length
-    link.download = `TestMaster_Export_${count}cases_${new Date().getTime()}.jmx`
+    link.download = `TestMaster_Export_${caseIds.length}cases_${new Date().getTime()}.jmx`
     link.click()
     URL.revokeObjectURL(link.href)
 
-    ElMessage.success(`已导出 ${count} 个用例`)
+    ElMessage.success(`已导出 ${caseIds.length} 个用例`)
+    exportSelectMode.value = false
+    selectedCaseIds.value = []
   } catch (error) {
     console.error('JMeter 导出失败:', error)
     ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
   } finally {
     jmeterExporting.value = false
   }
+}
+
+const handleExportJmx = () => {
+  if (selectedCaseIds.value.length === 0) {
+    ElMessage.warning('请先勾选要导出的用例')
+    return
+  }
+  doExportJmx(selectedCaseIds.value)
+}
+
+const handleExportAllJmx = () => {
+  const allIds = filteredCases.value.map(item => item.id)
+  if (allIds.length === 0) {
+    ElMessage.warning('当前没有可导出的用例')
+    return
+  }
+  doExportJmx(allIds)
 }
 
 // 导出单个用例到 JMeter
