@@ -163,6 +163,8 @@ def export_cases_to_jmx(
     
     _add_element_prop(result_tree, "ResultCollector.error_logging", "false")
     obj_prop = ET.SubElement(result_tree, "objProp")
+    name_el = ET.SubElement(obj_prop, "name")
+    name_el.text = "saveConfig"
     value = ET.SubElement(obj_prop, "value")
     value.set("class", "SampleSaveConfiguration")
     _add_save_config(value)
@@ -178,6 +180,8 @@ def export_cases_to_jmx(
     
     _add_element_prop(summary, "ResultCollector.error_logging", "false")
     obj_prop = ET.SubElement(summary, "objProp")
+    name_el = ET.SubElement(obj_prop, "name")
+    name_el.text = "saveConfig"
     value = ET.SubElement(obj_prop, "value")
     value.set("class", "SampleSaveConfiguration")
     _add_save_config(value)
