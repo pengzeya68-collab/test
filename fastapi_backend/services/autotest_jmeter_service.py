@@ -270,7 +270,7 @@ def _add_save_config(parent):
         "responseData": "false", "samplerData": "false", "xml": "false",
         "fieldNames": "true", "responseHeaders": "false", "requestHeaders": "false",
         "responseDataOnError": "false", "saveAssertionResultsFailureMessage": "false",
-        "assertionsResults": "true", "bytes": "true", "sentBytes": "true",
+        "bytes": "true", "sentBytes": "true",
         "url": "true", "threadCounts": "true", "idleTime": "true",
         "connectTime": "true",
     }

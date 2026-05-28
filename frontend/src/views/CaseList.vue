@@ -707,7 +707,7 @@ const exportCasesToJMeter = async (caseIds = null) => {
 
 // 导出单个用例到 JMeter
 const openJmeterIde = () => {
-  window.open('/auto-test?tab=jmeter', '_blank')
+  window.open('/#/auto-test?tab=jmeter', '_blank')
 }
 
 const handleExportSingleCase = async (row) => {
