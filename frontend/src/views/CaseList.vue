@@ -43,20 +43,10 @@
             </template>
           </el-dropdown>
 
-          <!-- JMeter 导出按钮 -->
-          <el-dropdown trigger="click" @command="handleExportCommand">
-            <el-button type="warning" plain>
-              <el-icon><Download /></el-icon>
-              导出用例
-              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="jmeter_selected">导出选中用例到 JMeter (5.1.1+)</el-dropdown-item>
-                <el-dropdown-item command="jmeter_all">导出全部用例到 JMeter (5.1.1+)</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <el-button type="warning" plain @click="handleExportJmx" :loading="jmeterExporting">
+            <el-icon><Download /></el-icon>
+            {{ selectedCaseIds.length > 0 ? `导出选中 (${selectedCaseIds.length})` : '导出全部' }} JMX
+          </el-button>
 
           <el-button type="primary" @click="handleCreate">
             <el-icon><Plus /></el-icon>
@@ -75,7 +65,9 @@
           row-key="id"
           class="modern-table"
           @row-dblclick="handleRowDblClick"
+          @selection-change="handleSelectionChange"
         >
+          <el-table-column type="selection" width="45" />
           <el-table-column prop="method" label="请求方法" width="100">
             <template #default="{ row }">
               <span :class="['api-method-tag', (row.method || '').toLowerCase()]">{{ row.method }}</span>
@@ -106,7 +98,7 @@
                   <span><el-button type="warning" link :icon="Timer" @click="handleShowHistory(row)" /></span>
                 </el-tooltip>
 
-                <el-tooltip content="导出到 JMeter (.jmx) · 兼容 5.1.1+" placement="top" popper-class="action-tooltip">
+                <el-tooltip content="导出 JMX · 兼容 5.1.1+" placement="top" popper-class="action-tooltip">
                   <span><el-button type="warning" link :icon="Download" @click="handleExportSingleCase(row)" /></span>
                 </el-tooltip>
 
@@ -656,47 +648,36 @@ const handleJMeterImport = async () => {
 
 // ===== JMeter 导出逻辑 =====
 
-const handleExportCommand = async (command) => {
-  if (command === 'jmeter_selected') {
-    // 导出选中用例（需要添加选择功能）
-    ElMessage.warning('请先在表格中勾选用例，再点击导出')
-    return
-  } else if (command === 'jmeter_all') {
-    // 导出全部用例
-    await exportCasesToJMeter()
-  }
+const selectedCaseIds = ref([])
+
+const handleSelectionChange = (selection) => {
+  selectedCaseIds.value = selection.map(item => item.id)
 }
 
-const exportCasesToJMeter = async (caseIds = null) => {
+const handleExportJmx = async () => {
+  if (filteredCases.value.length === 0) {
+    ElMessage.warning('当前没有可导出的用例')
+    return
+  }
   jmeterExporting.value = true
   try {
-    const params = {}
-    if (caseIds) {
-      params.case_ids = caseIds
-    } else if (props.groupId) {
-      // 导出当前分组的所有用例
-      params.group_id = props.groupId
-    } else if (filteredCases.value.length > 0) {
-      // 根目录下优先导出当前筛选结果，避免发送空请求导致 400
-      params.case_ids = filteredCases.value.map(item => item.id)
-    } else {
-      ElMessage.warning('当前没有可导出的用例')
-      return
-    }
+    const caseIds = selectedCaseIds.value.length > 0
+      ? selectedCaseIds.value
+      : filteredCases.value.map(item => item.id)
 
-    const res = await autoTestRequest.post('/auto-test/export/jmeter/cases', params, {
-      responseType: 'blob'
-    })
+    const res = await autoTestRequest.post('/auto-test/export/jmeter/cases', {
+      case_ids: caseIds,
+    }, { responseType: 'blob' })
 
-    // 下载文件
     const blob = new Blob([res], { type: 'application/octet-stream' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `TestMaster_Export_${new Date().getTime()}.jmx`
+    const count = caseIds.length
+    link.download = `TestMaster_Export_${count}cases_${new Date().getTime()}.jmx`
     link.click()
     URL.revokeObjectURL(link.href)
 
-    ElMessage.success('导出成功')
+    ElMessage.success(`已导出 ${count} 个用例`)
   } catch (error) {
     console.error('JMeter 导出失败:', error)
     ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
