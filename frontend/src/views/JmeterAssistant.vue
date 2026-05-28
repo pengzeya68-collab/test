@@ -186,11 +186,11 @@
             </div>
             <div class="bcp-config-item">
               <label>持续(秒)</label>
-              <el-input-number v-model="benchDuration" :min="3" :max="300" size="small" controls-position="right" style="width:90px" />
+              <el-input-number v-model="benchDuration" :min="3" :max="60" size="small" controls-position="right" style="width:90px" />
             </div>
             <div class="bcp-config-item">
               <label>预热(秒)</label>
-              <el-input-number v-model="benchRampUp" :min="0" :max="60" size="small" controls-position="right" style="width:90px" />
+              <el-input-number v-model="benchRampUp" :min="0" :max="10" size="small" controls-position="right" style="width:90px" />
             </div>
           </div>
           <div class="bcp-header-right">
@@ -394,7 +394,7 @@
             <template #title>
               <span class="bcp-ai-title">🤖 AI 分析报告</span>
             </template>
-            <div class="bcp-ai-content" v-html="aiAnalysisText.replace(/\n/g, '<br/>')"></div>
+            <div class="bcp-ai-content" style="white-space: pre-wrap;">{{ aiAnalysisText }}</div>
           </el-collapse-item>
         </el-collapse>
         </div>
@@ -1456,7 +1456,7 @@
                   <!-- 状态码分布 -->
                   <div v-if="benchResult.status_distribution" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
                     <span style="font-size:11px;color:var(--tm-text-secondary)">状态码：</span>
-                    <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code" :type="code === '200' ? 'success' : code >= '400' ? 'danger' : 'warning'" size="small">
+                    <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code" :type="Number(code) >= 200 && Number(code) < 400 ? 'success' : Number(code) >= 400 || Number(code) === 0 ? 'danger' : 'warning'" size="small">
                       HTTP {{ code }}: {{ count }}
                     </el-tag>
                   </div>
@@ -3071,7 +3071,7 @@ const exportReport = async () => {
       actual_qps: puTps,
       concurrency: benchConcurrency.value,
       threads: benchConcurrency.value,
-      ramp_up: 30,
+      ramp_up: benchRampUp.value,
       loops: 1,
       duration: benchDuration.value,
       avg_ms: pu.avg_ms || 0,
@@ -3095,7 +3095,7 @@ const exportReport = async () => {
     scenarios.push({
       name: planName, url: '', method: 'GET', target_qps: 0,
       actual_qps: r.tps || 0, concurrency: benchConcurrency.value,
-      threads: benchConcurrency.value, ramp_up: 30, loops: 1, duration: benchDuration.value,
+      threads: benchConcurrency.value, ramp_up: benchRampUp.value, loops: 1, duration: benchDuration.value,
       avg_ms: r.avg_ms || 0, p50_ms: r.p50_ms || 0, p90_ms: r.p90_ms || 0,
       p95_ms: r.p95_ms || 0, p99_ms: r.p99_ms || 0, stddev_ms: r.stddev_ms || 0,
       max_ms: r.max_ms || 0, min_ms: r.min_ms || 0,
@@ -3449,6 +3449,8 @@ const aiGenerateAssert = async (type) => {
   const url = parentSampler?.props?.url || ''
   const body = parentSampler?.props?.body || ''
   const headers = parentSampler?.props?.headers || []
+  const vars = scriptTree.props?.variables || []
+  const varContext = vars.length > 0 ? '\n- 变量: ' + vars.map(v => `${v.name}=${v.value}`).join(', ') : ''
 
   let prompt = ''
   if (type === 'BeanShell') {

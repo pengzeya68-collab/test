@@ -475,9 +475,9 @@ async def quick_benchmark_submit(body: Dict[str, Any] = Body(...)):
     task_id = str(uuid.uuid4())
     config = {
         "targets": targets,
-        "concurrency": min(int(body.get("concurrency", 10)), 200),
-        "duration": min(int(body.get("duration", 10)), 60),
-        "ramp_up": min(int(body.get("ramp_up", 2)), 10),
+        "concurrency": max(min(int(body.get("concurrency", 10)), 200), 1),
+        "duration": max(min(int(body.get("duration", 10)), 60), 1),
+        "ramp_up": max(min(int(body.get("ramp_up", 2)), 10), 0),
     }
 
     async with _bench_lock:
@@ -600,7 +600,7 @@ async def _run_bench(task_id: str, config: dict):
                                 "status": resp.status,
                                 "response_message": resp.reason or ("OK" if 200 <= resp.status < 400 else "Error"),
                                 "elapsed_ms": round(elapsed, 1),
-                                "connect_time_ms": round((resp._connection_info or {}).get('connect_time', 0) * 1000, 1) if hasattr(resp, '_connection_info') else None,
+                                "connect_time_ms": None,
                                 "latency_ms": round(elapsed * 0.6, 1),
                                 "body_size": body_len,
                                 "sent_bytes": sent_bytes,
@@ -610,16 +610,19 @@ async def _run_bench(task_id: str, config: dict):
                                 "start_time": req_start_iso,
                                 "data_type": "text",
                                 "error": None,
-                                "request_body": (req_body[:10000] if req_body else ""),
-                                "response_body": raw_body[:50000].decode('utf-8', errors='replace') if body_len > 0 else "",
-                                "request_headers": {k: v for k, v in headers.items()},
-                                "response_headers": resp_headers,
+                                "request_body": "",
+                                "response_body": "",
+                                "request_headers": {},
+                                "response_headers": {},
                                 "http_fields": {
                                     "content_type": content_type,
                                     "encoding": data_encoding,
                                 },
                             }
                             results.append(entry)
+
+                            if not (200 <= resp.status < 400):
+                                errors.append(entry)
 
                             _body_captured_count[url] = _body_captured_count.get(url, 0) + 1
                             if _body_captured_count[url] <= 5 and body_len > 0:
@@ -715,7 +718,12 @@ async def _run_bench(task_id: str, config: dict):
         if ramp_up > 0 and i < concurrency - 1:
             await asyncio.sleep(ramp_up / concurrency)
 
-    await asyncio.wait(workers, timeout=duration + 10)
+    done, pending = await asyncio.wait(workers, timeout=duration + 10)
+    for p in pending:
+        p.cancel()
+    if pending:
+        await asyncio.wait(pending, timeout=5)
+    snapshot_task.cancel()
     total_time = time.time() - start_time
 
     # 计算结果

@@ -255,7 +255,7 @@ def generate_status_distribution_chart(status_distribution: Dict[str, int]) -> i
         buf.seek(0)
         return buf
 
-    labels = list(status_distribution.keys())
+    labels = [str(k) for k in status_distribution.keys()]
     sizes = list(status_distribution.values())
 
     status_colors = {
@@ -263,6 +263,7 @@ def generate_status_distribution_chart(status_distribution: Dict[str, int]) -> i
         '301': '#3B82F6', '302': '#60A5FA',
         '400': '#F59E0B', '401': '#FBBF24', '403': '#F97316', '404': '#FB923C',
         '500': '#EF4444', '502': '#DC2626', '503': '#B91C1C',
+        '0': '#6B7280',
     }
     colors = [status_colors.get(l, '#8B5CF6') for l in labels]
 

@@ -52,12 +52,13 @@ async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict
 
     scenario_text = ""
     for s in scenarios:
+        err_rate = s.get('error_rate', 0) or 0
         scenario_text += (
             f"- {s.get('name','')}: TPS={s.get('actual_qps','N/A')}, "
             f"平均={s.get('avg_ms','N/A')}ms, P50={s.get('p50_ms','N/A')}ms, "
             f"P90={s.get('p90_ms','N/A')}ms, P95={s.get('p95_ms','N/A')}ms, "
-            f"P99={s.get('p99_ms','N/A')}ms, 错误率={s.get('error_rate',0):.2f}%, "
-            f"请求数={s.get('total_requests',0)}, 失败={s.get('failed_requests',0)}\n"
+            f"P99={s.get('p99_ms','N/A')}ms, 错误率={err_rate:.2f}%, "
+            f"请求数={s.get('total_requests',0) or 0}, 失败={s.get('failed_requests',0) or 0}\n"
         )
 
     prompt = f"""你是资深性能测试专家。请针对以下压测结果给出专业的优化建议报告（300-500字，中文，分点建议）。
@@ -121,17 +122,20 @@ def _build_offline_suggestions(scenarios: List[Dict], summary: Dict) -> str:
     else:
         lines.append(f"1. 整体性能评估：需改进 - 仅 {passed}/{len(scenarios)} 场景通过，建议全面排查。")
 
+    idx = 2
     for s in scenarios:
         name = s.get("name", "")
-        p95 = s.get("p95_ms", 0)
-        p99 = s.get("p99_ms", 0)
-        err_rate = s.get("error_rate", 0)
+        p95 = s.get("p95_ms", 0) or 0
+        p99 = s.get("p99_ms", 0) or 0
+        err_rate = s.get("error_rate", 0) or 0
         if p99 > 0 and p95 > 0 and (p99 - p95) > p95 * 0.5:
-            lines.append(f"2. 瓶颈分析：{name} 的 P99({p99}ms) 远高于 P95({p95}ms)，存在长尾延迟，建议排查慢请求。")
+            lines.append(f"{idx}. 瓶颈分析：{name} 的 P99({p99}ms) 远高于 P95({p95}ms)，存在长尾延迟，建议排查慢请求。")
+            idx += 1
         if err_rate > 1:
-            lines.append(f"3. 失败分析：{name} 错误率 {err_rate:.2f}%，超过 1% 标准，建议检查服务端日志。")
+            lines.append(f"{idx}. 失败分析：{name} 错误率 {err_rate:.2f}%，超过 1% 标准，建议检查服务端日志。")
+            idx += 1
 
-    lines.append("4. 优化建议：")
+    lines.append(f"{idx}. 优化建议：")
     lines.append("   - 检查数据库慢查询并添加索引")
     lines.append("   - 对高耗时接口考虑增加缓存层")
     lines.append("   - 检查连接池配置是否合理")
@@ -402,15 +406,19 @@ def generate_performance_report(
         }
 
         tmpdir = tempfile.mkdtemp()
-        for chart_key, title in chart_titles.items():
-            if chart_key in charts:
-                doc.add_heading(title, level=2)
-                img_path = os.path.join(tmpdir, f"{chart_key}.png")
-                with open(img_path, 'wb') as f:
-                    f.write(charts[chart_key].getvalue())
-                doc.add_picture(img_path, width=Inches(5.5))
-                doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                doc.add_paragraph()
+        try:
+            for chart_key, title in chart_titles.items():
+                if chart_key in charts:
+                    doc.add_heading(title, level=2)
+                    img_path = os.path.join(tmpdir, f"{chart_key}.png")
+                    with open(img_path, 'wb') as f:
+                        f.write(charts[chart_key].getvalue())
+                    doc.add_picture(img_path, width=Inches(5.5))
+                    doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    doc.add_paragraph()
+        finally:
+            import shutil
+            shutil.rmtree(tmpdir, ignore_errors=True)
     except Exception as e:
         doc.add_paragraph(f'(图表生成失败: {e})。请检查服务器 matplotlib 环境。')
 
