@@ -3109,8 +3109,34 @@ const exportReport = async () => {
   const errorTypes = {}
   if (r.errors && r.errors.length > 0) {
     r.errors.forEach(e => {
-      const msg = typeof e === 'object' ? (e.response_message || e.message || e.error || '未知错误') : String(e)
-      const key = msg.length > 60 ? msg.substring(0, 57) + '...' : msg
+      let msg = typeof e === 'object' ? (e.response_message || e.message || e.error || '未知错误') : String(e)
+      // 提取关键错误类型，去除URL等冗长信息
+      if (msg.includes('Cannot connect to host')) {
+        const match = msg.match(/Cannot connect to host\s+(\S+)/)
+        msg = match ? `连接失败: ${match[1]}` : '连接失败'
+      } else if (msg.includes('ssl:default')) {
+        msg = 'SSL连接错误'
+      } else if (msg.startsWith('https://') || msg.startsWith('http://')) {
+        // URL类错误，提取域名
+        try {
+          const url = new URL(msg)
+          msg = `请求失败: ${url.hostname}`
+        } catch {
+          msg = msg.substring(0, 40) + '...'
+        }
+      } else if (msg.includes('timeout')) {
+        msg = '请求超时'
+      } else if (msg.includes('500') || msg.includes('Internal Server Error')) {
+        msg = '服务器错误 (500)'
+      } else if (msg.includes('404')) {
+        msg = '资源不存在 (404)'
+      } else if (msg.includes('403')) {
+        msg = '权限拒绝 (403)'
+      } else if (msg.includes('401')) {
+        msg = '未授权 (401)'
+      }
+      // 截断过长消息
+      const key = msg.length > 50 ? msg.substring(0, 47) + '...' : msg
       errorTypes[key] = (errorTypes[key] || 0) + 1
     })
   }

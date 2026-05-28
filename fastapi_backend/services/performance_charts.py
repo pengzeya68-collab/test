@@ -18,9 +18,12 @@ import io
 from typing import List, Dict, Any
 
 def _find_chinese_font():
-    for f in fm.fontManager.ttflist:
-        if 'SimHei' in f.name or 'Microsoft YaHei' in f.name or 'Noto Sans CJK' in f.name:
-            return f.name
+    """查找可用的中文字体"""
+    priority_fonts = ['WenQuanYi Zen Hei', 'WenQuanYi Micro Hei', 'SimHei', 'Microsoft YaHei', 'Noto Sans CJK SC']
+    for name in priority_fonts:
+        for f in fm.fontManager.ttflist:
+            if name in f.name:
+                return f.name
     return 'SimHei'
 
 _CHINESE_FONT = _find_chinese_font()
@@ -199,6 +202,26 @@ def generate_throughput_trend_chart(throughput_trend: List[Dict]) -> io.BytesIO:
 
     times = [d.get("t", 0) for d in throughput_trend]
     tps_vals = [d.get("tps", 0) for d in throughput_trend]
+
+    # 过滤掉 ramp-up 阶段的异常高值（通常是启动时的突发流量）
+    # 只保留 TPS 稳定后的数据点
+    if len(tps_vals) > 5:
+        # 计算稳定阶段的平均TPS（去掉前20%的ramp-up数据）
+        stable_start = int(len(tps_vals) * 0.2)
+        stable_vals = tps_vals[stable_start:]
+        stable_avg = sum(stable_vals) / len(stable_vals) if stable_vals else 0
+        
+        # 过滤掉明显偏离稳定值的异常点（超过稳定平均值3倍的点）
+        filtered_times = []
+        filtered_tps = []
+        for t, tps in zip(times, tps_vals):
+            if tps <= stable_avg * 3 and tps > 0:
+                filtered_times.append(t)
+                filtered_tps.append(tps)
+        
+        if filtered_tps:
+            times = filtered_times
+            tps_vals = filtered_tps
 
     fig, ax = plt.subplots(figsize=CHART_STYLE['figsize'])
     ax.fill_between(times, tps_vals, alpha=0.15, color=CLR_TREND)
