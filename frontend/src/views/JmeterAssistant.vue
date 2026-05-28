@@ -221,7 +221,7 @@
         <!-- 进度条 -->
         <div v-if="benching || benchProgress" class="bcp-progress">
           <el-progress :percentage="benchPercent" :stroke-width="8" :status="benchPercent >= 100 ? 'success' : ''" />
-          <span class="bcp-progress-text">{{ benchProgress }}</span>
+          <span class="bcp-progress-text">{{ benchProgress }}<em v-if="benchEta" style="margin-left:8px;font-style:normal;color:var(--tm-text-secondary)">{{ benchEta }}</em></span>
         </div>
 
         <!-- 实时性能图表 -->
@@ -257,8 +257,13 @@
           <div class="bcp-stat" :class="benchResult.failed > 0 ? 'bcp-stat-err' : ''"><span class="bcp-stat-val">{{ benchResult.failed }}</span><span class="bcp-stat-lbl">失败</span></div>
           <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.tps }}</span><span class="bcp-stat-lbl">TPS</span></div>
           <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.avg_ms }}ms</span><span class="bcp-stat-lbl">平均</span></div>
+          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.min_ms || '-' }}ms</span><span class="bcp-stat-lbl">最小</span></div>
+          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.max_ms || '-' }}ms</span><span class="bcp-stat-lbl">最大</span></div>
+          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p50_ms || '-' }}ms</span><span class="bcp-stat-lbl">P50</span></div>
+          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p90_ms || '-' }}ms</span><span class="bcp-stat-lbl">P90</span></div>
           <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p95_ms }}ms</span><span class="bcp-stat-lbl">P95</span></div>
           <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p99_ms }}ms</span><span class="bcp-stat-lbl">P99</span></div>
+          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.stddev_ms || '-' }}ms</span><span class="bcp-stat-lbl">标准差</span></div>
           <el-button v-if="benchResult" size="small" type="primary" plain @click="analyzeBenchResult" :loading="analyzing" style="margin-left:auto">
             🤖 AI 分析
           </el-button>
@@ -359,7 +364,7 @@
             <div v-for="(count, range) in benchResult.rt_distribution" :key="range" class="rt-dist-bar">
               <div class="rt-dist-label">{{ range }}</div>
               <div class="rt-dist-track">
-                <div class="rt-dist-fill" :style="{ width: (count / Math.max(...Object.values(benchResult.rt_distribution)) * 100) + '%' }"></div>
+                <div class="rt-dist-fill" :style="{ width: (count / Math.max(...Object.values(benchResult.rt_distribution), 1) * 100) + '%' }"></div>
               </div>
               <div class="rt-dist-count">{{ count }}</div>
             </div>
@@ -379,12 +384,29 @@
                   <td>{{ tp.count }}</td>
                   <td>
                     <div class="tp-bar">
-                      <div class="tp-fill" :style="{ width: (tp.tps / Math.max(...benchResult.throughput_trend.map(t => t.tps)) * 100) + '%' }"></div>
+                      <div class="tp-fill" :style="{ width: (tp.tps / Math.max(...benchResult.throughput_trend.map(t => t.tps), 1) * 100) + '%' }"></div>
                     </div>
                   </td>
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- 响应体采样 -->
+        <div v-if="benchResult && benchResult.body_samples && benchResult.body_samples.length > 0" class="bcp-body-samples" style="margin-top:10px">
+          <div class="bpu-header" style="display:flex;justify-content:space-between;align-items:center">
+            <span>📄 响应体采样 (前 {{ Math.min(benchResult.body_samples.length, 10) }} 条)</span>
+            <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">最多 1000 字符</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div v-for="(bs, bi) in benchResult.body_samples.slice(0, 10)" :key="bi" style="background:#f8fafc;border-radius:6px;padding:6px 8px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tm-text-secondary);margin-bottom:3px">
+                <el-tag :type="bs.status >= 200 && bs.status < 400 ? 'success' : 'danger'" size="small">{{ bs.status }}</el-tag>
+                <span style="word-break:break-all">{{ shortUrl(bs.url) }}</span>
+              </div>
+              <pre class="bench-body-preview" style="margin:0;font-size:11px;max-height:80px;overflow-y:auto">{{ bs.body }}</pre>
+            </div>
           </div>
         </div>
 
@@ -444,7 +466,7 @@
               v-for="(node, idx) in filteredTreeChildren"
               :key="node.uid"
               :node="node"
-              :depth="0"
+              :depth="node._depth || 0"
               :selected-uid="selectedUid"
               :search-query="treeSearchQuery"
               @select="selectNode"
@@ -1480,7 +1502,9 @@
                         <span class="col-num">失败</span>
                         <span class="col-num">平均耗时</span>
                         <span class="col-num">P95 耗时</span>
+                        <span class="col-num">P99 耗时</span>
                         <span class="col-num">最慢耗时</span>
+                        <span class="col-num">标准差</span>
                       </div>
                       <div v-for="pu in benchResult.per_url" :key="pu.url" class="per-url-row">
                         <span class="col-url" :title="pu.url">{{ shortUrl(pu.url) }}</span>
@@ -1489,7 +1513,9 @@
                         <span class="col-num" :class="pu.failed > 0 ? 'text-danger' : ''">{{ pu.failed }}</span>
                         <span class="col-num">{{ pu.avg_ms }}ms</span>
                         <span class="col-num">{{ pu.p95_ms }}ms</span>
+                        <span class="col-num">{{ pu.p99_ms || '-' }}ms</span>
                         <span class="col-num">{{ pu.max_ms }}ms</span>
+                        <span class="col-num">{{ pu.stddev_ms || '-' }}ms</span>
                       </div>
                     </div>
                   </div>
@@ -1728,7 +1754,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, VideoPause, SwitchButton, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting, Document, ArrowDown } from '@element-plus/icons-vue'
@@ -2137,10 +2163,13 @@ const filteredTreeChildren = computed(() => {
   const q = (treeSearchQuery.value || '').toLowerCase().trim()
   if (!q) return scriptTree.children
   const matches = []
-  const search = (nodes) => {
+  const search = (nodes, depth = 0) => {
     nodes.forEach(node => {
-      if ((node.name || '').toLowerCase().includes(q)) matches.push(node)
-      if (node.children) search(node.children)
+      if ((node.name || '').toLowerCase().includes(q)) {
+        matches.push(node)
+        node._depth = depth
+      }
+      if (node.children) search(node.children, depth + 1)
     })
   }
   search(scriptTree.children)
@@ -2344,7 +2373,7 @@ const templates = [
 ]
 
 const applyTemplate = (tpl) => {
-  scriptTree.children = []
+  scriptTree.children.splice(0, scriptTree.children.length)
   scriptTree.props.variables = []
 
   if (tpl.key === 'simple') {
@@ -2474,6 +2503,7 @@ const downloadJmx = () => {
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
   a.download = `${scriptTree.name || 'testplan'}_${ts}.jmx`
   a.click()
+  URL.revokeObjectURL(a.href)
   ElMessage.success('✅ 下载成功！用 JMeter 打开即可运行')
 }
 
@@ -2484,6 +2514,11 @@ const benchRampUp = ref(2)
 const benchResult = ref(null)
 const benchProgress = ref('')
 const benchPercent = ref(0)
+const benchEta = computed(() => {
+  if (!benchPercent.value || benchPercent.value >= 100) return ''
+  const remainingSec = Math.ceil(benchDuration.value * (100 - benchPercent.value) / 100)
+  return remainingSec > 0 ? `剩余约${remainingSec}秒` : ''
+})
 const benchTaskId = ref(null)
 const benching = ref(false)
 const runStatus = ref('idle')
@@ -2503,6 +2538,7 @@ const benchChartInstance2 = ref(null)
 const benchChartInstance3 = ref(null)
 const benchChartInstance4 = ref(null)
 const benchSnapshots = ref([])
+const benchStartTime = ref(null)
 const treeWidth = ref(280)
 const rightPanelWidth = ref(380)
 const rightPanelVisible = ref(true)
@@ -2624,10 +2660,12 @@ const startBench = async () => {
   rightPanelVisible.value = true
   benching.value = true
   runStatus.value = 'running'
+  benchStartTime.value = new Date()
   benchResult.value = null
   benchProgress.value = '提交任务...'
   benchPercent.value = 0
   benchTaskId.value = null
+  benchRetryCount = 0
   benchSnapshots.value = []
   selectedSampleIdx.value = -1
   rightTab3.value = 'bench'
@@ -2646,14 +2684,21 @@ const startBench = async () => {
     benchPollTimer = setInterval(pollBench, 1500)
   } catch (e) {
     ElMessage.error('提交失败: ' + (e.response?.data?.detail || e.message))
+    benchProgress.value = ''
+    benchPercent.value = 0
+    runStatus.value = ''
     benching.value = false
+    benchResult.value = null
   }
 }
 
+
+let benchRetryCount = 0
 const pollBench = async () => {
   if (!benchTaskId.value) return
   try {
     const res = await autoTestRequest.get(`/auto-test/jmeter/quick-bench/${benchTaskId.value}`)
+    benchRetryCount = 0
     benchProgress.value = res.progress || ''
     benchPercent.value = res.percent || 0
 
@@ -2687,19 +2732,27 @@ const pollBench = async () => {
       saveBenchHistory(res.result)
     }
   } catch (e) {
-    if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
-    benching.value = false
-    ElMessage.error('查询失败: ' + (e.response?.data?.detail || e.message))
+    benchRetryCount++
+    if (benchRetryCount >= 3) {
+      if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
+      benching.value = false
+      benchRetryCount = 0
+      ElMessage.error('查询失败: ' + (e.response?.data?.detail || e.message))
+    }
   }
 }
 
-const pauseRun = () => { if (runStatus.value === 'running') { runStatus.value = 'paused'; ElMessage.info('已暂停') } }
-const resumeRun = () => { if (runStatus.value === 'paused') { runStatus.value = 'running'; ElMessage.info('已恢复运行') } }
-
-const stopBench = () => {
+const stopBench = async () => {
   if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
   benching.value = false
   runStatus.value = 'idle'
+  if (benchTaskId.value) {
+    try {
+      await autoTestRequest.post('/auto-test/bench/stop', { task_id: benchTaskId.value })
+    } catch (e) {
+      // 忽略后端取消时的错误
+    }
+  }
   ElMessage.info('已停止')
 }
 
@@ -2716,6 +2769,14 @@ const saveBenchHistory = (result) => {
     avg_ms: result.avg_ms,
     p95_ms: result.p95_ms,
     p99_ms: result.p99_ms,
+    min_ms: result.min_ms,
+    max_ms: result.max_ms,
+    p50_ms: result.p50_ms,
+    p90_ms: result.p90_ms,
+    stddev_ms: result.stddev_ms,
+    rt_distribution: result.rt_distribution,
+    throughput_trend: result.throughput_trend,
+    body_samples: result.body_samples,
     statusDistribution: result.status_distribution,
     perUrl: result.per_url,
     errors: result.errors,
@@ -2723,7 +2784,14 @@ const saveBenchHistory = (result) => {
   }
   benchHistory.value.unshift(entry)
   if (benchHistory.value.length > 50) benchHistory.value = benchHistory.value.slice(0, 50)
-  localStorage.setItem('benchHistory', JSON.stringify(benchHistory.value))
+  try {
+    localStorage.setItem('benchHistory', JSON.stringify(benchHistory.value))
+  } catch (e) {
+    benchHistory.value.pop()
+    try {
+      localStorage.setItem('benchHistory', JSON.stringify(benchHistory.value))
+    } catch (e2) {}
+  }
 }
 
 const initAllBenchCharts = () => {
@@ -3057,7 +3125,7 @@ const exportReport = async () => {
   const r = benchResult.value
   const planName = scriptTree.name || '未命名'
   const now = new Date()
-  const testStart = new Date(now.getTime() - benchDuration.value * 1000)
+  const testStart = benchStartTime.value && benchStartTime.value < now ? benchStartTime.value : new Date(now.getTime() - benchDuration.value * 1000)
 
   const scenarios = (r.per_url || []).map(pu => {
     const puTps = pu.count > 0 && benchDuration.value > 0
@@ -3085,7 +3153,7 @@ const exportReport = async () => {
       error_rate: pu.count > 0 ? ((pu.failed || 0) / pu.count * 100) : 0,
       total_requests: pu.count || 0,
       failed_requests: pu.failed || 0,
-      result: pu.success_rate >= 99.9 ? '通过' : pu.failed === 0 ? '通过' : '失败',
+      result: pu.failed === 0 ? '通过' : '失败',
       test_start: testStart.toLocaleString(),
       test_end: now.toLocaleString(),
     }
@@ -3187,7 +3255,7 @@ const exportReport = async () => {
       status_distribution: r.status_distribution || {},
     }, { responseType: 'blob' })
 
-    const blob = res instanceof Blob ? res : new Blob([res])
+    const blob = res instanceof Blob ? res : (res && res.data instanceof Blob ? res.data : new Blob([res]))
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -3320,7 +3388,7 @@ watch(() => JSON.stringify(scriptTree), () => {
     saveCurrentScript()
     scriptHistory.value = loadScriptsList()
   }, 1500)
-}, { deep: true })
+})
 
 // 自动保存：步骤变化时
 watch(currentStep, () => {
@@ -3500,6 +3568,12 @@ const findParentSampler = (parent, uid) => {
   }
   return null
 }
+
+onBeforeUnmount(() => {
+  if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
+  window.removeEventListener('resize', resizeAllBenchCharts)
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
+})
 </script>
 
 <style scoped>
@@ -3677,7 +3751,7 @@ const findParentSampler = (parent, uid) => {
   overflow: hidden; transition: all 0.3s ease;
 }
 .bench-control-panel.expanded {
-  height: 100vh; display: flex; flex-direction: column;
+  height: calc(100vh - 48px); display: flex; flex-direction: column;
 }
 .bcp-header {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;

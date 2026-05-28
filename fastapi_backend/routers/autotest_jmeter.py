@@ -261,7 +261,7 @@ async def import_jmeter_file(
     
     # 读取文件内容
     content = await file.read()
-    xml_content = content.decode("UTF-8")
+    xml_content = content.decode("UTF-8", errors="replace")
     
     # 解析 JMeter XML
     cases = import_jmx_to_cases(xml_content)
@@ -282,7 +282,7 @@ async def import_jmeter_file(
             headers=case_data.get("headers"),
             params=case_data.get("params"),
             body_type=case_data.get("body_type", "none"),
-            content_type="application/json" if case_data.get("headers", {}).get("Content-Type") else None,
+            content_type=case_data.get("headers", {}).get("Content-Type") or case_data.get("content_type"),
             payload=case_data.get("payload"),
             assert_rules=case_data.get("assert_rules"),
             extractors=case_data.get("extractors"),
@@ -326,18 +326,42 @@ async def import_jmeter_full_tree(
     return {"tree": tree, "message": "JMX完整树解析成功"}
 
 
+def _percentile(data, p):
+    """计算百分位数（线性插值法）"""
+    if not data:
+        return 0
+    arr = sorted(data)
+    n = len(arr)
+    idx = p / 100 * (n - 1)
+    lo = int(idx)
+    hi = min(lo + 1, n - 1)
+    frac = idx - lo
+    return round(arr[lo] * (1 - frac) + arr[hi] * frac, 1)
+
+
+def _safe_json_loads(val, default=None):
+    if val is None:
+        return default
+    if isinstance(val, (dict, list)):
+        return val
+    try:
+        return json.loads(val)
+    except (json.JSONDecodeError, TypeError):
+        return default if default is not None else val
+
+
 def _case_to_dict(case: AutoTestCase) -> Dict[str, Any]:
     """将 AutoTestCase 对象转换为字典"""
     return {
         "name": case.name,
         "method": case.method,
         "url": case.url,
-        "headers": case.headers if isinstance(case.headers, dict) else (json.loads(case.headers) if case.headers else {}),
-        "params": case.params if isinstance(case.params, dict) else (json.loads(case.params) if case.params else {}),
+        "headers": _safe_json_loads(case.headers, {}),
+        "params": _safe_json_loads(case.params, {}),
         "body_type": case.body_type or "none",
-        "payload": case.payload if isinstance(case.payload, dict) else (json.loads(case.payload) if case.payload else {}),
-        "assert_rules": case.assert_rules if isinstance(case.assert_rules, (dict, list)) else (json.loads(case.assert_rules) if case.assert_rules else []),
-        "extractors": case.extractors if isinstance(case.extractors, list) else (json.loads(case.extractors) if case.extractors else []),
+        "payload": _safe_json_loads(case.payload, {}),
+        "assert_rules": _safe_json_loads(case.assert_rules, []),
+        "extractors": _safe_json_loads(case.extractors, []),
     }
 
 
@@ -547,7 +571,6 @@ async def _run_bench(task_id: str, config: dict):
     errors = []
     body_samples = []
     _body_captured_count = {}
-    _sample_seq = [0]
     start_time = time.time()
 
     async def worker(worker_id: int):
@@ -576,7 +599,8 @@ async def _run_bench(task_id: str, config: dict):
                             else:
                                 try:
                                     sent_bytes = int(v)
-                                except: pass
+                                except (ValueError, TypeError):
+                                    pass
                         headers_size = len(hdr_str.encode('utf-8')) if hdr_str else 0
 
                         kwargs = {"headers": headers}
@@ -592,7 +616,6 @@ async def _run_bench(task_id: str, config: dict):
                             content_type = resp_headers.get("Content-Type", "").split(";")[0].strip()
                             data_encoding = resp_headers.get("Content-Encoding", "")
 
-                            _sample_seq[0] += 1
                             entry = {
                                 "name": name,
                                 "method": method,
@@ -601,7 +624,7 @@ async def _run_bench(task_id: str, config: dict):
                                 "response_message": resp.reason or ("OK" if 200 <= resp.status < 400 else "Error"),
                                 "elapsed_ms": round(elapsed, 1),
                                 "connect_time_ms": None,
-                                "latency_ms": round(elapsed * 0.6, 1),
+                                "latency_ms": round(elapsed, 1),
                                 "body_size": body_len,
                                 "sent_bytes": sent_bytes,
                                 "headers_size": headers_size,
@@ -690,12 +713,8 @@ async def _run_bench(task_id: str, config: dict):
             tps_now = round(delta_count / delta_sec, 1) if delta_sec > 0 else 0
             recent_elapsed = sorted([r["elapsed_ms"] for r in results[-delta_count:]]) if delta_count > 0 else []
             avg_now = round(sum(recent_elapsed) / len(recent_elapsed), 1) if recent_elapsed else 0
-            def percentile(data, p):
-                if not data: return 0
-                idx = int(len(data) * p / 100)
-                return round(data[min(idx, len(data) - 1)], 1)
-            p95_now = percentile(recent_elapsed, 95)
-            p99_now = percentile(recent_elapsed, 99)
+            p95_now = _percentile(recent_elapsed, 95)
+            p99_now = _percentile(recent_elapsed, 99)
             async with _bench_lock:
                 _bench_tasks[task_id]["snapshots"].append({
                     "t": elapsed_seconds,
@@ -745,26 +764,22 @@ async def _run_bench(task_id: str, config: dict):
             s = str(r.get("status", 0))
             status_dist[s] = status_dist.get(s, 0) + 1
 
-        def percentile(data, p):
-            if not data:
-                return 0
-            idx = int(len(data) * p / 100)
-            return data[min(idx, len(data) - 1)]
-
-        # 按 URL 统计（≈ 聚合报告）
+        # 按 URL + Method 统计（≈ 聚合报告）
         url_map = {}
         for r in results:
             u = r.get("url", "")
-            if u not in url_map:
-                url_map[u] = {"url": u, "name": r.get("name", u), "method": r.get("method", "GET"), "count": 0, "success": 0, "failed": 0, "times": []}
-            url_map[u]["count"] += 1
+            m = r.get("method", "GET")
+            key = f"{m}:{u}"
+            if key not in url_map:
+                url_map[key] = {"url": u, "name": r.get("name", u), "method": m, "count": 0, "success": 0, "failed": 0, "times": []}
+            url_map[key]["count"] += 1
             if 200 <= r["status"] < 400:
-                url_map[u]["success"] += 1
+                url_map[key]["success"] += 1
             else:
-                url_map[u]["failed"] += 1
-            url_map[u]["times"].append(r["elapsed_ms"])
+                url_map[key]["failed"] += 1
+            url_map[key]["times"].append(r["elapsed_ms"])
         per_url = []
-        for u, s in url_map.items():
+        for key, s in url_map.items():
             t = sorted(s["times"])
             per_url.append({
                 "url": u,
@@ -775,10 +790,10 @@ async def _run_bench(task_id: str, config: dict):
                 "failed": s["failed"],
                 "success_rate": round(s["success"] / s["count"] * 100, 1) if s["count"] > 0 else 0,
                 "avg_ms": round(sum(t) / len(t), 1),
-                "p50_ms": round(percentile(t, 50), 1),
-                "p90_ms": round(percentile(t, 90), 1),
-                "p95_ms": round(percentile(t, 95), 1),
-                "p99_ms": round(percentile(t, 99), 1),
+                "p50_ms": _percentile(t, 50),
+                "p90_ms": _percentile(t, 90),
+                "p95_ms": _percentile(t, 95),
+                "p99_ms": _percentile(t, 99),
                 "min_ms": round(t[0], 1),
                 "max_ms": round(t[-1], 1),
                 "stddev_ms": round((sum((x - sum(t)/len(t))**2 for x in t) / len(t)) ** 0.5, 1) if len(t) > 1 else 0,
@@ -836,10 +851,10 @@ async def _run_bench(task_id: str, config: dict):
             "avg_ms": round(sum(elapsed_list) / len(elapsed_list), 1),
             "min_ms": round(elapsed_sorted[0], 1),
             "max_ms": round(elapsed_sorted[-1], 1),
-            "p50_ms": round(percentile(elapsed_sorted, 50), 1),
-            "p90_ms": round(percentile(elapsed_sorted, 90), 1),
-            "p95_ms": round(percentile(elapsed_sorted, 95), 1),
-            "p99_ms": round(percentile(elapsed_sorted, 99), 1),
+            "p50_ms": _percentile(elapsed_sorted, 50),
+            "p90_ms": _percentile(elapsed_sorted, 90),
+            "p95_ms": _percentile(elapsed_sorted, 95),
+            "p99_ms": _percentile(elapsed_sorted, 99),
             "stddev_ms": round((sum((x - sum(elapsed_list)/len(elapsed_list))**2 for x in elapsed_list) / len(elapsed_list)) ** 0.5, 1) if len(elapsed_list) > 1 else 0,
             "tps": round(len(results) / total_time, 1) if total_time > 0 else 0,
             "status_distribution": status_dist,

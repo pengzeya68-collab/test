@@ -19,7 +19,18 @@ from docx.oxml.ns import qn
 from fastapi_backend.services.performance_charts import generate_all_charts
 
 
-async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict) -> str:
+def __safe_err_rate(val):
+    """安全格式化错误率"""
+    try:
+        v = float(val or 0)
+        if v != v or v > 1e9 or v < 0:
+            return "N/A"
+        return f'{v:.2f}'
+    except (ValueError, TypeError):
+        return "N/A"
+
+
+def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict) -> str:
     """调用 AI 生成优化建议"""
     from sqlalchemy import select
     from fastapi_backend.models.models import AIConfig
@@ -47,7 +58,7 @@ async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict
             base_url = settings.AI_BASE_URL
             model = settings.AI_MODEL
 
-    if not api_key:
+    if not api_key or not model:
         return _build_offline_suggestions(scenarios, summary)
 
     scenario_text = ""
@@ -112,7 +123,7 @@ async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict
 def _build_offline_suggestions(scenarios: List[Dict], summary: Dict) -> str:
     """离线模式生成建议"""
     lines = ["（以下为基于规则自动生成的建议）", ""]
-    passed = sum(1 for s in scenarios if s.get("result") in ("通过", "pass"))
+    passed = sum(1 for s in scenarios if s.get("result", "") in ("通过", "pass", "Pass", "PASS", "PASSED", "成功"))
     failed = len(scenarios) - passed
 
     if failed == 0:
@@ -200,6 +211,10 @@ def generate_performance_report(
         p = cell.paragraphs[0]
         if align:
             p.alignment = align
+        # 过滤 NaN/Infinity
+        if isinstance(text, float):
+            if not (text > -1e9 and text < 1e9) or text != text:
+                text = "N/A"
         run = p.add_run(str(text))
         run.bold = bold
         if color:
@@ -413,7 +428,10 @@ def generate_performance_report(
                     img_path = os.path.join(tmpdir, f"{chart_key}.png")
                     with open(img_path, 'wb') as f:
                         f.write(charts[chart_key].getvalue())
-                    doc.add_picture(img_path, width=Inches(5.5))
+                    section = doc.sections[0]
+                    page_width = section.page_width - section.left_margin - section.right_margin
+                    img_width = min(Inches(5.5), page_width)
+                    doc.add_picture(img_path, width=img_width)
                     doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
                     doc.add_paragraph()
         finally:
@@ -428,7 +446,7 @@ def generate_performance_report(
     doc.add_heading('5. 结论', level=1)
     doc.add_paragraph('接口压测结果数据如下：')
 
-    passed = sum(1 for s in scenarios if s.get("result") in ("通过", "pass"))
+    passed = sum(1 for s in scenarios if s.get("result", "") in ("通过", "pass", "Pass", "PASS", "PASSED", "成功"))
     failed = len(scenarios) - passed
     overall_qps = sum(float(s.get("actual_qps", 0) or 0) for s in scenarios)
 
@@ -436,6 +454,10 @@ def generate_performance_report(
     summary_table = doc.add_table(rows=len(scenarios) + 1, cols=9)
     summary_table.style = 'Table Grid'
     summary_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    # 设置列宽避免A4溢出
+    col_widths = [Cm(3.5), Cm(1.5), Cm(2.0), Cm(2.0), Cm(2.0), Cm(2.0), Cm(2.0), Cm(1.8), Cm(1.8)]
+    for j, w in enumerate(col_widths):
+        summary_table.columns[j].width = w
     s_headers = ['场景名称', '并发数', 'TPS', '平均(ms)', 'P95(ms)', 'P99(ms)', '标准差(ms)', '错误率', '结果']
     for j, h in enumerate(s_headers):
         _set_cell(summary_table.cell(0, j), h, bold=True)
@@ -449,30 +471,49 @@ def generate_performance_report(
             str(s.get("p95_ms", "N/A")),
             str(s.get("p99_ms", "N/A")),
             str(s.get("stddev_ms", "N/A")),
-            f'{s.get("error_rate", 0):.2f}%',
+            f'{__safe_err_rate(s.get("error_rate", 0))}%',
             s.get("result", "N/A"),
         ]
         for j, v in enumerate(vals):
             _set_cell(summary_table.cell(i + 1, j), v)
 
     doc.add_paragraph()
-    doc.add_paragraph(f'场景通过率：{passed}/{len(scenarios)} ({passed/len(scenarios)*100:.1f}%)')
-    doc.add_paragraph(f'合计吞吐量：{overall_qps:.2f} QPS')
+    total_scenarios = len(scenarios) or 1
+    doc.add_paragraph(f'场景通过率：{passed}/{len(scenarios)} ({passed/total_scenarios*100:.1f}%)')
+    try:
+        overall_qps_val = float(overall_qps) if overall_qps and overall_qps < 1e9 else 0
+    except (ValueError, TypeError):
+        overall_qps_val = 0
+    doc.add_paragraph(f'合计吞吐量：{overall_qps_val:.2f} QPS')
 
     if summary:
-        doc.add_paragraph(f'总请求数：{summary.get("total_requests", "N/A")}')
-        doc.add_paragraph(f'总失败数：{summary.get("total_failed", "N/A")}')
-        doc.add_paragraph(f'整体错误率：{summary.get("overall_error_rate", "N/A")}%')
+        total_requests = summary.get("total_requests", "N/A")
+        total_failed = summary.get("total_failed", "N/A")
+        doc.add_paragraph(f'总请求数：{total_requests}')
+        doc.add_paragraph(f'总失败数：{total_failed}')
+        err_rate = summary.get("overall_error_rate", 0) or 0
+        try:
+            err_rate_str = f'{float(err_rate):.2f}%'
+        except (ValueError, TypeError):
+            err_rate_str = f'{err_rate}%'
+        doc.add_paragraph(f'整体错误率：{err_rate_str}')
 
     # ========== 6. 优化建议 ==========
     doc.add_page_break()
     doc.add_heading('6. 优化建议', level=1)
 
     if ai_suggestions:
+        import re
         for line in ai_suggestions.strip().split('\n'):
             line = line.strip()
             if line:
-                doc.add_paragraph(line)
+                # 清洗markdown标记
+                cleaned = re.sub(r'\*\*(.*?)\*\*', r'\1', line)
+                cleaned = re.sub(r'__(.*?)__', r'\1', cleaned)
+                cleaned = re.sub(r'`(.*?)`', r'\1', cleaned)
+                cleaned = re.sub(r'^[*-]\s+', '', cleaned)
+                if cleaned:
+                    doc.add_paragraph(cleaned)
     else:
         doc.add_paragraph('（请配置 AI 分析以获取智能优化建议）')
 

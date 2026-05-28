@@ -73,9 +73,20 @@ def _short_name(name: str, max_len: int = 15) -> str:
 # ========== 图1: 各接口TPS对比 ==========
 def generate_tps_chart(scenarios_data: List[Dict]) -> io.BytesIO:
     buf = io.BytesIO()
-    sorted_data = sorted(scenarios_data, key=lambda d: d.get("actual_qps", 0), reverse=True)
+
+    if not scenarios_data:
+        fig, ax = plt.subplots(figsize=CHART_STYLE['figsize'])
+        ax.text(0.5, 0.5, '无TPS数据', ha='center', va='center', fontsize=16, color='#94A3B8')
+        ax.set_title('图1: 各接口TPS吞吐量对比', fontsize=CHART_STYLE['title_size'], fontweight='bold')
+        plt.tight_layout()
+        fig.savefig(buf, format='png', dpi=CHART_STYLE['dpi'], bbox_inches='tight')
+        plt.close(fig)
+        buf.seek(0)
+        return buf
+
+    sorted_data = sorted(scenarios_data, key=lambda d: float(d.get("actual_qps", 0) or 0), reverse=True)
     names = [_short_name(d.get("name", "")) for d in sorted_data]
-    tps_values = [d.get("actual_qps", 0) or 0 for d in sorted_data]
+    tps_values = [max(float(d.get("actual_qps", 0) or 0), 0) for d in sorted_data]
 
     fig, ax = plt.subplots(figsize=CHART_STYLE['figsize'])
     colors = [CLR_TPS] * len(names)
@@ -101,14 +112,25 @@ def generate_tps_chart(scenarios_data: List[Dict]) -> io.BytesIO:
 # ========== 图2: 响应时间多指标对比 (Avg/P50/P90/P95/P99) ==========
 def generate_response_time_multimetric_chart(scenarios_data: List[Dict]) -> io.BytesIO:
     buf = io.BytesIO()
+
+    if not scenarios_data:
+        fig, ax = plt.subplots(figsize=CHART_STYLE['figsize'])
+        ax.text(0.5, 0.5, '无响应时间数据', ha='center', va='center', fontsize=16, color='#94A3B8')
+        ax.set_title('图2: 各接口响应时间多指标对比', fontsize=CHART_STYLE['title_size'], fontweight='bold')
+        plt.tight_layout()
+        fig.savefig(buf, format='png', dpi=CHART_STYLE['dpi'], bbox_inches='tight')
+        plt.close(fig)
+        buf.seek(0)
+        return buf
+
     names = [_short_name(d.get("name", "")) for d in scenarios_data]
     n = len(names)
 
-    avg_ms = [d.get("avg_ms", 0) or 0 for d in scenarios_data]
-    p50_ms = [d.get("p50_ms", 0) or 0 for d in scenarios_data]
-    p90_ms = [d.get("p90_ms", 0) or 0 for d in scenarios_data]
-    p95_ms = [d.get("p95_ms", 0) or 0 for d in scenarios_data]
-    p99_ms = [d.get("p99_ms", 0) or 0 for d in scenarios_data]
+    avg_ms = [max(float(d.get("avg_ms", 0) or 0), 0) for d in scenarios_data]
+    p50_ms = [max(float(d.get("p50_ms", 0) or 0), 0) for d in scenarios_data]
+    p90_ms = [max(float(d.get("p90_ms", 0) or 0), 0) for d in scenarios_data]
+    p95_ms = [max(float(d.get("p95_ms", 0) or 0), 0) for d in scenarios_data]
+    p99_ms = [max(float(d.get("p99_ms", 0) or 0), 0) for d in scenarios_data]
 
     x = np.arange(n)
     width = 0.15
@@ -129,7 +151,7 @@ def generate_response_time_multimetric_chart(scenarios_data: List[Dict]) -> io.B
     max_val = max(all_vals) if all_vals and max(all_vals) > 0 else 1
     for bar in ax.patches:
         h = bar.get_height()
-        if h > 0 and h > max_val * 0.05:
+        if h > 0 and h > max_val * 0.02:
             ax.text(bar.get_x() + bar.get_width()/2, h + max_val*0.015,
                     f'{int(h)}', ha='center', fontsize=6, rotation=90)
 
@@ -149,6 +171,11 @@ def generate_rt_distribution_chart(rt_distribution: Dict[str, int]) -> io.BytesI
     values = []
     for b in bucket_order:
         if b in rt_distribution:
+            labels.append(b)
+            values.append(rt_distribution[b])
+    # 包含自定义区间
+    for b in rt_distribution:
+        if b not in bucket_order:
             labels.append(b)
             values.append(rt_distribution[b])
 
@@ -203,25 +230,30 @@ def generate_throughput_trend_chart(throughput_trend: List[Dict]) -> io.BytesIO:
     times = [d.get("t", 0) for d in throughput_trend]
     tps_vals = [d.get("tps", 0) for d in throughput_trend]
 
+    # 过滤 NaN/Infinity
+    cleaned = [(t, tps) for t, tps in zip(times, tps_vals) if tps > 0 and tps < 1e9]
+    if cleaned:
+        times, tps_vals = zip(*cleaned)
+        times, tps_vals = list(times), list(tps_vals)
+
+    filtered_note = ""
     # 过滤掉 ramp-up 阶段的异常高值（通常是启动时的突发流量）
-    # 只保留 TPS 稳定后的数据点
     if len(tps_vals) > 5:
-        # 计算稳定阶段的平均TPS（去掉前20%的ramp-up数据）
         stable_start = int(len(tps_vals) * 0.2)
         stable_vals = tps_vals[stable_start:]
         stable_avg = sum(stable_vals) / len(stable_vals) if stable_vals else 0
         
-        # 过滤掉明显偏离稳定值的异常点（超过稳定平均值3倍的点）
         filtered_times = []
         filtered_tps = []
         for t, tps in zip(times, tps_vals):
-            if tps <= stable_avg * 3 and tps > 0:
+            if stable_avg > 0 and tps <= stable_avg * 3:
                 filtered_times.append(t)
                 filtered_tps.append(tps)
         
-        if filtered_tps:
+        if filtered_tps and len(filtered_tps) < len(tps_vals):
             times = filtered_times
             tps_vals = filtered_tps
+            filtered_note = "(已过滤启动阶段异常波动)"
 
     fig, ax = plt.subplots(figsize=CHART_STYLE['figsize'])
     ax.fill_between(times, tps_vals, alpha=0.15, color=CLR_TREND)
@@ -231,7 +263,7 @@ def generate_throughput_trend_chart(throughput_trend: List[Dict]) -> io.BytesIO:
     ax.axhline(y=avg_tps, color=CLR_WARN, linestyle='--', linewidth=1.5,
                label=f'平均 TPS: {avg_tps:.1f}')
 
-    _apply_style(ax, '图4: TPS吞吐量趋势', '时间 (秒)', 'TPS (事务/秒)')
+    _apply_style(ax, f'图4: TPS吞吐量趋势 {filtered_note}'.strip(), '时间 (秒)', 'TPS (事务/秒)')
     ax.legend(loc='upper right', fontsize=9, framealpha=0.9)
 
     plt.tight_layout()
@@ -267,6 +299,7 @@ def generate_status_distribution_chart(status_distribution: Dict[str, int]) -> i
     }
     colors = [status_colors.get(l, '#8B5CF6') for l in labels]
 
+    total = sum(sizes)
     fig, ax = plt.subplots(figsize=(8, 6))
     wedges, texts, autotexts = ax.pie(
         sizes, labels=labels, autopct='%1.1f%%',
@@ -276,6 +309,10 @@ def generate_status_distribution_chart(status_distribution: Dict[str, int]) -> i
     for at in autotexts:
         at.set_fontsize(10)
         at.set_fontweight('bold')
+    # 隐藏占比小于3%的扇区文字避免重叠
+    for at, size in zip(autotexts, sizes):
+        if size / total < 0.03:
+            at.set_text('')
 
     ax.set_title('图5: HTTP状态码分布', fontsize=CHART_STYLE['title_size'], fontweight='bold', pad=15)
 
@@ -311,6 +348,7 @@ def generate_error_type_pie_chart(error_types: Dict[str, int]) -> io.BytesIO:
         labels = [k for k, v in sorted_errs]
         sizes = [v for k, v in sorted_errs]
 
+    total = sum(sizes)
     fig, ax = plt.subplots(figsize=(8, 6))
     wedges, texts, autotexts = ax.pie(
         sizes, labels=labels, autopct='%1.1f%%',
@@ -321,6 +359,9 @@ def generate_error_type_pie_chart(error_types: Dict[str, int]) -> io.BytesIO:
     for at in autotexts:
         at.set_fontsize(10)
         at.set_fontweight('bold')
+    for at, size in zip(autotexts, sizes):
+        if size / total < 0.03:
+            at.set_text('')
 
     ax.set_title('图6: 错误类型分布', fontsize=CHART_STYLE['title_size'], fontweight='bold', pad=15)
 
