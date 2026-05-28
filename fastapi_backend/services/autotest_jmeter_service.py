@@ -118,6 +118,15 @@ def export_cases_to_jmx(
     _add_element_prop(defaults, "HTTPSampler.path", "")
     _add_element_prop(defaults, "HTTPSampler.concurrentPool", "4")
     
+    args_prop = ET.SubElement(defaults, "elementProp")
+    args_prop.set("name", "HTTPsampler.Arguments")
+    args_prop.set("elementType", "Arguments")
+    args_prop.set("guiclass", "HTTPArgumentsPanel")
+    args_prop.set("testclass", "Arguments")
+    args_prop.set("testname", "User Defined Variables")
+    args_prop.set("enabled", "true")
+    ET.SubElement(args_prop, "collectionProp").set("name", "Arguments.arguments")
+    
     ET.SubElement(thread_group_hash_tree, "hashTree")
     
     # 添加 HTTP Cookie Manager
@@ -1316,6 +1325,16 @@ def _build_thread_group(parent, name, props, children):
     _add_element_prop(defaults, "HTTPSampler.protocol", "")
     _add_element_prop(defaults, "HTTPSampler.contentEncoding", "UTF-8")
     _add_element_prop(defaults, "HTTPSampler.path", "")
+    
+    args_prop = ET.SubElement(defaults, "elementProp")
+    args_prop.set("name", "HTTPsampler.Arguments")
+    args_prop.set("elementType", "Arguments")
+    args_prop.set("guiclass", "HTTPArgumentsPanel")
+    args_prop.set("testclass", "Arguments")
+    args_prop.set("testname", "User Defined Variables")
+    args_prop.set("enabled", "true")
+    ET.SubElement(args_prop, "collectionProp").set("name", "Arguments.arguments")
+    
     ET.SubElement(children_hash_tree, "hashTree")
     
     # Cookie Manager
@@ -1616,6 +1635,16 @@ def _build_http_request_defaults(parent, name, props):
     _add_element_prop(d, "HTTPSampler.protocol", pu.scheme if pu else "")
     _add_element_prop(d, "HTTPSampler.contentEncoding", "UTF-8")
     _add_element_prop(d, "HTTPSampler.path", "")
+    
+    args_prop = ET.SubElement(d, "elementProp")
+    args_prop.set("name", "HTTPsampler.Arguments")
+    args_prop.set("elementType", "Arguments")
+    args_prop.set("guiclass", "HTTPArgumentsPanel")
+    args_prop.set("testclass", "Arguments")
+    args_prop.set("testname", "User Defined Variables")
+    args_prop.set("enabled", "true")
+    ET.SubElement(args_prop, "collectionProp").set("name", "Arguments.arguments")
+    
     ET.SubElement(parent, "hashTree")
 
 
