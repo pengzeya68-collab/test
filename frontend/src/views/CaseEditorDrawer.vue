@@ -1,5 +1,6 @@
 <template>
   <el-drawer
+    ref="mainDrawerRef"
     :model-value="modelValue"
     :title="isEdit ? '编辑用例' : '新建用例'"
     direction="rtl"
@@ -451,7 +452,7 @@
 </template>
 
 <script setup>
-import { ref, watch, toRaw, computed, onMounted, onUnmounted } from 'vue'
+import { ref, watch, toRaw, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy, Collection } from '@element-plus/icons-vue'
 import JsonEditor from './JsonEditor.vue'
@@ -471,6 +472,7 @@ const activeTab = ref('headers')
 const availableVariables = ref([]) // 用于存储当前所有可用变量
 
 // 动态抽屉宽度：根据屏幕宽度自适应，全屏时更大
+const mainDrawerRef = ref(null)
 const drawerSize = ref('50%')
 const updateDrawerSize = () => {
   if (typeof window === 'undefined') { drawerSize.value = '50%'; return }
@@ -487,6 +489,14 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', updateDrawerSize)
   document.removeEventListener('fullscreenchange', updateDrawerSize)
+})
+// 绕过 Element Plus 内部缓存，直接强制更新 DOM 宽度
+watch([drawerSize, () => props.modelValue], async ([size, visible]) => {
+  if (!visible) return
+  await nextTick()
+  await nextTick() // 等 teleport 渲染完成
+  const el = mainDrawerRef.value?.$el?.querySelector?.('.el-drawer.rtl')
+  if (el) el.style.setProperty('width', size, 'important')
 })
 
 // 变量字典抽屉相关
