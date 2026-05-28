@@ -3112,28 +3112,44 @@ const exportReport = async () => {
       let msg = typeof e === 'object' ? (e.response_message || e.message || e.error || '未知错误') : String(e)
       // 提取关键错误类型，去除URL等冗长信息
       if (msg.includes('Cannot connect to host')) {
-        const match = msg.match(/Cannot connect to host\s+(\S+)/)
-        msg = match ? `连接失败: ${match[1]}` : '连接失败'
-      } else if (msg.includes('ssl:default')) {
+        // 提取主机名，去除端口号
+        const match = msg.match(/Cannot connect to host\s+([a-zA-Z0-9.-]+)/)
+        if (match) {
+          let host = match[1]
+          // 去除端口号（如 ebus:443 → ebus）
+          host = host.split(':')[0]
+          msg = `连接失败: ${host}`
+        } else {
+          msg = '连接失败'
+        }
+      } else if (msg.includes('ssl:default') || msg.includes('SSL')) {
         msg = 'SSL连接错误'
       } else if (msg.startsWith('https://') || msg.startsWith('http://')) {
-        // URL类错误，提取域名
+        // URL类错误，提取完整域名
         try {
           const url = new URL(msg)
           msg = `请求失败: ${url.hostname}`
         } catch {
-          msg = msg.substring(0, 40) + '...'
+          // 如果URL解析失败，尝试提取域名部分
+          const match = msg.match(/https?:\/\/([a-zA-Z0-9.-]+)/)
+          msg = match ? `请求失败: ${match[1]}` : msg.substring(0, 40) + '...'
         }
-      } else if (msg.includes('timeout')) {
+      } else if (msg.includes('timeout') || msg.includes('Timeout')) {
         msg = '请求超时'
       } else if (msg.includes('500') || msg.includes('Internal Server Error')) {
         msg = '服务器错误 (500)'
-      } else if (msg.includes('404')) {
+      } else if (msg.includes('404') || msg.includes('Not Found')) {
         msg = '资源不存在 (404)'
-      } else if (msg.includes('403')) {
+      } else if (msg.includes('403') || msg.includes('Forbidden')) {
         msg = '权限拒绝 (403)'
-      } else if (msg.includes('401')) {
+      } else if (msg.includes('401') || msg.includes('Unauthorized')) {
         msg = '未授权 (401)'
+      } else if (msg.includes('ECONNREFUSED') || msg.includes('Connection refused')) {
+        msg = '连接被拒绝'
+      } else if (msg.includes('ECONNRESET') || msg.includes('Connection reset')) {
+        msg = '连接重置'
+      } else if (msg.includes('ENOTFOUND') || msg.includes('Name or service not known')) {
+        msg = 'DNS解析失败'
       }
       // 截断过长消息
       const key = msg.length > 50 ? msg.substring(0, 47) + '...' : msg
