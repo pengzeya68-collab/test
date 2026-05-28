@@ -25,7 +25,7 @@ def _make_clean_http_client(timeout: int = 60):
 
 class AIConfigCreate(BaseModel):
     name: str = Field(..., max_length=100)
-    provider: str = Field(..., pattern=r"^(minimax|openai|ark|custom)$")
+    provider: str = Field(..., pattern=r"^(minimax|openai|ark|custom|deepseek)$")
     api_key: str
     base_url: Optional[str] = None
     model: str
@@ -37,7 +37,7 @@ class AIConfigCreate(BaseModel):
 
 class AIConfigUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
-    provider: Optional[str] = Field(None, pattern=r"^(minimax|openai|ark|custom)$")
+    provider: Optional[str] = Field(None, pattern=r"^(minimax|openai|ark|custom|deepseek)$")
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     model: Optional[str] = None
@@ -45,6 +45,34 @@ class AIConfigUpdate(BaseModel):
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
     timeout_seconds: Optional[int] = Field(None, ge=5, le=300)
     group_id: Optional[str] = None
+
+
+PROVIDER_MODEL_SUGGESTIONS = {
+    "deepseek": [
+        {"id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash (最新, 快速)", "description": "最新一代模型，支持思考模式，性价比最高"},
+        {"id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro (高性能)", "description": "高性能版本，适合复杂任务"},
+        {"id": "deepseek-chat", "name": "DeepSeek Chat (兼容)", "description": "兼容模式，将于2026/07/24弃用"},
+        {"id": "deepseek-reasoner", "name": "DeepSeek Reasoner (推理)", "description": "推理专用模型，将于2026/07/24弃用"},
+    ],
+    "openai": [
+        {"id": "gpt-4o", "name": "GPT-4o (最新)", "description": "OpenAI最新多模态模型"},
+        {"id": "gpt-4o-mini", "name": "GPT-4o Mini (轻量)", "description": "轻量版GPT-4o，性价比高"},
+        {"id": "gpt-4-turbo", "name": "GPT-4 Turbo", "description": "高性能GPT-4"},
+        {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "description": "快速响应，低成本"},
+    ],
+    "minimax": [
+        {"id": "abab6.5s-chat", "name": "ABAB 6.5S Chat", "description": "MiniMax快速模型"},
+        {"id": "abab6.5-chat", "name": "ABAB 6.5 Chat", "description": "MiniMax标准模型"},
+        {"id": "abab5.5-chat", "name": "ABAB 5.5 Chat", "description": "MiniMax兼容模型"},
+    ],
+    "ark": [
+        {"id": "doubao-pro-32k", "name": "豆包 Pro 32K", "description": "字节跳动高性能模型"},
+        {"id": "doubao-lite-32k", "name": "豆包 Lite 32K", "description": "字节跳动轻量模型"},
+    ],
+    "custom": [
+        {"id": "custom", "name": "自定义模型", "description": "使用自定义API端点"},
+    ],
+}
 
 
 class AIConfigOut(BaseModel):
@@ -337,6 +365,54 @@ async def get_ai_quota(
                 data={"provider": "minimax", "status": "error", "error": str(e)},
                 message=f"额度查询异常: {str(e)}",
             )
+    elif cfg.provider == "deepseek":
+        try:
+            base_url = (cfg.base_url or "https://api.deepseek.com").rstrip("/")
+            async with _make_clean_http_client(timeout=30) as client:
+                resp = await client.get(
+                    f"{base_url}/user/remaining",
+                    headers={
+                        "Authorization": f"Bearer {cfg.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    total = data.get("data_including_his", {}).get("total_balance", None)
+                    used = data.get("data_including_his", {}).get("used_balance", None)
+                    remaining = data.get("data_including_his", {}).get("balance_including_his", None)
+
+                    cfg.quota_total = total
+                    cfg.quota_used = used
+                    cfg.quota_updated_at = datetime.now(timezone.utc)
+                    await db.commit()
+
+                    return SuccessResponse(
+                        data={
+                            "provider": "deepseek",
+                            "total_balance": total,
+                            "used_balance": used,
+                            "remaining_balance": remaining,
+                            "raw": data,
+                            "updated_at": cfg.quota_updated_at.isoformat() if cfg.quota_updated_at else None,
+                        },
+                        message="DeepSeek额度查询成功",
+                    )
+                else:
+                    return SuccessResponse(
+                        data={
+                            "provider": "deepseek",
+                            "status": "error",
+                            "status_code": resp.status_code,
+                            "detail": resp.text[:500],
+                        },
+                        message="DeepSeek额度查询失败",
+                    )
+        except Exception as e:
+            return SuccessResponse(
+                data={"provider": "deepseek", "status": "error", "error": str(e)},
+                message=f"DeepSeek额度查询异常: {str(e)}",
+            )
     else:
         return SuccessResponse(
             data={
@@ -361,3 +437,83 @@ async def get_active_config(
     if not cfg:
         return SuccessResponse(data=None, message="当前没有激活的AI配置")
     return SuccessResponse(data=_config_to_out(cfg), message="获取当前激活配置成功")
+
+
+@router.get("/providers", response_model=SuccessResponse[dict])
+async def list_providers(
+    current_user: User = Depends(require_admin),
+):
+    """获取支持的AI提供商列表"""
+    providers = [
+        {
+            "id": "deepseek",
+            "name": "DeepSeek",
+            "description": "深度求索AI，高性价比，支持思考模式",
+            "base_url": "https://api.deepseek.com",
+            "icon": "🧠",
+            "supported": True,
+        },
+        {
+            "id": "openai",
+            "name": "OpenAI",
+            "description": "OpenAI官方API，GPT系列模型",
+            "base_url": "https://api.openai.com",
+            "icon": "🤖",
+            "supported": True,
+        },
+        {
+            "id": "minimax",
+            "name": "MiniMax",
+            "description": "MiniMax海螺AI，国产模型",
+            "base_url": "https://api.minimax.chat",
+            "icon": "🎯",
+            "supported": True,
+        },
+        {
+            "id": "ark",
+            "name": "火山引擎(豆包)",
+            "description": "字节跳动豆包模型",
+            "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+            "icon": "🌋",
+            "supported": True,
+        },
+        {
+            "id": "custom",
+            "name": "自定义",
+            "description": "使用自定义API端点",
+            "base_url": "",
+            "icon": "⚙️",
+            "supported": True,
+        },
+    ]
+    return SuccessResponse(data={"providers": providers}, message="获取提供商列表成功")
+
+
+@router.get("/models/{provider}", response_model=SuccessResponse[dict])
+async def list_models(
+    provider: str,
+    current_user: User = Depends(require_admin),
+):
+    """获取指定提供商支持的模型列表"""
+    if provider not in PROVIDER_MODEL_SUGGESTIONS:
+        return SuccessResponse(
+            data={"provider": provider, "models": []},
+            message=f"不支持的提供商: {provider}",
+        )
+    
+    models = PROVIDER_MODEL_SUGGESTIONS[provider]
+    return SuccessResponse(
+        data={"provider": provider, "models": models},
+        message=f"获取{provider}模型列表成功",
+    )
+
+
+@router.get("/models", response_model=SuccessResponse[dict])
+async def list_all_models(
+    current_user: User = Depends(require_admin),
+):
+    """获取所有支持的模型列表"""
+    return SuccessResponse(
+        data={"providers": PROVIDER_MODEL_SUGGESTIONS},
+        message="获取所有模型列表成功",
+    )
