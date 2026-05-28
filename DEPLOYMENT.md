@@ -195,6 +195,108 @@ location /api {
 - 创建 `.env.example` 模板并提交到仓库
 - 部署文档中明确要求先 `cp .env.example .env`
 
+### 坑10: 两个 requirements.txt 不同步导致依赖缺失
+
+**症状**: 本地开发正常，部署后后端启动报 `ModuleNotFoundError: No module named 'docx'`。
+
+**原因**: 项目中存在两个 requirements.txt：
+- `/requirements.txt`（根目录）— **Dockerfile 使用这个**
+- `/fastapi_backend/requirements.txt`（子目录）— 开发时用这个
+
+Dockerfile 中 `COPY requirements.txt .` 只复制根目录的文件。如果只在 `fastapi_backend/requirements.txt` 中添加了新依赖，Docker 构建时不会安装。
+
+**修复**:
+```bash
+# 确保两个文件同步，或修改 Dockerfile 指向正确路径
+# 方案A（推荐）: 修改 Dockerfile
+COPY fastapi_backend/requirements.txt .
+# 方案B: 每次添加依赖时同步更新两个文件
+```
+
+**教训**:
+- 添加 Python 依赖时，**必须同时更新根目录 `requirements.txt`**
+- 建议只保留一个 requirements.txt，避免维护两份
+- 部署前执行 `diff requirements.txt fastapi_backend/requirements.txt` 检查一致性
+
+### 坑11: Docker 容器名冲突导致重建失败
+
+**症状**: `docker compose up -d --force-recreate` 报错 `Conflict. The container name "/testmaster-celery" is already in use`。
+
+**原因**: Docker 在 recreate 过程中，旧容器未完全删除，新容器尝试使用相同名称。
+
+**修复**:
+```bash
+# 先强制删除旧容器再重建
+docker rm -f testmaster-celery testmaster-backend testmaster-nginx
+docker compose up -d
+```
+
+**教训**:
+- 遇到容器名冲突，先 `docker rm -f` 清理再启动
+- 不要依赖 `--force-recreate`，它不一定能处理所有冲突场景
+
+### 坑12: SSH 执行长时间构建命令超时卡死
+
+**症状**: 通过 `_ssh_runner.py` 执行 `docker compose build` 时，SSH 连接卡住无响应，本地终端假死。
+
+**原因**: `_ssh_runner.py` 使用 `stdout.read()` 同步阻塞读取，构建 matplotlib/numpy 等大型包耗时 5-10 分钟，SSH 通道超时断开，`read()` 永远不会返回。
+
+**修复**:
+```bash
+# 方案A: 后台执行 + 日志轮询（推荐）
+py _ssh_runner.py "cd /root/TestMaster && nohup docker compose build backend celery-worker > /tmp/build.log 2>&1 & echo PID=\$!"
+# 等待一段时间后检查
+py _ssh_runner.py "tail -20 /tmp/build.log"
+py _ssh_runner.py "ps aux | grep 'docker compose build' | grep -v grep | wc -l"  # 0表示构建完成
+
+# 方案B: 增大 SSH 超时时间
+# 在 _ssh_runner.py 中设置 exec_command(cmd, timeout=600)
+```
+
+**教训**:
+- **永远不要**通过 SSH 同步执行耗时超过 2 分钟的命令
+- 长任务用 `nohup cmd > /tmp/log 2>&1 &` 后台执行，再轮询日志
+- `_ssh_runner.py` 的 `exec_command` 应设置合理超时（如 300 秒）
+
+### 坑13: Docker 构建缓存导致依赖未更新
+
+**症状**: 更新了 `requirements.txt` 添加了新依赖，`docker compose build` 显示 `CACHED`，新依赖未安装。
+
+**原因**: Docker 的层缓存机制：如果 `COPY requirements.txt .` 这一步的文件哈希没变（或 Docker 使用了旧缓存），`RUN pip install` 也会使用缓存。
+
+**修复**:
+```bash
+# 方案A: 强制无缓存构建
+docker compose build --no-cache backend celery-worker
+
+# 方案B: 确保服务器上的 requirements.txt 是最新的
+cd /root/TestMaster && git pull
+docker compose build backend celery-worker
+```
+
+**教训**:
+- 更新依赖后，先 `git pull` 确保服务器代码最新
+- 如果 `docker compose build` 显示 `CACHED` 但你改了 requirements.txt，用 `--no-cache`
+- 可以在 Dockerfile 中加 `ARG CACHEBUST=1` 打破缓存
+
+### 坑14: 服务器项目路径不确定
+
+**症状**: 执行 `cd /root/testmaster && ...` 报 `No such file or directory`。
+
+**原因**: 不同部署环境下项目路径可能不同（如 `/root/TestMaster` vs `/root/testmaster`）。
+
+**修复**:
+```bash
+# 先查找项目位置
+find / -name 'docker-compose.yml' -type f 2>/dev/null | head -5
+# 或
+ls -la /root/ | grep -i test
+```
+
+**教训**:
+- 部署前确认项目实际路径
+- 建议在 `deploy.sh` 中使用环境变量 `PROJECT_DIR=/root/TestMaster`
+
 ---
 
 ## 五、服务器迁移清单
