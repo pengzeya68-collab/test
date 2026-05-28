@@ -90,9 +90,6 @@ def export_cases_to_jmx(
     else:
         _add_element_prop(thread_group, "ThreadGroup.scheduler", "false")
     
-    _add_element_prop(thread_group, "ThreadGroup.same_user_on_next_iteration", "true")
-    
-    # 循环控制
     loop_controller = ET.SubElement(thread_group, "elementProp")
     loop_controller.set("name", "ThreadGroup.main_controller")
     loop_controller.set("elementType", "LoopController")
@@ -131,7 +128,6 @@ def export_cases_to_jmx(
     cookie_manager.set("enabled", "true")
     
     _add_element_prop(cookie_manager, "CookieManager.clearEachIteration", "false")
-    _add_element_prop(cookie_manager, "CookieManager.controlledByThreadGroup", "false")
     
     ET.SubElement(thread_group_hash_tree, "hashTree")
     
@@ -1296,9 +1292,6 @@ def _build_thread_group(parent, name, props, children):
     else:
         _add_element_prop(tg, "ThreadGroup.scheduler", "false")
     
-    _add_element_prop(tg, "ThreadGroup.same_user_on_next_iteration", "true")
-    
-    # Loop controller
     lc = ET.SubElement(tg, "elementProp")
     lc.set("name", "ThreadGroup.main_controller")
     lc.set("elementType", "LoopController")
