@@ -149,6 +149,9 @@ def generate_performance_report(
     error_types: Dict[str, int] = None,
     ai_suggestions: str = "",
     env_config: Dict[str, Any] = None,
+    rt_distribution: Dict[str, int] = None,
+    throughput_trend: List[Dict] = None,
+    status_distribution: Dict[str, int] = None,
 ) -> bytes:
     """
     生成完整性能测试报告 (docx)
@@ -166,6 +169,9 @@ def generate_performance_report(
         error_types: {"连接超时": 5, "HTTP 500": 3, ...}
         ai_suggestions: AI生成的优化建议文本
         env_config: {cpu, memory, os, jdk, jmeter_version, network, ...}
+        rt_distribution: {"<10ms": 100, "10-50ms": 500, ...}
+        throughput_trend: [{"t": 0, "tps": 50.2}, ...]
+        status_distribution: {"200": 950, "500": 50}
 
     Returns: docx bytes
     """
@@ -379,15 +385,20 @@ def generate_performance_report(
     doc.add_heading('4. 性能图表', level=1)
 
     try:
-        charts = generate_all_charts(scenarios, error_types)
+        charts = generate_all_charts(
+            scenarios, 
+            rt_distribution=rt_distribution,
+            throughput_trend=throughput_trend,
+            status_distribution=status_distribution,
+            error_types=error_types,
+        )
         chart_titles = {
-            "tps_compare": "图1: 接口吞吐量对比 (目标 vs 实际)",
-            "response_time_multimetric": "图2: 接口响应时间多指标对比 (Avg/P50/P90/P95/P99)",
-            "stddev": "图3: 接口响应时间标准差与波动分析",
-            "bottleneck": "图4: 接口响应时间瓶颈分析 (P50→P90→P95→P99)",
-            "error_rate": "图5: 接口错误率对比",
+            "tps_compare": "图1: 各接口TPS吞吐量对比",
+            "response_time_multimetric": "图2: 各接口响应时间多指标对比 (Avg/P50/P90/P95/P99)",
+            "rt_distribution": "图3: 响应时间区间分布",
+            "throughput_trend": "图4: TPS吞吐量趋势",
+            "status_distribution": "图5: HTTP状态码分布",
             "error_type_pie": "图6: 错误类型分布",
-            "error_count": "图7: 各场景请求数 vs 失败数统计",
         }
 
         tmpdir = tempfile.mkdtemp()

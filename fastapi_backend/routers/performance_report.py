@@ -78,6 +78,9 @@ async def generate_report(body: Dict[str, Any] = Body(...)):
     author = body.get("author", "TestMaster")
     error_types = body.get("error_types")
     env_config = body.get("env_config")
+    rt_distribution = body.get("rt_distribution")
+    throughput_trend = body.get("throughput_trend")
+    status_distribution = body.get("status_distribution")
 
     if not scenarios:
         raise HTTPException(status_code=400, detail="请提供至少一个测试场景")
@@ -99,6 +102,9 @@ async def generate_report(body: Dict[str, Any] = Body(...)):
             error_types=error_types,
             ai_suggestions=ai_suggestions,
             env_config=env_config,
+            rt_distribution=rt_distribution,
+            throughput_trend=throughput_trend,
+            status_distribution=status_distribution,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"报告生成失败: {str(e)}")

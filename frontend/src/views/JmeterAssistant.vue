@@ -3059,32 +3059,37 @@ const exportReport = async () => {
   const now = new Date()
   const testStart = new Date(now.getTime() - benchDuration.value * 1000)
 
-  const scenarios = (r.per_url || []).map(pu => ({
-    name: pu.name || pu.url || '未命名接口',
-    url: pu.url || '',
-    method: pu.method || 'GET',
-    target_qps: 0,
-    actual_qps: r.tps || 0,
-    concurrency: benchConcurrency.value,
-    threads: benchConcurrency.value,
-    ramp_up: 30,
-    loops: 1,
-    duration: benchDuration.value,
-    avg_ms: pu.avg_ms || 0,
-    p50_ms: pu.p50_ms || 0,
-    p90_ms: pu.p90_ms || 0,
-    p95_ms: pu.p95_ms || 0,
-    p99_ms: pu.p99_ms || 0,
-    stddev_ms: pu.stddev_ms || 0,
-    max_ms: pu.max_ms || 0,
-    min_ms: pu.min_ms || 0,
-    error_rate: pu.count > 0 ? ((pu.failed || 0) / pu.count * 100) : 0,
-    total_requests: pu.count || 0,
-    failed_requests: pu.failed || 0,
-    result: pu.success_rate >= 99.9 ? '通过' : pu.failed === 0 ? '通过' : '失败',
-    test_start: testStart.toLocaleString(),
-    test_end: now.toLocaleString(),
-  }))
+  const scenarios = (r.per_url || []).map(pu => {
+    const puTps = pu.count > 0 && benchDuration.value > 0
+      ? Math.round(pu.count / benchDuration.value * 10) / 10
+      : 0
+    return {
+      name: pu.name || pu.url || '未命名接口',
+      url: pu.url || '',
+      method: pu.method || 'GET',
+      target_qps: 0,
+      actual_qps: puTps,
+      concurrency: benchConcurrency.value,
+      threads: benchConcurrency.value,
+      ramp_up: 30,
+      loops: 1,
+      duration: benchDuration.value,
+      avg_ms: pu.avg_ms || 0,
+      p50_ms: pu.p50_ms || 0,
+      p90_ms: pu.p90_ms || 0,
+      p95_ms: pu.p95_ms || 0,
+      p99_ms: pu.p99_ms || 0,
+      stddev_ms: pu.stddev_ms || 0,
+      max_ms: pu.max_ms || 0,
+      min_ms: pu.min_ms || 0,
+      error_rate: pu.count > 0 ? ((pu.failed || 0) / pu.count * 100) : 0,
+      total_requests: pu.count || 0,
+      failed_requests: pu.failed || 0,
+      result: pu.success_rate >= 99.9 ? '通过' : pu.failed === 0 ? '通过' : '失败',
+      test_start: testStart.toLocaleString(),
+      test_end: now.toLocaleString(),
+    }
+  })
 
   if (scenarios.length === 0 || (scenarios.length === 1 && !scenarios[0].url)) {
     scenarios.push({
@@ -3135,6 +3140,9 @@ const exportReport = async () => {
         notes: aiAnalysisText.value ? aiAnalysisText.value.substring(0, 200) : '',
       },
       error_types: errorTypes,
+      rt_distribution: r.rt_distribution || {},
+      throughput_trend: r.throughput_trend || [],
+      status_distribution: r.status_distribution || {},
     }, { responseType: 'blob' })
 
     const blob = res instanceof Blob ? res : new Blob([res])
@@ -3144,7 +3152,7 @@ const exportReport = async () => {
     a.download = '压测报告_' + planName + '_' + Date.now() + '.docx'
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success('Word 报告已导出（含7张专业图表 + AI分析建议）')
+    ElMessage.success('Word 报告已导出（含6张专业图表 + AI分析建议）')
   } catch (e) {
     console.error('报告生成失败', e)
     ElMessage.error('报告生成失败: ' + (e.response?.data?.detail || e.message))
