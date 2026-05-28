@@ -3,7 +3,7 @@
     :model-value="modelValue"
     :title="isEdit ? '编辑用例' : '新建用例'"
     direction="rtl"
-    size="50%"
+    :size="drawerSize"
     :close-on-click-modal="true"
     :close-on-press-escape="true"
     @close="handleClose"
@@ -469,6 +469,16 @@ const emit = defineEmits(['update:modelValue', 'success', 'run'])
 
 const activeTab = ref('headers')
 const availableVariables = ref([]) // 用于存储当前所有可用变量
+
+// 动态抽屉宽度：根据屏幕宽度自适应，全屏时更大
+const drawerSize = computed(() => {
+  if (typeof window === 'undefined') return '50%'
+  const w = window.innerWidth
+  // 全屏或超宽屏 → 70%，普通宽屏 → 60%，窄屏保持 50%
+  if (w >= 1600) return '70%'
+  if (w >= 1200) return '60%'
+  return '50%'
+})
 
 // 变量字典抽屉相关
 const showVarDrawer = ref(false)
