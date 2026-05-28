@@ -802,14 +802,24 @@ async def _run_bench(task_id: str, config: dict):
             elif ms < 1000: rt_buckets["500-1000ms"] += 1
             else: rt_buckets[">1000ms"] += 1
 
-        # 吞吐量趋势（按5秒窗口）
+        # 吞吐量趋势（使用 snapshot_collector 采集的实时快照数据）
+        snapshots = _bench_tasks.get(task_id, {}).get("snapshots", [])
         throughput_trend = []
-        window = 5
-        for i in range(0, int(total_time), window):
-            w_start = start_time + i
-            w_end = w_start + window
-            w_count = sum(1 for r in results if w_start <= (start_time + r.get("elapsed_ms", 0) / 1000) < w_end)
-            throughput_trend.append({"t": i, "tps": round(w_count / window, 1), "count": w_count})
+        if snapshots:
+            # 每5秒采样一次快照数据
+            for i, snap in enumerate(snapshots):
+                if i % 5 == 0:  # 每5秒一个数据点
+                    throughput_trend.append({
+                        "t": snap.get("t", 0),
+                        "tps": snap.get("tps", 0),
+                        "count": snap.get("total", 0),
+                    })
+        else:
+            # 降级方案：如果没有快照数据，使用简单计算
+            window = 5
+            for i in range(0, int(total_time), window):
+                w_count = sum(1 for r in results if i <= r.get("elapsed_ms", 0) / 1000 < i + window)
+                throughput_trend.append({"t": i, "tps": round(w_count / window, 1), "count": w_count})
 
         result = {
             "total": len(results),
