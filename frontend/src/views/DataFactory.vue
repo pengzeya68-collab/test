@@ -1,12 +1,16 @@
 <template>
   <div class="data-factory">
-    <div class="df-toolbar">
-      <div class="toolbar-left">
+    <div class="df-header">
+      <div class="df-header-left">
         <h3 class="df-title">🧪 测试数据工厂</h3>
-        <span class="df-subtitle">基于规则自动生成测试数据集，支持数据驱动执行</span>
+        <span class="df-subtitle">定义规则，一键生成测试数据</span>
       </div>
-      <div class="toolbar-right">
-        <el-button type="primary" @click="openCreateDialog">
+      <div class="df-header-right">
+        <el-button @click="showPresetDialog = true">
+          <el-icon><MagicStick /></el-icon>
+          从预设创建
+        </el-button>
+        <el-button type="primary" @click="startCreate">
           <el-icon><Plus /></el-icon>
           新建模板
         </el-button>
@@ -14,144 +18,320 @@
     </div>
 
     <div class="df-body">
-      <div class="df-sidebar" :class="{ collapsed: sidebarCollapsed }">
-        <div class="sidebar-header">
-          <span v-if="!sidebarCollapsed">📋 数据模板</span>
-          <el-button text size="small" @click="sidebarCollapsed = !sidebarCollapsed">
-            {{ sidebarCollapsed ? '▶' : '◀' }}
-          </el-button>
-        </div>
-        <div class="template-list" v-if="!sidebarCollapsed">
+      <div class="df-sidebar">
+        <div class="sidebar-title">模板列表</div>
+        <div class="template-list">
           <div
             v-for="tpl in templates"
             :key="tpl.id"
-            class="template-item"
-            :class="{ active: selectedTemplate?.id === tpl.id }"
-            @click="selectTemplate(tpl)"
+            class="tpl-item"
+            :class="{ active: currentId === tpl.id }"
+            @click="loadTemplate(tpl.id)"
           >
-            <div class="ti-name">{{ tpl.name }}</div>
-            <div class="ti-meta">
-              <span>{{ tpl.fields?.length || 0 }}字段</span>
-              <span>{{ tpl.row_count }}行</span>
-            </div>
+            <div class="tpl-name">{{ tpl.name }}</div>
+            <div class="tpl-meta">{{ tpl.fields?.length || 0 }} 字段 · {{ tpl.row_count }} 行</div>
           </div>
-          <div class="empty-hint" v-if="templates.length === 0 && !loading">
-            暂无模板，点击"新建模板"开始
+          <div v-if="templates.length === 0" class="tpl-empty">
+            <p>暂无模板</p>
+            <p class="tpl-empty-hint">点击「从预设创建」快速开始</p>
           </div>
         </div>
       </div>
 
       <div class="df-main">
-        <div v-if="!selectedTemplate" class="empty-state">
-          <div class="empty-icon">📦</div>
-          <p>选择一个模板或创建新模板来生成测试数据</p>
+        <div v-if="!currentId && !creating" class="welcome">
+          <div class="welcome-icon">🧪</div>
+          <h3>测试数据工厂</h3>
+          <p>快速生成各种测试数据，支持数据驱动测试执行</p>
+          <div class="welcome-actions">
+            <el-button type="primary" size="large" @click="showPresetDialog = true">
+              <el-icon><MagicStick /></el-icon>
+              从预设模板创建
+            </el-button>
+            <el-button size="large" @click="startCreate">
+              <el-icon><Plus /></el-icon>
+              空白模板
+            </el-button>
+          </div>
+          <div class="welcome-features">
+            <div class="wf-item">
+              <span class="wf-icon">📋</span>
+              <span>9种数据规则</span>
+            </div>
+            <div class="wf-item">
+              <span class="wf-icon">⚡</span>
+              <span>实时预览</span>
+            </div>
+            <div class="wf-item">
+              <span class="wf-icon">🔄</span>
+              <span>数据驱动执行</span>
+            </div>
+          </div>
         </div>
 
-        <div v-else class="template-detail">
-          <div class="detail-header">
-            <div class="dh-info">
-              <h4>{{ selectedTemplate.name }}</h4>
-              <p v-if="selectedTemplate.description">{{ selectedTemplate.description }}</p>
+        <div v-else class="editor">
+          <div class="editor-top">
+            <div class="editor-info">
+              <el-input
+                v-if="creating"
+                v-model="form.name"
+                placeholder="输入模板名称，如：用户注册测试数据"
+                size="large"
+                class="name-input"
+              />
+              <h3 v-else class="editor-name">{{ form.name }}</h3>
+              <el-input
+                v-model="form.description"
+                placeholder="添加描述（可选）"
+                size="small"
+                class="desc-input"
+              />
             </div>
-            <div class="dh-actions">
-              <el-button size="small" @click="editTemplate(selectedTemplate)" :loading="detailLoading" :disabled="detailLoading">编辑</el-button>
-              <el-button size="small" type="primary" @click="previewTemplate" :loading="previewLoading" :disabled="previewLoading || generateLoading || runLoading">预览</el-button>
-              <el-button size="small" type="success" @click="generateData" :loading="generateLoading" :disabled="generateLoading || previewLoading || runLoading">生成数据</el-button>
-              <el-button size="small" type="danger" @click="deleteTemplate(selectedTemplate)" :loading="deleteLoading" :disabled="deleteLoading">删除</el-button>
+            <div class="editor-actions">
+              <template v-if="creating">
+                <el-button @click="cancelCreate">取消</el-button>
+                <el-button type="primary" @click="saveTemplate" :loading="saving">保存模板</el-button>
+              </template>
+              <template v-else>
+                <el-button @click="editing = !editing">
+                  {{ editing ? '完成编辑' : '编辑' }}
+                </el-button>
+                <el-button type="danger" plain @click="deleteTemplate">删除</el-button>
+              </template>
             </div>
           </div>
 
-          <div class="detail-body">
-            <div class="db-section">
-              <h5>字段规则</h5>
-              <el-table :data="selectedTemplate.fields" border size="small" class="dark-table">
-                <el-table-column prop="field_name" label="字段名" width="140" />
-                <el-table-column prop="field_label" label="标签" width="120" />
-                <el-table-column label="规则类型" width="120">
-                  <template #default="{ row }">
-                    <el-tag size="small" type="info">{{ getRuleLabel(row.rule_type) }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column label="配置" min-width="200">
-                  <template #default="{ row }">
-                    <code class="config-code">{{ formatConfig(row.rule_config) }}</code>
-                  </template>
-                </el-table-column>
-              </el-table>
+          <div class="editor-config" v-if="creating || editing">
+            <div class="config-row">
+              <div class="config-item">
+                <label>生成行数</label>
+                <el-input-number v-model="form.row_count" :min="1" :max="1000" size="small" />
+              </div>
+              <div class="config-item">
+                <label>关联场景</label>
+                <el-select v-model="form.scenario_id" placeholder="可选" clearable size="small" style="width:200px">
+                  <el-option v-for="s in scenarios" :key="s.id" :label="s.name" :value="s.id" />
+                </el-select>
+              </div>
+            </div>
+          </div>
+
+          <div class="editor-fields" v-if="creating || editing">
+            <div class="fields-header">
+              <span class="fields-title">字段规则</span>
+              <el-button type="primary" text size="small" @click="addField">
+                <el-icon><Plus /></el-icon> 添加字段
+              </el-button>
             </div>
 
-            <div class="db-section" v-if="previewData">
-              <h5>数据预览 (前20行)</h5>
-              <el-table :data="previewData.rows" border size="small" class="dark-table" max-height="300">
-              <el-table-column
-                v-for="(col, idx) in previewData.columns"
-                :key="idx"
-                :label="col"
-                :prop="String(idx)"
-                min-width="120"
-              />
+            <div v-if="form.fields.length === 0" class="fields-empty">
+              <p>还没有字段，点击「添加字段」或选择下方快捷添加</p>
+              <div class="quick-add">
+                <el-tag
+                  v-for="q in quickFields"
+                  :key="q.name"
+                  class="quick-tag"
+                  @click="addQuickField(q)"
+                >
+                  {{ q.icon }} {{ q.label }}
+                </el-tag>
+              </div>
+            </div>
+
+            <div v-else class="fields-list">
+              <div v-for="(field, idx) in form.fields" :key="idx" class="field-card">
+                <div class="fc-top">
+                  <div class="fc-name-row">
+                    <el-input
+                      v-model="field.field_name"
+                      placeholder="字段名 (英文)"
+                      size="small"
+                      style="width:150px"
+                      :class="{ 'is-error': !field.field_name?.trim() }"
+                    />
+                    <el-input
+                      v-model="field.field_label"
+                      placeholder="中文名 (可选)"
+                      size="small"
+                      style="width:120px"
+                    />
+                  </div>
+                  <div class="fc-actions">
+                    <el-button v-if="idx > 0" text size="small" @click="moveField(idx, -1)">↑</el-button>
+                    <el-button v-if="idx < form.fields.length - 1" text size="small" @click="moveField(idx, 1)">↓</el-button>
+                    <el-button text type="danger" size="small" @click="removeField(idx)">
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </div>
+                </div>
+                <div class="fc-rule">
+                  <el-select v-model="field.rule_type" size="small" style="width:140px" @change="onRuleTypeChange(field)">
+                    <el-option-group label="常用规则">
+                      <el-option v-for="rt in commonRules" :key="rt.type" :label="rt.icon + ' ' + rt.label" :value="rt.type" />
+                    </el-option-group>
+                    <el-option-group label="高级规则">
+                      <el-option v-for="rt in advancedRules" :key="rt.type" :label="rt.icon + ' ' + rt.label" :value="rt.type" />
+                    </el-option-group>
+                  </el-select>
+                  <div class="fc-config">
+                    <template v-if="field.rule_type === 'fixed'">
+                      <el-input v-model="field.rule_config.value" placeholder="输入固定值" size="small" />
+                    </template>
+                    <template v-else-if="field.rule_type === 'enum'">
+                      <el-select
+                        v-model="field.rule_config.options"
+                        multiple
+                        filterable
+                        allow-create
+                        default-first-option
+                        placeholder="输入后回车添加"
+                        size="small"
+                        style="width:100%"
+                      />
+                    </template>
+                    <template v-else-if="field.rule_type === 'increment'">
+                      <el-input v-model="field.rule_config.prefix" placeholder="前缀" size="small" style="width:80px" />
+                      <el-input-number v-model="field.rule_config.start" :min="0" placeholder="起始" size="small" style="width:100px" />
+                      <el-input-number v-model="field.rule_config.step" :min="1" placeholder="步长" size="small" style="width:90px" />
+                    </template>
+                    <template v-else-if="field.rule_type === 'uuid'">
+                      <el-radio-group v-model="field.rule_config.version" size="small">
+                        <el-radio-button value="4">标准UUID</el-radio-button>
+                        <el-radio-button value="simple">短UUID</el-radio-button>
+                      </el-radio-group>
+                    </template>
+                    <template v-else-if="field.rule_type === 'timestamp'">
+                      <el-select v-model="field.rule_config.format" size="small" style="width:140px">
+                        <el-option label="秒级时间戳" value="seconds" />
+                        <el-option label="毫秒时间戳" value="milliseconds" />
+                        <el-option label="日期时间" value="datetime" />
+                        <el-option label="ISO格式" value="iso" />
+                      </el-select>
+                    </template>
+                    <template v-else-if="field.rule_type === 'date_offset'">
+                      <el-input-number v-model="field.rule_config.offset_days" size="small" style="width:120px" />
+                      <span class="fc-hint">天 (负数=过去)</span>
+                      <el-select v-model="field.rule_config.format" size="small" style="width:120px">
+                        <el-option label="YYYY-MM-DD" value="date" />
+                        <el-option label="日期时间" value="datetime" />
+                      </el-select>
+                    </template>
+                    <template v-else-if="field.rule_type === 'phone'">
+                      <el-select v-model="field.rule_config.prefix" size="small" style="width:120px">
+                        <el-option v-for="p in phonePrefixes" :key="p" :label="p" :value="p" />
+                      </el-select>
+                      <span class="fc-hint">号段</span>
+                    </template>
+                    <template v-else-if="field.rule_type === 'email'">
+                      <el-input v-model="field.rule_config.username_prefix" placeholder="用户名前缀" size="small" style="width:120px" />
+                      <span class="fc-hint">@</span>
+                      <el-select
+                        v-model="field.rule_config.domain"
+                        size="small"
+                        style="width:140px"
+                        filterable
+                        allow-create
+                      >
+                        <el-option v-for="d in emailDomains" :key="d" :label="d" :value="d" />
+                      </el-select>
+                    </template>
+                    <template v-else-if="field.rule_type === 'username'">
+                      <el-input v-model="field.rule_config.prefix" placeholder="前缀" size="small" style="width:100px" />
+                      <el-input-number v-model="field.rule_config.suffix_length" :min="2" :max="8" size="small" style="width:100px" />
+                      <span class="fc-hint">位随机后缀</span>
+                    </template>
+                    <template v-else-if="field.rule_type === 'env_ref'">
+                      <el-input v-model="field.rule_config.variable_name" placeholder="变量名" size="small" style="width:150px" />
+                      <el-input v-model="field.rule_config.default" placeholder="默认值 (可选)" size="small" style="width:120px" />
+                    </template>
+                  </div>
+                </div>
+                <div class="fc-preview" v-if="field.rule_type">
+                  <span class="fc-preview-label">示例:</span>
+                  <code class="fc-preview-val">{{ getPreviewValue(field) }}</code>
+                </div>
+              </div>
+
+              <div class="quick-add" style="margin-top:12px">
+                <span class="quick-add-label">快捷添加:</span>
+                <el-tag
+                  v-for="q in quickFields"
+                  :key="q.name"
+                  class="quick-tag"
+                  size="small"
+                  @click="addQuickField(q)"
+                >
+                  {{ q.icon }} {{ q.label }}
+                </el-tag>
+              </div>
+            </div>
+          </div>
+
+          <div class="editor-preview" v-if="!creating && currentId">
+            <div class="preview-header">
+              <span class="preview-title">数据预览</span>
+              <div class="preview-actions">
+                <el-button size="small" @click="doPreview" :loading="previewLoading">
+                  <el-icon><Refresh /></el-icon> 刷新预览
+                </el-button>
+                <el-button size="small" type="success" @click="doGenerate" :loading="generateLoading">
+                  <el-icon><Download /></el-icon> 生成数据集
+                </el-button>
+                <el-button
+                  v-if="generatedDataset"
+                  size="small"
+                  type="primary"
+                  @click="doRun"
+                  :loading="runLoading"
+                  :disabled="!form.scenario_id"
+                >
+                  <el-icon><VideoPlay /></el-icon> 数据驱动执行
+                </el-button>
+              </div>
+            </div>
+
+            <div v-if="previewData" class="preview-table-wrap">
+              <el-table :data="previewData.rows" border size="small" max-height="320">
+                <el-table-column
+                  v-for="(col, idx) in previewData.columns"
+                  :key="idx"
+                  :label="col"
+                  :prop="String(idx)"
+                  min-width="130"
+                />
               </el-table>
-              <div class="preview-info">
+              <div class="preview-meta">
                 共 {{ previewData.row_count }} 行 · {{ previewData.columns.length }} 列
               </div>
             </div>
+            <div v-else-if="previewLoading" class="preview-loading">
+              <el-icon class="is-loading"><Loading /></el-icon> 正在生成预览...
+            </div>
+            <div v-else class="preview-empty">
+              点击「刷新预览」查看生成的数据
+            </div>
 
-            <div class="db-section" v-if="previewError">
-              <div class="error-banner">
-                <span>⚠️ {{ previewError }}</span>
-                <el-button size="small" type="primary" @click="previewTemplate" :loading="previewLoading">重试预览</el-button>
+            <div v-if="generatedDataset" class="result-card success">
+              <div class="rc-icon">✅</div>
+              <div class="rc-info">
+                <div class="rc-title">数据集已生成</div>
+                <div class="rc-detail">{{ generatedDataset.row_count }} 行 × {{ generatedDataset.columns?.length || 0 }} 列</div>
+              </div>
+              <div class="rc-actions" v-if="!form.scenario_id">
+                <el-button size="small" @click="showBindDialog = true">绑定场景</el-button>
               </div>
             </div>
 
-            <div class="db-section" v-if="generatedDataset">
-              <h5>✅ 数据集已生成</h5>
-              <div class="dataset-info-card">
-                <div class="dic-item">
-                  <span class="dic-label">数据集名称</span>
-                  <span class="dic-value">{{ generatedDataset.name }}</span>
+            <div v-if="runResult" class="result-card" :class="runResult.success ? 'success' : 'failed'">
+              <div class="rc-icon">{{ runResult.success ? '✅' : '❌' }}</div>
+              <div class="rc-info">
+                <div class="rc-title">{{ runResult.success ? '全部通过' : '存在失败' }}</div>
+                <div class="rc-detail">
+                  迭代 {{ runResult.total_iterations }} 次 ·
+                  成功 {{ runResult.success_iterations }} ·
+                  失败 {{ runResult.failed_iterations }} ·
+                  耗时 {{ runResult.total_duration }}ms
                 </div>
-                <div class="dic-item">
-                  <span class="dic-label">数据量</span>
-                  <span class="dic-value">{{ generatedDataset.row_count }} 行 × {{ generatedDataset.columns.length }} 列</span>
-                </div>
-                <div class="dic-actions">
-                  <el-button size="small" type="primary" @click="bindToScenario" :loading="bindLoading" :disabled="bindLoading || runLoading">绑定到场景</el-button>
-                  <el-button size="small" type="success" @click="runDataDriven" :loading="runLoading" :disabled="runLoading || bindLoading">一键数据驱动执行</el-button>
-                </div>
-              </div>
-            </div>
-
-            <div class="db-section" v-if="generateError">
-              <div class="error-banner">
-                <span>⚠️ {{ generateError }}</span>
-                <el-button size="small" type="primary" @click="generateData" :loading="generateLoading">重试生成</el-button>
-              </div>
-            </div>
-
-            <div class="db-section" v-if="bindError">
-              <div class="error-banner">
-                <span>⚠️ {{ bindError }}</span>
-                <el-button size="small" type="primary" @click="bindToScenario" :loading="bindLoading">重试绑定</el-button>
-              </div>
-            </div>
-
-            <div class="db-section" v-if="runResult">
-              <h5>执行结果</h5>
-              <div class="run-result-card" :class="{ success: runResult.success, failed: !runResult.success }">
-                <div class="rrc-status">{{ runResult.success ? '✅ 全部通过' : '❌ 存在失败' }}</div>
-                <div class="rrc-stats">
-                  <span>总迭代: {{ runResult.total_iterations }}</span>
-                  <span>成功: {{ runResult.success_iterations }}</span>
-                  <span>失败: {{ runResult.failed_iterations }}</span>
-                  <span>耗时: {{ runResult.total_duration }}ms</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="db-section" v-if="runError">
-              <div class="error-banner">
-                <span>⚠️ {{ runError }}</span>
-                <el-button size="small" type="primary" @click="runDataDriven" :loading="runLoading">重试执行</el-button>
               </div>
             </div>
           </div>
@@ -159,152 +339,29 @@
       </div>
     </div>
 
-    <el-dialog
-      v-model="dialogVisible"
-      :title="dialogMode === 'create' ? '新建数据模板' : '编辑数据模板'"
-      width="700px"
-      custom-class="dark-dialog"
-      destroy-on-close
-    >
-      <el-form :model="form" label-width="80px">
-        <el-form-item label="模板名称">
-          <el-input v-model="form.name" placeholder="如：用户注册测试数据" class="dark-input" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="form.description" placeholder="模板用途说明" class="dark-input" />
-        </el-form-item>
-        <el-form-item label="关联场景">
-          <el-select v-model="form.scenario_id" placeholder="可选" clearable class="dark-select" style="width:100%">
-            <el-option
-              v-for="s in scenarios"
-              :key="s.id"
-              :label="s.name"
-              :value="s.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="生成行数">
-          <el-input-number v-model="form.row_count" :min="1" :max="100" class="dark-input" />
-        </el-form-item>
-
-        <el-divider>字段规则</el-divider>
-        <div class="fields-editor">
-          <div v-for="(field, idx) in form.fields" :key="idx" class="field-row">
-            <el-input v-model="field.field_name" placeholder="字段名" size="small" style="width:120px" class="dark-input" :class="{ 'is-error': fieldErrors[idx]?.field_name }" />
-            <el-input v-model="field.field_label" placeholder="标签" size="small" style="width:100px" class="dark-input" />
-            <el-select v-model="field.rule_type" placeholder="规则" size="small" style="width:120px" class="dark-select" @change="onRuleTypeChange(field)">
-              <el-option v-for="rt in ruleTypes" :key="rt.type" :label="rt.label" :value="rt.type" />
-            </el-select>
-            <el-input
-              v-if="field.rule_type === 'fixed'"
-              v-model="field.rule_config.value"
-              placeholder="值"
-              size="small"
-              style="width:140px"
-              class="dark-input"
-            />
-            <el-input
-              v-else-if="field.rule_type === 'enum'"
-              v-model="field.configInput"
-              placeholder="选项,逗号分隔"
-              size="small"
-              style="width:180px"
-              class="dark-input"
-              @change="updateEnumOptions(field)"
-            />
-            <el-input
-              v-else-if="field.rule_type === 'increment'"
-              v-model="field.configInput"
-              placeholder="prefix,start,step"
-              size="small"
-              style="width:160px"
-              class="dark-input"
-              @change="updateIncrementConfig(field)"
-            />
-            <el-input
-              v-else-if="field.rule_type === 'date_offset'"
-              v-model="field.configInput"
-              placeholder="offset_days"
-              size="small"
-              style="width:100px"
-              class="dark-input"
-              @change="updateDateOffset(field)"
-            />
-            <el-input
-              v-else-if="field.rule_type === 'env_ref'"
-              v-model="field.configInput"
-              placeholder="变量名"
-              size="small"
-              style="width:120px"
-              class="dark-input"
-              @change="updateEnvRef(field)"
-            />
-            <el-input
-              v-else-if="field.rule_type === 'uuid'"
-              v-model="field.configInput"
-              placeholder="版本(1/4)"
-              size="small"
-              style="width:100px"
-              class="dark-input"
-              @change="updateUuidConfig(field)"
-            />
-            <el-input
-              v-else-if="field.rule_type === 'timestamp'"
-              v-model="field.configInput"
-              placeholder="格式(秒/毫秒/日期)"
-              size="small"
-              style="width:140px"
-              class="dark-input"
-              @change="updateTimestampConfig(field)"
-            />
-            <el-input
-              v-else-if="field.rule_type === 'phone'"
-              v-model="field.configInput"
-              placeholder="前缀"
-              size="small"
-              style="width:120px"
-              class="dark-input"
-              @change="updatePhoneConfig(field)"
-            />
-            <el-input
-              v-else-if="field.rule_type === 'email'"
-              v-model="field.configInput"
-              placeholder="域名,前缀"
-              size="small"
-              style="width:160px"
-              class="dark-input"
-              @change="updateEmailConfig(field)"
-            />
-            <el-input
-              v-else-if="field.rule_type === 'username'"
-              v-model="field.configInput"
-              placeholder="前缀,后缀长度"
-              size="small"
-              style="width:140px"
-              class="dark-input"
-              @change="updateUsernameConfig(field)"
-            />
-            <el-tag size="small" type="info" v-if="field.rule_type">{{ getRuleLabel(field.rule_type) }}</el-tag>
-            <el-button text type="danger" size="small" @click="removeField(idx)">✕</el-button>
-          </div>
-          <el-button text type="primary" size="small" @click="addField" style="margin-top:8px">
-            + 添加字段
-          </el-button>
+    <el-dialog v-model="showPresetDialog" title="选择预设模板" width="640px" custom-class="dark-dialog" destroy-on-close>
+      <div class="preset-grid">
+        <div
+          v-for="p in presets"
+          :key="p.name"
+          class="preset-card"
+          @click="applyPreset(p)"
+        >
+          <div class="pc-icon">{{ p.icon }}</div>
+          <div class="pc-name">{{ p.name }}</div>
+          <div class="pc-desc">{{ p.desc }}</div>
+          <div class="pc-fields">{{ p.fields.length }} 个字段</div>
         </div>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false" class="btn-cancel">取消</el-button>
-        <el-button type="primary" @click="saveTemplate" class="btn-primary" :loading="saveLoading" :disabled="saveLoading">保存</el-button>
-      </template>
+      </div>
     </el-dialog>
 
-    <el-dialog v-model="bindDialogVisible" title="绑定场景" width="450px" custom-class="dark-dialog">
-      <el-select v-model="bindScenarioId" placeholder="选择场景" class="dark-select" style="width:100%">
+    <el-dialog v-model="showBindDialog" title="绑定到测试场景" width="420px" custom-class="dark-dialog">
+      <el-select v-model="bindScenarioId" placeholder="选择要绑定的场景" style="width:100%">
         <el-option v-for="s in scenarios" :key="s.id" :label="s.name" :value="s.id" />
       </el-select>
       <template #footer>
-        <el-button @click="bindDialogVisible = false" class="btn-cancel">取消</el-button>
-        <el-button type="primary" @click="doBindScenario" class="btn-primary" :disabled="!bindScenarioId" :loading="bindLoading">确定</el-button>
+        <el-button @click="showBindDialog = false">取消</el-button>
+        <el-button type="primary" @click="doBind" :loading="bindLoading" :disabled="!bindScenarioId">绑定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -313,26 +370,126 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Delete, Refresh, Download, VideoPlay, MagicStick, Loading } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 
-const RULE_LABELS = {
-  fixed: '固定值', enum: '枚举值', increment: '递增数字',
-  uuid: 'UUID', timestamp: '时间戳', date_offset: '日期偏移',
-  phone: '随机手机号', email: '随机邮箱', username: '随机用户名',
-  env_ref: '引用环境变量'
-}
+const commonRules = [
+  { type: 'fixed', label: '固定值', icon: '📌' },
+  { type: 'enum', label: '枚举值', icon: '🎲' },
+  { type: 'increment', label: '递增数字', icon: '🔢' },
+  { type: 'phone', label: '随机手机号', icon: '📱' },
+  { type: 'email', label: '随机邮箱', icon: '📧' },
+  { type: 'username', label: '随机用户名', icon: '👤' },
+]
 
-const ruleTypes = ref([])
+const advancedRules = [
+  { type: 'uuid', label: 'UUID', icon: '🔑' },
+  { type: 'timestamp', label: '时间戳', icon: '⏱️' },
+  { type: 'date_offset', label: '日期偏移', icon: '📅' },
+  { type: 'env_ref', label: '环境变量', icon: '🌐' },
+]
+
+const phonePrefixes = ['130', '131', '132', '133', '135', '136', '137', '138', '139', '150', '151', '152', '155', '156', '157', '158', '159', '170', '176', '177', '178', '180', '181', '182', '183', '185', '186', '187', '188', '189']
+
+const emailDomains = ['qq.com', '163.com', 'gmail.com', 'outlook.com', 'test.com', 'example.com']
+
+const quickFields = [
+  { name: 'phone', label: '手机号', icon: '📱', rule_type: 'phone', rule_config: { prefix: '138' } },
+  { name: 'email', label: '邮箱', icon: '📧', rule_type: 'email', rule_config: { username_prefix: 'user', domain: 'test.com' } },
+  { name: 'username', label: '用户名', icon: '👤', rule_type: 'username', rule_config: { prefix: 'test', suffix_length: 4 } },
+  { name: 'id', label: 'ID', icon: '🔑', rule_type: 'uuid', rule_config: { version: '4' } },
+  { name: 'age', label: '年龄', icon: '🎲', rule_type: 'enum', rule_config: { options: ['18', '22', '25', '30', '35', '40'] } },
+  { name: 'gender', label: '性别', icon: '🎲', rule_type: 'enum', rule_config: { options: ['男', '女'] } },
+  { name: 'timestamp', label: '时间戳', icon: '⏱️', rule_type: 'timestamp', rule_config: { format: 'seconds' } },
+  { name: 'date', label: '日期', icon: '📅', rule_type: 'date_offset', rule_config: { offset_days: 0, format: 'date' } },
+  { name: 'status', label: '状态', icon: '🎲', rule_type: 'enum', rule_config: { options: ['active', 'inactive', 'pending'] } },
+  { name: 'index', label: '序号', icon: '🔢', rule_type: 'increment', rule_config: { prefix: '', start: 1, step: 1 } },
+]
+
+const presets = [
+  {
+    name: '用户注册',
+    icon: '👤',
+    desc: '手机号、邮箱、用户名、密码等注册数据',
+    fields: [
+      { field_name: 'phone', field_label: '手机号', rule_type: 'phone', rule_config: { prefix: '138' } },
+      { field_name: 'email', field_label: '邮箱', rule_type: 'email', rule_config: { username_prefix: 'user', domain: 'test.com' } },
+      { field_name: 'username', field_label: '用户名', rule_type: 'username', rule_config: { prefix: 'test', suffix_length: 4 } },
+      { field_name: 'password', field_label: '密码', rule_type: 'fixed', rule_config: { value: 'Test@123456' } },
+      { field_name: 'nickname', field_label: '昵称', rule_type: 'username', rule_config: { prefix: 'nick', suffix_length: 6 } },
+      { field_name: 'gender', field_label: '性别', rule_type: 'enum', rule_config: { options: ['男', '女'] } },
+    ]
+  },
+  {
+    name: '商品数据',
+    icon: '🛒',
+    desc: '商品名、价格、分类、库存等电商数据',
+    fields: [
+      { field_name: 'product_name', field_label: '商品名', rule_type: 'username', rule_config: { prefix: '商品', suffix_length: 4 } },
+      { field_name: 'price', field_label: '价格', rule_type: 'enum', rule_config: { options: ['9.9', '19.9', '29.9', '49.9', '99', '199', '399'] } },
+      { field_name: 'category', field_label: '分类', rule_type: 'enum', rule_config: { options: ['电子产品', '服装', '食品', '家居', '图书'] } },
+      { field_name: 'stock', field_label: '库存', rule_type: 'increment', rule_config: { prefix: '', start: 100, step: 10 } },
+      { field_name: 'sku', field_label: 'SKU', rule_type: 'uuid', rule_config: { version: 'simple' } },
+      { field_name: 'status', field_label: '状态', rule_type: 'enum', rule_config: { options: ['上架', '下架', '预售'] } },
+    ]
+  },
+  {
+    name: '订单数据',
+    icon: '📦',
+    desc: '订单号、金额、状态、时间等订单信息',
+    fields: [
+      { field_name: 'order_no', field_label: '订单号', rule_type: 'increment', rule_config: { prefix: 'ORD', start: 10001, step: 1 } },
+      { field_name: 'amount', field_label: '金额', rule_type: 'enum', rule_config: { options: ['0.01', '9.9', '29.9', '99', '199', '599', '1299'] } },
+      { field_name: 'status', field_label: '状态', rule_type: 'enum', rule_config: { options: ['待支付', '已支付', '已发货', '已完成', '已取消'] } },
+      { field_name: 'create_time', field_label: '创建时间', rule_type: 'timestamp', rule_config: { format: 'datetime' } },
+      { field_name: 'user_id', field_label: '用户ID', rule_type: 'uuid', rule_config: { version: 'simple' } },
+      { field_name: 'pay_method', field_label: '支付方式', rule_type: 'enum', rule_config: { options: ['微信', '支付宝', '银行卡'] } },
+    ]
+  },
+  {
+    name: '接口压测',
+    icon: '⚡',
+    desc: '大量随机数据用于接口压力测试',
+    fields: [
+      { field_name: 'request_id', field_label: '请求ID', rule_type: 'uuid', rule_config: { version: '4' } },
+      { field_name: 'user_token', field_label: 'Token', rule_type: 'uuid', rule_config: { version: 'simple' } },
+      { field_name: 'timestamp', field_label: '时间戳', rule_type: 'timestamp', rule_config: { format: 'milliseconds' } },
+      { field_name: 'client_ip', field_label: '客户端IP', rule_type: 'fixed', rule_config: { value: '192.168.1.' } },
+      { field_name: 'action', field_label: '操作', rule_type: 'enum', rule_config: { options: ['login', 'query', 'submit', 'delete'] } },
+    ]
+  },
+  {
+    name: '日期时间',
+    icon: '📅',
+    desc: '各种日期时间格式数据',
+    fields: [
+      { field_name: 'date', field_label: '日期', rule_type: 'date_offset', rule_config: { offset_days: 0, format: 'date' } },
+      { field_name: 'yesterday', field_label: '昨天', rule_type: 'date_offset', rule_config: { offset_days: -1, format: 'date' } },
+      { field_name: 'next_week', field_label: '下周', rule_type: 'date_offset', rule_config: { offset_days: 7, format: 'date' } },
+      { field_name: 'timestamp_s', field_label: '时间戳(秒)', rule_type: 'timestamp', rule_config: { format: 'seconds' } },
+      { field_name: 'timestamp_ms', field_label: '时间戳(毫秒)', rule_type: 'timestamp', rule_config: { format: 'milliseconds' } },
+      { field_name: 'iso_time', field_label: 'ISO时间', rule_type: 'timestamp', rule_config: { format: 'iso' } },
+    ]
+  },
+  {
+    name: '空白模板',
+    icon: '📝',
+    desc: '从零开始自定义字段',
+    fields: []
+  },
+]
+
 const templates = ref([])
 const scenarios = ref([])
-const selectedTemplate = ref(null)
-const loading = ref(false)
-const sidebarCollapsed = ref(false)
+const currentId = ref(null)
+const creating = ref(false)
+const editing = ref(false)
+const saving = ref(false)
+const previewLoading = ref(false)
+const generateLoading = ref(false)
+const runLoading = ref(false)
+const bindLoading = ref(false)
 
-const dialogVisible = ref(false)
-const dialogMode = ref('create')
-const editingId = ref(null)
 const form = ref({
   name: '',
   description: '',
@@ -344,118 +501,10 @@ const form = ref({
 const previewData = ref(null)
 const generatedDataset = ref(null)
 const runResult = ref(null)
-const bindDialogVisible = ref(false)
+
+const showPresetDialog = ref(false)
+const showBindDialog = ref(false)
 const bindScenarioId = ref(null)
-
-const previewLoading = ref(false)
-const generateLoading = ref(false)
-const bindLoading = ref(false)
-const runLoading = ref(false)
-const saveLoading = ref(false)
-const deleteLoading = ref(false)
-const detailLoading = ref(false)
-const retryAction = ref(null)
-
-const previewError = ref('')
-const generateError = ref('')
-const bindError = ref('')
-const runError = ref('')
-const fieldErrors = ref({})
-
-const resetForm = () => {
-  form.value = {
-    name: '',
-    description: '',
-    scenario_id: null,
-    row_count: 10,
-    fields: []
-  }
-}
-
-const getRuleLabel = (type) => RULE_LABELS[type] || type
-
-const formatConfig = (config) => {
-  if (!config) return '-'
-  if (config.value !== undefined) return config.value
-  if (config.options) return Array.isArray(config.options) ? config.options.join(', ') : config.options
-  if (config.prefix !== undefined && config.start !== undefined) return `前缀:${config.prefix || ''} 起始:${config.start} 步长:${config.step || 1}`
-  if (config.variable_name) return `\${${config.variable_name}}`
-  if (config.offset_days !== undefined) return `偏移:${config.offset_days}天`
-  if (config.version) return `UUID v${config.version}`
-  if (config.format) return `格式:${config.format}`
-  if (config.domains || config.username_prefix) return `域名:${(config.domains || []).join(';')} 前缀:${config.username_prefix || ''}`
-  if (config.prefixes || config.suffix_length) return `前缀:${(config.prefixes || []).join(';')} 后缀长度:${config.suffix_length || 4}`
-  if (config.prefix && !config.start) return `前缀:${config.prefix}`
-  return JSON.stringify(config)
-}
-
-const updateEnumOptions = (field) => {
-  field.rule_config = { options: (field.configInput || '').split(',').map(s => s.trim()).filter(Boolean) }
-}
-
-const updateIncrementConfig = (field) => {
-  const parts = (field.configInput || '').split(',')
-  field.rule_config = {
-    prefix: (parts[0] || '').trim(),
-    start: parseInt(parts[1]) || 1,
-    step: parseInt(parts[2]) || 1
-  }
-}
-
-const updateDateOffset = (field) => {
-  field.rule_config = { offset_days: parseInt(field.configInput) || 0 }
-}
-
-const updateEnvRef = (field) => {
-  field.rule_config = { variable_name: (field.configInput || '').trim() }
-}
-
-const updateUuidConfig = (field) => {
-  field.rule_config = { version: (field.configInput || '').trim() || '4' }
-}
-
-const updateTimestampConfig = (field) => {
-  field.rule_config = { format: (field.configInput || '').trim() || 'seconds' }
-}
-
-const updatePhoneConfig = (field) => {
-  field.rule_config = { prefix: (field.configInput || '').trim() }
-}
-
-const updateEmailConfig = (field) => {
-  const parts = (field.configInput || '').split(',')
-  field.rule_config = {
-    domains: (parts[0] || 'test.com').split(';').map(s => s.trim()).filter(Boolean),
-    username_prefix: (parts[1] || 'testuser').trim()
-  }
-}
-
-const updateUsernameConfig = (field) => {
-  const parts = (field.configInput || '').split(',')
-  field.rule_config = {
-    prefixes: (parts[0] || 'tester').split(';').map(s => s.trim()).filter(Boolean),
-    suffix_length: parseInt(parts[1]) || 4
-  }
-}
-
-const onRuleTypeChange = (field) => {
-  field.configInput = ''
-  if (field.rule_type === 'uuid' || field.rule_type === 'timestamp') {
-    field.rule_config = {}
-    field.configInput = field.rule_type === 'uuid' ? '4' : 'seconds'
-  } else if (field.rule_type === 'phone') {
-    field.rule_config = {}
-    field.configInput = ''
-  } else if (field.rule_type === 'email') {
-    field.rule_config = { domains: ['test.com'], username_prefix: 'testuser' }
-    field.configInput = 'test.com,testuser'
-  } else if (field.rule_type === 'username') {
-    field.rule_config = { prefixes: ['tester'], suffix_length: 4 }
-    field.configInput = 'tester,4'
-  } else {
-    field.rule_config = {}
-  }
-}
 
 const addField = () => {
   form.value.fields.push({
@@ -463,7 +512,16 @@ const addField = () => {
     field_label: '',
     rule_type: 'fixed',
     rule_config: { value: '' },
-    configInput: '',
+    sort_order: form.value.fields.length
+  })
+}
+
+const addQuickField = (q) => {
+  form.value.fields.push({
+    field_name: q.name,
+    field_label: q.label,
+    rule_type: q.rule_type,
+    rule_config: JSON.parse(JSON.stringify(q.rule_config)),
     sort_order: form.value.fields.length
   })
 }
@@ -472,15 +530,252 @@ const removeField = (idx) => {
   form.value.fields.splice(idx, 1)
 }
 
+const moveField = (idx, dir) => {
+  const target = idx + dir
+  const list = form.value.fields
+  if (target < 0 || target >= list.length) return
+  const temp = list[idx]
+  list[idx] = list[target]
+  list[target] = temp
+  form.value.fields = [...list]
+}
+
+const onRuleTypeChange = (field) => {
+  const defaults = {
+    fixed: { value: '' },
+    enum: { options: [] },
+    increment: { prefix: '', start: 1, step: 1 },
+    uuid: { version: '4' },
+    timestamp: { format: 'seconds' },
+    date_offset: { offset_days: 0, format: 'date' },
+    phone: { prefix: '138' },
+    email: { username_prefix: 'user', domain: 'test.com' },
+    username: { prefix: 'test', suffix_length: 4 },
+    env_ref: { variable_name: '', default: '' },
+  }
+  field.rule_config = defaults[field.rule_type] || {}
+}
+
+const getPreviewValue = (field) => {
+  const c = field.rule_config || {}
+  switch (field.rule_type) {
+    case 'fixed': return c.value || '(空)'
+    case 'enum': return c.options?.length ? c.options[0] + (c.options.length > 1 ? ` / ${c.options.length}个选项` : '') : '(未设置)'
+    case 'increment': return `${c.prefix || ''}${c.start || 1}`
+    case 'uuid': return c.version === 'simple' ? 'a3f2b1c4' : '550e8400-e29b-41d4-a716-446655440000'
+    case 'timestamp':
+      if (c.format === 'milliseconds') return '1748502000000'
+      if (c.format === 'datetime') return '2026-05-29 10:30:00'
+      if (c.format === 'iso') return '2026-05-29T10:30:00+08:00'
+      return '1748502000'
+    case 'date_offset': {
+      const d = new Date()
+      d.setDate(d.getDate() + (c.offset_days || 0))
+      return d.toISOString().slice(0, 10)
+    }
+    case 'phone': return `${c.prefix || '138'}12345678`
+    case 'email': return `${c.username_prefix || 'user'}123@${c.domain || 'test.com'}`
+    case 'username': return `${c.prefix || 'test'}${Math.random().toString(36).slice(2, 2 + (c.suffix_length || 4))}`
+    case 'env_ref': return c.variable_name ? `\${${c.variable_name}}` : '(未设置)'
+    default: return ''
+  }
+}
+
+const startCreate = () => {
+  creating.value = true
+  editing.value = false
+  currentId.value = null
+  form.value = {
+    name: '',
+    description: '',
+    scenario_id: null,
+    row_count: 10,
+    fields: []
+  }
+  previewData.value = null
+  generatedDataset.value = null
+  runResult.value = null
+}
+
+const cancelCreate = () => {
+  creating.value = false
+  if (templates.value.length > 0) {
+    loadTemplate(templates.value[0].id)
+  } else {
+    currentId.value = null
+  }
+}
+
+const applyPreset = (preset) => {
+  showPresetDialog.value = false
+  creating.value = true
+  editing.value = false
+  currentId.value = null
+  form.value = {
+    name: preset.name === '空白模板' ? '' : preset.name,
+    description: preset.desc,
+    scenario_id: null,
+    row_count: 10,
+    fields: preset.fields.map((f, i) => ({
+      ...f,
+      rule_config: JSON.parse(JSON.stringify(f.rule_config)),
+      sort_order: i
+    }))
+  }
+  previewData.value = null
+  generatedDataset.value = null
+  runResult.value = null
+}
+
+const saveTemplate = async () => {
+  if (!form.value.name.trim()) {
+    ElMessage.warning('请输入模板名称')
+    return
+  }
+  const hasEmpty = form.value.fields.some(f => !f.field_name?.trim())
+  if (hasEmpty) {
+    ElMessage.warning('请填写所有字段名称')
+    return
+  }
+  saving.value = true
+  try {
+    const payload = {
+      name: form.value.name,
+      description: form.value.description,
+      scenario_id: form.value.scenario_id,
+      row_count: form.value.row_count,
+      fields: form.value.fields.map((f, i) => ({
+        field_name: f.field_name,
+        field_label: f.field_label,
+        rule_type: f.rule_type,
+        rule_config: f.rule_config,
+        sort_order: i
+      }))
+    }
+    if (creating.value) {
+      const res = await autoTestRequest.post('/auto-test/data-factory/templates', payload)
+      creating.value = false
+      currentId.value = res.id
+      ElMessage.success('模板创建成功')
+    } else {
+      await autoTestRequest.put(`/auto-test/data-factory/templates/${currentId.value}`, payload)
+      ElMessage.success('模板更新成功')
+    }
+    await fetchTemplates()
+    if (currentId.value) {
+      await loadTemplate(currentId.value)
+    }
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    saving.value = false
+  }
+}
+
+const loadTemplate = async (id) => {
+  currentId.value = id
+  creating.value = false
+  editing.value = false
+  previewData.value = null
+  generatedDataset.value = null
+  runResult.value = null
+  try {
+    const res = await autoTestRequest.get(`/auto-test/data-factory/templates/${id}`)
+    form.value = {
+      name: res.name || '',
+      description: res.description || '',
+      scenario_id: res.scenario_id || null,
+      row_count: res.row_count || 10,
+      fields: (res.fields || []).map((f, i) => ({
+        ...f,
+        rule_config: f.rule_config || {},
+        sort_order: i
+      }))
+    }
+    doPreview()
+  } catch (e) {
+    ElMessage.error('加载模板失败')
+  }
+}
+
+const deleteTemplate = async () => {
+  try {
+    await ElMessageBox.confirm(`确定删除模板"${form.value.name}"吗？`, '确认', { type: 'warning' })
+    await autoTestRequest.delete(`/auto-test/data-factory/templates/${currentId.value}`)
+    ElMessage.success('已删除')
+    currentId.value = null
+    await fetchTemplates()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+const doPreview = async () => {
+  if (!currentId.value) return
+  previewLoading.value = true
+  try {
+    const res = await autoTestRequest.post(`/auto-test/data-factory/templates/${currentId.value}/preview`)
+    previewData.value = res
+  } catch (e) {
+    ElMessage.error('预览失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+const doGenerate = async () => {
+  if (!currentId.value) return
+  generateLoading.value = true
+  try {
+    const res = await autoTestRequest.post(`/auto-test/data-factory/templates/${currentId.value}/generate`)
+    generatedDataset.value = res
+    runResult.value = null
+    ElMessage.success('数据集已生成')
+  } catch (e) {
+    ElMessage.error('生成失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    generateLoading.value = false
+  }
+}
+
+const doRun = async () => {
+  if (!generatedDataset.value?.dataset_id) {
+    ElMessage.warning('请先生成数据集')
+    return
+  }
+  runLoading.value = true
+  try {
+    const res = await autoTestRequest.post(`/auto-test/data-factory/datasets/${generatedDataset.value.dataset_id}/run`)
+    runResult.value = res
+    ElMessage.success(res?.success ? '执行完成，全部通过' : '执行完成，存在失败')
+  } catch (e) {
+    ElMessage.error('执行失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    runLoading.value = false
+  }
+}
+
+const doBind = async () => {
+  if (!generatedDataset.value?.dataset_id || !bindScenarioId.value) return
+  bindLoading.value = true
+  try {
+    await autoTestRequest.post(`/auto-test/data-factory/datasets/${generatedDataset.value.dataset_id}/bind-scenario/${bindScenarioId.value}`)
+    ElMessage.success('绑定成功')
+    showBindDialog.value = false
+    form.value.scenario_id = bindScenarioId.value
+  } catch (e) {
+    ElMessage.error('绑定失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    bindLoading.value = false
+  }
+}
+
 const fetchTemplates = async () => {
-  loading.value = true
   try {
     const res = await autoTestRequest.get('/auto-test/data-factory/templates')
     templates.value = res || []
   } catch (e) {
     console.error('获取模板列表失败', e)
-  } finally {
-    loading.value = false
   }
 }
 
@@ -493,221 +788,9 @@ const fetchScenarios = async () => {
   }
 }
 
-const fetchRuleTypes = async () => {
-  try {
-    const res = await autoTestRequest.get('/auto-test/data-factory/rule-types')
-    ruleTypes.value = res?.rule_types || []
-  } catch (e) {
-    console.error('获取规则类型失败', e)
-  }
-}
-
-const selectTemplate = (tpl) => {
-  selectedTemplate.value = tpl
-  previewData.value = null
-  generatedDataset.value = null
-  runResult.value = null
-  previewError.value = ''
-  generateError.value = ''
-  runError.value = ''
-}
-
-const openCreateDialog = () => {
-  resetForm()
-  dialogMode.value = 'create'
-  editingId.value = null
-  fieldErrors.value = {}
-  dialogVisible.value = true
-}
-
-const editTemplate = async (tpl) => {
-  dialogMode.value = 'edit'
-  editingId.value = tpl.id
-  detailLoading.value = true
-  try {
-    const res = await autoTestRequest.get(`/auto-test/data-factory/templates/${tpl.id}`)
-    const fields = (res.fields || []).map(f => ({
-      ...f,
-      configInput: buildConfigInput(f),
-    }))
-    form.value = {
-      name: res.name || '',
-      description: res.description || '',
-      scenario_id: res.scenario_id || null,
-      row_count: res.row_count || 10,
-      fields: fields,
-    }
-    fieldErrors.value = {}
-    dialogVisible.value = true
-  } catch (e) {
-    ElMessage.error('获取模板详情失败，请重试')
-  } finally {
-    detailLoading.value = false
-  }
-}
-
-const buildConfigInput = (field) => {
-  const c = field.rule_config || {}
-  if (field.rule_type === 'fixed') return c.value || ''
-  if (field.rule_type === 'enum') return Array.isArray(c.options) ? c.options.join(', ') : ''
-  if (field.rule_type === 'increment') return `${c.prefix || ''},${c.start || 1},${c.step || 1}`
-  if (field.rule_type === 'date_offset') return String(c.offset_days ?? 0)
-  if (field.rule_type === 'env_ref') return c.variable_name || ''
-  if (field.rule_type === 'email') return `${Array.isArray(c.domains) ? c.domains.join(';') : (c.domains || 'test.com')},${c.username_prefix || 'testuser'}`
-  if (field.rule_type === 'username') return `${Array.isArray(c.prefixes) ? c.prefixes.join(';') : (c.prefixes || 'tester')},${c.suffix_length || 4}`
-  if (field.rule_type === 'phone') return c.prefix || ''
-  if (field.rule_type === 'uuid') return c.version || '4'
-  if (field.rule_type === 'timestamp') return c.format || 'seconds'
-  return ''
-}
-
-const validateFields = () => {
-  const errors = {}
-  form.value.fields.forEach((field, idx) => {
-    if (!field.field_name.trim()) {
-      errors[idx] = { field_name: '字段名不能为空' }
-    }
-  })
-  fieldErrors.value = errors
-  return Object.keys(errors).length === 0
-}
-
-const saveTemplate = async () => {
-  if (!form.value.name.trim()) {
-    ElMessage.warning('请输入模板名称')
-    return
-  }
-  if (!validateFields()) {
-    ElMessage.warning('请填写所有字段名称')
-    return
-  }
-  saveLoading.value = true
-  try {
-    if (dialogMode.value === 'create') {
-      await autoTestRequest.post('/auto-test/data-factory/templates', form.value)
-      ElMessage.success('模板创建成功')
-    } else {
-      await autoTestRequest.put(`/auto-test/data-factory/templates/${editingId.value}`, form.value)
-      ElMessage.success('模板更新成功')
-    }
-    dialogVisible.value = false
-    await fetchTemplates()
-    if (editingId.value && selectedTemplate.value?.id === editingId.value) {
-      const res = await autoTestRequest.get(`/auto-test/data-factory/templates/${editingId.value}`)
-      selectedTemplate.value = res
-    }
-  } catch (e) {
-    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
-  } finally {
-    saveLoading.value = false
-  }
-}
-
-const deleteTemplate = async (tpl) => {
-  try {
-    await ElMessageBox.confirm(`确定删除模板"${tpl.name}"吗？`, '确认', { type: 'warning' })
-    deleteLoading.value = true
-    await autoTestRequest.delete(`/auto-test/data-factory/templates/${tpl.id}`)
-    ElMessage.success('模板已删除')
-    selectedTemplate.value = null
-    await fetchTemplates()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
-  } finally {
-    deleteLoading.value = false
-  }
-}
-
-const previewTemplate = async () => {
-  previewLoading.value = true
-  previewError.value = ''
-  try {
-    const res = await autoTestRequest.post(`/auto-test/data-factory/templates/${selectedTemplate.value.id}/preview`)
-    previewData.value = res
-    ElMessage.success('预览生成成功')
-  } catch (e) {
-    previewError.value = e.response?.data?.detail || '预览失败，请重试'
-    ElMessage.error(previewError.value)
-  } finally {
-    previewLoading.value = false
-  }
-}
-
-const generateData = async () => {
-  generateLoading.value = true
-  generateError.value = ''
-  try {
-    const res = await autoTestRequest.post(`/auto-test/data-factory/templates/${selectedTemplate.value.id}/generate`)
-    generatedDataset.value = res
-    ElMessage.success('数据集已生成')
-  } catch (e) {
-    generateError.value = e.response?.data?.detail || '生成失败，请重试'
-    ElMessage.error(generateError.value)
-  } finally {
-    generateLoading.value = false
-  }
-}
-
-const bindToScenario = () => {
-  if (!generatedDataset.value) {
-    ElMessage.warning('请先生成数据集')
-    return
-  }
-  bindDialogVisible.value = true
-  bindScenarioId.value = null
-}
-
-const doBindScenario = async () => {
-  bindLoading.value = true
-  bindError.value = ''
-  try {
-    if (generatedDataset.value.dataset_id > 0) {
-      await autoTestRequest.post(`/auto-test/data-factory/datasets/${generatedDataset.value.dataset_id}/bind-scenario/${bindScenarioId.value}`)
-      ElMessage.success('数据集已绑定到场景')
-    } else {
-      await autoTestRequest.put(`/auto-test/data-factory/templates/${selectedTemplate.value.id}`, {
-        ...selectedTemplate.value,
-        scenario_id: bindScenarioId.value,
-        fields: selectedTemplate.value.fields || []
-      })
-      const updated = await autoTestRequest.get(`/auto-test/data-factory/templates/${selectedTemplate.value.id}`)
-      selectedTemplate.value = updated
-      const res = await autoTestRequest.post(`/auto-test/data-factory/templates/${selectedTemplate.value.id}/generate`)
-      generatedDataset.value = res
-      ElMessage.success('数据已生成并绑定到场景')
-    }
-    bindDialogVisible.value = false
-  } catch (e) {
-    bindError.value = e.response?.data?.detail || '绑定失败，请重试'
-    ElMessage.error(bindError.value)
-  } finally {
-    bindLoading.value = false
-  }
-}
-
-const runDataDriven = async () => {
-  if (!generatedDataset.value) {
-    ElMessage.warning('请先生成数据集')
-    return
-  }
-  runLoading.value = true
-  runError.value = ''
-  try {
-    const res = await autoTestRequest.post(`/auto-test/data-factory/datasets/${generatedDataset.value.dataset_id}/run`)
-    runResult.value = res
-    ElMessage.success(res?.success ? '执行完成，全部通过' : '执行完成，存在失败')
-  } catch (e) {
-    runError.value = e.response?.data?.detail || '执行失败，请重试'
-    ElMessage.error(runError.value)
-  } finally {
-    runLoading.value = false
-  }
-}
-
 onMounted(() => {
   fetchTemplates()
   fetchScenarios()
-  fetchRuleTypes()
 })
 </script>
 
@@ -718,12 +801,18 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.df-toolbar {
+.df-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--border-color, #333);
+}
+
+.df-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
 }
 
 .df-title {
@@ -735,7 +824,11 @@ onMounted(() => {
 .df-subtitle {
   font-size: 12px;
   color: #888;
-  margin-left: 12px;
+}
+
+.df-header-right {
+  display: flex;
+  gap: 8px;
 }
 
 .df-body {
@@ -745,25 +838,19 @@ onMounted(() => {
 }
 
 .df-sidebar {
-  width: 240px;
+  width: 220px;
   border-right: 1px solid var(--border-color, #333);
   padding: 12px;
   overflow-y: auto;
-  transition: width .2s;
+  flex-shrink: 0;
 }
 
-.df-sidebar.collapsed {
-  width: 40px;
-  padding: 12px 4px;
-}
-
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
-  color: #ccc;
+.sidebar-title {
+  font-size: 12px;
+  color: #888;
   margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .template-list {
@@ -772,7 +859,7 @@ onMounted(() => {
   gap: 4px;
 }
 
-.template-item {
+.tpl-item {
   padding: 10px 12px;
   border-radius: 6px;
   cursor: pointer;
@@ -780,191 +867,431 @@ onMounted(() => {
   transition: all .15s;
 }
 
-.template-item:hover {
+.tpl-item:hover {
   background: rgba(64, 158, 255, .08);
   border-color: rgba(64, 158, 255, .2);
 }
 
-.template-item.active {
+.tpl-item.active {
   background: rgba(64, 158, 255, .12);
   border-color: #409eff;
 }
 
-.ti-name {
+.tpl-name {
   font-size: 14px;
   color: #e0e0e0;
   font-weight: 500;
 }
 
-.ti-meta {
+.tpl-meta {
   font-size: 11px;
   color: #777;
   margin-top: 4px;
-  display: flex;
-  gap: 12px;
+}
+
+.tpl-empty {
+  text-align: center;
+  padding: 30px 0;
+  color: #666;
+  font-size: 13px;
+}
+
+.tpl-empty-hint {
+  color: #409eff;
+  margin-top: 4px;
+  font-size: 12px;
 }
 
 .df-main {
   flex: 1;
-  padding: 20px;
   overflow-y: auto;
+  padding: 20px;
 }
 
-.empty-state {
+.welcome {
   text-align: center;
   padding: 60px 0;
-  color: #666;
+  color: #ccc;
 }
 
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
+.welcome-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
 }
 
-.detail-header {
+.welcome h3 {
+  font-size: 22px;
+  margin: 0 0 8px;
+  color: #e0e0e0;
+}
+
+.welcome p {
+  color: #888;
+  margin: 0 0 24px;
+}
+
+.welcome-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.welcome-features {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+}
+
+.wf-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #999;
+  font-size: 13px;
+}
+
+.wf-icon {
+  font-size: 18px;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editor-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
+  gap: 16px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border-color, #333);
 }
 
-.dh-info h4 {
-  margin: 0 0 4px;
+.editor-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.name-input {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.name-input :deep(.el-input__inner) {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.editor-name {
+  margin: 0;
   font-size: 18px;
   color: #e0e0e0;
 }
 
-.dh-info p {
-  margin: 0;
-  color: #888;
-  font-size: 13px;
+.desc-input :deep(.el-input__inner) {
+  color: #999;
 }
 
-.dh-actions {
+.editor-actions {
   display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.editor-config {
+  background: rgba(255, 255, 255, .03);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.config-row {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.config-item {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.db-section {
-  margin-bottom: 24px;
+.config-item label {
+  font-size: 13px;
+  color: #aaa;
+  white-space: nowrap;
 }
 
-.db-section h5 {
-  margin: 0 0 8px;
+.editor-fields {
+  background: rgba(255, 255, 255, .02);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.fields-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.fields-title {
   font-size: 14px;
   color: #ccc;
-}
-
-.config-code {
-  font-size: 12px;
-  color: #67c23a;
-  background: rgba(103, 194, 58, .1);
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-
-.preview-info {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #888;
-}
-
-.dataset-info-card {
-  background: rgba(64, 158, 255, .06);
-  border: 1px solid rgba(64, 158, 255, .2);
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.dic-item {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.dic-label {
-  color: #888;
-  width: 80px;
-}
-
-.dic-value {
-  color: #e0e0e0;
-  font-weight: 500;
-}
-
-.dic-actions {
-  margin-top: 12px;
-  display: flex;
-  gap: 8px;
-}
-
-.run-result-card {
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.run-result-card.success {
-  background: rgba(103, 194, 58, .08);
-  border: 1px solid rgba(103, 194, 58, .3);
-}
-
-.run-result-card.failed {
-  background: rgba(245, 108, 108, .08);
-  border: 1px solid rgba(245, 108, 108, .3);
-}
-
-.rrc-status {
-  font-size: 16px;
   font-weight: 600;
-  margin-bottom: 8px;
 }
 
-.rrc-stats {
+.fields-empty {
+  text-align: center;
+  padding: 24px 0;
+  color: #888;
+}
+
+.fields-empty p {
+  margin: 0 0 12px;
+}
+
+.quick-add {
   display: flex;
-  gap: 20px;
-  color: #aaa;
-  font-size: 13px;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
 }
 
-.fields-editor {
+.quick-tag {
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.quick-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, .3);
+}
+
+.quick-add-label {
+  font-size: 12px;
+  color: #888;
+  line-height: 24px;
+  margin-right: 4px;
+}
+
+.fields-list {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+
+.field-card {
+  background: rgba(255, 255, 255, .03);
+  border: 1px solid var(--border-color, #2a2a2a);
+  border-radius: 8px;
+  padding: 12px;
+  transition: border-color .15s;
+}
+
+.field-card:hover {
+  border-color: rgba(64, 158, 255, .3);
+}
+
+.fc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.fc-name-row {
+  display: flex;
   gap: 8px;
 }
 
-.field-row {
+.fc-actions {
   display: flex;
+  gap: 2px;
+}
+
+.fc-rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fc-config {
+  display: flex;
+  align-items: center;
   gap: 6px;
-  align-items: center;
+  flex-wrap: wrap;
 }
 
-.empty-hint {
-  text-align: center;
-  color: #666;
-  font-size: 13px;
-  padding: 20px 0;
+.fc-hint {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
 }
 
-.dark-dialog {
-  background: #1e1e1e;
-}
-
-.error-banner {
+.fc-preview {
+  margin-top: 6px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  background: rgba(245, 108, 108, .08);
-  border: 1px solid rgba(245, 108, 108, .25);
-  border-radius: 8px;
-  color: #f89898;
-  font-size: 13px;
+  gap: 6px;
+}
+
+.fc-preview-label {
+  font-size: 11px;
+  color: #666;
+}
+
+.fc-preview-val {
+  font-size: 12px;
+  color: #67c23a;
+  background: rgba(103, 194, 58, .08);
+  padding: 1px 6px;
+  border-radius: 3px;
 }
 
 .is-error :deep(.el-input__inner) {
   border-color: #f56c6c !important;
+}
+
+.editor-preview {
+  background: rgba(255, 255, 255, .02);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.preview-title {
+  font-size: 14px;
+  color: #ccc;
+  font-weight: 600;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.preview-table-wrap {
+  margin-bottom: 12px;
+}
+
+.preview-meta {
+  font-size: 12px;
+  color: #888;
+  margin-top: 6px;
+}
+
+.preview-loading,
+.preview-empty {
+  text-align: center;
+  padding: 24px 0;
+  color: #888;
+  font-size: 13px;
+}
+
+.result-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+.result-card.success {
+  background: rgba(103, 194, 58, .08);
+  border: 1px solid rgba(103, 194, 58, .25);
+}
+
+.result-card.failed {
+  background: rgba(245, 108, 108, .08);
+  border: 1px solid rgba(245, 108, 108, .25);
+}
+
+.rc-icon {
+  font-size: 24px;
+}
+
+.rc-info {
+  flex: 1;
+}
+
+.rc-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.rc-detail {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.rc-actions {
+  flex-shrink: 0;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.preset-card {
+  padding: 16px;
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .15s;
+  text-align: center;
+}
+
+.preset-card:hover {
+  border-color: #409eff;
+  background: rgba(64, 158, 255, .06);
+  transform: translateY(-1px);
+}
+
+.pc-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.pc-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 4px;
+}
+
+.pc-desc {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 6px;
+}
+
+.pc-fields {
+  font-size: 11px;
+  color: #666;
+}
+
+.dark-dialog {
+  background: #1e1e1e;
 }
 </style>
