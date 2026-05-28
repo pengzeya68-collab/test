@@ -696,7 +696,7 @@ const exportCasesToJMeter = async (caseIds = null) => {
     link.click()
     URL.revokeObjectURL(link.href)
 
-    ElMessage.success('导出成功')
+    ElMessage.success('导出成功！兼容 JMeter 5.1.1+')
   } catch (error) {
     console.error('JMeter 导出失败:', error)
     ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
@@ -725,7 +725,7 @@ const handleExportSingleCase = async (row) => {
     link.click()
     URL.revokeObjectURL(link.href)
 
-    ElMessage.success('导出成功')
+    ElMessage.success('导出成功！兼容 JMeter 5.1.1+')
   } catch (error) {
     console.error('JMeter 导出失败:', error)
     ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))

@@ -2533,7 +2533,7 @@ const downloadJmx = () => {
   a.download = `${scriptTree.name || 'testplan'}_${ts}.jmx`
   a.click()
   URL.revokeObjectURL(a.href)
-  ElMessage.success('✅ 下载成功！用 JMeter 打开即可运行')
+  ElMessage.success('✅ 下载成功！兼容 JMeter 5.1.1 / 5.2 / 5.3 / 5.4 / 5.5 / 5.6')
 }
 
 // ===== 快速并发压测验证 =====

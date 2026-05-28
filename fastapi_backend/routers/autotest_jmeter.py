@@ -376,7 +376,8 @@ def _create_jmx_response(jmx_content: str, filename: str) -> StreamingResponse:
         media_type="application/octet-stream",
         headers={
             "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
-            "Access-Control-Expose-Headers": "Content-Disposition",
+            "Access-Control-Expose-Headers": "Content-Disposition,X-JMeter-Compatibility",
+            "X-JMeter-Compatibility": "JMeter 5.0+ (compatible with 5.1.1/5.2+/5.3+/5.4+/5.5+/5.6+)",
         },
     )
 
@@ -459,7 +460,11 @@ async def export_tree_to_jmx(body: Dict[str, Any] = Body(...)):
     
     jmx_content = export_tree_to_jmx(tree, plan_name, plan_variables)
     
-    return {"jmx_content": jmx_content, "elements": _count_elements(tree)}
+    return {
+        "jmx_content": jmx_content,
+        "elements": _count_elements(tree),
+        "jmeter_compatibility": "JMeter 5.0+ (compatible with 5.1.1/5.2+/5.3+/5.4+/5.5+/5.6+)",
+    }
 
 
 # ========== 快速并发压测（在线验证） ==========
