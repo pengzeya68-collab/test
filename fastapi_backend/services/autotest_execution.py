@@ -33,6 +33,58 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 BASE_DIR = AUTOTEST_DATA_DIR
 
+# 全局变量缓存（5分钟过期）
+_global_vars_cache = {"vars": {}, "timestamp": 0}
+_GLOBAL_VARS_CACHE_TTL = 300  # 5分钟
+
+
+async def _get_global_variables_cached() -> Dict[str, Any]:
+    """获取全局变量（带缓存）"""
+    now = time.time()
+    if now - _global_vars_cache["timestamp"] < _GLOBAL_VARS_CACHE_TTL:
+        return _global_vars_cache["vars"]
+    
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(AutoTestGlobalVariable))
+        global_vars = {}
+        for var in result.scalars().all():
+            value = var.value
+            if var.is_encrypted:
+                value = decrypt(value)
+            global_vars[var.name] = value
+    
+    _global_vars_cache["vars"] = global_vars
+    _global_vars_cache["timestamp"] = now
+    return global_vars
+
+
+def _invalidate_global_vars_cache():
+    """使全局变量缓存失效"""
+    _global_vars_cache["timestamp"] = 0
+
+
+async def _save_variables_to_db_safe(extracted_vars: Dict[str, Any]):
+    """保存变量到数据库（带异常处理）"""
+    if not extracted_vars:
+        return
+    try:
+        from fastapi_backend.services.autotest_variable_service import save_variables_to_db
+        await save_variables_to_db(extracted_vars)
+        _invalidate_global_vars_cache()  # 使缓存失效，下次重新加载
+    except Exception as e:
+        _logger.warning(f"保存变量失败: {e}")
+
+
+def _validate_url(url: str) -> bool:
+    """验证URL格式"""
+    if not url:
+        return False
+    if url.startswith(("http://", "https://")):
+        return True
+    if url.startswith("/"):
+        return True
+    return False
+
 
 def _smart_type_convert(obj: Any) -> Any:
     """递归地将 dict/list 中看起来像数字的字符串值转换为数字类型"""
@@ -64,19 +116,8 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
     """
     variables = {}
 
-    # 加载全局变量
-    async def load_global_variables():
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select(AutoTestGlobalVariable))
-            global_vars = {}
-            for var in result.scalars().all():
-                value = var.value
-                if var.is_encrypted:
-                    value = decrypt(value)
-                global_vars[var.name] = value
-            return global_vars
-    
-    global_vars = await load_global_variables()
+    # 使用缓存的全局变量
+    global_vars = await _get_global_variables_cached()
     variables.update(global_vars)
 
     if env:
@@ -236,7 +277,7 @@ async def quick_run_case(
             extractors = case.extractors
         extracted_vars = await extract_variables_from_response(extractors, response_data, response.text)
         if extracted_vars:
-            await save_variables_to_db(extracted_vars)
+            await _save_variables_to_db_safe(extracted_vars)
 
         # Bug 1 修复：状态码拦截
         if response.status_code >= 400:

@@ -482,7 +482,7 @@ async def quick_run(
 
 @router.post("/cases/batch-run")
 async def batch_run(case_ids: List[int], env_id: int = None, db: AsyncSession = Depends(get_db)):
-    """批量执行多个用例"""
+    """批量执行多个用例（并发执行）"""
     result = await db.execute(select(AutoTestCase).where(AutoTestCase.id.in_(case_ids)))
     cases = result.scalars().all()
 
@@ -498,16 +498,28 @@ async def batch_run(case_ids: List[int], env_id: int = None, db: AsyncSession = 
             env = result.scalars().first()
 
     from fastapi_backend.services.autotest_execution import quick_run_case
-    results = []
     total = len(cases)
+
+    # 并发执行（最多10个并发）
+    import asyncio
+    semaphore = asyncio.Semaphore(10)
+
+    async def run_with_limit(case):
+        async with semaphore:
+            return await quick_run_case(case, env)
+
+    results = await asyncio.gather(*[run_with_limit(c) for c in cases], return_exceptions=True)
+    
+    formatted_results = []
     success_count = 0
+    for case, result in zip(cases, results):
+        if isinstance(result, Exception):
+            formatted_results.append({"case_id": case.id, "case_name": case.name, "success": False, "error": str(result)})
+        else:
+            success_count += 1 if result["success"] else 0
+            formatted_results.append({"case_id": case.id, "case_name": case.name, **result})
 
-    for case in cases:
-        exec_result = await quick_run_case(case, env)
-        success_count += 1 if exec_result["success"] else 0
-        results.append({"case_id": case.id, "case_name": case.name, **exec_result})
-
-    return {"total": total, "success": success_count, "failed": total - success_count, "results": results}
+    return {"total": total, "success": success_count, "failed": total - success_count, "results": formatted_results}
 
 
 # ========== 测试历史接口 ==========
@@ -520,6 +532,10 @@ async def get_history(
     db: AsyncSession = Depends(get_db),
 ):
     """获取执行历史记录"""
+    # 参数校验
+    limit = max(1, min(limit, 100))  # 限制1-100
+    offset = max(0, offset)
+    
     query = select(AutoTestHistory).order_by(desc(AutoTestHistory.created_at))
     if case_id:
         query = query.where(AutoTestHistory.case_id == case_id)

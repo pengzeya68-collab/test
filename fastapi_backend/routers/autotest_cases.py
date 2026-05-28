@@ -170,6 +170,10 @@ async def get_case(case_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("", status_code=201)
 async def create_case(case_in: AutoTestCaseCreate, db: AsyncSession = Depends(get_db)):
     """创建新用例"""
+    # URL格式校验
+    if case_in.url and not case_in.url.startswith(("/", "http://", "https://")):
+        raise HTTPException(status_code=400, detail="URL格式不正确，必须以/或http://或https://开头")
+    
     data = case_in.model_dump(exclude_none=True)
     if "assertions" in data:
         data["assert_rules"] = data.pop("assertions")
@@ -194,6 +198,10 @@ async def update_case(
     db: AsyncSession = Depends(get_db),
 ):
     """更新用例"""
+    # URL格式校验
+    if case_in.url is not None and case_in.url != "" and not case_in.url.startswith(("/", "http://", "https://")):
+        raise HTTPException(status_code=400, detail="URL格式不正确，必须以/或http://或https://开头")
+    
     result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id))
     case = result.scalar_one_or_none()
     if not case:
