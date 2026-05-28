@@ -257,42 +257,22 @@ def _add_arguments_prop(parent, name, arguments):
     
     return prop
 def _add_save_config(parent):
-    """添加保存配置（用于结果收集器）"""
+    """添加保存配置（用于结果收集器）- JMeter 5.x 兼容格式"""
     configs = {
-        "time": "true",
-        "latency": "true",
-        "timestamp": "true",
-        "success": "true",
-        "label": "true",
-        "code": "true",
-        "message": "true",
-        "threadName": "true",
-        "dataType": "true",
-        "encoding": "false",
-        "assertions": "true",
-        "subresults": "true",
-        "responseData": "false",
-        "samplerData": "false",
-        "xml": "false",
-        "fieldNames": "true",
-        "responseHeaders": "false",
-        "requestHeaders": "false",
-        "responseDataOnError": "false",
-        "saveAssertionResultsFailureMessage": "false",
-        "assertionsResults": "true",
-        "bytes": "true",
-        "sentBytes": "true",
-        "url": "true",
-        "threadCounts": "true",
-        "idleTime": "true",
+        "time": "true", "latency": "true", "timestamp": "true",
+        "success": "true", "label": "true", "code": "true",
+        "message": "true", "threadName": "true", "dataType": "true",
+        "encoding": "false", "assertions": "true", "subresults": "true",
+        "responseData": "false", "samplerData": "false", "xml": "false",
+        "fieldNames": "true", "responseHeaders": "false", "requestHeaders": "false",
+        "responseDataOnError": "false", "saveAssertionResultsFailureMessage": "false",
+        "assertionsResults": "true", "bytes": "true", "sentBytes": "true",
+        "url": "true", "threadCounts": "true", "idleTime": "true",
         "connectTime": "true",
     }
-    
     for name, value in configs.items():
-        prop = ET.SubElement(parent, "value")
-        prop.set("class", "bool")
-        prop.set("name", f"save{name[:1].upper()}{name[1:]}")
-        prop.text = value
+        el = ET.SubElement(parent, name)
+        el.text = value
 
 
 _JMX_TYPE_MAP = {
