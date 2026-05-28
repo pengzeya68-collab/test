@@ -30,6 +30,23 @@ def __safe_err_rate(val):
         return "N/A"
 
 
+def _is_placeholder_api_key(key):
+    if not key:
+        return True
+    key_lower = key.lower()
+    placeholders = [
+        "your_model_api_key_here",
+        "your-openai-api-key",
+        "your_api_key",
+        "your-api-key",
+        "sk-your",
+        "change_me",
+        "changeme",
+        "placeholder",
+    ]
+    return any(p in key_lower for p in placeholders)
+
+
 async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict) -> str:
     """调用 AI 生成优化建议"""
     from sqlalchemy import select
@@ -53,7 +70,7 @@ async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict
         model = config.model
     else:
         from fastapi_backend.core.config import settings
-        if settings.AI_API_KEY and settings.AI_API_KEY != "your_model_api_key_here":
+        if settings.AI_API_KEY and not _is_placeholder_api_key(settings.AI_API_KEY):
             api_key = settings.AI_API_KEY
             base_url = settings.AI_BASE_URL
             model = settings.AI_MODEL

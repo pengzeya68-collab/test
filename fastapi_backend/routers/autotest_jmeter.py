@@ -884,15 +884,35 @@ class BenchAnalyzeRequest(BaseModel):
     duration: int = 10
     result: dict = {}
 
+def _is_placeholder_api_key(key: Optional[str]) -> bool:
+    if not key:
+        return True
+    key_lower = key.lower()
+    placeholders = [
+        "your_model_api_key_here",
+        "your-openai-api-key",
+        "your_api_key",
+        "your-api-key",
+        "sk-your",
+        "change_me",
+        "changeme",
+        "placeholder",
+    ]
+    return any(p in key_lower for p in placeholders)
+
+
 @router.post("/analyze-result")
 async def analyze_bench_result(req: BenchAnalyzeRequest, db: AsyncSession = Depends(get_db)):
     from sqlalchemy import select
     from fastapi_backend.models.models import AIConfig
+    from fastapi_backend.core.database import AsyncSessionLocal as MainAsyncSessionLocal
     from fastapi_backend.core.config import settings
-    
+
+    config = None
     try:
-        ai_result = await db.execute(select(AIConfig).where(AIConfig.is_active))
-        config = ai_result.scalar_one_or_none()
+        async with MainAsyncSessionLocal() as main_db:
+            ai_result = await main_db.execute(select(AIConfig).where(AIConfig.is_active))
+            config = ai_result.scalar_one_or_none()
     except Exception:
         config = None
 
@@ -906,7 +926,7 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, db: AsyncSession = Depe
         base_url = config.base_url
         model = config.model
         provider = config.provider.lower() if config.provider else "openai"
-    elif settings.AI_API_KEY and settings.AI_API_KEY != "your_model_api_key_here":
+    elif settings.AI_API_KEY and not _is_placeholder_api_key(settings.AI_API_KEY):
         api_key = settings.AI_API_KEY
         base_url = settings.AI_BASE_URL
         model = settings.AI_MODEL
