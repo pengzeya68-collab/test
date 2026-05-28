@@ -451,7 +451,7 @@
 </template>
 
 <script setup>
-import { ref, watch, toRaw, computed, onMounted } from 'vue'
+import { ref, watch, toRaw, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy, Collection } from '@element-plus/icons-vue'
 import JsonEditor from './JsonEditor.vue'
@@ -471,13 +471,22 @@ const activeTab = ref('headers')
 const availableVariables = ref([]) // 用于存储当前所有可用变量
 
 // 动态抽屉宽度：根据屏幕宽度自适应，全屏时更大
-const drawerSize = computed(() => {
-  if (typeof window === 'undefined') return '50%'
+const drawerSize = ref('50%')
+const updateDrawerSize = () => {
+  if (typeof window === 'undefined') { drawerSize.value = '50%'; return }
   const w = window.innerWidth
-  // 全屏或超宽屏 → 70%，普通宽屏 → 60%，窄屏保持 50%
-  if (w >= 1600) return '70%'
-  if (w >= 1200) return '60%'
-  return '50%'
+  if (w >= 1600) drawerSize.value = '70%'
+  else if (w >= 1200) drawerSize.value = '60%'
+  else drawerSize.value = '50%'
+}
+onMounted(() => {
+  updateDrawerSize()
+  window.addEventListener('resize', updateDrawerSize)
+  document.addEventListener('fullscreenchange', updateDrawerSize)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', updateDrawerSize)
+  document.removeEventListener('fullscreenchange', updateDrawerSize)
 })
 
 // 变量字典抽屉相关
