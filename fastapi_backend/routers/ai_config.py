@@ -23,9 +23,18 @@ def _make_clean_http_client(timeout: int = 60):
     )
 
 
+# 支持的AI提供商ID列表
+SUPPORTED_PROVIDERS = [
+    "deepseek", "openai", "minimax", "ark",
+    "anthropic", "google", "qwen", "glm",
+    "moonshot", "baidu", "hunyuan", "spark",
+    "groq", "custom",
+]
+PROVIDER_PATTERN = r"^(" + "|".join(SUPPORTED_PROVIDERS) + r")$"
+
 class AIConfigCreate(BaseModel):
     name: str = Field(..., max_length=100)
-    provider: str = Field(..., pattern=r"^(minimax|openai|ark|custom|deepseek)$")
+    provider: str = Field(..., pattern=PROVIDER_PATTERN)
     api_key: str
     base_url: Optional[str] = None
     model: str
@@ -37,7 +46,7 @@ class AIConfigCreate(BaseModel):
 
 class AIConfigUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
-    provider: Optional[str] = Field(None, pattern=r"^(minimax|openai|ark|custom|deepseek)$")
+    provider: Optional[str] = Field(None, pattern=PROVIDER_PATTERN)
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     model: Optional[str] = None
@@ -49,25 +58,73 @@ class AIConfigUpdate(BaseModel):
 
 PROVIDER_MODEL_SUGGESTIONS = {
     "deepseek": [
-        {"id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash (最新, 快速)", "description": "最新一代模型，支持思考模式，性价比最高"},
+        {"id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash (最新, 快速)", "description": "最新一代模型，快速响应"},
         {"id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro (高性能)", "description": "高性能版本，适合复杂任务"},
-        {"id": "deepseek-chat", "name": "DeepSeek Chat (兼容)", "description": "兼容模式，将于2026/07/24弃用"},
-        {"id": "deepseek-reasoner", "name": "DeepSeek Reasoner (推理)", "description": "推理专用模型，将于2026/07/24弃用"},
+        {"id": "deepseek-chat", "name": "DeepSeek Chat (V3)", "description": "经典DeepSeek V3模型"},
+        {"id": "deepseek-reasoner", "name": "DeepSeek Reasoner (R1)", "description": "推理专用模型R1"},
     ],
     "openai": [
-        {"id": "gpt-4o", "name": "GPT-4o (最新)", "description": "OpenAI最新多模态模型"},
-        {"id": "gpt-4o-mini", "name": "GPT-4o Mini (轻量)", "description": "轻量版GPT-4o，性价比高"},
+        {"id": "gpt-4o", "name": "GPT-4o", "description": "OpenAI最新多模态旗舰"},
+        {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "description": "轻量快速，性价比高"},
         {"id": "gpt-4-turbo", "name": "GPT-4 Turbo", "description": "高性能GPT-4"},
-        {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "description": "快速响应，低成本"},
+        {"id": "o1", "name": "o1 (推理)", "description": "深度推理模型"},
+        {"id": "o3-mini", "name": "o3 Mini", "description": "轻量推理模型"},
     ],
     "minimax": [
+        {"id": "MiniMax-M2.7", "name": "MiniMax M2.7", "description": "海螺AI最新旗舰模型"},
         {"id": "abab6.5s-chat", "name": "ABAB 6.5S Chat", "description": "MiniMax快速模型"},
-        {"id": "abab6.5-chat", "name": "ABAB 6.5 Chat", "description": "MiniMax标准模型"},
-        {"id": "abab5.5-chat", "name": "ABAB 5.5 Chat", "description": "MiniMax兼容模型"},
+        {"id": "MiniMax-T2", "name": "MiniMax T2 (思考)", "description": "支持深度思考模式"},
     ],
     "ark": [
         {"id": "doubao-pro-32k", "name": "豆包 Pro 32K", "description": "字节跳动高性能模型"},
         {"id": "doubao-lite-32k", "name": "豆包 Lite 32K", "description": "字节跳动轻量模型"},
+        {"id": "doubao-1.5-pro-256k", "name": "豆包 1.5 Pro 256K", "description": "超长上下文"},
+    ],
+    "anthropic": [
+        {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "description": "Anthropic旗舰，编程/写作顶级"},
+        {"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku", "description": "快速轻量版"},
+        {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "description": "最强推理能力"},
+    ],
+    "google": [
+        {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash", "description": "Google最新快速模型"},
+        {"id": "gemini-2.0-pro-exp-02-05", "name": "Gemini 2.0 Pro", "description": "Google最强旗舰"},
+        {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro", "description": "稳定版旗舰"},
+    ],
+    "qwen": [
+        {"id": "qwen-max", "name": "通义千问 Max", "description": "阿里云最强旗舰"},
+        {"id": "qwen-plus", "name": "通义千问 Plus", "description": "性能与速度均衡"},
+        {"id": "qwen-turbo", "name": "通义千问 Turbo", "description": "极速响应"},
+        {"id": "qwen2.5-72b-instruct", "name": "Qwen2.5 72B", "description": "开源旗舰72B"},
+    ],
+    "glm": [
+        {"id": "glm-4-plus", "name": "GLM-4 Plus", "description": "智谱AI旗舰模型"},
+        {"id": "glm-4-flash", "name": "GLM-4 Flash", "description": "快速免费版"},
+        {"id": "glm-4-air", "name": "GLM-4 Air", "description": "轻量高性能"},
+    ],
+    "moonshot": [
+        {"id": "moonshot-v1-8k", "name": "Kimi Moonshot v1 8K", "description": "月之暗面标准版"},
+        {"id": "moonshot-v1-32k", "name": "Kimi Moonshot v1 32K", "description": "长上下文32K"},
+        {"id": "moonshot-v1-128k", "name": "Kimi Moonshot v1 128K", "description": "超长上下文128K"},
+    ],
+    "baidu": [
+        {"id": "ernie-4.0-turbo-8k", "name": "文心一言 4.0 Turbo", "description": "百度最强旗舰"},
+        {"id": "ernie-3.5-8k", "name": "文心一言 3.5", "description": "高性能标准版"},
+        {"id": "ernie-speed-8k", "name": "文心一言 Speed", "description": "极速响应版"},
+    ],
+    "hunyuan": [
+        {"id": "hunyuan-turbo", "name": "混元 Turbo", "description": "腾讯混元旗舰"},
+        {"id": "hunyuan-pro", "name": "混元 Pro", "description": "专业高性能"},
+        {"id": "hunyuan-lite", "name": "混元 Lite", "description": "轻量免费版"},
+    ],
+    "spark": [
+        {"id": "generalv3.5", "name": "星火 3.5", "description": "讯飞星火最新版"},
+        {"id": "generalv3", "name": "星火 3.0", "description": "讯飞星火稳定版"},
+        {"id": "pro-128k", "name": "星火 Pro 128K", "description": "超长上下文版"},
+    ],
+    "groq": [
+        {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "description": "Meta最新开源旗舰"},
+        {"id": "deepseek-r1-distill-llama-70b", "name": "DeepSeek R1 Distill 70B", "description": "DeepSeek R1蒸馏版"},
+        {"id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B", "description": "Mistral混合专家模型"},
     ],
     "custom": [
         {"id": "custom", "name": "自定义模型", "description": "使用自定义API端点"},
@@ -443,47 +500,105 @@ async def get_active_config(
 async def list_providers(
     current_user: User = Depends(require_admin),
 ):
-    """获取支持的AI提供商列表"""
+    """获取支持的AI提供商列表（含默认Base URL，输入Key即可用）"""
     providers = [
         {
             "id": "deepseek",
             "name": "DeepSeek",
-            "description": "深度求索AI，高性价比，支持思考模式",
+            "description": "深度求索AI | 高性价比 | 支持思考模式 | 国产开源先锋",
             "base_url": "https://api.deepseek.com",
             "icon": "🧠",
-            "supported": True,
         },
         {
             "id": "openai",
             "name": "OpenAI",
-            "description": "OpenAI官方API，GPT系列模型",
+            "description": "GPT系列 | 全球最强多模态 | o1/o3推理模型",
             "base_url": "https://api.openai.com",
             "icon": "🤖",
-            "supported": True,
+        },
+        {
+            "id": "anthropic",
+            "name": "Anthropic Claude",
+            "description": "Claude系列 | 编程/写作顶级 | 安全对齐最强",
+            "base_url": "https://api.anthropic.com",
+            "icon": "🎭",
+        },
+        {
+            "id": "google",
+            "name": "Google Gemini",
+            "description": "Gemini系列 | 多模态原生支持 | 超长上下文",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+            "icon": "🌐",
         },
         {
             "id": "minimax",
-            "name": "MiniMax",
-            "description": "MiniMax海螺AI，国产模型",
+            "name": "MiniMax 海螺AI",
+            "description": "国产模型 | ABAB系列 | 高并发低延迟",
             "base_url": "https://api.minimax.chat",
             "icon": "🎯",
-            "supported": True,
+        },
+        {
+            "id": "qwen",
+            "name": "阿里通义千问",
+            "description": "Qwen系列 | 阿里云旗舰 | 多尺寸可选",
+            "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "icon": "☁️",
+        },
+        {
+            "id": "glm",
+            "name": "智谱 ChatGLM",
+            "description": "GLM-4系列 | 国产开源标杆 | Flash免费版",
+            "base_url": "https://open.bigmodel.cn/api/paas/v4",
+            "icon": "🔮",
+        },
+        {
+            "id": "moonshot",
+            "name": "月之暗面 Kimi",
+            "description": "Moonshot系列 | 超长上下文128K | 国产效率之选",
+            "base_url": "https://api.moonshot.cn/v1",
+            "icon": "🌙",
+        },
+        {
+            "id": "baidu",
+            "name": "百度文心一言",
+            "description": "ERNIE系列 | 百度旗舰 | 中文理解领先",
+            "base_url": "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat",
+            "icon": "🐼",
+        },
+        {
+            "id": "hunyuan",
+            "name": "腾讯混元",
+            "description": "混元系列 | 腾讯旗舰 | Lite免费版可用",
+            "base_url": "https://api.hunyuan.cloud.tencent.com/v1",
+            "icon": "🐧",
+        },
+        {
+            "id": "spark",
+            "name": "讯飞星火",
+            "description": "星火系列 | 讯飞旗舰 | 中文语音领先",
+            "base_url": "https://spark-api-open.xf-yun.com/v1",
+            "icon": "⭐",
         },
         {
             "id": "ark",
-            "name": "火山引擎(豆包)",
-            "description": "字节跳动豆包模型",
+            "name": "火山引擎 豆包",
+            "description": "豆包系列 | 字节跳动旗舰 | 高性价比",
             "base_url": "https://ark.cn-beijing.volces.com/api/v3",
             "icon": "🌋",
-            "supported": True,
+        },
+        {
+            "id": "groq",
+            "name": "Groq",
+            "description": "Llama/Mixtral系列 | 全球最快推理 | 开源模型托管",
+            "base_url": "https://api.groq.com/openai/v1",
+            "icon": "⚡",
         },
         {
             "id": "custom",
             "name": "自定义",
-            "description": "使用自定义API端点",
+            "description": "使用自定义API端点 | 支持任何OpenAI兼容接口",
             "base_url": "",
             "icon": "⚙️",
-            "supported": True,
         },
     ]
     return SuccessResponse(data={"providers": providers}, message="获取提供商列表成功")
