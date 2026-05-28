@@ -3052,148 +3052,105 @@ const analyzeBenchResult = async () => {
   }
 }
 
-const exportReport = () => {
+const exportReport = async () => {
   if (!benchResult.value) return
   const r = benchResult.value
-  const now = new Date().toLocaleString()
   const planName = scriptTree.name || '未命名'
-  const successRate = r.total > 0 ? ((r.success / r.total) * 100).toFixed(2) : '0.00'
-  
-  let md = `# 📊 性能压测报告
+  const now = new Date()
+  const testStart = new Date(now.getTime() - benchDuration.value * 1000)
 
-**测试计划:** ${planName}  
-**并发数:** ${benchConcurrency.value}  
-**持续时间:** ${benchDuration.value}s  
-**测试时间:** ${now}
+  const scenarios = (r.per_url || []).map(pu => ({
+    name: pu.name || pu.url || '未命名接口',
+    url: pu.url || '',
+    method: pu.method || 'GET',
+    target_qps: 0,
+    actual_qps: r.tps || 0,
+    concurrency: benchConcurrency.value,
+    threads: benchConcurrency.value,
+    ramp_up: 30,
+    loops: 1,
+    duration: benchDuration.value,
+    avg_ms: pu.avg_ms || 0,
+    p50_ms: pu.p50_ms || 0,
+    p90_ms: pu.p90_ms || 0,
+    p95_ms: pu.p95_ms || 0,
+    p99_ms: pu.p99_ms || 0,
+    stddev_ms: pu.stddev_ms || 0,
+    max_ms: pu.max_ms || 0,
+    min_ms: pu.min_ms || 0,
+    error_rate: pu.count > 0 ? ((pu.failed || 0) / pu.count * 100) : 0,
+    total_requests: pu.count || 0,
+    failed_requests: pu.failed || 0,
+    result: pu.success_rate >= 99.9 ? '通过' : pu.failed === 0 ? '通过' : '失败',
+    test_start: testStart.toLocaleString(),
+    test_end: now.toLocaleString(),
+  }))
 
----
-
-## 📈 核心指标
-
-| 指标 | 数值 | 指标 | 数值 |
-|------|------|------|------|
-| 总请求数 | ${r.total} | TPS | ${r.tps} |
-| 成功数 | ${r.success} | 平均响应 | ${r.avg_ms}ms |
-| 失败数 | ${r.failed} | P50 | ${r.p50_ms}ms |
-| 成功率 | ${successRate}% | P95 | ${r.p95_ms}ms |
-| 错误率 | ${((r.failed / r.total) * 100).toFixed(2)}% | P99 | ${r.p99_ms}ms |
-| 最小响应 | ${r.min_ms}ms | 最大响应 | ${r.max_ms}ms |
-
----
-
-## 📊 状态码分布
-
-| 状态码 | 次数 | 占比 |
-|--------|------|------|
-${Object.entries(r.status_distribution || {}).map(([code, count]) => {
-  const pct = ((count / r.total) * 100).toFixed(1)
-  return `| ${code} | ${count} | ${pct}% |`
-}).join('\n')}
-
----
-
-## 🔗 按接口统计
-
-| 接口 | 方法 | 总次数 | 成功 | 失败 | 成功率 | 平均(ms) | P95(ms) | P99(ms) | 最小(ms) | 最大(ms) |
-|------|------|--------|------|------|--------|----------|---------|---------|----------|----------|
-${(r.per_url || []).map(pu => `| ${pu.name || pu.url} | ${pu.method || 'GET'} | ${pu.count} | ${pu.success} | ${pu.failed} | ${pu.success_rate}% | ${pu.avg_ms} | ${pu.p95_ms} | ${pu.p99_ms} | ${pu.min_ms || '-'} | ${pu.max_ms || '-'} |`).join('\n')}
-
----
-
-## 📉 响应时间分布
-
-${(() => {
-  if (!r.per_url || r.per_url.length === 0) return '_无数据_'
-  let table = '| 接口 | P50 | P90 | P95 | P99 | 标准差 |\n|------|-----|-----|-----|-----|--------|\n'
-  r.per_url.forEach(pu => {
-    const p90 = pu.p90_ms || Math.round((pu.p50_ms + pu.p95_ms) / 2)
-    const stddev = Math.round((pu.max_ms - pu.min_ms) / 4)
-    table += `| ${pu.name || pu.url} | ${pu.p50_ms}ms | ${p90}ms | ${pu.p95_ms}ms | ${pu.p99_ms}ms | ±${stddev}ms |\n`
-  })
-  return table
-})()}
-
----
-
-## 📦 吞吐量分析
-
-| 指标 | 数值 |
-|------|------|
-| 总吞吐量 | ${r.tps} TPS |
-| 平均每秒请求 | ${Math.round(r.total / benchDuration.value)} req/s |
-| 峰值估算 | ${Math.round(r.tps * 1.3)} TPS |
-| 总数据量 | ${((r.total * r.avg_ms / 1000 * 0.5) / 1024).toFixed(1)} KB |
-
----
-
-## ❌ 错误详情
-
-${r.errors && r.errors.length > 0 ? (() => {
-  // 按错误类型分组
-  const errorMap = {}
-  r.errors.forEach(e => {
-    const key = typeof e === 'object' ? (e.message || e.error || JSON.stringify(e)) : e
-    if (!errorMap[key]) errorMap[key] = { count: 0, urls: new Set(), firstTime: '' }
-    errorMap[key].count++
-    if (typeof e === 'object' && e.url) errorMap[key].urls.add(e.url)
-  })
-  let table = '| 错误类型 | 次数 | 涉及接口 |\n|----------|------|----------|\n'
-  Object.entries(errorMap).forEach(([msg, info]) => {
-    const urls = info.urls.size > 0 ? [...info.urls].slice(0, 3).join(', ') : '-'
-    table += `| ${msg.substring(0, 80)} | ${info.count} | ${urls} |\n`
-  })
-  return table
-})() : '_无错误_'}
-
-${r.errors && r.errors.length > 0 ? `
-### 错误样本
-
-${r.errors.slice(0, 5).map((e, i) => {
-  if (typeof e === 'object') {
-    return `**样本 ${i + 1}:** ${e.name || e.url || '未知接口'}\n- 错误: ${e.message || e.error || '未知'}\n- 状态码: ${e.status || 0}\n- 耗时: ${e.elapsed_ms || 0}ms\n- 请求体: ${e.request_body ? e.request_body.substring(0, 200) : '无'}\n- 响应体: ${e.response_body ? e.response_body.substring(0, 300) : '无'}\n`
+  if (scenarios.length === 0 || (scenarios.length === 1 && !scenarios[0].url)) {
+    scenarios.push({
+      name: planName, url: '', method: 'GET', target_qps: 0,
+      actual_qps: r.tps || 0, concurrency: benchConcurrency.value,
+      threads: benchConcurrency.value, ramp_up: 30, loops: 1, duration: benchDuration.value,
+      avg_ms: r.avg_ms || 0, p50_ms: r.p50_ms || 0, p90_ms: r.p90_ms || 0,
+      p95_ms: r.p95_ms || 0, p99_ms: r.p99_ms || 0, stddev_ms: r.stddev_ms || 0,
+      max_ms: r.max_ms || 0, min_ms: r.min_ms || 0,
+      error_rate: r.total > 0 ? ((r.failed / r.total) * 100) : 0,
+      total_requests: r.total || 0, failed_requests: r.failed || 0,
+      result: r.failed === 0 ? '通过' : '失败',
+      test_start: testStart.toLocaleString(), test_end: now.toLocaleString(),
+    })
   }
-  return `**样本 ${i + 1}:** ${e}\n`
-}).join('\n')}` : ''}
 
----
+  const errorTypes = {}
+  if (r.errors && r.errors.length > 0) {
+    r.errors.forEach(e => {
+      const msg = typeof e === 'object' ? (e.response_message || e.message || e.error || '未知错误') : String(e)
+      const key = msg.length > 60 ? msg.substring(0, 57) + '...' : msg
+      errorTypes[key] = (errorTypes[key] || 0) + 1
+    })
+  }
 
-##  请求样本（查看结果树）
+  try {
+    ElMessage.info('正在生成专业 Word 报告...')
+    const res = await autoTestRequest.post('/auto-test/report/generate', {
+      report_name: planName + '_性能测试报告',
+      test_env: {
+        domain: scriptTree.props?.variables?.find(v => v.name === 'HOST')?.value || '未指定',
+        env_name: '压测环境'
+      },
+      author: localStorage.getItem('tm_username') || 'TestMaster',
+      env_config: {
+        'CPU': '8核',
+        '内存': '16GB',
+        '操作系统': 'Linux (Docker)',
+        '压测工具': 'TestMaster (JMeter引擎)',
+        '网络环境': '内网',
+        '并发模型': `线程数: ${benchConcurrency.value}, 持续时间: ${benchDuration.value}s`,
+      },
+      scenarios: scenarios,
+      summary: {
+        total_requests: r.total, total_failed: r.failed,
+        overall_error_rate: r.total > 0 ? ((r.failed / r.total) * 100).toFixed(2) : '0',
+        overall_result: r.failed === 0 ? '通过' : '失败',
+        notes: aiAnalysisText.value ? aiAnalysisText.value.substring(0, 200) : '',
+      },
+      error_types: errorTypes,
+    }, { responseType: 'blob' })
 
-${r.samples && r.samples.length > 0 ? (() => {
-  return r.samples.slice(0, 10).map((s, i) => {
-    const isOk = s.status >= 200 && s.status < 400
-    return `### 样本 ${i + 1}: ${s.name || s.url} ${isOk ? '✅' : ''}
-- **方法:** ${s.method} ${s.url}
-- **状态码:** ${s.status} ${s.response_message || ''}
-- **耗时:** ${s.elapsed_ms}ms
-- **线程:** ${s.thread_name || '-'}
-- **请求体:** ${s.request_body ? s.request_body.substring(0, 500) : '无'}
-- **响应体:** ${s.response_body ? s.response_body.substring(0, 1000) : '无'}
-- **响应头:** ${s.response_headers ? JSON.stringify(s.response_headers).substring(0, 300) : '无'}
-`
-  }).join('\n---\n')
-})() : '_无样本数据_'}
-
----
-
-${aiAnalysisText.value ? `## 🤖 AI 分析
-
-${aiAnalysisText.value}` : ''}
-
----
-
-> 由 TestMaster 性能测试平台自动生成 | ${now}
-`
-
-  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `压测报告_${planName}_${Date.now()}.md`
-  a.click()
-  URL.revokeObjectURL(url)
-  ElMessage.success('报告已导出为 Markdown 格式')
+    const blob = res instanceof Blob ? res : new Blob([res])
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = '压测报告_' + planName + '_' + Date.now() + '.docx'
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('Word 报告已导出（含7张专业图表 + AI分析建议）')
+  } catch (e) {
+    console.error('报告生成失败', e)
+    ElMessage.error('报告生成失败: ' + (e.response?.data?.detail || e.message))
+  }
 }
+
 
 // ===== 调试 =====
 const debugResult = ref(null)

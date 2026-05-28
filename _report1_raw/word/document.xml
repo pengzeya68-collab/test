@@ -1,0 +1,4401 @@
+<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+  <w:body>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="312" w:after="312" w:line="480" w:lineRule="auto"/>
+        <w:jc w:val="center"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="44"/>
+        </w:rPr>
+        <w:t>电子证照联合压测_性能测试报告_1129</w:t>
+      </w:r>
+      
+      
+      
+      
+      
+      
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="120" w:after="120" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="vpm5ps"/>
+        <w:tblInd w:w="38" w:type="dxa"/>
+        <w:tblLayout w:type="fixed"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="1455"/>
+        <w:gridCol w:w="1920"/>
+        <w:gridCol w:w="1200"/>
+        <w:gridCol w:w="1950"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1455" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>文件编号</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="5070" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1455" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>文件状态</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="5070" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>[ ]草稿  [√ ] 正式发布  []正在修改</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1455" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>当前版本</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="5070" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>V1.0</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1455" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>拟 制</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1920" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr/>
+              <w:t>秦文涛</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>日期</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1950" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>2022/11/29</w:t>
+            </w:r>
+            
+            
+            
+            
+            
+            
+            
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1455" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>审 核</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1920" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>日期</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1950" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1455" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>批 准</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1920" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>日期</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1950" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:ind w:firstLineChars="500"/>
+        <w:jc w:val="right"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="20"/>
+        </w:rPr>
+        <w:t>A</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="20"/>
+        </w:rPr>
+        <w:t> - 增加  </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="20"/>
+        </w:rPr>
+        <w:t>M</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="20"/>
+        </w:rPr>
+        <w:t> - 修订  </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="20"/>
+        </w:rPr>
+        <w:t>D</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="20"/>
+        </w:rPr>
+        <w:t> - 删除</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="vpm5ps"/>
+        <w:tblInd w:w="38" w:type="dxa"/>
+        <w:tblLayout w:type="fixed"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="1410"/>
+        <w:gridCol w:w="1440"/>
+        <w:gridCol w:w="1650"/>
+        <w:gridCol w:w="1155"/>
+        <w:gridCol w:w="2130"/>
+        <w:gridCol w:w="1200"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="690"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1410" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>变更版本号</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1440" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>日期</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1650" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>变更类型（A*M*D）</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>修改人</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2130" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>摘        要</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>备注</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1410" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>V1.0</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1440" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>2022/11/29</w:t>
+            </w:r>
+            
+            
+            
+            
+            
+            
+            
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1650" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:ind w:firstLineChars="300"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>A</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr/>
+              <w:t>秦文涛</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2130" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>性能报告的制定</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1410" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1440" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1650" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:ind w:firstLineChars="300"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2130" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1410" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1440" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1650" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:ind w:firstLineChars="300"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2130" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1410" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1440" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1650" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:ind w:firstLineChars="300"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2130" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1410" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1440" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1650" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:ind w:firstLineChars="300"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2130" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1410" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1440" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1650" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2130" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1410" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1440" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1650" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2130" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1200" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="smyczv"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="宋体" w:hAnsi="宋体" w:eastAsia="宋体" w:cs="宋体"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+        <w:t>1. </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+        <w:t>背景</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>
+        <w:ind w:firstLineChars="200"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="24"/>
+        </w:rPr>
+        <w:t>测试京通小程序接口访问性能。</w:t>
+      </w:r>
+      
+      
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="smyczv"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="宋体" w:hAnsi="宋体" w:eastAsia="宋体" w:cs="宋体"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+        <w:t>2. </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+        <w:t>测试概述</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="dh9rvh"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="宋体" w:hAnsi="宋体" w:eastAsia="宋体" w:cs="宋体"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t>2.1. </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t>测试目的</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240"/>
+        <w:ind w:left="0" w:right="0" w:firstLine="360"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="24"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>性能测试的目的是确定本项目在部署机器上支持的并发数，响应时间，是否满足性能需求，检验系统的运行瓶颈，获取系统各个模块的处理能力。</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="dh9rvh"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="宋体" w:hAnsi="宋体" w:eastAsia="宋体" w:cs="宋体"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t>2.2. </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t xml:space="preserve">压测目标环境：生产环境 </w:t>
+      </w:r>
+      
+      
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="312"/>
+        <w:ind w:left="0" w:right="0"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="24"/>
+          <w:u w:val="none"/>
+          <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+        </w:rPr>
+        <w:t>域名：https://jt.beijing.gov.cn</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="dh9rvh"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="宋体" w:hAnsi="宋体" w:eastAsia="宋体" w:cs="宋体"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t>2.3. </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t>混压场景所含接口</w:t>
+      </w:r>
+      
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="vpm5ps"/>
+        <w:tblInd w:w="38" w:type="dxa"/>
+        <w:tblLayout w:type="fixed"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="1155"/>
+        <w:gridCol w:w="1995"/>
+        <w:gridCol w:w="2595"/>
+        <w:gridCol w:w="1665"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="795"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>序号</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1995" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>压测接口</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2595" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>含义</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1665" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+              </w:rPr>
+              <w:t>目标QPS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="795"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Microsoft YaHei" w:hAnsi="Microsoft YaHei" w:eastAsia="Microsoft YaHei" w:cs="Microsoft YaHei"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:strike w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="20"/>
+                <w:u w:val="none"/>
+              </w:rPr>
+              <w:t>39</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1995" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Microsoft YaHei" w:hAnsi="Microsoft YaHei" w:eastAsia="Microsoft YaHei" w:cs="Microsoft YaHei"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:strike w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="20"/>
+                <w:u w:val="none"/>
+              </w:rPr>
+              <w:t>/jt-electronic-card-service/certInfo/getUserSingleCertInfo</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2595" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Microsoft YaHei" w:hAnsi="Microsoft YaHei" w:eastAsia="Microsoft YaHei" w:cs="Microsoft YaHei"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:strike w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="20"/>
+                <w:u w:val="none"/>
+              </w:rPr>
+              <w:t>新电子证照-2.获取用户用证信息（单量）</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1665" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr/>
+              <w:t>未设定</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="795"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1155" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Microsoft YaHei" w:hAnsi="Microsoft YaHei" w:eastAsia="Microsoft YaHei" w:cs="Microsoft YaHei"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:strike w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="20"/>
+                <w:u w:val="none"/>
+              </w:rPr>
+              <w:t>44</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1995" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Microsoft YaHei" w:hAnsi="Microsoft YaHei" w:eastAsia="Microsoft YaHei" w:cs="Microsoft YaHei"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:strike w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="20"/>
+                <w:u w:val="none"/>
+              </w:rPr>
+              <w:t>/jt-electronic-card-service/certInfo/showCert</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2595" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Microsoft YaHei" w:hAnsi="Microsoft YaHei" w:eastAsia="Microsoft YaHei" w:cs="Microsoft YaHei"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:strike w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="20"/>
+                <w:u w:val="none"/>
+              </w:rPr>
+              <w:t>新电子证照-7.亮证</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1665" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr/>
+              <w:t>未设定</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="dh9rvh"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="宋体" w:hAnsi="宋体" w:eastAsia="宋体" w:cs="宋体"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t>2.4. </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t>测试指标/参考依据</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="24"/>
+        </w:rPr>
+        <w:t>吞吐量QPS(req/s)</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="24"/>
+        </w:rPr>
+        <w:t>报错率</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="24"/>
+        </w:rPr>
+        <w:t xml:space="preserve">95%分位的平均响应时间（ms） </w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="24"/>
+        </w:rPr>
+        <w:t>并发量/并发用户数</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="both"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="21"/>
+          <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+        </w:rPr>
+        <w:t>腾讯web接口性能质量标准</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="vpm5ps"/>
+        <w:tblInd w:w="38" w:type="dxa"/>
+        <w:tblLayout w:type="fixed"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="900"/>
+        <w:gridCol w:w="2475"/>
+        <w:gridCol w:w="5655"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="270"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="900" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>序号</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2475" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>指标项</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="5655" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>标准</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="270"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="900" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>1</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2475" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>错误率</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="5655" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>1%以内</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="435"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="900" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>2</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2475" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>响应时间，95分位耗时</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="5655" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>5s</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="270"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="900" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>3</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2475" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>吞吐量</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="5655" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="bottom"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="21"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>系统核心接口峰值吞吐量达到项目要求，并预留冗余</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="dh9rvh"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="宋体" w:hAnsi="宋体" w:eastAsia="宋体" w:cs="宋体"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t>2.5. </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t>术语/缩略语</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="vpm5ps"/>
+        <w:tblInd w:w="38" w:type="dxa"/>
+        <w:tblLayout w:type="fixed"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="1755"/>
+        <w:gridCol w:w="3720"/>
+        <w:gridCol w:w="3433"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="435"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1755" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:shd w:fill="E7E6E6"/>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>术语/缩略语</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3720" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:shd w:fill="E7E6E6"/>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>全称</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3433" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:shd w:fill="E7E6E6"/>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>含义</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1755" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>TPS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3720" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>每秒处理事务（Transaction Per Second）</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3433" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+                <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+              </w:rPr>
+              <w:t>每秒内的事务数</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1755" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>QPS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3720" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>每秒处理请求数（Queries-per-second)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3433" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>每秒查询率数</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1755" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>VUM</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3720" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Virtual User Minute，意为&#x201C;虚拟用户×时间&#x201D;。</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3433" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>1 个虚拟用户执行 1 分钟压测则消耗 1 个 VUM。</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1755" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>错误率</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3720" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>错误率</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3433" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>本次测试中返回错误状态码的请求数/请求数的总数</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1755" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>并发量/并发用户数</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3720" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>并发量/并发用户数</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3433" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>在同一时刻与服务器进行交互的在线用户数量</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1755" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>95分位耗时</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3720" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="left"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>95分位耗时</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3433" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>分位值即把所有的数值从小到大排序，取前 N% 位置的值，即为该分位的值。95分位耗时的意思是： 将采集到的 100 个数据，从小到大排列，取出第 95 个用户的数据做统计</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="smyczv"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="宋体" w:hAnsi="宋体" w:eastAsia="宋体" w:cs="宋体"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+        <w:t>3. </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+        <w:t>性能测试过程</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pBdr/>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:ind w:left="864" w:hanging="432"/>
+        <w:jc w:val="left"/>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+        <w:t>生产环境进行压测</w:t>
+      </w:r>
+      
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="dh9rvh"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>3.39【通过】场景：获取用户用证信息&amp;亮证</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>测试结果：通过</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>吞吐量(req/s)：980.29</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>报错率：0.33%</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pBdr/>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>95%分位的平均响应时间（ms）：</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>获取用户用证信息891ms ，亮证1780ms</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>并发量：800</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>数据分析：</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>测试时间：2022-11-28 23:42:31到2022-11-28 23:47:31</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pBdr>
+          <w:bottom/>
+        </w:pBdr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:drawing>
+          <wp:inline distT="0" distB="0" distL="0" distR="0">
+            <wp:extent cx="5760720" cy="9916401"/>
+            <wp:effectExtent l="0" t="0" r="0" b="0"/>
+            <wp:docPr id="2" name="picture" descr="descript"/>
+            <wp:cNvGraphicFramePr/>
+            <a:graphic>
+              <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                <pic:pic>
+                  <pic:nvPicPr>
+                    <pic:cNvPr id="3" name="picture" descr="descript"/>
+                    <pic:cNvPicPr/>
+                  </pic:nvPicPr>
+                  <pic:blipFill rotWithShape="true">
+                    <a:blip r:embed="rId5"/>
+                    <a:stretch/>
+                  </pic:blipFill>
+                  <pic:spPr>
+                    <a:xfrm>
+                      <a:off x="0" y="0"/>
+                      <a:ext cx="5760720" cy="9916401"/>
+                    </a:xfrm>
+                    <a:prstGeom prst="rect">
+                      <a:avLst/>
+                    </a:prstGeom>
+                  </pic:spPr>
+                </pic:pic>
+              </a:graphicData>
+            </a:graphic>
+          </wp:inline>
+        </w:drawing>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="dh9rvh"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>3.44【通过】场景：获取用户用证信息&amp;亮证</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>测试结果：通过</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>吞吐量(req/s)：1050</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>报错率：0.5%</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pBdr/>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>95%分位的平均响应时间（ms）：</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:numPr/>
+        <w:pBdr>
+          <w:bottom/>
+        </w:pBdr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>获取用户用证信息918.35ms ，亮证1670ms</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>并发量：1000</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>数据分析：</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>测试时间：2022-11-28 23:48:31到2022-11-28 23:53:31</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:drawing>
+          <wp:inline distT="0" distB="0" distL="0" distR="0">
+            <wp:extent cx="5760720" cy="9864459"/>
+            <wp:effectExtent l="0" t="0" r="0" b="0"/>
+            <wp:docPr id="5" name="picture" descr="descript"/>
+            <wp:cNvGraphicFramePr/>
+            <a:graphic>
+              <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                <pic:pic>
+                  <pic:nvPicPr>
+                    <pic:cNvPr id="6" name="picture" descr="descript"/>
+                    <pic:cNvPicPr/>
+                  </pic:nvPicPr>
+                  <pic:blipFill rotWithShape="true">
+                    <a:blip r:embed="rId6"/>
+                    <a:stretch/>
+                  </pic:blipFill>
+                  <pic:spPr>
+                    <a:xfrm>
+                      <a:off x="0" y="0"/>
+                      <a:ext cx="5760720" cy="9864459"/>
+                    </a:xfrm>
+                    <a:prstGeom prst="rect">
+                      <a:avLst/>
+                    </a:prstGeom>
+                  </pic:spPr>
+                </pic:pic>
+              </a:graphicData>
+            </a:graphic>
+          </wp:inline>
+        </w:drawing>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pBdr/>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:ind w:left="0" w:firstLine="0"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="smyczv"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>4.结论</w:t>
+      </w:r>
+      
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="60" w:after="60" w:line="312"/>
+        <w:ind w:left="0" w:right="0"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:color w:val="333333"/>
+          <w:sz w:val="22"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t>接口压测结果数据如下：</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:ind/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t xml:space="preserve">获取用户用证信息&amp;亮证 并发数：800 目标QPS：未设定  实际QPS：980.29  </w:t>
+      </w:r>
+      
+      
+      
+      
+      
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:snapToGrid/>
+        <w:spacing w:line="240"/>
+        <w:ind/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:b w:val="false"/>
+          <w:i w:val="false"/>
+          <w:strike w:val="false"/>
+          <w:spacing w:val="0"/>
+          <w:u w:val="none"/>
+        </w:rPr>
+        <w:t xml:space="preserve">获取用户用证信息&amp;亮证 并发数：1000 目标QPS：未设定  实际QPS：1050  </w:t>
+      </w:r>
+      
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+        <w:t>附录.审批意见</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="vpm5ps"/>
+        <w:tblInd w:w="38" w:type="dxa"/>
+        <w:tblLayout w:type="fixed"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="8835"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="480"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="8835" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:left w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:bottom w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+              <w:right w:val="single" w:color="000000" w:sz="6" w:space="0"/>
+            </w:tcBorders>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>项目经理审批意见：</w:t>
+            </w:r>
+          </w:p>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr/>
+            </w:pPr>
+          </w:p>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>签字 测试负责人    秦文涛</w:t>
+            </w:r>
+            
+          </w:p>
+          <w:p>
+            <w:pPr>
+              <w:snapToGrid w:val="false"/>
+              <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="微软雅黑" w:hAnsi="微软雅黑" w:eastAsia="微软雅黑" w:cs="微软雅黑"/>
+                <w:b w:val="false"/>
+                <w:i w:val="false"/>
+                <w:color w:val="000000"/>
+                <w:spacing w:val="0"/>
+                <w:sz w:val="24"/>
+              </w:rPr>
+              <w:t>日期 报告日期   2022-11-29</w:t>
+            </w:r>
+            
+            
+            
+            
+            
+            
+            
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p>
+      <w:pPr>
+        <w:snapToGrid w:val="false"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:jc w:val="left"/>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr/>
+      </w:pPr>
+    </w:p>
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="1361" w:right="1417" w:bottom="1361" w:left="1417" w:header="712" w:footer="853"/>
+    </w:sectPr>
+  </w:body>
+</w:document>

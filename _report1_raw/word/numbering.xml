@@ -1,0 +1,483 @@
+<?xml version="1.0" encoding="utf-8"?>
+<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:abstractNum w:abstractNumId="1">
+    <w:lvl w:ilvl="6">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="2976" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="4">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:pPr>
+        <w:ind w:left="2096" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="0">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="336" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="7">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:pPr>
+        <w:ind w:left="3416" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="2">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="1216" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="3">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="1656" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="1">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="776" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="5">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="2536" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+  </w:abstractNum>
+  <w:abstractNum w:abstractNumId="2">
+    <w:lvl w:ilvl="0">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="336" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="5">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="2536" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="3">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="1656" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="7">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:pPr>
+        <w:ind w:left="3416" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="6">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="2976" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="4">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:pPr>
+        <w:ind w:left="2096" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="2">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="1216" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="1">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="776" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+  </w:abstractNum>
+  <w:abstractNum w:abstractNumId="3">
+    <w:lvl w:ilvl="2">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="1216" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="7">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:pPr>
+        <w:ind w:left="3416" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="4">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:pPr>
+        <w:ind w:left="2096" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="1">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="776" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="0">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="336" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="6">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="2976" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="3">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="1656" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="5">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="2536" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+  </w:abstractNum>
+  <w:abstractNum w:abstractNumId="4">
+    <w:lvl w:ilvl="2">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="1216" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="0">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="336" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="6">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="2976" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="7">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:pPr>
+        <w:ind w:left="3416" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="4">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:pPr>
+        <w:ind w:left="2096" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="5">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="2536" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="3">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="1656" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="1">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="776" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+  </w:abstractNum>
+  <w:abstractNum w:abstractNumId="5">
+    <w:lvl w:ilvl="5">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="2536" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="6">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="2976" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="3">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:pPr>
+        <w:ind w:left="1656" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="4">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:pPr>
+        <w:ind w:left="2096" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="0">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="336" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="7">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:pPr>
+        <w:ind w:left="3416" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="2">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val=""/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="1216" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+    <w:lvl w:ilvl="1">
+      <w:start w:val="1"/>
+      <w:numFmt w:val="bullet"/>
+      <w:lvlText w:val="¡"/>
+      <w:lvlJc w:val="left"/>
+      <w:pPr>
+        <w:ind w:left="776" w:hanging="336"/>
+      </w:pPr>
+      <w:rPr>
+        <w:rFonts w:hint="default" w:ascii="wingdings" w:hAnsi="wingdings" w:eastAsia="wingdings" w:cs="wingdings"/>
+      </w:rPr>
+    </w:lvl>
+  </w:abstractNum>
+  <w:num w:numId="1">
+    <w:abstractNumId w:val="1"/>
+  </w:num>
+  <w:num w:numId="2">
+    <w:abstractNumId w:val="2"/>
+  </w:num>
+  <w:num w:numId="3">
+    <w:abstractNumId w:val="3"/>
+  </w:num>
+  <w:num w:numId="4">
+    <w:abstractNumId w:val="4"/>
+  </w:num>
+  <w:num w:numId="5">
+    <w:abstractNumId w:val="5"/>
+  </w:num>
+</w:numbering>
