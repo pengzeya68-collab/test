@@ -255,7 +255,7 @@ def _add_arguments_prop(parent, name, arguments):
         _add_element_prop(arg_elem, "Argument.value", arg.get("value", ""))
         _add_element_prop(arg_elem, "Argument.metadata", "=")
     
-    ET.SubElement(prop, "hashTree")
+    ET.SubElement(parent, "hashTree")
 
 
 def _add_save_config(parent):

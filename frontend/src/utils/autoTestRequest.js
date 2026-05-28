@@ -5,7 +5,7 @@ import { getToken, clearAllAuth, isAdminRoute } from '@/utils/auth'
 
 const autoTestRequest = axios.create({
   baseURL: '/api',
-  timeout: 30000,
+  timeout: 120000,
 })
 
 let isLoggingOut = false

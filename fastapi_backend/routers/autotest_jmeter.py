@@ -939,7 +939,24 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, db: AsyncSession = Depe
     per_url_text = ""
     if r.get("per_url"):
         for pu in r["per_url"]:
-            per_url_text += f"  - {pu.get('url','')}: {pu.get('count',0)}次, 成功{pu.get('success',0)}, 失败{pu.get('failed',0)}, 平均{pu.get('avg_ms',0)}ms, P95={pu.get('p95_ms',0)}ms\n"
+            per_url_text += (
+                f"  [{pu.get('name','') or pu.get('url','')}]\n"
+                f"    请求: {pu.get('count',0)}次 | 成功: {pu.get('success',0)} | 失败: {pu.get('failed',0)}\n"
+                f"    响应: 平均{pu.get('avg_ms',0)}ms | P50={pu.get('p50_ms',0)}ms | P95={pu.get('p95_ms',0)}ms | P99={pu.get('p99_ms',0)}ms\n"
+                f"    极值: 最小{pu.get('min_ms',0)}ms | 最大{pu.get('max_ms',0)}ms | 标准差{pu.get('stddev_ms',0)}ms\n"
+            )
+
+    rt_dist_text = ""
+    if r.get("rt_distribution"):
+        rt_dist_text = "  响应时间分段统计:\n"
+        for bucket, count in r["rt_distribution"].items():
+            rt_dist_text += f"    {bucket}: {count}次\n"
+
+    throughput_text = ""
+    if r.get("throughput_trend"):
+        throughput_text = "  吞吐量时序变化 (每5秒采样):\n"
+        for tp in r["throughput_trend"][:20]:
+            throughput_text += f"    T+{tp.get('t',0)}s: TPS={tp.get('tps',0)}, 请求数={tp.get('count',0)}\n"
 
     errors_text = ""
     if r.get("errors"):
@@ -951,39 +968,78 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, db: AsyncSession = Depe
         for code, count in r["status_distribution"].items():
             status_text += f"  HTTP {code}: {count}次\n"
 
-    prompt = f"""你是一个性能测试分析专家。请分析以下压测结果并给出专业建议。
+    prompt = f"""你是一位资深性能测试架构师，拥有10年以上大型分布式系统压测经验。请对以下压测结果进行**全方位多维度**深度分析。
 
-【压测概况】
+【压测环境】
 - 计划名称: {req.plan_name}
-- 并发用户数: {req.concurrency}
-- 持续时间: {req.duration}秒
-- 总请求数: {r.get('total', 0)}
-- 成功: {r.get('success', 0)} / 失败: {r.get('failed', 0)}
-- TPS (每秒事务数): {r.get('tps', 0)}
-- 平均响应时间: {r.get('avg_ms', 0)}ms
-- 中位数 P50: {r.get('p50_ms', 0)}ms
-- P95 响应时间: {r.get('p95_ms', 0)}ms
-- P99 响应时间: {r.get('p99_ms', 0)}ms
-- 最小响应时间: {r.get('min_ms', 0)}ms
-- 最大响应时间: {r.get('max_ms', 0)}ms
+- 并发用户数: {req.concurrency} | 持续时间: {req.duration}秒
+- 总请求: {r.get('total', 0)} | 成功: {r.get('success', 0)} | 失败: {r.get('failed', 0)}
+- TPS: {r.get('tps', 0)} | 标准差: {r.get('stddev_ms', 0)}ms
+- 平均: {r.get('avg_ms', 0)}ms | P50: {r.get('p50_ms', 0)}ms | P95: {r.get('p95_ms', 0)}ms | P99: {r.get('p99_ms', 0)}ms
+- 最小: {r.get('min_ms', 0)}ms | 最大: {r.get('max_ms', 0)}ms
+
+【响应时间分布 (分段直方图)】
+{rt_dist_text if rt_dist_text else "无"}
+
+【吞吐量时序趋势】
+{throughput_text if throughput_text else "无"}
 
 【状态码分布】
 {status_text if status_text else "无"}
 
-【错误信息】
+【错误信息 (前10条)】
 {errors_text if errors_text else "无"}
 
-【按接口统计】
+【每个接口的详细数据 (含极值/标准差)】
 {per_url_text if per_url_text else "无"}
 
-请从以下几个维度分析（用中文回答，简洁专业，300字以内）：
-1. 整体性能评估（优秀/良好/一般/较差）
-2. 是否存在性能瓶颈（P95和P99差距分析）
-3. 失败原因分析（如有失败）
-4. 优化建议（给出2-3条可操作建议）"""
+请按以下6个维度输出分析报告（用中文，专业详尽，不缩写）：
+
+## 一、整体健康度评估
+- 性能等级（S/A/B/C/D）及评级依据（对照行业标准：P95<200ms=S, <500ms=A, <1s=B, <3s=C, >3s=D）
+- 成功率评估（优秀>99%/良好>95%/一般>90%/差<90%）
+- 系统稳定性分析：看标准差和吞吐趋势是否平稳（标准差/平均值<0.3为稳定，0.3-0.8为有抖动，>0.8为不稳定）
+- 容量评估：当前{req.concurrency}并发下，系统是否已达到瓶颈或还有余量
+
+## 二、逐接口深度剖析
+对每个接口独立分析：
+- **【接口名称/URL】**: 请求量占比、成功率、失败类型
+- **延迟画像**: 平均/P50/P95/P99 对比，标准差解读（P50与P99差距>3倍=严重长尾，标准差>平均值的50%=响应抖动剧烈）
+- **极值分析**: 最大响应时间是否异常（超过P99的2倍即为异常尖刺）
+- **瓶颈判定**: 正常/关注/严重（附数据依据）
+- **根因推断**: 从延迟分布形状推断（如P50低P99高=偶发性阻塞/GC停顿；整体高且均匀=计算瓶颈；标准差大=资源争抢）
+
+## 三、响应时间分布解读
+- 分析RT分布直方图的形态（单峰/双峰/长尾/均匀分布）
+- 如果分布呈双峰，说明可能存在两种不同的处理路径（如缓存命中/未命中）
+- 如果长尾严重，评估99分位用户的体验影响
+
+## 四、吞吐量趋势分析
+- 从吞吐时序图判断：系统是否在预热后趋于稳定，还是逐渐衰减
+- 是否存在TPS突变点（突增或突降），可能原因（GC/连接池耗尽/限流触发）
+- TPS与并发的比例关系是否合理（理想线性的偏差程度）
+
+## 五、关键风险发现
+- 最慢TOP3接口及瓶颈定位
+- 失败最多的TOP3接口及错误模式归类
+- 是否存在雪崩隐患（单点慢接口拖垮整体）
+- 连接池/线程池/资源泄漏的迹象判断
+
+## 六、优化方案 (按优先级，每条含预期效果)
+1. 【紧急】立即修复的问题（会导致系统不可用的）
+2. 【高优】性能瓶颈优化（ROI最高的1-2项）
+3. 【中优】架构改进建议（需要一定开发工作量）
+4. 【持续】监控和容量规划建议
+
+数据驱动的分析原则：
+- 用数据说话，每个结论都要引用具体的数值
+- 区分脚本问题和服务端问题
+- 从延迟分布形状、吞吐趋势变化中挖掘深层问题
+- 对长尾延迟和异常尖刺给予特别关注
+- 接口数量少时深挖微观，接口多时聚焦TOP瓶颈"""
 
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=180) as client:
             resp = await client.post(
                 f"{base_url}/chat/completions",
                 headers={
@@ -993,10 +1049,10 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, db: AsyncSession = Depe
                 json={
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": "你是一个性能测试分析专家，回答简洁专业。"},
+                        {"role": "system", "content": "你是一位资深性能测试架构师，擅长从接口维度进行深度瓶颈分析和根因定位，输出专业详尽的性能分析报告。"},
                         {"role": "user", "content": prompt}
                     ],
-                    "max_tokens": 800,
+                    "max_tokens": 8192,
                     "temperature": 0.5,
                 }
             )
@@ -1021,43 +1077,117 @@ def _build_offline_analysis(req) -> str:
     p99 = r.get("p99_ms", 0)
     fail_rate = (failed / total * 100) if total > 0 else 0
 
-    lines = ["📊 离线分析报告（未配置AI，基于规则自动生成）", ""]
+    lines = ["📊 性能分析报告（规则引擎自动生成）", "=" * 40, ""]
 
+    # 一、整体评估
     if fail_rate == 0:
-        lines.append("✅ 整体评估：优秀 - 所有请求均成功。")
+        lines.append("## 一、整体评估：S级 - 所有请求成功 ✅")
     elif fail_rate < 1:
-        lines.append(f"⚠️ 整体评估：良好 - 失败率 {fail_rate:.1f}%，在可接受范围内。")
+        lines.append(f"## 一、整体评估：良好 - 失败率 {fail_rate:.1f}%")
     elif fail_rate < 5:
-        lines.append(f"⚠️ 整体评估：一般 - 失败率 {fail_rate:.1f}%，建议排查失败原因。")
+        lines.append(f"## 一、整体评估：一般 - 失败率 {fail_rate:.1f}%，需关注")
     else:
-        lines.append(f"🔴 整体评估：较差 - 失败率 {fail_rate:.1f}%，系统可能存在严重问题。")
+        lines.append(f"## 一、整体评估：较差 - 失败率 {fail_rate:.1f}%，系统可能存在问题")
 
-    lines.append("")
-    lines.append(f"📈 性能指标：TPS={tps}, 平均响应={avg}ms, P95={p95}ms, P99={p99}ms")
-
-    if avg < 100:
-        lines.append("   → 平均响应时间优秀（<100ms）")
-    elif avg < 500:
-        lines.append("   → 平均响应时间良好（<500ms）")
-    elif avg < 1000:
-        lines.append("   → 平均响应时间一般（<1000ms）")
-    else:
-        lines.append("   → 平均响应时间较慢（>1000ms），建议优化")
-
-    if p95 > 0 and avg > 0 and p95 / max(avg, 1) > 3:
-        lines.append("   → P95远高于平均值，存在长尾延迟，可能有少数慢请求拖累整体")
+    lines.append(f"  并发={req.concurrency} | TPS={tps} | 平均={avg}ms | P95={p95}ms | P99={p99}ms")
+    if avg < 100: lines.append("  响应时间等级：S（<100ms）")
+    elif avg < 500: lines.append("  响应时间等级：A（<500ms）")
+    elif avg < 1000: lines.append("  响应时间等级：B（<1s）")
+    elif avg < 3000: lines.append("  响应时间等级：C（<3s）")
+    else: lines.append("  响应时间等级：D（>3s，需优化）")
     if p99 > 0 and p95 > 0 and p99 / max(p95, 1) > 2:
-        lines.append("   → P99与P95差距大，存在极端慢请求（异常值）")
+        lines.append("  ⚠ P99远大于P95，存在极端长尾延迟")
+    lines.append("")
+
+    # 二、逐接口分析
+    per_url_list = r.get("per_url", [])
+    if per_url_list:
+        lines.append("## 二、逐接口分析")
+        lines.append("-" * 40)
+        for i, pu in enumerate(per_url_list, 1):
+            url = pu.get("url", pu.get("name", "未知接口"))
+            c = pu.get("count", 0)
+            s_ok = pu.get("success", 0)
+            s_fail = pu.get("failed", 0)
+            a = pu.get("avg_ms", 0)
+            p95u = pu.get("p95_ms", 0)
+            p99u = pu.get("p99_ms", 0)
+            fr = (s_fail / c * 100) if c > 0 else 0
+
+            # 评估等级
+            if a < 100: grade = "🟢 S"
+            elif a < 500: grade = "🟡 A"
+            elif a < 1000: grade = "🟠 B"
+            elif a < 3000: grade = "🔴 C"
+            else: grade = "⛔ D"
+
+            lines.append(f"\n  [{i}] {grade} | {url}")
+            lines.append(f"      请求: {c}次 | 成功: {s_ok} | 失败: {s_fail} | 失败率: {fr:.1f}%")
+            lines.append(f"      平均: {a}ms | P95: {p95u}ms | P99: {p99u}ms")
+
+            stddev_u = pu.get("stddev_ms", 0)
+            p50_u = pu.get("p50_ms", 0)
+            min_u = pu.get("min_ms", 0)
+            max_u = pu.get("max_ms", 0)
+            lines.append(f"      响应: 平均{a}ms | P50={p50_u}ms | P95={p95u}ms | P99={p99u}ms | 标准差={stddev_u}ms")
+            lines.append(f"      极值: 最小{min_u}ms | 最大{max_u}ms")
+
+            if fr > 0: lines.append(f"      ⚠ 存在失败，检查错误类型")
+            if p99u > 0 and p95u > 0 and p99u / max(p95u, 1) > 2:
+                lines.append(f"      ⚠ P99({p99u}ms)>>P95({p95u}ms)，长尾瓶颈")
+            if stddev_u > 0 and a > 0 and stddev_u / a > 0.5:
+                lines.append(f"      ⚠ 标准差/均值={stddev_u/a:.2f}，响应抖动剧烈")
+            if max_u > 0 and p99u > 0 and max_u > p99u * 2:
+                lines.append(f"      ⚠ 最大{max_u}ms远超P99{p99u}ms，存在异常尖刺")
+            if a > 1000: lines.append(f"      💡 建议：排查慢SQL/缓存/下游服务")
+            if c > 1 and fr > 50: lines.append(f"      🚨 高失败率！立即排查")
+    else:
+        lines.append("## 二、逐接口分析")
+        lines.append("   （无按接口统计数据）")
 
     lines.append("")
-    lines.append("💡 优化建议：")
-    lines.append("   1. 关注失败请求，检查服务端日志排查具体错误原因")
+
+    # 三、稳定性分析
+    lines.append("## 三、系统稳定性")
+    lines.append("-" * 40)
+    stddev_all = r.get("stddev_ms", 0)
+    if stddev_all > 0 and avg > 0:
+        cv = stddev_all / avg
+        if cv < 0.3: lines.append(f"  变异系数={cv:.2f} - 系统稳定 ✅")
+        elif cv < 0.8: lines.append(f"  变异系数={cv:.2f} - 存在抖动 ⚠")
+        else: lines.append(f"  变异系数={cv:.2f} - 系统不稳定 🚨")
+    lines.append("")
+
+    # 四、吞吐趋势
+    tp_list = r.get("throughput_trend", [])
+    if len(tp_list) > 1:
+        tps_values = [t.get("tps", 0) for t in tp_list]
+        tps_std = (sum((x - sum(tps_values)/len(tps_values))**2 for x in tps_values) / len(tps_values)) ** 0.5
+        tps_avg = sum(tps_values) / len(tps_values)
+        lines.append(f"  TPS均值={tps_avg:.1f} | 波动标准差={tps_std:.1f}")
+        if tps_avg > 0 and tps_std / tps_avg > 0.3:
+            lines.append("  ⚠ TPS波动较大，系统吞吐不稳定")
+        else:
+            lines.append("  ✅ TPS平稳，吞吐表现一致")
+    lines.append("")
+
+    # 五、错误分析与建议
+    lines.append("## 四、关键发现 & 优化建议")
+    lines.append("-" * 40)
+    errs = r.get("errors", [])
+    if errs:
+        from collections import Counter
+        lines.append(f"  错误总数: {len(errs)}")
+        for err_type, cnt in Counter(str(e) for e in errs).most_common(5):
+            lines.append(f"    - [{cnt}次] {err_type[:100]}")
+    lines.append("")
+    lines.append(f"  1. 总TPS={tps}，平均每接口TPS={tps/max(len(per_url_list),1):.1f}")
     if avg > 500:
-        lines.append("   2. 考虑优化数据库查询、增加缓存层降低响应时间")
-    if tps < 10:
-        lines.append("   3. TPS较低，检查是否有连接池限制或接口内部串行调用")
-    else:
-        lines.append("   3. 持续监控P95/P99指标，设置告警阈值及时发现问题")
+        lines.append("  2. 瓶颈在响应时间，排查慢SQL/外部调用/序列化开销")
+    if tps < 10 and req.concurrency > 1:
+        lines.append("  3. TPS偏低，检查连接池大小和并发模型")
+    lines.append("  4. 建议对慢接口增加缓存层或异步化处理")
+    lines.append("  5. 考虑对高频接口做CDN或边缘计算优化")
 
     return "\n".join(lines)
 

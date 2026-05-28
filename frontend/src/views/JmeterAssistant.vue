@@ -264,13 +264,33 @@
           <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p95_ms }}ms</span><span class="bcp-stat-lbl">P95</span></div>
           <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p99_ms }}ms</span><span class="bcp-stat-lbl">P99</span></div>
           <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.stddev_ms || '-' }}ms</span><span class="bcp-stat-lbl">标准差</span></div>
-          <el-button v-if="benchResult" size="small" type="primary" plain @click="analyzeBenchResult" :loading="analyzing" style="margin-left:auto">
+          <el-button v-if="benchResult && !analyzing" size="small" type="primary" plain @click="analyzeBenchResult" style="margin-left:auto">
             🤖 AI 分析
+          </el-button>
+          <el-button v-if="analyzing" size="small" type="warning" plain loading style="margin-left:auto">
+            分析中（约30-60秒）...
           </el-button>
           <el-button v-if="benchResult" size="small" type="success" plain @click="exportReport">
             📄 导出报告
           </el-button>
         </div>
+
+        <!-- AI分析进行中横幅 -->
+        <el-alert
+          v-if="analyzing"
+          title="🤖 AI 正在深度分析性能数据..."
+          type="info"
+          :closable="false"
+          show-icon
+          class="bcp-analyze-banner"
+        >
+          <template #default>
+            <p style="margin:0;font-size:12px;color:#94a3b8;">
+              正在将 {{ benchResult?.per_url?.length || 0 }} 个接口的完整性能数据发送给 AI 进行分析，
+              包括响应时间分布、吞吐趋势、错误统计等。预计 30-60 秒，请耐心等待...
+            </p>
+          </template>
+        </el-alert>
 
         <!-- 按接口统计 -->
         <div v-if="benchResult && benchResult.per_url && benchResult.per_url.length > 0" class="bcp-per-url">
@@ -3095,10 +3115,20 @@ const restoreHistoryResult = (h) => {
   selectedSampleIdx.value = -1
 }
 
+let analyzingMsg = null
 const analyzeBenchResult = async () => {
   if (!benchResult.value) return
   analyzing.value = true
   aiAnalysisText.value = ''
+  // 持续加载提示
+  analyzingMsg = ElMessage({
+    message: '🤖 AI正在深度分析... 正在将性能数据发送给大模型',
+    type: 'info',
+    duration: 0,
+    showClose: true,
+    icon: 'Loading',
+    customClass: 'analyzing-toast',
+  })
   try {
     const res = await autoTestRequest.post('/auto-test/analyze-result', {
       plan_name: scriptTree.name || '未命名',
@@ -3127,6 +3157,7 @@ const analyzeBenchResult = async () => {
     ElMessage.error('AI 分析失败: ' + (e.response?.data?.detail || e.message))
   } finally {
     analyzing.value = false
+    if (analyzingMsg) { analyzingMsg.close(); analyzingMsg = null }
   }
 }
 
@@ -3892,6 +3923,12 @@ onBeforeUnmount(() => {
   background: #fff5f5; padding: 0 14px;
 }
 .bcp-errors-title { font-weight: 600; font-size: 13px; }
+.bcp-analyze-banner { margin: 12px 0; border-radius: 10px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #93c5fd; animation: analyzePulse 2s ease-in-out infinite; }
+@keyframes analyzePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+:deep(.analyzing-toast) { border-left: 4px solid #3b82f6 !important; }
 .bcp-errors-list {
   max-height: 300px; overflow-y: auto; padding: 8px 0;
 }

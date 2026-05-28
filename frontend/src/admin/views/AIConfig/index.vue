@@ -66,7 +66,7 @@
           <button v-if="activeConfig" class="action-pill primary" @click="handleTestConnection(activeConfig)" :disabled="testingId === activeConfig.id">
             {{ testingId === activeConfig.id ? '测试中...' : '连接测试' }}
           </button>
-          <button v-if="activeConfig && activeConfig.provider === 'minimax'" class="action-pill warning" @click="handleQueryQuota(activeConfig)" :disabled="quotaLoadingId === activeConfig.id">
+          <button v-if="activeConfig && supportsQuota(activeConfig.provider)" class="action-pill warning" @click="handleQueryQuota(activeConfig)" :disabled="quotaLoadingId === activeConfig.id">
             {{ quotaLoadingId === activeConfig.id ? '查询中...' : '刷新额度' }}
           </button>
           <button class="action-pill default" @click="dialogVisible = true; handleAdd()">
@@ -200,7 +200,7 @@
           <button class="cta-btn primary-cta" @click="handleTestConnection(activeConfig)">
             &#9889; 连接测试
           </button>
-          <button v-if="activeConfig.provider === 'minimax'" class="cta-btn warn-cta" @click="handleQueryQuota(activeConfig)">
+          <button v-if="supportsQuota(activeConfig.provider)" class="cta-btn warn-cta" @click="handleQueryQuota(activeConfig)">
             &#128200; 刷新额度
           </button>
         </div>
@@ -220,17 +220,40 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="提供商" prop="provider">
-              <el-select v-model="form.provider" style="width:100%" class="mm-select" @change="onProviderChange">
-                <el-option label="MiniMax" value="minimax" />
-                <el-option label="OpenAI" value="openai" />
-                <el-option label="火山方舟(Ark)" value="ark" />
-                <el-option label="自定义(OpenAI兼容)" value="custom" />
+              <el-select v-model="form.provider" style="width:100%" class="mm-select" @change="onProviderChange" filterable>
+                <el-option
+                  v-for="p in providerList"
+                  :key="p.id"
+                  :label="`${p.icon} ${p.name}`"
+                  :value="p.id"
+                />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="模型名称" prop="model">
-              <el-input v-model="form.model" :placeholder="modelPlaceholder" class="mm-input" />
+              <el-select
+                v-if="modelList.length > 0"
+                v-model="form.model"
+                style="width:100%"
+                class="mm-select"
+                filterable
+                allow-create
+                placeholder="选择或输入模型"
+              >
+                <el-option
+                  v-for="m in modelList"
+                  :key="m.id || m"
+                  :label="m.name || m"
+                  :value="m.id || m"
+                />
+              </el-select>
+              <el-input
+                v-else
+                v-model="form.model"
+                :placeholder="modelPlaceholder"
+                class="mm-input"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -338,11 +361,86 @@ const fetchConfigs = async () => {
   }
 }
 
-onMounted(fetchConfigs)
+onMounted(async () => {
+  await fetchProviders()
+  await fetchConfigs()
+  // 自动查询配额（静默更新，不弹窗）
+  if (activeConfig.value && supportsQuota(activeConfig.value.provider) && activeConfig.value.quota_total == null) {
+    silentFetchQuota(activeConfig.value)
+  }
+})
 
-const providerLabel = p => ({ minimax: 'MiniMax', openai: 'OpenAI', ark: '火山方舟', custom: '自定义' }[p] || p)
+// 提供商列表（从后端API动态获取，含默认Base URL和推荐模型）
+const providerList = ref([])
+const modelList = ref([])
+const providerMap = computed(() => {
+  const m = {}
+  providerList.value.forEach(p => { m[p.id] = p })
+  return m
+})
+const providerLabel = p => providerMap.value[p]?.name || p
+
+// 降级：完整14家硬编码列表
+const FALLBACK_PROVIDERS = [
+  { id: 'deepseek', name: 'DeepSeek', icon: '🧠', base_url: 'https://api.deepseek.com', default_model: 'deepseek-chat' },
+  { id: 'openai', name: 'OpenAI', icon: '🤖', base_url: 'https://api.openai.com', default_model: 'gpt-4o' },
+  { id: 'anthropic', name: 'Anthropic Claude', icon: '🎭', base_url: 'https://api.anthropic.com', default_model: 'claude-3-5-sonnet-20241022' },
+  { id: 'google', name: 'Google Gemini', icon: '🌐', base_url: 'https://generativelanguage.googleapis.com/v1beta/openai', default_model: 'gemini-2.0-flash' },
+  { id: 'minimax', name: 'MiniMax 海螺AI', icon: '🎯', base_url: 'https://api.minimax.chat', default_model: 'MiniMax-M2.7' },
+  { id: 'qwen', name: '阿里通义千问', icon: '☁️', base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1', default_model: 'qwen-plus' },
+  { id: 'glm', name: '智谱 ChatGLM', icon: '🔮', base_url: 'https://open.bigmodel.cn/api/paas/v4', default_model: 'glm-4-flash' },
+  { id: 'moonshot', name: '月之暗面 Kimi', icon: '🌙', base_url: 'https://api.moonshot.cn/v1', default_model: 'moonshot-v1-8k' },
+  { id: 'baidu', name: '百度文心一言', icon: '🐼', base_url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat', default_model: 'ernie-4.0-turbo-8k' },
+  { id: 'hunyuan', name: '腾讯混元', icon: '🐧', base_url: 'https://api.hunyuan.cloud.tencent.com/v1', default_model: 'hunyuan-lite' },
+  { id: 'spark', name: '讯飞星火', icon: '⭐', base_url: 'https://spark-api-open.xf-yun.com/v1', default_model: 'generalv3.5' },
+  { id: 'ark', name: '火山引擎 豆包', icon: '🌋', base_url: 'https://ark.cn-beijing.volces.com/api/v3', default_model: 'doubao-pro-32k' },
+  { id: 'groq', name: 'Groq', icon: '⚡', base_url: 'https://api.groq.com/openai/v1', default_model: 'llama-3.3-70b-versatile' },
+  { id: 'custom', name: '自定义', icon: '⚙️', base_url: '', default_model: '' },
+]
+
+const fetchProviders = async () => {
+  try {
+    const res = await request.get('/admin/ai-configs/providers')
+    const list = (res?.data?.providers || res?.providers || [])
+    if (list.length > 0) {
+      providerList.value = list.filter(p => p.id)
+      return
+    }
+  } catch (e) {
+    console.warn('获取提供商列表失败，使用内置列表', e.message)
+  }
+  providerList.value = FALLBACK_PROVIDERS
+}
+
+const fetchModels = async (provider) => {
+  if (!provider || provider === 'custom') { modelList.value = []; return }
+  try {
+    const res = await request.get(`/admin/ai-configs/models/${provider}`)
+    const models = (res?.data?.models || res?.models || [])
+    modelList.value = Array.isArray(models) ? models : []
+  } catch (e) {
+    // 降级：用内置模型列表
+    const builtin = {
+      deepseek: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner'],
+      openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o1', 'o3-mini'],
+      anthropic: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
+      google: ['gemini-2.0-flash', 'gemini-2.0-pro-exp-02-05', 'gemini-1.5-pro'],
+      minimax: ['MiniMax-M2.7', 'MiniMax-T2', 'abab6.5s-chat'],
+      qwen: ['qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen2.5-72b-instruct'],
+      glm: ['glm-4-plus', 'glm-4-flash', 'glm-4-air'],
+      moonshot: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+      baidu: ['ernie-4.0-turbo-8k', 'ernie-3.5-8k', 'ernie-speed-8k'],
+      hunyuan: ['hunyuan-turbo', 'hunyuan-pro', 'hunyuan-lite'],
+      spark: ['generalv3.5', 'generalv3', 'pro-128k'],
+      ark: ['doubao-pro-32k', 'doubao-lite-32k', 'doubao-1.5-pro-256k'],
+      groq: ['llama-3.3-70b-versatile', 'deepseek-r1-distill-llama-70b', 'mixtral-8x7b-32768'],
+    }
+    modelList.value = (builtin[provider] || []).map(m => ({ id: m, name: m }))
+  }
+}
 const formatTimeShort = t => t ? new Date(t).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''
 const formatQuota = v => v != null ? Number(v).toLocaleString() : '--'
+const supportsQuota = (p) => ['minimax', 'deepseek'].includes(p)
 
 const quotaPercent = computed(() => {
   if (!activeConfig.value || activeConfig.value.quota_total == null) return 0
@@ -393,6 +491,16 @@ const handleTestConnection = async (cfg) => {
     ElMessage.error('测试请求异常')
   } finally {
     testingId.value = null
+  }
+}
+
+const silentFetchQuota = async (cfg) => {
+  if (!cfg || !cfg.id) return
+  try {
+    await request.get(`/admin/ai-configs/${cfg.id}/quota`)
+    await fetchConfigs()
+  } catch (e) {
+    // 静默忽略
   }
 }
 
@@ -449,19 +557,20 @@ const rules = {
   api_key: [{ required: true, message: '请输入API Key', trigger: 'blur' }],
   model: [{ required: true, message: '请输入模型名', trigger: 'blur' }],
 }
-const baseUrlPlaceholder = computed(() => ({ minimax: 'https://api.minimax.chat/v1', openai: 'https://api.openai.com/v1', ark: 'https://ark.cn-beijing.volces.com/api/v3', custom: '输入兼容OpenAI的API地址' }[form.provider] || ''))
-const modelPlaceholder = computed(() => ({ minimax: '如: MiniMax-M2.7', openai: '如: gpt-4o', ark: '如: doubao-pro-32k', custom: '输入模型名称' }[form.provider] || ''))
+const baseUrlPlaceholder = computed(() => {
+  const p = providerMap.value[form.provider]
+  return p?.base_url || 'https://api.openai.com/v1'
+})
+const modelPlaceholder = computed(() => {
+  const p = providerMap.value[form.provider]
+  return p?.default_model ? `如: ${p.default_model}` : '输入模型名称'
+})
 
 const onProviderChange = (val) => {
-  const defaults = {
-    minimax: { base_url: 'https://api.minimax.chat/v1', model: 'MiniMax-M2.7' },
-    openai: { base_url: 'https://api.openai.com/v1', model: 'gpt-4o' },
-    ark: { base_url: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-pro-32k' },
-    custom: { base_url: '', model: '' }
-  }
-  const d = defaults[val] || {}
-  form.base_url = d.base_url || ''
-  form.model = d.model || ''
+  const p = providerMap.value[val]
+  form.base_url = p?.base_url || ''
+  form.model = p?.default_model || ''
+  fetchModels(val)
 }
 
 const resetForm = () => { Object.assign(form, defaultForm()); formRef.value?.clearValidate() }
@@ -476,6 +585,7 @@ const handleEdit = (cfg) => {
     max_tokens: cfg.max_tokens, temperature: cfg.temperature,
     timeout_seconds: cfg.timeout_seconds, group_id: cfg.group_id || ''
   })
+  fetchModels(cfg.provider)
   dialogVisible.value = true
 }
 
@@ -698,7 +808,8 @@ const handleSubmit = async () => {
 .mm-cancel:hover { border-color: #555; color: #ccc; }
 .mm-save { background: linear-gradient(135deg, #00D9C0, #00b89c); border: none; color: #000; border-radius: 8px; font-weight: 600; }
 .result-display { padding: 10px 0; }
-.result-success-body p, .result-error-body p, .result-neutral-body p { font-size: 13px; color: #bbb; line-height: 1.8; }
+.result-success-body p, .result-error-body p, .result-neutral-body p { font-size: 13px; color: #ddd; line-height: 1.8; }
+.result-neutral-body { color: #ccc !important; padding: 12px; background: #1a1a2e; border-radius: 8px; }
 .err-msg { color: #ff6b81 !important; word-break: break-word; }
 .quota-result-body { display: flex; flex-direction: column; gap: 16px; }
 .qr-big { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: #1a1a2e; border-radius: 10px; border: 1px solid #2a2a40; }
