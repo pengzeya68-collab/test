@@ -30,7 +30,7 @@ def __safe_err_rate(val):
         return "N/A"
 
 
-def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict) -> str:
+async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict) -> str:
     """调用 AI 生成优化建议"""
     from sqlalchemy import select
     from fastapi_backend.models.models import AIConfig
