@@ -261,7 +261,7 @@ def _add_arguments_prop(parent, name, arguments):
     
     return prop
 def _add_save_config(parent):
-    """添加保存配置（用于结果收集器）- JMeter 5.x 兼容格式"""
+    """添加保存配置（用于结果收集器）- 兼容 JMeter 5.1.1+"""
     configs = {
         "time": "true", "latency": "true", "timestamp": "true",
         "success": "true", "label": "true", "code": "true",
@@ -270,9 +270,7 @@ def _add_save_config(parent):
         "responseData": "false", "samplerData": "false", "xml": "false",
         "fieldNames": "true", "responseHeaders": "false", "requestHeaders": "false",
         "responseDataOnError": "false", "saveAssertionResultsFailureMessage": "false",
-        "bytes": "true", "sentBytes": "true",
-        "url": "true", "threadCounts": "true", "idleTime": "true",
-        "connectTime": "true",
+        "bytes": "true",
     }
     for name, value in configs.items():
         el = ET.SubElement(parent, name)
