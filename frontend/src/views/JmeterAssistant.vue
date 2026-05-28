@@ -410,15 +410,6 @@
           </div>
         </div>
 
-        <!-- AI 分析结果（折叠面板） -->
-        <el-collapse v-if="aiAnalysisText" v-model="aiCollapseActive" class="bcp-ai-collapse">
-          <el-collapse-item name="ai">
-            <template #title>
-              <span class="bcp-ai-title">🤖 AI 分析报告</span>
-            </template>
-            <div class="bcp-ai-content" style="white-space: pre-wrap;">{{ aiAnalysisText }}</div>
-          </el-collapse-item>
-        </el-collapse>
         </div>
       </div>
 
@@ -1751,6 +1742,24 @@
       </template>
     </el-dialog>
   </div>
+
+  <!-- AI 分析结果弹窗 -->
+  <el-dialog
+    v-model="aiAnalysisDialogVisible"
+    title="🤖 AI 分析报告"
+    width="65%"
+    :close-on-click-modal="false"
+    destroy-on-close
+    class="ai-analysis-dialog"
+  >
+    <div class="ai-analysis-body" style="white-space: pre-wrap; max-height: 70vh; overflow-y: auto; padding: 16px; background: #f8fafc; border-radius: 8px; line-height: 1.8; font-size: 14px;">
+      {{ aiAnalysisText }}
+    </div>
+    <template #footer>
+      <el-button @click="aiAnalysisDialogVisible = false">关闭</el-button>
+      <el-button type="primary" @click="copyAiAnalysis">📋 复制结果</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -2526,7 +2535,7 @@ const showBenchHistory = ref(false)
 const benchHistory = ref(JSON.parse(localStorage.getItem('benchHistory') || '[]'))
 const analyzing = ref(false)
 const aiAnalysisText = ref('')
-const aiCollapseActive = ref([])
+const aiAnalysisDialogVisible = ref(false)
 const errorCollapseActive = ref([])
 const benchPanelExpanded = ref(false)
 const benchChartRef = ref(null)
@@ -3112,11 +3121,28 @@ const analyzeBenchResult = async () => {
       }
     })
     aiAnalysisText.value = res.analysis || '分析完成，但无内容返回'
+    aiAnalysisDialogVisible.value = true
     ElMessage.success('AI 分析完成')
   } catch (e) {
     ElMessage.error('AI 分析失败: ' + (e.response?.data?.detail || e.message))
   } finally {
     analyzing.value = false
+  }
+}
+
+const copyAiAnalysis = async () => {
+  if (!aiAnalysisText.value) return
+  try {
+    await navigator.clipboard.writeText(aiAnalysisText.value)
+    ElMessage.success('AI 分析结果已复制到剪贴板')
+  } catch {
+    const ta = document.createElement('textarea')
+    ta.value = aiAnalysisText.value
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    ElMessage.success('AI 分析结果已复制到剪贴板')
   }
 }
 
