@@ -121,6 +121,7 @@ async def restore_scheduler_jobs_from_db() -> None:
 def read_schedule_webhook_sync(scenario_id: int) -> Optional[str]:
     """同步读取场景的定时 Webhook（供 Celery worker 等非 async 上下文使用）。"""
     import asyncio
+    import concurrent.futures
 
     async def _read() -> Optional[str]:
         async with async_session() as session:
@@ -133,11 +134,13 @@ def read_schedule_webhook_sync(scenario_id: int) -> Optional[str]:
             s = str(row).strip()
             return s or None
 
+    def _run_in_new_loop():
+        return asyncio.run(_read())
+
     try:
-        loop = asyncio.get_running_loop()
-        import concurrent.futures
+        asyncio.get_running_loop()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(asyncio.run, _read)
+            future = pool.submit(_run_in_new_loop)
             return future.result(timeout=5)
     except RuntimeError:
         return asyncio.run(_read())

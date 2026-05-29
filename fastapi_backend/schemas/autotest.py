@@ -222,6 +222,7 @@ class AutoTestScenarioUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
     is_active: Optional[bool] = None
+    steps: Optional[List[ScenarioStepCreate]] = None
 
 
 class AutoTestScenarioResponse(AutoTestScenarioBase):

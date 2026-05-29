@@ -127,8 +127,11 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
         result['scenario_id'] = scenario_id
 
         from fastapi_backend.services.webhook_notify import notify_scenario_schedule_webhook_from_db
-        wh_ok, wh_detail = notify_scenario_schedule_webhook_from_db(scenario_id, result)
-        _logger.info(f"[Celery] schedule webhook: ok={wh_ok} {wh_detail[:300]}")
+        try:
+            wh_ok, wh_detail = notify_scenario_schedule_webhook_from_db(scenario_id, result)
+            _logger.info(f"[Celery] schedule webhook: ok={wh_ok} {wh_detail[:300]}")
+        except Exception as we:
+            _logger.warning(f"通知 schedule webhook 失败（不影响执行结果）: {we}")
 
         _persist_task_result(task_id, result)
 
