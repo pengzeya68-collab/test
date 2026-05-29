@@ -1,0 +1,31 @@
+<view class="container">
+  <view class="card">
+    <view class="card-title"><text>📋 在线考试</text></view>
+  </view>
+
+  <view wx:if="{{loading && exams.length === 0}}" class="loading-wrapper">
+    <text class="text-muted">加载中...</text>
+  </view>
+
+  <view wx:if="{{!loading && exams.length === 0}}" class="empty-state">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">暂无考试</text>
+  </view>
+
+  <view class="exam-list">
+    <view class="exam-card card" wx:for="{{exams}}" wx:key="id" bindtap="goExam" data-id="{{item.id}}">
+      <view class="exam-header">
+        <text class="exam-title">{{item.title}}</text>
+        <view class="tag {{item.is_published ? 'tag-pass' : 'tag-pending'}}">
+          {{item.is_published ? '进行中' : '未发布'}}
+        </view>
+      </view>
+      <text class="exam-desc text-muted text-sm" wx:if="{{item.description}}">{{item.description}}</text>
+      <view class="exam-meta">
+        <text class="text-sm text-muted">⏱ {{item.duration || 60}}分钟</text>
+        <text class="text-sm text-muted">📝 {{item.question_count || 0}}题</text>
+        <text class="text-sm text-muted" wx:if="{{item.total_score}}">💯 {{item.total_score}}分</text>
+      </view>
+    </view>
+  </view>
+</view>

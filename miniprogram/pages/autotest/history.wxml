@@ -1,0 +1,38 @@
+<view class="container">
+  <view class="filter-bar">
+    <view class="filter-item {{filter === 'all' ? 'active' : ''}}" bindtap="setFilter" data-val="all">全部</view>
+    <view class="filter-item {{filter === 'success' ? 'active' : ''}}" bindtap="setFilter" data-val="success">成功</view>
+    <view class="filter-item {{filter === 'failed' ? 'active' : ''}}" bindtap="setFilter" data-val="failed">失败</view>
+  </view>
+
+  <view wx:if="{{loading && records.length === 0}}" class="loading-wrapper">
+    <text class="text-muted">加载中...</text>
+  </view>
+
+  <view wx:if="{{!loading && records.length === 0}}" class="empty-state">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">暂无执行记录</text>
+  </view>
+
+  <view class="history-list">
+    <view class="history-card card" wx:for="{{records}}" wx:key="id" bindtap="goDetail" data-id="{{item.task_id || item.id}}">
+      <view class="history-header">
+        <text class="history-name">{{item.scenario_name || item.name || '测试执行'}}</text>
+        <view class="tag {{item.statusTag.cls}}">{{item.statusTag.text}}</view>
+      </view>
+      <view class="history-meta">
+        <text class="text-sm text-muted">{{item.start_time}}</text>
+        <text class="text-sm text-muted" wx:if="{{item.duration}}">耗时: {{item.duration}}</text>
+      </view>
+      <view class="history-stats" wx:if="{{item.total_steps}}">
+        <text class="text-sm text-success">✓ {{item.passed_steps || 0}}</text>
+        <text class="text-sm text-danger" style="margin-left: 16rpx;">✗ {{item.failed_steps || 0}}</text>
+        <text class="text-sm text-muted" style="margin-left: 16rpx;">共 {{item.total_steps}} 步</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="load-more" wx:if="{{hasMore}}" bindtap="loadMore">
+    <text class="text-muted text-sm">{{loading ? '加载中...' : '加载更多'}}</text>
+  </view>
+</view>

@@ -79,6 +79,9 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: Optional[str] = None
     CELERY_RESULT_BACKEND: Optional[str] = None
 
+    WECHAT_MINI_APP_ID: str = ""
+    WECHAT_MINI_APP_SECRET: str = ""
+
     AI_RATE_LIMIT_REQUESTS: int = 10  # 每窗口最大请求数
     AI_RATE_LIMIT_WINDOW_SECONDS: int = 60  # 速率限制窗口（秒）
 

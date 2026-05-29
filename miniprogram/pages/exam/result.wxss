@@ -1,0 +1,11 @@
+.result-card { display: flex; flex-direction: column; align-items: center; padding: 60rpx 28rpx; }
+.result-emoji { font-size: 100rpx; margin-bottom: 20rpx; }
+.result-title { font-size: 36rpx; font-weight: 700; color: #1a1a1a; margin-bottom: 16rpx; }
+.result-score { font-size: 72rpx; font-weight: 700; color: #4F46E5; }
+.result-total { font-size: 36rpx; color: #999; }
+.detail-grid { display: flex; }
+.detail-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 16rpx 0; }
+.detail-value { font-size: 36rpx; font-weight: 700; }
+.detail-label { font-size: 22rpx; color: #999; margin-top: 4rpx; }
+.btn-group { margin-top: 30rpx; padding-bottom: 40rpx; }
+.btn-group button { width: 100%; }

@@ -1,0 +1,23 @@
+<view class="container">
+  <view class="card" wx:if="{{notifications.length === 0 && !loading}}">
+    <view class="empty-state">
+      <text class="empty-icon">🔔</text>
+      <text class="empty-text">暂无通知</text>
+    </view>
+  </view>
+
+  <view class="notif-list">
+    <view class="notif-card card {{item.is_read ? '' : 'unread'}}" wx:for="{{notifications}}" wx:key="id" bindtap="markRead" data-id="{{item.id}}">
+      <view class="notif-header">
+        <text class="notif-title">{{item.title}}</text>
+        <view class="notif-dot" wx:if="{{!item.is_read}}"></view>
+      </view>
+      <text class="notif-content text-muted text-sm">{{item.content || item.message}}</text>
+      <text class="notif-time text-muted text-sm">{{item.time}}</text>
+    </view>
+  </view>
+
+  <view class="btn-group" wx:if="{{notifications.length > 0}}">
+    <button class="btn-secondary btn-sm" bindtap="markAllRead">全部已读</button>
+  </view>
+</view>

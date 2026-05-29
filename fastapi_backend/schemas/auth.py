@@ -76,6 +76,10 @@ class CurrentUserResponse(BaseModel):
     created_at: datetime | None = None
 
 
+class WechatLoginRequest(BaseModel):
+    code: str = Field(..., min_length=1, description="微信登录凭证code")
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str

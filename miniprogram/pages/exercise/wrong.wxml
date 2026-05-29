@@ -1,0 +1,28 @@
+<view class="container">
+  <view class="card" wx:if="{{wrongAnswers.length === 0 && !loading}}">
+    <view class="empty-state">
+      <text class="empty-icon">🎉</text>
+      <text class="empty-text">没有错题，继续保持！</text>
+    </view>
+  </view>
+
+  <view class="wrong-list">
+    <view class="wrong-card card" wx:for="{{wrongAnswers}}" wx:key="id" bindtap="goDetail" data-id="{{item.exercise_id || item.id}}">
+      <view class="wrong-header">
+        <view class="tag {{item.difficultyTag.cls}}">{{item.difficultyTag.text}}</view>
+        <text class="text-danger text-sm">✗ 答错</text>
+      </view>
+      <text class="wrong-title">{{item.title || item.exercise_title}}</text>
+      <view class="wrong-answer">
+        <text class="text-sm text-muted">你的答案: </text>
+        <text class="text-sm text-danger">{{item.user_answer || '—'}}</text>
+        <text class="text-sm text-muted" style="margin-left: 20rpx;">正确答案: </text>
+        <text class="text-sm text-success">{{item.correct_answer || '—'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="load-more" wx:if="{{hasMore}}" bindtap="loadMore">
+    <text class="text-muted text-sm">{{loading ? '加载中...' : '加载更多'}}</text>
+  </view>
+</view>

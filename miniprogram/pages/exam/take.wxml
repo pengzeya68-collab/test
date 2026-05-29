@@ -1,0 +1,34 @@
+<view class="container">
+  <view class="exam-header-bar">
+    <text class="exam-title">{{exam.title}}</text>
+    <view class="timer {{timeLeft < 60 ? 'timer-warning' : ''}}">
+      ⏱ {{timeDisplay}}
+    </view>
+  </view>
+
+  <view class="progress-bar-wrap">
+    <view class="progress-text">{{currentIndex + 1}} / {{questions.length}}</view>
+    <view class="progress-bar">
+      <view class="progress-fill" style="width: {{((currentIndex + 1) / questions.length) * 100}}%"></view>
+    </view>
+  </view>
+
+  <view class="question-card card">
+    <text class="question-text">{{currentQuestion.question || currentQuestion.title}}</text>
+
+    <view class="options-list">
+      <view class="option-item {{answers[currentIndex] === index ? 'selected' : ''}}"
+            wx:for="{{currentQuestion.options}}" wx:key="index"
+            bindtap="selectAnswer" data-index="{{index}}">
+        <view class="option-label">{{item.label}}</view>
+        <text class="option-text">{{item.text}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="nav-buttons">
+    <button class="btn-secondary" bindtap="prevQuestion" disabled="{{currentIndex === 0}}">上一题</button>
+    <button class="btn-primary" wx:if="{{currentIndex < questions.length - 1}}" bindtap="nextQuestion">下一题</button>
+    <button class="btn-primary" wx:if="{{currentIndex === questions.length - 1}}" bindtap="submitExam">交卷</button>
+  </view>
+</view>

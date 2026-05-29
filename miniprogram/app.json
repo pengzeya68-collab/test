@@ -1,0 +1,63 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/exercise/list",
+    "pages/autotest/index",
+    "pages/profile/profile",
+    "pages/exercise/detail",
+    "pages/exercise/wrong",
+    "pages/autotest/scenario-detail",
+    "pages/autotest/task-status",
+    "pages/autotest/history",
+    "pages/autotest/scheduler",
+    "pages/exam/list",
+    "pages/exam/take",
+    "pages/exam/result",
+    "pages/login/login",
+    "pages/learning/paths",
+    "pages/learning/path-detail",
+    "pages/notifications/notifications",
+    "pages/favorites/favorites"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#4F46E5",
+    "navigationBarTitleText": "TestMaster",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F5F7FA"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#4F46E5",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/home.png",
+        "selectedIconPath": "images/home-active.png"
+      },
+      {
+        "pagePath": "pages/exercise/list",
+        "text": "练习",
+        "iconPath": "images/exercise.png",
+        "selectedIconPath": "images/exercise-active.png"
+      },
+      {
+        "pagePath": "pages/autotest/index",
+        "text": "自动化",
+        "iconPath": "images/autotest.png",
+        "selectedIconPath": "images/autotest-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/profile.png",
+        "selectedIconPath": "images/profile-active.png"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}

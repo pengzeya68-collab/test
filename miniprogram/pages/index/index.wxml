@@ -1,0 +1,84 @@
+<view class="container">
+  <view class="welcome-section">
+    <view class="welcome-left">
+      <image class="welcome-avatar" src="{{userInfo.avatar || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+      <view class="welcome-text">
+        <text class="welcome-greeting">你好，{{userInfo.username || '同学'}}</text>
+        <text class="welcome-sub">今天也要加油学习哦 💪</text>
+      </view>
+    </view>
+    <view class="checkin-btn {{checkedIn ? 'checked' : ''}}" bindtap="handleCheckin">
+      <text>{{checkedIn ? '✓' : '📅签到'}}</text>
+    </view>
+  </view>
+
+  <view class="stats-row">
+    <view class="stat-item">
+      <text class="stat-value">{{stats.exerciseCount || 0}}</text>
+      <text class="stat-label">已完成习题</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-value">{{stats.correctRate || '0%'}}</text>
+      <text class="stat-label">正确率</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-value">{{stats.streak || 0}}</text>
+      <text class="stat-label">连续学习</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-value">{{stats.scenarioCount || 0}}</text>
+      <text class="stat-label">测试场景</text>
+    </view>
+  </view>
+
+  <view class="quick-section">
+    <view class="quick-item" bindtap="goPage" data-url="/pages/exercise/list">
+      <view class="quick-icon">📝</view>
+      <text class="quick-text">练习</text>
+    </view>
+    <view class="quick-item" bindtap="goPage" data-url="/pages/exam/list">
+      <view class="quick-icon">📋</view>
+      <text class="quick-text">考试</text>
+    </view>
+    <view class="quick-item" bindtap="goPage" data-url="/pages/learning/paths">
+      <view class="quick-icon">📚</view>
+      <text class="quick-text">学习路径</text>
+    </view>
+    <view class="quick-item" bindtap="goPage" data-url="/pages/exercise/wrong">
+      <view class="quick-icon">❌</view>
+      <text class="quick-text">错题本</text>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{runningTasks.length > 0}}">
+    <view class="card-title">
+      <text>🔄 运行中的任务</text>
+      <text class="more" bindtap="goPage" data-url="/pages/autotest/history">查看全部</text>
+    </view>
+    <view class="task-list">
+      <view class="task-item" wx:for="{{runningTasks}}" wx:key="id" bindtap="goTaskStatus" data-id="{{item.id}}">
+        <view class="task-info">
+          <text class="task-name">{{item.name || item.task_id}}</text>
+          <text class="task-time">{{item.start_time}}</text>
+        </view>
+        <view class="task-tag">运行中</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">
+      <text>📊 最近活动</text>
+    </view>
+    <view wx:if="{{recentActivities.length === 0}}" class="empty-state">
+      <text class="empty-icon">📭</text>
+      <text class="empty-text">暂无活动记录</text>
+    </view>
+    <view class="activity-list" wx:else>
+      <view class="activity-item" wx:for="{{recentActivities}}" wx:key="id">
+        <text class="activity-title">{{item.title}}</text>
+        <text class="activity-time">{{item.time}}</text>
+      </view>
+    </view>
+  </view>
+</view>

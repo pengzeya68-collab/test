@@ -1,0 +1,71 @@
+<view class="container">
+  <view class="task-header card">
+    <view class="task-title-row">
+      <text class="task-name">{{taskName}}</text>
+      <view class="tag {{statusTag.cls}}">{{statusTag.text}}</view>
+    </view>
+    <text class="task-id text-muted text-sm">Task: {{taskId}}</text>
+  </view>
+
+  <view class="progress-card card" wx:if="{{isRunning}}">
+    <view class="progress-header">
+      <text class="progress-label">执行进度</text>
+      <text class="progress-percent">{{progress}}%</text>
+    </view>
+    <view class="progress-bar">
+      <view class="progress-fill" style="width: {{progress}}%"></view>
+    </view>
+    <text class="progress-step text-muted text-sm">{{currentStep}}</text>
+  </view>
+
+  <view class="card" wx:if="{{taskResult}}">
+    <view class="card-title"><text>📊 执行结果</text></view>
+    <view class="result-grid">
+      <view class="result-item">
+        <text class="result-value text-success">{{taskResult.passed || taskResult.success_count || 0}}</text>
+        <text class="result-label">通过</text>
+      </view>
+      <view class="result-item">
+        <text class="result-value text-danger">{{taskResult.failed || taskResult.fail_count || 0}}</text>
+        <text class="result-label">失败</text>
+      </view>
+      <view class="result-item">
+        <text class="result-value">{{taskResult.total || taskResult.total_count || 0}}</text>
+        <text class="result-label">总计</text>
+      </view>
+      <view class="result-item">
+        <text class="result-value text-primary">{{taskResult.duration || '—'}}</text>
+        <text class="result-label">耗时</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{stepResults.length > 0}}">
+    <view class="card-title"><text>📋 步骤详情</text></view>
+    <view class="step-results">
+      <view class="step-result-item" wx:for="{{stepResults}}" wx:key="index">
+        <view class="step-result-header">
+          <view class="step-result-order {{item.status === 'passed' || item.status === 'success' ? 'order-pass' : 'order-fail'}}">
+            {{index + 1}}
+          </view>
+          <text class="step-result-name">{{item.name || item.step_name || ('步骤 ' + (index + 1))}}</text>
+          <view class="tag {{item.status === 'passed' || item.status === 'success' ? 'tag-pass' : 'tag-fail'}}">
+            {{item.status === 'passed' || item.status === 'success' ? '通过' : '失败'}}
+          </view>
+        </view>
+        <view class="step-result-detail" wx:if="{{item.error || item.message}}">
+          <text class="text-sm text-danger">{{item.error || item.message}}</text>
+        </view>
+        <view class="step-result-detail" wx:if="{{item.response_code}}">
+          <text class="text-sm text-muted">状态码: {{item.response_code}} | 耗时: {{item.duration || '—'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="btn-group">
+    <button class="btn-primary" wx:if="{{isRunning}}" bindtap="refreshStatus">🔄 刷新状态</button>
+    <button class="btn-secondary" wx:if="{{isCompleted}}" bindtap="goHistory">查看历史</button>
+    <button class="btn-secondary" wx:if="{{isCompleted}}" bindtap="rerun">重新执行</button>
+  </view>
+</view>

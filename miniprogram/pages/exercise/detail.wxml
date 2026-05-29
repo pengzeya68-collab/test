@@ -1,0 +1,46 @@
+<view class="page">
+  <view class="header-card">
+    <view class="header-tags">
+      <view class="tag-difficulty tag-{{difficultyTag.cls}}">{{difficultyTag.text}}</view>
+      <view class="tag-category" wx:if="{{exercise.category}}">{{exercise.category}}</view>
+    </view>
+    <text class="header-title">{{exercise.title}}</text>
+  </view>
+
+  <view class="desc-card" wx:if="{{exercise.description}}">
+    <text class="desc-label">题目描述</text>
+    <text class="desc-content" user-select="true">{{exercise.description}}</text>
+  </view>
+
+  <view class="options-card">
+    <text class="options-label">选择答案</text>
+    <view class="options-list">
+      <view class="option-item {{selectedOption === index ? 'option-selected' : ''}} {{submitted && index === correctIndex ? 'option-correct' : ''}} {{submitted && selectedOption === index && index !== correctIndex ? 'option-wrong' : ''}}"
+            wx:for="{{options}}" wx:key="index"
+            bindtap="selectOption" data-index="{{index}}">
+        <view class="option-circle {{selectedOption === index ? 'circle-selected' : ''}} {{submitted && index === correctIndex ? 'circle-correct' : ''}} {{submitted && selectedOption === index && index !== correctIndex ? 'circle-wrong' : ''}}">
+          <text class="option-letter">{{item.label}}</text>
+        </view>
+        <text class="option-text">{{item.text}}</text>
+        <text class="option-check" wx:if="{{submitted && index === correctIndex}}">✓</text>
+        <text class="option-cross" wx:if="{{submitted && selectedOption === index && index !== correctIndex}}">✗</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="result-card" wx:if="{{submitted}}">
+    <view class="result-banner {{isCorrect ? 'banner-correct' : 'banner-wrong'}}">
+      <text class="result-emoji">{{isCorrect ? '🎉' : '😔'}}</text>
+      <text class="result-title">{{isCorrect ? '回答正确！' : '回答错误'}}</text>
+    </view>
+    <view class="explanation-box" wx:if="{{exercise.explanation}}">
+      <text class="explanation-label">解析</text>
+      <text class="explanation-text" user-select="true">{{exercise.explanation}}</text>
+    </view>
+  </view>
+
+  <view class="bottom-bar">
+    <button class="btn-submit" wx:if="{{!submitted}}" bindtap="submitAnswer" disabled="{{selectedOption === -1}}">提交答案</button>
+    <button class="btn-next" wx:if="{{submitted}}" bindtap="nextExercise">下一题</button>
+  </view>
+</view>

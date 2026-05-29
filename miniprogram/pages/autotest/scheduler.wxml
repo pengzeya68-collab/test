@@ -1,0 +1,51 @@
+<view class="container">
+  <view class="card">
+    <view class="card-title">
+      <text>⏰ 定时任务</text>
+    </view>
+    <text class="text-muted text-sm">管理自动化测试的定时调度</text>
+  </view>
+
+  <view wx:if="{{loading && tasks.length === 0}}" class="loading-wrapper">
+    <text class="text-muted">加载中...</text>
+  </view>
+
+  <view wx:if="{{!loading && tasks.length === 0}}" class="empty-state">
+    <text class="empty-icon">⏰</text>
+    <text class="empty-text">暂无定时任务</text>
+  </view>
+
+  <view class="scheduler-list">
+    <view class="scheduler-card card" wx:for="{{tasks}}" wx:key="id">
+      <view class="scheduler-header">
+        <text class="scheduler-name">{{item.scenario_name || item.name}}</text>
+        <view class="tag {{item.is_active !== false ? 'tag-pass' : 'tag-pending'}}">
+          {{item.is_active !== false ? '启用' : '暂停'}}
+        </view>
+      </view>
+
+      <view class="scheduler-meta">
+        <view class="meta-item">
+          <text class="meta-label">Cron</text>
+          <text class="meta-value code">{{item.cron_expression || item.cron}}</text>
+        </view>
+        <view class="meta-item" wx:if="{{item.next_run}}">
+          <text class="meta-label">下次执行</text>
+          <text class="meta-value">{{item.next_run}}</text>
+        </view>
+      </view>
+
+      <view class="scheduler-actions">
+        <button class="btn-primary btn-sm" bindtap="triggerTask" data-id="{{item.id}}" data-name="{{item.scenario_name || item.name}}">
+          ▶ 立即执行
+        </button>
+        <button class="btn-secondary btn-sm" bindtap="toggleTask" data-id="{{item.id}}" data-active="{{item.is_active}}">
+          {{item.is_active !== false ? '⏸ 暂停' : '▶ 启用'}}
+        </button>
+        <button class="btn-danger btn-sm" bindtap="deleteTask" data-id="{{item.id}}" data-name="{{item.scenario_name || item.name}}">
+          删除
+        </button>
+      </view>
+    </view>
+  </view>
+</view>

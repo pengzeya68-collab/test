@@ -1,0 +1,22 @@
+<view class="container">
+  <view class="tabs">
+    <view class="tab {{activeTab === 'post' ? 'active' : ''}}" bindtap="switchTab" data-tab="post">帖子</view>
+    <view class="tab {{activeTab === 'exercise' ? 'active' : ''}}" bindtap="switchTab" data-tab="exercise">习题</view>
+    <view class="tab {{activeTab === 'note' ? 'active' : ''}}" bindtap="switchTab" data-tab="note">笔记</view>
+  </view>
+
+  <view wx:if="{{favorites.length === 0 && !loading}}" class="empty-state">
+    <text class="empty-icon">⭐</text>
+    <text class="empty-text">暂无收藏</text>
+  </view>
+
+  <view class="fav-list">
+    <view class="fav-card card" wx:for="{{favorites}}" wx:key="id">
+      <view class="fav-header">
+        <view class="tag tag-pending">{{item.type}}</view>
+        <text class="fav-time text-muted text-sm">{{item.time}}</text>
+      </view>
+      <text class="fav-title">{{item.title}}</text>
+    </view>
+  </view>
+</view>

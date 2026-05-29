@@ -66,7 +66,196 @@ async def get_exercises(
 
 
 # ---------------------------------------------------------------------------
-# Get single exercise
+# Categories (MUST be before /exercises/{exercise_id})
+# ---------------------------------------------------------------------------
+
+
+@router.get("/exercises/categories")
+async def get_categories(
+    language: str = Query(""),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取习题分类"""
+    stmt = select(Exercise).where(
+        or_(Exercise.user_id == current_user.id, Exercise.is_public == True)  # noqa: E712
+    )
+    if language:
+        stmt = stmt.where(Exercise.language == language)
+
+    result = await db.execute(stmt)
+    exercises = result.scalars().all()
+
+    categories: dict = {}
+    for ex in exercises:
+        cat = ex.category or "Uncategorized"
+        if cat not in categories:
+            categories[cat] = []
+        categories[cat].append({
+            "id": ex.id,
+            "title": ex.title,
+            "difficulty": ex.difficulty,
+            "time_estimate": ex.time_estimate,
+        })
+    return categories
+
+
+# ---------------------------------------------------------------------------
+# User's exercises (MUST be before /exercises/{exercise_id})
+# ---------------------------------------------------------------------------
+
+
+@router.get("/exercises/user")
+async def get_user_exercises(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取当前用户的习题"""
+    stmt = select(Exercise).where(Exercise.user_id == current_user.id)
+    result = await db.execute(stmt)
+    exercises = result.scalars().all()
+
+    return [
+        {
+            "id": ex.id,
+            "title": ex.title,
+            "difficulty": ex.difficulty,
+            "language": ex.language,
+            "module": ex.module,
+            "category": ex.category,
+            "is_public": ex.is_public,
+        }
+        for ex in exercises
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Public exercises (auth required, MUST be before /exercises/{exercise_id})
+# ---------------------------------------------------------------------------
+
+
+@router.get("/exercises/public")
+async def get_public_exercises(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取公开习题"""
+    stmt = select(Exercise).where(Exercise.is_public == True)  # noqa: E712
+    result = await db.execute(stmt)
+    exercises = result.scalars().all()
+
+    return [
+        {
+            "id": ex.id,
+            "title": ex.title,
+            "difficulty": ex.difficulty,
+            "language": ex.language,
+            "module": ex.module,
+            "category": ex.category,
+            "created_by": ex.user_id,
+        }
+        for ex in exercises
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Submit solution (MUST be before /exercises/{exercise_id})
+# ---------------------------------------------------------------------------
+
+
+@router.post("/exercises/submit")
+async def submit_solution(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """提交习题答案"""
+    if not body or "exercise_id" not in body or "solution" not in body:
+        raise HTTPException(status_code=400, detail="Exercise ID and solution are required")
+
+    stmt = select(Exercise).where(Exercise.id == body["exercise_id"])
+    result = await db.execute(stmt)
+    ex = result.scalar_one_or_none()
+    if not ex:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+
+    is_correct = body["solution"].strip() == (ex.solution or "").strip()
+    return {
+        "correct": is_correct,
+        "message": "Solution submitted successfully",
+        "expected_solution": ex.solution if is_correct else None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Execute SQL (MUST be before /exercises/{exercise_id})
+# ---------------------------------------------------------------------------
+
+
+@router.post("/exercises/execute-sql")
+async def execute_sql(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+):
+    """在内存 SQLite 中执行 SQL"""
+    if not body or "setup_sql" not in body or "user_sql" not in body:
+        raise HTTPException(status_code=400, detail="缺少必要参数：setup_sql 和 user_sql 都是必填项")
+
+    user_sql = body["user_sql"].strip()
+    setup_sql = body["setup_sql"]
+
+    if not user_sql:
+        raise HTTPException(status_code=400, detail="请输入SQL语句")
+
+    dangerous = ["drop", "truncate", "alter", "pragma"]
+    lower_sql = user_sql.lower()
+    for kw in dangerous:
+        if kw in lower_sql:
+            raise HTTPException(status_code=400, detail=f"禁止执行包含 {kw} 关键字的SQL语句")
+
+    start_time = time.time()
+    conn = await aiosqlite.connect(":memory:")
+    cursor = await conn.cursor()
+
+    try:
+        if setup_sql.strip():
+            await cursor.executescript(setup_sql)
+            await conn.commit()
+
+        await cursor.execute(user_sql)
+
+        if user_sql.lower().lstrip().startswith(("select", "show", "describe", "explain")):
+            columns = [d[0] for d in cursor.description] if cursor.description else []
+            rows = await cursor.fetchall()
+            await conn.commit()
+            await conn.close()
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            return {
+                "success": True,
+                "columns": columns,
+                "rows": [list(row) for row in rows],
+                "row_count": len(rows),
+                "elapsed_ms": elapsed_ms,
+            }
+        else:
+            await conn.commit()
+            row_count = cursor.rowcount
+            await conn.close()
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            return {
+                "success": True,
+                "message": f"执行成功，影响 {row_count} 行",
+                "row_count": row_count,
+                "elapsed_ms": elapsed_ms,
+            }
+    except aiosqlite.Error as e:
+        await conn.close()
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        return {"success": False, "error": str(e), "elapsed_ms": elapsed_ms}
+
+
+# ---------------------------------------------------------------------------
+# Get single exercise (dynamic path - MUST be after all fixed paths)
 # ---------------------------------------------------------------------------
 
 
@@ -212,192 +401,3 @@ async def delete_exercise(
     await db.delete(ex)
     await db.commit()
     return {"message": "Exercise deleted successfully"}
-
-
-# ---------------------------------------------------------------------------
-# Submit solution (simple check)
-# ---------------------------------------------------------------------------
-
-
-@router.post("/exercises/submit")
-async def submit_solution(
-    body: dict,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """提交习题答案"""
-    if not body or "exercise_id" not in body or "solution" not in body:
-        raise HTTPException(status_code=400, detail="Exercise ID and solution are required")
-
-    stmt = select(Exercise).where(Exercise.id == body["exercise_id"])
-    result = await db.execute(stmt)
-    ex = result.scalar_one_or_none()
-    if not ex:
-        raise HTTPException(status_code=404, detail="Exercise not found")
-
-    is_correct = body["solution"].strip() == (ex.solution or "").strip()
-    return {
-        "correct": is_correct,
-        "message": "Solution submitted successfully",
-        "expected_solution": ex.solution if is_correct else None,
-    }
-
-
-# ---------------------------------------------------------------------------
-# User's exercises
-# ---------------------------------------------------------------------------
-
-
-@router.get("/exercises/user")
-async def get_user_exercises(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """获取当前用户的习题"""
-    stmt = select(Exercise).where(Exercise.user_id == current_user.id)
-    result = await db.execute(stmt)
-    exercises = result.scalars().all()
-
-    return [
-        {
-            "id": ex.id,
-            "title": ex.title,
-            "difficulty": ex.difficulty,
-            "language": ex.language,
-            "module": ex.module,
-            "category": ex.category,
-            "is_public": ex.is_public,
-        }
-        for ex in exercises
-    ]
-
-
-# ---------------------------------------------------------------------------
-# Public exercises (auth required)
-# ---------------------------------------------------------------------------
-
-
-@router.get("/exercises/public")
-async def get_public_exercises(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """获取公开习题"""
-    stmt = select(Exercise).where(Exercise.is_public == True)  # noqa: E712
-    result = await db.execute(stmt)
-    exercises = result.scalars().all()
-
-    return [
-        {
-            "id": ex.id,
-            "title": ex.title,
-            "difficulty": ex.difficulty,
-            "language": ex.language,
-            "module": ex.module,
-            "category": ex.category,
-            "created_by": ex.user_id,
-        }
-        for ex in exercises
-    ]
-
-
-# ---------------------------------------------------------------------------
-# Categories
-# ---------------------------------------------------------------------------
-
-
-@router.get("/exercises/categories")
-async def get_categories(
-    language: str = Query(""),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """获取习题分类"""
-    stmt = select(Exercise).where(
-        or_(Exercise.user_id == current_user.id, Exercise.is_public == True)  # noqa: E712
-    )
-    if language:
-        stmt = stmt.where(Exercise.language == language)
-
-    result = await db.execute(stmt)
-    exercises = result.scalars().all()
-
-    categories: dict = {}
-    for ex in exercises:
-        cat = ex.category or "Uncategorized"
-        if cat not in categories:
-            categories[cat] = []
-        categories[cat].append({
-            "id": ex.id,
-            "title": ex.title,
-            "difficulty": ex.difficulty,
-            "time_estimate": ex.time_estimate,
-        })
-    return categories
-
-
-# ---------------------------------------------------------------------------
-# Execute SQL (in-memory SQLite)
-# ---------------------------------------------------------------------------
-
-
-@router.post("/exercises/execute-sql")
-async def execute_sql(
-    body: dict,
-    current_user: User = Depends(get_current_user),
-):
-    """在内存 SQLite 中执行 SQL"""
-    if not body or "setup_sql" not in body or "user_sql" not in body:
-        raise HTTPException(status_code=400, detail="缺少必要参数：setup_sql 和 user_sql 都是必填项")
-
-    user_sql = body["user_sql"].strip()
-    setup_sql = body["setup_sql"]
-
-    if not user_sql:
-        raise HTTPException(status_code=400, detail="请输入SQL语句")
-
-    dangerous = ["drop", "truncate", "alter", "pragma"]
-    lower_sql = user_sql.lower()
-    for kw in dangerous:
-        if kw in lower_sql:
-            raise HTTPException(status_code=400, detail=f"禁止执行包含 {kw} 关键字的SQL语句")
-
-    start_time = time.time()
-    conn = await aiosqlite.connect(":memory:")
-    cursor = await conn.cursor()
-
-    try:
-        if setup_sql.strip():
-            await cursor.executescript(setup_sql)
-            await conn.commit()
-
-        await cursor.execute(user_sql)
-
-        if user_sql.lower().lstrip().startswith(("select", "show", "describe", "explain")):
-            columns = [d[0] for d in cursor.description] if cursor.description else []
-            rows = await cursor.fetchall()
-            await conn.commit()
-            await conn.close()
-            elapsed_ms = int((time.time() - start_time) * 1000)
-            return {
-                "success": True,
-                "columns": columns,
-                "rows": [list(row) for row in rows],
-                "row_count": len(rows),
-                "elapsed_ms": elapsed_ms,
-            }
-        else:
-            await conn.commit()
-            row_count = cursor.rowcount
-            await conn.close()
-            elapsed_ms = int((time.time() - start_time) * 1000)
-            return {
-                "success": True,
-                "message": f"执行成功，影响 {row_count} 行",
-                "row_count": row_count,
-                "elapsed_ms": elapsed_ms,
-            }
-    except aiosqlite.Error as e:
-        await conn.close()
-        elapsed_ms = int((time.time() - start_time) * 1000)
-        return {"success": False, "error": str(e), "elapsed_ms": elapsed_ms}

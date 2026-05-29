@@ -1,0 +1,11 @@
+.scenario-title-row { display: flex; align-items: center; gap: 12rpx; margin-bottom: 8rpx; }
+.scenario-title { font-size: 36rpx; font-weight: 700; color: #1a1a1a; flex: 1; }
+.step-list { margin-top: 8rpx; }
+.step-item { display: flex; align-items: center; padding: 16rpx 0; border-bottom: 1rpx solid #F5F5F5; }
+.step-item:last-child { border-bottom: none; }
+.step-order { width: 48rpx; height: 48rpx; border-radius: 50%; background: #EEF2FF; color: #4F46E5; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 600; margin-right: 16rpx; flex-shrink: 0; }
+.step-info { flex: 1; display: flex; flex-direction: column; }
+.step-name { font-size: 28rpx; font-weight: 500; color: #333; }
+.step-detail { margin-top: 4rpx; }
+.action-grid { display: flex; gap: 16rpx; }
+.action-grid button { flex: 1; margin: 0; }

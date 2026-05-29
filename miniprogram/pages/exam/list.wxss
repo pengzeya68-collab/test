@@ -1,0 +1,5 @@
+.exam-card { margin-bottom: 16rpx; }
+.exam-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
+.exam-title { font-size: 32rpx; font-weight: 600; color: #1a1a1a; flex: 1; }
+.exam-desc { display: block; margin: 8rpx 0; line-height: 1.5; }
+.exam-meta { display: flex; gap: 24rpx; margin-top: 12rpx; padding-top: 12rpx; border-top: 1rpx solid #F5F5F5; }

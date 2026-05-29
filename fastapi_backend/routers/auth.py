@@ -15,6 +15,7 @@ from fastapi_backend.schemas.auth import (
     RefreshTokenRequest,
     RegisterRequest,
     TokenResponse,
+    WechatLoginRequest,
 )
 from fastapi_backend.schemas.common import MessageResponse
 from fastapi_backend.services.auth_service import AuthError, AuthService
@@ -196,3 +197,69 @@ async def forgot_password(
     await db.commit()
 
     return {"message": "如果该手机号已注册，密码已重置"}
+
+
+@router.post("/wechat-login", response_model=TokenResponse)
+async def wechat_login(
+    body: WechatLoginRequest,
+    db: AsyncSession = Depends(get_db),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    import httpx
+    from fastapi_backend.core.config import settings
+
+    if not settings.WECHAT_MINI_APP_ID or not settings.WECHAT_MINI_APP_SECRET:
+        raise HTTPException(status_code=503, detail="微信小程序登录未配置")
+
+    url = (
+        f"https://api.weixin.qq.com/sns/jscode2session"
+        f"?appid={settings.WECHAT_MINI_APP_ID}"
+        f"&secret={settings.WECHAT_MINI_APP_SECRET}"
+        f"&js_code={body.code}"
+        f"&grant_type=authorization_code"
+    )
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url)
+        data = resp.json()
+
+    openid = data.get("openid")
+    if not openid:
+        raise AuthenticationException(f"微信登录失败: {data.get('errmsg', '未知错误')}")
+
+    stmt = select(User).where(User.phone == f"wx_{openid}")
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user:
+        import secrets
+        username = f"wx_{openid[:8]}"
+        email = f"{openid[:12]}@wechat.mini"
+
+        existing = await db.execute(select(User).where(User.username == username))
+        if existing.scalar_one_or_none():
+            username = f"wx_{secrets.token_hex(4)}"
+
+        existing_email = await db.execute(select(User).where(User.email == email))
+        if existing_email.scalar_one_or_none():
+            email = f"{secrets.token_hex(6)}@wechat.mini"
+
+        user = User(
+            username=username,
+            email=email,
+            phone=f"wx_{openid}",
+            password_hash=AuthService.hash_password(secrets.token_urlsafe(32)),
+            is_admin=False,
+            is_active=True,
+            level=1,
+            score=0,
+        )
+        db.add(user)
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(status_code=409, detail="微信用户创建失败")
+        await db.refresh(user)
+
+    return auth_service.create_token_pair(user)

@@ -1,0 +1,10 @@
+.scheduler-card { margin-bottom: 16rpx; }
+.scheduler-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
+.scheduler-name { font-size: 30rpx; font-weight: 600; color: #1a1a1a; flex: 1; }
+.scheduler-meta { margin-bottom: 16rpx; }
+.meta-item { display: flex; align-items: center; margin-bottom: 8rpx; }
+.meta-label { font-size: 24rpx; color: #999; width: 120rpx; flex-shrink: 0; }
+.meta-value { font-size: 26rpx; color: #333; }
+.meta-value.code { font-family: 'Courier New', monospace; background: #F7F8FA; padding: 4rpx 12rpx; border-radius: 6rpx; }
+.scheduler-actions { display: flex; gap: 12rpx; }
+.scheduler-actions button { margin: 0; flex: 1; }
