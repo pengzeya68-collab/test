@@ -3,6 +3,7 @@
 
 路径前缀: /api/v1/favorites
 """
+
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, and_
@@ -10,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.models import User, Favorite, Post, Exercise, Note
+from fastapi_backend.models.models import User, Favorite
 
 router = APIRouter(prefix="/api/v1/favorites", tags=["收藏"])
 
@@ -30,18 +31,22 @@ async def get_favorites(
     count_q = select(func.count()).select_from(base.subquery())
     total = (await db.execute(count_q)).scalar() or 0
 
-    result = await db.execute(
-        base.order_by(Favorite.created_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    )
+    result = await db.execute(base.order_by(Favorite.created_at.desc()).offset((page - 1) * page_size).limit(page_size))
     favs = result.scalars().all()
 
     items = []
     for f in favs:
-        item = {"id": f.id, "type": f.item_type, "created_at": f.created_at.isoformat() if f.created_at else None}
+        item = {
+            "id": f.id,
+            "type": f.item_type,
+            "created_at": f.created_at.isoformat() if f.created_at else None,
+        }
         if f.item_type == "post" and f.post:
-            item["data"] = {"id": f.post.id, "title": f.post.title, "summary": f.post.summary}
+            item["data"] = {
+                "id": f.post.id,
+                "title": f.post.title,
+                "summary": f.post.summary,
+            }
         elif f.item_type == "exercise" and f.exercise:
             item["data"] = {"id": f.exercise.id, "title": f.exercise.title}
         elif f.item_type == "note" and f.note:

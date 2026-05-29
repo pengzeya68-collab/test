@@ -6,6 +6,7 @@ RBAC 基础数据种子脚本（独立版）
   cd /c/Users/lenovo/Desktop/TestMasterProject
   .venv/Scripts/python.exe fastapi_backend/scripts/seed_rbac.py
 """
+
 import sqlite3
 import sys
 import os
@@ -48,7 +49,7 @@ def seed_rbac():
             cursor.execute(
                 "INSERT INTO roles (name, display_name, description, is_system, created_at, updated_at) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (name, display_name, desc, is_system, UTC_NOW, UTC_NOW)
+                (name, display_name, desc, is_system, UTC_NOW, UTC_NOW),
             )
             conn.commit()
             rid = cursor.lastrowid
@@ -96,9 +97,8 @@ def seed_rbac():
             perm_ids[code] = row[0]
         else:
             cursor.execute(
-                "INSERT INTO permissions (code, name, description, module, created_at) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (code, name, desc, module, UTC_NOW)
+                "INSERT INTO permissions (code, name, description, module, created_at) VALUES (?, ?, ?, ?, ?)",
+                (code, name, desc, module, UTC_NOW),
             )
             conn.commit()
             pid = cursor.lastrowid
@@ -110,13 +110,27 @@ def seed_rbac():
     admin_perm_codes = list(perm_ids.keys())
 
     tester_perm_codes = [
-        "exercise:create", "exercise:read", "exercise:update",
-        "exercise:delete", "exercise:publish",
-        "interview:create", "interview:read", "interview:update", "interview:delete",
-        "exam:create", "exam:read", "exam:update", "exam:delete", "exam:grade",
-        "path:create", "path:read", "path:update", "path:delete",
+        "exercise:create",
+        "exercise:read",
+        "exercise:update",
+        "exercise:delete",
+        "exercise:publish",
+        "interview:create",
+        "interview:read",
+        "interview:update",
+        "interview:delete",
+        "exam:create",
+        "exam:read",
+        "exam:update",
+        "exam:delete",
+        "exam:grade",
+        "path:create",
+        "path:read",
+        "path:update",
+        "path:delete",
         "autotest:manage",
-        "report:view", "report:export",
+        "report:view",
+        "report:export",
     ]
 
     viewer_perm_codes = [
@@ -151,7 +165,7 @@ def seed_rbac():
                 continue
             cursor.execute(
                 "INSERT INTO role_permissions (role_id, permission_id, created_at) VALUES (?, ?, ?)",
-                (role_id, perm_id, UTC_NOW)
+                (role_id, perm_id, UTC_NOW),
             )
         conn.commit()
         print(f"   ✅ 为角色 [{role_name}] 分配了 {len(perm_codes)} 个权限")
@@ -161,7 +175,7 @@ def seed_rbac():
     if admin_role_id:
         cursor.execute(
             "UPDATE users SET role_id = ? WHERE is_admin = 1 AND role_id IS NULL",
-            (admin_role_id,)
+            (admin_role_id,),
         )
         count = cursor.rowcount
         conn.commit()

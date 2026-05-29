@@ -2,6 +2,7 @@
 后台管理子路由 - 备份/审计/系统
 从 admin_manage.py 拆分
 """
+
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,7 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_backend.core.database import get_db
 from fastapi_backend.core.config import settings
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Exercise, LearningPath, Exam, InterviewQuestion, Submission
+from fastapi_backend.models.models import (
+    User,
+    Exercise,
+    LearningPath,
+    Exam,
+    InterviewQuestion,
+    Submission,
+)
 import os
 import subprocess
 import platform
@@ -37,6 +45,7 @@ def _pg_connection_params() -> dict:
     else:
         return {}
     from urllib.parse import urlparse
+
     parsed = urlparse(url)
     return {
         "host": parsed.hostname or "localhost",
@@ -58,11 +67,13 @@ async def list_backups(
         if f.endswith(".sql") or f.endswith(".zip"):
             filepath = os.path.join(BACKUP_DIR, f)
             stat = os.stat(filepath)
-            backups.append({
-                "name": f,
-                "size": round(stat.st_size / (1024 * 1024), 2),
-                "time": int(stat.st_mtime * 1000),
-            })
+            backups.append(
+                {
+                    "name": f,
+                    "size": round(stat.st_size / (1024 * 1024), 2),
+                    "time": int(stat.st_mtime * 1000),
+                }
+            )
     return {"backups": backups, "max_backups": MAX_BACKUPS}
 
 
@@ -84,15 +95,22 @@ async def create_backup(
     env["PGPASSWORD"] = params["password"]
 
     cmd = [
-        "pg_dump", "-h", params["host"], "-p", params["port"],
-        "-U", params["user"], "-d", params["dbname"],
-        "--no-password", "--format=plain", "--no-owner",
+        "pg_dump",
+        "-h",
+        params["host"],
+        "-p",
+        params["port"],
+        "-U",
+        params["user"],
+        "-d",
+        params["dbname"],
+        "--no-password",
+        "--format=plain",
+        "--no-owner",
     ]
 
     try:
-        result = await asyncio.to_thread(
-            subprocess.run, cmd, capture_output=True, text=True, env=env, timeout=120
-        )
+        result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, env=env, timeout=120)
         if result.returncode != 0:
             raise HTTPException(status_code=500, detail=f"pg_dump 失败: {result.stderr[:200]}")
         with open(backup_path, "w", encoding="utf-8") as f:
@@ -110,9 +128,7 @@ async def delete_old_backups(
 ):
     """清理旧备份（保留最近5个）"""
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    files = sorted(
-        [f for f in os.listdir(BACKUP_DIR) if f.endswith(".sql") or f.endswith(".zip")]
-    )
+    files = sorted([f for f in os.listdir(BACKUP_DIR) if f.endswith(".sql") or f.endswith(".zip")])
 
     if len(files) <= 5:
         return {"message": "没有需要清理的旧备份"}
@@ -162,15 +178,22 @@ async def restore_backup(
     env["PGPASSWORD"] = params["password"]
 
     cmd = [
-        "psql", "-h", params["host"], "-p", params["port"],
-        "-U", params["user"], "-d", params["dbname"],
-        "--no-password", "-f", backup_path,
+        "psql",
+        "-h",
+        params["host"],
+        "-p",
+        params["port"],
+        "-U",
+        params["user"],
+        "-d",
+        params["dbname"],
+        "--no-password",
+        "-f",
+        backup_path,
     ]
 
     try:
-        result = await asyncio.to_thread(
-            subprocess.run, cmd, capture_output=True, text=True, env=env, timeout=300
-        )
+        result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, env=env, timeout=300)
         if result.returncode != 0:
             raise HTTPException(status_code=500, detail=f"恢复失败: {result.stderr[:200]}")
         return {"message": "备份恢复成功"}
@@ -195,12 +218,13 @@ async def delete_backup(
 
 # ============== 审计日志 ==============
 
+
 @router.get("/audit-logs")
 async def list_audit_logs(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取审计日志（基于用户操作记录）"""
     total = await db.scalar(select(func.count(Submission.id))) or 0
@@ -216,25 +240,25 @@ async def list_audit_logs(
         user = user_result.scalar_one_or_none()
         q_result = await db.execute(select(InterviewQuestion).where(InterviewQuestion.id == s.question_id))
         question = q_result.scalar_one_or_none()
-        logs.append({
-            "id": s.id,
-            "user": user.username if user else "unknown",
-            "action": "代码提交",
-            "detail": f"提交了面试题 \"{question.title if question else '未知'}\" 的代码",
-            "status": s.execution_status,
-            "createTime": s.created_at.isoformat() if s.created_at else None,
-        })
+        logs.append(
+            {
+                "id": s.id,
+                "user": user.username if user else "unknown",
+                "action": "代码提交",
+                "detail": f'提交了面试题 "{question.title if question else "未知"}" 的代码',
+                "status": s.execution_status,
+                "createTime": s.created_at.isoformat() if s.created_at else None,
+            }
+        )
 
     return {"logs": logs, "total": total, "page": page, "size": size}
 
 
 # ============== 系统指标 ==============
 
+
 @router.get("/system/metrics")
-async def get_system_metrics(
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
+async def get_system_metrics(current_user: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     """获取系统指标"""
     total_users = await db.scalar(select(func.count(User.id))) or 0
     total_submissions = await db.scalar(select(func.count(Submission.id))) or 0
@@ -245,9 +269,7 @@ async def get_system_metrics(
 
     db_size = 0
     try:
-        size_result = await db.execute(text(
-            "SELECT pg_database_size(current_database())"
-        ))
+        size_result = await db.execute(text("SELECT pg_database_size(current_database())"))
         db_size = size_result.scalar() or 0
     except Exception:
         pass
@@ -264,6 +286,7 @@ async def get_system_metrics(
     redis_healthy = False
     try:
         from redis.asyncio import Redis as ARedis
+
         r = ARedis.from_url(settings.REDIS_URL or "redis://redis:6379/0", socket_connect_timeout=2)
         redis_healthy = await r.ping()
         await r.close()
@@ -298,9 +321,23 @@ async def get_system_metrics(
         },
         "charts": {
             "table_space": {
-                "labels": ["users", "submissions", "exercises", "paths", "questions", "exams"],
-                "values": [total_users, total_submissions, total_exercises, total_paths, total_questions, total_exams]
+                "labels": [
+                    "users",
+                    "submissions",
+                    "exercises",
+                    "paths",
+                    "questions",
+                    "exams",
+                ],
+                "values": [
+                    total_users,
+                    total_submissions,
+                    total_exercises,
+                    total_paths,
+                    total_questions,
+                    total_exams,
+                ],
             },
-            "system_load_7d": {"labels": [], "values": []}
-        }
+            "system_load_7d": {"labels": [], "values": []},
+        },
     }

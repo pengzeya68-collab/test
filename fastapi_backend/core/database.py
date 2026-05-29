@@ -21,13 +21,15 @@ def _build_engine_kwargs(database_url: str) -> dict:
     if is_sqlite:
         kwargs["connect_args"] = {"check_same_thread": False}
     else:
-        kwargs.update({
-            "pool_pre_ping": True,
-            "pool_recycle": 3600,
-            "pool_size": 10,
-            "max_overflow": 20,
-            "pool_timeout": 30,
-        })
+        kwargs.update(
+            {
+                "pool_pre_ping": True,
+                "pool_recycle": 3600,
+                "pool_size": 10,
+                "max_overflow": 20,
+                "pool_timeout": 30,
+            }
+        )
 
     return kwargs
 

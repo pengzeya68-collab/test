@@ -1,4 +1,5 @@
 """Backup management – PostgreSQL pg_dump based backups."""
+
 from __future__ import annotations
 
 import os
@@ -30,6 +31,7 @@ def _pg_connection_params() -> dict:
     else:
         return {}
     from urllib.parse import urlparse
+
     parsed = urlparse(url)
     return {
         "host": parsed.hostname or "localhost",
@@ -47,11 +49,13 @@ def _list_backups() -> list[dict]:
     for f in BACKUP_DIR.iterdir():
         if f.is_file() and f.name.startswith("testmaster_backup_") and f.suffix == ".sql":
             stat = f.stat()
-            backups.append({
-                "name": f.name,
-                "size": round(stat.st_size / (1024 * 1024), 2),
-                "time": int(stat.st_mtime * 1000),
-            })
+            backups.append(
+                {
+                    "name": f.name,
+                    "size": round(stat.st_size / (1024 * 1024), 2),
+                    "time": int(stat.st_mtime * 1000),
+                }
+            )
     backups.sort(key=lambda x: x["time"], reverse=True)
     return backups
 
@@ -70,10 +74,14 @@ def _create_backup() -> tuple[str | None, str | None]:
 
     cmd = [
         "pg_dump",
-        "-h", params["host"],
-        "-p", params["port"],
-        "-U", params["user"],
-        "-d", params["dbname"],
+        "-h",
+        params["host"],
+        "-p",
+        params["port"],
+        "-U",
+        params["user"],
+        "-d",
+        params["dbname"],
         "--no-password",
         "--format=plain",
         "--no-owner",
@@ -182,12 +190,17 @@ async def restore_backup(
 
     cmd = [
         "psql",
-        "-h", params["host"],
-        "-p", params["port"],
-        "-U", params["user"],
-        "-d", params["dbname"],
+        "-h",
+        params["host"],
+        "-p",
+        params["port"],
+        "-U",
+        params["user"],
+        "-d",
+        params["dbname"],
         "--no-password",
-        "-f", str(backup_path),
+        "-f",
+        str(backup_path),
     ]
 
     try:
@@ -202,7 +215,10 @@ async def restore_backup(
             raise HTTPException(status_code=500, detail=f"恢复失败: {result.stderr[:200]}")
         return {"message": "备份恢复成功"}
     except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="psql 命令未找到，请确保 PostgreSQL 客户端工具已安装")
+        raise HTTPException(
+            status_code=500,
+            detail="psql 命令未找到，请确保 PostgreSQL 客户端工具已安装",
+        )
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=500, detail="恢复超时")
     except HTTPException:

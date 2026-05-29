@@ -3,6 +3,7 @@ AutoTest 统一路由 - 全局变量管理
 
 路径前缀: /api/auto-test/global-variables
 """
+
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +13,11 @@ from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestGlobalVariable
 from fastapi_backend.utils.encryption import encrypt, decrypt
 
-router = APIRouter(prefix="/api/auto-test/global-variables", tags=["AutoTest-全局变量"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/auto-test/global-variables",
+    tags=["AutoTest-全局变量"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _variable_to_dict(variable):
@@ -21,7 +26,7 @@ def _variable_to_dict(variable):
     value = variable.value
     if variable.is_encrypted:
         value = decrypt(value)
-    
+
     return {
         "id": variable.id,
         "name": variable.name,
@@ -88,7 +93,9 @@ async def update_global_variable(
 
     # 检查变量名是否已被其他变量使用
     if "name" in variable_in and variable_in["name"] != variable.name:
-        result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_in["name"]))
+        result = await db.execute(
+            select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_in["name"])
+        )
         existing_variable = result.scalar_one_or_none()
         if existing_variable:
             raise HTTPException(status_code=400, detail="变量名已存在")
@@ -133,7 +140,9 @@ async def batch_create_global_variables(
     created_variables = []
     for variable_data in variables_in:
         # 检查变量名是否已存在
-        result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_data["name"]))
+        result = await db.execute(
+            select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_data["name"])
+        )
         existing_variable = result.scalar_one_or_none()
         if not existing_variable:
             # 对加密的变量值进行加密

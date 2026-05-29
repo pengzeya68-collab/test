@@ -1,6 +1,4 @@
-import re
-
-with open('generate_lp15_18.py', 'r', encoding='utf-8') as f:
+with open("generate_lp15_18.py", "r", encoding="utf-8") as f:
     content = f.read()
 
 # Replace problematic inner quotes with single quotes
@@ -88,7 +86,7 @@ replacements = [
 for old, new in replacements:
     content = content.replace(old, new)
 
-with open('generate_lp15_18.py', 'w', encoding='utf-8') as f:
+with open("generate_lp15_18.py", "w", encoding="utf-8") as f:
     f.write(content)
 
-print('Inner quotes fixed')
+print("Inner quotes fixed")

@@ -1,10 +1,12 @@
 """Community module schemas."""
+
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
 
 # ── Category ──────────────────────────────────────────────
+
 
 class CategoryInfo(BaseModel):
     value: str
@@ -14,12 +16,14 @@ class CategoryInfo(BaseModel):
 
 # ── Author ────────────────────────────────────────────────
 
+
 class AuthorInfo(BaseModel):
     id: int
     username: str
 
 
 # ── Post ──────────────────────────────────────────────────
+
 
 class PostListResponse(BaseModel):
     id: int
@@ -66,6 +70,7 @@ class PostUpdateRequest(BaseModel):
 
 # ── Comment ───────────────────────────────────────────────
 
+
 class CommentResponse(BaseModel):
     id: int
     content: str
@@ -83,6 +88,7 @@ class CommentCreateRequest(BaseModel):
 
 # ── Action ────────────────────────────────────────────────
 
+
 class LikeResponse(BaseModel):
     message: str
     action: str  # "liked" / "unliked"
@@ -95,6 +101,7 @@ class FavoriteResponse(BaseModel):
 
 
 # ── Stats ─────────────────────────────────────────────────
+
 
 class ActiveUserInfo(BaseModel):
     id: int
@@ -111,6 +118,7 @@ class CommunityStatsResponse(BaseModel):
 
 
 # ── Admin ─────────────────────────────────────────────────
+
 
 class AdminPostListResponse(BaseModel):
     list: list[PostListResponse]

@@ -11,27 +11,39 @@ logger = logging.getLogger(__name__)
 from fastapi_backend.core.database import get_db
 from fastapi_backend.core.exceptions import NotFoundException
 from fastapi_backend.deps.auth import get_current_active_user, require_admin
-from fastapi_backend.models.models import InterviewQuestion, InterviewSession, Submission, User, Exercise
+from fastapi_backend.models.models import (
+    InterviewQuestion,
+    InterviewSession,
+    Submission,
+    User,
+    Exercise,
+)
 from fastapi_backend.schemas.common import SuccessResponse, PaginationResponse
-from fastapi_backend.schemas.interview import CodeSubmission, AIEvaluationResponse, UserInterviewStatistics
+from fastapi_backend.schemas.interview import (
+    CodeSubmission,
+    AIEvaluationResponse,
+    UserInterviewStatistics,
+)
 from fastapi_backend.schemas.interview_question import (
     InterviewQuestionDetail,
     InterviewQuestionList,
-    InterviewQuestionListResponse
+    InterviewQuestionListResponse,
 )
 from fastapi_backend.schemas.interview_session import (
     InterviewSessionCreate,
     InterviewSessionDetail,
-    InterviewSessionWithQuestion
+    InterviewSessionWithQuestion,
 )
 from fastapi_backend.schemas.submission import (
     SubmissionCreate,
     SubmissionDetail,
     SubmissionResultDetail,
-    SubmissionHistoryItem
+    SubmissionHistoryItem,
 )
 from fastapi_backend.services.ai_tutor_service import AITutorService
-from fastapi_backend.services.interview_execution_service import interview_execution_service
+from fastapi_backend.services.interview_execution_service import (
+    interview_execution_service,
+)
 from fastapi_backend.services.interview_stats_service import (
     get_user_interview_statistics,
     generate_interview_report,
@@ -48,10 +60,7 @@ router = APIRouter(prefix="/api/v1/interview", tags=["AI 模拟面试"])
 
 
 @router.post("/evaluate", response_model=SuccessResponse[AIEvaluationResponse])
-async def evaluate_interview_code(
-    submission: CodeSubmission,
-    tutor: AITutorService = Depends(AITutorService)
-):
+async def evaluate_interview_code(submission: CodeSubmission, tutor: AITutorService = Depends(AITutorService)):
     result = await tutor.evaluate_code(submission)
     return SuccessResponse(data=result, message="代码评估完成")
 
@@ -63,7 +72,7 @@ async def list_interview_questions(
     keyword: Optional[str] = Query(None, description="搜索关键词（标题、描述、标签）"),
     difficulty: Optional[str] = Query(None, description="难度筛选: easy/medium/hard"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     获取面试题目列表，支持分页、搜索、筛选
@@ -81,7 +90,7 @@ async def list_interview_questions(
         keyword_filter = or_(
             InterviewQuestion.title.contains(keyword),
             InterviewQuestion.description.contains(keyword),
-            InterviewQuestion.tags.contains(keyword)
+            InterviewQuestion.tags.contains(keyword),
         )
         query = query.where(keyword_filter)
 
@@ -107,25 +116,16 @@ async def list_interview_questions(
     items = [InterviewQuestionList.model_validate(q) for q in questions]
 
     # 构建响应
-    list_response = InterviewQuestionListResponse(
-        items=items,
-        total=total,
-        page=page,
-        size=size,
-        pages=pages
-    )
+    list_response = InterviewQuestionListResponse(items=items, total=total, page=page, size=size, pages=pages)
 
-    return SuccessResponse(
-        data=list_response,
-        message=f"获取到 {len(items)} 道题目"
-    )
+    return SuccessResponse(data=list_response, message=f"获取到 {len(items)} 道题目")
 
 
 @router.get("/questions/{question_id}", response_model=SuccessResponse[InterviewQuestionDetail])
 async def get_interview_question(
     question_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     获取面试题目详情
@@ -135,7 +135,7 @@ async def get_interview_question(
 
     # 普通用户只能查看已发布的题目
     if not current_user.is_admin:
-        query = query.where(InterviewQuestion.is_published == True)
+        query = query.where(InterviewQuestion.is_published)
 
     result = await db.execute(query)
     question = result.scalar_one_or_none()
@@ -145,15 +145,19 @@ async def get_interview_question(
 
     return SuccessResponse(
         data=InterviewQuestionDetail.model_validate(question),
-        message="题目详情获取成功"
+        message="题目详情获取成功",
     )
 
 
-@router.post("/sessions", response_model=SuccessResponse[InterviewSessionDetail], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/sessions",
+    response_model=SuccessResponse[InterviewSessionDetail],
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_interview_session(
     session_data: InterviewSessionCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     创建新的面试会话
@@ -162,7 +166,7 @@ async def create_interview_session(
     # 验证题目是否存在且已发布（对普通用户）
     question_query = select(InterviewQuestion).where(InterviewQuestion.id == session_data.question_id)
     if not current_user.is_admin:
-        question_query = question_query.where(InterviewQuestion.is_published == True)
+        question_query = question_query.where(InterviewQuestion.is_published)
 
     question_result = await db.execute(question_query)
     question = question_result.scalar_one_or_none()
@@ -174,7 +178,7 @@ async def create_interview_session(
     active_session_query = select(InterviewSession).where(
         InterviewSession.user_id == current_user.id,
         InterviewSession.question_id == session_data.question_id,
-        InterviewSession.status.in_(["started", "submitted"])
+        InterviewSession.status.in_(["started", "submitted"]),
     )
     active_result = await db.execute(active_session_query)
     active_session = active_result.scalar_one_or_none()
@@ -183,15 +187,11 @@ async def create_interview_session(
         # 返回已存在的进行中会话
         return SuccessResponse(
             data=InterviewSessionDetail.model_validate(active_session),
-            message="已存在进行中的会话，继续使用该会话"
+            message="已存在进行中的会话，继续使用该会话",
         )
 
     # 创建新会话
-    new_session = InterviewSession(
-        user_id=current_user.id,
-        question_id=session_data.question_id,
-        status="started"
-    )
+    new_session = InterviewSession(user_id=current_user.id, question_id=session_data.question_id, status="started")
 
     db.add(new_session)
     await db.commit()
@@ -199,12 +199,13 @@ async def create_interview_session(
 
     return SuccessResponse(
         data=InterviewSessionDetail.model_validate(new_session),
-        message="面试会话创建成功"
+        message="面试会话创建成功",
     )
 
 
 class BatchSessionCreate(BaseModel):
     """批量创建面试会话"""
+
     position: str = Field(default="测试工程师", description="目标岗位")
     level: str = Field(default="中级", description="难度级别")
     type: str = Field(default="技术面", description="面试类型")
@@ -212,7 +213,11 @@ class BatchSessionCreate(BaseModel):
     categories: list[str] = Field(default_factory=list, description="考察范围分类")
 
 
-@router.post("/sessions/batch", response_model=SuccessResponse[dict], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/sessions/batch",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_batch_interview_session(
     body: BatchSessionCreate,
     current_user: User = Depends(get_current_active_user),
@@ -223,20 +228,21 @@ async def create_batch_interview_session(
     difficulty_map = {"初级": "easy", "中级": "medium", "高级": "hard"}
     difficulty = difficulty_map.get(body.level, None)
 
-    interview_categories = [
-        "基础测试", "自动化测试", "性能测试", "接口测试",
-        "数据库", "编程", "HR面试", "安全测试", "其他"
-    ]
     exercise_category_map = {
-        "基础测试": "测试基础", "自动化测试": "自动化", "性能测试": "性能测试",
-        "接口测试": "接口测试", "数据库": "数据库", "编程": "编程",
-        "安全测试": "安全", "其他": "综合",
+        "基础测试": "测试基础",
+        "自动化测试": "自动化",
+        "性能测试": "性能测试",
+        "接口测试": "接口测试",
+        "数据库": "数据库",
+        "编程": "编程",
+        "安全测试": "安全",
+        "其他": "综合",
     }
 
     selected = []
     source_type = None
 
-    query = select(Exercise).where(Exercise.is_public == True)
+    query = select(Exercise).where(Exercise.is_public)
     if body.categories:
         mapped_cats = []
         for c in body.categories:
@@ -256,22 +262,24 @@ async def create_batch_interview_session(
     if exercises:
         selected_exercises = random.sample(exercises, min(body.question_count, len(exercises)))
         for ex in selected_exercises:
-            selected.append({
-                "id": ex.id,
-                "title": ex.title,
-                "category": ex.category or "",
-                "difficulty": ex.difficulty or "medium",
-                "content": ex.description or ex.instructions or "",
-                "template_code": ex.code_template or "",
-                "answer": ex.solution or ex.expected_output or "",
-                "language": ex.exercise_type or ("text" if not ex.code_template else "python"),
-                "is_answered": False,
-                "user_answer": "",
-                "score": None,
-                "ai_feedback": None,
-                "record_id": None,
-                "_source": "exercise",
-            })
+            selected.append(
+                {
+                    "id": ex.id,
+                    "title": ex.title,
+                    "category": ex.category or "",
+                    "difficulty": ex.difficulty or "medium",
+                    "content": ex.description or ex.instructions or "",
+                    "template_code": ex.code_template or "",
+                    "answer": ex.solution or ex.expected_output or "",
+                    "language": ex.exercise_type or ("text" if not ex.code_template else "python"),
+                    "is_answered": False,
+                    "user_answer": "",
+                    "score": None,
+                    "ai_feedback": None,
+                    "record_id": None,
+                    "_source": "exercise",
+                }
+            )
         source_type = "exercise"
 
     if len(selected) < body.question_count:
@@ -290,22 +298,24 @@ async def create_batch_interview_session(
         if iq_questions:
             extra = random.sample(iq_questions, min(remaining, len(iq_questions)))
             for q in extra:
-                selected.append({
-                    "id": q.id,
-                    "title": q.title,
-                    "category": q.category or "",
-                    "difficulty": q.difficulty or "medium",
-                    "content": q.content or q.description or "",
-                    "template_code": q.reference_solution or "",
-                    "answer": q.answer or q.reference_solution or "",
-                    "language": "text",
-                    "is_answered": False,
-                    "user_answer": "",
-                    "score": None,
-                    "ai_feedback": None,
-                    "record_id": None,
-                    "_source": "interview_question",
-                })
+                selected.append(
+                    {
+                        "id": q.id,
+                        "title": q.title,
+                        "category": q.category or "",
+                        "difficulty": q.difficulty or "medium",
+                        "content": q.content or q.description or "",
+                        "template_code": q.reference_solution or "",
+                        "answer": q.answer or q.reference_solution or "",
+                        "language": "text",
+                        "is_answered": False,
+                        "user_answer": "",
+                        "score": None,
+                        "ai_feedback": None,
+                        "record_id": None,
+                        "_source": "interview_question",
+                    }
+                )
             if not source_type:
                 source_type = "mixed"
 
@@ -315,22 +325,24 @@ async def create_batch_interview_session(
         fallback_exercises = fr.scalars().all()
         if fallback_exercises:
             for ex in random.sample(fallback_exercises, min(body.question_count, len(fallback_exercises))):
-                selected.append({
-                    "id": ex.id,
-                    "title": ex.title,
-                    "category": ex.category or "",
-                    "difficulty": ex.difficulty or "medium",
-                    "content": ex.description or ex.instructions or "",
-                    "template_code": ex.code_template or "",
-                    "answer": ex.solution or ex.expected_output or "",
-                    "language": ex.exercise_type or "text",
-                    "is_answered": False,
-                    "user_answer": "",
-                    "score": None,
-                    "ai_feedback": None,
-                    "record_id": None,
-                    "_source": "exercise",
-                })
+                selected.append(
+                    {
+                        "id": ex.id,
+                        "title": ex.title,
+                        "category": ex.category or "",
+                        "difficulty": ex.difficulty or "medium",
+                        "content": ex.description or ex.instructions or "",
+                        "template_code": ex.code_template or "",
+                        "answer": ex.solution or ex.expected_output or "",
+                        "language": ex.exercise_type or "text",
+                        "is_answered": False,
+                        "user_answer": "",
+                        "score": None,
+                        "ai_feedback": None,
+                        "record_id": None,
+                        "_source": "exercise",
+                    }
+                )
             source_type = "exercise_fallback"
 
     if not selected:
@@ -338,6 +350,7 @@ async def create_batch_interview_session(
 
     try:
         from sqlalchemy import text as sa_text
+
         await db.execute(
             sa_text(
                 "UPDATE interview_sessions SET status='abandoned' WHERE user_id=:uid AND status IN ('started', 'submitted')"
@@ -378,13 +391,16 @@ async def create_batch_interview_session(
     )
 
 
-@router.get("/sessions", response_model=SuccessResponse[PaginationResponse[InterviewSessionWithQuestion]])
+@router.get(
+    "/sessions",
+    response_model=SuccessResponse[PaginationResponse[InterviewSessionWithQuestion]],
+)
 async def list_my_interview_sessions(
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(20, ge=1, le=100, description="每页数量"),
     status_filter: Optional[str] = Query(None, description="按状态筛选: started/submitted/finished/abandoned"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     获取当前用户的面试会话列表
@@ -395,14 +411,19 @@ async def list_my_interview_sessions(
         select(
             InterviewSession,
             InterviewQuestion.title.label("question_title"),
-            InterviewQuestion.difficulty.label("question_difficulty")
+            InterviewQuestion.difficulty.label("question_difficulty"),
         )
         .outerjoin(InterviewQuestion, InterviewSession.question_id == InterviewQuestion.id)
         .where(InterviewSession.user_id == current_user.id)
     )
 
     # 状态筛选
-    if status_filter and status_filter.lower() in ["started", "submitted", "finished", "abandoned"]:
+    if status_filter and status_filter.lower() in [
+        "started",
+        "submitted",
+        "finished",
+        "abandoned",
+    ]:
         query = query.where(InterviewSession.status == status_filter.lower())
 
     # 获取总数
@@ -415,11 +436,7 @@ async def list_my_interview_sessions(
     offset = (page - 1) * size
 
     # 执行查询
-    query = (
-        query.order_by(InterviewSession.created_at.desc())
-        .offset(offset)
-        .limit(size)
-    )
+    query = query.order_by(InterviewSession.created_at.desc()).offset(offset).limit(size)
     result = await db.execute(query)
     rows = result.all()
 
@@ -448,28 +465,20 @@ async def list_my_interview_sessions(
 
     # 创建分页响应
     pagination_response = PaginationResponse(
-        items=sessions_with_question,
-        total=total,
-        page=page,
-        size=size,
-        pages=pages
+        items=sessions_with_question, total=total, page=page, size=size, pages=pages
     )
 
-    return SuccessResponse(
-        data=pagination_response,
-        message=f"获取到 {len(sessions_with_question)} 个会话"
-    )
+    return SuccessResponse(data=pagination_response, message=f"获取到 {len(sessions_with_question)} 个会话")
 
 
 @router.get("/sessions/{session_id}", response_model=SuccessResponse[dict])
 async def get_interview_session(
     session_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     query = select(InterviewSession).where(
-        InterviewSession.id == session_id,
-        InterviewSession.user_id == current_user.id
+        InterviewSession.id == session_id, InterviewSession.user_id == current_user.id
     )
     result = await db.execute(query)
     session = result.scalar_one_or_none()
@@ -501,37 +510,41 @@ async def get_interview_session(
         ex = ex_map.get(qid)
         sub = answered_qids.get(qid)
         if ex:
-            question_list.append({
-                "id": qid,
-                "title": ex.title,
-                "category": ex.category or "",
-                "difficulty": ex.difficulty or "",
-                "content": ex.description or ex.instructions or "",
-                "template_code": ex.code_template or "",
-                "answer": ex.solution or ex.expected_output or None,
-                "language": ex.exercise_type or ("text" if not ex.code_template else "python"),
-                "is_answered": sub is not None,
-                "user_answer": sub.source_code if sub else "",
-                "score": sub.score if sub else None,
-                "ai_feedback": sub.feedback if sub else None,
-                "record_id": sub.id if sub else None,
-            })
+            question_list.append(
+                {
+                    "id": qid,
+                    "title": ex.title,
+                    "category": ex.category or "",
+                    "difficulty": ex.difficulty or "",
+                    "content": ex.description or ex.instructions or "",
+                    "template_code": ex.code_template or "",
+                    "answer": ex.solution or ex.expected_output or None,
+                    "language": ex.exercise_type or ("text" if not ex.code_template else "python"),
+                    "is_answered": sub is not None,
+                    "user_answer": sub.source_code if sub else "",
+                    "score": sub.score if sub else None,
+                    "ai_feedback": sub.feedback if sub else None,
+                    "record_id": sub.id if sub else None,
+                }
+            )
         elif q:
-            question_list.append({
-                "id": qid,
-                "title": q.title,
-                "category": q.category or "",
-                "difficulty": q.difficulty or "",
-                "content": (q.content or q.description or "") if q else "",
-                "template_code": (q.reference_solution or "") if q else "",
-                "answer": (q.answer or q.reference_solution or None) if q else None,
-                "language": "text",
-                "is_answered": sub is not None,
-                "user_answer": sub.source_code if sub else "",
-                "score": sub.score if sub else None,
-                "ai_feedback": sub.feedback if sub else None,
-                "record_id": sub.id if sub else None,
-            })
+            question_list.append(
+                {
+                    "id": qid,
+                    "title": q.title,
+                    "category": q.category or "",
+                    "difficulty": q.difficulty or "",
+                    "content": (q.content or q.description or "") if q else "",
+                    "template_code": (q.reference_solution or "") if q else "",
+                    "answer": (q.answer or q.reference_solution or None) if q else None,
+                    "language": "text",
+                    "is_answered": sub is not None,
+                    "user_answer": sub.source_code if sub else "",
+                    "score": sub.score if sub else None,
+                    "ai_feedback": sub.feedback if sub else None,
+                    "record_id": sub.id if sub else None,
+                }
+            )
 
     return SuccessResponse(
         data={
@@ -556,12 +569,16 @@ async def complete_interview_session(
     return SuccessResponse(data=result, message="面试已结束")
 
 
-@router.post("/sessions/{session_id}/submissions", response_model=SuccessResponse[SubmissionDetail], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/sessions/{session_id}/submissions",
+    response_model=SuccessResponse[SubmissionDetail],
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_submission(
     session_id: int,
     submission_data: SubmissionCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     为面试会话提交代码
@@ -569,8 +586,7 @@ async def create_submission(
     """
     # 1. 验证session属于当前用户
     session_query = select(InterviewSession).where(
-        InterviewSession.id == session_id,
-        InterviewSession.user_id == current_user.id
+        InterviewSession.id == session_id, InterviewSession.user_id == current_user.id
     )
     session_result = await db.execute(session_query)
     session = session_result.scalar_one_or_none()
@@ -581,7 +597,7 @@ async def create_submission(
     if session.status not in ("started", "submitted"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"当前会话状态为 {session.status}，无法提交代码"
+            detail=f"当前会话状态为 {session.status}，无法提交代码",
         )
 
     # 2. 验证题目存在（通过session关联的question）
@@ -613,7 +629,7 @@ async def create_submission(
     if submission_data.session_id != session_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="请求中的session_id与路径参数不匹配"
+            detail="请求中的session_id与路径参数不匹配",
         )
 
     # 5. 创建提交记录
@@ -625,7 +641,7 @@ async def create_submission(
         language=submission_data.language,
         source_code=submission_data.source_code,
         execution_status="pending",
-        ai_evaluation_status="pending"
+        ai_evaluation_status="pending",
     )
 
     db.add(new_submission)
@@ -646,19 +662,23 @@ async def create_submission(
     # 7. 异步执行代码沙盒和AI评估（不阻塞响应）
     import asyncio
     import logging
+
     _logger = logging.getLogger(__name__)
 
     async def _execute_and_evaluate_safe():
         try:
             await interview_execution_service.execute_and_evaluate_submission_by_id(new_submission.id)
         except Exception as e:
-            _logger.error(f"异步评估任务失败 submission_id={new_submission.id}: {e}", exc_info=True)
+            _logger.error(
+                f"异步评估任务失败 submission_id={new_submission.id}: {e}",
+                exc_info=True,
+            )
 
     asyncio.create_task(_execute_and_evaluate_safe())
 
     return SuccessResponse(
         data=SubmissionDetail.model_validate(new_submission),
-        message="代码提交成功，正在执行和评估"
+        message="代码提交成功，正在执行和评估",
     )
 
 
@@ -666,7 +686,7 @@ async def create_submission(
 async def get_submission(
     submission_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     获取提交记录详情
@@ -674,7 +694,7 @@ async def get_submission(
     """
     query = select(Submission).where(
         Submission.id == submission_id,
-        Submission.user_id == current_user.id  # 确保只能查看自己的提交
+        Submission.user_id == current_user.id,  # 确保只能查看自己的提交
     )
 
     result = await db.execute(query)
@@ -683,28 +703,31 @@ async def get_submission(
     if not submission:
         raise NotFoundException("提交记录不存在或您没有权限查看")
 
-    return SuccessResponse(
-        data=SubmissionDetail.model_validate(submission),
-        message="提交记录详情获取成功"
-    )
+    return SuccessResponse(data=SubmissionDetail.model_validate(submission), message="提交记录详情获取成功")
 
 
-@router.get("/submissions/{submission_id}/result", response_model=SuccessResponse[SubmissionResultDetail])
+@router.get(
+    "/submissions/{submission_id}/result",
+    response_model=SuccessResponse[SubmissionResultDetail],
+)
 async def get_submission_result(
     submission_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     result = await get_submission_result_detail(submission_id, current_user.id, db)
     if result is None:
         raise NotFoundException("提交记录不存在或您没有权限查看")
     return SuccessResponse(
         data=SubmissionResultDetail.model_validate(result),
-        message="提交结果详情获取成功"
+        message="提交结果详情获取成功",
     )
 
 
-@router.get("/history", response_model=SuccessResponse[PaginationResponse[SubmissionHistoryItem]])
+@router.get(
+    "/history",
+    response_model=SuccessResponse[PaginationResponse[SubmissionHistoryItem]],
+)
 async def get_my_interview_history(
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -713,11 +736,13 @@ async def get_my_interview_history(
     start_date: Optional[str] = Query(None, description="开始日期，格式：YYYY-MM-DD"),
     end_date: Optional[str] = Query(None, description="结束日期，格式：YYYY-MM-DD"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     result = await get_interview_history(
-        current_user.id, db,
-        page=page, size=size,
+        current_user.id,
+        db,
+        page=page,
+        size=size,
         question_id=question_id,
         status_filter=status,
         start_date=start_date,
@@ -739,7 +764,7 @@ async def get_my_interview_history(
 @router.get("/statistics", response_model=SuccessResponse[UserInterviewStatistics])
 async def get_my_interview_statistics(
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stats = await get_user_interview_statistics(current_user.id, db)
     return SuccessResponse(data=stats, message="统计信息获取成功")

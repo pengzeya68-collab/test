@@ -2,6 +2,7 @@
 面试 AI 服务
 从 routers/interview.py 的 AI 调用逻辑下沉
 """
+
 import logging
 import random
 from typing import Dict, List, Optional
@@ -68,20 +69,28 @@ async def _call_openai_chat(
 def _extract_follow_up_question(content: str) -> str:
     if not content:
         return ""
-    lines = [line.strip() for line in content.split('\n') if line.strip()]
+    lines = [line.strip() for line in content.split("\n") if line.strip()]
     question_text = ""
     for line in lines:
         if (
-            not line.startswith('{')
-            and not line.startswith('[')
+            not line.startswith("{")
+            and not line.startswith("[")
             and len(line) > 5
-            and ('?' in line or '？' in line or '请' in line or '如何' in line or '为什么' in line or '什么' in line or '能否' in line)
+            and (
+                "?" in line
+                or "？" in line
+                or "请" in line
+                or "如何" in line
+                or "为什么" in line
+                or "什么" in line
+                or "能否" in line
+            )
         ):
             question_text = line
             break
     if not question_text:
         question_text = lines[0] if lines else content
-    question_text = question_text.replace('"', '').replace("'", '').replace('`', '').strip()
+    question_text = question_text.replace('"', "").replace("'", "").replace("`", "").strip()
     if len(question_text) > 200:
         question_text = question_text[:200]
     return question_text
@@ -152,9 +161,7 @@ async def generate_reference_answers(
     if not ai_config:
         return {"error": "请先在AI配置中激活一个大模型"}
 
-    query = select(InterviewQuestion).where(
-        (InterviewQuestion.answer.is_(None)) | (InterviewQuestion.answer == "")
-    )
+    query = select(InterviewQuestion).where((InterviewQuestion.answer.is_(None)) | (InterviewQuestion.answer == ""))
     result = await db.execute(query)
     questions = result.scalars().all()
 

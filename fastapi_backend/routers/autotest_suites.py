@@ -3,17 +3,21 @@
 
 创建、管理、执行测试套件（多个场景的集合）
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any, List
+from typing import Dict, Any
 from datetime import datetime, timezone
 
 from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestScenario
 
-router = APIRouter(prefix="/api/auto-test/suites", tags=["回归套件"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/auto-test/suites",
+    tags=["回归套件"],
+    dependencies=[Depends(get_current_user)],
+)
 
 # 内存存储（可后续迁移到数据库）
 _suites: Dict[int, dict] = {}
@@ -26,7 +30,12 @@ _runs: Dict[int, list] = {}
 async def list_suites():
     """列出所有测试套件"""
     suites_list = [
-        {"id": k, "name": v["name"], "scenario_count": len(v["scenario_ids"]), "created_at": v["created_at"]}
+        {
+            "id": k,
+            "name": v["name"],
+            "scenario_count": len(v["scenario_ids"]),
+            "created_at": v["created_at"],
+        }
         for k, v in _suites.items()
     ]
     return {"suites": suites_list, "total": len(suites_list)}
@@ -72,11 +81,13 @@ async def get_suite(suite_id: int, db=Depends(get_autotest_db)):
         for sid in suite["scenario_ids"]:
             result = await session.execute(select(AutoTestScenario).where(AutoTestScenario.id == sid))
             sc = result.scalar_one_or_none()
-            scenario_details.append({
-                "id": sid,
-                "name": sc.name if sc else f"场景{sid}(已删除)",
-                "active": sc.is_active if sc else False,
-            })
+            scenario_details.append(
+                {
+                    "id": sid,
+                    "name": sc.name if sc else f"场景{sid}(已删除)",
+                    "active": sc.is_active if sc else False,
+                }
+            )
         break
 
     return {"suite": {**suite, "scenarios": scenario_details}}

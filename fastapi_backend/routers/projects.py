@@ -3,11 +3,12 @@
 
 路径前缀: /api/v1/projects
 """
+
 from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
@@ -50,6 +51,7 @@ RESOURCE_TYPE_LABELS = {
 
 # ── 统一权限校验 ──
 
+
 async def _can_access_project(
     project_id: int,
     user: User,
@@ -66,9 +68,7 @@ async def _can_access_project(
         return True
 
     result = await db.execute(
-        select(ProjectSpace)
-        .options(selectinload(ProjectSpace.learning_path))
-        .where(ProjectSpace.id == project_id)
+        select(ProjectSpace).options(selectinload(ProjectSpace.learning_path)).where(ProjectSpace.id == project_id)
     )
     project = result.scalar_one_or_none()
     if not project:
@@ -93,9 +93,7 @@ async def _get_project_or_404(
     返回 ProjectSpace 实例（含 learning_path 预加载）。
     """
     result = await db.execute(
-        select(ProjectSpace)
-        .options(selectinload(ProjectSpace.learning_path))
-        .where(ProjectSpace.id == project_id)
+        select(ProjectSpace).options(selectinload(ProjectSpace.learning_path)).where(ProjectSpace.id == project_id)
     )
     project = result.scalar_one_or_none()
     if not project:
@@ -151,10 +149,9 @@ def _fmt_resource(res: ProjectResource) -> dict:
 
 # ── 项目列表（通过 learning_paths 路由提供，这里只做内部辅助） ──
 
+
 async def _get_user_project_progress(project_id: int, user_id: int, db: AsyncSession) -> dict:
-    task_result = await db.execute(
-        select(ProjectTask).where(ProjectTask.project_id == project_id)
-    )
+    task_result = await db.execute(select(ProjectTask).where(ProjectTask.project_id == project_id))
     tasks = task_result.scalars().all()
     total = len(tasks)
     if total == 0:
@@ -181,6 +178,7 @@ async def _get_user_project_progress(project_id: int, user_id: int, db: AsyncSes
 
 
 # ── 项目详情 ──
+
 
 @router.get("/{project_id}")
 async def get_project(
@@ -221,6 +219,7 @@ async def get_project(
 
 # ── 项目任务列表 ──
 
+
 @router.get("/{project_id}/tasks")
 async def get_project_tasks(
     project_id: int,
@@ -230,9 +229,7 @@ async def get_project_tasks(
     await _get_project_or_404(project_id, current_user, db)
 
     result = await db.execute(
-        select(ProjectSpace)
-        .options(selectinload(ProjectSpace.tasks))
-        .where(ProjectSpace.id == project_id)
+        select(ProjectSpace).options(selectinload(ProjectSpace.tasks)).where(ProjectSpace.id == project_id)
     )
     project = result.scalar_one()
 
@@ -257,6 +254,7 @@ async def get_project_tasks(
 
 # ── 项目资料 ──
 
+
 @router.get("/{project_id}/resources")
 async def get_project_resources(
     project_id: int,
@@ -266,9 +264,7 @@ async def get_project_resources(
     await _get_project_or_404(project_id, current_user, db)
 
     result = await db.execute(
-        select(ProjectSpace)
-        .options(selectinload(ProjectSpace.resources))
-        .where(ProjectSpace.id == project_id)
+        select(ProjectSpace).options(selectinload(ProjectSpace.resources)).where(ProjectSpace.id == project_id)
     )
     project = result.scalar_one()
 
@@ -279,6 +275,7 @@ async def get_project_resources(
 
 
 # ── 开始项目 ──
+
 
 @router.post("/{project_id}/start")
 async def start_project(
@@ -296,9 +293,7 @@ async def start_project(
     )
     already_started = sub_check.scalar_one_or_none() is not None
 
-    task_result = await db.execute(
-        select(ProjectTask).where(ProjectTask.project_id == project_id)
-    )
+    task_result = await db.execute(select(ProjectTask).where(ProjectTask.project_id == project_id))
     all_tasks = task_result.scalars().all()
     total_tasks = len(all_tasks)
     task_ids = [t.id for t in all_tasks]
@@ -328,6 +323,7 @@ async def start_project(
 
 # ── 项目进度 ──
 
+
 @router.get("/{project_id}/progress")
 async def get_project_progress(
     project_id: int,
@@ -346,6 +342,7 @@ async def get_project_progress(
 
 # ── 提交任务 ──
 
+
 @router.post("/{project_id}/tasks/{task_id}/submit")
 async def submit_task(
     project_id: int,
@@ -356,7 +353,9 @@ async def submit_task(
 ):
     await _get_project_or_404(project_id, current_user, db)
 
-    result = await db.execute(select(ProjectTask).where(ProjectTask.id == task_id, ProjectTask.project_id == project_id))
+    result = await db.execute(
+        select(ProjectTask).where(ProjectTask.id == task_id, ProjectTask.project_id == project_id)
+    )
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -386,9 +385,7 @@ async def submit_task(
     await db.commit()
 
     project_result = await db.execute(
-        select(ProjectSpace)
-        .options(selectinload(ProjectSpace.tasks))
-        .where(ProjectSpace.id == project_id)
+        select(ProjectSpace).options(selectinload(ProjectSpace.tasks)).where(ProjectSpace.id == project_id)
     )
     project = project_result.scalar_one_or_none()
 
@@ -413,19 +410,21 @@ async def submit_task(
         "task_id": task_id,
         "all_submitted": all_submitted,
         "submission": {
-            "id": (existing_sub.id if existing_sub else sub.id) if 'sub' in dir() or existing_sub else None,
+            "id": (existing_sub.id if existing_sub else sub.id) if "sub" in dir() or existing_sub else None,
             "content": content,
             "status": existing_sub.status if existing_sub else "pending",
-            "submitted_at": (existing_sub.submitted_at.isoformat() if existing_sub.submitted_at else None) if existing_sub else datetime.now(timezone.utc).isoformat(),
-        } if (existing_sub or 'sub' in dir()) else None,
+            "submitted_at": (existing_sub.submitted_at.isoformat() if existing_sub.submitted_at else None)
+            if existing_sub
+            else datetime.now(timezone.utc).isoformat(),
+        }
+        if (existing_sub or "sub" in dir())
+        else None,
     }
 
 
 async def _update_path_progress(path_id: int, user_id: int, db: AsyncSession):
     result = await db.execute(
-        select(LearningPath)
-        .options(selectinload(LearningPath.exercises))
-        .where(LearningPath.id == path_id)
+        select(LearningPath).options(selectinload(LearningPath.exercises)).where(LearningPath.id == path_id)
     )
     path = result.scalar_one_or_none()
     if not path:
@@ -495,6 +494,7 @@ async def _update_user_growth(project: ProjectSpace, user: User, db: AsyncSessio
 
 # ── 项目验收/评价 ──
 
+
 @router.get("/{project_id}/evaluation")
 async def get_project_evaluation(
     project_id: int,
@@ -531,6 +531,7 @@ async def get_project_evaluation(
 
 # ── 项目关联的 AutoTest 执行 ──
 
+
 @router.post("/{project_id}/autotest/run")
 async def project_autotest_run(
     project_id: int,
@@ -547,19 +548,21 @@ async def project_autotest_run(
 
     from fastapi_backend.core.autotest_database import get_autotest_db
     from fastapi_backend.models.autotest import AutoTestScenario
+
     async for autotest_db in get_autotest_db():
-        scenario_check = await autotest_db.execute(
-            select(AutoTestScenario).where(AutoTestScenario.id == scenario_id)
-        )
+        scenario_check = await autotest_db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
         scenario = scenario_check.scalar_one_or_none()
         if not scenario:
-            raise HTTPException(status_code=400, detail=f"场景(ID={scenario_id})不存在，请确认场景ID有效")
+            raise HTTPException(
+                status_code=400,
+                detail=f"场景(ID={scenario_id})不存在，请确认场景ID有效",
+            )
 
         # 校验场景是否属于该项目
         if scenario.project_id is not None and scenario.project_id != project_id:
             raise HTTPException(
                 status_code=403,
-                detail=f"场景(ID={scenario_id})不属于该项目(ID={project_id})，请使用项目关联的场景"
+                detail=f"场景(ID={scenario_id})不属于该项目(ID={project_id})，请使用项目关联的场景",
             )
         break
 
@@ -569,9 +572,11 @@ async def project_autotest_run(
             ProjectTask.task_type == "auto_execution",
         )
     )
-    auto_tasks = task_check.scalars().all()
+    task_check.scalars().all()
 
-    from fastapi_backend.services.autotest_scenario_runner import ScenarioExecutionEngine
+    from fastapi_backend.services.autotest_scenario_runner import (
+        ScenarioExecutionEngine,
+    )
 
     engine = ScenarioExecutionEngine(scenario_id=scenario_id)
     result = await engine.execute()
@@ -594,7 +599,9 @@ async def project_autotest_run(
             )
             existing = task_result.scalar_one_or_none()
             if existing:
-                existing.content = f"自动化执行完成: {result.get('total_steps', 0)}步, 成功{result.get('success_steps', 0)}步"
+                existing.content = (
+                    f"自动化执行完成: {result.get('total_steps', 0)}步, 成功{result.get('success_steps', 0)}步"
+                )
                 existing.submitted_at = datetime.now(timezone.utc)
                 existing.status = "accepted"
             else:
@@ -620,6 +627,7 @@ async def project_autotest_run(
 
 # ── 项目关联的考试入口 ──
 
+
 @router.post("/{project_id}/exam/start")
 async def project_exam_start(
     project_id: int,
@@ -631,7 +639,7 @@ async def project_exam_start(
     await _get_project_or_404(project_id, current_user, db)
 
     if exam_id:
-        return {"message": f"考试准备就绪", "exam_id": exam_id, "project_id": project_id}
+        return {"message": "考试准备就绪", "exam_id": exam_id, "project_id": project_id}
 
     return {"message": "请指定 exam_id", "project_id": project_id}
 

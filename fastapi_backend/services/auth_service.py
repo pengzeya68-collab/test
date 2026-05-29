@@ -46,7 +46,7 @@ class AuthService:
             del cls._token_blacklist[key]
         if len(cls._token_blacklist) > cls._blacklist_max_size:
             sorted_items = sorted(cls._token_blacklist.items(), key=lambda x: x[1])
-            for key, _ in sorted_items[:len(sorted_items) - cls._blacklist_max_size]:
+            for key, _ in sorted_items[: len(sorted_items) - cls._blacklist_max_size]:
                 del cls._token_blacklist[key]
 
     async def add_to_blacklist(self, token: str, token_type: str = "access", user_id: int = None) -> None:
@@ -71,7 +71,10 @@ class AuthService:
                     self._db_session.add(record)
                     await self._db_session.commit()
             except Exception as exc:
-                _logger.warning("token_blacklist DB write failed (memory blacklist still active): %s", exc)
+                _logger.warning(
+                    "token_blacklist DB write failed (memory blacklist still active): %s",
+                    exc,
+                )
                 try:
                     await self._db_session.rollback()
                 except Exception:
@@ -109,6 +112,7 @@ class AuthService:
             pass
         try:
             import werkzeug.security
+
             with warnings.catch_warnings():
                 warnings.filterwarnings(
                     "ignore",
@@ -152,7 +156,11 @@ class AuthService:
         )
 
     async def authenticate_user(self, db: AsyncSession, username: str, password: str) -> User | None:
-        stmt = select(User).where(or_(User.username == username, User.email == username)).options(selectinload(User.role_obj))
+        stmt = (
+            select(User)
+            .where(or_(User.username == username, User.email == username))
+            .options(selectinload(User.role_obj))
+        )
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
         if not user:
@@ -187,7 +195,7 @@ class AuthService:
                 token,
                 self.secret_key,
                 algorithms=["HS256"],
-                options={"verify_exp": True}
+                options={"verify_exp": True},
             )
         except jwt.ExpiredSignatureError as exc:
             raise AuthError("令牌已过期") from exc

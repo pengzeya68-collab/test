@@ -2,6 +2,7 @@
 后台管理子路由 - 考试管理
 从 admin_manage.py 拆分
 """
+
 import logging
 from typing import Optional
 
@@ -15,6 +16,7 @@ from fastapi_backend.models.models import User, Exam, ExamQuestion
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-考试管理"])
 
+
 @router.get("/exams")
 async def list_exams(
     page: int = Query(1, ge=1),
@@ -23,7 +25,7 @@ async def list_exams(
     exam_type: Optional[str] = Query(None),
     is_published: Optional[str] = Query(None),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
         query = select(Exam)
@@ -45,31 +47,36 @@ async def list_exams(
         exam_list = []
         for e in exams:
             try:
-                exam_list.append({
-                    "id": e.id,
-                    "title": e.title,
-                    "exam_type": getattr(e, "exam_type", ""),
-                    "difficulty": getattr(e, "difficulty", "medium"),
-                    "duration": getattr(e, "duration", 60),
-                    "total_score": getattr(e, "total_score", 100),
-                    "pass_score": getattr(e, "pass_score", 60),
-                    "is_published": getattr(e, "is_published", False),
-                    "question_count": len(getattr(e, 'questions', []) or []),
-                    "attempt_count": 0,
-                    "pass_rate": 0,
-                    "created_at": e.created_at.isoformat() if e.created_at else "",
-                })
+                exam_list.append(
+                    {
+                        "id": e.id,
+                        "title": e.title,
+                        "exam_type": getattr(e, "exam_type", ""),
+                        "difficulty": getattr(e, "difficulty", "medium"),
+                        "duration": getattr(e, "duration", 60),
+                        "total_score": getattr(e, "total_score", 100),
+                        "pass_score": getattr(e, "pass_score", 60),
+                        "is_published": getattr(e, "is_published", False),
+                        "question_count": len(getattr(e, "questions", []) or []),
+                        "attempt_count": 0,
+                        "pass_rate": 0,
+                        "created_at": e.created_at.isoformat() if e.created_at else "",
+                    }
+                )
             except Exception:
-                exam_list.append({
-                    "id": getattr(e, 'id', 0),
-                    "title": getattr(e, 'title', '(数据异常)'),
-                    "exam_type": "",
-                    "created_at": "",
-                })
+                exam_list.append(
+                    {
+                        "id": getattr(e, "id", 0),
+                        "title": getattr(e, "title", "(数据异常)"),
+                        "exam_type": "",
+                        "created_at": "",
+                    }
+                )
 
         return {"list": exam_list, "total": total or 0}
     except Exception as exc:
         import logging
+
         logging.getLogger(__name__).error(f"获取考试列表失败: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail="获取考试列表失败")
 
@@ -78,7 +85,7 @@ async def list_exams(
 async def get_exam(
     exam_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取考试详情"""
     result = await db.execute(select(Exam).where(Exam.id == exam_id))
@@ -87,9 +94,7 @@ async def get_exam(
         raise HTTPException(status_code=404, detail="考试不存在")
 
     # 获取题目
-    q_result = await db.execute(
-        select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
-    )
+    q_result = await db.execute(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id))
     questions = q_result.scalars().all()
 
     return {
@@ -123,7 +128,7 @@ async def get_exam(
 async def create_exam(
     data: dict,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """创建考试"""
     questions = data.pop("questions", [])
@@ -171,7 +176,7 @@ async def update_exam(
     exam_id: int,
     data: dict,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """更新考试"""
     result = await db.execute(select(Exam).where(Exam.id == exam_id))
@@ -179,7 +184,17 @@ async def update_exam(
     if not exam:
         raise HTTPException(status_code=404, detail="考试不存在")
 
-    for field in ["title", "description", "difficulty", "exam_type", "duration", "total_score", "pass_score", "start_time", "end_time"]:
+    for field in [
+        "title",
+        "description",
+        "difficulty",
+        "exam_type",
+        "duration",
+        "total_score",
+        "pass_score",
+        "start_time",
+        "end_time",
+    ]:
         if field in data and hasattr(exam, field):
             setattr(exam, field, data[field])
     if "is_published" in data and hasattr(exam, "is_published"):
@@ -188,9 +203,7 @@ async def update_exam(
     # 更新题目（简单策略：先删后加）
     questions = data.get("questions", None)
     if questions is not None:
-        old_q_result = await db.execute(
-            select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
-        )
+        old_q_result = await db.execute(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id))
         for old_q in old_q_result.scalars().all():
             await db.delete(old_q)
 
@@ -219,7 +232,7 @@ async def update_exam(
 async def delete_exam(
     exam_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """删除考试"""
     result = await db.execute(select(Exam).where(Exam.id == exam_id))
@@ -228,9 +241,7 @@ async def delete_exam(
         raise HTTPException(status_code=404, detail="考试不存在")
 
     # 删除关联题目
-    q_result = await db.execute(
-        select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
-    )
+    q_result = await db.execute(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id))
     for q in q_result.scalars().all():
         await db.delete(q)
 
@@ -249,7 +260,7 @@ async def toggle_exam_publish(
     exam_id: int,
     data: dict,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """切换考试发布状态"""
     result = await db.execute(select(Exam).where(Exam.id == exam_id))
@@ -261,5 +272,3 @@ async def toggle_exam_publish(
         exam.is_published = data.get("is_published", not exam.is_published)
         await db.commit()
     return {"message": "操作成功"}
-
-

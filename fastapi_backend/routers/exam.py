@@ -1,4 +1,5 @@
 """Exam system router – migrated from Flask backend/api/exam.py."""
+
 from __future__ import annotations
 
 import json
@@ -96,7 +97,7 @@ def _simple_code_scoring(user_code: str, correct_answer: str | None, question_sc
     if not user_code:
         return 0, False, "未提交代码"
 
-    user_normalized = "".join(user_code.split()).lower()
+    "".join(user_code.split()).lower()
     score_ratio = 0.1  # base: just having code
 
     if correct_answer:
@@ -247,9 +248,12 @@ async def get_exams(
     for exam in exams:
         d = _fmt_exam(exam, user_id)
         if user_id:
-            att_stmt = select(ExamAttempt).where(
-                ExamAttempt.user_id == user_id, ExamAttempt.exam_id == exam.id
-            ).order_by(ExamAttempt.created_at.desc()).limit(1)
+            att_stmt = (
+                select(ExamAttempt)
+                .where(ExamAttempt.user_id == user_id, ExamAttempt.exam_id == exam.id)
+                .order_by(ExamAttempt.created_at.desc())
+                .limit(1)
+            )
             att_result = await db.execute(att_stmt)
             att = att_result.scalar_one_or_none()
             if att:
@@ -281,9 +285,12 @@ async def get_exam_detail(
     data = _fmt_exam(exam, user_id)
 
     if user_id:
-        att_stmt = select(ExamAttempt).where(
-            ExamAttempt.user_id == user_id, ExamAttempt.exam_id == exam_id
-        ).order_by(ExamAttempt.created_at.desc()).limit(1)
+        att_stmt = (
+            select(ExamAttempt)
+            .where(ExamAttempt.user_id == user_id, ExamAttempt.exam_id == exam_id)
+            .order_by(ExamAttempt.created_at.desc())
+            .limit(1)
+        )
         att_result = await db.execute(att_stmt)
         att = att_result.scalar_one_or_none()
         if att:
@@ -357,7 +364,9 @@ async def get_exam_questions(
 
     # Check for existing in-progress attempt
     att_stmt = select(ExamAttempt).where(
-        ExamAttempt.user_id == user_id, ExamAttempt.exam_id == exam_id, ExamAttempt.status == "in_progress"
+        ExamAttempt.user_id == user_id,
+        ExamAttempt.exam_id == exam_id,
+        ExamAttempt.status == "in_progress",
     )
     att_result = await db.execute(att_stmt)
     existing = att_result.scalar_one_or_none()
@@ -460,7 +469,9 @@ async def get_exam_result(
         )
 
     # Get exam for formatting
-    exam_stmt = select(Exam).where(Exam.id == attempt.exam_id).options(selectinload(Exam.user), selectinload(Exam.questions))
+    exam_stmt = (
+        select(Exam).where(Exam.id == attempt.exam_id).options(selectinload(Exam.user), selectinload(Exam.questions))
+    )
     exam_result = await db.execute(exam_stmt)
     exam = exam_result.scalar_one_or_none()
 
@@ -473,7 +484,12 @@ async def get_exam_result(
     for item in result_items:
         q_type = item["question"]["question_type"]
         if q_type not in question_types:
-            question_types[q_type] = {"total": 0, "correct": 0, "score": 0, "total_score": 0}
+            question_types[q_type] = {
+                "total": 0,
+                "correct": 0,
+                "score": 0,
+                "total_score": 0,
+            }
         question_types[q_type]["total"] += 1
         question_types[q_type]["total_score"] += item["question"]["score"]
         if item["is_correct"]:
@@ -584,14 +600,16 @@ async def generate_exam(
         for q in single_choices:
             used_ids.add(q.id)
             options = _parse_options_from_content(q.description)
-            questions_data.append({
-                "type": "single_choice",
-                "content": q.title,
-                "options": json.dumps(options),
-                "correct_answer": q.solution.strip().upper(),
-                "score": 2,
-                "analysis": q.description,
-            })
+            questions_data.append(
+                {
+                    "type": "single_choice",
+                    "content": q.title,
+                    "options": json.dumps(options),
+                    "correct_answer": q.solution.strip().upper(),
+                    "score": 2,
+                    "analysis": q.description,
+                }
+            )
             total_score += 2
 
     # Multiple choice
@@ -608,14 +626,16 @@ async def generate_exam(
             answer = q.solution.strip().upper()
             if "," in answer:
                 answer = ",".join(a.strip() for a in answer.split(","))
-            questions_data.append({
-                "type": "multiple_choice",
-                "content": q.title,
-                "options": json.dumps(options),
-                "correct_answer": answer,
-                "score": 4,
-                "analysis": q.description,
-            })
+            questions_data.append(
+                {
+                    "type": "multiple_choice",
+                    "content": q.title,
+                    "options": json.dumps(options),
+                    "correct_answer": answer,
+                    "score": 4,
+                    "analysis": q.description,
+                }
+            )
             total_score += 4
 
     # True/False
@@ -632,13 +652,15 @@ async def generate_exam(
                 ans = "true"
             else:
                 ans = "false"
-            questions_data.append({
-                "type": "true_false",
-                "content": q.title,
-                "correct_answer": ans,
-                "score": 2,
-                "analysis": q.description,
-            })
+            questions_data.append(
+                {
+                    "type": "true_false",
+                    "content": q.title,
+                    "correct_answer": ans,
+                    "score": 2,
+                    "analysis": q.description,
+                }
+            )
             total_score += 2
 
     # Code questions
@@ -650,14 +672,16 @@ async def generate_exam(
             all_code = random.sample(all_code, code_count)
         for q in all_code:
             used_ids.add(q.id)
-            questions_data.append({
-                "type": "code",
-                "content": q.title + "\n\n" + (q.description or ""),
-                "correct_answer": q.solution or "",
-                "score": 20,
-                "analysis": q.description,
-                "test_cases": q.test_cases or "",
-            })
+            questions_data.append(
+                {
+                    "type": "code",
+                    "content": q.title + "\n\n" + (q.description or ""),
+                    "correct_answer": q.solution or "",
+                    "score": 20,
+                    "analysis": q.description,
+                    "test_cases": q.test_cases or "",
+                }
+            )
             total_score += 20
 
     total_needed = sum(body.question_count.values())
@@ -681,8 +705,10 @@ async def generate_exam(
         lp_title = f" — {lp_row}" if lp_row else ""
 
     exam_title = f"{difficulty}难度{body.exam_type}{lp_title}"
-    exam_desc = f"自动生成的{difficulty}难度{body.exam_type}{lp_title}，包含{len(questions_data)}道题" \
-                f"（单选{sc_n}道、多选{mc_n}道、判断{tf_n}道、代码{code_n}道）"
+    exam_desc = (
+        f"自动生成的{difficulty}难度{body.exam_type}{lp_title}，包含{len(questions_data)}道题"
+        f"（单选{sc_n}道、多选{mc_n}道、判断{tf_n}道、代码{code_n}道）"
+    )
 
     exam = Exam(
         title=exam_title,
@@ -792,27 +818,31 @@ async def get_exam_analysis(
         correct_count = sum(1 for a in q_answers if a.is_correct)
         total_count = len(q_answers)
         pass_rate = (correct_count / total_count * 100) if total_count > 0 else 0
-        question_pass_rate.append({
-            "question_id": question.id,
-            "sort_order": question.sort_order,
-            "content": question.content[:100],
-            "pass_rate": round(pass_rate, 1),
-            "correct_count": correct_count,
-            "total_count": total_count,
-        })
+        question_pass_rate.append(
+            {
+                "question_id": question.id,
+                "sort_order": question.sort_order,
+                "content": question.content[:100],
+                "pass_rate": round(pass_rate, 1),
+                "correct_count": correct_count,
+                "total_count": total_count,
+            }
+        )
 
     # Wrong question ranking
     wrong_ranking = []
     for rd in question_pass_rate:
         if rd["total_count"] > 0:
-            wrong_ranking.append({
-                "question_id": rd["question_id"],
-                "sort_order": rd["sort_order"],
-                "content": rd["content"],
-                "error_rate": 100 - rd["pass_rate"],
-                "correct_count": rd["correct_count"],
-                "total_count": rd["total_count"],
-            })
+            wrong_ranking.append(
+                {
+                    "question_id": rd["question_id"],
+                    "sort_order": rd["sort_order"],
+                    "content": rd["content"],
+                    "error_rate": 100 - rd["pass_rate"],
+                    "correct_count": rd["correct_count"],
+                    "total_count": rd["total_count"],
+                }
+            )
     wrong_ranking.sort(key=lambda x: x["error_rate"], reverse=True)
 
     # Question type stats
@@ -827,7 +857,7 @@ async def get_exam_analysis(
         for a in q_answers:
             if a.is_correct:
                 qt_stats[q_type]["correct"] += 1
-            qt_stats[q_type]["score"] += (a.score or 0)
+            qt_stats[q_type]["score"] += a.score or 0
 
     for q_type, stats in qt_stats.items():
         if stats["total"] > 0:
@@ -852,10 +882,7 @@ async def get_exam_analysis(
     pass_rate_val = (sum(1 for a in attempts if a.is_passed) / total_attempts * 100) if total_attempts > 0 else 0
 
     avg_time = 0
-    time_entries = [
-        (a.end_time - a.start_time).total_seconds() / 60
-        for a in attempts if a.end_time and a.start_time
-    ]
+    time_entries = [(a.end_time - a.start_time).total_seconds() / 60 for a in attempts if a.end_time and a.start_time]
     if time_entries:
         avg_time = round(sum(time_entries) / len(time_entries), 1)
 
@@ -890,7 +917,9 @@ async def get_exam_analysis(
                     "total_questions": len(questions),
                     "average_pass_rate": round(
                         sum(r["pass_rate"] for r in question_pass_rate) / len(question_pass_rate)
-                        if question_pass_rate else 0, 1
+                        if question_pass_rate
+                        else 0,
+                        1,
                     ),
                     "top_wrong_questions": wrong_ranking[:5],
                 },

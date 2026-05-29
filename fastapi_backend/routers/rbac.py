@@ -4,6 +4,7 @@ RBAC 权限管理路由
 仅后端 API，暂不提供前端管理界面。
 所有接口需要 system:config 或 user:manage 权限。
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func, delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,18 +12,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_permission
 from fastapi_backend.models.models import (
-    User, Role, Permission, RolePermissionMapping,
+    User,
+    Role,
+    Permission,
+    RolePermissionMapping,
 )
 from fastapi_backend.schemas.rbac import (
-    RoleCreate, RoleUpdate, RoleSchema,
-    PermissionCreate, PermissionSchema,
-    PermissionAssign, UserRoleAssign,
+    RoleCreate,
+    RoleUpdate,
+    RoleSchema,
+    PermissionCreate,
+    PermissionSchema,
+    PermissionAssign,
+    UserRoleAssign,
 )
 
 router = APIRouter(prefix="/api/v1/admin/rbac", tags=["RBAC Management"])
 
 
 # ============ 角色管理 ============
+
 
 @router.get("/roles", response_model=list[RoleSchema])
 async def list_roles(
@@ -103,6 +112,7 @@ async def delete_role(
 
 # ============ 权限管理 ============
 
+
 @router.get("/permissions", response_model=list[PermissionSchema])
 async def list_permissions(
     module: str = None,
@@ -137,6 +147,7 @@ async def create_permission(
 
 # ============ 角色权限分配 ============
 
+
 @router.get("/roles/{role_id}/permissions", response_model=list[PermissionSchema])
 async def get_role_permissions(
     role_id: int,
@@ -166,17 +177,11 @@ async def assign_permissions_to_role(
         raise HTTPException(status_code=404, detail="角色不存在")
 
     # 清空现有权限
-    await db.execute(
-        sa_delete(RolePermissionMapping).where(
-            RolePermissionMapping.role_id == role_id
-        )
-    )
+    await db.execute(sa_delete(RolePermissionMapping).where(RolePermissionMapping.role_id == role_id))
 
     # 分配新权限
     for perm_code in data.permission_codes:
-        perm_result = await db.execute(
-            select(Permission).where(Permission.code == perm_code)
-        )
+        perm_result = await db.execute(select(Permission).where(Permission.code == perm_code))
         permission = perm_result.scalar_one_or_none()
         if permission:
             mapping = RolePermissionMapping(role_id=role_id, permission_id=permission.id)
@@ -187,6 +192,7 @@ async def assign_permissions_to_role(
 
 
 # ============ 用户角色管理 ============
+
 
 @router.put("/users/{user_id}/role")
 async def assign_role_to_user(

@@ -6,7 +6,7 @@
 
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 学习路径4的50道精品题
 exercises_data = [
@@ -17,7 +17,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "Python基础概念"
+        "category": "Python基础概念",
     },
     {
         "title": "关于Python的特点，以下说法正确的是？（多选）",
@@ -25,7 +25,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Python基础概念"
+        "category": "Python基础概念",
     },
     {
         "title": "请判断：Python是一种编译型语言，需要先将源代码编译成机器码才能运行。",
@@ -33,7 +33,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "Python基础概念"
+        "category": "Python基础概念",
     },
     {
         "title": "关于Python的解释器，以下说法正确的是？",
@@ -41,7 +41,7 @@ exercises_data = [
         "solution": "A,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "Python基础概念"
+        "category": "Python基础概念",
     },
     {
         "title": "关于Python的版本，以下说法正确的是？",
@@ -49,7 +49,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Python基础概念"
+        "category": "Python基础概念",
     },
     {
         "title": "请判断：Python的源代码文件的扩展名是 `.py`，编译后的字节码文件扩展名是 `.pyc`。",
@@ -57,7 +57,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "Python基础概念"
+        "category": "Python基础概念",
     },
     {
         "title": "关于Python的标识符命名规则，以下说法正确的是？",
@@ -65,7 +65,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Python基础概念"
+        "category": "Python基础概念",
     },
     {
         "title": "关于Python的关键字，以下说法正确的是？（多选）",
@@ -73,15 +73,15 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Python基础概念"
+        "category": "Python基础概念",
     },
     {
-        "title": "请判断：Python中的单行注释以 `#` 开头，多行注释可以用三个单引号 `'''` 或三个双引号 `\'\'\'` 包裹。",
-        "description": "请判断：Python中的单行注释以 `#` 开头，多行注释可以用三个单引号 `'''` 或三个双引号 `\'\'\'` 包裹。\n\nA. 正确\nB. 错误",
+        "title": "请判断：Python中的单行注释以 `#` 开头，多行注释可以用三个单引号 `'''` 或三个双引号 `'''` 包裹。",
+        "description": "请判断：Python中的单行注释以 `#` 开头，多行注释可以用三个单引号 `'''` 或三个双引号 `'''` 包裹。\n\nA. 正确\nB. 错误",
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "Python基础概念"
+        "category": "Python基础概念",
     },
     {
         "title": "关于Python的代码缩进，以下说法正确的是？",
@@ -89,9 +89,8 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Python基础概念"
+        "category": "Python基础概念",
     },
-    
     # ============ 变量与数据类型（15题）============
     {
         "title": "关于Python的变量，以下说法正确的是？",
@@ -99,7 +98,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "easy",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "关于Python的数值类型，以下说法正确的是？（多选）",
@@ -107,7 +106,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "请判断：在Python中，`/` 运算符用于整数除法（结果向下取整），`//` 运算符用于浮点数除法（结果保留小数）。",
@@ -115,7 +114,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "关于Python的字符串，以下说法正确的是？",
@@ -123,7 +122,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "关于Python的列表（List），以下说法正确的是？（多选）",
@@ -131,7 +130,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "请判断：Python中的元组（Tuple）和列表（List）一样，都是可变类型，可以修改其中的元素。",
@@ -139,7 +138,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "关于Python的字典（Dictionary），以下说法正确的是？",
@@ -147,7 +146,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "关于Python的集合（Set），以下说法正确的是？（多选）",
@@ -155,7 +154,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "请判断：在Python中，空字符串 `''`、空列表 `[]`、空元组 `()`、空字典 `{}` 的布尔值都是 `False`。",
@@ -163,7 +162,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "关于Python的类型转换，以下说法正确的是？",
@@ -171,7 +170,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "关于Python的输入输出，以下说法正确的是？（多选）",
@@ -179,7 +178,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "easy",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "请判断：Python中的 `is` 运算符用于比较两个变量的值是否相等，`==` 运算符用于比较两个变量是否指向同一个对象。",
@@ -187,7 +186,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "关于Python的运算符优先级，以下说法正确的是？",
@@ -195,7 +194,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
     {
         "title": "关于Python的赋值运算符，以下说法正确的是？（多选）",
@@ -203,9 +202,8 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "变量与数据类型"
+        "category": "变量与数据类型",
     },
-    
     # ============ 控制流（10题）============
     {
         "title": "关于Python的条件判断，以下说法正确的是？",
@@ -213,7 +211,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "控制流"
+        "category": "控制流",
     },
     {
         "title": "关于Python的循环，以下说法正确的是？（多选）",
@@ -221,7 +219,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "控制流"
+        "category": "控制流",
     },
     {
         "title": "请判断：`range(5)` 生成的序列是 `[0, 1, 2, 3, 4]`，`range(1, 5)` 生成的序列是 `[1, 2, 3, 4]`，`range(1, 5, 2)` 生成的序列是 `[1, 3]`。",
@@ -229,7 +227,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "控制流"
+        "category": "控制流",
     },
     {
         "title": "关于Python的列表推导式，以下说法正确的是？",
@@ -237,7 +235,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "控制流"
+        "category": "控制流",
     },
     {
         "title": "关于Python的生成器推导式，以下说法正确的是？（多选）",
@@ -245,7 +243,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "控制流"
+        "category": "控制流",
     },
     {
         "title": "请判断：在Python中，可以使用 `pass` 语句作为占位符，表示什么也不做。",
@@ -253,7 +251,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "控制流"
+        "category": "控制流",
     },
     {
         "title": "关于Python的异常处理，以下说法正确的是？",
@@ -261,7 +259,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "控制流"
+        "category": "控制流",
     },
     {
         "title": "关于Python的常见异常类型，以下说法正确的是？（多选）",
@@ -269,7 +267,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "控制流"
+        "category": "控制流",
     },
     {
         "title": "请判断：可以使用 `raise` 语句主动抛出异常，使用 `assert` 语句进行断言（条件为假时抛出 `AssertionError`）。",
@@ -277,7 +275,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "控制流"
+        "category": "控制流",
     },
     {
         "title": "关于Python的 `with` 语句，以下说法正确的是？",
@@ -285,9 +283,8 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "控制流"
+        "category": "控制流",
     },
-    
     # ============ 函数与模块（10题）============
     {
         "title": "关于Python的函数定义，以下说法正确的是？",
@@ -295,7 +292,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "函数与模块"
+        "category": "函数与模块",
     },
     {
         "title": "关于Python的函数参数，以下说法正确的是？（多选）",
@@ -303,7 +300,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "函数与模块"
+        "category": "函数与模块",
     },
     {
         "title": "请判断：在Python中，函数的参数有默认值的情况下，默认参数必须放在非默认参数的后面。",
@@ -311,7 +308,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "函数与模块"
+        "category": "函数与模块",
     },
     {
         "title": "关于Python的变量作用域，以下说法正确的是？",
@@ -319,7 +316,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "函数与模块"
+        "category": "函数与模块",
     },
     {
         "title": "关于Python的模块和包，以下说法正确的是？（多选）",
@@ -327,7 +324,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "函数与模块"
+        "category": "函数与模块",
     },
     {
         "title": "请判断：可以使用 `pip` 命令安装第三方包，使用 `pip list` 查看已安装的包，使用 `pip uninstall` 卸载包。",
@@ -335,7 +332,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "函数与模块"
+        "category": "函数与模块",
     },
     {
         "title": "关于Python的递归函数，以下说法正确的是？",
@@ -343,7 +340,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "函数与模块"
+        "category": "函数与模块",
     },
     {
         "title": "关于Python的匿名函数（lambda），以下说法正确的是？（多选）",
@@ -351,7 +348,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "函数与模块"
+        "category": "函数与模块",
     },
     {
         "title": "请判断：在Python中，函数也是对象，可以赋值给变量，可以作为参数传递给其他函数，也可以作为返回值。",
@@ -359,7 +356,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "函数与模块"
+        "category": "函数与模块",
     },
     {
         "title": "关于Python的装饰器（Decorator），以下说法正确的是？",
@@ -367,9 +364,8 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "函数与模块"
+        "category": "函数与模块",
     },
-    
     # ============ 面向对象编程（5题）============
     {
         "title": "关于Python的类和对象，以下说法正确的是？（多选）",
@@ -377,7 +373,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "面向对象编程"
+        "category": "面向对象编程",
     },
     {
         "title": "请判断：Python中的继承可以分为单继承（`class Child(Parent):`）和多继承（`class Child(Parent1, Parent2):`）。",
@@ -385,7 +381,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "面向对象编程"
+        "category": "面向对象编程",
     },
     {
         "title": "关于Python的方法重载和多态，以下说法正确的是？",
@@ -393,7 +389,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "面向对象编程"
+        "category": "面向对象编程",
     },
     {
         "title": "关于Python的特殊方法（魔术方法），以下说法正确的是？（多选）",
@@ -401,7 +397,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "面向对象编程"
+        "category": "面向对象编程",
     },
     {
         "title": "请判断：在Python中，可以使用 `@property` 装饰器将方法转换为属性，使用 `@method.setter` 装饰器定义属性的setter方法。",
@@ -409,58 +405,63 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "面向对象编程"
+        "category": "面向对象编程",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径4的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 4")
     print("🗑️  已删除学习路径4（Python编程基础）的旧习题")
-    
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 4, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 4", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径4（Python编程基础）")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 4")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径4现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

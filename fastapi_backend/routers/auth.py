@@ -5,7 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.core.exceptions import AuthenticationException, ValidationException
-from fastapi_backend.deps.auth import get_auth_service, get_current_active_user, require_admin
+from fastapi_backend.deps.auth import (
+    get_auth_service,
+    get_current_active_user,
+    require_admin,
+)
 from fastapi_backend.models.models import User
 from fastapi_backend.schemas.auth import (
     ChangePasswordRequest,
@@ -39,9 +43,7 @@ async def register(
     conditions = [User.username == username, User.email == email]
     if phone:
         conditions.append(User.phone == phone)
-    existing = await db.execute(
-        select(User).where(or_(*conditions))
-    )
+    existing = await db.execute(select(User).where(or_(*conditions)))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="用户名、邮箱或手机号已存在")
 
@@ -75,7 +77,7 @@ async def login(
     user = await auth_service.authenticate_user(db, payload.username, payload.password)
     if not user:
         raise AuthenticationException("用户名/邮箱或密码无效")
-    
+
     await auth_service.migrate_password_if_needed(db, user, payload.password)
     return auth_service.create_token_pair(user)
 
@@ -176,13 +178,13 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
 ):
     from fastapi_backend.core.config import settings
-    
+
     if settings.ENVIRONMENT == "production":
         raise HTTPException(status_code=503, detail="服务暂不可用，请稍后再试")
-    
+
     dev_code = "123456"
     print(f"[DEV] 开发环境重置密码验证码: {dev_code} (phone={body.phone})")
-    
+
     if body.code.upper() != dev_code:
         raise AuthenticationException("验证码错误或已过期")
 
@@ -233,6 +235,7 @@ async def wechat_login(
 
     if not user:
         import secrets
+
         username = f"wx_{openid[:8]}"
         email = f"{openid[:12]}@wechat.mini"
 

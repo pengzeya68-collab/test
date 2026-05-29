@@ -4,6 +4,7 @@ AutoTest 统一路由 - 执行、历史、调度、邮件、导入导出
 路径前缀: /api/auto-test/...
 映射原 auto_test_platform main.py 中的内联端点
 """
+
 import json
 import logging
 import subprocess
@@ -14,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
@@ -42,7 +43,11 @@ from fastapi_backend.schemas.autotest import (
 from fastapi_backend.utils.parser import replace_variables, find_variables
 from fastapi_backend.core.ssrf_guard import validate_url_safety
 
-router = APIRouter(prefix="/api/auto-test", tags=["AutoTest-执行与工具"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/auto-test",
+    tags=["AutoTest-执行与工具"],
+    dependencies=[Depends(get_current_user)],
+)
 
 # 项目根目录
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -50,9 +55,7 @@ AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 TASKS_DIR = AUTOTEST_DATA_DIR / "tasks"
 
 # ========== 任务状态管理 ==========
-from fastapi_backend.services.autotest_task_store import (
-    get_task, update_task
-)
+from fastapi_backend.services.autotest_task_store import get_task, update_task
 
 
 def _build_stored_task_result(stored: dict) -> Optional[dict]:
@@ -63,7 +66,18 @@ def _build_stored_task_result(stored: dict) -> Optional[dict]:
     result = {
         key: value
         for key, value in stored.items()
-        if key not in {"task_id", "status", "state", "info", "progress", "traceback", "created_at", "updated_at", "completed_at"}
+        if key
+        not in {
+            "task_id",
+            "status",
+            "state",
+            "info",
+            "progress",
+            "traceback",
+            "created_at",
+            "updated_at",
+            "completed_at",
+        }
     }
     return result or None
 
@@ -94,64 +108,78 @@ async def _run_scenario_locally(task_id: str, scenario_id: int, env_id: Optional
 
         def on_progress(current_step, total_steps, step_name):
             percent = int((current_step / total_steps) * 100) if total_steps > 0 else 0
-            asyncio.create_task(update_task(task_id, {
-                "task_id": task_id,
-                "scenario_id": scenario_id,
-                "status": "PROGRESS",
-                "info": f"执行中: {step_name}",
-                "progress": {
-                    "percent": percent,
-                    "current": current_step,
-                    "total": total_steps,
-                    "current_api": step_name,
-                    "current_step": current_step,
-                    "total_steps": total_steps,
-                    "step_name": step_name,
-                },
-                "updated_at": time.time(),
-            }))
+            asyncio.create_task(
+                update_task(
+                    task_id,
+                    {
+                        "task_id": task_id,
+                        "scenario_id": scenario_id,
+                        "status": "PROGRESS",
+                        "info": f"执行中: {step_name}",
+                        "progress": {
+                            "percent": percent,
+                            "current": current_step,
+                            "total": total_steps,
+                            "current_api": step_name,
+                            "current_step": current_step,
+                            "total_steps": total_steps,
+                            "step_name": step_name,
+                        },
+                        "updated_at": time.time(),
+                    },
+                )
+            )
 
         result = await execute_scenario_async(scenario_id, env_id, progress_callback=on_progress)
         result["task_id"] = task_id
         result["status"] = "completed"
         result["scenario_id"] = scenario_id
 
-        await update_task(task_id, {
-            "task_id": task_id,
-            "scenario_id": scenario_id,
-            "status": "completed",
-            "info": "任务执行成功",
-            "progress": {
-                "percent": 100,
-                "current": result.get("total_steps", 0),
-                "total": result.get("total_steps", 0),
-                "current_api": "执行完成",
-                "current_step": result.get("total_steps", 0),
-                "total_steps": result.get("total_steps", 0),
-                "step_name": "执行完成",
+        await update_task(
+            task_id,
+            {
+                "task_id": task_id,
+                "scenario_id": scenario_id,
+                "status": "completed",
+                "info": "任务执行成功",
+                "progress": {
+                    "percent": 100,
+                    "current": result.get("total_steps", 0),
+                    "total": result.get("total_steps", 0),
+                    "current_api": "执行完成",
+                    "current_step": result.get("total_steps", 0),
+                    "total_steps": result.get("total_steps", 0),
+                    "step_name": "执行完成",
+                },
+                "result": result,
+                "completed_at": time.time(),
             },
-            "result": result,
-            "completed_at": time.time(),
-        })
+        )
     except Exception as exc:
         logger.error("本地异步执行场景失败 task_id=%s: %s", task_id, exc, exc_info=True)
-        await update_task(task_id, {
-            "task_id": task_id,
-            "scenario_id": scenario_id,
-            "status": "failed",
-            "info": f"任务失败: {str(exc)[:100]}",
-            "error": str(exc),
-            "completed_at": time.time(),
-        })
+        await update_task(
+            task_id,
+            {
+                "task_id": task_id,
+                "scenario_id": scenario_id,
+                "status": "failed",
+                "info": f"任务失败: {str(exc)[:100]}",
+                "error": str(exc),
+                "completed_at": time.time(),
+            },
+        )
+
 
 # ========== 接口调试发送 ==========
 
 from fastapi_backend.utils.autotest_helpers import convert_to_dict
 from fastapi_backend.services.autotest_report_service import write_allure_results
 
+
 @router.post("/send")
 async def send_request(payload: dict):
     from fastapi_backend.services.autotest_request_service import execute_http_request
+
     url = payload.get("url", "")
     if not url:
         raise HTTPException(status_code=400, detail="URL 不能为空")
@@ -175,30 +203,31 @@ async def send_request(payload: dict):
 
 # ========== Celery 任务状态管理 ==========
 
+
 @router.get("/tasks/{task_id}")
 async def get_task_status(task_id: str):
     """获取任务状态：非终态优先读 Celery 实时状态，终态读持久化存储"""
     # 定义终态列表
-    TERMINAL_STATES = {"completed", "failed", "cancelled", "SUCCESS", "FAILURE"}
-    
+
     # 1. 先查 Celery 实时状态（获取最新进度）
     celery_state = None
     celery_meta = {}
     try:
         from celery.result import AsyncResult
         from fastapi_backend.tasks import celery_app
+
         task_result = AsyncResult(task_id, app=celery_app)
         celery_state = task_result.state
         celery_meta = task_result.info or {}
     except Exception:
         pass
-    
+
     # 2. 再查持久化存储
     stored = get_task(task_id)
-    
+
     # 3. 如果 Celery 有实时状态且任务非终态，优先使用 Celery 状态
     if celery_state and celery_state not in ("PENDING",):
-        if celery_state == 'PROGRESS':
+        if celery_state == "PROGRESS":
             meta = celery_meta if isinstance(celery_meta, dict) else {}
             # 同时更新持久化存储
             if stored:
@@ -208,13 +237,13 @@ async def get_task_status(task_id: str):
                 old_progress = stored.get("progress", {}) if isinstance(stored.get("progress"), dict) else {}
                 stored["progress"] = {
                     **old_progress,
-                    "percent": meta.get('percent', old_progress.get("percent", 0)),
-                    "current": meta.get('current', old_progress.get("current", 0)),
-                    "total": meta.get('total', old_progress.get("total", 0)),
-                    "current_api": meta.get('current_api', old_progress.get("current_api", '执行中...')),
-                    "current_step": meta.get('current_step', old_progress.get("current_step", 0)),
-                    "total_steps": meta.get('total_steps', old_progress.get("total_steps", 0)),
-                    "step_name": meta.get('step_name', old_progress.get("step_name", '执行中...')),
+                    "percent": meta.get("percent", old_progress.get("percent", 0)),
+                    "current": meta.get("current", old_progress.get("current", 0)),
+                    "total": meta.get("total", old_progress.get("total", 0)),
+                    "current_api": meta.get("current_api", old_progress.get("current_api", "执行中...")),
+                    "current_step": meta.get("current_step", old_progress.get("current_step", 0)),
+                    "total_steps": meta.get("total_steps", old_progress.get("total_steps", 0)),
+                    "step_name": meta.get("step_name", old_progress.get("step_name", "执行中...")),
                 }
                 await update_task(task_id, stored)
             return {
@@ -222,25 +251,30 @@ async def get_task_status(task_id: str):
                 "status": "PROGRESS",
                 "state": "PROGRESS",
                 "progress": {
-                    "percent": meta.get('percent', 0),
-                    "current": meta.get('current', 0),
-                    "total": meta.get('total', 0),
-                    "current_api": meta.get('current_api', '执行中...'),
-                    "current_step": meta.get('current_step', 0),
-                    "total_steps": meta.get('total_steps', 0),
-                    "step_name": meta.get('step_name', '执行中...'),
+                    "percent": meta.get("percent", 0),
+                    "current": meta.get("current", 0),
+                    "total": meta.get("total", 0),
+                    "current_api": meta.get("current_api", "执行中..."),
+                    "current_step": meta.get("current_step", 0),
+                    "total_steps": meta.get("total_steps", 0),
+                    "step_name": meta.get("step_name", "执行中..."),
                 },
-                "info": f"执行中: {meta.get('step_name', '...')}"
+                "info": f"执行中: {meta.get('step_name', '...')}",
             }
-        elif celery_state == 'STARTED':
+        elif celery_state == "STARTED":
             return {
                 "task_id": task_id,
                 "status": "STARTED",
                 "state": "STARTED",
-                "progress": {"percent": 5, "current": 0, "total": 0, "current_api": '启动中...'},
-                "info": "任务启动中"
+                "progress": {
+                    "percent": 5,
+                    "current": 0,
+                    "total": 0,
+                    "current_api": "启动中...",
+                },
+                "info": "任务启动中",
             }
-        elif celery_state == 'SUCCESS':
+        elif celery_state == "SUCCESS":
             # SUCCESS 状态：优先从持久化存储读取完整结果（包含 step_results）
             # Celery 通过 Redis 传输大结果时可能丢失 step_results
             result = None
@@ -250,30 +284,35 @@ async def get_task_status(task_id: str):
                 result = celery_meta
             else:
                 result = {}
-            
+
             # 如果持久化存储有进度信息，也使用它
-            final_progress = {"percent": 100, "current": 0, "total": 0, "current_api": '执行完成'}
+            final_progress = {
+                "percent": 100,
+                "current": 0,
+                "total": 0,
+                "current_api": "执行完成",
+            }
             if stored and stored.get("progress"):
                 final_progress = stored["progress"]
-            
+
             return {
                 "task_id": task_id,
                 "status": "completed",
                 "state": "SUCCESS",
                 "result": result,
                 "progress": final_progress,
-                "info": stored.get("info", "任务执行成功") if stored else "任务执行成功"
+                "info": stored.get("info", "任务执行成功") if stored else "任务执行成功",
             }
-        elif celery_state == 'FAILURE':
+        elif celery_state == "FAILURE":
             error_str = str(celery_meta) if isinstance(celery_meta, Exception) else str(celery_meta)
             return {
                 "task_id": task_id,
                 "status": "failed",
                 "state": "FAILURE",
                 "error": error_str,
-                "info": f"任务失败: {error_str[:100]}"
+                "info": f"任务失败: {error_str[:100]}",
             }
-    
+
     # 4. 查持久化存储（终态或 Celery 无状态）
     if stored is not None:
         stored_status = stored.get("status", "UNKNOWN")
@@ -287,13 +326,13 @@ async def get_task_status(task_id: str):
             "error": stored.get("error"),
             "traceback": stored.get("traceback"),
         }
-    
+
     # 5. 未知任务
     return {
         "task_id": task_id,
         "status": "UNKNOWN",
         "state": "UNKNOWN",
-        "info": "任务不存在或状态已失效"
+        "info": "任务不存在或状态已失效",
     }
 
 
@@ -308,7 +347,10 @@ async def cancel_task(task_id: str, db: AsyncSession = Depends(get_db)):
 
     current_status = stored.get("status", "")
     if current_status in ("completed", "failed", "cancelled"):
-        return {"message": f"任务已处于 {current_status} 状态，无法取消", "task_id": task_id}
+        return {
+            "message": f"任务已处于 {current_status} 状态，无法取消",
+            "task_id": task_id,
+        }
 
     try:
         from celery.result import AsyncResult
@@ -350,10 +392,14 @@ async def cancel_task(task_id: str, db: AsyncSession = Depends(get_db)):
 
 # ========== 报告详情 ==========
 
+
 @router.get("/reports/{report_id}")
 async def get_report_detail(report_id: int, db: AsyncSession = Depends(get_db)):
     """获取执行报告详情"""
-    from fastapi_backend.services.autotest_report_service import get_report_detail as _get_report
+    from fastapi_backend.services.autotest_report_service import (
+        get_report_detail as _get_report,
+    )
+
     result = await _get_report(report_id, db)
     if result is None:
         raise HTTPException(status_code=404, detail="报告不存在")
@@ -374,6 +420,7 @@ async def preview_variables(request: VariablePreviewRequest):
 
 # ========== 用例执行接口 ==========
 
+
 @router.post("/cases/{case_id}/run")
 async def run_case(case_id: int, body: CaseRunRequest = None, db: AsyncSession = Depends(get_db)):
     """执行用例并保存历史记录，返回完整执行结果"""
@@ -384,6 +431,7 @@ async def run_case(case_id: int, body: CaseRunRequest = None, db: AsyncSession =
         raise HTTPException(status_code=404, detail="用例不存在")
 
     import logging
+
     logger = logging.getLogger(__name__)
     logger.info(f"[run_case] case_id={case_id}, DB中查出的Params: {case.params}, type={type(case.params)}")
 
@@ -403,6 +451,7 @@ async def run_case(case_id: int, body: CaseRunRequest = None, db: AsyncSession =
             env = result.scalars().first()
 
     from fastapi_backend.services.autotest_execution import quick_run_case
+
     result_data = await quick_run_case(case, env)
 
     history = AutoTestHistory(
@@ -425,7 +474,7 @@ async def quick_run(
     case_id: int,
     body: CaseRunRequest = None,
     p: str = Query(None, description="已替换变量的请求参数字符串（JSON）"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """快速执行用例（结果自动保存历史记录）"""
     env_id = body.env_id if body else None
@@ -445,7 +494,7 @@ async def quick_run(
             pass
 
     if env is None:
-        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True))
+        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default))
         env = result.scalars().first()
         if not env:
             result = await db.execute(select(AutoTestEnvironment))
@@ -463,6 +512,7 @@ async def quick_run(
             override_params = p
 
     from fastapi_backend.services.autotest_execution import quick_run_case
+
     result_data = await quick_run_case(case, env, override_params=override_params)
 
     history = AutoTestHistory(
@@ -493,17 +543,19 @@ async def batch_run(case_ids: List[int], env_id: int = None, db: AsyncSession = 
         result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id))
         env = result.scalar_one_or_none()
     else:
-        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True))
+        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default))
         env = result.scalar_one_or_none()
         if not env:
             result = await db.execute(select(AutoTestEnvironment))
             env = result.scalars().first()
 
     from fastapi_backend.services.autotest_execution import quick_run_case
+
     total = len(cases)
 
     # 并发执行（最多10个并发）
     import asyncio
+
     semaphore = asyncio.Semaphore(10)
 
     async def run_with_limit(case):
@@ -511,20 +563,33 @@ async def batch_run(case_ids: List[int], env_id: int = None, db: AsyncSession = 
             return await quick_run_case(case, env)
 
     results = await asyncio.gather(*[run_with_limit(c) for c in cases], return_exceptions=True)
-    
+
     formatted_results = []
     success_count = 0
     for case, result in zip(cases, results):
         if isinstance(result, Exception):
-            formatted_results.append({"case_id": case.id, "case_name": case.name, "success": False, "error": str(result)})
+            formatted_results.append(
+                {
+                    "case_id": case.id,
+                    "case_name": case.name,
+                    "success": False,
+                    "error": str(result),
+                }
+            )
         else:
             success_count += 1 if result["success"] else 0
             formatted_results.append({"case_id": case.id, "case_name": case.name, **result})
 
-    return {"total": total, "success": success_count, "failed": total - success_count, "results": formatted_results}
+    return {
+        "total": total,
+        "success": success_count,
+        "failed": total - success_count,
+        "results": formatted_results,
+    }
 
 
 # ========== 测试历史接口 ==========
+
 
 @router.get("/history", response_model=list[AutoTestHistoryResponse])
 async def get_history(
@@ -537,7 +602,7 @@ async def get_history(
     # 参数校验
     limit = max(1, min(limit, 100))  # 限制1-100
     offset = max(0, offset)
-    
+
     query = select(AutoTestHistory).order_by(desc(AutoTestHistory.created_at))
     if case_id:
         query = query.where(AutoTestHistory.case_id == case_id)
@@ -571,6 +636,7 @@ async def get_history_detail(history_id: int, db: AsyncSession = Depends(get_db)
 
 # ========== 场景执行接口 ==========
 
+
 @router.post("/scenarios/{scenario_id}/run")
 async def run_scenario(scenario_id: int, body: CaseRunRequest = None, background: bool = True):
     """执行测试场景，使用Celery异步任务"""
@@ -589,7 +655,10 @@ async def run_scenario(scenario_id: int, body: CaseRunRequest = None, background
                 raise HTTPException(status_code=400, detail="场景已停用，禁止执行")
 
         from fastapi_backend.tasks import task_run_scenario
-        from fastapi_backend.services.autotest_task_store import update_task as seed_task
+        from fastapi_backend.services.autotest_task_store import (
+            update_task as seed_task,
+        )
+
         logger = logging.getLogger(__name__)
 
         task_id = None
@@ -613,15 +682,23 @@ async def run_scenario(scenario_id: int, body: CaseRunRequest = None, background
                 raise ValueError("Celery任务ID为空，任务可能未成功发送")
 
         # 写入初始持久化记录，确保查询接口能追踪到该任务
-        await seed_task(task_id, {
-            "task_id": task_id,
-            "scenario_id": scenario_id,
-            "env_id": env_id,
-            "status": "PROGRESS",
-            "info": "任务已提交，正在后台执行",
-            "progress": {"percent": 0, "current": 0, "total": 0, "current_api": "等待执行..."},
-            "created_at": time.time(),
-        })
+        await seed_task(
+            task_id,
+            {
+                "task_id": task_id,
+                "scenario_id": scenario_id,
+                "env_id": env_id,
+                "status": "PROGRESS",
+                "info": "任务已提交，正在后台执行",
+                "progress": {
+                    "percent": 0,
+                    "current": 0,
+                    "total": 0,
+                    "current_api": "等待执行...",
+                },
+                "created_at": time.time(),
+            },
+        )
 
         if use_local_runner:
             asyncio.create_task(_run_scenario_locally(task_id, scenario_id, env_id))
@@ -634,7 +711,7 @@ async def run_scenario(scenario_id: int, body: CaseRunRequest = None, background
             "task_id": task_id,
             "scenario_id": scenario_id,
             "status": "PROGRESS",
-            "message": "任务已提交，正在后台执行"
+            "message": "任务已提交，正在后台执行",
         }
     except HTTPException:
         raise
@@ -650,7 +727,7 @@ async def get_scenario_execution_history(
     start_date: str = None,
     end_date: str = None,
     limit: int = 20,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取某个场景的执行历史记录列表"""
     result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
@@ -659,9 +736,7 @@ async def get_scenario_execution_history(
         raise HTTPException(status_code=404, detail="场景不存在")
 
     # 构建查询
-    query = select(AutoTestScenarioExecutionRecord).where(
-        AutoTestScenarioExecutionRecord.scenario_id == scenario_id
-    )
+    query = select(AutoTestScenarioExecutionRecord).where(AutoTestScenarioExecutionRecord.scenario_id == scenario_id)
 
     # 状态筛选
     if status:
@@ -719,11 +794,7 @@ async def get_scenario_execution_history(
 
 
 @router.delete("/scenarios/{scenario_id}/history/{record_id}", status_code=204)
-async def delete_scenario_execution_history(
-    scenario_id: int,
-    record_id: int,
-    db: AsyncSession = Depends(get_db)
-):
+async def delete_scenario_execution_history(scenario_id: int, record_id: int, db: AsyncSession = Depends(get_db)):
     """删除场景执行历史记录"""
     # 验证场景存在
     result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
@@ -733,10 +804,9 @@ async def delete_scenario_execution_history(
 
     # 查找并删除记录
     result = await db.execute(
-        select(AutoTestScenarioExecutionRecord)
-        .where(
+        select(AutoTestScenarioExecutionRecord).where(
             AutoTestScenarioExecutionRecord.id == record_id,
-            AutoTestScenarioExecutionRecord.scenario_id == scenario_id
+            AutoTestScenarioExecutionRecord.scenario_id == scenario_id,
         )
     )
     record = result.scalar_one_or_none()
@@ -755,7 +825,9 @@ async def delete_scenario_execution_history(
 async def run_scenario_data_driven(scenario_id: int, body: CaseRunRequest = None):
     """数据驱动执行测试场景"""
     env_id = body.env_id if body else None
-    from fastapi_backend.services.autotest_scenario_runner import run_scenario_data_driven as execute_data_driven
+    from fastapi_backend.services.autotest_scenario_runner import (
+        run_scenario_data_driven as execute_data_driven,
+    )
 
     try:
         result_data = await execute_data_driven(scenario_id, env_id)
@@ -764,6 +836,7 @@ async def run_scenario_data_driven(scenario_id: int, body: CaseRunRequest = None
         report_dir = AUTOTEST_DATA_DIR / "reports" / f"scenario_{scenario_id}"
 
         import shutil as _shutil
+
         if allure_results_dir.exists():
             try:
                 _shutil.rmtree(str(allure_results_dir))
@@ -777,6 +850,7 @@ async def run_scenario_data_driven(scenario_id: int, body: CaseRunRequest = None
 
         try:
             import shutil
+
             old_report_history = report_dir / "history"
             new_results_history = allure_results_dir / "history"
             if old_report_history.exists() and old_report_history.is_dir():
@@ -786,12 +860,19 @@ async def run_scenario_data_driven(scenario_id: int, body: CaseRunRequest = None
 
             cmd_result = await asyncio.to_thread(
                 subprocess.run,
-                ["allure", "generate", str(allure_results_dir), "-o", str(report_dir), "--clean"],
+                [
+                    "allure",
+                    "generate",
+                    str(allure_results_dir),
+                    "-o",
+                    str(report_dir),
+                    "--clean",
+                ],
                 capture_output=True,
                 timeout=60,
                 text=True,
-                encoding='utf-8',
-                errors='ignore'
+                encoding="utf-8",
+                errors="ignore",
             )
             if cmd_result.returncode == 0:
                 result_data["report_url"] = f"/reports/scenario_{scenario_id}/index.html"
@@ -813,6 +894,7 @@ async def run_scenario_data_driven(scenario_id: int, body: CaseRunRequest = None
 
 # ========== 定时任务管理接口 ==========
 
+
 def _scenario_id_from_scheduler_task_id(task_id: str) -> Optional[int]:
     if task_id.startswith("auto_sched_"):
         try:
@@ -826,6 +908,7 @@ def _scenario_id_from_scheduler_task_id(task_id: str) -> Optional[int]:
 async def list_scheduler_tasks():
     """获取所有定时任务"""
     from fastapi_backend.services.autotest_scheduler import get_all_scheduled_tasks
+
     return get_all_scheduled_tasks()
 
 
@@ -833,6 +916,7 @@ async def list_scheduler_tasks():
 async def get_scenario_scheduler_tasks(scenario_id: int):
     """获取指定场景的定时任务"""
     from fastapi_backend.services.autotest_scheduler import get_tasks_by_scenario
+
     tasks = get_tasks_by_scenario(scenario_id)
     return tasks if tasks else []
 
@@ -841,7 +925,9 @@ async def get_scenario_scheduler_tasks(scenario_id: int):
 async def create_scheduler_task(task: ScheduleTaskCreate):
     """创建定时任务"""
     from fastapi_backend.services.autotest_scheduler import add_scheduled_task
-    from fastapi_backend.services.autotest_schedule_persistence import persist_schedule_to_db
+    from fastapi_backend.services.autotest_schedule_persistence import (
+        persist_schedule_to_db,
+    )
 
     try:
         result = add_scheduled_task(
@@ -872,8 +958,13 @@ async def create_scheduler_task(task: ScheduleTaskCreate):
 @router.delete("/scheduler/tasks/{task_id}")
 async def delete_scheduler_task(task_id: str):
     """删除定时任务"""
-    from fastapi_backend.services.autotest_scheduler import get_scheduled_task, remove_scheduled_task
-    from fastapi_backend.services.autotest_schedule_persistence import clear_schedule_from_db
+    from fastapi_backend.services.autotest_scheduler import (
+        get_scheduled_task,
+        remove_scheduled_task,
+    )
+    from fastapi_backend.services.autotest_schedule_persistence import (
+        clear_schedule_from_db,
+    )
 
     t = get_scheduled_task(task_id)
     scenario_id = t.get("scenario_id") if t else _scenario_id_from_scheduler_task_id(task_id)
@@ -889,7 +980,10 @@ async def delete_scheduler_task(task_id: str):
 async def run_scheduler_task_now(task_id: str):
     """立即执行定时任务（手动触发）"""
     import asyncio
-    from fastapi_backend.services.autotest_scheduler import get_scheduled_task, execute_scenario_job
+    from fastapi_backend.services.autotest_scheduler import (
+        get_scheduled_task,
+        execute_scenario_job,
+    )
 
     task = get_scheduled_task(task_id)
     if not task:
@@ -908,11 +1002,13 @@ async def run_scheduler_task_now(task_id: str):
                 raise HTTPException(status_code=400, detail="场景已停用，禁止执行")
 
     try:
+
         async def _execute_job_safe():
             try:
                 await execute_scenario_job(task["scenario_id"], task.get("env_id"), task_id)
             except Exception as e:
                 import logging
+
                 logging.getLogger(__name__).error(f"定时任务执行失败 task_id={task_id}: {e}", exc_info=True)
 
         asyncio.create_task(_execute_job_safe())
@@ -926,8 +1022,13 @@ async def run_scheduler_task_now(task_id: str):
 @router.post("/scheduler/tasks/{task_id}/toggle")
 async def toggle_scheduler_task(task_id: str):
     """切换定时任务的启用/暂停状态"""
-    from fastapi_backend.services.autotest_scheduler import get_scheduled_task, toggle_task_status
-    from fastapi_backend.services.autotest_schedule_persistence import persist_schedule_is_active_db
+    from fastapi_backend.services.autotest_scheduler import (
+        get_scheduled_task,
+        toggle_task_status,
+    )
+    from fastapi_backend.services.autotest_schedule_persistence import (
+        persist_schedule_is_active_db,
+    )
 
     task = get_scheduled_task(task_id)
     if not task:
@@ -948,10 +1049,12 @@ async def toggle_scheduler_task(task_id: str):
 
 # ========== 邮件配置 API ==========
 
+
 @router.get("/email/config")
 async def get_email_config():
     """获取当前邮件配置（从持久化存储读取）"""
     from fastapi_backend.core.autotest_settings import get_settings
+
     settings = get_settings()
     return {
         "enabled": getattr(settings, "EMAIL_ENABLED", False),
@@ -971,6 +1074,7 @@ async def get_email_config():
 async def save_email_config(config: EmailConfig):
     """保存邮件配置到持久化存储（system_config.json）"""
     from fastapi_backend.core.autotest_settings import get_settings
+
     settings = get_settings()
     settings.EMAIL_ENABLED = config.enabled
     settings.EMAIL_SMTP_HOST = config.smtpHost
@@ -982,13 +1086,14 @@ async def save_email_config(config: EmailConfig):
     settings.EMAIL_USE_SSL = config.enableSSL
     settings.EMAIL_TEST_TO = config.testToEmail
     settings.AUTO_TEST_BASE_URL = config.baseUrl
-    
+
     # 保存到持久化存储
     settings.save_to_persistent()
 
     # 重置邮件通知器单例，使新配置生效
     from fastapi_backend.services.autotest_email_notifier import get_email_notifier
     import fastapi_backend.services.autotest_email_notifier as email_notifier_module
+
     email_notifier_module._email_notifier_instance = None
     get_email_notifier()
 
@@ -1009,6 +1114,7 @@ async def send_test_email(request: TestEmailRequest):
 
 
 # ========== 导入导出 API ==========
+
 
 @router.post("/import/postman")
 async def import_postman(
@@ -1097,7 +1203,9 @@ async def import_postman(
         if not root_group:
             raise HTTPException(status_code=404, detail="目标分组不存在")
     else:
-        result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.name == root_name, AutoTestGroup.parent_id.is_(None)))
+        result = await db.execute(
+            select(AutoTestGroup).where(AutoTestGroup.name == root_name, AutoTestGroup.parent_id.is_(None))
+        )
         root_group = result.scalar_one_or_none()
         if not root_group:
             root_group = AutoTestGroup(name=root_name, parent_id=None)
@@ -1107,7 +1215,10 @@ async def import_postman(
     await _import_items(data.get("item", []), root_group.id)
     await db.commit()
 
-    return {"message": f"导入成功，共导入 {imported_count} 个用例", "imported_count": imported_count}
+    return {
+        "message": f"导入成功，共导入 {imported_count} 个用例",
+        "imported_count": imported_count,
+    }
 
 
 @router.post("/import/swagger")
@@ -1140,7 +1251,9 @@ async def import_swagger(
             if not root_group:
                 raise HTTPException(status_code=404, detail="目标分组不存在")
         else:
-            result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.name == root_name, AutoTestGroup.parent_id.is_(None)))
+            result = await db.execute(
+                select(AutoTestGroup).where(AutoTestGroup.name == root_name, AutoTestGroup.parent_id.is_(None))
+            )
             root_group = result.scalar_one_or_none()
             if not root_group:
                 root_group = AutoTestGroup(name=root_name, parent_id=None)
@@ -1151,7 +1264,15 @@ async def import_swagger(
 
     for path, methods in paths.items():
         for method, details in methods.items():
-            if method.upper() not in {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}:
+            if method.upper() not in {
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "HEAD",
+                "OPTIONS",
+            }:
                 continue
 
             url = base_url + path
@@ -1160,7 +1281,8 @@ async def import_swagger(
 
             # 替换路径参数 {id} -> {{id}}
             import re
-            url = re.sub(r'\{(\w+)\}', r'{{\1}}', url)
+
+            url = re.sub(r"\{(\w+)\}", r"{{\1}}", url)
 
             headers = {}
             for param in details.get("parameters", []):
@@ -1199,7 +1321,10 @@ async def import_swagger(
         }
 
     await db.commit()
-    return {"message": f"导入成功，共导入 {imported_count} 个用例", "imported_count": imported_count}
+    return {
+        "message": f"导入成功，共导入 {imported_count} 个用例",
+        "imported_count": imported_count,
+    }
 
 
 # ========== Allure 报告辅助函数 ==========

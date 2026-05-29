@@ -6,7 +6,7 @@
 
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 学习路径10的50道精品题
 exercises_data = [
@@ -17,7 +17,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "Selenium概述"
+        "category": "Selenium概述",
     },
     {
         "title": "关于Selenium的组件，以下说法正确的是？（多选）",
@@ -25,7 +25,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Selenium概述"
+        "category": "Selenium概述",
     },
     {
         "title": "请判断：Selenium支持多种编程语言（如：Java、Python、C#）。",
@@ -33,7 +33,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "Selenium概述"
+        "category": "Selenium概述",
     },
     {
         "title": "关于Selenium WebDriver的工作原理，以下说法正确的是？",
@@ -41,7 +41,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "Selenium概述"
+        "category": "Selenium概述",
     },
     {
         "title": "关于Selenium与其他自动化工具的比较，以下说法正确的是？（多选）",
@@ -49,7 +49,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Selenium概述"
+        "category": "Selenium概述",
     },
     {
         "title": "请判断：Selenium可以测试桌面应用。",
@@ -57,7 +57,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "Selenium概述"
+        "category": "Selenium概述",
     },
     {
         "title": "关于Selenium的安装，以下说法正确的是？",
@@ -65,7 +65,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "Selenium概述"
+        "category": "Selenium概述",
     },
     {
         "title": "关于Selenium的应用场景，以下说法正确的是？（多选）",
@@ -73,7 +73,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "Selenium概述"
+        "category": "Selenium概述",
     },
     {
         "title": "请判断：Selenium支持移动端应用测试。",
@@ -81,7 +81,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "Selenium概述"
+        "category": "Selenium概述",
     },
     {
         "title": "关于Selenium 3与Selenium 4的区别，以下说法正确的是？",
@@ -89,9 +89,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "Selenium概述"
+        "category": "Selenium概述",
     },
-    
     # ============ 元素定位（10题）============
     {
         "title": "关于Selenium的元素定位，以下说法正确的是？",
@@ -99,7 +98,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "元素定位"
+        "category": "元素定位",
     },
     {
         "title": "关于XPath定位，以下说法正确的是？（多选）",
@@ -107,7 +106,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "元素定位"
+        "category": "元素定位",
     },
     {
         "title": "请判断：CSS Selector通常比XPath更快。",
@@ -115,7 +114,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "元素定位"
+        "category": "元素定位",
     },
     {
         "title": "关于ID定位，以下说法正确的是？",
@@ -123,7 +122,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "元素定位"
+        "category": "元素定位",
     },
     {
         "title": "关于元素定位的最佳实践，以下说法正确的是？（多选）",
@@ -131,7 +130,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "元素定位"
+        "category": "元素定位",
     },
     {
         "title": "请判断：如果元素没有ID，可以使用Name或Class属性定位。",
@@ -139,7 +138,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "元素定位"
+        "category": "元素定位",
     },
     {
         "title": "关于XPath的轴（Axes），以下说法正确的是？",
@@ -147,7 +146,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "元素定位"
+        "category": "元素定位",
     },
     {
         "title": "关于元素定位的调试，以下说法正确的是？（多选）",
@@ -155,7 +154,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "元素定位"
+        "category": "元素定位",
     },
     {
         "title": "请判断：CSS Selector支持通过文本内容定位元素。",
@@ -163,7 +162,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "元素定位"
+        "category": "元素定位",
     },
     {
         "title": "关于动态元素的定位，以下说法正确的是？",
@@ -171,9 +170,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "元素定位"
+        "category": "元素定位",
     },
-    
     # ============ 常用操作（10题）============
     {
         "title": "关于Selenium的常用操作，以下说法正确的是？",
@@ -181,7 +179,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "常用操作"
+        "category": "常用操作",
     },
     {
         "title": "关于元素的点击操作，以下说法正确的是？（多选）",
@@ -189,7 +187,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "常用操作"
+        "category": "常用操作",
     },
     {
         "title": "请判断：send_keys()方法用于向输入框输入文本。",
@@ -197,7 +195,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "常用操作"
+        "category": "常用操作",
     },
     {
         "title": "关于获取元素文本，以下说法正确的是？",
@@ -205,7 +203,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "常用操作"
+        "category": "常用操作",
     },
     {
         "title": "关于下拉框操作，以下说法正确的是？（多选）",
@@ -213,7 +211,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "常用操作"
+        "category": "常用操作",
     },
     {
         "title": "请判断：clear()方法用于清除输入框的文本。",
@@ -221,7 +219,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "常用操作"
+        "category": "常用操作",
     },
     {
         "title": "关于弹窗处理，以下说法正确的是？",
@@ -229,7 +227,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "常用操作"
+        "category": "常用操作",
     },
     {
         "title": "关于多窗口/多标签页处理，以下说法正确的是？（多选）",
@@ -237,7 +235,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "常用操作"
+        "category": "常用操作",
     },
     {
         "title": "请判断：Selenium可以操作文件上传。",
@@ -245,7 +243,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "常用操作"
+        "category": "常用操作",
     },
     {
         "title": "关于鼠标悬停操作，以下说法正确的是？",
@@ -253,9 +251,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "常用操作"
+        "category": "常用操作",
     },
-    
     # ============ 等待机制（10题）============
     {
         "title": "关于Selenium的等待机制，以下说法正确的是？",
@@ -263,7 +260,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "等待机制"
+        "category": "等待机制",
     },
     {
         "title": "关于强制等待（time.sleep），以下说法正确的是？（多选）",
@@ -271,7 +268,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "等待机制"
+        "category": "等待机制",
     },
     {
         "title": "请判断：隐式等待（implicitly_wait）会应用于所有元素查找。",
@@ -279,7 +276,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "等待机制"
+        "category": "等待机制",
     },
     {
         "title": "关于显式等待（WebDriverWait），以下说法正确的是？",
@@ -287,7 +284,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "等待机制"
+        "category": "等待机制",
     },
     {
         "title": "关于等待机制的最佳实践，以下说法正确的是？（多选）",
@@ -295,7 +292,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "等待机制"
+        "category": "等待机制",
     },
     {
         "title": "请判断：expected_conditions模块提供了常用的等待条件。",
@@ -303,7 +300,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "等待机制"
+        "category": "等待机制",
     },
     {
         "title": "关于FluientWait，以下说法正确的是？",
@@ -311,7 +308,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "等待机制"
+        "category": "等待机制",
     },
     {
         "title": "关于页面加载等待，以下说法正确的是？（多选）",
@@ -319,7 +316,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "等待机制"
+        "category": "等待机制",
     },
     {
         "title": "请判断：等待机制可以提高测试脚本的稳定性。",
@@ -327,7 +324,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "等待机制"
+        "category": "等待机制",
     },
     {
         "title": "关于等待机制的调试，以下说法正确的是？",
@@ -335,9 +332,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "等待机制"
+        "category": "等待机制",
     },
-    
     # ============ 测试框架集成（10题）============
     {
         "title": "关于Selenium与测试框架的集成，以下说法正确的是？",
@@ -345,7 +341,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试框架集成"
+        "category": "测试框架集成",
     },
     {
         "title": "关于Selenium与Pytest的集成，以下说法正确的是？（多选）",
@@ -353,7 +349,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试框架集成"
+        "category": "测试框架集成",
     },
     {
         "title": "请判断：Selenium测试脚本应该遵循Page Object模式。",
@@ -361,7 +357,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "测试框架集成"
+        "category": "测试框架集成",
     },
     {
         "title": "关于测试报告，以下说法正确的是？",
@@ -369,7 +365,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试框架集成"
+        "category": "测试框架集成",
     },
     {
         "title": "关于持续集成，以下说法正确的是？（多选）",
@@ -377,7 +373,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试框架集成"
+        "category": "测试框架集成",
     },
     {
         "title": "请判断：Selenium测试脚本应该包含断言（Assertion）。",
@@ -385,7 +381,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试框架集成"
+        "category": "测试框架集成",
     },
     {
         "title": "关于测试数据管理，以下说法正确的是？",
@@ -393,7 +389,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试框架集成"
+        "category": "测试框架集成",
     },
     {
         "title": "关于并行执行，以下说法正确的是？（多选）",
@@ -401,7 +397,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试框架集成"
+        "category": "测试框架集成",
     },
     {
         "title": "请判断：Selenium 4支持相对定位器（Relative Locators）。",
@@ -409,7 +405,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "测试框架集成"
+        "category": "测试框架集成",
     },
     {
         "title": "关于Selenium的最佳实践，以下说法正确的是？",
@@ -417,58 +413,63 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试框架集成"
+        "category": "测试框架集成",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径10的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 10")
     print("🗑️  已删除学习路径10（UI自动化测试 - Selenium）的旧习题")
-    
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 10, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 10", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径10（UI自动化测试 - Selenium）")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 10")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径10现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

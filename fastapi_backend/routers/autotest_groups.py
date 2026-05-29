@@ -4,6 +4,7 @@ AutoTest 统一路由 - 分组管理
 路径前缀: /api/auto-test/groups
 映射原 auto_test_platform 的 /api/groups
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -15,7 +16,11 @@ from fastapi_backend.schemas.autotest import (
     AutoTestGroupUpdate,
 )
 
-router = APIRouter(prefix="/api/auto-test/groups", tags=["AutoTest-分组"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/auto-test/groups",
+    tags=["AutoTest-分组"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.get("/tree")

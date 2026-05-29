@@ -1,6 +1,7 @@
 """
 代码提交记录 Schema
 """
+
 import json
 from datetime import datetime
 from typing import Optional, Any
@@ -9,10 +10,14 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 class SubmissionBase(BaseModel):
     """提交基础信息"""
+
     session_id: int = Field(..., description="会话ID")
     user_id: int = Field(..., description="用户ID")
     question_id: int = Field(..., description="题目ID")
-    question_source: str = Field(default="interview_question", description="题目来源: interview_question / exercise")
+    question_source: str = Field(
+        default="interview_question",
+        description="题目来源: interview_question / exercise",
+    )
     language: str = Field(default="python", description="编程语言")
     source_code: str = Field(..., min_length=1, description="源代码")
     execution_status: str = Field(default="pending", description="执行状态: pending/running/success/failed")
@@ -24,6 +29,7 @@ class SubmissionBase(BaseModel):
 
 class SubmissionCreate(BaseModel):
     """创建提交记录 - 前端提交的数据"""
+
     session_id: int = Field(..., description="会话ID")
     language: str = Field(default="python", description="编程语言")
     source_code: str = Field(..., min_length=1, description="源代码")
@@ -31,6 +37,7 @@ class SubmissionCreate(BaseModel):
 
 class SubmissionUpdate(BaseModel):
     """更新提交记录 - 用于更新执行和评估状态"""
+
     execution_status: Optional[str] = Field(None, description="执行状态: pending/running/success/failed")
     ai_evaluation_status: Optional[str] = Field(None, description="AI评估状态: pending/running/completed/failed")
     score: Optional[int] = Field(None, ge=0, le=100, description="AI评分 (0-100)")
@@ -40,6 +47,7 @@ class SubmissionUpdate(BaseModel):
 
 class SubmissionDetail(SubmissionBase):
     """提交记录详情"""
+
     id: int
     created_at: datetime
     updated_at: datetime
@@ -60,6 +68,7 @@ class SubmissionDetail(SubmissionBase):
 
 class SubmissionList(BaseModel):
     """提交记录列表项"""
+
     id: int
     session_id: int
     user_id: int
@@ -76,6 +85,7 @@ class SubmissionList(BaseModel):
 
 class SubmissionWithSessionInfo(BaseModel):
     """提交记录包含会话信息"""
+
     id: int
     session_id: int
     user_id: int
@@ -110,6 +120,7 @@ class SubmissionWithSessionInfo(BaseModel):
 
 class SubmissionResultDetail(SubmissionWithSessionInfo):
     """提交结果详情 - 用于完整评估报告"""
+
     question_description: Optional[str] = None
     question_prompt: Optional[str] = None
     question_test_cases: Optional[str] = None
@@ -143,7 +154,7 @@ class SubmissionResultDetail(SubmissionWithSessionInfo):
             "pass_rate": judge_result.get("pass_rate"),
             "all_passed": judge_result.get("all_passed"),
             "summary": judge_result.get("summary"),
-            "total_execution_time_ms": judge_result.get("total_execution_time_ms")
+            "total_execution_time_ms": judge_result.get("total_execution_time_ms"),
         }
 
     @computed_field
@@ -153,12 +164,13 @@ class SubmissionResultDetail(SubmissionWithSessionInfo):
         return {
             "score": self.score,
             "feedback": self.feedback,
-            "is_correct": self.score is not None and self.score >= 80 if self.score else False
+            "is_correct": self.score is not None and self.score >= 80 if self.score else False,
         }
 
 
 class SubmissionHistoryItem(BaseModel):
     """提交历史列表项"""
+
     id: int
     session_id: int
     question_id: int

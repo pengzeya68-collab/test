@@ -6,7 +6,7 @@
 
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 学习路径7的50道精品题
 exercises_data = [
@@ -17,7 +17,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "缺陷基础概念"
+        "category": "缺陷基础概念",
     },
     {
         "title": "关于缺陷的生命周期，以下说法正确的是？（多选）",
@@ -25,7 +25,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "缺陷基础概念"
+        "category": "缺陷基础概念",
     },
     {
         "title": "请判断：缺陷（Bug）和增强需求（Enhancement）是同一个概念，没有区别。",
@@ -33,7 +33,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "缺陷基础概念"
+        "category": "缺陷基础概念",
     },
     {
         "title": "关于缺陷的严重级别（Severity），以下说法正确的是？",
@@ -41,7 +41,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷基础概念"
+        "category": "缺陷基础概念",
     },
     {
         "title": "关于缺陷的优先级（Priority），以下说法正确的是？（多选）",
@@ -49,7 +49,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "缺陷基础概念"
+        "category": "缺陷基础概念",
     },
     {
         "title": "请判断：严重级别（Severity）和优先级（Priority）是正相关的，即严重程度高的缺陷一定优先修复。",
@@ -57,7 +57,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "缺陷基础概念"
+        "category": "缺陷基础概念",
     },
     {
         "title": "关于缺陷的严重级别和优先级的关系，以下说法正确的是？",
@@ -65,7 +65,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "缺陷基础概念"
+        "category": "缺陷基础概念",
     },
     {
         "title": "关于缺陷的属性，以下说法正确的是？（多选）",
@@ -73,7 +73,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "缺陷基础概念"
+        "category": "缺陷基础概念",
     },
     {
         "title": "请判断：一个缺陷应该只修复一个问题，不要在一个缺陷中修复多个不相关的问题。",
@@ -81,7 +81,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "缺陷基础概念"
+        "category": "缺陷基础概念",
     },
     {
         "title": "关于缺陷的类型，以下说法正确的是？",
@@ -89,9 +89,8 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷基础概念"
+        "category": "缺陷基础概念",
     },
-    
     # ============ 缺陷报告编写（10题）============
     {
         "title": "关于好的缺陷报告，以下说法正确的是？",
@@ -99,7 +98,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷报告编写"
+        "category": "缺陷报告编写",
     },
     {
         "title": "关于缺陷报告的要素，以下说法正确的是？（多选）",
@@ -107,7 +106,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "缺陷报告编写"
+        "category": "缺陷报告编写",
     },
     {
         "title": "请判断：缺陷报告的复现步骤应该是「可复现的」，即任何人按照步骤都能复现该缺陷。",
@@ -115,7 +114,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "缺陷报告编写"
+        "category": "缺陷报告编写",
     },
     {
         "title": "关于缺陷报告的「预期结果」和「实际结果」，以下说法正确的是？",
@@ -123,7 +122,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷报告编写"
+        "category": "缺陷报告编写",
     },
     {
         "title": "关于缺陷报告的附件，以下说法正确的是？（多选）",
@@ -131,7 +130,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "缺陷报告编写"
+        "category": "缺陷报告编写",
     },
     {
         "title": "请判断：缺陷报告的标题应该尽可能详细，包含所有的细节信息。",
@@ -139,7 +138,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "缺陷报告编写"
+        "category": "缺陷报告编写",
     },
     {
         "title": "关于缺陷报告的「环境信息」，以下说法正确的是？",
@@ -147,7 +146,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷报告编写"
+        "category": "缺陷报告编写",
     },
     {
         "title": "关于缺陷报告的语言，以下说法正确的是？（多选）",
@@ -155,7 +154,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "缺陷报告编写"
+        "category": "缺陷报告编写",
     },
     {
         "title": "请判断：如果一个缺陷无法复现，就不应该提交缺陷报告。",
@@ -163,7 +162,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "缺陷报告编写"
+        "category": "缺陷报告编写",
     },
     {
         "title": "关于缺陷报告的最佳实践，以下说法正确的是？",
@@ -171,9 +170,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷报告编写"
+        "category": "缺陷报告编写",
     },
-    
     # ============ 缺陷管理流程（10题）============
     {
         "title": "关于缺陷管理流程，以下说法正确的是？",
@@ -181,7 +179,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷管理流程"
+        "category": "缺陷管理流程",
     },
     {
         "title": "关于缺陷的分派（Assignment），以下说法正确的是？（多选）",
@@ -189,7 +187,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "缺陷管理流程"
+        "category": "缺陷管理流程",
     },
     {
         "title": "请判断：缺陷修复后，应该由开发人员自己验证，不需要测试人员参与。",
@@ -197,7 +195,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "缺陷管理流程"
+        "category": "缺陷管理流程",
     },
     {
         "title": "关于缺陷的验证（Verification），以下说法正确的是？",
@@ -205,7 +203,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "缺陷管理流程"
+        "category": "缺陷管理流程",
     },
     {
         "title": "关于缺陷的重新打开（Reopen），以下说法正确的是？（多选）",
@@ -213,7 +211,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "缺陷管理流程"
+        "category": "缺陷管理流程",
     },
     {
         "title": "请判断：缺陷管理工具（如Jira、Bugzilla）可以帮助团队跟踪缺陷的生命周期。",
@@ -221,7 +219,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "缺陷管理流程"
+        "category": "缺陷管理流程",
     },
     {
         "title": "关于缺陷管理工具的功能，以下说法正确的是？",
@@ -229,7 +227,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷管理流程"
+        "category": "缺陷管理流程",
     },
     {
         "title": "关于缺陷的度量指标，以下说法正确的是？（多选）",
@@ -237,7 +235,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "缺陷管理流程"
+        "category": "缺陷管理流程",
     },
     {
         "title": "请判断：缺陷的密度越低，说明软件的质量越高。",
@@ -245,7 +243,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "缺陷管理流程"
+        "category": "缺陷管理流程",
     },
     {
         "title": "关于缺陷的趋势分析，以下说法正确的是？",
@@ -253,9 +251,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "缺陷管理流程"
+        "category": "缺陷管理流程",
     },
-    
     # ============ 缺陷管理工具（10题）============
     {
         "title": "关于常见的缺陷管理工具，以下说法正确的是？",
@@ -263,7 +260,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷管理工具"
+        "category": "缺陷管理工具",
     },
     {
         "title": "关于Jira的使用，以下说法正确的是？（多选）",
@@ -271,7 +268,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "缺陷管理工具"
+        "category": "缺陷管理工具",
     },
     {
         "title": "请判断：在Jira中，缺陷（Issue）的类型可以包括：Bug、Story、Task、Epic等。",
@@ -279,7 +276,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "缺陷管理工具"
+        "category": "缺陷管理工具",
     },
     {
         "title": "关于缺陷管理工具的权限管理，以下说法正确的是？",
@@ -287,7 +284,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷管理工具"
+        "category": "缺陷管理工具",
     },
     {
         "title": "关于缺陷管理工具的搜索和过滤，以下说法正确的是？（多选）",
@@ -295,7 +292,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "缺陷管理工具"
+        "category": "缺陷管理工具",
     },
     {
         "title": "请判断：缺陷管理工具中的「仪表盘（Dashboard）」可以直观展示团队的缺陷状况。",
@@ -303,7 +300,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "缺陷管理工具"
+        "category": "缺陷管理工具",
     },
     {
         "title": "关于缺陷管理工具的集成，以下说法正确的是？",
@@ -311,7 +308,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "缺陷管理工具"
+        "category": "缺陷管理工具",
     },
     {
         "title": "关于缺陷管理工具的报告功能，以下说法正确的是？（多选）",
@@ -319,7 +316,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "缺陷管理工具"
+        "category": "缺陷管理工具",
     },
     {
         "title": "请判断：缺陷管理工具应该定期备份，防止数据丢失。",
@@ -327,7 +324,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "缺陷管理工具"
+        "category": "缺陷管理工具",
     },
     {
         "title": "关于缺陷管理工具的选择，以下说法正确的是？",
@@ -335,9 +332,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷管理工具"
+        "category": "缺陷管理工具",
     },
-    
     # ============ 缺陷预防与过程改进（10题）============
     {
         "title": "关于缺陷预防，以下说法正确的是？",
@@ -345,7 +341,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "缺陷预防与过程改进"
+        "category": "缺陷预防与过程改进",
     },
     {
         "title": "关于早期测试（Early Testing），以下说法正确的是？（多选）",
@@ -353,7 +349,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "缺陷预防与过程改进"
+        "category": "缺陷预防与过程改进",
     },
     {
         "title": "请判断：根据缺陷修复成本曲线，在需求阶段发现的缺陷，修复成本是最低的。",
@@ -361,7 +357,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "缺陷预防与过程改进"
+        "category": "缺陷预防与过程改进",
     },
     {
         "title": "关于根因分析（Root Cause Analysis），以下说法正确的是？",
@@ -369,7 +365,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "缺陷预防与过程改进"
+        "category": "缺陷预防与过程改进",
     },
     {
         "title": "关于5 Whys（五次为什么）分析法，以下说法正确的是？（多选）",
@@ -377,7 +373,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "缺陷预防与过程改进"
+        "category": "缺陷预防与过程改进",
     },
     {
         "title": "请判断：缺陷预防比缺陷修复更重要，因为预防可以避免缺陷的产生。",
@@ -385,7 +381,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "缺陷预防与过程改进"
+        "category": "缺陷预防与过程改进",
     },
     {
         "title": "关于过程改进（Process Improvement），以下说法正确的是？",
@@ -393,7 +389,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "缺陷预防与过程改进"
+        "category": "缺陷预防与过程改进",
     },
     {
         "title": "关于缺陷管理的度量指标，以下说法正确的是？（多选）",
@@ -401,7 +397,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "缺陷预防与过程改进"
+        "category": "缺陷预防与过程改进",
     },
     {
         "title": "请判断：缺陷管理的目标不仅仅是修复缺陷，还包括预防缺陷、改进过程。",
@@ -409,7 +405,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "缺陷预防与过程改进"
+        "category": "缺陷预防与过程改进",
     },
     {
         "title": "关于测试团队的缺陷管理职责，以下说法正确的是？",
@@ -417,58 +413,63 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "缺陷预防与过程改进"
+        "category": "缺陷预防与过程改进",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径7的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 7")
     print("🗑️  已删除学习路径7（缺陷管理与追踪）的旧习题")
-    
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 7, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 7", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径7（缺陷管理与追踪）")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 7")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径7现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

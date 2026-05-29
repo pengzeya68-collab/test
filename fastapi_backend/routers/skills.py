@@ -1,4 +1,5 @@
 """Skills radar / detail / progress – migrated from Flask backend/api/skills.py."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -184,9 +185,7 @@ def _get_suggestion(skill_key: str, score: int) -> str:
     return bucket.get("high", "已经很优秀了，可以尝试更高难度的挑战！")
 
 
-async def _calculate_skill_score(
-    user_id: int, skill_key: str, db: AsyncSession
-) -> int:
+async def _calculate_skill_score(user_id: int, skill_key: str, db: AsyncSession) -> int:
     mapping = SKILL_CATEGORY_MAP.get(skill_key, {})
     categories: list[str] = mapping.get("categories", [])
     languages: list[str] = mapping.get("languages", [])
@@ -301,7 +300,7 @@ async def get_skill_detail(
     # Recommended exercises for this skill
     mapping = SKILL_CATEGORY_MAP.get(skill_key, {})
     categories: list[str] = mapping.get("categories", [])
-    rec_stmt = select(Exercise).where(Exercise.is_public == True)
+    rec_stmt = select(Exercise).where(Exercise.is_public)
     if categories:
         rec_stmt = rec_stmt.where(Exercise.category.in_(categories))
     rec_stmt = rec_stmt.limit(5)
@@ -368,11 +367,15 @@ async def get_skill_progress(
         monthly_growth = 0
         if total_exercises > 0:
             exercise_ids = [e.id for e in related_exercises]
-            recent_stmt = select(func.count()).select_from(Progress).where(
-                Progress.user_id == user_id,
-                Progress.exercise_id.in_(exercise_ids),
-                Progress.completed == True,  # noqa: E712
-                Progress.completed_at >= one_month_ago,
+            recent_stmt = (
+                select(func.count())
+                .select_from(Progress)
+                .where(
+                    Progress.user_id == user_id,
+                    Progress.exercise_id.in_(exercise_ids),
+                    Progress.completed == True,  # noqa: E712
+                    Progress.completed_at >= one_month_ago,
+                )
             )
             recent_result = await db.execute(recent_stmt)
             recent_completed = recent_result.scalar() or 0
@@ -422,9 +425,13 @@ async def get_knowledge_map(
         categories = mapping.get("categories", [])
 
         for cat in categories:
-            cat_ex_stmt = select(func.count()).select_from(Exercise).where(
-                Exercise.category == cat,
-                Exercise.is_public == True,  # noqa: E712
+            cat_ex_stmt = (
+                select(func.count())
+                .select_from(Exercise)
+                .where(
+                    Exercise.category == cat,
+                    Exercise.is_public == True,  # noqa: E712
+                )
             )
             cat_total_result = await db.execute(cat_ex_stmt)
             cat_total = cat_total_result.scalar_one()
@@ -444,15 +451,17 @@ async def get_knowledge_map(
 
             mastery = round(cat_done / cat_total * 100, 1) if cat_total > 0 else 0
 
-            knowledge_points.append({
-                "skill_key": key,
-                "skill_name": config["name"],
-                "knowledge_point": cat,
-                "total_exercises": cat_total,
-                "completed_exercises": cat_done,
-                "mastery": mastery,
-                "score": score,
-            })
+            knowledge_points.append(
+                {
+                    "skill_key": key,
+                    "skill_name": config["name"],
+                    "knowledge_point": cat,
+                    "total_exercises": cat_total,
+                    "completed_exercises": cat_done,
+                    "mastery": mastery,
+                    "score": score,
+                }
+            )
 
     knowledge_points.sort(key=lambda x: x["mastery"])
 

@@ -11,7 +11,7 @@ class SandboxRequest(BaseModel):
         default=settings.SANDBOX_DEFAULT_TIMEOUT_SECONDS,
         ge=1,
         le=settings.SANDBOX_MAX_TIMEOUT_SECONDS,
-        description=f"执行超时时间（秒），最大 {settings.SANDBOX_MAX_TIMEOUT_SECONDS} 秒"
+        description=f"执行超时时间（秒），最大 {settings.SANDBOX_MAX_TIMEOUT_SECONDS} 秒",
     )
 
 
@@ -23,7 +23,7 @@ class SandboxResult(BaseModel):
     success: bool = Field(default=False, description="执行是否成功（exit_code == 0）")
     returncode: int = Field(default=0, description="兼容字段，同 exit_code")
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def compute_computed_fields(self):
         self.success = self.exit_code == 0
         self.returncode = self.exit_code

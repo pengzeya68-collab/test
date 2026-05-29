@@ -2,6 +2,7 @@
 后台管理子路由 - 学习路径管理
 从 admin_manage.py 拆分
 """
+
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
@@ -19,6 +20,7 @@ from fastapi_backend.schemas.learning_paths import (
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-学习路径"])
 
+
 @router.get("/paths")
 async def list_paths(
     page: int = Query(1, ge=1),
@@ -26,14 +28,17 @@ async def list_paths(
     keyword: Optional[str] = Query(None),
     level: Optional[str] = Query(None),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取学习路径列表"""
     query = select(LearningPath)
 
     if keyword:
         query = query.where(
-            or_(LearningPath.title.contains(keyword), LearningPath.description.contains(keyword))
+            or_(
+                LearningPath.title.contains(keyword),
+                LearningPath.description.contains(keyword),
+            )
         )
     if level:
         query = query.where(LearningPath.difficulty == level)
@@ -46,15 +51,17 @@ async def list_paths(
 
     path_list = []
     for p in paths:
-        path_list.append({
-            "id": p.id,
-            "title": p.title,
-            "description": p.description or "",
-            "level": p.difficulty if hasattr(p, "difficulty") else "beginner",
-            "exerciseCount": 0,
-            "learnCount": 0,
-            "completionRate": 0,
-        })
+        path_list.append(
+            {
+                "id": p.id,
+                "title": p.title,
+                "description": p.description or "",
+                "level": p.difficulty if hasattr(p, "difficulty") else "beginner",
+                "exerciseCount": 0,
+                "learnCount": 0,
+                "completionRate": 0,
+            }
+        )
 
     return {"list": path_list, "total": total or 0}
 
@@ -63,7 +70,7 @@ async def list_paths(
 async def get_path(
     path_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取学习路径详情"""
     result = await db.execute(select(LearningPath).where(LearningPath.id == path_id))
@@ -81,25 +88,19 @@ async def get_path(
 
 
 @router.get("/paths/exercises")
-async def get_path_exercises(
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
+async def get_path_exercises(current_user: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     """获取可选习题列表（用于穿梭框）"""
     result = await db.execute(select(Exercise))
     exercises = result.scalars().all()
 
-    return [
-        {"key": e.id, "label": e.title}
-        for e in exercises
-    ]
+    return [{"key": e.id, "label": e.title} for e in exercises]
 
 
 @router.post("/paths")
 async def create_path(
     data: LearningPathCreate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """创建学习路径"""
     new_path = LearningPath(
@@ -119,7 +120,7 @@ async def update_path(
     path_id: int,
     data: LearningPathUpdate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """更新学习路径"""
     result = await db.execute(select(LearningPath).where(LearningPath.id == path_id))
@@ -140,7 +141,7 @@ async def update_path(
 async def delete_path(
     path_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """删除学习路径"""
     result = await db.execute(select(LearningPath).where(LearningPath.id == path_id))
@@ -160,7 +161,7 @@ async def list_learning_paths_v2(
     keyword: Optional[str] = Query(None),
     level: Optional[str] = Query(None),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取学习路径列表（兼容 /admin/learning-paths 路径）"""
     return await list_paths(page, size, keyword, level, current_user, db)
@@ -170,7 +171,7 @@ async def list_learning_paths_v2(
 async def get_learning_path_v2(
     path_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取学习路径详情（兼容路径）"""
     return await get_path(path_id, current_user, db)
@@ -180,7 +181,7 @@ async def get_learning_path_v2(
 async def create_learning_path_v2(
     data: LearningPathCreate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """创建学习路径（兼容路径）"""
     return await create_path(data, current_user, db)
@@ -191,7 +192,7 @@ async def update_learning_path_v2(
     path_id: int,
     data: LearningPathUpdate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """更新学习路径（兼容路径）"""
     return await update_path(path_id, data, current_user, db)
@@ -201,7 +202,7 @@ async def update_learning_path_v2(
 async def delete_learning_path_v2(
     path_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """删除学习路径（兼容路径）"""
     return await delete_path(path_id, current_user, db)
@@ -264,5 +265,3 @@ async def create_project_for_path(
     await db.refresh(project)
 
     return {"message": "项目创建成功", "project_id": project.id, "title": project.title}
-
-

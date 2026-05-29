@@ -12,6 +12,7 @@ class MessageResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """统一错误响应格式"""
+
     detail: str
     code: Optional[str] = None
     trace_id: Optional[str] = None
@@ -20,6 +21,7 @@ class ErrorResponse(BaseModel):
 
 class SuccessResponse(BaseModel, Generic[T]):
     """通用成功响应"""
+
     success: bool = True
     data: T
     message: Optional[str] = None
@@ -27,6 +29,7 @@ class SuccessResponse(BaseModel, Generic[T]):
 
 class PaginationResponse(BaseModel, Generic[ItemT]):
     """分页响应"""
+
     items: list[ItemT]
     total: int
     page: int

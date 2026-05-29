@@ -1,6 +1,6 @@
 import re
 
-with open('generate_lp15_18.py', 'r', encoding='utf-8') as f:
+with open("generate_lp15_18.py", "r", encoding="utf-8") as f:
     lines = f.readlines()
 
 fixed_lines = []
@@ -14,7 +14,7 @@ for line in lines:
         def replace_inner_quotes(match):
             inner = match.group(1)
             # Only replace if it contains Chinese characters
-            if any('\u4e00' <= c <= '\u9fff' for c in inner):
+            if any("\u4e00" <= c <= "\u9fff" for c in inner):
                 return "'" + inner + "'"
             return match.group(0)
 
@@ -749,7 +749,11 @@ for line in lines:
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthgssapi)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzldap)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpam)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzexternal)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzexternal)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzfcgi)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzradius)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzjwt)"', r"'\1'", line)
@@ -759,285 +763,1157 @@ for line in lines:
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcas)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsso)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmfa)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzwebauthn)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzwebauthn)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpasskey)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbiometrics)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbiometrics)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzfaceid)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztouchid)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzwindowshello)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzapplekeychain)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgooglepassword)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnz1password)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbitwarden)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzlastpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzdashlane)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzwindowshello)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzapplekeychain)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgooglepassword)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnz1password)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbitwarden)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzlastpass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzdashlane)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeepass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnznordpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzprotonpass)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnznordpass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzprotonpass)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzenpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzroboform)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzroboform)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeeper)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsplashid)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsplashid)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztruekey)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzremembear)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbuttercup)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzlesspass)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzremembear)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbuttercup)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzlesspass)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzspectre)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmasterpassword)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmasterpassword)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpwdsh)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpass)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgopass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpasswordstore)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzchefvault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzansiblevault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhashicorpvault)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpasswordstore)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzchefvault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzansiblevault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhashicorpvault)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzawskms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzazurekeyvault)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzazurekeyvault)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgcpsk)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzalikms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztencentkms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhuaweikms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoraclevault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzibmsecrets)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcyberark)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbeyondtrust)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzthycotic)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztencentkms)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhuaweikms)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoraclevault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzibmsecrets)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcyberark)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbeyondtrust)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzthycotic)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzdelinea)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcentrify)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoneidentity)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsailpoint)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcentrify)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoneidentity)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsailpoint)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzokta)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzauth0)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeycloak)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeycloak)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzauthing)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzfusionauth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpingidentity)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzforgerock)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzfusionauth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpingidentity)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzforgerock)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgluu)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzshibboleth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsimplesamlphp)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthmellon)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthopenidc)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthcas)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthkerb)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthgssapi)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzldap)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpam)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzexternal)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfcgi)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzradius)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzjwt)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoauth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoidc)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsaml)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzcas)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsso)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzmfa)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwebauthn)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpasskey)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbiometrics)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfaceid)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnztouchid)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwindowshello)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzapplekeychain)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzgooglepassword)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnz1password)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbitwarden)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzlastpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzdashlane)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzkeepass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnznordpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzprotonpass)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzshibboleth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsimplesamlphp)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthmellon)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthopenidc)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthcas)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthkerb)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthgssapi)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzldap)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpam)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzexternal)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfcgi)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzradius)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzjwt)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoauth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoidc)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsaml)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzcas)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsso)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzmfa)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwebauthn)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpasskey)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbiometrics)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfaceid)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnztouchid)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwindowshello)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzapplekeychain)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzgooglepassword)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnz1password)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbitwarden)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzlastpass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzdashlane)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzkeepass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnznordpass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzprotonpass)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzenpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzroboform)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzroboform)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeeper)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsplashid)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsplashid)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztruekey)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzremembear)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbuttercup)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzlesspass)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzremembear)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbuttercup)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzlesspass)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzspectre)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmasterpassword)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmasterpassword)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpwdsh)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpass)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgopass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpasswordstore)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzchefvault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzansiblevault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhashicorpvault)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpasswordstore)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzchefvault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzansiblevault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhashicorpvault)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzawskms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzazurekeyvault)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzazurekeyvault)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgcpsk)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzalikms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztencentkms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhuaweikms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoraclevault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzibmsecrets)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcyberark)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbeyondtrust)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzthycotic)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztencentkms)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhuaweikms)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoraclevault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzibmsecrets)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcyberark)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbeyondtrust)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzthycotic)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzdelinea)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcentrify)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoneidentity)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsailpoint)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcentrify)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoneidentity)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsailpoint)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzokta)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzauth0)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeycloak)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeycloak)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzauthing)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzfusionauth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpingidentity)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzforgerock)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzfusionauth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpingidentity)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzforgerock)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgluu)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzshibboleth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsimplesamlphp)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthmellon)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthopenidc)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthcas)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthkerb)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthgssapi)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzldap)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpam)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzexternal)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfcgi)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzradius)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzjwt)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoauth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoidc)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsaml)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzcas)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsso)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzmfa)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwebauthn)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpasskey)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbiometrics)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfaceid)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnztouchid)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwindowshello)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzapplekeychain)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzgooglepassword)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnz1password)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbitwarden)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzlastpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzdashlane)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzkeepass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnznordpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzprotonpass)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzshibboleth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsimplesamlphp)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthmellon)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthopenidc)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthcas)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthkerb)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthgssapi)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzldap)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpam)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzexternal)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfcgi)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzradius)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzjwt)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoauth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoidc)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsaml)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzcas)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsso)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzmfa)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwebauthn)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpasskey)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbiometrics)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfaceid)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnztouchid)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwindowshello)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzapplekeychain)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzgooglepassword)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnz1password)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbitwarden)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzlastpass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzdashlane)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzkeepass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnznordpass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzprotonpass)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzenpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzroboform)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzroboform)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeeper)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsplashid)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsplashid)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztruekey)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzremembear)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbuttercup)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzlesspass)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzremembear)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbuttercup)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzlesspass)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzspectre)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmasterpassword)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmasterpassword)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpwdsh)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpass)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgopass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpasswordstore)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzchefvault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzansiblevault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhashicorpvault)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpasswordstore)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzchefvault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzansiblevault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhashicorpvault)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzawskms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzazurekeyvault)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzazurekeyvault)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgcpsk)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzalikms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztencentkms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhuaweikms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoraclevault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzibmsecrets)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcyberark)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbeyondtrust)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzthycotic)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztencentkms)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhuaweikms)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoraclevault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzibmsecrets)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcyberark)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbeyondtrust)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzthycotic)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzdelinea)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcentrify)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoneidentity)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsailpoint)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcentrify)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoneidentity)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsailpoint)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzokta)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzauth0)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeycloak)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeycloak)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzauthing)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzfusionauth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpingidentity)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzforgerock)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzfusionauth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpingidentity)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzforgerock)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgluu)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzshibboleth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsimplesamlphp)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthmellon)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthopenidc)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthcas)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthkerb)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthgssapi)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzldap)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpam)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzexternal)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfcgi)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzradius)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzjwt)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoauth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoidc)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsaml)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzcas)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsso)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzmfa)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwebauthn)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpasskey)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbiometrics)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfaceid)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnztouchid)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwindowshello)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzapplekeychain)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzgooglepassword)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnz1password)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbitwarden)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzlastpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzdashlane)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzkeepass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnznordpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzprotonpass)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzshibboleth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsimplesamlphp)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthmellon)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthopenidc)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthcas)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthkerb)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthgssapi)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzldap)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpam)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzexternal)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfcgi)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzradius)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzjwt)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoauth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzoidc)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsaml)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzcas)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzsso)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzmfa)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwebauthn)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzpasskey)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbiometrics)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzfaceid)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnztouchid)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzwindowshello)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzapplekeychain)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzgooglepassword)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnz1password)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzbitwarden)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzlastpass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzdashlane)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthnzkeepass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnznordpass)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzprotonpass)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzenpass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzroboform)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzroboform)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeeper)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsplashid)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsplashid)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztruekey)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzremembear)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbuttercup)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzlesspass)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzremembear)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbuttercup)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzlesspass)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzspectre)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmasterpassword)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmasterpassword)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpwdsh)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpass)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgopass)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpasswordstore)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzchefvault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzansiblevault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhashicorpvault)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpasswordstore)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzchefvault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzansiblevault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhashicorpvault)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzawskms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzazurekeyvault)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzazurekeyvault)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgcpsk)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzalikms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztencentkms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhuaweikms)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoraclevault)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzibmsecrets)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcyberark)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbeyondtrust)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzthycotic)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnztencentkms)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzhuaweikms)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoraclevault)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzibmsecrets)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcyberark)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzbeyondtrust)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzthycotic)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzdelinea)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcentrify)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoneidentity)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsailpoint)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzcentrify)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzoneidentity)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsailpoint)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzokta)"', r"'\1'", line)
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzauth0)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeycloak)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzkeycloak)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzauthing)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzfusionauth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpingidentity)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzforgerock)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzfusionauth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzpingidentity)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzforgerock)"',
+            r"'\1'",
+            line,
+        )
         line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzgluu)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzshibboleth)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsimplesamlphp)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthmellon)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthopenidc)"', r"'\1'", line)
-        line = re.sub(r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthcas)"', r"'\1'", line)
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzshibboleth)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzsimplesamlphp)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthmellon)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthopenidc)"',
+            r"'\1'",
+            line,
+        )
+        line = re.sub(
+            r'"(mod_authnz_modauthnzmodauthnzmodauthnzmodauthnzmodauthcas)"',
+            r"'\1'",
+            line,
+        )

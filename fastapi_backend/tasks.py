@@ -1,6 +1,7 @@
 """
 Celery tasks for TestMaster project.
 """
+
 import logging
 import time
 
@@ -13,8 +14,12 @@ def _persist_task_result(task_id: str, result_data: dict) -> None:
     """同步写入任务结果到持久化存储（Celery 进程内调用）"""
     try:
         from fastapi_backend.services.autotest_task_store import (
-            get_task, _task_store, _get_store_lock, _save_task_to_file
+            get_task,
+            _task_store,
+            _get_store_lock,
+            _save_task_to_file,
         )
+
         lock = _get_store_lock()
         stored = get_task(task_id)
         normalized_result = dict(result_data)
@@ -40,7 +45,7 @@ def _persist_task_result(task_id: str, result_data: dict) -> None:
         _logger.warning(f"[Celery] 持久化任务 {task_id} 状态失败: {e}", exc_info=True)
 
 
-@app.task(bind=True, name='fastapi_backend.tasks.run_scenario')
+@app.task(bind=True, name="fastapi_backend.tasks.run_scenario")
 def task_run_scenario(self, scenario_id: int, env_id: int = None):
     """Celery任务：执行测试场景，实时上报步骤进度"""
     task_id = self.request.id
@@ -53,20 +58,25 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
             percent = int((current_step / total_steps) * 100) if total_steps > 0 else 0
 
             self.update_state(
-                state='PROGRESS',
+                state="PROGRESS",
                 meta={
-                    'current_step': current_step,
-                    'total_steps': total_steps,
-                    'step_name': step_name,
-                    'percent': percent,
-                    'current': current_step,
-                    'total': total_steps,
-                    'current_api': step_name,
-                }
+                    "current_step": current_step,
+                    "total_steps": total_steps,
+                    "step_name": step_name,
+                    "percent": percent,
+                    "current": current_step,
+                    "total": total_steps,
+                    "current_api": step_name,
+                },
             )
 
             try:
-                from fastapi_backend.services.autotest_task_store import _task_store, _get_store_lock, _save_task_to_file
+                from fastapi_backend.services.autotest_task_store import (
+                    _task_store,
+                    _get_store_lock,
+                    _save_task_to_file,
+                )
+
                 lock = _get_store_lock()
                 progress_data = {
                     "task_id": task_id,
@@ -93,7 +103,9 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
             except Exception as e:
                 _logger.warning(f"[Celery] 同步进度到持久化存储失败: {e}")
 
-        from fastapi_backend.services.autotest_scenario_runner import run_scenario as execute_scenario_async
+        from fastapi_backend.services.autotest_scenario_runner import (
+            run_scenario as execute_scenario_async,
+        )
         from fastapi_backend.core.config import settings as _settings
         from sqlalchemy.ext.asyncio import create_async_engine as _create_async_engine
 
@@ -122,11 +134,14 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
         # Force garbage collection to clean up any lingering async references
         gc.collect()
 
-        result['task_id'] = task_id
-        result['status'] = 'completed'
-        result['scenario_id'] = scenario_id
+        result["task_id"] = task_id
+        result["status"] = "completed"
+        result["scenario_id"] = scenario_id
 
-        from fastapi_backend.services.webhook_notify import notify_scenario_schedule_webhook_from_db
+        from fastapi_backend.services.webhook_notify import (
+            notify_scenario_schedule_webhook_from_db,
+        )
+
         try:
             wh_ok, wh_detail = notify_scenario_schedule_webhook_from_db(scenario_id, result)
             _logger.info(f"[Celery] schedule webhook: ok={wh_ok} {wh_detail[:300]}")
@@ -138,13 +153,16 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
         return result
     except Exception as e:
         fail_payload = {
-            'task_id': task_id,
-            'scenario_id': scenario_id,
-            'status': 'failed',
-            'error': str(e)
+            "task_id": task_id,
+            "scenario_id": scenario_id,
+            "status": "failed",
+            "error": str(e),
         }
         try:
-            from fastapi_backend.services.webhook_notify import notify_scenario_schedule_webhook_from_db
+            from fastapi_backend.services.webhook_notify import (
+                notify_scenario_schedule_webhook_from_db,
+            )
+
             wh_ok, wh_detail = notify_scenario_schedule_webhook_from_db(scenario_id, fail_payload)
             _logger.warning(f"[Celery] schedule webhook (failed run): ok={wh_ok} {wh_detail[:300]}")
         except Exception as we:
@@ -153,7 +171,7 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
         return fail_payload
 
 
-@app.task(bind=True, name='fastapi_backend.tasks.send_email')
+@app.task(bind=True, name="fastapi_backend.tasks.send_email")
 def task_send_email(self, to_email: str, subject: str, content: str):
     """Celery任务：发送邮件"""
     task_id = self.request.id
@@ -162,18 +180,14 @@ def task_send_email(self, to_email: str, subject: str, content: str):
         time.sleep(1)
 
         return {
-            'task_id': task_id,
-            'status': 'completed',
-            'to_email': to_email,
-            'subject': subject,
-            'sent': True
+            "task_id": task_id,
+            "status": "completed",
+            "to_email": to_email,
+            "subject": subject,
+            "sent": True,
         }
     except Exception as e:
-        return {
-            'task_id': task_id,
-            'status': 'failed',
-            'error': str(e)
-        }
+        return {"task_id": task_id, "status": "failed", "error": str(e)}
 
 
 celery_app = app

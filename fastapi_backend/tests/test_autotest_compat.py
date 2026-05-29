@@ -8,9 +8,16 @@ from sqlalchemy.pool import StaticPool
 
 from fastapi_backend.core.autotest_database import AutoTestBase, get_autotest_db
 from fastapi_backend.main import app
-from fastapi_backend.models.autotest import AutoTestCase, AutoTestGroup, AutoTestScenario
+from fastapi_backend.models.autotest import (
+    AutoTestCase,
+    AutoTestGroup,
+    AutoTestScenario,
+)
 from fastapi_backend.services.autotest_execution import execute_assertions
-from fastapi_backend.services.autotest_jmeter_service import export_cases_to_jmx, import_jmx_to_cases
+from fastapi_backend.services.autotest_jmeter_service import (
+    export_cases_to_jmx,
+    import_jmx_to_cases,
+)
 
 
 TEST_AUTOTEST_DB_URL = "sqlite+aiosqlite:///:memory:"
@@ -130,7 +137,10 @@ class TestAutoTestCompatibility:
                         "method": "POST",
                         "url": {"raw": "http://example.com/api/login"},
                         "header": [{"key": "Content-Type", "value": "application/json"}],
-                        "body": {"mode": "raw", "raw": '{"username":"u","password":"p"}'},
+                        "body": {
+                            "mode": "raw",
+                            "raw": '{"username":"u","password":"p"}',
+                        },
                     },
                 }
             ],
@@ -138,7 +148,13 @@ class TestAutoTestCompatibility:
 
         response = autotest_client.post(
             "/api/auto-test/import/postman",
-            files={"file": ("collection.json", io.BytesIO(json.dumps(collection).encode("utf-8")), "application/json")},
+            files={
+                "file": (
+                    "collection.json",
+                    io.BytesIO(json.dumps(collection).encode("utf-8")),
+                    "application/json",
+                )
+            },
             data={"dry_run": "true"},
         )
 
@@ -196,7 +212,13 @@ class TestAutoTestCompatibility:
 
         response = autotest_client.post(
             "/api/auto-test/import/postman",
-            files={"file": ("collection.json", io.BytesIO(json.dumps(collection).encode("utf-8")), "application/json")},
+            files={
+                "file": (
+                    "collection.json",
+                    io.BytesIO(json.dumps(collection).encode("utf-8")),
+                    "application/json",
+                )
+            },
             data={"dry_run": "false", "target_group_id": str(root_group.id)},
         )
 
@@ -227,7 +249,11 @@ class TestAutoTestCompatibility:
     def test_execute_assertions_supports_json_body_and_symbol_operators(self):
         rules = [
             {"target": "status_code", "operator": "==", "expected": 200},
-            {"target": "json_body.message", "operator": "contains", "expected": "success"},
+            {
+                "target": "json_body.message",
+                "operator": "contains",
+                "expected": "success",
+            },
             {"target": "json_body.data.count", "operator": ">=", "expected": 2},
         ]
 

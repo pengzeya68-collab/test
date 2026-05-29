@@ -1,4 +1,5 @@
 """Exercises CRUD + SQL execution – migrated from Flask backend/api/exercises.py."""
+
 from __future__ import annotations
 
 import aiosqlite
@@ -46,22 +47,24 @@ async def get_exercises(
 
     items = []
     for ex in exercises:
-        items.append({
-            "id": ex.id,
-            "title": ex.title,
-            "description": ex.description,
-            "difficulty": ex.difficulty,
-            "exercise_type": ex.exercise_type,
-            "language": ex.language,
-            "module": ex.module,
-            "category": ex.category,
-            "stage": ex.stage,
-            "knowledge_point": ex.knowledge_point,
-            "time_estimate": ex.time_estimate,
-            "is_public": ex.is_public,
-            "created_by": ex.user_id,
-            "created_at": ex.created_at.isoformat() if ex.created_at else None,
-        })
+        items.append(
+            {
+                "id": ex.id,
+                "title": ex.title,
+                "description": ex.description,
+                "difficulty": ex.difficulty,
+                "exercise_type": ex.exercise_type,
+                "language": ex.language,
+                "module": ex.module,
+                "category": ex.category,
+                "stage": ex.stage,
+                "knowledge_point": ex.knowledge_point,
+                "time_estimate": ex.time_estimate,
+                "is_public": ex.is_public,
+                "created_by": ex.user_id,
+                "created_at": ex.created_at.isoformat() if ex.created_at else None,
+            }
+        )
     return items
 
 
@@ -91,12 +94,14 @@ async def get_categories(
         cat = ex.category or "Uncategorized"
         if cat not in categories:
             categories[cat] = []
-        categories[cat].append({
-            "id": ex.id,
-            "title": ex.title,
-            "difficulty": ex.difficulty,
-            "time_estimate": ex.time_estimate,
-        })
+        categories[cat].append(
+            {
+                "id": ex.id,
+                "title": ex.title,
+                "difficulty": ex.difficulty,
+                "time_estimate": ex.time_estimate,
+            }
+        )
     return categories
 
 
@@ -363,8 +368,16 @@ async def update_exercise(
         raise HTTPException(status_code=403, detail="Access denied")
 
     updatable = [
-        "title", "description", "instructions", "solution", "difficulty",
-        "language", "module", "time_estimate", "is_public", "learning_path_id",
+        "title",
+        "description",
+        "instructions",
+        "solution",
+        "difficulty",
+        "language",
+        "module",
+        "time_estimate",
+        "is_public",
+        "learning_path_id",
     ]
     for field in updatable:
         if field in body:

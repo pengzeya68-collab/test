@@ -2,6 +2,7 @@
 后台管理子路由 - 社区管理
 从 admin_manage.py 拆分
 """
+
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
@@ -14,6 +15,7 @@ from fastapi_backend.models.models import User, Post, Comment
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-社区管理"])
 
+
 @router.get("/community/posts")
 async def list_posts(
     page: int = Query(1, ge=1),
@@ -23,15 +25,13 @@ async def list_posts(
     is_essence: Optional[str] = Query(None),
     is_top: Optional[str] = Query(None),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取帖子列表"""
     query = select(Post)
 
     if keyword:
-        query = query.where(
-            or_(Post.title.contains(keyword), Post.content.contains(keyword))
-        )
+        query = query.where(or_(Post.title.contains(keyword), Post.content.contains(keyword)))
     if category:
         if hasattr(Post, "category"):
             query = query.where(Post.category == category)
@@ -50,18 +50,20 @@ async def list_posts(
 
     post_list = []
     for p in posts:
-        post_list.append({
-            "id": p.id,
-            "title": p.title,
-            "author": getattr(p, "author_name", "") or f"用户{p.user_id}",
-            "category": getattr(p, "category", ""),
-            "view_count": getattr(p, "view_count", 0),
-            "like_count": getattr(p, "like_count", 0),
-            "comment_count": getattr(p, "comment_count", 0),
-            "is_essence": getattr(p, "is_essence", False),
-            "is_top": getattr(p, "is_top", False),
-            "created_at": p.created_at.isoformat() if p.created_at else "",
-        })
+        post_list.append(
+            {
+                "id": p.id,
+                "title": p.title,
+                "author": getattr(p, "author_name", "") or f"用户{p.user_id}",
+                "category": getattr(p, "category", ""),
+                "view_count": getattr(p, "view_count", 0),
+                "like_count": getattr(p, "like_count", 0),
+                "comment_count": getattr(p, "comment_count", 0),
+                "is_essence": getattr(p, "is_essence", False),
+                "is_top": getattr(p, "is_top", False),
+                "created_at": p.created_at.isoformat() if p.created_at else "",
+            }
+        )
 
     return {"list": post_list, "total": total or 0}
 
@@ -70,7 +72,7 @@ async def list_posts(
 async def toggle_post_essence(
     post_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """切换帖子精华状态"""
     result = await db.execute(select(Post).where(Post.id == post_id))
@@ -90,7 +92,7 @@ async def toggle_post_essence(
 async def toggle_post_top(
     post_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """切换帖子置顶状态"""
     result = await db.execute(select(Post).where(Post.id == post_id))
@@ -110,7 +112,7 @@ async def toggle_post_top(
 async def admin_delete_post(
     post_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """删除帖子"""
     result = await db.execute(select(Post).where(Post.id == post_id))
@@ -134,7 +136,7 @@ async def list_comments(
     size: int = Query(10, ge=1, le=100),
     post_id: Optional[int] = Query(None),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取评论列表"""
     query = select(Comment)
@@ -154,15 +156,17 @@ async def list_comments(
         post_result = await db.execute(select(Post.title).where(Post.id == c.post_id))
         post_title = post_result.scalar_one_or_none() or ""
 
-        comment_list.append({
-            "id": c.id,
-            "content": c.content,
-            "author": getattr(c, "author_name", "") or f"用户{c.user_id}",
-            "post_id": c.post_id,
-            "post_title": post_title,
-            "like_count": getattr(c, "like_count", 0),
-            "created_at": c.created_at.isoformat() if c.created_at else "",
-        })
+        comment_list.append(
+            {
+                "id": c.id,
+                "content": c.content,
+                "author": getattr(c, "author_name", "") or f"用户{c.user_id}",
+                "post_id": c.post_id,
+                "post_title": post_title,
+                "like_count": getattr(c, "like_count", 0),
+                "created_at": c.created_at.isoformat() if c.created_at else "",
+            }
+        )
 
     return {"list": comment_list, "total": total or 0}
 
@@ -171,7 +175,7 @@ async def list_comments(
 async def admin_delete_comment(
     comment_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """删除评论"""
     result = await db.execute(select(Comment).where(Comment.id == comment_id))
@@ -182,5 +186,3 @@ async def admin_delete_comment(
     await db.delete(comment)
     await db.commit()
     return {"message": "评论已删除"}
-
-

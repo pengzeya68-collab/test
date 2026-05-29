@@ -3,17 +3,17 @@
 
 参照京通真实报告格式，生成包含完整指标和图表的 Word 文档
 """
+
 import io
 import os
 import tempfile
 import httpx
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from docx import Document
 from docx.shared import Inches, Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.section import WD_ORIENT
 from docx.oxml.ns import qn
 
 from fastapi_backend.services.performance_charts import generate_all_charts
@@ -25,7 +25,7 @@ def __safe_err_rate(val):
         v = float(val or 0)
         if v != v or v > 1e9 or v < 0:
             return "N/A"
-        return f'{v:.2f}'
+        return f"{v:.2f}"
     except (ValueError, TypeError):
         return "N/A"
 
@@ -70,6 +70,7 @@ async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict
         model = config.model
     else:
         from fastapi_backend.core.config import settings
+
         if settings.AI_API_KEY and not _is_placeholder_api_key(settings.AI_API_KEY):
             api_key = settings.AI_API_KEY
             base_url = settings.AI_BASE_URL
@@ -80,27 +81,27 @@ async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict
 
     scenario_text = ""
     for s in scenarios:
-        err_rate = s.get('error_rate', 0) or 0
+        err_rate = s.get("error_rate", 0) or 0
         scenario_text += (
-            f"- {s.get('name','')}: TPS={s.get('actual_qps','N/A')}, "
-            f"平均={s.get('avg_ms','N/A')}ms, P50={s.get('p50_ms','N/A')}ms, "
-            f"P90={s.get('p90_ms','N/A')}ms, P95={s.get('p95_ms','N/A')}ms, "
-            f"P99={s.get('p99_ms','N/A')}ms, 错误率={err_rate:.2f}%, "
-            f"请求数={s.get('total_requests',0) or 0}, 失败={s.get('failed_requests',0) or 0}\n"
+            f"- {s.get('name', '')}: TPS={s.get('actual_qps', 'N/A')}, "
+            f"平均={s.get('avg_ms', 'N/A')}ms, P50={s.get('p50_ms', 'N/A')}ms, "
+            f"P90={s.get('p90_ms', 'N/A')}ms, P95={s.get('p95_ms', 'N/A')}ms, "
+            f"P99={s.get('p99_ms', 'N/A')}ms, 错误率={err_rate:.2f}%, "
+            f"请求数={s.get('total_requests', 0) or 0}, 失败={s.get('failed_requests', 0) or 0}\n"
         )
 
     prompt = f"""你是资深性能测试专家。请针对以下压测结果给出专业的优化建议报告（300-500字，中文，分点建议）。
 
-测试环境: {test_env.get('env_name', '生产环境')}
-测试域名: {test_env.get('domain', '')}
+测试环境: {test_env.get("env_name", "生产环境")}
+测试域名: {test_env.get("domain", "")}
 
 各场景性能数据:
 {scenario_text}
 
 整体统计:
-- 总请求: {summary.get('total_requests', 'N/A')}
-- 总失败: {summary.get('total_failed', 'N/A')}
-- 整体错误率: {summary.get('overall_error_rate', 'N/A')}%
+- 总请求: {summary.get("total_requests", "N/A")}
+- 总失败: {summary.get("total_failed", "N/A")}
+- 整体错误率: {summary.get("overall_error_rate", "N/A")}%
 
 请按以下结构输出:
 1. 整体性能评估（优秀/良好/一般/较差）
@@ -121,12 +122,15 @@ async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict
                 json={
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": "你是资深性能测试专家，输出专业、简洁、可直接放入正式报告的分析。"},
-                        {"role": "user", "content": prompt}
+                        {
+                            "role": "system",
+                            "content": "你是资深性能测试专家，输出专业、简洁、可直接放入正式报告的分析。",
+                        },
+                        {"role": "user", "content": prompt},
                     ],
                     "max_tokens": 1000,
                     "temperature": 0.3,
-                }
+                },
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -218,10 +222,10 @@ def generate_performance_report(
     section.left_margin = Cm(3.17)
     section.right_margin = Cm(3.17)
 
-    style = doc.styles['Normal']
-    style.font.name = 'Arial'
+    style = doc.styles["Normal"]
+    style.font.name = "Arial"
     style.font.size = Pt(10.5)
-    style.element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+    style.element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
 
     def _set_cell(cell, text, bold=False, color=None, align=None):
         cell.text = ""
@@ -266,27 +270,27 @@ def generate_performance_report(
     doc.add_page_break()
 
     # ========== 1. 背景 ==========
-    doc.add_heading('1. 背景', level=1)
-    doc.add_paragraph(f'测试域名：{test_env.get("domain", "")}')
-    doc.add_paragraph(f'本报告对 {len(scenarios)} 个场景/接口进行了性能压测，评估系统的吞吐能力、响应时间和稳定性。')
+    doc.add_heading("1. 背景", level=1)
+    doc.add_paragraph(f"测试域名：{test_env.get('domain', '')}")
+    doc.add_paragraph(f"本报告对 {len(scenarios)} 个场景/接口进行了性能压测，评估系统的吞吐能力、响应时间和稳定性。")
 
     # ========== 2. 测试概述 ==========
-    doc.add_heading('2. 测试概述', level=1)
+    doc.add_heading("2. 测试概述", level=1)
 
-    doc.add_heading('2.1 测试目的', level=2)
-    doc.add_paragraph('确定系统在生产环境下的并发承载能力、响应时间表现，检验系统瓶颈，获取各接口的处理能力数据。')
+    doc.add_heading("2.1 测试目的", level=2)
+    doc.add_paragraph("确定系统在生产环境下的并发承载能力、响应时间表现，检验系统瓶颈，获取各接口的处理能力数据。")
 
-    doc.add_heading('2.2 压测目标环境', level=2)
-    doc.add_paragraph(f'环境名称：{test_env.get("env_name", "生产环境")}')
-    doc.add_paragraph(f'目标域名：{test_env.get("domain", "")}')
+    doc.add_heading("2.2 压测目标环境", level=2)
+    doc.add_paragraph(f"环境名称：{test_env.get('env_name', '生产环境')}")
+    doc.add_paragraph(f"目标域名：{test_env.get('domain', '')}")
 
     # ========== 2.3 测试环境配置 ==========
     if env_config:
-        doc.add_heading('2.3 测试环境配置', level=2)
+        doc.add_heading("2.3 测试环境配置", level=2)
         env_table = doc.add_table(rows=len(env_config) + 1, cols=2)
-        env_table.style = 'Table Grid'
+        env_table.style = "Table Grid"
         env_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-        for j, h in enumerate(['配置项', '参数值']):
+        for j, h in enumerate(["配置项", "参数值"]):
             _set_cell(env_table.cell(0, j), h, bold=True)
         for i, (k, v) in enumerate(env_config.items()):
             _set_cell(env_table.cell(i + 1, 0), k, bold=True)
@@ -297,11 +301,11 @@ def generate_performance_report(
 
     sec_num = 3 + sec_offset
 
-    doc.add_heading(f'2.{sec_num} 压测场景所含接口', level=2)
+    doc.add_heading(f"2.{sec_num} 压测场景所含接口", level=2)
     api_table = doc.add_table(rows=len(scenarios) + 1, cols=5)
-    api_table.style = 'Table Grid'
+    api_table.style = "Table Grid"
     api_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    for j, h in enumerate(['序号', '接口 URL', '方法', '目标 QPS', '场景名称']):
+    for j, h in enumerate(["序号", "接口 URL", "方法", "目标 QPS", "场景名称"]):
         _set_cell(api_table.cell(0, j), h, bold=True)
     for i, s in enumerate(scenarios):
         _set_cell(api_table.cell(i + 1, 0), str(i + 1))
@@ -310,37 +314,41 @@ def generate_performance_report(
         _set_cell(api_table.cell(i + 1, 3), str(s.get("target_qps", "未设定")))
         _set_cell(api_table.cell(i + 1, 4), s.get("name", ""))
 
-    doc.add_heading(f'2.{sec_num + 1} 测试指标/参考依据', level=2)
+    doc.add_heading(f"2.{sec_num + 1} 测试指标/参考依据", level=2)
     indicator_table = doc.add_table(rows=7, cols=3)
-    indicator_table.style = 'Table Grid'
-    for j, h in enumerate(['序号', '指标项', '标准']):
+    indicator_table.style = "Table Grid"
+    for j, h in enumerate(["序号", "指标项", "标准"]):
         _set_cell(indicator_table.cell(0, j), h, bold=True)
     indicators = [
-        ('1', '错误率', '1% 以内'),
-        ('2', '平均响应时间', '核心接口 < 500ms'),
-        ('3', 'P95 响应时间', '5s 以内'),
-        ('4', 'P99 响应时间', '10s 以内'),
-        ('5', '吞吐量 (QPS)', '核心接口峰值吞吐量达到项目要求'),
-        ('6', '并发用户数', '支持目标并发数且无系统性崩溃'),
+        ("1", "错误率", "1% 以内"),
+        ("2", "平均响应时间", "核心接口 < 500ms"),
+        ("3", "P95 响应时间", "5s 以内"),
+        ("4", "P99 响应时间", "10s 以内"),
+        ("5", "吞吐量 (QPS)", "核心接口峰值吞吐量达到项目要求"),
+        ("6", "并发用户数", "支持目标并发数且无系统性崩溃"),
     ]
     for i, (no, name, std) in enumerate(indicators):
         _set_cell(indicator_table.cell(i + 1, 0), no)
         _set_cell(indicator_table.cell(i + 1, 1), name)
         _set_cell(indicator_table.cell(i + 1, 2), std)
 
-    doc.add_heading(f'2.{sec_num + 2} 术语/缩略语', level=2)
+    doc.add_heading(f"2.{sec_num + 2} 术语/缩略语", level=2)
     term_table = doc.add_table(rows=8, cols=3)
-    term_table.style = 'Table Grid'
-    for j, h in enumerate(['术语', '全称', '含义']):
+    term_table.style = "Table Grid"
+    for j, h in enumerate(["术语", "全称", "含义"]):
         _set_cell(term_table.cell(0, j), h, bold=True)
     terms = [
-        ('TPS', 'Transaction Per Second', '每秒处理事务数'),
-        ('QPS', 'Queries Per Second', '每秒处理请求数'),
-        ('并发数', 'Concurrency', '同一时刻与服务器交互的在线用户数'),
-        ('P50/P90/P95/P99', 'Percentile', '将响应时间排序后对应百分位上的值，反映延迟分布'),
-        ('标准差', 'Standard Deviation', '响应时间的离散程度，越小越稳定'),
-        ('错误率', 'Error Rate', '返回错误状态码的请求数 / 总请求数'),
-        ('VUM', 'Virtual User Minute', '1个虚拟用户执行1分钟的压测消耗1个VUM'),
+        ("TPS", "Transaction Per Second", "每秒处理事务数"),
+        ("QPS", "Queries Per Second", "每秒处理请求数"),
+        ("并发数", "Concurrency", "同一时刻与服务器交互的在线用户数"),
+        (
+            "P50/P90/P95/P99",
+            "Percentile",
+            "将响应时间排序后对应百分位上的值，反映延迟分布",
+        ),
+        ("标准差", "Standard Deviation", "响应时间的离散程度，越小越稳定"),
+        ("错误率", "Error Rate", "返回错误状态码的请求数 / 总请求数"),
+        ("VUM", "Virtual User Minute", "1个虚拟用户执行1分钟的压测消耗1个VUM"),
     ]
     for i, (t, f_n, m) in enumerate(terms):
         _set_cell(term_table.cell(i + 1, 0), t)
@@ -350,34 +358,34 @@ def generate_performance_report(
     doc.add_page_break()
 
     # ========== 3. 性能测试过程 ==========
-    doc.add_heading('3. 性能测试过程', level=1)
-    doc.add_paragraph(f'{test_env.get("env_name", "生产环境")}进行压测')
+    doc.add_heading("3. 性能测试过程", level=1)
+    doc.add_paragraph(f"{test_env.get('env_name', '生产环境')}进行压测")
 
     for idx, s in enumerate(scenarios):
         status = s.get("result", "通过")
         status_icon = "通过" if status in ("通过", "pass") else "失败"
 
-        doc.add_heading(f'3.{idx+1} 【{status_icon}】场景：{s.get("name", "")}', level=2)
+        doc.add_heading(f"3.{idx + 1} 【{status_icon}】场景：{s.get('name', '')}", level=2)
 
         t = doc.add_table(rows=15, cols=2)
-        t.style = 'Table Grid'
+        t.style = "Table Grid"
 
         result_data = [
             ("测试结果", status_icon),
-            ("吞吐量 (QPS)", f'{s.get("actual_qps", "N/A")}'),
-            ("报错率", f'{s.get("error_rate", 0):.2f}%'),
-            ("平均响应时间", f'{s.get("avg_ms", "N/A")}ms'),
-            ("P50 响应时间", f'{s.get("p50_ms", "N/A")}ms'),
-            ("P90 响应时间", f'{s.get("p90_ms", "N/A")}ms'),
-            ("P95 响应时间", f'{s.get("p95_ms", "N/A")}ms'),
-            ("P99 响应时间", f'{s.get("p99_ms", "N/A")}ms'),
-            ("标准差", f'{s.get("stddev_ms", "N/A")}ms'),
-            ("最大响应时间", f'{s.get("max_ms", "N/A")}ms'),
-            ("最小响应时间", f'{s.get("min_ms", "N/A")}ms'),
+            ("吞吐量 (QPS)", f"{s.get('actual_qps', 'N/A')}"),
+            ("报错率", f"{s.get('error_rate', 0):.2f}%"),
+            ("平均响应时间", f"{s.get('avg_ms', 'N/A')}ms"),
+            ("P50 响应时间", f"{s.get('p50_ms', 'N/A')}ms"),
+            ("P90 响应时间", f"{s.get('p90_ms', 'N/A')}ms"),
+            ("P95 响应时间", f"{s.get('p95_ms', 'N/A')}ms"),
+            ("P99 响应时间", f"{s.get('p99_ms', 'N/A')}ms"),
+            ("标准差", f"{s.get('stddev_ms', 'N/A')}ms"),
+            ("最大响应时间", f"{s.get('max_ms', 'N/A')}ms"),
+            ("最小响应时间", f"{s.get('min_ms', 'N/A')}ms"),
             ("并发量", str(s.get("concurrency", "N/A"))),
             ("线程数", str(s.get("threads", "N/A"))),
             ("循环次数", str(s.get("loops", "N/A"))),
-            ("持续时间", f'{s.get("duration", "N/A")}秒'),
+            ("持续时间", f"{s.get('duration', 'N/A')}秒"),
         ]
 
         for i, (k, v) in enumerate(result_data):
@@ -391,21 +399,21 @@ def generate_performance_report(
                 _set_cell(t.cell(i, 1), v)
 
         doc.add_paragraph()
-        doc.add_paragraph(f'测试时间：{s.get("test_start", "")} 到 {s.get("test_end", "")}')
+        doc.add_paragraph(f"测试时间：{s.get('test_start', '')} 到 {s.get('test_end', '')}")
 
         analysis = s.get("analysis", "")
         if analysis:
-            doc.add_paragraph(f'数据分析：{analysis}')
+            doc.add_paragraph(f"数据分析：{analysis}")
 
     # ========== 3.X 错误详情分析 ==========
     if error_types and sum(error_types.values()) > 0:
-        doc.add_heading(f'3.{len(scenarios)+1} 错误详情分析', level=2)
-        doc.add_paragraph(f'本次压测共出现 {sum(error_types.values())} 个错误，详细分布如下：')
+        doc.add_heading(f"3.{len(scenarios) + 1} 错误详情分析", level=2)
+        doc.add_paragraph(f"本次压测共出现 {sum(error_types.values())} 个错误，详细分布如下：")
 
         err_table = doc.add_table(rows=len(error_types) + 1, cols=3)
-        err_table.style = 'Table Grid'
+        err_table.style = "Table Grid"
         err_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-        for j, h in enumerate(['错误类型', '出现次数', '占比']):
+        for j, h in enumerate(["错误类型", "出现次数", "占比"]):
             _set_cell(err_table.cell(0, j), h, bold=True)
 
         total_err = sum(error_types.values())
@@ -413,16 +421,16 @@ def generate_performance_report(
         for i, (etype, cnt) in enumerate(sorted_errs):
             _set_cell(err_table.cell(i + 1, 0), etype[:80])
             _set_cell(err_table.cell(i + 1, 1), str(cnt))
-            _set_cell(err_table.cell(i + 1, 2), f'{cnt/total_err*100:.1f}%')
+            _set_cell(err_table.cell(i + 1, 2), f"{cnt / total_err * 100:.1f}%")
 
     doc.add_page_break()
 
     # ========== 4. 性能图表 ==========
-    doc.add_heading('4. 性能图表', level=1)
+    doc.add_heading("4. 性能图表", level=1)
 
     try:
         charts = generate_all_charts(
-            scenarios, 
+            scenarios,
             rt_distribution=rt_distribution,
             throughput_trend=throughput_trend,
             status_distribution=status_distribution,
@@ -443,7 +451,7 @@ def generate_performance_report(
                 if chart_key in charts:
                     doc.add_heading(title, level=2)
                     img_path = os.path.join(tmpdir, f"{chart_key}.png")
-                    with open(img_path, 'wb') as f:
+                    with open(img_path, "wb") as f:
                         f.write(charts[chart_key].getvalue())
                     section = doc.sections[0]
                     page_width = section.page_width - section.left_margin - section.right_margin
@@ -453,29 +461,50 @@ def generate_performance_report(
                     doc.add_paragraph()
         finally:
             import shutil
+
             shutil.rmtree(tmpdir, ignore_errors=True)
     except Exception as e:
-        doc.add_paragraph(f'(图表生成失败: {e})。请检查服务器 matplotlib 环境。')
+        doc.add_paragraph(f"(图表生成失败: {e})。请检查服务器 matplotlib 环境。")
 
     doc.add_page_break()
 
     # ========== 5. 结论 ==========
-    doc.add_heading('5. 结论', level=1)
-    doc.add_paragraph('接口压测结果数据如下：')
+    doc.add_heading("5. 结论", level=1)
+    doc.add_paragraph("接口压测结果数据如下：")
 
     passed = sum(1 for s in scenarios if s.get("result", "") in ("通过", "pass", "Pass", "PASS", "PASSED", "成功"))
-    failed = len(scenarios) - passed
+    len(scenarios) - passed
     overall_qps = sum(float(s.get("actual_qps", 0) or 0) for s in scenarios)
 
     # 汇总表
     summary_table = doc.add_table(rows=len(scenarios) + 1, cols=9)
-    summary_table.style = 'Table Grid'
+    summary_table.style = "Table Grid"
     summary_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     # 设置列宽避免A4溢出
-    col_widths = [Cm(3.5), Cm(1.5), Cm(2.0), Cm(2.0), Cm(2.0), Cm(2.0), Cm(2.0), Cm(1.8), Cm(1.8)]
+    col_widths = [
+        Cm(3.5),
+        Cm(1.5),
+        Cm(2.0),
+        Cm(2.0),
+        Cm(2.0),
+        Cm(2.0),
+        Cm(2.0),
+        Cm(1.8),
+        Cm(1.8),
+    ]
     for j, w in enumerate(col_widths):
         summary_table.columns[j].width = w
-    s_headers = ['场景名称', '并发数', 'TPS', '平均(ms)', 'P95(ms)', 'P99(ms)', '标准差(ms)', '错误率', '结果']
+    s_headers = [
+        "场景名称",
+        "并发数",
+        "TPS",
+        "平均(ms)",
+        "P95(ms)",
+        "P99(ms)",
+        "标准差(ms)",
+        "错误率",
+        "结果",
+    ]
     for j, h in enumerate(s_headers):
         _set_cell(summary_table.cell(0, j), h, bold=True)
 
@@ -488,7 +517,7 @@ def generate_performance_report(
             str(s.get("p95_ms", "N/A")),
             str(s.get("p99_ms", "N/A")),
             str(s.get("stddev_ms", "N/A")),
-            f'{__safe_err_rate(s.get("error_rate", 0))}%',
+            f"{__safe_err_rate(s.get('error_rate', 0))}%",
             s.get("result", "N/A"),
         ]
         for j, v in enumerate(vals):
@@ -496,54 +525,55 @@ def generate_performance_report(
 
     doc.add_paragraph()
     total_scenarios = len(scenarios) or 1
-    doc.add_paragraph(f'场景通过率：{passed}/{len(scenarios)} ({passed/total_scenarios*100:.1f}%)')
+    doc.add_paragraph(f"场景通过率：{passed}/{len(scenarios)} ({passed / total_scenarios * 100:.1f}%)")
     try:
         overall_qps_val = float(overall_qps) if overall_qps and overall_qps < 1e9 else 0
     except (ValueError, TypeError):
         overall_qps_val = 0
-    doc.add_paragraph(f'合计吞吐量：{overall_qps_val:.2f} QPS')
+    doc.add_paragraph(f"合计吞吐量：{overall_qps_val:.2f} QPS")
 
     if summary:
         total_requests = summary.get("total_requests", "N/A")
         total_failed = summary.get("total_failed", "N/A")
-        doc.add_paragraph(f'总请求数：{total_requests}')
-        doc.add_paragraph(f'总失败数：{total_failed}')
+        doc.add_paragraph(f"总请求数：{total_requests}")
+        doc.add_paragraph(f"总失败数：{total_failed}")
         err_rate = summary.get("overall_error_rate", 0) or 0
         try:
-            err_rate_str = f'{float(err_rate):.2f}%'
+            err_rate_str = f"{float(err_rate):.2f}%"
         except (ValueError, TypeError):
-            err_rate_str = f'{err_rate}%'
-        doc.add_paragraph(f'整体错误率：{err_rate_str}')
+            err_rate_str = f"{err_rate}%"
+        doc.add_paragraph(f"整体错误率：{err_rate_str}")
 
     # ========== 6. 优化建议 ==========
     doc.add_page_break()
-    doc.add_heading('6. 优化建议', level=1)
+    doc.add_heading("6. 优化建议", level=1)
 
     if ai_suggestions:
         import re
-        for line in ai_suggestions.strip().split('\n'):
+
+        for line in ai_suggestions.strip().split("\n"):
             line = line.strip()
             if line:
                 # 清洗markdown标记
-                cleaned = re.sub(r'\*\*(.*?)\*\*', r'\1', line)
-                cleaned = re.sub(r'__(.*?)__', r'\1', cleaned)
-                cleaned = re.sub(r'`(.*?)`', r'\1', cleaned)
-                cleaned = re.sub(r'^[*-]\s+', '', cleaned)
+                cleaned = re.sub(r"\*\*(.*?)\*\*", r"\1", line)
+                cleaned = re.sub(r"__(.*?)__", r"\1", cleaned)
+                cleaned = re.sub(r"`(.*?)`", r"\1", cleaned)
+                cleaned = re.sub(r"^[*-]\s+", "", cleaned)
                 if cleaned:
                     doc.add_paragraph(cleaned)
     else:
-        doc.add_paragraph('（请配置 AI 分析以获取智能优化建议）')
+        doc.add_paragraph("（请配置 AI 分析以获取智能优化建议）")
 
     if summary and summary.get("notes"):
         doc.add_paragraph()
-        doc.add_paragraph(f'补充说明：{summary["notes"]}')
+        doc.add_paragraph(f"补充说明：{summary['notes']}")
 
     # ========== 附录 ==========
-    doc.add_heading('附录. 审批意见', level=1)
-    doc.add_paragraph('项目经理审批意见：')
+    doc.add_heading("附录. 审批意见", level=1)
+    doc.add_paragraph("项目经理审批意见：")
     doc.add_paragraph()
-    doc.add_paragraph(f'签字：测试负责人  {author or ""}')
-    doc.add_paragraph(f'日期：{datetime.now().strftime("%Y-%m-%d")}')
+    doc.add_paragraph(f"签字：测试负责人  {author or ''}")
+    doc.add_paragraph(f"日期：{datetime.now().strftime('%Y-%m-%d')}")
 
     buf = io.BytesIO()
     doc.save(buf)

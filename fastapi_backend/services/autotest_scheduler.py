@@ -2,8 +2,8 @@
 定时任务调度器模块（迁移自 auto_test_platform/services/scheduler.py）
 使用 APScheduler 实现定时执行测试场景
 """
+
 import asyncio
-import json
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -57,8 +57,9 @@ def _schedule_meta_from_db(scenario_id: int) -> Dict[str, Any]:
             }
 
     try:
-        loop = asyncio.get_running_loop()
+        asyncio.get_running_loop()
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(asyncio.run, _read())
             return future.result(timeout=5)
@@ -93,12 +94,12 @@ def get_scheduler() -> AsyncIOScheduler:
         else:
             jobstore_url = f"sqlite:///{PROJECT_ROOT / 'instance' / 'scheduler_jobs.db'}"
         scheduler = AsyncIOScheduler(
-            jobstores={'default': SQLAlchemyJobStore(url=jobstore_url)},
+            jobstores={"default": SQLAlchemyJobStore(url=jobstore_url)},
             job_defaults={
-                'coalesce': True,
-                'max_instances': 1,
-                'misfire_grace_time': 300
-            }
+                "coalesce": True,
+                "max_instances": 1,
+                "misfire_grace_time": 300,
+            },
         )
     return scheduler
 
@@ -149,7 +150,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
 
         # 等待任务完成（异步等待）
         max_wait_time = 300  # 5分钟超时
-        wait_interval = 2    # 每2秒检查一次
+        wait_interval = 2  # 每2秒检查一次
         result = None
 
         try:
@@ -191,6 +192,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
         report_dir = AUTOTEST_DATA_DIR / "reports" / f"scenario_{scenario_id}"
 
         import shutil
+
         if allure_results_dir.exists():
             try:
                 shutil.rmtree(str(allure_results_dir))
@@ -203,6 +205,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
 
         try:
             import shutil
+
             old_report_history = report_dir / "history"
             new_results_history = allure_results_dir / "history"
             if old_report_history.exists() and old_report_history.is_dir():
@@ -211,12 +214,19 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                 shutil.copytree(str(old_report_history), str(new_results_history))
 
             cmd_result = subprocess.run(
-                ["allure", "generate", str(allure_results_dir), "-o", str(report_dir), "--clean"],
+                [
+                    "allure",
+                    "generate",
+                    str(allure_results_dir),
+                    "-o",
+                    str(report_dir),
+                    "--clean",
+                ],
                 capture_output=True,
                 timeout=60,
                 text=True,
-                encoding='utf-8',
-                errors='ignore'
+                encoding="utf-8",
+                errors="ignore",
             )
             if cmd_result.returncode == 0:
                 report_url = f"/reports/scenario_{scenario_id}/index.html"
@@ -240,6 +250,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
             if webhook_url:
                 try:
                     import requests as _req
+
                     webhook_payload = {
                         "scenario_id": scenario_id,
                         "status": scheduled_tasks[task_id]["last_status"],
@@ -247,9 +258,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                         "total_steps": result.get("total_steps", 0) if result else 0,
                         "failed_steps": _failed_step_count(result),
                     }
-                    await asyncio.to_thread(
-                        _req.post, webhook_url, json=webhook_payload, timeout=10
-                    )
+                    await asyncio.to_thread(_req.post, webhook_url, json=webhook_payload, timeout=10)
                 except Exception as wh_err:
                     _logger.warning(f"Webhook 通知失败 {webhook_url}: {wh_err}")
 
@@ -272,7 +281,7 @@ def add_scheduled_task(
     env_id: Optional[int] = None,
     webhook_url: Optional[str] = None,
     task_name: Optional[str] = None,
-    is_active: Optional[bool] = True
+    is_active: Optional[bool] = True,
 ) -> Dict[str, Any]:
     """添加定时任务"""
     global scheduled_tasks
@@ -315,7 +324,7 @@ def add_scheduled_task(
         "report_url": None,
         "status": "idle",
         "is_active": is_active if is_active is not None else True,
-        "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None
+        "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
     }
 
     scheduled_tasks[task_id] = task_info
@@ -370,7 +379,7 @@ def toggle_task_status(task_id: str) -> Dict[str, Any]:
         "task_id": task_id,
         "is_active": task_info["is_active"],
         "status": task_info["status"],
-        "message": f"任务已{'启用' if task_info['is_active'] else '暂停'}"
+        "message": f"任务已{'启用' if task_info['is_active'] else '暂停'}",
     }
 
 
@@ -391,7 +400,7 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
 
         # 解析cron表达式
         cron_expr = ""
-        if hasattr(job.trigger, 'fields'):
+        if hasattr(job.trigger, "fields"):
             # CronTrigger
             fields = job.trigger.fields
             cron_expr = f"{fields[0]} {fields[1]} {fields[2]} {fields[3]} {fields[4]}"
@@ -413,7 +422,7 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
             "report_url": None,
             "status": "idle",
             "is_active": not job.pending,
-            "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None
+            "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
         }
         scheduled_tasks[task_id] = task_info
         return task_info
@@ -436,7 +445,7 @@ def get_all_scheduled_tasks() -> List[Dict[str, Any]]:
 
             # 解析cron表达式
             cron_expr = ""
-            if hasattr(job.trigger, 'fields'):
+            if hasattr(job.trigger, "fields"):
                 # CronTrigger
                 fields = job.trigger.fields
                 cron_expr = f"{fields[0]} {fields[1]} {fields[2]} {fields[3]} {fields[4]}"
@@ -458,7 +467,7 @@ def get_all_scheduled_tasks() -> List[Dict[str, Any]]:
                 "report_url": None,
                 "status": "idle",
                 "is_active": not job.pending,
-                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None
+                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
             }
             scheduled_tasks[task_id] = task_info
 

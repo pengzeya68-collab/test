@@ -1,6 +1,7 @@
 """
 面试题库统计 Schema
 """
+
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
@@ -8,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class QuestionStatistics(BaseModel):
     """单个题目的统计信息"""
+
     question_id: int = Field(..., description="题目ID")
     title: str = Field(..., description="题目标题")
     slug: str = Field(..., description="URL标识")
@@ -41,6 +43,7 @@ class QuestionStatistics(BaseModel):
 
 class QuestionStatisticsListResponse(BaseModel):
     """题目统计列表响应"""
+
     items: List[QuestionStatistics] = Field(..., description="统计项列表")
     total: int = Field(..., description="总题目数")
     page: int = Field(..., description="页码")
@@ -50,6 +53,7 @@ class QuestionStatisticsListResponse(BaseModel):
 
 class OverallStatistics(BaseModel):
     """整体题库统计"""
+
     total_questions: int = Field(0, description="总题目数")
     published_questions: int = Field(0, description="已发布题目数")
     total_submissions: int = Field(0, description="总提交次数")
@@ -74,12 +78,14 @@ class OverallStatistics(BaseModel):
 
 class TimeSeriesDataPoint(BaseModel):
     """时间序列数据点"""
+
     date: str = Field(..., description="日期，格式：YYYY-MM-DD")
     count: int = Field(0, description="数量")
 
 
 class SubmissionTrendResponse(BaseModel):
     """提交趋势响应"""
+
     daily_submissions: List[TimeSeriesDataPoint] = Field(default_factory=list, description="每日提交统计")
     weekly_submissions: List[TimeSeriesDataPoint] = Field(default_factory=list, description="每周提交统计")
     monthly_submissions: List[TimeSeriesDataPoint] = Field(default_factory=list, description="每月提交统计")
@@ -87,6 +93,7 @@ class SubmissionTrendResponse(BaseModel):
 
 class DifficultyAnalysis(BaseModel):
     """难度分析"""
+
     difficulty: str = Field(..., description="难度等级")
     question_count: int = Field(0, description="题目数量")
     submission_count: int = Field(0, description="提交次数")
@@ -96,4 +103,5 @@ class DifficultyAnalysis(BaseModel):
 
 class DifficultyAnalysisResponse(BaseModel):
     """难度分析响应"""
+
     analysis: List[DifficultyAnalysis] = Field(default_factory=list, description="难度分析列表")

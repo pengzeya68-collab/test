@@ -13,7 +13,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "性能指标TPS",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "QPS与TPS的关系",
@@ -27,7 +27,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "性能指标QPS",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "RT响应时间的含义",
@@ -41,7 +41,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "性能指标RT",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "百分位数P99",
@@ -55,7 +55,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "百分位数P99",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "并发数与同时在线用户数",
@@ -69,7 +69,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "并发数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "吞吐量的定义",
@@ -83,7 +83,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "吞吐量",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter Thread Group的作用",
@@ -97,7 +97,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter Thread Group",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter Sampler的作用",
@@ -111,7 +111,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter Sampler",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter Timer的作用",
@@ -125,7 +125,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter Timer",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter Assertion断言",
@@ -139,7 +139,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter Assertion",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter Listener的作用",
@@ -153,7 +153,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter Listener",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter CSV参数化",
@@ -167,7 +167,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter CSV参数化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter函数助手",
@@ -181,7 +181,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter函数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter分布式架构",
@@ -195,7 +195,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter分布式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter分布式通信协议",
@@ -209,7 +209,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter分布式通信",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust HttpUser",
@@ -223,7 +223,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust HttpUser",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust @task装饰器",
@@ -237,7 +237,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust @task",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust wait_time",
@@ -251,7 +251,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust wait_time",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust分布式运行",
@@ -265,7 +265,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust分布式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Prometheus监控",
@@ -279,7 +279,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Prometheus监控",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Grafana可视化",
@@ -293,7 +293,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Grafana可视化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CPU瓶颈分析",
@@ -307,7 +307,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "CPU瓶颈分析",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "内存瓶颈与GC",
@@ -321,7 +321,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "内存瓶颈GC",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "磁盘IO瓶颈",
@@ -335,7 +335,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "磁盘IO瓶颈",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "网络瓶颈与CDN",
@@ -349,7 +349,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "网络瓶颈CDN",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "全链路压测概念",
@@ -363,7 +363,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "全链路压测",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "流量染色技术",
@@ -377,7 +377,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "流量染色",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "数据隔离要求",
@@ -391,7 +391,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "数据隔离",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Nginx日志分析",
@@ -405,7 +405,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Nginx日志分析",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "调优方法论-基准测试",
@@ -419,7 +419,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "调优方法论",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter BeanShell脚本",
@@ -433,7 +433,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter脚本",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "性能测试场景设计",
@@ -447,7 +447,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "测试场景设计",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "TPS曲线分析",
@@ -461,7 +461,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "性能拐点",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "吞吐量型性能测试",
@@ -475,7 +475,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "负载测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "稳定性测试",
@@ -489,7 +489,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "稳定性测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter命令行模式",
@@ -503,7 +503,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter命令行",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "性能测试中的预热",
@@ -517,7 +517,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "预热Warm-up",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter断言持续时间",
@@ -531,7 +531,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Duration Assertion",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter正则提取器",
@@ -545,7 +545,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "正则提取器",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust事件钩子",
@@ -559,7 +559,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust事件钩子",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust Web UI",
@@ -573,7 +573,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust Web UI",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Prometheus数据模型",
@@ -587,7 +587,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Prometheus数据模型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "响应时间与并发数的关系",
@@ -601,7 +601,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "响应时间与并发",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "内存泄漏的表现",
@@ -615,7 +615,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "内存泄漏",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "数据库连接池对性能的影响",
@@ -629,7 +629,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "连接池调优",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter插件管理",
@@ -643,7 +643,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter插件",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "阶梯加压测试",
@@ -657,7 +657,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "阶梯加压",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter Backend Listener",
@@ -671,7 +671,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Backend Listener",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter逻辑控制器",
@@ -685,7 +685,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "逻辑控制器",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "TPS的计算公式",
@@ -699,7 +699,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "TPS计算公式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "性能测试指标综合理解",
@@ -713,7 +713,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "性能指标关系",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "P95与P99的区别",
@@ -727,7 +727,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "百分位数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter Thread Group参数",
@@ -741,7 +741,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Thread Group参数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter HTTP Request默认值",
@@ -755,7 +755,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "HTTP Request Defaults",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter聚合报告指标",
@@ -769,7 +769,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "聚合报告",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter变量引用语法",
@@ -783,7 +783,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter变量语法",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter CSV参数化配置",
@@ -797,7 +797,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "CSV参数化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter分布式测试配置",
@@ -811,7 +811,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter分布式配置",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust用户类定义",
@@ -825,7 +825,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust类定义",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust任务权重设置",
@@ -839,7 +839,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust任务权重",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust wait_time策略",
@@ -853,7 +853,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust wait_time",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CPU高时的优化策略",
@@ -867,7 +867,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "CPU瓶颈优化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "内存高GC频繁时的优化",
@@ -881,7 +881,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "GC优化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "磁盘IO高时的优化",
@@ -895,7 +895,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "IO瓶颈优化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "网络瓶颈的优化方案",
@@ -909,7 +909,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "网络瓶颈优化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "全链路压测数据隔离方式",
@@ -923,7 +923,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "数据隔离方式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "流量染色的实现方式",
@@ -937,7 +937,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "流量染色实现",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Grafana数据源",
@@ -951,7 +951,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Grafana数据源",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter定时器类型",
@@ -965,7 +965,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter Timer类型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter同步定时器",
@@ -979,7 +979,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Synchronizing Timer",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "PromQL查询示例",
@@ -993,7 +993,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "PromQL查询",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "性能测试类型识别",
@@ -1007,7 +1007,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "负载测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "压力测试的目的",
@@ -1021,7 +1021,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "压力测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "性能测试环境要求",
@@ -1035,7 +1035,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "测试环境",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter后置处理器",
@@ -1049,7 +1049,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JSON Extractor",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust参数化",
@@ -1063,7 +1063,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust参数化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter与Locust对比",
@@ -1077,7 +1077,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter vs Locust",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "性能调优的步骤顺序",
@@ -1091,7 +1091,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "调优步骤",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter的Throughput Controller",
@@ -1105,7 +1105,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Throughput Controller",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "峰值QPS计算",
@@ -1119,7 +1119,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "峰值QPS计算",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter XPath断言",
@@ -1133,7 +1133,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "XPath Assertion",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust on_start方法",
@@ -1147,7 +1147,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust生命周期",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Prometheus的Exporter",
@@ -1161,7 +1161,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Prometheus Exporter",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "系统瓶颈定位方法",
@@ -1175,7 +1175,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "瓶颈定位方法",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter的Test Fragment",
@@ -1189,7 +1189,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Test Fragment",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust分布式master命令",
@@ -1203,7 +1203,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust分布式命令",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "P99与平均值的关系",
@@ -1217,7 +1217,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "P99与平均值",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter BeanShell与JSR223",
@@ -1231,7 +1231,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter脚本性能",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "并发数与线程数",
@@ -1245,7 +1245,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter并发模型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "全链路压测的核心挑战",
@@ -1259,7 +1259,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "全链路压测挑战",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter HTTP Request方法",
@@ -1273,7 +1273,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter POST请求",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust自定义负载形状",
@@ -1287,7 +1287,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust负载形状",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Prometheus告警规则",
@@ -1301,7 +1301,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Prometheus告警",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "性能测试报告应包含的内容",
@@ -1315,7 +1315,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "性能测试报告",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "缓存击穿与性能",
@@ -1329,7 +1329,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "缓存击穿",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter函数生成时间戳",
@@ -1343,7 +1343,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "JMeter时间函数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "连接超时与读取超时",
@@ -1357,7 +1357,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "HTTP超时",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JMeter聚合报告的吞吐量",
@@ -1371,7 +1371,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "聚合报告吞吐量",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "线程池大小设置公式",
@@ -1385,7 +1385,7 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "线程池大小",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Locust报告导出",
@@ -1399,8 +1399,8 @@ EXERCISES_3["性能测试 - JMeter与Locust"] = [
         "stage": 4,
         "knowledge_point": "Locust报告导出",
         "time_estimate": 1,
-        "exercise_type": "choice"
-    }
+        "exercise_type": "choice",
+    },
 ]
 
 EXERCISES_3["安全测试基础"] = [
@@ -1416,7 +1416,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "OWASP Top 10",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQL注入攻击本质",
@@ -1430,7 +1430,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SQL注入原理",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "UNION联合查询注入",
@@ -1444,7 +1444,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "联合查询注入",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "报错注入原理",
@@ -1458,7 +1458,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "报错注入",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "布尔盲注原理",
@@ -1472,7 +1472,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "布尔盲注",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "时间盲注原理",
@@ -1486,7 +1486,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "时间注入",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "参数化查询防御",
@@ -1500,7 +1500,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "参数化查询",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "反射型XSS",
@@ -1514,7 +1514,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "反射型XSS",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "存储型XSS",
@@ -1528,7 +1528,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "存储型XSS",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DOM型XSS",
@@ -1542,7 +1542,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "DOM型XSS",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CSP防御XSS",
@@ -1556,7 +1556,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CSP策略",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "输出编码防御",
@@ -1570,7 +1570,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "输出编码",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CSRF攻击原理",
@@ -1584,7 +1584,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CSRF原理",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CSRF Token防御",
@@ -1598,7 +1598,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CSRF Token",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SameSite Cookie防御",
@@ -1612,7 +1612,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SameSite Cookie",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SSRF攻击原理",
@@ -1626,7 +1626,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SSRF原理",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SSRF防御手段",
@@ -1640,7 +1640,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SSRF防御",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "文件上传MIME绕过",
@@ -1654,7 +1654,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "文件上传MIME",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "文件上传扩展名白名单",
@@ -1668,7 +1668,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "扩展名白名单",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JWT算法安全",
@@ -1682,7 +1682,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "JWT算法安全",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JWT过期与Refresh",
@@ -1696,7 +1696,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "JWT过期刷新",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Burp Suite Proxy",
@@ -1710,7 +1710,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "Burp Suite Proxy",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Burp Suite Intruder",
@@ -1724,7 +1724,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "Burp Suite Intruder",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Burp Suite Repeater",
@@ -1738,7 +1738,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "Burp Suite Repeater",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DevSecOps核心思想",
@@ -1752,7 +1752,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "DevSecOps",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SAST白盒测试",
@@ -1766,7 +1766,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SAST",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DAST黑盒测试",
@@ -1780,7 +1780,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "DAST",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "IAST交互式测试",
@@ -1794,7 +1794,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "IAST",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQL注入防御误区",
@@ -1808,7 +1808,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SQL注入防御",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Referer防御CSRF不足",
@@ -1822,7 +1822,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CSRF Referer",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "XSS前端过滤不足",
@@ -1836,7 +1836,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "XSS防御误区",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "文件上传多层检测",
@@ -1850,7 +1850,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "文件上传多层检测",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "最小权限原则",
@@ -1864,7 +1864,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "最小权限原则",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "密码安全存储",
@@ -1878,7 +1878,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "密码安全",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "HTTPS传输安全",
@@ -1892,7 +1892,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "HTTPS安全",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "点击劫持防御",
@@ -1906,7 +1906,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "点击劫持",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JWT存储安全风险",
@@ -1920,7 +1920,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "JWT存储安全",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "OWASP注入风险仍在",
@@ -1934,7 +1934,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "OWASP注入",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "二次注入原理",
@@ -1948,7 +1948,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "二次注入",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "XXE漏洞原理",
@@ -1962,7 +1962,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "XXE漏洞",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Burp Scanner版本",
@@ -1976,7 +1976,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "Burp Scanner",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "安全测试左移",
@@ -1990,7 +1990,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "安全左移",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "宽字节注入",
@@ -2004,7 +2004,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "宽字节注入",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CORS跨域安全",
@@ -2018,7 +2018,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CORS安全",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "反序列化漏洞",
@@ -2032,7 +2032,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "反序列化漏洞",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "安全vs功能测试",
@@ -2046,7 +2046,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "安全测试vs功能测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "OWASP访问控制排名",
@@ -2060,7 +2060,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "访问控制",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "命令注入防御",
@@ -2074,7 +2074,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "命令注入防御",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "OWASP加密失败排名第二",
@@ -2088,7 +2088,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "加密失败",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQL注入防御综合",
@@ -2102,7 +2102,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SQL注入防御综合",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "UNION注入列数条件",
@@ -2116,7 +2116,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "UNION注入条件",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "报错注入常用函数",
@@ -2130,7 +2130,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "报错注入函数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "MySQL延时函数",
@@ -2144,7 +2144,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "时间注入函数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "XSS类型识别场景",
@@ -2158,7 +2158,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "XSS类型识别",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CSP配置方式",
@@ -2172,7 +2172,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CSP配置",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CSRF Token生成原则",
@@ -2186,7 +2186,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CSRF Token原则",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SameSite三种取值",
@@ -2200,7 +2200,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SameSite取值",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SSRF常见攻击目标",
@@ -2214,7 +2214,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SSRF攻击目标",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "文件上传无效防御",
@@ -2228,7 +2228,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "文件上传防御",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JWT三部分组成",
@@ -2242,7 +2242,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "JWT结构",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Burp Repeater用途",
@@ -2256,7 +2256,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "Burp Repeater",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SAST vs DAST对比",
@@ -2270,7 +2270,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SAST vs DAST",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "布尔盲注判断依据",
@@ -2284,7 +2284,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "布尔盲注判断",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "information_schema作用",
@@ -2298,7 +2298,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "information_schema",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DOM型XSS核心特征",
@@ -2312,7 +2312,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "DOM型XSS特性",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JWT alg=none攻击",
@@ -2326,7 +2326,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "JWT alg攻击",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "密码最佳哈希算法",
@@ -2340,7 +2340,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "密码哈希算法",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "XXE防御方法",
@@ -2354,7 +2354,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "XXE防御",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Burp Intruder Sniper",
@@ -2368,7 +2368,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "Intruder Sniper",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SAST在DevSecOps的阶段",
@@ -2382,7 +2382,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "DevSecOps管道",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CSRF典型场景",
@@ -2396,7 +2396,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CSRF场景",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "防止MIME嗅探头",
@@ -2410,7 +2410,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "安全响应头",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Refresh Token策略",
@@ -2424,7 +2424,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "Refresh Token",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "输入验证最佳策略",
@@ -2438,7 +2438,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "输入验证策略",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "堆叠查询注入特点",
@@ -2452,7 +2452,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "堆叠查询注入",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JSON劫持防御",
@@ -2466,7 +2466,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "JSON劫持防御",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "OWASP注入排名2021",
@@ -2480,7 +2480,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "OWASP注入排名",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "路径遍历防御",
@@ -2494,7 +2494,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "路径遍历防御",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "HSTS作用",
@@ -2508,7 +2508,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "HSTS",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "日志脱敏原则",
@@ -2522,7 +2522,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "日志脱敏",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "WAF功能边界",
@@ -2536,7 +2536,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "WAF功能",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQLMap工具特点",
@@ -2550,7 +2550,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SQLMap工具",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CSP script-src self",
@@ -2564,7 +2564,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CSP script-src",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Session固定防御",
@@ -2578,7 +2578,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "Session固定防御",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CRLF注入字符",
@@ -2592,7 +2592,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CRLF注入",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "图片马防御",
@@ -2606,7 +2606,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "图片马防御",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CSRF与XSS关系",
@@ -2620,7 +2620,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "CSRF与XSS关系",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SSRF绕过技术",
@@ -2634,7 +2634,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SSRF绕过",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JWT iat与nbf",
@@ -2648,7 +2648,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "JWT时间声明",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "安全测试分类DAST",
@@ -2662,7 +2662,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "安全测试分类",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "NIST密码策略",
@@ -2676,7 +2676,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "密码策略NIST",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "STRIDE威胁建模S",
@@ -2690,7 +2690,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "STRIDE威胁建模",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "威胁建模DREAD",
@@ -2704,7 +2704,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "DREAD模型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "RASP运行时防护",
@@ -2718,7 +2718,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "RASP",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "OWASP API安全排名第一",
@@ -2732,7 +2732,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "OWASP API Top10",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "零信任架构核心原则",
@@ -2746,7 +2746,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "零信任架构",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "OAuth2.0与OIDC区别",
@@ -2760,7 +2760,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "OAuth与OIDC",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "模糊测试定义",
@@ -2774,7 +2774,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "模糊测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "认证与授权的区别",
@@ -2788,7 +2788,7 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "认证vs授权",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SDL安全开发阶段",
@@ -2802,8 +2802,8 @@ EXERCISES_3["安全测试基础"] = [
         "stage": 4,
         "knowledge_point": "SDL",
         "time_estimate": 1,
-        "exercise_type": "choice"
-    }
+        "exercise_type": "choice",
+    },
 ]
 
 EXERCISES_3["持续集成与DevOps"] = [
@@ -2819,7 +2819,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "CI/CD概念",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins自动化服务器",
@@ -2833,7 +2833,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI内置工具",
@@ -2847,7 +2847,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab CI",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitHub Actions",
@@ -2861,7 +2861,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitHub Actions",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitFlow工作流",
@@ -2875,7 +2875,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitFlow",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Trunk-Based开发",
@@ -2889,7 +2889,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Trunk-Based",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Feature Branch工作流",
@@ -2903,7 +2903,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Feature Branch",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "声明式Pipeline",
@@ -2917,7 +2917,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "声明式Pipeline",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "脚本式Pipeline",
@@ -2931,7 +2931,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "脚本式Pipeline",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins agent指令",
@@ -2945,7 +2945,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins Agent",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins Stage概念",
@@ -2959,7 +2959,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins Stage",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins Step概念",
@@ -2973,7 +2973,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins Step",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Dockerfile定义",
@@ -2987,7 +2987,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Dockerfile",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker镜像分层",
@@ -3001,7 +3001,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker镜像",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker容器概念",
@@ -3015,7 +3015,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker容器",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker Compose编排",
@@ -3029,7 +3029,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker Compose",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker Volume持久化",
@@ -3043,7 +3043,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker Volume",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker Network通信",
@@ -3057,7 +3057,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker Network",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI stages",
@@ -3071,7 +3071,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab stages",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI cache",
@@ -3085,7 +3085,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab cache",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI artifacts",
@@ -3099,7 +3099,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab artifacts",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SonarQube质量平台",
@@ -3113,7 +3113,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "SonarQube",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "覆盖率门禁概念",
@@ -3127,7 +3127,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "覆盖率门禁",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JaCoCo覆盖率工具",
@@ -3141,7 +3141,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "JaCoCo",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "junit测试报告格式",
@@ -3155,7 +3155,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "junit报告",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "蓝绿部署概念",
@@ -3169,7 +3169,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "蓝绿部署",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "金丝雀部署概念",
@@ -3183,7 +3183,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "金丝雀部署",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "滚动部署概念",
@@ -3197,7 +3197,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "滚动部署",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AB测试概念",
@@ -3211,7 +3211,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "AB测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "持续集成核心实践",
@@ -3225,7 +3225,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "持续集成实践",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins Freestyle项目",
@@ -3239,7 +3239,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins Freestyle",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Git revert与reset",
@@ -3253,7 +3253,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Git回滚",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitHub Actions Workflow路径",
@@ -3267,7 +3267,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitHub Actions Workflow",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker多阶段构建",
@@ -3281,7 +3281,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "多阶段构建",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI Runner",
@@ -3295,7 +3295,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab Runner",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "质量门禁含义",
@@ -3309,7 +3309,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "质量门禁概念",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI only/except",
@@ -3323,7 +3323,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab only/except",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins环境变量",
@@ -3337,7 +3337,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins环境变量",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitHub Actions secrets",
@@ -3351,7 +3351,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitHub secrets",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker Registry概念",
@@ -3365,7 +3365,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker Registry",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins共享库",
@@ -3379,7 +3379,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins共享库",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SonarQube质量阈",
@@ -3393,7 +3393,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "SonarQube质量阈",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Git merge vs rebase",
@@ -3407,7 +3407,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Git merge vs rebase",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "蓝绿部署回滚",
@@ -3421,7 +3421,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "蓝绿部署切换",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CI工具不排他",
@@ -3435,7 +3435,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "CI工具选型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker比VM快",
@@ -3449,7 +3449,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker vs VM",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker Hub速率限制",
@@ -3463,7 +3463,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker Hub限制",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI environment",
@@ -3477,7 +3477,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab environment",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins凭据管理",
@@ -3491,7 +3491,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins凭据",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "质量门禁需要平衡",
@@ -3505,7 +3505,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "质量门禁平衡",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CD双重含义",
@@ -3519,7 +3519,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "CI/CD含义",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins Pipeline两种类型",
@@ -3533,7 +3533,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Pipeline类型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "agent any含义",
@@ -3547,7 +3547,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "agent any",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker Compose文件格式",
@@ -3561,7 +3561,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker Compose格式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Dockerfile CMD指令",
@@ -3575,7 +3575,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Dockerfile CMD",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Volume vs Bind Mount",
@@ -3589,7 +3589,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Volume vs Bind",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI定义阶段",
@@ -3603,7 +3603,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab stages",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "cache与artifacts区别",
@@ -3617,7 +3617,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab cache vs artifacts",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "金丝雀部署特点",
@@ -3631,7 +3631,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "金丝雀部署",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "蓝绿部署主要优势",
@@ -3645,7 +3645,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "蓝绿部署优势",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "滚动部署特点",
@@ -3659,7 +3659,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "滚动部署",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitFlow分支识别",
@@ -3673,7 +3673,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitFlow分支",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Trunk-Based特点",
@@ -3687,7 +3687,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Trunk-Based特点",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SonarQube检测内容",
@@ -3701,7 +3701,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "SonarQube检测",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JaCoCo覆盖类型",
@@ -3715,7 +3715,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "JaCoCo类型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitHub Actions触发器",
@@ -3729,7 +3729,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitHub Actions触发器",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI job组成",
@@ -3743,7 +3743,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab job",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker镜像分层",
@@ -3757,7 +3757,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker分层",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "启动Docker Compose命令",
@@ -3771,7 +3771,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker Compose up",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins非标准触发方式",
@@ -3785,7 +3785,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins触发器",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI rules作用",
@@ -3799,7 +3799,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab rules",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "持续交付vs持续部署",
@@ -3813,7 +3813,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "持续交付vs持续部署",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins Post条件",
@@ -3827,7 +3827,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins Post",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Dockerfile COPY vs ADD",
@@ -3841,7 +3841,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "COPY vs ADD",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI needs",
@@ -3855,7 +3855,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab needs",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AB测试与金丝雀区别",
@@ -3869,7 +3869,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "AB测试vs金丝雀",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins Blue Ocean",
@@ -3883,7 +3883,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins Blue Ocean",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker Compose volumes",
@@ -3897,7 +3897,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Compose volumes",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitHub Actions matrix",
@@ -3911,7 +3911,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitHub matrix",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "蓝绿部署最佳场景",
@@ -3925,7 +3925,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "部署策略选择",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "合理的覆盖率阈值",
@@ -3939,7 +3939,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "覆盖率门禁",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins input步骤",
@@ -3953,7 +3953,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins input",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker多阶段FROM AS",
@@ -3967,7 +3967,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "多阶段构建命名",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI when manual",
@@ -3981,7 +3981,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab when manual",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "非CI/CD工具",
@@ -3995,7 +3995,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "CI工具对比",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker网络模式",
@@ -4009,7 +4009,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Docker网络模式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CI的非主要好处",
@@ -4023,7 +4023,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "CI好处",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins workspace",
@@ -4037,7 +4037,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins workspace",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Compose restart always",
@@ -4051,7 +4051,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Compose restart",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI tags",
@@ -4065,7 +4065,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab tags",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins tools指令",
@@ -4079,7 +4079,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins tools",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Compose environment格式",
@@ -4093,7 +4093,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Compose环境变量",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "金丝雀异常回滚",
@@ -4107,7 +4107,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "自动回滚",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Jenkins并发构建",
@@ -4121,7 +4121,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Jenkins并发构建",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitLab CI extends",
@@ -4135,7 +4135,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitLab extends",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitHub Actions env",
@@ -4149,7 +4149,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitHub env",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Pipeline as Code理念",
@@ -4163,7 +4163,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Pipeline as Code",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Compose depends_on",
@@ -4177,7 +4177,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Compose depends_on",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "功能开关部署",
@@ -4191,7 +4191,7 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "Feature Toggle",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GitHub Actions Runners类型",
@@ -4205,8 +4205,8 @@ EXERCISES_3["持续集成与DevOps"] = [
         "stage": 4,
         "knowledge_point": "GitHub Runners",
         "time_estimate": 1,
-        "exercise_type": "choice"
-    }
+        "exercise_type": "choice",
+    },
 ]
 
 EXERCISES_3["测试平台开发"] = [
@@ -4222,7 +4222,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI特点",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI路由装饰器",
@@ -4236,7 +4236,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI路由",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI路径参数",
@@ -4250,7 +4250,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI路径参数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI查询参数",
@@ -4264,7 +4264,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI查询参数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Pydantic数据模型",
@@ -4278,7 +4278,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Pydantic模型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI依赖注入",
@@ -4292,7 +4292,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI依赖注入",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI中间件",
@@ -4306,7 +4306,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI中间件",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQLAlchemy ORM",
@@ -4320,7 +4320,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "SQLAlchemy ORM",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQLAlchemy Session",
@@ -4334,7 +4334,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "SQLAlchemy Session",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQLAlchemy关系定义",
@@ -4348,7 +4348,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "SQLAlchemy关系",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3 Composition API",
@@ -4362,7 +4362,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Vue3 Composition",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3响应式ref",
@@ -4376,7 +4376,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Vue3 ref",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3响应式reactive",
@@ -4390,7 +4390,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Vue3 reactive",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3 v-model指令",
@@ -4404,7 +4404,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Vue3 v-model",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Element Plus组件库",
@@ -4418,7 +4418,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Element Plus",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Element Plus表单验证",
@@ -4432,7 +4432,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Element Plus表单",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Element Plus表格属性",
@@ -4446,7 +4446,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Element Plus表格",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Celery异步任务",
@@ -4460,7 +4460,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Celery异步任务",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Celery消息中间件",
@@ -4474,7 +4474,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Celery中间件",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Celery定时任务",
@@ -4488,7 +4488,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Celery定时",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "WebSocket全双工",
@@ -4502,7 +4502,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "WebSocket概念",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI WebSocket支持",
@@ -4516,7 +4516,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI WebSocket",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ECharts数据可视化",
@@ -4530,7 +4530,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "ECharts概念",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ECharts动态更新",
@@ -4544,7 +4544,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "ECharts API",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试平台核心模块",
@@ -4558,7 +4558,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "平台模块",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试用例属性",
@@ -4572,7 +4572,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "用例属性",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试计划调度",
@@ -4586,7 +4586,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "测试计划",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试报告内容",
@@ -4600,7 +4600,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "测试报告",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "RBAC权限模型",
@@ -4614,7 +4614,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "RBAC权限",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "RESTful API设计",
@@ -4628,7 +4628,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "RESTful设计",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "前后端分离架构",
@@ -4642,7 +4642,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "前后端分离",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI不支持异步",
@@ -4656,7 +4656,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI异步",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQLAlchemy查询",
@@ -4670,7 +4670,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "SQLAlchemy查询",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3可以没有根元素",
@@ -4684,7 +4684,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Vue3模板",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Element Plus仅Vue2可用",
@@ -4698,7 +4698,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Element Plus版本",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Celery只能单机运行",
@@ -4712,7 +4712,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Celery分布式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "WebSocket等同于HTTP轮询",
@@ -4726,7 +4726,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "WebSocket vs 轮询",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ECharts需要付费使用",
@@ -4740,7 +4740,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "ECharts开源",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试用例优先级",
@@ -4754,7 +4754,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "用例优先级",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JWT认证方式",
@@ -4768,7 +4768,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "JWT平台认证",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker部署平台",
@@ -4782,7 +4782,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Docker部署",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CORS跨域处理",
@@ -4796,7 +4796,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "CORS配置",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI自动文档",
@@ -4810,7 +4810,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI文档",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "数据库连接池",
@@ -4824,7 +4824,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "连接池",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue Router",
@@ -4838,7 +4838,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Vue Router",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试用例复用",
@@ -4852,7 +4852,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "数据驱动测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "版本控制",
@@ -4866,7 +4866,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "用例版本控制",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "异步任务重试",
@@ -4880,7 +4880,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Celery重试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "WebSocket断线重连",
@@ -4894,7 +4894,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "WebSocket重连",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ECharts交互功能",
@@ -4908,7 +4908,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "ECharts交互",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI路由装饰器用法",
@@ -4922,7 +4922,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI路由装饰器",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI路径参数语法",
@@ -4936,7 +4936,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI路径参数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI查询参数默认值",
@@ -4950,7 +4950,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI默认值",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Pydantic字段验证",
@@ -4964,11 +4964,11 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Pydantic验证",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI依赖注入语法",
-        "description": "FastAPI中使用依赖注入的正确语法是？\n\nA. @app.get(\'/me\', inject=get_db)\nB. @app.get(\'/me\', dependencies=get_db)\nC. def me(db: Session = Depends(get_db))\nD. def me(db = inject(get_db))",
+        "description": "FastAPI中使用依赖注入的正确语法是？\n\nA. @app.get('/me', inject=get_db)\nB. @app.get('/me', dependencies=get_db)\nC. def me(db: Session = Depends(get_db))\nD. def me(db = inject(get_db))",
         "instructions": "请选择正确的答案",
         "solution": "C",
         "difficulty": "advanced",
@@ -4978,7 +4978,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "FastAPI Depends",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQLAlchemy模型定义",
@@ -4992,7 +4992,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "SQLAlchemy基类",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQLAlchemy Column类型",
@@ -5006,7 +5006,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "SQLAlchemy列类型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQLAlchemy查询filter",
@@ -5020,7 +5020,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "SQLAlchemy filter",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3 ref访问值",
@@ -5034,7 +5034,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Vue3 ref访问",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3 computed用法",
@@ -5048,7 +5048,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Vue3 computed",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3 watch用法",
@@ -5062,7 +5062,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Vue3 watch",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Element Plus表格分页",
@@ -5076,7 +5076,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Element Plus分页",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Element Plus对话框",
@@ -5090,7 +5090,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Element Plus Dialog",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Element Plus消息提示",
@@ -5104,7 +5104,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Element Plus消息",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Celery定义任务",
@@ -5118,7 +5118,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Celery任务定义",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Celery启动Worker",
@@ -5132,7 +5132,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Celery命令",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "WebSocket连接建立",
@@ -5146,7 +5146,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "WebSocket协议",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "WebSocket状态码",
@@ -5160,7 +5160,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "WebSocket状态码",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ECharts初始化方式",
@@ -5174,7 +5174,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "ECharts初始化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ECharts图表类型配置",
@@ -5188,7 +5188,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "ECharts类型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试用例优先级P0含义",
@@ -5202,7 +5202,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "P0优先级",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试用例设计方法",
@@ -5216,7 +5216,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "用例设计方法",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试计划Cron表达式",
@@ -5230,7 +5230,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Cron表达式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "HTTP状态码201含义",
@@ -5244,7 +5244,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "HTTP状态码201",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "HTTP方法PUT语义",
@@ -5258,7 +5258,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "HTTP PUT",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "数据库索引的作用",
@@ -5272,7 +5272,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "数据库索引",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "数据库外键约束",
@@ -5286,7 +5286,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "数据库外键",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "JWT组成结构",
@@ -5300,7 +5300,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "JWT组成",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "用户权限校验中间件",
@@ -5314,7 +5314,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "权限校验",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Docker Compose启动命令",
@@ -5328,7 +5328,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Compose启动",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "前后端数据交互格式",
@@ -5342,7 +5342,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "JSON格式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "CORS头部设置",
@@ -5356,7 +5356,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "CORS配置",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3路由导航守卫",
@@ -5370,7 +5370,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "路由守卫",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Axios拦截器",
@@ -5384,7 +5384,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Axios拦截器",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试报告图表选择",
@@ -5398,7 +5398,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "报告图表",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "数据库事务ACID中A",
@@ -5412,7 +5412,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "事务ACID",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQLAlchemy session关闭时机",
@@ -5426,7 +5426,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Session生命周期",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Celery result存储",
@@ -5440,7 +5440,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Celery结果",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ECharts图例legend作用",
@@ -5454,7 +5454,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "ECharts legend",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Element Plus布容器",
@@ -5468,7 +5468,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Element布局",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "FastAPI响应模型",
@@ -5482,7 +5482,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "响应模型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3 Pinia状态管理",
@@ -5496,7 +5496,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Pinia管理",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "WebSocket onmessage事件",
@@ -5510,7 +5510,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "WebSocket事件",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SQLAlchemy外键定义",
@@ -5524,7 +5524,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "外键定义",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Celery Flower用途",
@@ -5538,7 +5538,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Flower监控",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试用例评审目的",
@@ -5552,7 +5552,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "用例评审",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Vue3 onMounted时机",
@@ -5566,7 +5566,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Vue3生命周期",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试环境配置管理",
@@ -5580,7 +5580,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "环境配置",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "API版本管理策略",
@@ -5594,7 +5594,7 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "API版本管理",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "前端Token刷新机制",
@@ -5608,8 +5608,8 @@ EXERCISES_3["测试平台开发"] = [
         "stage": 4,
         "knowledge_point": "Token刷新",
         "time_estimate": 1,
-        "exercise_type": "choice"
-    }
+        "exercise_type": "choice",
+    },
 ]
 
 EXERCISES_3["AI测试与智能化"] = [
@@ -5625,7 +5625,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI测试概念",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归测试",
@@ -5639,7 +5639,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉回归概念",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright截图对比",
@@ -5653,7 +5653,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright视觉",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Percy视觉审查",
@@ -5667,7 +5667,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Percy平台",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ML缺陷预测",
@@ -5681,7 +5681,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "ML缺陷预测",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "NLP测试用例生成",
@@ -5695,7 +5695,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "NLP测试生成",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自愈自动化概念",
@@ -5709,7 +5709,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "自愈自动化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "LLM测试代码生成",
@@ -5723,7 +5723,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "LLM测试生成",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI辅助测试评审",
@@ -5737,7 +5737,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI测试评审",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "智能缺陷分类",
@@ -5751,7 +5751,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "智能缺陷分类",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归对比算法",
@@ -5765,7 +5765,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉对比算法",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright仅支持Chromium",
@@ -5779,7 +5779,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright浏览器",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Percy功能范围",
@@ -5793,7 +5793,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Percy工作流",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ML缺陷预测100%准确",
@@ -5807,7 +5807,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "ML预测准确率",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "NLP测试生成无需人工",
@@ -5821,7 +5821,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "NLP人工审查",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自愈自动化万能",
@@ -5835,7 +5835,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "自愈局限性",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "LLM生成测试无需验证",
@@ -5849,7 +5849,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "LLM验证",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试可替代所有人工",
@@ -5863,7 +5863,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI替代人工",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归忽略微小差异",
@@ -5877,7 +5877,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉容差",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright录制脚本",
@@ -5891,7 +5891,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright codegen",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Percy快照管理",
@@ -5905,7 +5905,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Percy快照",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "缺陷预测特征工程",
@@ -5919,7 +5919,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "特征工程",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "NLP文本相似度",
@@ -5933,7 +5933,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "文本相似度",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自愈选择器策略",
@@ -5947,7 +5947,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "自愈选择器",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "LLM Prompt工程",
@@ -5961,7 +5961,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Prompt工程",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI日志异常检测",
@@ -5975,7 +5975,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "日志异常检测",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归集成CI",
@@ -5989,7 +5989,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉回归CI",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright Trace Viewer",
@@ -6003,7 +6003,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Trace Viewer",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Percy并行化",
@@ -6017,7 +6017,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Percy并行化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "智能测试优先级",
@@ -6031,7 +6031,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "测试优先级",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "缺陷根因分析",
@@ -6045,7 +6045,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "缺陷根因",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "覆盖率导向测试生成",
@@ -6059,7 +6059,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "覆盖率生成",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright多上下文",
@@ -6073,7 +6073,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "BrowserContext",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归基准图片",
@@ -6087,7 +6087,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉基准",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试数据生成",
@@ -6101,7 +6101,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI数据生成",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "LLM断言生成",
@@ -6115,7 +6115,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "LLM断言",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "传统回归vs视觉回归",
@@ -6129,7 +6129,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉vs功能回归",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试小数据集问题",
@@ -6143,7 +6143,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI测试挑战",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright自动等待",
@@ -6157,7 +6157,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright自动等待",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Selenium手动等待",
@@ -6171,7 +6171,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Selenium vs等待",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自愈测试元素策略",
@@ -6185,7 +6185,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "自愈定位策略",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试客观性",
@@ -6199,7 +6199,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI测试偏差",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归测试误报",
@@ -6213,7 +6213,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉误报",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright断言方法",
@@ -6227,7 +6227,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright断言",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ML测试非确定性",
@@ -6241,7 +6241,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "ML非确定性",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI改变测试角色",
@@ -6255,7 +6255,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI改变角色",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Percy SDK集成",
@@ -6269,7 +6269,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Percy SDK",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "NLP歧义问题",
@@ -6283,7 +6283,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "NLP歧义",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright API测试",
@@ -6297,7 +6297,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright API",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试投入产出",
@@ -6311,7 +6311,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI测试ROI",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归测试场景",
@@ -6325,7 +6325,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉回归场景",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright截图方法",
@@ -6339,7 +6339,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright截图",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Percy工作流程",
@@ -6353,7 +6353,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Percy流程",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ML缺陷预测常用算法",
@@ -6367,7 +6367,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "缺陷预测算法",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "NLP需求分析技术",
@@ -6381,7 +6381,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "NER技术",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自愈自动化核心能力",
@@ -6395,7 +6395,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "自愈核心",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "LLM测试生成提示词",
@@ -6409,7 +6409,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "LLM Prompt",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SSIM算法用途",
@@ -6423,7 +6423,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "SSIM算法",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright运行模式",
@@ -6437,7 +6437,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright模式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "智能缺陷分类算法",
@@ -6451,7 +6451,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "缺陷分类方法",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright定位器类型",
@@ -6465,7 +6465,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright定位器",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Percy审批工作流",
@@ -6479,7 +6479,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Percy审批",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI日志异常检测算法",
@@ -6493,7 +6493,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "日志异常检测",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright codegen命令",
@@ -6507,7 +6507,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright录制",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试优先级排序依据",
@@ -6521,7 +6521,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "优先级依据",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI生成测试数据技术",
@@ -6535,7 +6535,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "测试数据生成",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright BrowserType",
@@ -6549,7 +6549,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "BrowserType",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归测试指标",
@@ -6563,7 +6563,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉指标",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ML特征度量指标",
@@ -6577,7 +6577,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "圈复杂度",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "NLP关键词提取",
@@ -6591,7 +6591,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "TF-IDF技术",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试非确定性场景",
@@ -6605,7 +6605,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI非确定性",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自愈测试框架代表",
@@ -6619,7 +6619,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "自愈框架",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "LLM在测试中的局限",
@@ -6633,7 +6633,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "LLM局限",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归平台代表",
@@ -6647,7 +6647,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉平台识别",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright selector引擎",
@@ -6661,7 +6661,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "选择器引擎",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI缺陷聚类应用",
@@ -6675,7 +6675,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "缺陷聚类",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright fixture",
@@ -6689,7 +6689,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Page fixture",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归误报处理",
@@ -6703,7 +6703,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "误报处理",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ML缺陷预测评估指标",
@@ -6717,7 +6717,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "ML评估指标",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试价值主张",
@@ -6731,7 +6731,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI测试价值",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright网络拦截",
@@ -6745,7 +6745,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "网络拦截",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "NLP测试覆盖分析",
@@ -6759,7 +6759,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "NLP覆盖分析",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自愈测试权重策略",
@@ -6773,7 +6773,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "选择器评分",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright并行执行",
@@ -6787,7 +6787,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "并行执行",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Percy与CI集成",
@@ -6801,7 +6801,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Percy CI集成",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试或模型泛滥",
@@ -6815,7 +6815,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI挑战",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归CSS动画",
@@ -6829,7 +6829,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "动画处理",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright全局设置",
@@ -6843,7 +6843,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "Playwright全局",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ML缺陷预测数据源",
@@ -6857,7 +6857,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "ML数据源",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自愈测试适用场景",
@@ -6871,7 +6871,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "自愈适用场景",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试模型可解释",
@@ -6885,7 +6885,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "模型可解释",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright expect库",
@@ -6899,7 +6899,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "expect断言",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "视觉回归非UI场景",
@@ -6913,7 +6913,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "视觉回归边界",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试持续学习",
@@ -6927,7 +6927,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "持续学习",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "Playwright重试机制",
@@ -6941,7 +6941,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "重试配置",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "NLP测试用例聚类",
@@ -6955,7 +6955,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "NLP聚类",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自愈测试报告内容",
@@ -6969,7 +6969,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "自愈报告",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI测试数据脱敏",
@@ -6983,7 +6983,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "数据脱敏",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "AI驱动的探索式测试",
@@ -6997,7 +6997,7 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "AI探索式",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "RL强化学习测试",
@@ -7011,8 +7011,8 @@ EXERCISES_3["AI测试与智能化"] = [
         "stage": 5,
         "knowledge_point": "RL测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
-    }
+        "exercise_type": "choice",
+    },
 ]
 
 EXERCISES_3["测试架构设计与质量度量"] = [
@@ -7028,7 +7028,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "T型人才",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DFT可测试性设计",
@@ -7042,7 +7042,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "DFT概念",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "微服务测试挑战",
@@ -7056,7 +7056,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "微服务测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "契约测试概念",
@@ -7070,7 +7070,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "契约测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GQM度量模型",
@@ -7084,7 +7084,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "GQM模型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ISO 25010质量模型",
@@ -7098,7 +7098,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "ISO 25010",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DORA指标",
@@ -7112,7 +7112,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "DORA指标",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "TMMi测试成熟度",
@@ -7126,7 +7126,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "TMMi概念",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试架构师角色",
@@ -7140,7 +7140,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "测试架构师",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试策略文档",
@@ -7154,7 +7154,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "测试策略",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "质量度量指标",
@@ -7168,7 +7168,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "质量度量",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "缺陷密度计算",
@@ -7182,7 +7182,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "缺陷密度",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试金字塔",
@@ -7196,7 +7196,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "测试金字塔",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "技术债务概念",
@@ -7210,7 +7210,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "技术债务",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试覆盖率类型",
@@ -7224,7 +7224,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "覆盖率类型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "质量门禁机制",
@@ -7238,7 +7238,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "质量门禁",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "缺陷根因分析RCA",
@@ -7252,7 +7252,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "RCA分析",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试度量KPI",
@@ -7266,7 +7266,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "测试KPI",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "混沌工程概念",
@@ -7280,7 +7280,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "混沌工程",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "可观测性三支柱",
@@ -7294,7 +7294,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "可观测性",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试环境管理",
@@ -7308,7 +7308,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "环境管理",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试数据脱敏",
@@ -7322,7 +7322,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "数据脱敏",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "左移测试理念",
@@ -7336,7 +7336,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "左移测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "风险驱动测试",
@@ -7350,7 +7350,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "风险驱动",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试资产复用",
@@ -7364,7 +7364,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "测试资产",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "TMMi级别5",
@@ -7378,7 +7378,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "TMMi成熟度",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ISO 25010安全性",
@@ -7392,7 +7392,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "ISO 25010安全",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DORA变更失败率",
@@ -7406,7 +7406,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "变更失败率",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "100%覆盖率追求",
@@ -7420,7 +7420,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "覆盖率误区",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "金字塔UI测试多",
@@ -7434,7 +7434,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "测试比例",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "质量只是测试职责",
@@ -7448,7 +7448,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "质量责任",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试度量单一指标",
@@ -7462,7 +7462,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "度量单一",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "技术债务影响",
@@ -7476,7 +7476,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "技术债务影响",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "契约测试提供方",
@@ -7490,7 +7490,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "契约测试方向",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "混沌工程生产环境",
@@ -7504,7 +7504,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "混沌工程环境",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DFT日志埋点",
@@ -7518,7 +7518,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "DFT实践",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "微服务隔离测试",
@@ -7532,7 +7532,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "微服务单测",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "可观测性日志作用",
@@ -7546,7 +7546,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "日志的作用",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试度量改进",
@@ -7560,7 +7560,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "度量改进",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "探索式测试",
@@ -7574,7 +7574,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "探索式测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "质量属性权衡",
@@ -7588,7 +7588,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "质量权衡",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "TMMi自底向上",
@@ -7602,7 +7602,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "TMMi等级",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DORA部署频率",
@@ -7616,7 +7616,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "部署频率",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试架构分层",
@@ -7630,7 +7630,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "测试架构分层",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自动化ROI分析",
@@ -7644,7 +7644,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "自动化ROI",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试数据工厂",
@@ -7658,7 +7658,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "数据工厂",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "缺陷逃逸率定义",
@@ -7672,7 +7672,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "缺陷逃逸率",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "可观测性监控",
@@ -7686,7 +7686,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "可观测性价值",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "覆盖率唯一标准",
@@ -7700,7 +7700,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "覆盖率局限",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GQM问题层作用",
@@ -7714,7 +7714,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "GQM问题",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "TMMi等级数量",
@@ -7728,7 +7728,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "TMMi等级数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ISO 25010特性数量",
@@ -7742,7 +7742,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "ISO 25010特性数",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DORA四项指标",
@@ -7756,7 +7756,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "DORA四项",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试金字塔各层占比",
@@ -7770,7 +7770,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "金字塔比例",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "契约测试工具",
@@ -7784,7 +7784,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "契约测试工具",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "缺陷密度计算",
@@ -7798,7 +7798,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "缺陷密度计算",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "T型人才横向",
@@ -7812,7 +7812,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "T型横向",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "RCA方法",
@@ -7826,7 +7826,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "RCA方法",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "混沌工程工具",
@@ -7840,7 +7840,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "混沌工具",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "可观测性支柱",
@@ -7854,7 +7854,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "三大支柱",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "技术债务类型",
@@ -7868,7 +7868,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "技术债务分类",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试架构师核心能力",
@@ -7882,7 +7882,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "架构师能力",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DFT设计原则",
@@ -7896,7 +7896,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "DFT原则",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "微服务测试策略",
@@ -7910,7 +7910,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "微服务策略",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "左移测试活动",
@@ -7924,7 +7924,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "左移实践",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "GQM目标示例",
@@ -7938,7 +7938,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "GQM示例",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ISO 25010性能效率",
@@ -7952,7 +7952,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "性能效率",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试度量全生命周期",
@@ -7966,7 +7966,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "度量全周期",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自动化覆盖率计算",
@@ -7980,7 +7980,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "自动化覆盖率",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试策略包含元素",
@@ -7994,7 +7994,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "策略内容",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DORA精英指标",
@@ -8008,7 +8008,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "精英指标",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "探索式测试特点",
@@ -8022,7 +8022,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "探索式测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试环境策略",
@@ -8036,7 +8036,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "环境策略",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "缺陷分析帕累托",
@@ -8050,7 +8050,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "帕累托分析",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "质量的成本分类",
@@ -8064,7 +8064,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "质量成本",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "TMMi Level 2",
@@ -8078,7 +8078,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "TMMi Level2",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "网格化测试架构",
@@ -8092,7 +8092,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "网格化架构",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "质量度量可视化",
@@ -8106,7 +8106,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "度量可视化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "混沌工程实验步骤",
@@ -8120,7 +8120,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "混沌步骤",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试风险矩阵",
@@ -8134,7 +8134,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "风险矩阵",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "微服务端到端成本",
@@ -8148,7 +8148,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "测试成本",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DFT与CI集成",
@@ -8162,7 +8162,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "DFT与CI",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "质量度量指标SMART",
@@ -8176,7 +8176,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "SMART原则",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试工具选型因素",
@@ -8190,7 +8190,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "工具选型",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试度量基线",
@@ -8204,7 +8204,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "度量基线",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "ISO 25010易用性",
@@ -8218,7 +8218,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "易用性",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "DORA变更前置时间",
@@ -8232,7 +8232,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "前置时间",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试架构持续演进",
@@ -8246,7 +8246,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "架构演进",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "自动化投入产出",
@@ -8260,7 +8260,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "ROI含义",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "质量文化核心",
@@ -8274,7 +8274,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "质量文化",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "缺陷逃逸率计算",
@@ -8288,7 +8288,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "逃逸率计算",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "契约测试双向验证",
@@ -8302,7 +8302,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "契约角色",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "可观测性与监控关系",
@@ -8316,7 +8316,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "可观测性vs监控",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "TMMi Level 3",
@@ -8330,7 +8330,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "TMMi Level3",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "混沌工程稳态假说",
@@ -8344,7 +8344,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "稳态假说",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试度量改进闭环",
@@ -8358,7 +8358,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "度量闭环",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试左移vs测试右移",
@@ -8372,7 +8372,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "测试右移",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "SLA与测试的关系",
@@ -8386,7 +8386,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "SLA与测试",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "测试预算规划依据",
@@ -8400,7 +8400,7 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "测试预算",
         "time_estimate": 1,
-        "exercise_type": "choice"
+        "exercise_type": "choice",
     },
     {
         "title": "MTBF与MTTR指标",
@@ -8414,6 +8414,6 @@ EXERCISES_3["测试架构设计与质量度量"] = [
         "stage": 5,
         "knowledge_point": "MTBF与MTTR",
         "time_estimate": 1,
-        "exercise_type": "choice"
-    }
+        "exercise_type": "choice",
+    },
 ]

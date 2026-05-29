@@ -6,7 +6,7 @@
 
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 学习路径6的50道精品题
 exercises_data = [
@@ -17,7 +17,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "测试用例设计概述"
+        "category": "测试用例设计概述",
     },
     {
         "title": "关于测试用例的要素，以下说法正确的是？（多选）",
@@ -25,7 +25,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "测试用例设计概述"
+        "category": "测试用例设计概述",
     },
     {
         "title": "请判断：好的测试用例应该尽可能复杂，覆盖多个测试点。",
@@ -33,7 +33,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试用例设计概述"
+        "category": "测试用例设计概述",
     },
     {
         "title": "关于测试用例的设计原则，以下说法正确的是？",
@@ -41,7 +41,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试用例设计概述"
+        "category": "测试用例设计概述",
     },
     {
         "title": "关于测试用例的优先级，以下说法正确的是？（多选）",
@@ -49,7 +49,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试用例设计概述"
+        "category": "测试用例设计概述",
     },
     {
         "title": "请判断：测试用例应该做到「去噪」，即排除那些对测试目标没有贡献的步骤。",
@@ -57,7 +57,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试用例设计概述"
+        "category": "测试用例设计概述",
     },
     {
         "title": "关于测试用例的维护，以下说法正确的是？",
@@ -65,7 +65,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "测试用例设计概述"
+        "category": "测试用例设计概述",
     },
     {
         "title": "关于测试用例的评审，以下说法正确的是？（多选）",
@@ -73,7 +73,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "测试用例设计概述"
+        "category": "测试用例设计概述",
     },
     {
         "title": "请判断：测试用例的「预期结果」应该是可以客观判定的。",
@@ -81,7 +81,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "测试用例设计概述"
+        "category": "测试用例设计概述",
     },
     {
         "title": "关于测试用例的粒度，以下说法正确的是？",
@@ -89,9 +89,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试用例设计概述"
+        "category": "测试用例设计概述",
     },
-    
     # ============ 等价类划分（10题）============
     {
         "title": "关于等价类划分，以下说法正确的是？",
@@ -99,7 +98,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "等价类划分"
+        "category": "等价类划分",
     },
     {
         "title": "关于有效等价类和无效等价类，以下说法正确的是？（多选）",
@@ -107,7 +106,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "等价类划分"
+        "category": "等价类划分",
     },
     {
         "title": "请判断：等价类划分时，应该先划分无效等价类，再划分有效等价类。",
@@ -115,7 +114,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "等价类划分"
+        "category": "等价类划分",
     },
     {
         "title": "某输入框允许输入1-100之间的整数，以下哪些是有效等价类？",
@@ -123,7 +122,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "等价类划分"
+        "category": "等价类划分",
     },
     {
         "title": "关于等价类划分的原则，以下说法正确的是？（多选）",
@@ -131,7 +130,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "等价类划分"
+        "category": "等价类划分",
     },
     {
         "title": "请判断：在等价类划分中，每个等价类只需要设计一个测试用例即可。",
@@ -139,7 +138,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "等价类划分"
+        "category": "等价类划分",
     },
     {
         "title": "某性别下拉框允许选择「男」或「女」，以下哪些是无效等价类？",
@@ -147,7 +146,7 @@ exercises_data = [
         "solution": "C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "easy",
-        "category": "等价类划分"
+        "category": "等价类划分",
     },
     {
         "title": "关于等价类划分的优缺点，以下说法正确的是？",
@@ -155,7 +154,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "等价类划分"
+        "category": "等价类划分",
     },
     {
         "title": "请判断：等价类划分不仅适用于输入条件，也适用于输出条件。",
@@ -163,7 +162,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "等价类划分"
+        "category": "等价类划分",
     },
     {
         "title": "某文件名输入框允许输入1-255个字符的文件名，以下哪些是无效等价类？（多选）",
@@ -171,9 +170,8 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "等价类划分"
+        "category": "等价类划分",
     },
-    
     # ============ 边界值分析（10题）============
     {
         "title": "关于边界值分析，以下说法正确的是？",
@@ -181,7 +179,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "边界值分析"
+        "category": "边界值分析",
     },
     {
         "title": "关于边界值分析的原则，以下说法正确的是？（多选）",
@@ -189,7 +187,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "边界值分析"
+        "category": "边界值分析",
     },
     {
         "title": "请判断：边界值分析是在等价类划分的基础上进行的。",
@@ -197,7 +195,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "边界值分析"
+        "category": "边界值分析",
     },
     {
         "title": "某输入框允许输入1-100之间的整数，以下哪些是边界值？（多选）",
@@ -205,7 +203,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "边界值分析"
+        "category": "边界值分析",
     },
     {
         "title": "关于边界值分析和等价类划分的关系，以下说法正确的是？",
@@ -213,7 +211,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "边界值分析"
+        "category": "边界值分析",
     },
     {
         "title": "请判断：边界值分析不仅适用于输入条件，也适用于输出条件。",
@@ -221,7 +219,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "边界值分析"
+        "category": "边界值分析",
     },
     {
         "title": "某数组可以存储1-100个元素，以下哪些是边界值？（多选）",
@@ -229,7 +227,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "边界值分析"
+        "category": "边界值分析",
     },
     {
         "title": "关于健壮边界值分析，以下说法正确的是？",
@@ -237,7 +235,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "边界值分析"
+        "category": "边界值分析",
     },
     {
         "title": "请判断：边界值分析可以用于测试用户界面（UI）的边界情况。",
@@ -245,7 +243,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "边界值分析"
+        "category": "边界值分析",
     },
     {
         "title": "某密码输入框允许输入6-20个字符的密码，以下哪些是边界值？（多选）",
@@ -253,9 +251,8 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "边界值分析"
+        "category": "边界值分析",
     },
-    
     # ============ 决策表测试（10题）============
     {
         "title": "关于决策表测试，以下说法正确的是？",
@@ -263,7 +260,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "决策表测试"
+        "category": "决策表测试",
     },
     {
         "title": "关于决策表的组成部分，以下说法正确的是？（多选）",
@@ -271,7 +268,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "决策表测试"
+        "category": "决策表测试",
     },
     {
         "title": "请判断：决策表测试可以保证覆盖所有条件组合。",
@@ -279,7 +276,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "决策表测试"
+        "category": "决策表测试",
     },
     {
         "title": "关于决策表的化简，以下说法正确的是？",
@@ -287,7 +284,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "决策表测试"
+        "category": "决策表测试",
     },
     {
         "title": "关于决策表的适用场景，以下说法正确的是？（多选）",
@@ -295,7 +292,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "决策表测试"
+        "category": "决策表测试",
     },
     {
         "title": "请判断：决策表测试是一种黑盒测试技术。",
@@ -303,7 +300,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "决策表测试"
+        "category": "决策表测试",
     },
     {
         "title": "某系统根据用户类型和订单金额决定折扣，以下哪些是决策表的条件？（多选）",
@@ -311,7 +308,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "决策表测试"
+        "category": "决策表测试",
     },
     {
         "title": "关于决策表的优点，以下说法正确的是？",
@@ -319,7 +316,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "决策表测试"
+        "category": "决策表测试",
     },
     {
         "title": "请判断：如果条件数量很多，决策表的规则数会呈指数增长，这时可以使用决策表化简技术。",
@@ -327,7 +324,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "决策表测试"
+        "category": "决策表测试",
     },
     {
         "title": "关于决策表和因果图的关系，以下说法正确的是？（多选）",
@@ -335,9 +332,8 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "决策表测试"
+        "category": "决策表测试",
     },
-    
     # ============ 正交实验设计（10题）============
     {
         "title": "关于正交实验设计（Orthogonal Experimental Design），以下说法正确的是？",
@@ -345,7 +341,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "正交实验设计"
+        "category": "正交实验设计",
     },
     {
         "title": "关于正交表的特性，以下说法正确的是？（多选）",
@@ -353,7 +349,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "正交实验设计"
+        "category": "正交实验设计",
     },
     {
         "title": "请判断：正交实验设计适用于因素（条件）数量多、每个因素的水平也多的情况。",
@@ -361,7 +357,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "正交实验设计"
+        "category": "正交实验设计",
     },
     {
         "title": "某系统有3个因素，每个因素有3个水平，如果全组合测试需要多少个测试用例？",
@@ -369,7 +365,7 @@ exercises_data = [
         "solution": "C",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "正交实验设计"
+        "category": "正交实验设计",
     },
     {
         "title": "关于正交实验设计的优缺点，以下说法正确的是？（多选）",
@@ -377,7 +373,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "正交实验设计"
+        "category": "正交实验设计",
     },
     {
         "title": "请判断：正交实验设计是一种部分因子实验设计方法。",
@@ -385,7 +381,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "正交实验设计"
+        "category": "正交实验设计",
     },
     {
         "title": "关于正交表的表示法 L_9(3^4)，以下说法正确的是？",
@@ -393,7 +389,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "正交实验设计"
+        "category": "正交实验设计",
     },
     {
         "title": "关于正交实验设计的选择原则，以下说法正确的是？（多选）",
@@ -401,7 +397,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "正交实验设计"
+        "category": "正交实验设计",
     },
     {
         "title": "请判断：正交实验设计可以保证两两因素之间的所有水平组合都被覆盖到。",
@@ -409,7 +405,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "正交实验设计"
+        "category": "正交实验设计",
     },
     {
         "title": "关于正交实验设计在软件测试中的应用，以下说法正确的是？（多选）",
@@ -417,58 +413,63 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "正交实验设计"
+        "category": "正交实验设计",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径6的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 6")
     print("🗑️  已删除学习路径6（测试用例设计方法）的旧习题")
-    
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 6, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 6", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径6（测试用例设计方法）")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 6")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径6现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

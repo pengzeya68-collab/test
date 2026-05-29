@@ -3,6 +3,7 @@ AutoTest 报告服务
 从 routers/autotest_execution.py 的 get_report_detail 端点下沉的业务逻辑
 包含 Allure 报告生成与写入
 """
+
 import json
 import logging
 import time
@@ -14,7 +15,10 @@ from typing import Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi_backend.models.autotest import AutoTestHistory, AutoTestScenarioExecutionRecord
+from fastapi_backend.models.autotest import (
+    AutoTestHistory,
+    AutoTestScenarioExecutionRecord,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -25,7 +29,9 @@ def get_autotest_data_dir() -> Path:
 
 def load_step_results_from_file(record: AutoTestScenarioExecutionRecord) -> List[Dict]:
     step_results = []
-    step_results_file = get_autotest_data_dir() / "step_results" / f"scenario_{record.scenario_id}_record_{record.id}.json"
+    step_results_file = (
+        get_autotest_data_dir() / "step_results" / f"scenario_{record.scenario_id}_record_{record.id}.json"
+    )
     if step_results_file.exists():
         try:
             with open(step_results_file, "r", encoding="utf-8") as f:
@@ -76,32 +82,42 @@ def parse_allure_step_results(scenario_id: int, report_url: Optional[str] = None
                                     response_body = resp_info.get("body", "")
                                 except Exception as e:
                                     _logger.debug(f"解析 Allure 响应信息失败: {e}")
-                    step_results.append({
-                        "name": step_name,
-                        "status": "skipped" if step_status == "skipped" else ("success" if step_status == "passed" else "failed"),
-                        "success": step_status == "passed",
-                        "duration": allure_data.get("duration", 0),
-                        "method": method,
-                        "api_case_name": api_case_name,
-                        "url": "",
-                        "status_code": status_code,
-                        "response": {"body": response_body} if response_body else None,
-                        "error": allure_data.get("statusDetails", {}).get("message") if step_status == "failed" else None
-                    })
+                    step_results.append(
+                        {
+                            "name": step_name,
+                            "status": "skipped"
+                            if step_status == "skipped"
+                            else ("success" if step_status == "passed" else "failed"),
+                            "success": step_status == "passed",
+                            "duration": allure_data.get("duration", 0),
+                            "method": method,
+                            "api_case_name": api_case_name,
+                            "url": "",
+                            "status_code": status_code,
+                            "response": {"body": response_body} if response_body else None,
+                            "error": allure_data.get("statusDetails", {}).get("message")
+                            if step_status == "failed"
+                            else None,
+                        }
+                    )
                 else:
                     for step in allure_data.get("steps", []):
-                        step_results.append({
-                            "name": step.get("name", ""),
-                            "status": "passed" if step.get("status") == "passed" else "failed",
-                            "success": step.get("status") == "passed",
-                            "duration": step.get("duration", 0),
-                            "method": step.get("name", "").split()[0].strip("[]") if step.get("name") else "GET",
-                            "api_case_name": " ".join(step.get("name", "").split()[1:]) if step.get("name") else "未知用例",
-                            "url": "",
-                            "status_code": 0,
-                            "response": None,
-                            "error": None
-                        })
+                        step_results.append(
+                            {
+                                "name": step.get("name", ""),
+                                "status": "passed" if step.get("status") == "passed" else "failed",
+                                "success": step.get("status") == "passed",
+                                "duration": step.get("duration", 0),
+                                "method": step.get("name", "").split()[0].strip("[]") if step.get("name") else "GET",
+                                "api_case_name": " ".join(step.get("name", "").split()[1:])
+                                if step.get("name")
+                                else "未知用例",
+                                "url": "",
+                                "status_code": 0,
+                                "response": None,
+                                "error": None,
+                            }
+                        )
         except Exception as e:
             _logger.debug(f"解析 Allure 结果文件失败 {json_file}: {e}")
 
@@ -114,8 +130,7 @@ async def get_report_detail(report_id: int, db: AsyncSession) -> Optional[Dict]:
     先查 AutoTestScenarioExecutionRecord，再查 AutoTestHistory
     """
     result = await db.execute(
-        select(AutoTestScenarioExecutionRecord)
-        .where(AutoTestScenarioExecutionRecord.id == report_id)
+        select(AutoTestScenarioExecutionRecord).where(AutoTestScenarioExecutionRecord.id == report_id)
     )
     record = result.scalar_one_or_none()
     if record:
@@ -128,7 +143,9 @@ async def get_report_detail(report_id: int, db: AsyncSession) -> Optional[Dict]:
         if not step_detail_available and record.total_steps > 0:
             _logger.warning(
                 "报告 %d (scenario_id=%d) 有 %d 个步骤但无法读取步骤详情数据",
-                record.id, record.scenario_id, record.total_steps,
+                record.id,
+                record.scenario_id,
+                record.total_steps,
             )
 
         return {
@@ -146,9 +163,7 @@ async def get_report_detail(report_id: int, db: AsyncSession) -> Optional[Dict]:
             "created_at": record.created_at,
         }
 
-    result = await db.execute(
-        select(AutoTestHistory).where(AutoTestHistory.id == report_id)
-    )
+    result = await db.execute(select(AutoTestHistory).where(AutoTestHistory.id == report_id))
     history = result.scalar_one_or_none()
     if history:
         return {
@@ -173,7 +188,7 @@ def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dic
             base_start_ms = int(start_time * 1000) if start_time < 1e10 else int(start_time)
         else:
             try:
-                dt = datetime.fromisoformat(str(start_time).replace('Z', '+00:00'))
+                dt = datetime.fromisoformat(str(start_time).replace("Z", "+00:00"))
                 base_start_ms = int(dt.timestamp() * 1000)
             except Exception:
                 base_start_ms = int(time.time() * 1000)
@@ -242,13 +257,20 @@ def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dic
             "steps": [],
             "attachments": [],
         }
-        request_info = {"url": url, "method": method, "headers": step.get("headers", {}), "payload": step.get("payload", {})}
-        request_step["attachments"].append({
-            "name": "请求信息",
-            "type": "application/json",
-            "source": f"request_{i_plus_1}.json",
-            "body": json.dumps(request_info, ensure_ascii=False, indent=2)
-        })
+        request_info = {
+            "url": url,
+            "method": method,
+            "headers": step.get("headers", {}),
+            "payload": step.get("payload", {}),
+        }
+        request_step["attachments"].append(
+            {
+                "name": "请求信息",
+                "type": "application/json",
+                "source": f"request_{i_plus_1}.json",
+                "body": json.dumps(request_info, ensure_ascii=False, indent=2),
+            }
+        )
         sub_steps.append(request_step)
 
         response_step = {
@@ -264,13 +286,19 @@ def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dic
         response_body = ""
         if step.get("response"):
             response_body = step["response"].get("body", "")
-        response_info = {"status_code": status_code, "response_time_ms": step.get("response_time", 0), "body": str(response_body)[:2000] if response_body else ""}
-        response_step["attachments"].append({
-            "name": "响应信息",
-            "type": "application/json",
-            "source": f"response_{i_plus_1}.json",
-            "body": json.dumps(response_info, ensure_ascii=False, indent=2)
-        })
+        response_info = {
+            "status_code": status_code,
+            "response_time_ms": step.get("response_time", 0),
+            "body": str(response_body)[:2000] if response_body else "",
+        }
+        response_step["attachments"].append(
+            {
+                "name": "响应信息",
+                "type": "application/json",
+                "source": f"response_{i_plus_1}.json",
+                "body": json.dumps(response_info, ensure_ascii=False, indent=2),
+            }
+        )
         sub_steps.append(response_step)
 
         assertion_step = {
@@ -285,12 +313,14 @@ def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dic
         }
         if step.get("extracted_vars"):
             vars_info = ", ".join([f"{k}={v}" for k, v in step["extracted_vars"].items()])
-            assertion_step["attachments"].append({
-                "name": f"提取变量_{i_plus_1}",
-                "type": "text/plain",
-                "source": f"vars_{i_plus_1}.txt",
-                "body": vars_info
-            })
+            assertion_step["attachments"].append(
+                {
+                    "name": f"提取变量_{i_plus_1}",
+                    "type": "text/plain",
+                    "source": f"vars_{i_plus_1}.txt",
+                    "body": vars_info,
+                }
+            )
         sub_steps.append(assertion_step)
 
         step_uuid = str(uuid.uuid4())

@@ -1,4 +1,5 @@
 """Persist AutoTest scheduler settings on test_scenarios so reload/restart keeps cron + webhook."""
+
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -14,11 +15,14 @@ _logger = logging.getLogger(__name__)
 async def ensure_schedule_columns_on_db() -> None:
     """Ensure schedule columns exist on test_scenarios (PostgreSQL compatible)."""
     async with async_session() as session:
+
         def _migrate(sync_conn: Any) -> None:
-            r = sync_conn.execute(text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
-            ))
+            r = sync_conn.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
+                )
+            )
             existing = {row[0] for row in r.fetchall()}
             for col, ddl in _schedule_column_ddl():
                 if col not in existing:
@@ -30,11 +34,26 @@ async def ensure_schedule_columns_on_db() -> None:
 
 def _schedule_column_ddl() -> list[tuple[str, str]]:
     return [
-        ("schedule_cron_expression", "ALTER TABLE test_scenarios ADD COLUMN schedule_cron_expression VARCHAR(200)"),
-        ("schedule_env_id", "ALTER TABLE test_scenarios ADD COLUMN schedule_env_id INTEGER"),
-        ("schedule_webhook_url", "ALTER TABLE test_scenarios ADD COLUMN schedule_webhook_url TEXT"),
-        ("schedule_task_name", "ALTER TABLE test_scenarios ADD COLUMN schedule_task_name VARCHAR(200)"),
-        ("schedule_is_active", "ALTER TABLE test_scenarios ADD COLUMN schedule_is_active BOOLEAN DEFAULT TRUE"),
+        (
+            "schedule_cron_expression",
+            "ALTER TABLE test_scenarios ADD COLUMN schedule_cron_expression VARCHAR(200)",
+        ),
+        (
+            "schedule_env_id",
+            "ALTER TABLE test_scenarios ADD COLUMN schedule_env_id INTEGER",
+        ),
+        (
+            "schedule_webhook_url",
+            "ALTER TABLE test_scenarios ADD COLUMN schedule_webhook_url TEXT",
+        ),
+        (
+            "schedule_task_name",
+            "ALTER TABLE test_scenarios ADD COLUMN schedule_task_name VARCHAR(200)",
+        ),
+        (
+            "schedule_is_active",
+            "ALTER TABLE test_scenarios ADD COLUMN schedule_is_active BOOLEAN DEFAULT TRUE",
+        ),
     ]
 
 

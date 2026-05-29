@@ -1,4 +1,5 @@
 """Onboarding assessment – quick skill profiling for new users."""
+
 from __future__ import annotations
 
 
@@ -172,11 +173,23 @@ DIMENSION_WEIGHTS = {
 }
 
 PATH_RECOMMENDATION_MAP = {
-    "test_theory": {"priority": 1, "reason": "测试理论基础是你成长的基石，建议优先巩固"},
-    "functional_test": {"priority": 2, "reason": "功能测试是日常工作的核心技能，需要系统掌握"},
+    "test_theory": {
+        "priority": 1,
+        "reason": "测试理论基础是你成长的基石，建议优先巩固",
+    },
+    "functional_test": {
+        "priority": 2,
+        "reason": "功能测试是日常工作的核心技能，需要系统掌握",
+    },
     "api_test": {"priority": 1, "reason": "接口测试是进阶的必备技能，市场需求大"},
-    "automation_test": {"priority": 2, "reason": "自动化能力是薪资突破的关键，建议重点学习"},
-    "programming": {"priority": 1, "reason": "编程能力是测试开发的基础，直接影响自动化水平"},
+    "automation_test": {
+        "priority": 2,
+        "reason": "自动化能力是薪资突破的关键，建议重点学习",
+    },
+    "programming": {
+        "priority": 1,
+        "reason": "编程能力是测试开发的基础，直接影响自动化水平",
+    },
 }
 
 
@@ -258,12 +271,13 @@ async def submit_assessment(
     current_user.assessment_score = int(overall_score)
     current_user.level = 1 if overall_score < 40 else 2 if overall_score < 60 else 3 if overall_score < 80 else 4
 
-    stmt = select(LearningPath).where(LearningPath.is_public == True).order_by(LearningPath.id)
+    stmt = select(LearningPath).where(LearningPath.is_public).order_by(LearningPath.id)
     try:
         result = await db.execute(stmt)
         all_paths = result.scalars().all()
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).warning(f"查询学习路径失败: {e}")
         all_paths = []
 
@@ -271,7 +285,9 @@ async def submit_assessment(
     recommended = []
     for i, dim in enumerate(sorted_dims[:3]):
         rec_info = PATH_RECOMMENDATION_MAP.get(dim.key, {"priority": 3, "reason": "建议学习提升"})
-        matching_paths = [p for p in all_paths if dim.key[:4] in (p.title or "").lower() or dim.name[:2] in (p.title or "")]
+        matching_paths = [
+            p for p in all_paths if dim.key[:4] in (p.title or "").lower() or dim.name[:2] in (p.title or "")
+        ]
 
         if matching_paths:
             path = matching_paths[0]
@@ -294,6 +310,7 @@ async def submit_assessment(
         await db.commit()
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).error(f"提交测评结果失败: {e}")
         await db.rollback()
         raise HTTPException(status_code=500, detail="测评结果保存失败")

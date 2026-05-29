@@ -1,7 +1,0 @@
-.notif-card.unread { border-left: 6rpx solid #4F46E5; }
-.notif-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
-.notif-title { font-size: 30rpx; font-weight: 600; color: #1a1a1a; flex: 1; }
-.notif-dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: #4F46E5; flex-shrink: 0; }
-.notif-content { display: block; line-height: 1.5; margin-bottom: 8rpx; }
-.notif-time { display: block; }
-.btn-group { margin-top: 20rpx; text-align: center; }

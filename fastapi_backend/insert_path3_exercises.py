@@ -6,7 +6,7 @@
 
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 学习路径3的50道精品题（基于Linux基础命令课程内容）
 exercises_data = [
@@ -17,7 +17,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "关于 `ls -l` 命令的输出，以下说法正确的是？（多选）",
@@ -25,7 +25,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "请判断：`cd ..` 命令用于进入当前目录的父目录。",
@@ -33,7 +33,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "在Linux中，用于创建新目录的命令是？",
@@ -41,7 +41,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "关于 `cp` 命令，以下说法正确的是？（多选）",
@@ -49,7 +49,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "请判断：`rm -rf /` 命令会递归删除根目录下的所有文件，且不会提示确认。",
@@ -57,7 +57,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "在Linux中，用于移动文件或重命名文件的命令是？",
@@ -65,7 +65,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "关于 `touch` 命令，以下说法正确的是？（多选）",
@@ -73,7 +73,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "请判断：`pwd` 命令用于显示当前工作目录的完整路径。",
@@ -81,7 +81,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "在Linux中，用于删除空目录的命令是？",
@@ -89,7 +89,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "关于文件路径，以下说法正确的是？（多选）",
@@ -97,7 +97,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "请判断：`cat file.txt` 命令会分页显示文件内容。",
@@ -105,7 +105,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "在Linux中，用于分页显示文件内容的命令是？",
@@ -113,7 +113,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "关于 `head` 和 `tail` 命令，以下说法正确的是？（多选）",
@@ -121,7 +121,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "请判断：`ln -s target linkname` 用于创建符号链接（软链接）。",
@@ -129,7 +129,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
     {
         "title": "在Linux中，用于查找文件的命令是？",
@@ -137,9 +137,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "文件与目录操作"
+        "category": "文件与目录操作",
     },
-    
     # ============ 文件权限管理（10题）============
     {
         "title": "在Linux中，用于修改文件权限的命令是？",
@@ -147,7 +146,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "文件权限管理"
+        "category": "文件权限管理",
     },
     {
         "title": "关于Linux文件权限，以下说法正确的是？（多选）",
@@ -155,7 +154,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "文件权限管理"
+        "category": "文件权限管理",
     },
     {
         "title": "请判断：`chown user:group file.txt` 命令用于修改文件的所有者和所属组。",
@@ -163,7 +162,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "文件权限管理"
+        "category": "文件权限管理",
     },
     {
         "title": "在Linux中，用于修改文件所属组的命令是？",
@@ -171,7 +170,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "文件权限管理"
+        "category": "文件权限管理",
     },
     {
         "title": "关于 `umask` 命令，以下说法正确的是？（多选）",
@@ -179,7 +178,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "文件权限管理"
+        "category": "文件权限管理",
     },
     {
         "title": "请判断：在Linux中，root用户不受文件权限的限制。",
@@ -187,7 +186,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "文件权限管理"
+        "category": "文件权限管理",
     },
     {
         "title": "在Linux中，用于查看文件权限和属性的命令是？",
@@ -195,7 +194,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "文件权限管理"
+        "category": "文件权限管理",
     },
     {
         "title": "关于特殊权限位（SUID、SGID、Sticky Bit），以下说法正确的是？（多选）",
@@ -203,7 +202,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "文件权限管理"
+        "category": "文件权限管理",
     },
     {
         "title": "请判断：`chmod +x script.sh` 会给所有用户（所有者、组、其他）添加执行权限。",
@@ -211,7 +210,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "文件权限管理"
+        "category": "文件权限管理",
     },
     {
         "title": "在Linux中，`drwxr-x---` 权限表示？",
@@ -219,9 +218,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "文件权限管理"
+        "category": "文件权限管理",
     },
-    
     # ============ 进程管理（10题）============
     {
         "title": "在Linux中，用于查看当前运行进程的命令是？",
@@ -229,7 +227,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "进程管理"
+        "category": "进程管理",
     },
     {
         "title": "关于 `ps` 命令，以下说法正确的是？（多选）",
@@ -237,7 +235,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "进程管理"
+        "category": "进程管理",
     },
     {
         "title": "请判断：`top` 命令用于实时显示系统中各个进程的资源占用状况。",
@@ -245,7 +243,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "进程管理"
+        "category": "进程管理",
     },
     {
         "title": "在Linux中，用于终止进程的命令是？",
@@ -253,7 +251,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "进程管理"
+        "category": "进程管理",
     },
     {
         "title": "关于 `kill` 命令，以下说法正确的是？（多选）",
@@ -261,7 +259,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "进程管理"
+        "category": "进程管理",
     },
     {
         "title": "请判断：`kill -9 PID` 会强制终止进程，且进程无法捕获该信号。",
@@ -269,7 +267,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "进程管理"
+        "category": "进程管理",
     },
     {
         "title": "在Linux中，用于查看进程树结构的命令是？",
@@ -277,7 +275,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "进程管理"
+        "category": "进程管理",
     },
     {
         "title": "关于进程优先级（nice值），以下说法正确的是？（多选）",
@@ -285,7 +283,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "进程管理"
+        "category": "进程管理",
     },
     {
         "title": "请判断：后台运行进程的方式是在命令末尾加上 `&` 符号。",
@@ -293,7 +291,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "进程管理"
+        "category": "进程管理",
     },
     {
         "title": "在Linux中，用于查看当前用户的作业（jobs）的命令是？",
@@ -301,9 +299,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "进程管理"
+        "category": "进程管理",
     },
-    
     # ============ 系统管理（10题）============
     {
         "title": "在Linux中，用于查看系统磁盘使用情况的命令是？",
@@ -311,7 +308,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "系统管理"
+        "category": "系统管理",
     },
     {
         "title": "关于 `du` 命令，以下说法正确的是？（多选）",
@@ -319,7 +316,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "系统管理"
+        "category": "系统管理",
     },
     {
         "title": "请判断：`free -h` 命令用于以人类可读的格式显示系统内存使用情况。",
@@ -327,7 +324,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "系统管理"
+        "category": "系统管理",
     },
     {
         "title": "在Linux中，用于查看系统启动时间的命令是？",
@@ -335,7 +332,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "系统管理"
+        "category": "系统管理",
     },
     {
         "title": "关于系统日志，以下说法正确的是？（多选）",
@@ -343,7 +340,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "系统管理"
+        "category": "系统管理",
     },
     {
         "title": "请判断：`shutdown -h now` 命令用于立即关闭系统。",
@@ -351,7 +348,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "系统管理"
+        "category": "系统管理",
     },
     {
         "title": "在Linux中，用于重启系统的命令是？",
@@ -359,7 +356,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "系统管理"
+        "category": "系统管理",
     },
     {
         "title": "关于 `sudo` 命令，以下说法正确的是？（多选）",
@@ -367,7 +364,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "系统管理"
+        "category": "系统管理",
     },
     {
         "title": "请判断：`passwd` 命令用于修改用户密码，root用户可以修改任何用户的密码。",
@@ -375,7 +372,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "系统管理"
+        "category": "系统管理",
     },
     {
         "title": "在Linux中，用于查看当前登录用户列表的命令是？",
@@ -383,9 +380,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "系统管理"
+        "category": "系统管理",
     },
-    
     # ============ 网络管理（5题）============
     {
         "title": "在Linux中，用于查看网络接口配置的命令是？",
@@ -393,7 +389,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "网络管理"
+        "category": "网络管理",
     },
     {
         "title": "关于网络调试命令，以下说法正确的是？（多选）",
@@ -401,7 +397,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "网络管理"
+        "category": "网络管理",
     },
     {
         "title": "请判断：`curl` 和 `wget` 命令都可以用于从网络下载文件。",
@@ -409,7 +405,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "网络管理"
+        "category": "网络管理",
     },
     {
         "title": "在Linux中，用于测试端口连通性的命令是？",
@@ -417,7 +413,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "网络管理"
+        "category": "网络管理",
     },
     {
         "title": "关于 `ssh` 命令，以下说法正确的是？（多选）",
@@ -425,58 +421,63 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "网络管理"
+        "category": "网络管理",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径3的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 3")
     print("🗑️  已删除学习路径3（Linux基础命令）的旧习题")
-    
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 3, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 3", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径3（Linux基础命令）")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 3")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径3现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

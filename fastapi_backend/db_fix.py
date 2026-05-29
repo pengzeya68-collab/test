@@ -1,8 +1,8 @@
-
 import sqlite3
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "testmaster.db"
+
 
 def fix_database():
     print(f"[DB Fix] Database path: {DB_PATH}")
@@ -38,6 +38,7 @@ def fix_database():
     except Exception as e:
         print(f"[DB Fix] ❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
     finally:

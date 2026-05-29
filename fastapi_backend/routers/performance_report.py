@@ -2,14 +2,17 @@
 性能测试报告 - 路由层
 POST /api/auto-test/report/generate → 生成 Word 性能测试报告
 """
+
 import io
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body
 from fastapi.responses import StreamingResponse
-from typing import Dict, Any, List
+from typing import Dict, Any
 from urllib.parse import quote
 
-from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.services.performance_report_service import generate_performance_report, _call_ai_analysis
+from fastapi_backend.services.performance_report_service import (
+    generate_performance_report,
+    _call_ai_analysis,
+)
 
 router = APIRouter(prefix="/api/auto-test/report", tags=["性能测试报告"])
 
@@ -109,8 +112,8 @@ async def generate_report(body: Dict[str, Any] = Body(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"报告生成失败: {str(e)}")
 
-    filename = f'{report_name}.docx'
-    encoded = quote(filename, safe='')
+    filename = f"{report_name}.docx"
+    encoded = quote(filename, safe="")
 
     return StreamingResponse(
         io.BytesIO(docx_bytes),

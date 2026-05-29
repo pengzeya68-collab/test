@@ -4,6 +4,7 @@ Unified FastAPI entrypoint for the TestMaster platform.
 This app is the single public entry. All FastAPI routes
 have been natively migrated — no bridge middleware is needed.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -12,7 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -34,6 +35,7 @@ AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 
 def _cleanup_stale_temp_files(directory: Path, max_age_hours: int = 24) -> None:
     import time
+
     if not directory.exists():
         return
     cutoff = time.time() - max_age_hours * 3600
@@ -46,13 +48,18 @@ def _cleanup_stale_temp_files(directory: Path, max_age_hours: int = 24) -> None:
             except OSError:
                 pass
     if removed:
-        _logger.info("已清理 %s 中 %d 个过期临时文件（超过 %d 小时）", directory, removed, max_age_hours)
+        _logger.info(
+            "已清理 %s 中 %d 个过期临时文件（超过 %d 小时）",
+            directory,
+            removed,
+            max_age_hours,
+        )
 
 
 async def create_tables() -> None:
     """创建数据库表 - 仅用于开发/测试环境快速初始化。
     生产环境务必使用 Alembic 迁移管理数据库变更。"""
-    if not getattr(settings, 'AUTO_CREATE_TABLES_ON_STARTUP', False):
+    if not getattr(settings, "AUTO_CREATE_TABLES_ON_STARTUP", False):
         return
     _logger.warning(
         "⚠️ AUTO_CREATE_TABLES_ON_STARTUP 已启用，正在使用 create_all() 创建表。"
@@ -99,6 +106,7 @@ async def init_auto_test_runtime() -> None:
 
     # 启动调度器（SQLAlchemyJobStore 自动持久化 Job，restore 作为安全补充）
     from fastapi_backend.services.autotest_scheduler import start_scheduler
+
     start_scheduler()
     await restore_scheduler_jobs_from_db()
 
@@ -111,7 +119,7 @@ async def lifespan(_: FastAPI):
     except PermissionError:
         log_dir = Path("/tmp/testmaster_logs")
         log_dir.mkdir(parents=True, exist_ok=True)
-    
+
     if settings.ENVIRONMENT == "testing":
         yield
         return
@@ -123,7 +131,11 @@ async def lifespan(_: FastAPI):
     # AutoTest 初始化（失败不阻塞主服务启动）
     try:
         await init_auto_test_runtime()
-        from fastapi_backend.services.autotest_task_store import start_cleanup_task, stop_cleanup_task
+        from fastapi_backend.services.autotest_task_store import (
+            start_cleanup_task,
+            stop_cleanup_task,
+        )
+
         start_cleanup_task()
         _cleanup_needed = True
     except Exception as e:
@@ -136,6 +148,7 @@ async def lifespan(_: FastAPI):
             try:
                 stop_cleanup_task()
                 from fastapi_backend.services.autotest_scheduler import stop_scheduler
+
                 stop_scheduler()
             except Exception as e:
                 _logger.warning("AutoTest 清理失败: %s", e)
@@ -195,12 +208,13 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
 
     # 生产环境不返回详细错误信息，防止信息泄露
     from fastapi_backend.core.config import settings
+
     if settings.ENVIRONMENT == "production":
         detail = "Internal server error"
     else:
         # 开发环境返回详细错误信息便于调试
         detail = f"{type(exc).__name__}: {str(exc)}"
-    
+
     payload = ErrorResponse(
         detail=detail,
         code="INTERNAL_SERVER_ERROR",
@@ -247,7 +261,11 @@ for router in _routers.get("standalone", []):
 # ========== Static files for Allure reports ==========
 REPORTS_DIR = AUTOTEST_DATA_DIR / "reports"
 REPORTS_DIR.mkdir(exist_ok=True, parents=True)
-app.mount("/reports", StaticFiles(directory=str(REPORTS_DIR.resolve()), html=False), name="reports")
+app.mount(
+    "/reports",
+    StaticFiles(directory=str(REPORTS_DIR.resolve()), html=False),
+    name="reports",
+)
 
 
 @app.get("/api/health")

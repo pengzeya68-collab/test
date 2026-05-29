@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """验证生成的习题质量"""
+
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 
@@ -36,11 +37,11 @@ cursor.execute("""
 incomplete_count = 0
 for row in cursor.fetchall():
     desc = row[2] if row[2] else ""
-    has_a = 'A.' in desc or 'A.' in desc
-    has_b = 'B.' in desc
-    has_c = 'C.' in desc
-    has_d = 'D.' in desc
-    
+    has_a = "A." in desc or "A." in desc
+    has_b = "B." in desc
+    has_c = "C." in desc
+    has_d = "D." in desc
+
     if not (has_a and has_b and has_c and has_d):
         incomplete_count += 1
         if incomplete_count <= 3:  # 只打印前3个不完整的
@@ -61,12 +62,12 @@ cursor.execute("""
     LIMIT 3
 """)
 for row in cursor.fetchall():
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"ID: {row[0]}")
     print(f"标题: {row[1]}")
     print(f"类型: {row[2]}")
     print(f"学习路径: {row[3]}")
-    print(f"\n描述/选项:")
+    print("\n描述/选项:")
     print(row[4])
     print(f"\n答案: {row[5]}")
 
@@ -78,9 +79,13 @@ cursor.execute("""
 paths = cursor.fetchall()
 
 for (path_id,) in paths:
-    cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = ?", (path_id,))
+    cursor.execute(
+        "SELECT COUNT(*) FROM exercises WHERE learning_path_id = ?", (path_id,)
+    )
     count = cursor.fetchone()[0]
-    cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = ?", (count, path_id))
+    cursor.execute(
+        "UPDATE learning_paths SET exercise_count = ? WHERE id = ?", (count, path_id)
+    )
     print(f"  路径{path_id}: {count}题")
 
 conn.commit()

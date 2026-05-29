@@ -1,12 +1,11 @@
 """
 测试数据工厂引擎单元测试
 """
-import uuid
+
 from fastapi_backend.services.autotest_data_factory_service import DataFactoryEngine
 
 
 class TestDataFactoryEngine:
-
     def test_fixed_value(self):
         engine = DataFactoryEngine()
         val = engine._generate_value("fixed", {"value": "hello"}, "test_field")
@@ -109,8 +108,16 @@ class TestDataFactoryEngine:
     def test_generate_preview_structure(self):
         engine = DataFactoryEngine()
         fields = [
-            {"field_name": "name", "rule_type": "fixed", "rule_config": {"value": "Alice"}},
-            {"field_name": "age", "rule_type": "increment", "rule_config": {"start": 20, "step": 1}},
+            {
+                "field_name": "name",
+                "rule_type": "fixed",
+                "rule_config": {"value": "Alice"},
+            },
+            {
+                "field_name": "age",
+                "rule_type": "increment",
+                "rule_config": {"start": 20, "step": 1},
+            },
             {"field_name": "uid", "rule_type": "uuid", "rule_config": {}},
         ]
         result = engine.generate_preview(fields, row_count=5)

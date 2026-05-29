@@ -6,7 +6,7 @@
 
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 学习路径2的50道精品题
 exercises_data = [
@@ -17,7 +17,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "SQL基础概念"
+        "category": "SQL基础概念",
     },
     {
         "title": "以下哪些是SQL的主要分类？（多选）",
@@ -25,7 +25,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "SQL基础概念"
+        "category": "SQL基础概念",
     },
     {
         "title": "请判断：SQL是一种过程式语言，需要指定'怎么做'，而不仅仅是'做什么'。",
@@ -33,7 +33,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "SQL基础概念"
+        "category": "SQL基础概念",
     },
     {
         "title": "关于关系型数据库，以下说法正确的是？",
@@ -41,7 +41,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "SQL基础概念"
+        "category": "SQL基础概念",
     },
     {
         "title": "SQL语句中，用于查询数据的关键字是？",
@@ -49,7 +49,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "SQL基础概念"
+        "category": "SQL基础概念",
     },
     {
         "title": "关于DDL（数据定义语言），以下说法正确的是？（多选）",
@@ -57,7 +57,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "SQL基础概念"
+        "category": "SQL基础概念",
     },
     {
         "title": "请判断：在关系型数据库中，表（Table）中的一行称为'字段'，一列称为'记录'。",
@@ -65,7 +65,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "SQL基础概念"
+        "category": "SQL基础概念",
     },
     {
         "title": "关于主键（Primary Key），以下说法错误的是？",
@@ -73,7 +73,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "SQL基础概念"
+        "category": "SQL基础概念",
     },
     {
         "title": "关于外键（Foreign Key），以下说法正确的是？（多选）",
@@ -81,7 +81,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "SQL基础概念"
+        "category": "SQL基础概念",
     },
     {
         "title": "请判断：SQL语句不区分大小写，但字符串值区分大小写。",
@@ -89,9 +89,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "SQL基础概念"
+        "category": "SQL基础概念",
     },
-    
     # ============ SELECT查询基础（15题）============
     {
         "title": "以下SQL查询语句正确的是？",
@@ -99,7 +98,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "关于SELECT语句中的WHERE子句，以下说法正确的是？（多选）",
@@ -107,7 +106,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "请判断：SELECT * 会查询表中的所有列，但在生产环境中不推荐使用，因为性能较差。",
@@ -115,7 +114,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "以下查询语句中，用于排序的子句是？",
@@ -123,7 +122,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "关于ORDER BY子句，以下说法正确的是？",
@@ -131,7 +130,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "关于LIMIT子句，以下说法正确的是？（多选）",
@@ -139,7 +138,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "请判断：WHERE子句可以使用聚合函数（如COUNT、SUM、AVG等）作为条件。",
@@ -147,7 +146,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "以下用于模糊查询的通配符，正确的是？",
@@ -155,7 +154,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "关于LIKE操作符，以下说法正确的是？（多选）",
@@ -163,7 +162,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "请判断：在SQL中，NULL表示空字符串（''）。",
@@ -171,7 +170,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "以下用于判断NULL值的条件是？",
@@ -179,7 +178,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "关于BETWEEN操作符，以下说法正确的是？（多选）",
@@ -187,7 +186,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "请判断：IN操作符用于匹配多个值，等价于多个OR条件。",
@@ -195,7 +194,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "以下SQL语句中，用于去除重复记录的关键字是？",
@@ -203,7 +202,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
     {
         "title": "关于别名（Alias），以下说法正确的是？",
@@ -211,9 +210,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "SELECT查询基础"
+        "category": "SELECT查询基础",
     },
-    
     # ============ 聚合函数与分组（10题）============
     {
         "title": "以下哪些是SQL的聚合函数？（多选）",
@@ -221,7 +219,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "聚合函数与分组"
+        "category": "聚合函数与分组",
     },
     {
         "title": "请判断：COUNT(*) 和 COUNT(column) 的结果是一样的。",
@@ -229,7 +227,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "聚合函数与分组"
+        "category": "聚合函数与分组",
     },
     {
         "title": "关于GROUP BY子句，以下说法正确的是？",
@@ -237,7 +235,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "聚合函数与分组"
+        "category": "聚合函数与分组",
     },
     {
         "title": "关于HAVING子句，以下说法正确的是？（多选）",
@@ -245,7 +243,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "聚合函数与分组"
+        "category": "聚合函数与分组",
     },
     {
         "title": "请判断：WHERE和HAVING可以互换使用，没有区别。",
@@ -253,7 +251,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "聚合函数与分组"
+        "category": "聚合函数与分组",
     },
     {
         "title": "以下SQL语句的执行顺序正确的是？",
@@ -261,7 +259,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "聚合函数与分组"
+        "category": "聚合函数与分组",
     },
     {
         "title": "关于COUNT(*)和COUNT(1)，以下说法正确的是？（多选）",
@@ -269,7 +267,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "聚合函数与分组"
+        "category": "聚合函数与分组",
     },
     {
         "title": "请判断：在SELECT语句中，SELECT子句的执行顺序比WHERE子句晚。",
@@ -277,7 +275,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "聚合函数与分组"
+        "category": "聚合函数与分组",
     },
     {
         "title": "关于SUM()和AVG()函数，以下说法正确的是？",
@@ -285,7 +283,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "聚合函数与分组"
+        "category": "聚合函数与分组",
     },
     {
         "title": "关于GROUP BY，以下说法错误的是？",
@@ -293,9 +291,8 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "聚合函数与分组"
+        "category": "聚合函数与分组",
     },
-    
     # ============ 表连接（JOIN）（10题）============
     {
         "title": "关于INNER JOIN，以下说法正确的是？",
@@ -303,7 +300,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "表连接（JOIN）"
+        "category": "表连接（JOIN）",
     },
     {
         "title": "关于LEFT JOIN（或LEFT OUTER JOIN），以下说法正确的是？（多选）",
@@ -311,7 +308,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "表连接（JOIN）"
+        "category": "表连接（JOIN）",
     },
     {
         "title": "请判断：FULL OUTER JOIN返回左表和右表的所有记录，即使没有匹配。",
@@ -319,7 +316,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "表连接（JOIN）"
+        "category": "表连接（JOIN）",
     },
     {
         "title": "关于CROSS JOIN（笛卡尔积），以下说法正确的是？",
@@ -327,7 +324,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "表连接（JOIN）"
+        "category": "表连接（JOIN）",
     },
     {
         "title": "关于SELF JOIN（自连接），以下说法正确的是？（多选）",
@@ -335,7 +332,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "表连接（JOIN）"
+        "category": "表连接（JOIN）",
     },
     {
         "title": "请判断：在SQL中，JOIN条件可以放在WHERE子句中，效果与ON子句完全相同。",
@@ -343,7 +340,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "表连接（JOIN）"
+        "category": "表连接（JOIN）",
     },
     {
         "title": "关于多表连接，以下说法正确的是？",
@@ -351,7 +348,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "表连接（JOIN）"
+        "category": "表连接（JOIN）",
     },
     {
         "title": "关于ON和WHERE在LEFT JOIN中的区别，以下说法正确的是？（多选）",
@@ -359,7 +356,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "表连接（JOIN）"
+        "category": "表连接（JOIN）",
     },
     {
         "title": "请判断：RIGHT JOIN可以完全用LEFT JOIN替代，只需要交换表的顺序。",
@@ -367,7 +364,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "表连接（JOIN）"
+        "category": "表连接（JOIN）",
     },
     {
         "title": "关于UNION和UNION ALL，以下说法正确的是？",
@@ -375,9 +372,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "表连接（JOIN）"
+        "category": "表连接（JOIN）",
     },
-    
     # ============ 数据操作（INSERT/UPDATE/DELETE）（5题）============
     {
         "title": "关于INSERT语句，以下说法正确的是？（多选）",
@@ -385,7 +381,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "数据操作"
+        "category": "数据操作",
     },
     {
         "title": "关于UPDATE语句，以下说法正确的是？",
@@ -393,7 +389,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "数据操作"
+        "category": "数据操作",
     },
     {
         "title": "请判断：DELETE语句会删除表结构，TRUNCATE语句只删除数据但保留表结构。",
@@ -401,7 +397,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "数据操作"
+        "category": "数据操作",
     },
     {
         "title": "关于DELETE和TRUNCATE的区别，以下说法正确的是？（多选）",
@@ -409,7 +405,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "数据操作"
+        "category": "数据操作",
     },
     {
         "title": "请判断：在执行DELETE或UPDATE语句时，如果不加WHERE条件，会操作表中的所有记录。",
@@ -417,58 +413,63 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "数据操作"
+        "category": "数据操作",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径2的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 2")
     print("🗑️  已删除学习路径2（SQL数据库基础）的旧习题")
-    
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 2, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 2", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径2（SQL数据库基础）")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 2")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径2现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

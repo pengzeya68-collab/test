@@ -1,4 +1,5 @@
 """Send text notifications to Feishu / DingTalk / WeCom bot webhooks."""
+
 from __future__ import annotations
 
 import json
@@ -18,6 +19,7 @@ def _is_feishu_webhook(webhook_url: str) -> bool:
 def _public_backend_base_url() -> str:
     try:
         from fastapi_backend.core.autotest_settings import get_settings
+
         settings = get_settings()
         base = getattr(settings, "AUTO_TEST_BASE_URL", None) or ""
         return (base or "http://localhost:5001").strip().rstrip("/")
@@ -63,7 +65,11 @@ def _feishu_interactive_card_payload(
     pass_rate = f"{round((passed / total) * 100)}%" if total > 0 else "N/A"
     sec = f"{total_time_ms / 1000.0:.2f}s" if total_time_ms is not None else "N/A"
     template = "green" if ok and not error_text else "red"
-    header_title = f"🟢 {scenario_name or '场景'} - 执行成功" if ok and not error_text else f"🚨 {scenario_name or '场景'} - 执行失败"
+    header_title = (
+        f"🟢 {scenario_name or '场景'} - 执行成功"
+        if ok and not error_text
+        else f"🚨 {scenario_name or '场景'} - 执行失败"
+    )
 
     md_lines = [
         f"**场景名称：** {scenario_name or '—'}",
@@ -97,7 +103,10 @@ def _feishu_interactive_card_payload(
                 "actions": [
                     {
                         "tag": "button",
-                        "text": {"tag": "plain_text", "content": "📊 查看 Allure 详细报告"},
+                        "text": {
+                            "tag": "plain_text",
+                            "content": "📊 查看 Allure 详细报告",
+                        },
                         "type": "primary",
                         "url": public_report_url,
                     }
@@ -218,7 +227,9 @@ def _failed_step_count_payload(result: Optional[dict]) -> int:
 
 
 def notify_scenario_schedule_webhook_from_db(scenario_id: int, result: dict) -> Tuple[bool, str]:
-    from fastapi_backend.services.autotest_schedule_persistence import read_schedule_webhook_sync
+    from fastapi_backend.services.autotest_schedule_persistence import (
+        read_schedule_webhook_sync,
+    )
 
     url = read_schedule_webhook_sync(scenario_id)
     if not url:
