@@ -8,7 +8,7 @@ import uuid
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
@@ -172,10 +172,20 @@ async def update_scenario(
         raise HTTPException(status_code=404, detail="场景不存在")
 
     update_data = scenario.model_dump(exclude_unset=True)
+    steps_data = update_data.pop("steps", None)
+
     if not db_scenario.webhook_token and "webhook_token" not in update_data:
         update_data["webhook_token"] = str(uuid.uuid4())
     for key, value in update_data.items():
         setattr(db_scenario, key, value)
+
+    if steps_data is not None:
+        await db.execute(
+            delete(AutoTestScenarioStep).where(AutoTestScenarioStep.scenario_id == scenario_id)
+        )
+        for step_data in steps_data:
+            step = AutoTestScenarioStep(scenario_id=scenario_id, **step_data)
+            db.add(step)
 
     await db.commit()
     await db.refresh(db_scenario)

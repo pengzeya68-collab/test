@@ -105,8 +105,12 @@ async def init_auto_test_runtime() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    log_dir = Path(__file__).parent.parent / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
+    log_dir = Path(__file__).parent / "autotest_data" / "logs"
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+    except PermissionError:
+        log_dir = Path("/tmp/testmaster_logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
     
     if settings.ENVIRONMENT == "testing":
         yield

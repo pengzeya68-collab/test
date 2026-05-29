@@ -137,7 +137,7 @@ def read_schedule_webhook_sync(scenario_id: int) -> Optional[str]:
         loop = asyncio.get_running_loop()
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(asyncio.run, _read())
+            future = pool.submit(asyncio.run, _read)
             return future.result(timeout=5)
     except RuntimeError:
         return asyncio.run(_read())
