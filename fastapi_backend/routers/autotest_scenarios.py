@@ -89,6 +89,8 @@ async def list_scenarios(
             "description": scenario.description,
             "is_active": scenario.is_active,
             "schedule_cron": scenario.schedule_cron_expression,
+            "schedule_env_id": scenario.schedule_env_id,
+            "webhook_url": scenario.schedule_webhook_url,
             "webhook_token": scenario.webhook_token,
             "created_at": scenario.created_at.isoformat() if scenario.created_at else None,
             "updated_at": scenario.updated_at.isoformat() if scenario.updated_at else None,
@@ -228,7 +230,7 @@ async def delete_scenario(scenario_id: int, db: AsyncSession = Depends(get_db)):
 
     try:
         from fastapi_backend.services.autotest_scheduler import remove_scheduled_task
-        remove_scheduled_task(str(scenario_id))
+        remove_scheduled_task(f"auto_sched_{scenario_id}")
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"移除定时任务失败: {e}")

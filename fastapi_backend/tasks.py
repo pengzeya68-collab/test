@@ -47,6 +47,7 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
 
     try:
         import asyncio
+        import gc
 
         def on_progress(current_step, total_steps, step_name):
             percent = int((current_step / total_steps) * 100) if total_steps > 0 else 0
@@ -93,8 +94,33 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
                 _logger.warning(f"[Celery] 同步进度到持久化存储失败: {e}")
 
         from fastapi_backend.services.autotest_scenario_runner import run_scenario as execute_scenario_async
+        from fastapi_backend.core.config import settings as _settings
+        from sqlalchemy.ext.asyncio import create_async_engine as _create_async_engine
 
-        result = asyncio.run(execute_scenario_async(scenario_id, env_id, progress_callback=on_progress))
+        def _normalize_url(url):
+            if url.startswith("postgresql://"):
+                return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            return url
+
+        _celery_engine = _create_async_engine(
+            _normalize_url(_settings.DATABASE_URL),
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            pool_size=2,
+            max_overflow=4,
+        )
+
+        async def _run_with_cleanup():
+            try:
+                result = await execute_scenario_async(scenario_id, env_id, progress_callback=on_progress)
+                return result
+            finally:
+                await _celery_engine.dispose()
+
+        result = asyncio.run(_run_with_cleanup())
+
+        # Force garbage collection to clean up any lingering async references
+        gc.collect()
 
         result['task_id'] = task_id
         result['status'] = 'completed'

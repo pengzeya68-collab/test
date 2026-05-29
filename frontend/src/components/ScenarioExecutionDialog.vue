@@ -70,9 +70,9 @@
           v-for="(step, index) in runResult.step_results"
           :key="step.step_id || step.api_case_id || index"
           class="step-result-card"
-          :class="{ 'is-failed': step.status === 'failed', 'is-skipped': step.status === 'skipped' }"
+          :class="{ 'is-failed': getStepStatus(step) === 'failed', 'is-skipped': getStepStatus(step) === 'skipped' }"
         >
-          <div v-if="step.status === 'skipped'" class="step-header step-header-skipped">
+          <div v-if="getStepStatus(step) === 'skipped'" class="step-header step-header-skipped">
             <span class="step-order">{{ index + 1 }}</span>
             <el-tag type="info" size="small">{{ step.method || 'N/A' }}</el-tag>
             <span class="step-name">{{ step.api_case_name }}</span>
@@ -87,9 +87,9 @@
             <el-tag v-if="step.status_code" :type="getStatusCodeType(step.status_code)" size="small">
               {{ step.status_code }}
             </el-tag>
-            <el-tag v-if="step.status === 'success'" type="success" effect="light">通过</el-tag>
-            <el-tag v-else-if="step.status === 'failed'" type="danger" effect="light">失败</el-tag>
-            <el-tag v-else-if="step.status === 'skipped'" type="info" effect="light">跳过</el-tag>
+            <el-tag v-if="getStepStatus(step) === 'success'" type="success" effect="light">通过</el-tag>
+            <el-tag v-else-if="getStepStatus(step) === 'failed'" type="danger" effect="light">失败</el-tag>
+            <el-tag v-else-if="getStepStatus(step) === 'skipped'" type="info" effect="light">跳过</el-tag>
             <el-tag v-else type="warning" effect="light">未知</el-tag>
             <span style="margin-left: 10px; color: var(--tm-text-secondary); font-size: 13px;" v-if="step.status !== 'skipped'">
               {{ step.response_time || step.duration || 0 }}ms
@@ -99,7 +99,7 @@
             </el-icon>
           </div>
 
-          <div class="step-detail" v-if="expandedSteps.includes(index) && step.status !== 'skipped'">
+          <div class="step-detail" v-if="expandedSteps.includes(index) && getStepStatus(step) !== 'skipped'">
             <div class="detail-url">{{ step.url }}</div>
 
             <div class="detail-section" v-if="step.headers || step.payload">
@@ -145,8 +145,8 @@
             <div class="detail-section" v-if="step.assertions">
               <h5>断言结果</h5>
               <div class="assertion-summary">
-                <el-tag type="success" size="small">通过: {{ step.assertions.passed || 0 }}</el-tag>
-                <el-tag type="danger" size="small">失败: {{ step.assertions.failed?.length || 0 }}</el-tag>
+                <el-tag type="success" size="small">通过: {{ step.assertions.passed ?? 0 }}</el-tag>
+                <el-tag type="danger" size="small">失败: {{ step.assertions.failed?.length ?? 0 }}</el-tag>
               </div>
               <div v-if="step.assertions.failed?.length" class="assertion-errors">
                 <el-alert
@@ -234,6 +234,13 @@ const getStatusCodeType = (statusCode) => {
   if (statusCode >= 200 && statusCode < 300) return 'success'
   if (statusCode >= 300 && statusCode < 400) return 'warning'
   return 'danger'
+}
+
+const getStepStatus = (step) => {
+  if (step.status) return step.status
+  if (step.success === true) return 'success'
+  if (step.success === false) return 'failed'
+  return 'unknown'
 }
 
 const formatTotalTime = (ms) => {

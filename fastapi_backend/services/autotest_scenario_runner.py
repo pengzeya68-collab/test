@@ -616,8 +616,9 @@ class TestScenario{scenario_id}:
         if api_case is None:
             return {
                 "step_order": step.step_order,
-                "step_name": step.step_name or f"步骤{step.step_order}",
+                "api_case_name": f"步骤{step.step_order}",
                 "status": "error",
+                "success": False,
                 "error": f"关联的接口用例不存在 (api_case_id={step.api_case_id})",
                 "assertion_results": [],
                 "variable_extractions": [],

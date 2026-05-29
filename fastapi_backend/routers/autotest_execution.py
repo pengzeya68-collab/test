@@ -49,10 +49,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 TASKS_DIR = AUTOTEST_DATA_DIR / "tasks"
 
-# 任务状态存储（替代 Celery）
-_task_store: dict = {}  # 内存缓存
-_task_store_lock = asyncio.Lock()
-
 # ========== 任务状态管理 ==========
 from fastapi_backend.services.autotest_task_store import (
     get_task, update_task
@@ -620,6 +616,7 @@ async def run_scenario(scenario_id: int, body: CaseRunRequest = None, background
         await seed_task(task_id, {
             "task_id": task_id,
             "scenario_id": scenario_id,
+            "env_id": env_id,
             "status": "PROGRESS",
             "info": "任务已提交，正在后台执行",
             "progress": {"percent": 0, "current": 0, "total": 0, "current_api": "等待执行..."},
