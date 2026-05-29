@@ -87,7 +87,7 @@ async def list_scenarios(
             "name": scenario.name,
             "description": scenario.description,
             "is_active": scenario.is_active,
-            "schedule_cron": scenario.schedule_cron,
+            "schedule_cron": scenario.schedule_cron_expression,
             "webhook_token": scenario.webhook_token,
             "created_at": scenario.created_at.isoformat() if scenario.created_at else None,
             "updated_at": scenario.updated_at.isoformat() if scenario.updated_at else None,
