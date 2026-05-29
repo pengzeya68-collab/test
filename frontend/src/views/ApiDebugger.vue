@@ -264,7 +264,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Right, Delete, Clock, Timer, MagicStick, DocumentCopy, DataAnalysis, Document, Plus, Search, Edit, FullScreen } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
@@ -297,7 +297,16 @@ const apiLibraryForm = ref({ name: '', group_id: '', description: '' })
 const apiGroups = ref([])
 
 const toggleFullscreen = () => {
-  isFullscreen.value = !isFullscreen.value
+  const el = document.querySelector('.debug-container')
+  if (!document.fullscreenElement) {
+    el?.requestFullscreen?.().then(() => { isFullscreen.value = true }).catch(() => { isFullscreen.value = !isFullscreen.value })
+  } else {
+    document.exitFullscreen?.().then(() => { isFullscreen.value = false }).catch(() => { isFullscreen.value = !isFullscreen.value })
+  }
+}
+
+const handleFullscreenChange = () => {
+  isFullscreen.value = !!document.fullscreenElement
 }
 
 const getHttpStatusTagType = (statusCode) => {
@@ -467,7 +476,7 @@ const confirmSaveToApiLibrary = async () => {
     else if (rawBodyType === 'text') contentType = 'text/plain'
     else if (rawBodyType === 'form-data') contentType = 'multipart/form-data'
     const payload = { name: apiLibraryForm.value.name, group_id: apiLibraryForm.value.group_id, method: debugForm.value.method, url: debugForm.value.url, headers, params, body_type: bodyType, content_type: contentType, payload: requestPayload, description: apiLibraryForm.value.description }
-    await autoTestRequest.post('/auto-test/cases/', payload)
+    await autoTestRequest.post('/auto-test/cases', payload)
     ElMessage.success('保存到接口库成功'); saveToApiLibraryDialog.value = false; emit('case-saved')
   } catch (error) { ElMessage.error(error.response?.data?.detail || '保存到接口库失败') }
 }
@@ -513,7 +522,22 @@ const copyResponse = () => {
 const formatJson = (field) => {
   try {
     const value = debugForm.value[field]
-    if (value) { debugForm.value[field] = JSON.stringify(JSON.parse(value), null, 2); ElMessage.success('JSON 格式化成功') }
+    if (!value) return
+    try {
+      debugForm.value[field] = JSON.stringify(JSON.parse(value), null, 2)
+      ElMessage.success('JSON 格式化成功')
+    } catch {
+      try {
+        const fixed = value
+          .replace(/(\w+)\s*:/g, '"$1":')
+          .replace(/'/g, '"')
+          .replace(/,\s*([}\]])/g, '$1')
+        debugForm.value[field] = JSON.stringify(JSON.parse(fixed), null, 2)
+        ElMessage.success('JSON 格式化成功（已自动修正格式）')
+      } catch {
+        ElMessage.error('JSON 格式错误，请检查输入是否为有效的 JSON 或 JS 对象格式')
+      }
+    }
   } catch (error) { ElMessage.error('JSON 格式错误') }
 }
 
@@ -521,6 +545,9 @@ watch(() => variableSearch.value, (search) => {
   if (!search) filteredVariables.value = variables.value
   else filteredVariables.value = variables.value.filter(v => v.name.toLowerCase().includes(search.toLowerCase()) || (v.description && v.description.toLowerCase().includes(search.toLowerCase())))
 })
+
+onMounted(() => { document.addEventListener('fullscreenchange', handleFullscreenChange) })
+onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFullscreenChange) })
 </script>
 
 <style scoped>

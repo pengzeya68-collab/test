@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="global-variable-manager">
     <el-card>
       <template #header>
@@ -367,24 +367,58 @@ const handleImport = async (file) => {
     try {
       const data = JSON.parse(e.target.result)
       if (!Array.isArray(data)) {
-        ElMessage.error('导入文件格式错误')
+        ElMessage.error('导入文件格式错误，请上传 JSON 数组文件')
         return
       }
 
-      const variablesToImport = data.map(item => ({
-        name: item.name,
-        value: item.value,
-        description: item.description || '',
-        is_encrypted: item.is_encrypted || false
-      }))
+      const existingNames = new Set(variables.value.map(v => v.name))
+      const variablesToImport = []
+      const skippedItems = []
+
+      for (const item of data) {
+        if (!item.name || !item.value) {
+          skippedItems.push({ name: item.name || '(无名)', reason: '缺少变量名或变量值' })
+          continue
+        }
+        if (existingNames.has(item.name)) {
+          skippedItems.push({ name: item.name, reason: '变量名已存在' })
+          continue
+        }
+        variablesToImport.push({
+          name: item.name,
+          value: item.value,
+          description: item.description || '',
+          is_encrypted: item.is_encrypted || false
+        })
+      }
+
+      if (variablesToImport.length === 0 && skippedItems.length > 0) {
+        const reasons = skippedItems.map(s => `• ${s.name}: ${s.reason}`).join('\n')
+        ElMessageBox.alert(
+          `以下变量无法导入：\n${reasons}\n\n请修改变量名后重新导入，或先删除已有变量。`,
+          '导入失败',
+          { type: 'warning', confirmButtonText: '知道了' }
+        )
+        return
+      }
 
       const res = await autoTestRequest.post('/auto-test/global-variables/batch', variablesToImport)
       const imported = Array.isArray(res) ? res : []
       variables.value = [...variables.value, ...imported]
-      ElMessage.success(`成功导入 ${imported.length} 个变量`)
+
+      if (skippedItems.length > 0) {
+        const reasons = skippedItems.map(s => `• ${s.name}: ${s.reason}`).join('\n')
+        ElMessageBox.alert(
+          `成功导入 ${imported.length} 个变量\n\n以下 ${skippedItems.length} 个变量被跳过：\n${reasons}`,
+          '导入完成',
+          { type: 'info', confirmButtonText: '知道了' }
+        )
+      } else {
+        ElMessage.success(`成功导入 ${imported.length} 个变量`)
+      }
     } catch (error) {
       console.error('导入变量失败:', error)
-      ElMessage.error('导入变量失败')
+      ElMessage.error('导入变量失败，请检查文件格式')
     }
   }
   reader.readAsText(file.raw)
