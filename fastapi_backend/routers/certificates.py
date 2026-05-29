@@ -94,7 +94,7 @@ def _generate_cert_id(user_id: int, cert_key: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16].upper()
 
 
-@router.get("/")
+@router.get("")
 async def get_certificates(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

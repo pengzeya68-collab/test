@@ -29,7 +29,7 @@ def _fmt_dt(dt: datetime | None) -> str:
 
 # ── Public endpoints ──────────────────────────────────────
 
-@router.get("/", response_model=list[LearningPathResponse])
+@router.get("", response_model=list[LearningPathResponse])
 async def get_learning_paths(
     stage: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
@@ -159,7 +159,7 @@ async def get_learning_path(
 
 # ── Authenticated endpoints ───────────────────────────────
 
-@router.post("/", response_model=LearningPathDetail, status_code=201)
+@router.post("", response_model=LearningPathDetail, status_code=201)
 async def create_learning_path(
     payload: LearningPathCreate,
     current_user: User = Depends(get_current_active_user),

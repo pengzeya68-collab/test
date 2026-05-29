@@ -144,7 +144,7 @@ async def check_and_unlock_achievements(user_id: int, db: AsyncSession):
     return new_unlocks
 
 
-@router.get("/")
+@router.get("")
 async def get_achievements(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

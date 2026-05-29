@@ -326,7 +326,7 @@ const fetchRelatedExercises = async () => {
 
 const fetchNotes = async () => {
   try {
-    const res = await request.get('/notes/', { params: { exercise_id: exerciseId } })
+    const res = await request.get('/notes', { params: { exercise_id: exerciseId } })
     exerciseNotes.value = res.notes || []
   } catch {}
 }
@@ -338,7 +338,7 @@ const saveNote = async () => {
   }
   noteSaving.value = true
   try {
-    await request.post('/notes/', {
+    await request.post('/notes', {
       title: newNoteTitle.value,
       content: newNoteContent.value,
       exercise_id: parseInt(exerciseId),

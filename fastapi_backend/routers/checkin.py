@@ -32,7 +32,7 @@ def _get_streak_exp(streak: int) -> int:
     return STREAK_REWARDS.get(streak, 5)
 
 
-@router.post("/")
+@router.post("")
 async def daily_checkin(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
