@@ -298,8 +298,10 @@ import {
   ChatDotRound, StarFilled, Timer, Promotion
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const posts = ref([])
 const categories = ref([])
@@ -413,11 +415,7 @@ const viewPostDetail = (postId) => {
 }
 
 const toggleLike = async (post) => {
-  // 检查是否登录
-  const token = localStorage.getItem('token')
-  const user = localStorage.getItem('user')
-  
-  if (!token || !user) {
+  if (!userStore.isLoggedIn) {
     ElMessage.warning('你当前未登录，请登录后点赞')
     router.push({
       path: '/login',
@@ -438,11 +436,7 @@ const toggleLike = async (post) => {
 }
 
 const toggleFavorite = async (post) => {
-  // 检查是否登录
-  const token = localStorage.getItem('token')
-  const user = localStorage.getItem('user')
-  
-  if (!token || !user) {
+  if (!userStore.isLoggedIn) {
     ElMessage.warning('你当前未登录，请登录后收藏')
     router.push({
       path: '/login',
@@ -462,11 +456,7 @@ const toggleFavorite = async (post) => {
 }
 
 const createPost = () => {
-  // 检查是否登录
-  const token = localStorage.getItem('token')
-  const user = localStorage.getItem('user')
-  
-  if (!token || !user) {
+  if (!userStore.isLoggedIn) {
     ElMessage.warning('你当前未登录，请登录后发布帖子')
     router.push({
       path: '/login',
@@ -475,7 +465,6 @@ const createPost = () => {
     return
   }
   
-  // 已经登录才显示发布弹窗
   showCreateDialog.value = true
 }
 

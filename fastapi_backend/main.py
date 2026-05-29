@@ -23,58 +23,6 @@ from fastapi_backend.core.config import settings
 _logger = logging.getLogger(__name__)
 from fastapi_backend.core.database import Base, engine
 from fastapi_backend.core.exceptions import BusinessException
-from fastapi_backend.routers.admin import router as admin_router
-from fastapi_backend.routers.admin_users import router as admin_users_router
-from fastapi_backend.routers.admin_exercises import router as admin_exercises_router
-from fastapi_backend.routers.admin_paths import router as admin_paths_router
-from fastapi_backend.routers.admin_exams import router as admin_exams_router
-from fastapi_backend.routers.admin_community import router as admin_community_router
-from fastapi_backend.routers.admin_system import router as admin_system_router
-from fastapi_backend.routers.admin_system_mgmt import router as admin_system_mgmt_router
-from fastapi_backend.routers.auth import router as auth_router
-from fastapi_backend.routers.community import router as community_router
-from fastapi_backend.routers.exam import router as exam_router
-from fastapi_backend.routers.exercises import router as exercises_router
-from fastapi_backend.routers.ai_tutor import router as ai_tutor_router
-from fastapi_backend.routers.ai_config import router as ai_config_router
-from fastapi_backend.routers.backup import router as backup_router
-from fastapi_backend.routers.exercise import router as exercise_router
-from fastapi_backend.routers.interview import router as interview_router
-from fastapi_backend.routers.learning_paths import router as learning_paths_router
-from fastapi_backend.routers.sandbox import router as sandbox_router
-from fastapi_backend.routers.skills import router as skills_router
-from fastapi_backend.routers.assessment import router as assessment_router
-from fastapi_backend.routers.achievements import router as achievements_router
-from fastapi_backend.routers.checkin import router as checkin_router
-from fastapi_backend.routers.leaderboard import router as leaderboard_router
-from fastapi_backend.routers.report import router as report_router
-from fastapi_backend.routers.notes import router as notes_router
-from fastapi_backend.routers.certificates import router as certificates_router
-from fastapi_backend.routers.rbac import router as rbac_router
-from fastapi_backend.routers.projects import router as projects_router
-
-# AutoTest 原生路由（Phase B 迁移）
-from fastapi_backend.routers.autotest_groups import router as autotest_groups_router
-from fastapi_backend.routers.autotest_cases import router as autotest_cases_router
-from fastapi_backend.routers.autotest_environments import router as autotest_envs_router
-from fastapi_backend.routers.autotest_scenarios import router as autotest_scenarios_router
-from fastapi_backend.routers.autotest_execution import router as autotest_execution_router
-from fastapi_backend.routers.autotest_diagnostic import router as autotest_diagnostic_router
-from fastapi_backend.routers.autotest_global_variables import router as autotest_global_vars_router
-from fastapi_backend.routers.autotest_jmeter import router as autotest_jmeter_router
-from fastapi_backend.routers.autotest_data_factory import router as autotest_data_factory_router
-from fastapi_backend.routers.notifications import router as notifications_router
-from fastapi_backend.routers.favorites import router as favorites_router
-from fastapi_backend.routers.search import router as search_router
-from fastapi_backend.routers.tools import router as tools_router
-from fastapi_backend.routers.reports import router as reports_router
-from fastapi_backend.routers.mock_api import router as mock_api_router
-from fastapi_backend.routers.assert_templates import router as assert_templates_router
-from fastapi_backend.routers.autotest_diff import router as autotest_diff_router
-from fastapi_backend.routers.autotest_suites import router as autotest_suites_router
-from fastapi_backend.routers.autotest_health import router as autotest_health_router
-from fastapi_backend.routers.autotest_debug import router as autotest_debug_router
-from fastapi_backend.routers.performance_report import router as performance_report_router
 
 from fastapi_backend.schemas.common import ErrorResponse
 from fastapi_backend.middleware.request_stats import request_stats_middleware
@@ -157,7 +105,6 @@ async def init_auto_test_runtime() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    from pathlib import Path
     log_dir = Path(__file__).parent.parent / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     
@@ -206,11 +153,6 @@ app = FastAPI(
 )
 
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "version": settings.VERSION}
-
-
 async def business_exception_handler(request: Request, exc: BusinessException) -> JSONResponse:
     payload = ErrorResponse(
         detail=exc.detail,
@@ -245,8 +187,6 @@ async def validation_exception_handler(
 
 
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    import logging
-    _logger = logging.getLogger(__name__)
     _logger.exception(f"未处理异常: {type(exc).__name__}: {str(exc)}")
 
     # 生产环境不返回详细错误信息，防止信息泄露
@@ -287,70 +227,18 @@ from fastapi_backend.middleware.ai_rate_limiter import ai_rate_limit_middleware
 if settings.ENVIRONMENT != "testing":
     app.middleware("http")(ai_rate_limit_middleware)
 
-# ========== 路由分组注册 ==========
-app.include_router(auth_router)
+# ========== 路由自动注册 ==========
+from fastapi_backend.core.router_registry import discover_routers
 
-admin_router_group = APIRouter()
-admin_router_group.include_router(admin_router)
-admin_router_group.include_router(admin_users_router)
-admin_router_group.include_router(admin_exercises_router)
-admin_router_group.include_router(admin_paths_router)
-admin_router_group.include_router(admin_exams_router)
-admin_router_group.include_router(admin_community_router)
-admin_router_group.include_router(admin_system_router)
-admin_router_group.include_router(admin_system_mgmt_router)
-admin_router_group.include_router(ai_config_router)
-admin_router_group.include_router(backup_router)
-admin_router_group.include_router(rbac_router)
+_routers = discover_routers()
 
-autotest_router = APIRouter()
-autotest_router.include_router(autotest_groups_router)
-autotest_router.include_router(autotest_cases_router)
-autotest_router.include_router(autotest_envs_router)
-autotest_router.include_router(autotest_scenarios_router)
-autotest_router.include_router(autotest_execution_router)
-autotest_router.include_router(autotest_diagnostic_router)
-autotest_router.include_router(autotest_global_vars_router)
-autotest_router.include_router(autotest_jmeter_router)
-autotest_router.include_router(autotest_data_factory_router)
+for group_name in ("admin", "autotest", "learning", "ai_tools"):
+    group_router = _routers.get(group_name)
+    if group_router is not None:
+        app.include_router(group_router)
 
-learning_router = APIRouter()
-learning_router.include_router(learning_paths_router)
-learning_router.include_router(skills_router)
-learning_router.include_router(assessment_router)
-learning_router.include_router(achievements_router)
-learning_router.include_router(checkin_router)
-learning_router.include_router(leaderboard_router)
-learning_router.include_router(report_router)
-learning_router.include_router(notes_router)
-learning_router.include_router(certificates_router)
-learning_router.include_router(exam_router)
-learning_router.include_router(exercise_router)
-learning_router.include_router(exercises_router)
-learning_router.include_router(projects_router)
-
-ai_tools_router = APIRouter()
-ai_tools_router.include_router(interview_router)
-ai_tools_router.include_router(sandbox_router)
-ai_tools_router.include_router(ai_tutor_router)
-ai_tools_router.include_router(community_router)
-
-app.include_router(admin_router_group)
-app.include_router(autotest_router)
-app.include_router(learning_router)
-app.include_router(ai_tools_router)
-app.include_router(notifications_router)
-app.include_router(favorites_router)
-app.include_router(search_router)
-app.include_router(tools_router)
-app.include_router(reports_router)
-app.include_router(mock_api_router)
-app.include_router(assert_templates_router)
-app.include_router(autotest_diff_router)
-app.include_router(autotest_suites_router)
-app.include_router(autotest_health_router)
-app.include_router(autotest_debug_router)
-app.include_router(performance_report_router)
+for router in _routers.get("standalone", []):
+    app.include_router(router)
 
 # ========== Static files for Allure reports ==========
 REPORTS_DIR = AUTOTEST_DATA_DIR / "reports"

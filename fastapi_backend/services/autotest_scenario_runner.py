@@ -111,13 +111,32 @@ class ScenarioExecutionEngine:
                 all_steps = sorted([s for s in scenario.steps if s.is_active], key=lambda x: x.step_order)
 
                 total_steps = len(all_steps)
+                fail_fast_enabled = getattr(scenario, 'fail_fast', False)
 
                 if self.progress_callback:
                     self.progress_callback(0, total_steps, '加载场景和环境中...')
 
+                failed_encountered = False
                 for idx, step in enumerate(all_steps):
                     step_name = step.api_case.name if step.api_case else f"Step {step.step_order}"
-                    step_start = time.time()  # 记录每步独立开始时间
+                    step_start = time.time()
+
+                    if failed_encountered and fail_fast_enabled:
+                        self.step_results.append({
+                            "step_id": step.id,
+                            "step_order": step.step_order,
+                            "api_case_id": step.api_case_id,
+                            "api_case_name": step.api_case.name if step.api_case else f"Step {step.step_order}",
+                            "method": step.api_case.method if step.api_case else "GET",
+                            "success": False,
+                            "status": "skipped",
+                            "response_time": 0,
+                            "error": "因前序步骤失败且启用 fail_fast，跳过此步骤"
+                        })
+                        if self.progress_callback:
+                            self.progress_callback(idx + 1, total_steps, f'跳过: {step_name}')
+                        continue
+
                     if self.progress_callback:
                         self.progress_callback(idx, total_steps, f'执行: {step_name}')
 
@@ -127,6 +146,7 @@ class ScenarioExecutionEngine:
                             step_result["status"] = "failed"
                             self.step_results.append(step_result)
                             self.total_duration += step_result.get("duration", 0)
+                            failed_encountered = True
                         else:
                             step_result["status"] = "success"
                             self.step_results.append(step_result)
@@ -148,6 +168,7 @@ class ScenarioExecutionEngine:
                             "response_time": step_duration,
                             "error": f"断言失败: {str(e)}"
                         })
+                        failed_encountered = True
 
                         if self.progress_callback:
                             self.progress_callback(idx + 1, total_steps, f'失败: {step_name}')
@@ -164,6 +185,7 @@ class ScenarioExecutionEngine:
                             "response_time": step_duration,
                             "error": f"执行异常: {str(e)}"
                         })
+                        failed_encountered = True
 
                         if self.progress_callback:
                             self.progress_callback(idx + 1, total_steps, f'异常: {step_name}')

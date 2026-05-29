@@ -809,8 +809,6 @@ const initFormData = (data) => {
       activeTab.value = 'body'
     }
     
-    // 🔥 调试日志
-    console.log('🔥 initFormData 完成，bodyType:', mappedBodyType, 'payload:', parsedPayload, 'extractors:', parsedExtractors)
   } else {
     // 新建模式
     caseForm.value = {
@@ -1075,7 +1073,6 @@ const handleClose = () => {
 
 // 保存
 const handleSave = async () => {
-  console.log('--- [CaseEditorDrawer] 触发 handleSave 保存函数 ---')
   if (!caseForm.value.name) {
     ElMessage.warning('请输入用例名称')
     return
@@ -1095,7 +1092,6 @@ const handleSave = async () => {
     return
   }
 
-  console.log('--- [CaseEditorDrawer] 开始构建 payload ---')
   try {
     // 🔥 强制深度拷贝，确保拿到响应式对象的真实原生数据
     const rawForm = JSON.parse(JSON.stringify(toRaw(caseForm.value)))
@@ -1185,9 +1181,6 @@ const handleSave = async () => {
       assertions: assertRules
     }
 
-    // 🔥 调试日志：打印准备发送给后端的真实 payload
-    console.log('🔥 准备发送给后端的真实 Payload:', payload)
-
     let createdCaseId = null
     if (props.isEdit) {
       await autoTestRequest.put(`/auto-test/cases/${props.caseData.id}`, payload)
@@ -1198,8 +1191,6 @@ const handleSave = async () => {
       ElMessage.success('创建成功')
       // 假设后端返回新建用例的ID
       createdCaseId = response.id || response.case_id
-      console.log('🔥 新建用例返回的响应:', response)
-      console.log('🔥 新建用例ID:', createdCaseId)
     }
 
     emit('success')

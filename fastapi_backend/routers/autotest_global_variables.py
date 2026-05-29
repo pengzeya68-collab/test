@@ -51,7 +51,7 @@ async def get_global_variable(variable_id: int, db: AsyncSession = Depends(get_d
     return _variable_to_dict(variable)
 
 
-@router.post("/global-variables", status_code=201)
+@router.post("", status_code=201)
 async def create_global_variable(
     variable_in: dict,
     db: AsyncSession = Depends(get_db),

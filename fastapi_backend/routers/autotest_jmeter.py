@@ -28,6 +28,7 @@ from fastapi_backend.services.autotest_jmeter_service import (
     import_jmx_to_cases,
     import_jmx_to_full_tree,
 )
+from fastapi_backend.core.ssrf_guard import validate_url_safety
 
 router = APIRouter(prefix="/api/auto-test", tags=["AutoTest-JMeter"], dependencies=[Depends(get_current_user)])
 
@@ -505,6 +506,13 @@ async def quick_benchmark_submit(body: Dict[str, Any] = Body(...)):
     targets = body.get("requests", [])
     if not targets:
         raise HTTPException(status_code=400, detail="请提供至少一个请求")
+    
+    for t in targets:
+        t_url = t.get("url", "")
+        if t_url:
+            safe, reason = validate_url_safety(t_url)
+            if not safe:
+                raise HTTPException(status_code=400, detail=reason)
     
     task_id = str(uuid.uuid4())
     config = {

@@ -277,6 +277,12 @@
                 <el-button size="small" type="success" @click="doGenerate" :loading="generateLoading">
                   <el-icon><Download /></el-icon> 生成数据集
                 </el-button>
+                <el-button size="small" type="info" @click="exportCSV" :disabled="!previewData">
+                  <el-icon><Download /></el-icon> 导出 CSV
+                </el-button>
+                <el-button size="small" type="info" @click="exportJSON" :disabled="!previewData">
+                  <el-icon><Download /></el-icon> 导出 JSON
+                </el-button>
                 <el-button
                   v-if="generatedDataset"
                   size="small"
@@ -768,6 +774,51 @@ const doBind = async () => {
   } finally {
     bindLoading.value = false
   }
+}
+
+const exportCSV = () => {
+  if (!previewData.value) return
+  const { columns, rows } = previewData.value
+  const csvRows = []
+  csvRows.push(columns.map(escapeCSVField).join(','))
+  for (const row of rows) {
+    csvRows.push(columns.map((_, idx) => escapeCSVField(String(row[idx] ?? ''))).join(','))
+  }
+  const csvContent = '\uFEFF' + csvRows.join('\n')
+  downloadFile(csvContent, `${form.value.name || 'data'}_${Date.now()}.csv`, 'text/csv;charset=utf-8')
+  ElMessage.success('CSV 导出成功')
+}
+
+const exportJSON = () => {
+  if (!previewData.value) return
+  const { columns, rows } = previewData.value
+  const jsonData = rows.map(row => {
+    const obj = {}
+    columns.forEach((col, idx) => {
+      obj[col] = row[idx] ?? ''
+    })
+    return obj
+  })
+  const jsonContent = JSON.stringify(jsonData, null, 2)
+  downloadFile(jsonContent, `${form.value.name || 'data'}_${Date.now()}.json`, 'application/json;charset=utf-8')
+  ElMessage.success('JSON 导出成功')
+}
+
+const escapeCSVField = (field) => {
+  const str = String(field)
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return '"' + str.replace(/"/g, '""') + '"'
+  }
+  return str
+}
+
+const downloadFile = (content, filename, mimeType) => {
+  const blob = new Blob([content], { type: mimeType })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(link.href)
 }
 
 const fetchTemplates = async () => {

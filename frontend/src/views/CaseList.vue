@@ -355,6 +355,7 @@ const emit = defineEmits(['run', 'refresh-groups'])
 const loading = ref(false)
 const cases = ref([])
 const searchKeyword = ref('')
+const searchTimer = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
@@ -503,8 +504,11 @@ watch(() => props.groupId, (newVal) => {
 
 // 搜索
 const handleSearch = () => {
-  currentPage.value = 1
-  loadCases()
+  if (searchTimer.value) clearTimeout(searchTimer.value)
+  searchTimer.value = setTimeout(() => {
+    currentPage.value = 1
+    loadCases()
+  }, 300)
 }
 
 // 分页大小变化
@@ -525,7 +529,6 @@ const handleEnvChange = () => {
 
 // 新建用例
 const handleCreate = () => {
-  console.log('新建用例按钮被点击，当前分组ID:', props.groupId)
   if (!props.groupId) {
     ElMessage.warning('请先从左侧分组树选择一个分组再创建用例')
     return
@@ -534,7 +537,6 @@ const handleCreate = () => {
   isEdit.value = false
   currentGroupId.value = props.groupId
   drawerVisible.value = true
-  console.log('抽屉已打开')
 }
 
 // 编辑用例

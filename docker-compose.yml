@@ -1,4 +1,42 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-resource-limits: &default-resources
+  limits:
+    cpus: "2.0"
+    memory: 1G
+  reservations:
+    cpus: "0.25"
+    memory: 256M
+
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: testmaster-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: testmaster
+      POSTGRES_USER: testmaster
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testmaster"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - testmaster-net
+    logging: *default-logging
+    deploy:
+      resources:
+        <<: *default-resources
+
   backend:
     build:
       context: .
@@ -6,21 +44,22 @@ services:
     container_name: testmaster-backend
     restart: unless-stopped
     ports:
-      - "5001:5001"
+      - "127.0.0.1:5001:5001"
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:////app/instance/testmaster.db
+      - DATABASE_URL=postgresql+asyncpg://testmaster:${DB_PASSWORD}@postgres:5432/testmaster
       - AUTO_CREATE_TABLES_ON_STARTUP=true
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
     volumes:
-      - ./instance:/app/instance
-      - ./fastapi_backend/autotest_data:/app/fastapi_backend/autotest_data
-      - ./fastapi_backend:/app/fastapi_backend
-      - ./requirements.txt:/app/requirements.txt
+      - backend_data:/app/instance
+      - autotest_data:/app/fastapi_backend/autotest_data
+      - backup_data:/app/backups
     env_file:
       - .env
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
@@ -31,6 +70,10 @@ services:
       start_period: 15s
     networks:
       - testmaster-net
+    logging: *default-logging
+    deploy:
+      resources:
+        <<: *default-resources
 
   celery-worker:
     build:
@@ -40,29 +83,44 @@ services:
     restart: unless-stopped
     command: celery -A fastapi_backend.tasks worker --loglevel=info --concurrency=4
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:////app/instance/testmaster.db
+      - DATABASE_URL=postgresql+asyncpg://testmaster:${DB_PASSWORD}@postgres:5432/testmaster
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
     volumes:
-      - ./instance:/app/instance
-      - ./fastapi_backend/autotest_data:/app/fastapi_backend/autotest_data
-      - ./fastapi_backend:/app/fastapi_backend
-      - ./requirements.txt:/app/requirements.txt
+      - backend_data:/app/instance
+      - autotest_data:/app/fastapi_backend/autotest_data
     env_file:
       - .env
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A fastapi_backend.tasks inspect ping --timeout 10 2>/dev/null || exit 0"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
     networks:
       - testmaster-net
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
 
   redis:
     image: redis:7-alpine
     container_name: testmaster-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -72,6 +130,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
 
   nginx:
     image: nginx:alpine
@@ -79,14 +146,30 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./frontend/dist:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./fastapi_backend/autotest_data:/usr/share/nginx/autotest_data:ro
+      - autotest_data:/usr/share/nginx/autotest_data:ro
+      - ./ssl:/etc/nginx/ssl:ro
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     networks:
       - testmaster-net
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
 
 networks:
   testmaster-net:
@@ -94,3 +177,7 @@ networks:
 
 volumes:
   redis_data:
+  pg_data:
+  backend_data:
+  autotest_data:
+  backup_data:

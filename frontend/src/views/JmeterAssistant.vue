@@ -47,37 +47,13 @@
     </el-collapse-transition>
 
     <!-- 脚本历史面板 -->
-    <el-collapse-transition>
-      <div v-if="showScriptHistory" class="script-history-panel">
-        <div class="shp-header">
-          <span>📂 脚本历史 ({{ scriptHistory.length }})</span>
-          <div>
-            <el-button size="small" type="primary" @click="createNewScript">
-              <el-icon><Plus /></el-icon> 新建脚本
-            </el-button>
-            <el-button size="small" @click="clearAllHistory" v-if="scriptHistory.length > 0">
-              清空全部
-            </el-button>
-          </div>
-        </div>
-        <div class="shp-list" v-if="scriptHistory.length > 0">
-          <div v-for="(h, hi) in scriptHistory" :key="hi" class="shp-item" @click="loadScriptFromHistory(h)">
-            <div class="shp-item-main">
-              <span class="shp-name">{{ h.name }}</span>
-              <span class="shp-time">{{ h.time }}</span>
-            </div>
-            <div class="shp-item-actions">
-              <el-tag size="small" type="info">{{ h.tree?.children?.length || 0 }} 线程组</el-tag>
-              <el-button link size="small" type="danger" @click.stop="deleteScriptFromHistory(h.name)">删除</el-button>
-            </div>
-          </div>
-        </div>
-        <div v-else class="shp-empty">
-          <p>暂无历史脚本</p>
-          <p style="font-size:12px;color:var(--tm-text-secondary)">脚本会自动保存，切换页面也不会丢失</p>
-        </div>
-      </div>
-    </el-collapse-transition>
+    <ScriptHistory
+      :visible="showScriptHistory"
+      :script-history="scriptHistory"
+      @load-script="loadScriptFromHistory"
+      @create-new="createNewScript"
+      @update:script-history="scriptHistory = $event"
+    />
 
     <!-- ==================== Step 1: 选择接口 ==================== -->
     <div v-show="currentStep === 1" class="step-body">
@@ -172,324 +148,31 @@
 
       <div class="step2-layout">
         <!-- 压测控制面板 -->
-      <div class="bench-control-panel" :class="{ expanded: benchPanelExpanded }">
-        <div class="bcp-header" @click="benchPanelExpanded = !benchPanelExpanded">
-          <div class="bcp-header-left">
-            <span class="bcp-plan-name">{{ scriptTree.name }}</span>
-            <el-tag size="small" type="info">{{ totalSamplers }} 请求 · {{ totalNodes }} 元素</el-tag>
-            <el-tag v-if="totalThreads" size="small" effect="plain">👥 {{ totalThreads }} 线程</el-tag>
-          </div>
-          <div class="bcp-header-center">
-            <div class="bcp-config-item">
-              <label>并发数</label>
-              <el-input-number v-model="benchConcurrency" :min="1" :max="200" size="small" controls-position="right" style="width:90px" />
-            </div>
-            <div class="bcp-config-item">
-              <label>持续(秒)</label>
-              <el-input-number v-model="benchDuration" :min="3" :max="60" size="small" controls-position="right" style="width:90px" />
-            </div>
-            <div class="bcp-config-item">
-              <label>预热(秒)</label>
-              <el-input-number v-model="benchRampUp" :min="0" :max="10" size="small" controls-position="right" style="width:90px" />
-            </div>
-          </div>
-          <div class="bcp-header-right">
-            <el-button v-if="!benching" type="danger" @click.stop="startBench" size="default" class="bcp-start-btn">
-              ⚡ 启动压测（{{ benchConcurrency }}并发 × {{ benchDuration }}秒）
-            </el-button>
-            <template v-else>
-              <el-button :icon="SwitchButton" @click.stop="stopBench" size="default" type="danger"> 停止</el-button>
-            </template>
-            <el-button size="default" @click.stop="showBenchHistory = !showBenchHistory">
-              📋 历史{{ benchHistory.length > 0 ? '(' + benchHistory.length + ')' : '' }}
-            </el-button>
-            <el-icon class="bcp-toggle-icon" :class="{ rotate: benchPanelExpanded }"><ArrowDown /></el-icon>
-          </div>
-        </div>
-
-        <!-- 展开内容 -->
-        <div class="bcp-body" v-show="benchPanelExpanded">
-
-        <!-- 接口列表 -->
-         <div class="bcp-requests" v-if="allSamplers.length > 0">
-           <span class="bcp-requests-label">压测接口：</span>
-           <el-tag v-for="(s, si) in allSamplers" :key="si" size="small" effect="plain" type="info" class="bcp-req-tag" :title="s.url">
-             <b>{{ s.method }}</b> {{ s.name }}
-           </el-tag>
-         </div>
-
-        <!-- 进度条 -->
-        <div v-if="benching || benchProgress" class="bcp-progress">
-          <el-progress :percentage="benchPercent" :stroke-width="8" :status="benchPercent >= 100 ? 'success' : ''" />
-          <span class="bcp-progress-text">{{ benchProgress }}<em v-if="benchEta" style="margin-left:8px;font-style:normal;color:var(--tm-text-secondary)">{{ benchEta }}</em></span>
-        </div>
-
-        <!-- 实时性能图表 -->
-        <div v-if="benchSnapshots.length > 0" class="bcp-charts">
-          <div class="bcp-charts-row">
-            <div class="bcp-chart-card">
-              <div class="bpu-header">📈 TPS/QPS 实时曲线</div>
-              <div ref="benchChartRef" class="bcp-chart-box"></div>
-            </div>
-            <div class="bcp-chart-card">
-              <div class="bpu-header">⏱️ 响应时间趋势</div>
-              <div ref="benchChartRef2" class="bcp-chart-box"></div>
-            </div>
-          </div>
-          <div class="bcp-charts-row">
-            <div class="bcp-chart-card">
-              <div class="bpu-header">📊 状态码分布</div>
-              <div ref="benchChartRef3" class="bcp-chart-box"></div>
-            </div>
-            <div class="bcp-chart-card">
-              <div class="bpu-header">🎯 各接口成功率</div>
-              <div ref="benchChartRef4" class="bcp-chart-box"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 运行中快速统计 -->
-        <div v-if="benchResult" class="bcp-quick-stats">
-          <div class="bcp-stat" :class="benchResult.failed > 0 ? 'bcp-stat-err' : 'bcp-stat-ok'">
-            <span class="bcp-stat-val">{{ benchResult.total }}</span><span class="bcp-stat-lbl">总请求</span>
-          </div>
-          <div class="bcp-stat bcp-stat-ok"><span class="bcp-stat-val">{{ benchResult.success }}</span><span class="bcp-stat-lbl">成功</span></div>
-          <div class="bcp-stat" :class="benchResult.failed > 0 ? 'bcp-stat-err' : ''"><span class="bcp-stat-val">{{ benchResult.failed }}</span><span class="bcp-stat-lbl">失败</span></div>
-          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.tps }}</span><span class="bcp-stat-lbl">TPS</span></div>
-          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.avg_ms }}ms</span><span class="bcp-stat-lbl">平均</span></div>
-          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.min_ms || '-' }}ms</span><span class="bcp-stat-lbl">最小</span></div>
-          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.max_ms || '-' }}ms</span><span class="bcp-stat-lbl">最大</span></div>
-          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p50_ms || '-' }}ms</span><span class="bcp-stat-lbl">P50</span></div>
-          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p90_ms || '-' }}ms</span><span class="bcp-stat-lbl">P90</span></div>
-          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p95_ms }}ms</span><span class="bcp-stat-lbl">P95</span></div>
-          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p99_ms }}ms</span><span class="bcp-stat-lbl">P99</span></div>
-          <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.stddev_ms || '-' }}ms</span><span class="bcp-stat-lbl">标准差</span></div>
-          <el-button v-if="benchResult && !analyzing" size="small" type="primary" plain @click="analyzeBenchResult" style="margin-left:auto">
-            🤖 AI 分析
-          </el-button>
-          <el-button v-if="analyzing" size="small" type="warning" plain loading style="margin-left:auto">
-            分析中（约30-60秒）...
-          </el-button>
-          <el-button v-if="benchResult" size="small" type="success" plain @click="exportReport">
-            📄 导出报告
-          </el-button>
-        </div>
-
-        <!-- AI分析进行中横幅 -->
-        <el-alert
-          v-if="analyzing"
-          title="🤖 AI 正在深度分析性能数据..."
-          type="info"
-          :closable="false"
-          show-icon
-          class="bcp-analyze-banner"
-        >
-          <template #default>
-            <p style="margin:0;font-size:12px;color:#94a3b8;">
-              正在将 {{ benchResult?.per_url?.length || 0 }} 个接口的完整性能数据发送给 AI 进行分析，
-              包括响应时间分布、吞吐趋势、错误统计等。预计 30-60 秒，请耐心等待...
-            </p>
-          </template>
-        </el-alert>
-
-        <!-- 按接口统计 -->
-        <div v-if="benchResult && benchResult.per_url && benchResult.per_url.length > 0" class="bcp-per-url">
-          <div class="bpu-header">📊 按接口统计</div>
-          <table class="bpu-table">
-            <thead>
-              <tr>
-                <th>接口</th>
-                <th>总次数</th>
-                <th>成功</th>
-                <th>失败</th>
-                <th>成功率</th>
-                <th>平均(ms)</th>
-                <th>P95(ms)</th>
-                <th>P99(ms)</th>
-                <th>最小(ms)</th>
-                <th>最大(ms)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(pu, pi) in benchResult.per_url" :key="pi" :class="pu.failed > 0 ? 'bpu-row-err' : ''">
-                <td class="bpu-url" :title="pu.url">
-                  <b>{{ pu.method || 'GET' }}</b> {{ pu.name || pu.url }}
-                </td>
-                <td>{{ pu.count }}</td>
-                <td class="bpu-ok">{{ pu.success }}</td>
-                <td :class="pu.failed > 0 ? 'bpu-err' : ''">{{ pu.failed }}</td>
-                <td>
-                  <span :class="pu.success_rate < 100 ? 'bpu-err' : 'bpu-ok'">{{ pu.success_rate }}%</span>
-                </td>
-                <td>{{ pu.avg_ms }}</td>
-                <td>{{ pu.p95_ms }}</td>
-                <td>{{ pu.p99_ms }}</td>
-                <td>{{ pu.min_ms || '-' }}</td>
-                <td>{{ pu.max_ms || '-' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- 错误详情 -->
-        <el-collapse v-if="benchResult && benchResult.errors && benchResult.errors.length > 0" v-model="errorCollapseActive" class="bcp-errors-collapse">
-          <el-collapse-item name="errors">
-            <template #title>
-              <span class="bcp-errors-title">🔴 错误详情 ({{ benchResult.errors.length }})</span>
-            </template>
-            <div class="bcp-errors-list">
-              <div v-for="(err, ei) in benchResult.errors.slice(0, 20)" :key="ei" class="bcp-error-item">
-                <div class="bcp-error-header">
-                  <span class="bcp-error-name">{{ err.name || err.url || '未知接口' }}</span>
-                  <el-tag size="small" type="danger">{{ err.method || 'GET' }}</el-tag>
-                  <span class="bcp-error-status">状态: {{ err.status || 0 }}</span>
-                  <span class="bcp-error-time">{{ err.elapsed_ms || 0 }}ms</span>
-                </div>
-                <div class="bcp-error-msg">{{ err.error || err.response_message || err }}</div>
-                <div v-if="err.request_body" class="bcp-error-req">
-                  <details>
-                    <summary>📤 请求体</summary>
-                    <pre>{{ err.request_body.substring(0, 500) }}</pre>
-                  </details>
-                </div>
-                <div v-if="err.response_body" class="bcp-error-res">
-                  <details>
-                    <summary>📥 响应体</summary>
-                    <pre>{{ err.response_body.substring(0, 1000) }}</pre>
-                  </details>
-                </div>
-              </div>
-              <div v-if="benchResult.errors.length > 20" class="bcp-error-more">
-                ... 还有 {{ benchResult.errors.length - 20 }} 条错误
-              </div>
-            </div>
-          </el-collapse-item>
-        </el-collapse>
-
-        <!-- 状态码分布 -->
-        <div v-if="benchResult && benchResult.status_distribution" class="bcp-status-dist">
-          <div class="bpu-header"> 状态码分布</div>
-          <div class="bsd-tags">
-            <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code"
-              :type="code >= 200 && code < 400 ? 'success' : 'danger'" size="small" effect="plain">
-              {{ code }}: {{ count }}次
-            </el-tag>
-          </div>
-        </div>
-
-        <!-- 响应时间分布 -->
-        <div v-if="benchResult && benchResult.rt_distribution" class="bcp-rt-dist">
-          <div class="bpu-header">️ 响应时间分布</div>
-          <div class="rt-dist-bars">
-            <div v-for="(count, range) in benchResult.rt_distribution" :key="range" class="rt-dist-bar">
-              <div class="rt-dist-label">{{ range }}</div>
-              <div class="rt-dist-track">
-                <div class="rt-dist-fill" :style="{ width: (count / Math.max(...Object.values(benchResult.rt_distribution), 1) * 100) + '%' }"></div>
-              </div>
-              <div class="rt-dist-count">{{ count }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 吞吐量趋势 -->
-        <div v-if="benchResult && benchResult.throughput_trend && benchResult.throughput_trend.length > 0" class="bcp-throughput">
-          <div class="bpu-header">📊 吞吐量趋势 (5秒窗口)</div>
-          <div class="tp-table">
-            <table>
-              <thead><tr><th>时间(s)</th><th>TPS</th><th>请求数</th><th>趋势</th></tr></thead>
-              <tbody>
-                <tr v-for="(tp, ti) in benchResult.throughput_trend" :key="ti">
-                  <td>{{ tp.t }}-{{ tp.t + 5 }}</td>
-                  <td>{{ tp.tps }}</td>
-                  <td>{{ tp.count }}</td>
-                  <td>
-                    <div class="tp-bar">
-                      <div class="tp-fill" :style="{ width: (tp.tps / Math.max(...benchResult.throughput_trend.map(t => t.tps), 1) * 100) + '%' }"></div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- 响应体采样 -->
-        <div v-if="benchResult && benchResult.body_samples && benchResult.body_samples.length > 0" class="bcp-body-samples" style="margin-top:10px">
-          <div class="bpu-header" style="display:flex;justify-content:space-between;align-items:center">
-            <span>📄 响应体采样 (前 {{ Math.min(benchResult.body_samples.length, 10) }} 条)</span>
-            <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">最多 1000 字符</span>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <div v-for="(bs, bi) in benchResult.body_samples.slice(0, 10)" :key="bi" style="background:#f8fafc;border-radius:6px;padding:6px 8px">
-              <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tm-text-secondary);margin-bottom:3px">
-                <el-tag :type="bs.status >= 200 && bs.status < 400 ? 'success' : 'danger'" size="small">{{ bs.status }}</el-tag>
-                <span style="word-break:break-all">{{ shortUrl(bs.url) }}</span>
-              </div>
-              <pre class="bench-body-preview" style="margin:0;font-size:11px;max-height:80px;overflow-y:auto">{{ bs.body }}</pre>
-            </div>
-          </div>
-        </div>
-
-        </div>
-      </div>
-
-      <!-- 历史记录面板 -->
-      <div v-if="showBenchHistory && benchHistory.length > 0" class="bench-history-panel">
-        <div class="bh-header">
-          <span>📋 执行历史 ({{ benchHistory.length }})</span>
-          <el-button link size="small" @click="benchHistory = []; showBenchHistory = false">清空全部</el-button>
-        </div>
-        <div class="bh-list">
-          <div v-for="(h, hi) in benchHistory" :key="hi" class="bh-item" @click="restoreHistoryResult(h)">
-            <span class="bh-time">{{ h.time }}</span>
-            <span class="bh-name">{{ h.planName }}</span>
-            <span class="bh-total">{{ h.total }}次</span>
-            <span class="bh-tps">{{ h.tps }}TPS</span>
-            <span :class="h.failed > 0 ? 'bh-err' : 'bh-ok'">{{ h.failed }}失败</span>
-          </div>
-        </div>
-      </div>
+      <BenchRunner
+        ref="benchRunnerRef"
+        :script-tree="scriptTree"
+        :plan-name="scriptTree.name"
+        :total-samplers="totalSamplers"
+        :total-nodes="totalNodes"
+        :total-threads="totalThreads"
+        :all-samplers="allSamplers"
+      />
 
       <!-- 三栏可拖拽布局 -->
         <div class="split-layout" :class="{ 'no-right': !rightPanelVisible }">
           <!-- 左：树 -->
-          <div class="panel tree-panel" :style="{ width: treeWidth + 'px', minWidth: treeWidth + 'px' }">
-            <div class="panel-title">
-              <span>📋 脚本结构</span>
-              <div class="tree-toolbar">
-                <el-tag size="small" type="info">{{ totalSamplers }} / {{ totalNodes }}</el-tag>
-                <el-button link size="small" @click="expandAllNodes">📂 展开</el-button>
-                <el-button link size="small" @click="collapseAllNodes">📁 折叠</el-button>
-              </div>
-            </div>
-          <div class="tree-search-bar">
-            <el-input v-model="treeSearchQuery" placeholder="🔍 搜索节点名称..." size="small" clearable prefix-icon="Search" />
-          </div>
-          <div class="tree-body">
-            <div class="tree-root-label" @click="selectNode(scriptTree.uid)">
-              <span class="root-icon">📋</span>
-              <span>{{ scriptTree.name }}</span>
-              <el-button link size="small" @click.stop="addRootElement" style="margin-left:auto">
-                <el-icon><Plus /></el-icon> 添加线程组
-              </el-button>
-            </div>
-            <jmeter-tree-node
-              v-for="(node, idx) in filteredTreeChildren"
-              :key="node.uid"
-              :node="node"
-              :depth="node._depth || 0"
-              :selected-uid="selectedUid"
-              :search-query="treeSearchQuery"
-              @select="selectNode"
-              @remove="removeNodeByUid"
-              @add-child="addChildNode"
-              @duplicate="duplicateNode"
-            />
-            <div v-if="scriptTree.children.length === 0" class="tree-empty">
-              还没有线程组，点击上方「添加线程组」或返回第1步导入接口
-            </div>
-          </div>
-        </div>
+          <TreeEditor
+            v-model="scriptTree"
+            :selected-uid="selectedUid"
+            :total-samplers="totalSamplers"
+            :total-nodes="totalNodes"
+            :tree-width="treeWidth"
+            @select-node="selectNode"
+            @add-root-element="addRootElement"
+            @add-child="addChildNode"
+            @remove-node="removeNodeByUid"
+            @duplicate-node="duplicateNode"
+          />
         <div class="drag-handle drag-handle-tree" @mousedown="onDragStart('tree', $event)" :class="{ active: draggingCol === 'tree' }"></div>
 
         <!-- 中：编辑器 -->
@@ -1786,13 +1469,16 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Refresh, Download, Right, QuestionFilled, VideoPlay, VideoPause, SwitchButton, EditPen, FolderDelete, Search, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting, Document, ArrowDown } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import { Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import request from '@/utils/request'
-import JmeterTreeNode from '@/components/JmeterTreeNode.vue'
+import BenchRunner from '@/views/jmeter/BenchRunner.vue'
+import ScriptHistory from '@/views/jmeter/ScriptHistory.vue'
+import TreeEditor from '@/views/jmeter/TreeEditor.vue'
 
 const router = useRouter()
+
+const benchRunnerRef = ref(null)
 
 // ===== 组件类型定义 =====
 const NODE_TYPES = {
@@ -2014,11 +1700,7 @@ const saveCurrentScript = () => {
 const deleteScriptFromHistory = (name) => {
   const list = loadScriptsList().filter(s => s.name !== name)
   saveScriptsList(list)
-}
-
-const clearAllHistory = () => {
-  saveScriptsList([])
-  localStorage.removeItem(CURRENT_KEY)
+  scriptHistory.value = list
 }
 
 // ===== 状态 =====
@@ -2177,7 +1859,6 @@ const totalListeners = computed(() => {
   return count
 })
 
-const treeSearchQuery = ref('')
 const totalNodes = computed(() => {
   let count = 0
   const walk = (node) => {
@@ -2187,33 +1868,6 @@ const totalNodes = computed(() => {
   walk(scriptTree)
   return count
 })
-
-const filteredTreeChildren = computed(() => {
-  const q = (treeSearchQuery.value || '').toLowerCase().trim()
-  if (!q) return scriptTree.children
-  const matches = []
-  const search = (nodes, depth = 0) => {
-    nodes.forEach(node => {
-      if ((node.name || '').toLowerCase().includes(q)) {
-        matches.push(node)
-        node._depth = depth
-      }
-      if (node.children) search(node.children, depth + 1)
-    })
-  }
-  search(scriptTree.children)
-  return matches
-})
-
-const expandAllNodes = () => {
-  const setExpanded = (node) => { node._expanded = true; (node.children || []).forEach(setExpanded) }
-  setExpanded(scriptTree)
-}
-
-const collapseAllNodes = () => {
-  const setCollapsed = (node) => { node._expanded = false; (node.children || []).forEach(setCollapsed) }
-  setCollapsed(scriptTree)
-}
 
 const summaryEmoji = computed(() => {
   if (totalSamplers.value === 0) return '📭'
@@ -2536,38 +2190,40 @@ const downloadJmx = () => {
   ElMessage.success('下载成功')
 }
 
-// ===== 快速并发压测验证 =====
-const benchConcurrency = ref(10)
-const benchDuration = ref(10)
-const benchRampUp = ref(2)
-const benchResult = ref(null)
-const benchProgress = ref('')
-const benchPercent = ref(0)
-const benchEta = computed(() => {
-  if (!benchPercent.value || benchPercent.value >= 100) return ''
-  const remainingSec = Math.ceil(benchDuration.value * (100 - benchPercent.value) / 100)
-  return remainingSec > 0 ? `剩余约${remainingSec}秒` : ''
+// ===== bench state delegation to BenchRunner =====
+const benchResult = computed(() => benchRunnerRef.value?.benchResult)
+const benching = computed(() => benchRunnerRef.value?.benching)
+const benchProgress = computed(() => benchRunnerRef.value?.benchProgress)
+const benchPercent = computed(() => benchRunnerRef.value?.benchPercent)
+const benchConcurrency = computed({
+  get: () => benchRunnerRef.value?.benchConcurrency ?? 10,
+  set: (v) => { if (benchRunnerRef.value) benchRunnerRef.value.benchConcurrency = v }
 })
-const benchTaskId = ref(null)
-const benching = ref(false)
-const runStatus = ref('idle')
-const showBenchHistory = ref(false)
-const benchHistory = ref(JSON.parse(localStorage.getItem('benchHistory') || '[]'))
-const analyzing = ref(false)
-const aiAnalysisText = ref('')
-const aiAnalysisDialogVisible = ref(false)
-const errorCollapseActive = ref([])
-const benchPanelExpanded = ref(false)
-const benchChartRef = ref(null)
-const benchChartRef2 = ref(null)
-const benchChartRef3 = ref(null)
-const benchChartRef4 = ref(null)
-const benchChartInstance = ref(null)
-const benchChartInstance2 = ref(null)
-const benchChartInstance3 = ref(null)
-const benchChartInstance4 = ref(null)
-const benchSnapshots = ref([])
-const benchStartTime = ref(null)
+const benchDuration = computed({
+  get: () => benchRunnerRef.value?.benchDuration ?? 10,
+  set: (v) => { if (benchRunnerRef.value) benchRunnerRef.value.benchDuration = v }
+})
+const benchRampUp = computed({
+  get: () => benchRunnerRef.value?.benchRampUp ?? 2,
+  set: (v) => { if (benchRunnerRef.value) benchRunnerRef.value.benchRampUp = v }
+})
+const aiAnalysisText = computed(() => benchRunnerRef.value?.aiAnalysisText)
+const aiAnalysisDialogVisible = computed({
+  get: () => benchRunnerRef.value?.aiAnalysisDialogVisible ?? false,
+  set: (v) => { if (benchRunnerRef.value) benchRunnerRef.value.aiAnalysisDialogVisible = v }
+})
+const startBench = () => {
+  selectedSampleIdx.value = -1
+  benchRunnerRef.value?.startBench()
+}
+const stopBench = () => benchRunnerRef.value?.stopBench()
+const shortUrl = (url) => {
+  try {
+    const u = new URL(url)
+    return u.pathname + u.search || '/'
+  } catch { return url.length > 50 ? url.substring(0, 50) + '...' : url }
+}
+
 const treeWidth = ref(280)
 const rightPanelWidth = ref(380)
 const rightPanelVisible = ref(true)
@@ -2584,14 +2240,6 @@ const sampleSearchActive = ref('')
 const searchCaseSensitive = ref(false)
 const searchRegex = ref(false)
 const sampleStatusFilter = ref('')
-let benchPollTimer = null
-
-const shortUrl = (url) => {
-  try {
-    const u = new URL(url)
-    return u.pathname + u.search || '/'
-  } catch { return url.length > 50 ? url.substring(0, 50) + '...' : url }
-}
 
 const selectedSample = computed(() => {
   if (selectedSampleIdx.value < 0) return null
@@ -2664,503 +2312,7 @@ const selectSample = (idx) => {
   selectedSampleTab.value = 'sampler'
 }
 
-const startBench = async () => {
-  const samplers = []
-  const walk = (node) => {
-    if (node.type === 'HttpSampler') {
-      const headers = {}
-      ;(node.props.headers || []).forEach(h => { if (h.key) headers[h.key] = h.value })
-      samplers.push({
-        name: node.name,
-        method: node.props.method || 'GET',
-        url: node.props.url,
-        headers,
-        body: node.props.method !== 'GET' ? (node.props.body || '') : '',
-      })
-    }
-    ;(node.children || []).forEach(walk)
-  }
-  walk(scriptTree)
-  
-  if (samplers.length === 0) { ElMessage.warning('脚本中没有 HTTP 请求'); return }
-  
-  if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
-  
-  rightPanelVisible.value = true
-  benching.value = true
-  runStatus.value = 'running'
-  benchStartTime.value = new Date()
-  benchResult.value = null
-  benchProgress.value = '提交任务...'
-  benchPercent.value = 0
-  benchTaskId.value = null
-  benchRetryCount = 0
-  benchSnapshots.value = []
-  selectedSampleIdx.value = -1
-  rightTab3.value = 'bench'
-  
-  try {
-    const res = await autoTestRequest.post('/auto-test/jmeter/quick-bench', {
-      requests: samplers,
-      concurrency: benchConcurrency.value,
-      duration: benchDuration.value,
-      ramp_up: benchRampUp.value,
-    })
-    benchTaskId.value = res.task_id
-    benchProgress.value = '任务已提交，正在执行...'
-    
-    // 开始轮询
-    benchPollTimer = setInterval(pollBench, 1500)
-  } catch (e) {
-    ElMessage.error('提交失败: ' + (e.response?.data?.detail || e.message))
-    benchProgress.value = ''
-    benchPercent.value = 0
-    runStatus.value = ''
-    benching.value = false
-    benchResult.value = null
-  }
-}
-
-
-let benchRetryCount = 0
-const pollBench = async () => {
-  if (!benchTaskId.value) return
-  try {
-    const res = await autoTestRequest.get(`/auto-test/jmeter/quick-bench/${benchTaskId.value}`)
-    benchRetryCount = 0
-    benchProgress.value = res.progress || ''
-    benchPercent.value = res.percent || 0
-
-    if (res.snapshots && res.snapshots.length > 0) {
-      benchSnapshots.value = res.snapshots
-      updateAllBenchCharts()
-    }
-    
-    if (res.status === 'done') {
-      if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
-      benchResult.value = res.result
-      benchSnapshots.value = res.snapshots || []
-      updateAllBenchCharts()
-      benching.value = false
-      runStatus.value = 'idle'
-      const findVRT = (node) => {
-        if (node.type === 'ViewResultsTree') return node
-        for (const c of node.children || []) {
-          const found = findVRT(c)
-          if (found) return found
-        }
-        return null
-      }
-      const vrt = findVRT(scriptTree)
-      if (vrt) selectNode(vrt.uid)
-      if (res.result.failed > 0) {
-        ElMessage.warning(`并发测试完成：${res.result.total} 请求，${res.result.failed} 失败`)
-      } else {
-        ElMessage.success(`并发测试通过！${res.result.total} 请求全部成功，TPS ${res.result.tps}`)
-      }
-      saveBenchHistory(res.result)
-    }
-  } catch (e) {
-    benchRetryCount++
-    if (benchRetryCount >= 3) {
-      if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
-      benching.value = false
-      benchRetryCount = 0
-      ElMessage.error('查询失败: ' + (e.response?.data?.detail || e.message))
-    }
-  }
-}
-
-const stopBench = async () => {
-  if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
-  benching.value = false
-  runStatus.value = 'idle'
-  if (benchTaskId.value) {
-    try {
-      await autoTestRequest.post('/auto-test/bench/stop', { task_id: benchTaskId.value })
-    } catch (e) {
-      // 忽略后端取消时的错误
-    }
-  }
-  ElMessage.info('已停止')
-}
-
-const saveBenchHistory = (result) => {
-  const entry = {
-    time: new Date().toLocaleString(),
-    planName: scriptTree.name || '未命名',
-    concurrency: benchConcurrency.value,
-    duration: benchDuration.value,
-    total: result.total,
-    success: result.success,
-    failed: result.failed,
-    tps: result.tps,
-    avg_ms: result.avg_ms,
-    p95_ms: result.p95_ms,
-    p99_ms: result.p99_ms,
-    min_ms: result.min_ms,
-    max_ms: result.max_ms,
-    p50_ms: result.p50_ms,
-    p90_ms: result.p90_ms,
-    stddev_ms: result.stddev_ms,
-    rt_distribution: result.rt_distribution,
-    throughput_trend: result.throughput_trend,
-    body_samples: result.body_samples,
-    statusDistribution: result.status_distribution,
-    perUrl: result.per_url,
-    errors: result.errors,
-    samples: result.samples,
-  }
-  benchHistory.value.unshift(entry)
-  if (benchHistory.value.length > 50) benchHistory.value = benchHistory.value.slice(0, 50)
-  try {
-    localStorage.setItem('benchHistory', JSON.stringify(benchHistory.value))
-  } catch (e) {
-    benchHistory.value.pop()
-    try {
-      localStorage.setItem('benchHistory', JSON.stringify(benchHistory.value))
-    } catch (e2) {}
-  }
-}
-
-const initAllBenchCharts = () => {
-  const refs = [benchChartRef, benchChartRef2, benchChartRef3, benchChartRef4]
-  const instances = [benchChartInstance, benchChartInstance2, benchChartInstance3, benchChartInstance4]
-  refs.forEach((ref, i) => {
-    if (!ref.value) return
-    if (instances[i].value) instances[i].value.dispose()
-    instances[i].value = echarts.init(ref.value)
-  })
-}
-
-const updateAllBenchCharts = () => {
-  if (!benchPanelExpanded.value) return
-  const snaps = benchSnapshots.value
-  if (!snaps || snaps.length === 0) return
-
-  const times = snaps.map(s => s.t + 's')
-  const tpsData = snaps.map(s => s.tps)
-  const avgData = snaps.map(s => s.avg)
-  const errData = snaps.map(s => s.errors)
-  const totalData = snaps.map(s => s.total)
-
-  // Chart 1: TPS/QPS
-  const chart1 = benchChartInstance.value
-  if (chart1) {
-    chart1.setOption({
-      tooltip: {
-        trigger: 'axis',
-        backgroundColor: 'rgba(15,23,42,0.9)',
-        borderColor: '#334155',
-        textStyle: { color: '#f1f5f9', fontSize: 12 },
-        formatter: (params) => {
-          let tip = `<b style="color:#e2e8f0">${params[0]?.axisValue || ''}</b><br/>`
-          params.forEach(p => {
-            tip += `${p.marker} ${p.seriesName}: <b>${p.value}</b><br/>`
-          })
-          return tip
-        },
-      },
-      legend: {
-        data: ['TPS', '累计错误'],
-        bottom: 0,
-        textStyle: { fontSize: 10, color: '#64748b' },
-      },
-      grid: { top: 10, right: 50, bottom: 30, left: 50 },
-      xAxis: {
-        type: 'category',
-        data: times,
-        axisLabel: { fontSize: 9, color: '#94a3b8', interval: Math.max(Math.floor(times.length / 10), 0) },
-        axisLine: { lineStyle: { color: '#e2e8f0' } },
-      },
-      yAxis: [
-        {
-          type: 'value',
-          name: 'TPS',
-          nameTextStyle: { fontSize: 10, color: '#3b82f6' },
-          axisLabel: { fontSize: 9, color: '#94a3b8' },
-          splitLine: { lineStyle: { color: '#f1f5f9' } },
-        },
-        {
-          type: 'value',
-          name: '错误数',
-          nameTextStyle: { fontSize: 10, color: '#ef4444' },
-          axisLabel: { fontSize: 9, color: '#94a3b8' },
-          splitLine: { show: false },
-        },
-      ],
-      series: [
-        {
-          name: 'TPS',
-          type: 'bar',
-          data: tpsData,
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#60a5fa' },
-              { offset: 1, color: '#3b82f6' },
-            ]),
-            borderRadius: [2, 2, 0, 0],
-          },
-          barMaxWidth: 16,
-        },
-        {
-          name: '累计错误',
-          type: 'line',
-          yAxisIndex: 1,
-          data: errData,
-          step: 'end',
-          lineStyle: { color: '#ef4444', width: 1.5, type: 'dashed' },
-          itemStyle: { color: '#ef4444' },
-          symbol: 'none',
-        },
-      ],
-    }, true)
-  }
-
-  // Chart 2: Response time trend
-  const chart2 = benchChartInstance2.value
-  if (chart2) {
-    chart2.setOption({
-      tooltip: {
-        trigger: 'axis',
-        backgroundColor: 'rgba(15,23,42,0.9)',
-        borderColor: '#334155',
-        textStyle: { color: '#f1f5f9', fontSize: 12 },
-        formatter: (params) => {
-          let tip = `<b style="color:#e2e8f0">${params[0]?.axisValue || ''}</b><br/>`
-          params.forEach(p => {
-            tip += `${p.marker} ${p.seriesName}: <b>${p.value}ms</b><br/>`
-          })
-          return tip
-        },
-      },
-      legend: {
-        data: ['平均响应', 'P95响应', 'P99响应'],
-        bottom: 0,
-        textStyle: { fontSize: 10, color: '#64748b' },
-      },
-      grid: { top: 10, right: 20, bottom: 30, left: 50 },
-      xAxis: {
-        type: 'category',
-        data: times,
-        axisLabel: { fontSize: 9, color: '#94a3b8', interval: Math.max(Math.floor(times.length / 10), 0) },
-        axisLine: { lineStyle: { color: '#e2e8f0' } },
-      },
-      yAxis: {
-        type: 'value',
-        name: 'ms',
-        nameTextStyle: { fontSize: 10, color: '#64748b' },
-        axisLabel: { fontSize: 9, color: '#94a3b8' },
-        splitLine: { lineStyle: { color: '#f1f5f9' } },
-      },
-      series: [
-        {
-          name: '平均响应',
-          type: 'line',
-          data: avgData,
-          smooth: true,
-          lineStyle: { color: '#f59e0b', width: 2 },
-          itemStyle: { color: '#f59e0b' },
-          symbol: 'circle',
-          symbolSize: 3,
-          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(245,158,11,0.3)' },
-            { offset: 1, color: 'rgba(245,158,11,0.02)' },
-          ])},
-        },
-        {
-          name: 'P95响应',
-          type: 'line',
-          data: snaps.map(s => s.p95 || 0),
-          smooth: true,
-          lineStyle: { color: '#ef4444', width: 1.5, type: 'dashed' },
-          itemStyle: { color: '#ef4444' },
-          symbol: 'none',
-        },
-        {
-          name: 'P99响应',
-          type: 'line',
-          data: snaps.map(s => s.p99 || 0),
-          smooth: true,
-          lineStyle: { color: '#dc2626', width: 1, type: 'dotted' },
-          itemStyle: { color: '#dc2626' },
-          symbol: 'none',
-        },
-      ],
-    }, true)
-  }
-
-  // Chart 3: Status code distribution (pie)
-  const chart3 = benchChartInstance3.value
-  if (chart3 && benchResult.value && benchResult.value.status_distribution) {
-    const dist = benchResult.value.status_distribution
-    const pieData = Object.entries(dist).map(([code, count]) => ({
-      name: `${code}`,
-      value: count,
-    }))
-    chart3.setOption({
-      tooltip: {
-        trigger: 'item',
-        backgroundColor: 'rgba(15,23,42,0.9)',
-        borderColor: '#334155',
-        textStyle: { color: '#f1f5f9', fontSize: 12 },
-        formatter: '{b}: {c}次 ({d}%)',
-      },
-      legend: {
-        orient: 'vertical',
-        right: 10,
-        top: 'center',
-        textStyle: { fontSize: 10, color: '#64748b' },
-      },
-      series: [{
-        type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['40%', '50%'],
-        avoidLabelOverlap: true,
-        itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
-        label: {
-          show: true,
-          fontSize: 10,
-          formatter: '{b}\n{d}%',
-        },
-        emphasis: {
-          label: { show: true, fontSize: 12, fontWeight: 'bold' },
-          itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' },
-        },
-        data: pieData,
-        color: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'],
-      }],
-    }, true)
-  }
-
-  // Chart 4: Per-URL success rate (horizontal bar)
-  const chart4 = benchChartInstance4.value
-  if (chart4 && benchResult.value && benchResult.value.per_url && benchResult.value.per_url.length > 0) {
-    const perUrl = benchResult.value.per_url
-    const names = perUrl.map(pu => pu.name || pu.url)
-    const rates = perUrl.map(pu => pu.success_rate)
-    chart4.setOption({
-      tooltip: {
-        trigger: 'axis',
-        backgroundColor: 'rgba(15,23,42,0.9)',
-        borderColor: '#334155',
-        textStyle: { color: '#f1f5f9', fontSize: 12 },
-        formatter: (params) => {
-          const p = params[0]
-          return `${p.name}<br/>成功率: <b>${p.value}%</b>`
-        },
-      },
-      grid: { top: 5, right: 20, bottom: 5, left: 120 },
-      xAxis: {
-        type: 'value',
-        max: 100,
-        axisLabel: { fontSize: 9, color: '#94a3b8', formatter: '{value}%' },
-        splitLine: { lineStyle: { color: '#f1f5f9' } },
-      },
-      yAxis: {
-        type: 'category',
-        data: names,
-        axisLabel: { fontSize: 9, color: '#64748b', width: 100, overflow: 'truncate' },
-        axisLine: { lineStyle: { color: '#e2e8f0' } },
-      },
-      series: [{
-        type: 'bar',
-        data: rates.map((r, i) => ({
-          value: r,
-          itemStyle: {
-            color: r >= 100 ? '#10b981' : r >= 90 ? '#f59e0b' : '#ef4444',
-            borderRadius: [0, 4, 4, 0],
-          },
-        })),
-        barMaxWidth: 20,
-        label: {
-          show: true,
-          position: 'right',
-          fontSize: 10,
-          formatter: '{c}%',
-          color: '#64748b',
-        },
-      }],
-    }, true)
-  }
-}
-
-const resizeAllBenchCharts = () => {
-  [benchChartInstance, benchChartInstance2, benchChartInstance3, benchChartInstance4].forEach(inst => {
-    if (inst.value && benchPanelExpanded.value) inst.value.resize()
-  })
-}
-
-const restoreHistoryResult = (h) => {
-  benchResult.value = {
-    total: h.total,
-    success: h.success,
-    failed: h.failed,
-    tps: h.tps,
-    avg_ms: h.avg_ms,
-    min_ms: h.min_ms || 0,
-    max_ms: h.max_ms || 0,
-    p50_ms: h.p50_ms || 0,
-    p95_ms: h.p95_ms,
-    p99_ms: h.p99_ms,
-    status_distribution: h.statusDistribution,
-    per_url: h.perUrl,
-    errors: h.errors,
-    samples: h.samples || [],
-  }
-  benching.value = false
-  rightPanelVisible.value = true
-  rightTab3.value = 'bench'
-  showBenchHistory.value = false
-  selectedSampleIdx.value = -1
-}
-
-let analyzingMsg = null
-const analyzeBenchResult = async () => {
-  if (!benchResult.value) return
-  analyzing.value = true
-  aiAnalysisText.value = ''
-  // 持续加载提示
-  analyzingMsg = ElMessage({
-    message: '🤖 AI正在深度分析... 正在将性能数据发送给大模型',
-    type: 'info',
-    duration: 0,
-    showClose: true,
-    icon: 'Loading',
-    customClass: 'analyzing-toast',
-  })
-  try {
-    const res = await autoTestRequest.post('/auto-test/analyze-result', {
-      plan_name: scriptTree.name || '未命名',
-      concurrency: benchConcurrency.value,
-      duration: benchDuration.value,
-      result: {
-        total: benchResult.value.total,
-        success: benchResult.value.success,
-        failed: benchResult.value.failed,
-        tps: benchResult.value.tps,
-        avg_ms: benchResult.value.avg_ms,
-        p50_ms: benchResult.value.p50_ms,
-        p95_ms: benchResult.value.p95_ms,
-        p99_ms: benchResult.value.p99_ms,
-        min_ms: benchResult.value.min_ms,
-        max_ms: benchResult.value.max_ms,
-        status_distribution: benchResult.value.status_distribution,
-        per_url: benchResult.value.per_url,
-        errors: benchResult.value.errors,
-      }
-    })
-    aiAnalysisText.value = res.analysis || '分析完成，但无内容返回'
-    aiAnalysisDialogVisible.value = true
-    ElMessage.success('AI 分析完成')
-  } catch (e) {
-    ElMessage.error('AI 分析失败: ' + (e.response?.data?.detail || e.message))
-  } finally {
-    analyzing.value = false
-    if (analyzingMsg) { analyzingMsg.close(); analyzingMsg = null }
-  }
-}
-
+// ===== 调试 =====
 const copyAiAnalysis = async () => {
   if (!aiAnalysisText.value) return
   try {
@@ -3177,157 +2329,6 @@ const copyAiAnalysis = async () => {
   }
 }
 
-const exportReport = async () => {
-  if (!benchResult.value) return
-  const r = benchResult.value
-  const planName = scriptTree.name || '未命名'
-  const now = new Date()
-  const testStart = benchStartTime.value && benchStartTime.value < now ? benchStartTime.value : new Date(now.getTime() - benchDuration.value * 1000)
-
-  const scenarios = (r.per_url || []).map(pu => {
-    const puTps = pu.count > 0 && benchDuration.value > 0
-      ? Math.round(pu.count / benchDuration.value * 10) / 10
-      : 0
-    return {
-      name: pu.name || pu.url || '未命名接口',
-      url: pu.url || '',
-      method: pu.method || 'GET',
-      target_qps: 0,
-      actual_qps: puTps,
-      concurrency: benchConcurrency.value,
-      threads: benchConcurrency.value,
-      ramp_up: benchRampUp.value,
-      loops: 1,
-      duration: benchDuration.value,
-      avg_ms: pu.avg_ms || 0,
-      p50_ms: pu.p50_ms || 0,
-      p90_ms: pu.p90_ms || 0,
-      p95_ms: pu.p95_ms || 0,
-      p99_ms: pu.p99_ms || 0,
-      stddev_ms: pu.stddev_ms || 0,
-      max_ms: pu.max_ms || 0,
-      min_ms: pu.min_ms || 0,
-      error_rate: pu.count > 0 ? ((pu.failed || 0) / pu.count * 100) : 0,
-      total_requests: pu.count || 0,
-      failed_requests: pu.failed || 0,
-      result: pu.failed === 0 ? '通过' : '失败',
-      test_start: testStart.toLocaleString(),
-      test_end: now.toLocaleString(),
-    }
-  })
-
-  if (scenarios.length === 0 || (scenarios.length === 1 && !scenarios[0].url)) {
-    scenarios.push({
-      name: planName, url: '', method: 'GET', target_qps: 0,
-      actual_qps: r.tps || 0, concurrency: benchConcurrency.value,
-      threads: benchConcurrency.value, ramp_up: benchRampUp.value, loops: 1, duration: benchDuration.value,
-      avg_ms: r.avg_ms || 0, p50_ms: r.p50_ms || 0, p90_ms: r.p90_ms || 0,
-      p95_ms: r.p95_ms || 0, p99_ms: r.p99_ms || 0, stddev_ms: r.stddev_ms || 0,
-      max_ms: r.max_ms || 0, min_ms: r.min_ms || 0,
-      error_rate: r.total > 0 ? ((r.failed / r.total) * 100) : 0,
-      total_requests: r.total || 0, failed_requests: r.failed || 0,
-      result: r.failed === 0 ? '通过' : '失败',
-      test_start: testStart.toLocaleString(), test_end: now.toLocaleString(),
-    })
-  }
-
-  const errorTypes = {}
-  if (r.errors && r.errors.length > 0) {
-    r.errors.forEach(e => {
-      let msg = typeof e === 'object' ? (e.response_message || e.message || e.error || '未知错误') : String(e)
-      // 提取关键错误类型，去除URL等冗长信息
-      if (msg.includes('Cannot connect to host')) {
-        // 提取主机名，去除端口号
-        const match = msg.match(/Cannot connect to host\s+([a-zA-Z0-9.-]+)/)
-        if (match) {
-          let host = match[1]
-          // 去除端口号（如 ebus:443 → ebus）
-          host = host.split(':')[0]
-          msg = `连接失败: ${host}`
-        } else {
-          msg = '连接失败'
-        }
-      } else if (msg.includes('ssl:default') || msg.includes('SSL')) {
-        msg = 'SSL连接错误'
-      } else if (msg.startsWith('https://') || msg.startsWith('http://')) {
-        // URL类错误，提取完整域名
-        try {
-          const url = new URL(msg)
-          msg = `请求失败: ${url.hostname}`
-        } catch {
-          // 如果URL解析失败，尝试提取域名部分
-          const match = msg.match(/https?:\/\/([a-zA-Z0-9.-]+)/)
-          msg = match ? `请求失败: ${match[1]}` : msg.substring(0, 40) + '...'
-        }
-      } else if (msg.includes('timeout') || msg.includes('Timeout')) {
-        msg = '请求超时'
-      } else if (msg.includes('500') || msg.includes('Internal Server Error')) {
-        msg = '服务器错误 (500)'
-      } else if (msg.includes('404') || msg.includes('Not Found')) {
-        msg = '资源不存在 (404)'
-      } else if (msg.includes('403') || msg.includes('Forbidden')) {
-        msg = '权限拒绝 (403)'
-      } else if (msg.includes('401') || msg.includes('Unauthorized')) {
-        msg = '未授权 (401)'
-      } else if (msg.includes('ECONNREFUSED') || msg.includes('Connection refused')) {
-        msg = '连接被拒绝'
-      } else if (msg.includes('ECONNRESET') || msg.includes('Connection reset')) {
-        msg = '连接重置'
-      } else if (msg.includes('ENOTFOUND') || msg.includes('Name or service not known')) {
-        msg = 'DNS解析失败'
-      }
-      // 截断过长消息
-      const key = msg.length > 50 ? msg.substring(0, 47) + '...' : msg
-      errorTypes[key] = (errorTypes[key] || 0) + 1
-    })
-  }
-
-  try {
-    ElMessage.info('正在生成专业 Word 报告...')
-    const res = await autoTestRequest.post('/auto-test/report/generate', {
-      report_name: planName + '_性能测试报告',
-      test_env: {
-        domain: scriptTree.props?.variables?.find(v => v.name === 'HOST')?.value || '未指定',
-        env_name: '压测环境'
-      },
-      author: localStorage.getItem('tm_username') || 'TestMaster',
-      env_config: {
-        'CPU': '8核',
-        '内存': '16GB',
-        '操作系统': 'Linux (Docker)',
-        '压测工具': 'TestMaster (JMeter引擎)',
-        '网络环境': '内网',
-        '并发模型': `线程数: ${benchConcurrency.value}, 持续时间: ${benchDuration.value}s`,
-      },
-      scenarios: scenarios,
-      summary: {
-        total_requests: r.total, total_failed: r.failed,
-        overall_error_rate: r.total > 0 ? ((r.failed / r.total) * 100).toFixed(2) : '0',
-        overall_result: r.failed === 0 ? '通过' : '失败',
-        notes: aiAnalysisText.value ? aiAnalysisText.value.substring(0, 200) : '',
-      },
-      error_types: errorTypes,
-      rt_distribution: r.rt_distribution || {},
-      throughput_trend: r.throughput_trend || [],
-      status_distribution: r.status_distribution || {},
-    }, { responseType: 'blob' })
-
-    const blob = res instanceof Blob ? res : (res && res.data instanceof Blob ? res.data : new Blob([res]))
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = '压测报告_' + planName + '_' + Date.now() + '.docx'
-    a.click()
-    URL.revokeObjectURL(url)
-    ElMessage.success('Word 报告已导出（含6张专业图表 + AI分析建议）')
-  } catch (e) {
-    console.error('报告生成失败', e)
-    ElMessage.error('报告生成失败: ' + (e.response?.data?.detail || e.message))
-  }
-}
-
-
-// ===== 调试 =====
 const debugResult = ref(null)
 const debugLoading = ref(false)
 const debugTab = ref('dsampler')
@@ -3422,6 +2423,8 @@ const confirmSaveToCase = async () => {
 }
 
 // ===== 初始化 =====
+const resizeHandler = () => benchRunnerRef.value?.resizeAllBenchCharts()
+
 onMounted(() => {
   loadImportGroups()
   loadCases()
@@ -3434,7 +2437,7 @@ onMounted(() => {
     tg.children.push(sampler, createElement('ViewResultsTree'))
     scriptTree.children.push(tg)
   }
-  window.addEventListener('resize', resizeAllBenchCharts)
+  window.addEventListener('resize', resizeHandler)
 })
 
 // 自动保存：脚本树变化时
@@ -3456,12 +2459,18 @@ watch(currentStep, () => {
   }, 500)
 })
 
-watch(benchPanelExpanded, (v) => {
-  if (v) {
-    nextTick(() => {
-      initAllBenchCharts()
-      updateAllBenchCharts()
-    })
+watch(benchResult, (newVal, oldVal) => {
+  if (newVal && !oldVal) {
+    const findVRT = (node) => {
+      if (node.type === 'ViewResultsTree') return node
+      for (const c of node.children || []) {
+        const found = findVRT(c)
+        if (found) return found
+      }
+      return null
+    }
+    const vrt = findVRT(scriptTree)
+    if (vrt) selectNode(vrt.uid)
   }
 })
 
@@ -3627,8 +2636,7 @@ const findParentSampler = (parent, uid) => {
 }
 
 onBeforeUnmount(() => {
-  if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
-  window.removeEventListener('resize', resizeAllBenchCharts)
+  window.removeEventListener('resize', resizeHandler)
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
 })
 </script>
@@ -3661,49 +2669,6 @@ onBeforeUnmount(() => {
 
 /* ===== 引导面板 ===== */
 .guide-panel { padding: 8px 20px; }
-
-/* ===== 脚本历史面板 ===== */
-.script-history-panel {
-  margin: 8px 20px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid rgba(148,163,184,0.18);
-  border-radius: 14px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 4px 16px rgba(0,0,0,0.03);
-  overflow: hidden;
-}
-.shp-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  font-weight: 700;
-  font-size: 14px;
-  border-bottom: 1px solid #e5e7eb;
-}
-.shp-list {
-  max-height: 320px;
-  overflow-y: auto;
-}
-.shp-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 16px;
-  cursor: pointer;
-  transition: background 0.15s;
-  border-bottom: 1px solid #f3f4f6;
-}
-.shp-item:hover { background: #f0f4ff; }
-.shp-item-main { display: flex; align-items: center; gap: 12px; }
-.shp-name { font-weight: 600; font-size: 13px; }
-.shp-time { font-size: 11px; color: var(--tm-text-secondary); }
-.shp-item-actions { display: flex; align-items: center; gap: 8px; }
-.shp-empty {
-  text-align: center;
-  padding: 32px 16px;
-  color: var(--tm-text-secondary);
-  font-size: 13px;
-}
 
 /* ===== Step 1 布局 ===== */
 .step1-layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; padding: 18px; flex: 1; min-height: 0; overflow: hidden; }
@@ -3802,222 +2767,6 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column;
   padding: 0; flex: 1; min-height: 0; overflow: hidden;
 }
-/* 压测控制面板 */
-.bench-control-panel {
-  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin: 8px 12px; flex-shrink: 0;
-  overflow: hidden; transition: all 0.3s ease;
-}
-.bench-control-panel.expanded {
-  height: calc(100vh - 48px); display: flex; flex-direction: column;
-}
-.bcp-header {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 10px 14px; flex-wrap: wrap; cursor: pointer; user-select: none;
-  transition: background 0.15s;
-}
-.bcp-header:hover { background: #f1f5f9; }
-.bcp-header-left {
-  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
-}
-.bcp-header-center {
-  display: flex; gap: 12px; align-items: center;
-}
-.bcp-header-right {
-  display: flex; gap: 6px; align-items: center; flex-shrink: 0;
-}
-.bcp-toggle-icon {
-  font-size: 16px; color: #94a3b8; transition: transform 0.3s ease; flex-shrink: 0;
-}
-.bcp-toggle-icon.rotate { transform: rotate(180deg); }
-.bcp-plan-name { color: #1e293b; font-weight: 700; font-size: 14px; }
-.bcp-config-item {
-  display: flex; align-items: center; gap: 4px;
-}
-.bcp-config-item label { font-size: 11px; color: #64748b; white-space: nowrap; }
-.bcp-start-btn { font-weight: 700 !important; font-size: 14px !important; }
-
-/* 展开内容 */
-.bcp-body {
-  flex: 1; overflow-y: auto; min-height: 0;
-  display: flex; flex-direction: column;
-}
-.bcp-requests {
-  display: flex; align-items: center; gap: 6px; padding: 8px 14px;
-  flex-wrap: wrap; border-top: 1px solid #e2e8f0; background: #f8fafc; flex-shrink: 0;
-}
-.bcp-requests-label { font-size: 11px; color: #64748b; white-space: nowrap; }
-.bcp-req-tag { cursor: default; font-size: 11px !important; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bcp-progress {
-  padding: 8px 14px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
-}
-.bcp-progress :deep(.el-progress) { flex: 1; }
-.bcp-progress-text { font-size: 11px; color: #64748b; white-space: nowrap; }
-
-/* 实时性能图表 */
-.bcp-charts {
-  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
-}
-.bcp-charts-row {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
-}
-.bcp-charts-row:last-child { margin-bottom: 0; }
-.bcp-chart-card {
-  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px;
-}
-.bcp-chart-box {
-  width: 100%; height: 200px;
-}
-.bcp-quick-stats {
-  display: flex; align-items: center; gap: 8px; padding: 8px 14px; flex-wrap: wrap;
-  border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
-}
-.bcp-stat {
-  text-align: center; padding: 2px 8px; border-radius: 4px; background: #f1f5f9;
-}
-.bcp-stat-ok { border-left: 3px solid #10b981; }
-.bcp-stat-err { border-left: 3px solid #ef4444; background: #fef2f2; }
-.bcp-stat-val { font-size: 16px; font-weight: 700; display: block; color: #1e293b; }
-.bcp-stat-lbl { font-size: 10px; color: #94a3b8; }
-.bcp-ai-analysis {
-  padding: 10px 14px; border-top: 1px solid #e2e8f0; background: linear-gradient(135deg, #f0f9ff, #ecfeff);
-  flex: 1; overflow-y: auto; min-height: 0; max-height: 40vh;
-}
-.bcp-ai-header {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
-  font-weight: 600; font-size: 13px; color: #0f172a;
-}
-.bcp-ai-content {
-  font-size: 12px; line-height: 1.7; color: #334155; white-space: pre-wrap;
-  background: rgba(255,255,255,0.7); padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;
-}
-
-/* 按接口统计表格 */
-.bcp-per-url {
-  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
-}
-.bpu-header {
-  font-weight: 600; font-size: 12px; color: #1e293b; margin-bottom: 6px;
-}
-.bpu-table {
-  width: 100%; border-collapse: collapse; font-size: 11px;
-}
-.bpu-table th {
-  background: #f8fafc; padding: 4px 6px; text-align: left; font-weight: 600;
-  color: #64748b; border-bottom: 1px solid #e2e8f0; white-space: nowrap;
-}
-.bpu-table td {
-  padding: 4px 6px; border-bottom: 1px solid #f1f5f9; white-space: nowrap;
-}
-.bpu-table tr:hover { background: #f8fafc; }
-.bpu-row-err { background: #fff5f5; }
-.bpu-row-err:hover { background: #fef2f2; }
-.bpu-url { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bpu-ok { color: #10b981; font-weight: 600; }
-.bpu-err { color: #ef4444; font-weight: 600; }
-
-/* 错误详情 */
-.bcp-errors-collapse {
-  margin: 0 14px; border-top: 1px solid #e2e8f0; background: #fff5f5; flex-shrink: 0;
-}
-.bcp-errors-collapse :deep(.el-collapse-item__header) {
-  background: #fff5f5; padding: 0 14px;
-}
-.bcp-errors-title { font-weight: 600; font-size: 13px; }
-.bcp-analyze-banner { margin: 12px 0; border-radius: 10px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #93c5fd; animation: analyzePulse 2s ease-in-out infinite; }
-@keyframes analyzePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.85; }
-}
-:deep(.analyzing-toast) { border-left: 4px solid #3b82f6 !important; }
-.bcp-errors-list {
-  max-height: 300px; overflow-y: auto; padding: 8px 0;
-}
-.bcp-error-item {
-  padding: 8px 12px; margin-bottom: 6px; background: #fff; border-radius: 6px;
-  border: 1px solid #fee2e2;
-}
-.bcp-error-header {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
-}
-.bcp-error-name { font-weight: 600; font-size: 12px; color: #1e293b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bcp-error-status { font-size: 11px; color: #64748b; }
-.bcp-error-time { font-size: 11px; color: #f59e0b; font-weight: 600; }
-.bcp-error-msg { font-size: 11px; color: #dc2626; font-family: monospace; word-break: break-all; margin-bottom: 4px; }
-.bcp-error-req, .bcp-error-res { margin-top: 4px; }
-.bcp-error-req details, .bcp-error-res details { font-size: 11px; }
-.bcp-error-req pre, .bcp-error-res pre {
-  background: #f8fafc; padding: 6px 8px; border-radius: 4px; font-size: 10px;
-  max-height: 100px; overflow-y: auto; margin: 4px 0 0; white-space: pre-wrap; word-break: break-all;
-}
-.bcp-error-more { padding: 4px 0; font-size: 11px; color: #94a3b8; }
-
-/* 状态码分布 */
-.bcp-status-dist {
-  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
-}
-.bsd-tags {
-  display: flex; gap: 6px; flex-wrap: wrap;
-}
-
-/* 响应时间分布 */
-.bcp-rt-dist {
-  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
-}
-.rt-dist-bars { display: flex; flex-direction: column; gap: 4px; }
-.rt-dist-bar {
-  display: flex; align-items: center; gap: 8px;
-}
-.rt-dist-label { font-size: 11px; color: #64748b; width: 70px; flex-shrink: 0; }
-.rt-dist-track { flex: 1; height: 16px; background: #f1f5f9; border-radius: 8px; overflow: hidden; }
-.rt-dist-fill {
-  height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 8px;
-  transition: width 0.5s ease;
-}
-.rt-dist-count { font-size: 11px; color: #1e293b; font-weight: 600; width: 40px; text-align: right; flex-shrink: 0; }
-
-/* 吞吐量趋势 */
-.bcp-throughput {
-  padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0;
-}
-.tp-table table {
-  width: 100%; border-collapse: collapse; font-size: 11px;
-}
-.tp-table th {
-  background: #f8fafc; padding: 4px 6px; text-align: left; font-weight: 600;
-  color: #64748b; border-bottom: 1px solid #e2e8f0;
-}
-.tp-table td {
-  padding: 3px 6px; border-bottom: 1px solid #f1f5f9;
-}
-.tp-bar {
-  width: 100%; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden;
-}
-.tp-fill {
-  height: 100%; background: linear-gradient(90deg, #10b981, #34d399); border-radius: 6px;
-  transition: width 0.5s ease;
-}
-
-/* 历史记录面板 */
-.bench-history-panel {
-  margin: 0 12px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
-  overflow: hidden; flex-shrink: 0;
-}
-.bh-header {
-  display: flex; justify-content: space-between; align-items: center; padding: 8px 14px;
-  font-weight: 600; font-size: 13px; border-bottom: 1px solid #e2e8f0;
-}
-.bh-list { max-height: 200px; overflow-y: auto; }
-.bh-item {
-  display: flex; align-items: center; gap: 10px; padding: 6px 14px; cursor: pointer;
-  font-size: 12px; border-bottom: 1px solid #f1f5f9; transition: background 0.15s;
-}
-.bh-item:hover { background: #e0f2fe; }
-.bh-time { color: #94a3b8; font-size: 11px; width: 130px; flex-shrink: 0; }
-.bh-name { flex: 1; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bh-total { color: #334155; font-weight: 600; }
-.bh-tps { color: #3b82f6; font-weight: 600; }
-.bh-ok { color: #10b981; font-weight: 600; }
-.bh-err { color: #ef4444; font-weight: 600; }
 
 .split-layout {
   display: flex; flex: 1; min-height: 0; overflow: hidden;
@@ -4042,29 +2791,7 @@ onBeforeUnmount(() => {
 .mini-stats > div { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 40px; }
 .mini-stats b { font-size: 14px; color: #1e293b; }
 .mini-stats small { font-size: 10px; color: #94a3b8; }
-.tree-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; border-right: 1px solid rgba(148,163,184,0.1); }
-.tree-toolbar { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.tree-search-bar { padding: 6px 10px 4px; }
-.tree-search-bar :deep(.el-input__wrapper) { border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 .editor-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-.tree-body {
-  flex: 1; overflow-y: auto; padding: 6px;
-  scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.2) transparent;
-}
-.tree-body::-webkit-scrollbar { width: 5px; }
-.tree-body::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.25); border-radius: 3px; }
-.tree-root-label {
-  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
-  border-radius: 9px; font-weight: 700; font-size: 13px; cursor: pointer;
-  transition: all .2s; color: #1e293b;
-}
-.tree-root-label:hover { background: linear-gradient(90deg, rgba(99,102,241,0.07), transparent); }
-.root-icon { font-size: 17px; }
-.tree-empty {
-  padding: 32px 16px; text-align: center; font-size: 12.5px; color: #94a3b8;
-  line-height: 1.7;
-}
-
 .editor-panel { display: flex; flex-direction: column; overflow: hidden; }
 .editor-body {
   flex: 1; overflow-y: auto; padding: 16px 18px;

@@ -10,12 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from fastapi_backend.core.database import get_db
+from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.models import (
     TestReport,
     TestReportResult
 )
 
-router = APIRouter(prefix="/api/auto-test/diagnose", tags=["AutoTest-诊断"])
+router = APIRouter(prefix="/api/auto-test/diagnose", tags=["AutoTest-诊断"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/report/{report_id}")

@@ -2,42 +2,27 @@
 AutoTest HTTP 请求服务
 从 routers/autotest_execution.py 的 send_request 端点下沉的业务逻辑
 """
-import asyncio
-import ipaddress
 import json
 import logging
-import socket
 import time
-import urllib.parse
 from typing import Any, Dict, Optional
 
-import requests as _requests
+import httpx
 from sqlalchemy import select
 
+from fastapi_backend.core.ssrf_guard import validate_url_safety
 from fastapi_backend.utils.autotest_helpers import convert_to_dict
 
 _logger = logging.getLogger(__name__)
 
+_http_client: Optional[httpx.AsyncClient] = None
 
-def validate_url_safety(url: str) -> None:
-    """
-    SSRF 安全校验：检查 URL 是否指向内网或保留地址
-    Raises:
-        ValueError: 如果 URL 指向不安全的地址
-    """
-    try:
-        parsed = urllib.parse.urlparse(url)
-        hostname = parsed.hostname
-        if hostname is None:
-            raise ValueError("无效的 URL: 无法解析主机名")
-        resolved_ip = socket.gethostbyname(hostname)
-        ip = ipaddress.ip_address(resolved_ip)
-        if ip.is_private or ip.is_loopback or ip.is_reserved:
-            raise ValueError("不允许访问内网或保留地址")
-    except (ValueError, socket.gaierror) as e:
-        if isinstance(e, ValueError):
-            raise
-        pass
+
+def _get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(timeout=30, verify=True)
+    return _http_client
 
 
 async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any]) -> Dict[str, Any]:
@@ -125,7 +110,9 @@ async def execute_http_request(
     if variables is None:
         variables = {}
 
-    validate_url_safety(url)
+    safe, reason = validate_url_safety(url)
+    if not safe:
+        return {"success": False, "error": reason, "execution_time": 0}
 
     variables = await resolve_variables(env_id, variables)
 
@@ -135,7 +122,7 @@ async def execute_http_request(
 
     start_time = time.time()
     try:
-        req_kwargs = {"headers": headers, "timeout": 30, "params": params}
+        req_kwargs: Dict[str, Any] = {"headers": headers, "params": params}
         processed_body = convert_to_dict(body) if body_type in ("form", "form-data") else body
         if body_type == "json" and processed_body:
             if isinstance(processed_body, str):
@@ -154,7 +141,8 @@ async def execute_http_request(
                     return {"error": f"请求体 JSON 格式校验失败: {e}", "execution_time": 0}
             req_kwargs["json"] = processed_body
 
-        resp = await asyncio.to_thread(_requests.request, method, url, **req_kwargs)
+        client = _get_http_client()
+        resp = await client.request(method, url, **req_kwargs)
 
         execution_time = int((time.time() - start_time) * 1000)
         try:
@@ -173,9 +161,9 @@ async def execute_http_request(
             "elapsed_ms": execution_time,
             "success": 200 <= resp.status_code < 400,
         }
-    except _requests.exceptions.Timeout:
+    except httpx.TimeoutException:
         return {"success": False, "error": "请求超时", "execution_time": int((time.time() - start_time) * 1000)}
-    except _requests.exceptions.ConnectionError:
+    except httpx.ConnectError:
         return {"success": False, "error": "连接失败，请检查网络或服务地址", "execution_time": int((time.time() - start_time) * 1000)}
     except ValueError as e:
         return {"success": False, "error": str(e), "execution_time": int((time.time() - start_time) * 1000)}

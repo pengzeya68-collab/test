@@ -18,6 +18,21 @@ from fastapi_backend.schemas.autotest import (
 router = APIRouter(prefix="/api/auto-test/environments", tags=["AutoTest-环境"], dependencies=[Depends(get_current_user)])
 
 
+import re
+
+_SENSITIVE_PATTERN = re.compile(r"(password|secret|key|token)", re.IGNORECASE)
+
+
+def _mask_variables(variables):
+    """对敏感 key 的值做脱敏处理"""
+    if not isinstance(variables, dict):
+        return variables
+    return {
+        k: "****" if _SENSITIVE_PATTERN.search(k) else v
+        for k, v in variables.items()
+    }
+
+
 def _env_to_dict(env):
     """将环境对象转为字典"""
     return {
@@ -25,7 +40,7 @@ def _env_to_dict(env):
         "name": env.env_name,
         "env_name": env.env_name,
         "base_url": env.base_url,
-        "variables": env.variables,
+        "variables": _mask_variables(env.variables),
         "is_default": env.is_default,
         "created_at": env.created_at.isoformat() if env.created_at else None,
     }

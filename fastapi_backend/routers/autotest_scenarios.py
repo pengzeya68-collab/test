@@ -8,8 +8,7 @@ import uuid
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
@@ -37,16 +36,65 @@ router = APIRouter(prefix="/api/auto-test/scenarios", tags=["AutoTest-场景"], 
 
 # ========== 场景 CRUD ==========
 
-@router.get("", response_model=List[AutoTestScenarioResponse])
-async def list_scenarios(db: AsyncSession = Depends(get_db)):
-    """获取所有场景"""
-    result = await db.execute(
-        select(AutoTestScenario)
-        .options(selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case))
-        .order_by(AutoTestScenario.created_at.desc())
+@router.get("")
+async def list_scenarios(
+    skip: int = 0,
+    limit: int = 20,
+    keyword: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """获取场景列表（分页 + 搜索 + 筛选）"""
+    query = select(AutoTestScenario)
+    count_query = select(func.count(AutoTestScenario.id))
+
+    if keyword:
+        query = query.where(AutoTestScenario.name.like(f"%{keyword}%"))
+        count_query = count_query.where(AutoTestScenario.name.like(f"%{keyword}%"))
+    if is_active is not None:
+        query = query.where(AutoTestScenario.is_active == is_active)
+        count_query = count_query.where(AutoTestScenario.is_active == is_active)
+
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    step_count_subq = (
+        select(
+            AutoTestScenarioStep.scenario_id,
+            func.count(AutoTestScenarioStep.id).label("step_count"),
+        )
+        .group_by(AutoTestScenarioStep.scenario_id)
+        .subquery()
     )
-    scenarios = result.scalars().all()
-    return scenarios
+
+    query = (
+        query
+        .outerjoin(step_count_subq, AutoTestScenario.id == step_count_subq.c.scenario_id)
+        .add_columns(func.coalesce(step_count_subq.c.step_count, 0).label("step_count"))
+        .order_by(AutoTestScenario.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    items = []
+    for row in rows:
+        scenario = row[0]
+        items.append({
+            "id": scenario.id,
+            "name": scenario.name,
+            "description": scenario.description,
+            "is_active": scenario.is_active,
+            "schedule_cron": scenario.schedule_cron,
+            "webhook_token": scenario.webhook_token,
+            "created_at": scenario.created_at.isoformat() if scenario.created_at else None,
+            "updated_at": scenario.updated_at.isoformat() if scenario.updated_at else None,
+            "step_count": row.step_count,
+        })
+
+    return {"items": items, "total": total}
 
 
 @router.get("/available-cases", response_model=List[dict])

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.autotest import AutoTestCase, AutoTestHistory
+from fastapi_backend.models.autotest import AutoTestCase, AutoTestHistory, AutoTestScenarioStep
 from fastapi_backend.schemas.autotest import (
     AutoTestCaseCreate,
     AutoTestCaseUpdate,
@@ -233,6 +233,17 @@ async def delete_case(case_id: int, db: AsyncSession = Depends(get_db)):
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
+
+    ref_result = await db.execute(
+        select(AutoTestScenarioStep).where(AutoTestScenarioStep.api_case_id == case_id)
+    )
+    ref_steps = ref_result.scalars().all()
+    if ref_steps:
+        scenario_ids = list({step.scenario_id for step in ref_steps})
+        raise HTTPException(
+            status_code=409,
+            detail=f"该用例被 {len(ref_steps)} 个场景步骤引用（场景ID: {scenario_ids}），无法删除。请先移除相关场景步骤后再删除。"
+        )
 
     await db.delete(case)
     await db.commit()

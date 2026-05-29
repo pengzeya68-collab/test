@@ -30,27 +30,27 @@ const routes = [
   {
     path: '/learning-paths',
     name: 'LearningPaths',
-    component: () => import('@/views/LearningPaths.vue')
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/LearningPaths.vue')
   },
   {
     path: '/learning-paths/:id',
     name: 'LearningPathDetail',
-    component: () => import('@/views/LearningPathDetail.vue')
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/LearningPathDetail.vue')
   },
   {
     path: '/learning-paths/:pathId/lessons/:lessonId',
     name: 'LearningPathLesson',
-    component: () => import('@/views/LearningPathLesson.vue')
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/LearningPathLesson.vue')
   },
   {
     path: '/exercises',
     name: 'Exercises',
-    component: () => import('@/views/Exercises.vue')
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/Exercises.vue')
   },
   {
     path: '/exercises/:id',
     name: 'ExerciseDetail',
-    component: () => import('@/views/ExerciseDetail.vue'),
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/ExerciseDetail.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -62,25 +62,25 @@ const routes = [
   {
     path: '/code-playground',
     name: 'CodePlayground',
-    component: () => import('@/views/CodePlayground.vue'),
+    component: () => import(/* webpackChunkName: "ai" */ '@/views/CodePlayground.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/skill-analysis',
     name: 'SkillAnalysis',
-    component: () => import('@/views/SkillAnalysis.vue'),
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/SkillAnalysis.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/ai-tutor',
     name: 'AITutor',
-    component: () => import('@/views/AITutor.vue'),
+    component: () => import(/* webpackChunkName: "ai" */ '@/views/AITutor.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/community',
     name: 'Community',
-    component: () => import('@/views/Community.vue'),
+    component: () => import(/* webpackChunkName: "ai" */ '@/views/Community.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -92,85 +92,85 @@ const routes = [
   {
     path: '/exams',
     name: 'ExamList',
-    component: () => import('@/views/ExamList.vue'),
+    component: () => import(/* webpackChunkName: "exam" */ '@/views/ExamList.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/exam/:id',
     name: 'Exam',
-    component: () => import('@/views/Exam.vue'),
+    component: () => import(/* webpackChunkName: "exam" */ '@/views/Exam.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/exam/result/:id',
     name: 'ExamResult',
-    component: () => import('@/views/ExamResult.vue'),
+    component: () => import(/* webpackChunkName: "exam" */ '@/views/ExamResult.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/interview',
     name: 'InterviewQuestionBank',
-    component: () => import('@/views/InterviewQuestionBank.vue'),
+    component: () => import(/* webpackChunkName: "ai" */ '@/views/InterviewQuestionBank.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/interview/simulate',
     name: 'InterviewSimulate',
-    component: () => import('@/views/InterviewSimulate.vue'),
+    component: () => import(/* webpackChunkName: "ai" */ '@/views/InterviewSimulate.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/interview/my',
     name: 'InterviewMy',
-    component: () => import('@/views/InterviewMy.vue'),
+    component: () => import(/* webpackChunkName: "ai" */ '@/views/InterviewMy.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/interview/detail/:id',
     name: 'InterviewDetail',
-    component: () => import('@/views/InterviewDetail.vue'),
+    component: () => import(/* webpackChunkName: "ai" */ '@/views/InterviewDetail.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/auto-test',
     name: 'AutoTest',
-    component: () => import('@/views/AutoTest.vue'),
+    component: () => import(/* webpackChunkName: "autotest" */ '@/views/AutoTest.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/jmeter-assistant',
     name: 'JmeterAssistant',
-    component: () => import('@/views/JmeterAssistant.vue'),
+    component: () => import(/* webpackChunkName: "autotest" */ '@/views/JmeterAssistant.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/assessment',
     name: 'OnboardingAssessment',
-    component: () => import('@/views/OnboardingAssessment.vue'),
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/OnboardingAssessment.vue'),
     meta: { requiresAuth: true, isAssessment: true }
   },
   {
     path: '/wrong-answers',
     name: 'WrongAnswers',
-    component: () => import('@/views/WrongAnswers.vue'),
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/WrongAnswers.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/leaderboard',
     name: 'Leaderboard',
-    component: () => import('@/views/Leaderboard.vue'),
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/Leaderboard.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/weekly-report',
     name: 'WeeklyReport',
-    component: () => import('@/views/WeeklyReport.vue'),
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/WeeklyReport.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/certificates',
     name: 'Certificates',
-    component: () => import('@/views/Certificates.vue'),
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/Certificates.vue'),
     meta: { requiresAuth: true }
   },
   {

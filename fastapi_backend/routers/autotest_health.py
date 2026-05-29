@@ -16,7 +16,7 @@ from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestEnvironment
 
-router = APIRouter(prefix="/api/auto-test/health-check", tags=["环境健康检查"])
+router = APIRouter(prefix="/api/auto-test/health-check", tags=["环境健康检查"], dependencies=[Depends(get_current_user)])
 
 
 def _parse_env_url(env: AutoTestEnvironment) -> str:

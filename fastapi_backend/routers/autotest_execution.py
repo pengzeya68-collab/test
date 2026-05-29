@@ -40,6 +40,7 @@ from fastapi_backend.schemas.autotest import (
     VariablePreviewResponse,
 )
 from fastapi_backend.utils.parser import replace_variables, find_variables
+from fastapi_backend.core.ssrf_guard import validate_url_safety
 
 router = APIRouter(prefix="/api/auto-test", tags=["AutoTest-执行与工具"], dependencies=[Depends(get_current_user)])
 
@@ -158,6 +159,9 @@ async def send_request(payload: dict):
     url = payload.get("url", "")
     if not url:
         raise HTTPException(status_code=400, detail="URL 不能为空")
+    safe, reason = validate_url_safety(url)
+    if not safe:
+        raise HTTPException(status_code=400, detail=reason)
     try:
         return await execute_http_request(
             method=payload.get("method", "GET").upper(),
@@ -483,6 +487,8 @@ async def quick_run(
 @router.post("/cases/batch-run")
 async def batch_run(case_ids: List[int], env_id: int = None, db: AsyncSession = Depends(get_db)):
     """批量执行多个用例（并发执行）"""
+    if len(case_ids) > 50:
+        raise HTTPException(status_code=400, detail="单次批量执行最多支持 50 个用例")
     result = await db.execute(select(AutoTestCase).where(AutoTestCase.id.in_(case_ids)))
     cases = result.scalars().all()
 
@@ -955,7 +961,7 @@ async def get_email_config():
         "smtpHost": getattr(settings, "EMAIL_SMTP_HOST", "smtp.gmail.com"),
         "smtpPort": getattr(settings, "EMAIL_SMTP_PORT", 465),
         "smtpUser": getattr(settings, "EMAIL_SMTP_USER", ""),
-        "smtpPassword": getattr(settings, "EMAIL_SMTP_PASSWORD", ""),
+        "smtpPassword": "****" if getattr(settings, "EMAIL_SMTP_PASSWORD", "") else "",
         "fromEmail": getattr(settings, "EMAIL_FROM_ADDRESS", ""),
         "adminToEmail": getattr(settings, "EMAIL_ADMIN_TO", ""),
         "enableSSL": getattr(settings, "EMAIL_USE_SSL", True),

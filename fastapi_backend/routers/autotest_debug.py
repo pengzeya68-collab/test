@@ -14,8 +14,9 @@ from sqlalchemy import select
 from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestCase
+from fastapi_backend.core.ssrf_guard import validate_url_safety
 
-router = APIRouter(prefix="/api/auto-test/debug", tags=["JMeter调试器"])
+router = APIRouter(prefix="/api/auto-test/debug", tags=["JMeter调试器"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/execute")
@@ -47,6 +48,10 @@ async def debug_execute_request(
     
     if not url:
         raise HTTPException(status_code=400, detail="请提供 URL")
+    
+    safe, reason = validate_url_safety(url)
+    if not safe:
+        raise HTTPException(status_code=400, detail=reason)
     
     start = time.time()
     result = {

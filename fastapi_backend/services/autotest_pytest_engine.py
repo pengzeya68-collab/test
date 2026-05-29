@@ -4,7 +4,7 @@ Pytest 数据驱动执行引擎（迁移自 auto_test_platform/services/pytest_e
 核心功能：
 1. 接收场景步骤 (Steps) 和驱动数据 (DataMatrix)
 2. 动态生成 Pytest 测试文件，使用 @pytest.mark.parametrize
-3. 上下文变量替换机制 ({{变量名}})
+3. 上下文变量替换机制 (${变量名})
 4. 提取器 (Extractors) 机制，上下文传递给下一步
 5. Allure 集成与报告生成
 """
@@ -128,7 +128,7 @@ COLUMNS = {json.dumps(columns)}
 def find_variables(text):
     if not isinstance(text, str):
         return []
-    return list(set(re.findall(r'\\{{(\\w+)\\}}', text)))
+    return list(set(re.findall(r'\\$\\{{(\\w+)\\}}', text)))
 
 
 def replace_variables_in_text(text, variables):
@@ -137,7 +137,7 @@ def replace_variables_in_text(text, variables):
     def replace_match(match):
         var_name = match.group(1)
         return str(variables.get(var_name, match.group(0)))
-    return re.sub(r'\\{{(\\w+)\\}}', replace_match, text)
+    return re.sub(r'\\$\\{{(\\w+)\\}}', replace_match, text)
 
 
 def replace_variables(obj, variables):

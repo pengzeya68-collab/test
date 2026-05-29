@@ -13,7 +13,7 @@ from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestScenario
 
-router = APIRouter(prefix="/api/auto-test/suites", tags=["回归套件"])
+router = APIRouter(prefix="/api/auto-test/suites", tags=["回归套件"], dependencies=[Depends(get_current_user)])
 
 # 内存存储（可后续迁移到数据库）
 _suites: Dict[int, dict] = {}

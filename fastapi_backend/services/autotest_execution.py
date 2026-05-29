@@ -275,7 +275,7 @@ async def quick_run_case(
         extractors = None
         if hasattr(case, 'extractors'):
             extractors = case.extractors
-        extracted_vars = await extract_variables_from_response(extractors, response_data, response.text)
+        extracted_vars = await extract_variables_from_response(extractors, response_data, response.text, dict(response.headers))
         if extracted_vars:
             await _save_variables_to_db_safe(extracted_vars)
 
@@ -610,7 +610,7 @@ def get_operator_text(operator: str) -> str:
     return mapping.get(operator, operator)
 
 
-async def extract_variables_from_response(extractors: Any, response_data: Any, response_text: str) -> Dict[str, str]:
+async def extract_variables_from_response(extractors: Any, response_data: Any, response_text: str, response_headers: Optional[Dict] = None) -> Dict[str, str]:
     """
     从响应中提取变量
     Args:
@@ -650,7 +650,12 @@ async def extract_variables_from_response(extractors: Any, response_data: Any, r
                 else:
                     value = default_value
             elif extractor_type == "header":
-                pass
+                header_name = extractor.get("name", "").lower()
+                for h_key, h_val in (response_headers or {}).items():
+                    if h_key.lower() == header_name:
+                        extracted_value = str(h_val)
+                        value = extracted_value
+                        break
         except Exception as e:
             _logger.info(f"变量提取失败 {var_name}: {str(e)}")
             value = default_value

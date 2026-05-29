@@ -33,7 +33,6 @@ app.conf.timezone = 'Asia/Shanghai'
 
 app.conf.task_routes = {
     'fastapi_backend.tasks.run_scenario': {'queue': 'celery'},
-    'fastapi_backend.tasks.run_case': {'queue': 'celery'},
     'fastapi_backend.tasks.send_email': {'queue': 'celery'},
 }
 

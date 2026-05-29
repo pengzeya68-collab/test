@@ -30,8 +30,8 @@ _cleanup_task: Optional[asyncio.Task] = None
 
 
 def _get_tasks_dir() -> Path:
-    from fastapi_backend.core.autotest_database import INSTANCE_DIR
-    tasks_dir = INSTANCE_DIR / "tasks"
+    from fastapi_backend.core.config import PROJECT_ROOT
+    tasks_dir = PROJECT_ROOT / "instance" / "tasks"
     tasks_dir.mkdir(parents=True, exist_ok=True)
     return tasks_dir
 
