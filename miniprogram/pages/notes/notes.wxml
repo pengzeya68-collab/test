@@ -1,0 +1,37 @@
+<view class="notes-page">
+  <view class="notes-header">
+    <text class="notes-count">共 {{list.length}} 条笔记</text>
+  </view>
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">📝</text>
+    <text class="empty-text">还没有笔记，快去记录学习心得吧</text>
+  </view>
+  <scroll-view wx:else scroll-y class="notes-scroll">
+    <view class="note-item card" wx:for="{{list}}" wx:key="id">
+      <view class="note-top">
+        <text class="note-title ellipsis">{{item.title || '无标题笔记'}}</text>
+        <view class="note-actions">
+          <text class="note-edit" catchtap="editNote" data-index="{{index}}">✏️</text>
+          <text class="note-del" catchtap="deleteNote" data-id="{{item.id}}" data-index="{{index}}">🗑</text>
+        </view>
+      </view>
+      <text class="note-content ellipsis-2">{{item.content || ''}}</text>
+      <text class="note-time">{{item.updated_at || item.created_at || ''}}</text>
+    </view>
+  </scroll-view>
+  <view class="fab-btn" bindtap="addNote">+</view>
+
+  <view class="note-modal" wx:if="{{showModal}}">
+    <view class="modal-mask" bindtap="closeModal"></view>
+    <view class="modal-content">
+      <text class="modal-title">{{editingNote ? '编辑笔记' : '新建笔记'}}</text>
+      <input class="modal-input" placeholder="笔记标题" value="{{noteTitle}}" bindinput="onTitleInput" />
+      <textarea class="modal-textarea" placeholder="笔记内容..." value="{{noteContent}}" bindinput="onContentInput" auto-height maxlength="-1" />
+      <view class="modal-btns">
+        <button class="btn-secondary" bindtap="closeModal">取消</button>
+        <button class="btn-primary" bindtap="saveNote" loading="{{saving}}">保存</button>
+      </view>
+    </view>
+  </view>
+</view>

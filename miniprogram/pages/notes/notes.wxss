@@ -1,0 +1,23 @@
+.notes-page { background: #F8F9FA; min-height: 100vh; padding: 20rpx 30rpx; position: relative; }
+.notes-header { margin-bottom: 20rpx; }
+.notes-count { font-size: 26rpx; color: #999; }
+.notes-scroll { height: calc(100vh - 100rpx); }
+.note-item { margin-bottom: 20rpx; }
+.note-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10rpx; }
+.note-title { flex: 1; font-size: 30rpx; font-weight: 600; color: #2D3436; }
+.note-actions { display: flex; gap: 16rpx; }
+.note-edit, .note-del { font-size: 30rpx; padding: 6rpx; }
+.note-content { font-size: 26rpx; color: #636E72; margin-bottom: 10rpx; line-height: 1.6; }
+.note-time { font-size: 22rpx; color: #B2BEC3; }
+.fab-btn { position: fixed; right: 40rpx; bottom: 120rpx; width: 100rpx; height: 100rpx; border-radius: 50%; background: linear-gradient(135deg, #6C5CE7, #A29BFE); color: #FFF; font-size: 52rpx; font-weight: 300; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 30rpx rgba(108,92,231,0.4); z-index: 10; }
+.modal-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100; }
+.modal-content { position: fixed; bottom: 0; left: 0; right: 0; background: #FFF; border-radius: 30rpx 30rpx 0 0; padding: 40rpx; z-index: 101; max-height: 80vh; }
+.modal-title { font-size: 34rpx; font-weight: 700; color: #2D3436; margin-bottom: 30rpx; display: block; }
+.modal-input { background: #F8F9FA; border-radius: 16rpx; padding: 24rpx; font-size: 30rpx; margin-bottom: 20rpx; }
+.modal-textarea { background: #F8F9FA; border-radius: 16rpx; padding: 24rpx; font-size: 28rpx; min-height: 300rpx; width: 100%; box-sizing: border-box; margin-bottom: 30rpx; }
+.modal-btns { display: flex; gap: 20rpx; }
+.modal-btns .btn-secondary, .modal-btns .btn-primary { flex: 1; font-size: 28rpx; padding: 20rpx; }
+.loading-state { text-align: center; padding: 60rpx; color: #999; }
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 120rpx 40rpx; }
+.empty-icon { font-size: 80rpx; margin-bottom: 20rpx; }
+.empty-text { font-size: 28rpx; color: #999; }

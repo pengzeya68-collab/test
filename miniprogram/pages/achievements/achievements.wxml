@@ -1,0 +1,27 @@
+<view class="ach-page">
+  <view class="ach-summary card">
+    <text class="ach-unlocked">{{unlockedCount}}</text>
+    <text class="ach-total">/{{totalCount}} 成就已解锁</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">🎖</text>
+    <text class="empty-text">暂无成就数据</text>
+  </view>
+  <scroll-view wx:else scroll-y class="ach-scroll">
+    <view class="ach-item card {{item.unlocked ? 'ach-unlocked-item' : 'ach-locked-item'}}" wx:for="{{list}}" wx:key="id">
+      <view class="ach-icon-wrap {{item.unlocked ? 'ach-icon-active' : ''}}">
+        <text class="ach-icon">{{item.icon || '🏅'}}</text>
+      </view>
+      <view class="ach-info">
+        <text class="ach-name">{{item.name || item.title || '成就'}}</text>
+        <text class="ach-desc">{{item.description || ''}}</text>
+      </view>
+      <view class="ach-status">
+        <text wx:if="{{item.unlocked}}" class="ach-done">✅</text>
+        <text wx:else class="ach-locked">🔒</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

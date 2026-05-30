@@ -1,0 +1,41 @@
+<view class="cases-page">
+  <view class="search-bar">
+    <view class="search-wrap">
+      <text class="search-icon">🔍</text>
+      <input class="search-input" placeholder="搜索用例..." value="{{keyword}}" bindinput="onSearch" />
+      <text wx:if="{{keyword}}" class="search-clear" bindtap="clearSearch">✕</text>
+    </view>
+  </view>
+
+  <view class="filter-bar" wx:if="{{groups.length > 0}}">
+    <view class="filter-tag {{activeGroup === '' ? 'filter-active' : ''}}" bindtap="selectGroup" data-val="">全部</view>
+    <view class="filter-tag {{activeGroup === item.id ? 'filter-active' : ''}}" wx:for="{{groups}}" wx:key="id" bindtap="selectGroup" data-val="{{item.id}}">
+      {{item.name}}
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0 && (keyword || activeGroup)}}" class="empty-state">
+    <text class="empty-icon">🔍</text>
+    <text class="empty-text">未找到匹配的用例</text>
+  </view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">🧪</text>
+    <text class="empty-text">暂无测试用例</text>
+  </view>
+  <scroll-view wx:else scroll-y class="cases-scroll">
+    <view class="case-item card" wx:for="{{list}}" wx:key="id">
+      <view class="case-top">
+        <text class="case-name ellipsis">{{item.name}}</text>
+        <view class="case-method method-{{item.method || 'GET'}}">{{item.method || 'GET'}}</view>
+      </view>
+      <text class="case-url ellipsis">{{item.url || item.path || ''}}</text>
+      <view class="case-bottom">
+        <text class="case-group" wx:if="{{item.group_name}}">{{item.group_name}}</text>
+        <view class="case-actions">
+          <button class="case-run-btn" size="mini" catchtap="runCase" data-id="{{item.id}}" data-name="{{item.name}}">▶ 运行</button>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

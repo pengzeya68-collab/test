@@ -1,0 +1,21 @@
+<view class="fav-page">
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">⭐</text>
+    <text class="empty-text">还没有收藏，去练习题库看看吧</text>
+  </view>
+  <scroll-view wx:else scroll-y class="fav-scroll">
+    <view class="fav-item card" wx:for="{{list}}" wx:key="id" bindtap="goDetail" data-id="{{item.exercise_id || item.id}}">
+      <view class="fav-top">
+        <text class="fav-title ellipsis-2">{{item.exercise_title || item.title || '习题'}}</text>
+        <view class="fav-unfav" catchtap="unfavorite" data-id="{{item.id}}" data-index="{{index}}">
+          <text>💔</text>
+        </view>
+      </view>
+      <view class="fav-bottom">
+        <text class="fav-category">{{item.category || ''}}</text>
+        <text class="fav-time">{{item.created_at || ''}}</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

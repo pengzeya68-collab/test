@@ -1,0 +1,34 @@
+<view class="take-page">
+  <view class="take-header">
+    <text class="take-title">{{exam.title || '考试'}}</text>
+    <view class="take-timer" wx:if="{{timer}}">⏱ {{timer}}</view>
+  </view>
+
+  <view class="progress-bar">
+    <view class="progress-fill" style="width: {{currentIndex / questions.length * 100}}%;"></view>
+  </view>
+
+  <view class="question-card card" wx:if="{{questions.length > 0}}">
+    <view class="q-header">
+      <text class="q-num">第 {{currentIndex + 1}} / {{questions.length}} 题</text>
+    </view>
+    <text class="q-title">{{questions[currentIndex].title || questions[currentIndex].question_text}}</text>
+
+    <view class="q-options" wx:if="{{questions[currentIndex].options}}">
+      <view class="q-option {{answers[currentIndex] === item.key ? 'option-selected' : ''}}"
+            wx:for="{{questions[currentIndex].options}}" wx:key="key"
+            bindtap="selectAnswer" data-key="{{item.key}}">
+        <view class="option-marker">{{item.key}}</view>
+        <text class="option-text">{{item.text}}</text>
+      </view>
+    </view>
+
+    <textarea wx:else class="q-input" placeholder="请输入答案..." value="{{answers[currentIndex] || ''}}" bindinput="onAnswerInput" />
+  </view>
+
+  <view class="take-actions">
+    <button class="btn-secondary" bindtap="prevQuestion" disabled="{{currentIndex === 0}}">上一题</button>
+    <button wx:if="{{currentIndex < questions.length - 1}}" class="btn-primary" bindtap="nextQuestion">下一题</button>
+    <button wx:else class="btn-primary" bindtap="submitExam" loading="{{submitting}}">提交考试</button>
+  </view>
+</view>

@@ -1,0 +1,35 @@
+<view class="paths-page">
+  <view class="paths-header">
+    <text class="paths-title">学习路径</text>
+    <text class="paths-sub">系统化学习测试技能</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">🛤</text>
+    <text class="empty-text">暂无学习路径</text>
+  </view>
+  <scroll-view wx:else scroll-y class="paths-scroll">
+    <view class="path-card card" wx:for="{{list}}" wx:key="id" bindtap="goPathDetail" data-id="{{item.id}}">
+      <view class="path-top">
+        <view class="path-icon" style="background: linear-gradient(135deg, {{item.color || '#6C5CE7'}}, {{item.color2 || '#A29BFE'}});">
+          <text>{{item.icon || '📚'}}</text>
+        </view>
+        <view class="path-info">
+          <text class="path-name">{{item.name || item.title}}</text>
+          <text class="path-desc ellipsis">{{item.description || ''}}</text>
+        </view>
+      </view>
+      <view class="path-progress" wx:if="{{item.progress !== undefined}}">
+        <view class="progress-bar">
+          <view class="progress-fill" style="width: {{item.progress || 0}}%;"></view>
+        </view>
+        <text class="progress-text">{{item.progress || 0}}%</text>
+      </view>
+      <view class="path-bottom">
+        <text class="path-count" wx:if="{{item.exercise_count}}">{{item.exercise_count}} 道题</text>
+        <text class="path-action">开始学习 ›</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

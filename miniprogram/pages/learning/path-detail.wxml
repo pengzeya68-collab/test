@@ -1,0 +1,29 @@
+<view class="detail-page">
+  <view class="path-header card">
+    <text class="path-title">{{path.name || path.title}}</text>
+    <text class="path-desc">{{path.description || ''}}</text>
+    <view class="path-progress" wx:if="{{progress.percent !== undefined}}">
+      <view class="progress-bar">
+        <view class="progress-fill" style="width: {{progress.percent}}%;"></view>
+      </view>
+      <text class="progress-text">{{progress.percent}}%</text>
+    </view>
+  </view>
+
+  <view class="section-title">路径习题</view>
+  <view wx:if="{{exercises.length === 0}}" class="empty-state">
+    <text class="empty-icon">📝</text>
+    <text class="empty-text">暂无习题</text>
+  </view>
+  <view wx:else class="exercise-list">
+    <view class="exercise-item card" wx:for="{{exercises}}" wx:key="id" bindtap="goExercise" data-id="{{item.id}}">
+      <view class="item-top">
+        <text class="item-title ellipsis">{{item.title}}</text>
+        <view class="tag {{item.difficulty === 'easy' ? 'tag-easy' : item.difficulty === 'medium' ? 'tag-medium' : 'tag-hard'}}">
+          {{item.difficulty === 'easy' ? '简单' : item.difficulty === 'medium' ? '中等' : '困难'}}
+        </view>
+      </view>
+      <text class="item-desc ellipsis">{{item.description || ''}}</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,36 @@
+<view class="sc-page">
+  <view class="search-bar">
+    <view class="search-wrap">
+      <text class="search-icon">🔍</text>
+      <input class="search-input" placeholder="搜索场景..." value="{{keyword}}" bindinput="onSearch" />
+      <text wx:if="{{keyword}}" class="search-clear" bindtap="clearSearch">✕</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0 && keyword}}" class="empty-state">
+    <text class="empty-icon">🔍</text>
+    <text class="empty-text">未找到匹配的场景</text>
+  </view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">暂无测试场景</text>
+  </view>
+  <scroll-view wx:else scroll-y class="sc-scroll">
+    <view class="sc-item card" wx:for="{{list}}" wx:key="id">
+      <view class="sc-top">
+        <text class="sc-name ellipsis">{{item.name}}</text>
+        <view class="sc-status status-{{item.status || 'draft'}}">
+          {{item.status === 'active' ? '启用' : item.status === 'running' ? '运行中' : '草稿'}}
+        </view>
+      </view>
+      <text class="sc-desc ellipsis">{{item.description || '暂无描述'}}</text>
+      <view class="sc-bottom">
+        <text class="sc-meta" wx:if="{{item.step_count}}">{{item.step_count}} 步骤</text>
+        <view class="sc-actions">
+          <button class="sc-run-btn" size="mini" catchtap="runScenario" data-id="{{item.id}}" data-name="{{item.name}}">▶ 运行</button>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

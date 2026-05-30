@@ -1,0 +1,61 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/index/index",
+    "pages/exercise/list",
+    "pages/exercise/detail",
+    "pages/exercise/wrong",
+    "pages/autotest/index",
+    "pages/autotest/scenarios",
+    "pages/autotest/history",
+    "pages/autotest/cases",
+    "pages/autotest/scheduler",
+    "pages/profile/profile",
+    "pages/favorites/favorites",
+    "pages/notes/notes",
+    "pages/leaderboard/leaderboard",
+    "pages/achievements/achievements",
+    "pages/password/password",
+    "pages/learning/paths",
+    "pages/learning/path-detail",
+    "pages/exam/list",
+    "pages/exam/take",
+    "pages/exam/result",
+    "pages/notifications/notifications"
+  ],
+  "window": {
+    "navigationBarTitleText": "TestMaster",
+    "navigationBarBackgroundColor": "#6C5CE7",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F8F9FA",
+    "backgroundTextStyle": "light",
+    "enablePullDownRefresh": false
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#999999",
+    "selectedColor": "#6C5CE7",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/exercise/list",
+        "text": "练习"
+      },
+      {
+        "pagePath": "pages/autotest/index",
+        "text": "自动化"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

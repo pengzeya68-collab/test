@@ -1,0 +1,84 @@
+<view class="autotest-page">
+  <view class="page-header">
+    <text class="page-title">自动化测试</text>
+    <text class="page-subtitle">管理和运行测试任务</text>
+  </view>
+
+  <view class="action-grid">
+    <view class="grid-item card" bindtap="goScenarios">
+      <view class="grid-icon" style="background: linear-gradient(135deg, #6C5CE7, #A29BFE);">
+        <text>📋</text>
+      </view>
+      <text class="grid-label">测试场景</text>
+      <text class="grid-desc">管理测试场景</text>
+    </view>
+    <view class="grid-item card" bindtap="goCases">
+      <view class="grid-icon" style="background: linear-gradient(135deg, #00B894, #55EFC4);">
+        <text>🧪</text>
+      </view>
+      <text class="grid-label">测试用例</text>
+      <text class="grid-desc">查看测试用例</text>
+    </view>
+    <view class="grid-item card" bindtap="goHistory">
+      <view class="grid-icon" style="background: linear-gradient(135deg, #FDCB6E, #F39C12);">
+        <text>📊</text>
+      </view>
+      <text class="grid-label">执行历史</text>
+      <text class="grid-desc">查看运行记录</text>
+    </view>
+    <view class="grid-item card" bindtap="goScheduler">
+      <view class="grid-icon" style="background: linear-gradient(135deg, #E17055, #FAB1A0);">
+        <text>⏰</text>
+      </view>
+      <text class="grid-label">定时任务</text>
+      <text class="grid-desc">定时执行配置</text>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">最近执行</text>
+      <text class="section-more" bindtap="goHistory">查看全部 ›</text>
+    </view>
+    <view wx:if="{{recentTasks.length === 0}}" class="empty-card">
+      <text class="empty-icon-text">🤖</text>
+      <text class="empty-hint">暂无执行记录</text>
+    </view>
+    <view wx:else>
+      <view class="task-card card" wx:for="{{recentTasks}}" wx:key="id">
+        <view class="task-top">
+          <text class="task-name ellipsis">{{item.name || item.scenario_name || '测试任务'}}</text>
+          <view class="task-status status-{{item.status}}">
+            {{item.status === 'running' ? '运行中' : item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : item.status}}
+          </view>
+        </view>
+        <view class="task-bottom">
+          <text class="task-time">{{item.created_at || ''}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">测试场景</text>
+      <text class="section-more" bindtap="goScenarios">查看全部 ›</text>
+    </view>
+    <view wx:if="{{scenarios.length === 0}}" class="empty-card">
+      <text class="empty-icon-text">📋</text>
+      <text class="empty-hint">暂无测试场景</text>
+    </view>
+    <view wx:else>
+      <view class="scenario-card card" wx:for="{{scenarios}}" wx:key="id" bindtap="runScenario" data-id="{{item.id}}" data-name="{{item.name}}">
+        <view class="scenario-top">
+          <text class="scenario-name ellipsis">{{item.name}}</text>
+          <button class="run-btn" catchtap="runScenario" data-id="{{item.id}}" data-name="{{item.name}}" size="mini">▶ 运行</button>
+        </view>
+        <text class="scenario-desc ellipsis">{{item.description || '暂无描述'}}</text>
+        <view class="scenario-meta">
+          <text wx:if="{{item.step_count}}">{{item.step_count}} 步骤</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

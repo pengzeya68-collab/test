@@ -1,0 +1,31 @@
+<view class="sched-page">
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">⏰</text>
+    <text class="empty-text">暂无定时任务</text>
+    <text class="empty-hint">可在Web端创建定时任务</text>
+  </view>
+  <scroll-view wx:else scroll-y class="sched-scroll">
+    <view class="sched-item card" wx:for="{{list}}" wx:key="id">
+      <view class="sched-top">
+        <text class="sched-name ellipsis">{{item.name || item.task_name || '定时任务'}}</text>
+        <view class="sched-status {{item.enabled || item.is_active ? 'status-on' : 'status-off'}}">
+          {{item.enabled || item.is_active ? '启用' : '停用'}}
+        </view>
+      </view>
+      <view class="sched-info">
+        <text class="sched-cron" wx:if="{{item.cron_expression}}">🕐 {{item.cron_expression}}</text>
+        <text class="sched-scene" wx:if="{{item.scenario_name}}">📋 {{item.scenario_name}}</text>
+      </view>
+      <view class="sched-bottom">
+        <text class="sched-time">{{item.created_at || ''}}</text>
+        <view class="sched-actions">
+          <button class="sched-toggle-btn {{item.enabled || item.is_active ? 'btn-stop' : 'btn-start'}}" size="mini" catchtap="toggleTask" data-id="{{item.id}}" data-enabled="{{item.enabled || item.is_active}}">
+            {{item.enabled || item.is_active ? '⏸ 停用' : '▶ 启用'}}
+          </button>
+          <button class="sched-run-btn" size="mini" catchtap="runTask" data-id="{{item.id}}">▶ 立即执行</button>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

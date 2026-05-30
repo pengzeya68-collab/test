@@ -1,0 +1,90 @@
+<view class="profile-page">
+  <view class="profile-header">
+    <view class="profile-bg"></view>
+    <view class="profile-info">
+      <view class="avatar-large">
+        <text class="avatar-letter">{{userInfo.username ? userInfo.username[0].toUpperCase() : '?'}}</text>
+      </view>
+      <text class="profile-name">{{userInfo.username || '未登录'}}</text>
+      <text class="profile-email">{{userInfo.email || ''}}</text>
+      <view class="profile-badges">
+        <text class="badge" wx:if="{{userInfo.is_admin}}">管理员</text>
+        <text class="badge badge-active" wx:if="{{userInfo.is_active}}">活跃</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="stats-card card">
+    <view wx:if="{{loading}}" class="stats-loading">
+      <text class="loading-text">加载中...</text>
+    </view>
+    <block wx:else>
+      <view class="stat-item">
+        <text class="stat-num">{{stats.exercises}}</text>
+        <text class="stat-name">练习题</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-num">{{stats.completed}}</text>
+        <text class="stat-name">已完成</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-num">{{stats.score}}</text>
+        <text class="stat-name">积分</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-num">{{stats.streak}}</text>
+        <text class="stat-name">连续天数</text>
+      </view>
+    </block>
+  </view>
+
+  <view class="error-tip card" wx:if="{{loadError}}">
+    <text class="error-tip-text">部分数据加载失败</text>
+    <text class="error-tip-retry" bindtap="retryLoad">重试</text>
+  </view>
+
+  <view class="menu-section">
+    <view class="menu-item" bindtap="goCheckin">
+      <view class="menu-icon">📅</view>
+      <text class="menu-label">每日签到</text>
+      <text class="checkin-status {{checkedIn ? 'checked-in' : ''}}">{{checkedIn ? '已签到' : '未签到'}}</text>
+    </view>
+    <view class="menu-item" bindtap="goWrongAnswers">
+      <view class="menu-icon">❌</view>
+      <text class="menu-label">错题本</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="goFavorites">
+      <view class="menu-icon">⭐</view>
+      <text class="menu-label">我的收藏</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="goNotes">
+      <view class="menu-icon">📝</view>
+      <text class="menu-label">学习笔记</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="goLeaderboard">
+      <view class="menu-icon">🏆</view>
+      <text class="menu-label">排行榜</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="goAchievements">
+      <view class="menu-icon">🎖</view>
+      <text class="menu-label">成就</text>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <view class="menu-section">
+    <view class="menu-item" bindtap="changePassword">
+      <view class="menu-icon">🔑</view>
+      <text class="menu-label">修改密码</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item logout-item" bindtap="handleLogout">
+      <view class="menu-icon">🚪</view>
+      <text class="menu-label logout-text">退出登录</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,22 @@
+.lb-page { background: #F8F9FA; min-height: 100vh; }
+.lb-tabs { display: flex; background: #FFF; padding: 20rpx 30rpx; gap: 16rpx; }
+.lb-tab { flex: 1; text-align: center; padding: 16rpx 0; border-radius: 12rpx; font-size: 28rpx; font-weight: 600; color: #636E72; background: #F0EEFF; }
+.lb-tab-active { background: #6C5CE7; color: #FFF; }
+.top-three { display: flex; justify-content: center; align-items: flex-end; padding: 40rpx 30rpx 20rpx; gap: 20rpx; }
+.top-item { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.top-1 { order: 2; }
+.top-2 { order: 1; }
+.top-3 { order: 3; }
+.top-avatar { font-size: 60rpx; margin-bottom: 8rpx; }
+.top-1 .top-avatar { font-size: 80rpx; }
+.top-name { font-size: 26rpx; font-weight: 600; color: #2D3436; margin-bottom: 4rpx; }
+.top-score { font-size: 30rpx; font-weight: 800; color: #6C5CE7; }
+.rank-list { padding: 0 30rpx; }
+.rank-item { display: flex; align-items: center; padding: 24rpx; margin-bottom: 12rpx; }
+.rank-num { width: 60rpx; font-size: 30rpx; font-weight: 700; color: #6C5CE7; }
+.rank-name { flex: 1; font-size: 28rpx; color: #2D3436; }
+.rank-score { font-size: 28rpx; font-weight: 700; color: #636E72; }
+.loading-state { text-align: center; padding: 60rpx; color: #999; }
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 120rpx 40rpx; }
+.empty-icon { font-size: 80rpx; margin-bottom: 20rpx; }
+.empty-text { font-size: 28rpx; color: #999; }

@@ -1,0 +1,134 @@
+<view class="detail-page">
+  <view wx:if="{{loadError}}" class="error-state">
+    <text class="error-icon">😔</text>
+    <text class="error-text">加载失败</text>
+    <button class="btn-primary" bindtap="goNext">返回列表</button>
+  </view>
+
+  <block wx:elif="{{loaded}}">
+    <view class="detail-header card">
+      <view class="detail-top">
+        <view class="tag {{exercise.difficulty === 'easy' ? 'tag-easy' : exercise.difficulty === 'medium' ? 'tag-medium' : 'tag-hard'}}">
+          {{exercise.difficulty === 'easy' ? '简单' : exercise.difficulty === 'medium' ? '中等' : '困难'}}
+        </view>
+        <text class="detail-category" wx:if="{{exercise.category}}">{{exercise.category}}</text>
+        <view class="tag tag-type" wx:if="{{isMultipleChoice}}">多选题</view>
+        <view class="tag tag-type" wx:elif="{{isChoiceType}}">单选题</view>
+      </view>
+      <text class="detail-title">{{exercise.title}}</text>
+      <view class="detail-meta">
+        <text wx:if="{{exercise.language}}">🌐 {{exercise.language}}</text>
+        <text wx:if="{{exercise.time_estimate}}">⏱ {{exercise.time_estimate}}分钟</text>
+      </view>
+    </view>
+
+    <view class="detail-body card">
+      <view class="body-section">
+        <text class="section-label">题目描述</text>
+        <text class="section-content">{{exercise.description || '暂无描述'}}</text>
+      </view>
+      <view class="body-section" wx:if="{{exercise.instructions}}">
+        <text class="section-label">操作指引</text>
+        <text class="section-content">{{exercise.instructions}}</text>
+      </view>
+    </view>
+
+    <!-- 多选题模式 -->
+    <view class="answer-section card" wx:if="{{isChoiceType && isMultipleChoice}}">
+      <text class="section-label">我的答案（可多选）</text>
+      <view class="choice-list">
+        <view class="choice-item {{selectedChoices.indexOf(item.key) >= 0 ? 'choice-selected' : ''}} {{submitResult && correctAnswerKeys.indexOf(item.key) >= 0 ? 'choice-correct' : ''}} {{submitResult && !submitResult.correct && selectedChoices.indexOf(item.key) >= 0 && correctAnswerKeys.indexOf(item.key) < 0 ? 'choice-wrong' : ''}}"
+              wx:for="{{choiceOptions}}" wx:key="key"
+              bindtap="selectChoice" data-key="{{item.key}}">
+          <view class="choice-marker {{selectedChoices.indexOf(item.key) >= 0 ? 'marker-checkbox-checked' : 'marker-checkbox'}}">
+            <text wx:if="{{selectedChoices.indexOf(item.key) >= 0}}">✓</text>
+          </view>
+          <text class="choice-text ellipsis-2">{{item.text}}</text>
+          <view class="choice-icon" wx:if="{{submitResult && correctAnswerKeys.indexOf(item.key) >= 0}}">✅</view>
+          <view class="choice-icon wrong-icon" wx:if="{{submitResult && !submitResult.correct && selectedChoices.indexOf(item.key) >= 0 && correctAnswerKeys.indexOf(item.key) < 0}}">❌</view>
+        </view>
+      </view>
+      <view class="selected-hint" wx:if="{{selectedChoices.length > 0}}">
+        <text>已选：{{selectedChoices.join(', ')}}</text>
+      </view>
+      <button class="btn-primary submit-btn" bindtap="submitAnswer" loading="{{submitting}}" disabled="{{selectedChoices.length === 0 || submitting}}">
+        提交答案
+      </button>
+    </view>
+
+    <!-- 单选题模式 -->
+    <view class="answer-section card" wx:elif="{{isChoiceType && !isMultipleChoice}}">
+      <text class="section-label">我的答案</text>
+      <view class="choice-list">
+        <view class="choice-item {{selectedChoice === item.key ? 'choice-selected' : ''}} {{submitResult && correctAnswerKeys.indexOf(item.key) >= 0 ? 'choice-correct' : ''}} {{submitResult && !submitResult.correct && selectedChoice === item.key && correctAnswerKeys.indexOf(item.key) < 0 ? 'choice-wrong' : ''}}"
+              wx:for="{{choiceOptions}}" wx:key="key"
+              bindtap="selectChoice" data-key="{{item.key}}">
+          <view class="choice-marker {{selectedChoice === item.key ? 'marker-radio-checked' : 'marker-radio'}}">
+            <view wx:if="{{selectedChoice === item.key}}" class="radio-dot"></view>
+          </view>
+          <text class="choice-text ellipsis-2">{{item.text}}</text>
+          <view class="choice-icon" wx:if="{{submitResult && correctAnswerKeys.indexOf(item.key) >= 0}}">✅</view>
+          <view class="choice-icon wrong-icon" wx:if="{{submitResult && !submitResult.correct && selectedChoice === item.key && correctAnswerKeys.indexOf(item.key) < 0}}">❌</view>
+        </view>
+      </view>
+      <button class="btn-primary submit-btn" bindtap="submitAnswer" loading="{{submitting}}" disabled="{{!selectedChoice || submitting}}">
+        提交答案
+      </button>
+    </view>
+
+    <!-- SQL练习模式 -->
+    <view class="answer-section card" wx:elif="{{isSqlType}}">
+      <text class="section-label">SQL 练习</text>
+      <textarea class="sql-input" placeholder="请输入SQL语句..." value="{{userSql}}" bindinput="onSqlInput" auto-height maxlength="-1" />
+      <view class="sql-actions">
+        <button class="btn-secondary" bindtap="executeSql" loading="{{executing}}">▶ 执行SQL</button>
+        <button class="btn-primary" bindtap="submitAnswer" loading="{{submitting}}">提交答案</button>
+      </view>
+
+      <view wx:if="{{sqlResult}}" class="sql-result">
+        <view class="result-header">
+          <text class="result-status {{sqlResult.success ? 'status-success' : 'status-fail'}}">
+            {{sqlResult.success ? '✅ 执行成功' : '❌ 执行失败'}}
+          </text>
+          <text class="result-time" wx:if="{{sqlResult.elapsed_ms}}">{{sqlResult.elapsed_ms}}ms</text>
+        </view>
+        <view wx:if="{{sqlResult.columns && sqlResult.columns.length}}" class="result-table">
+          <view class="table-header">
+            <text class="table-cell" wx:for="{{sqlResult.columns}}" wx:key="*this">{{item}}</text>
+          </view>
+          <view class="table-row" wx:for="{{sqlResult.rows}}" wx:key="index" wx:for-item="row">
+            <text class="table-cell" wx:for="{{row}}" wx:key="index">{{item}}</text>
+          </view>
+        </view>
+        <text wx:if="{{sqlResult.error}}" class="result-error">{{sqlResult.error}}</text>
+        <text wx:if="{{sqlResult.message}}" class="result-msg">{{sqlResult.message}}</text>
+      </view>
+    </view>
+
+    <!-- 文本/填空题模式 -->
+    <view class="answer-section card" wx:else>
+      <text class="section-label">我的答案</text>
+      <textarea class="answer-input" placeholder="请输入你的答案..." value="{{userAnswer}}" bindinput="onAnswerInput" auto-height maxlength="-1" />
+      <button class="btn-primary submit-btn" bindtap="submitAnswer" loading="{{submitting}}" disabled="{{submitting}}">
+        提交答案
+      </button>
+    </view>
+
+    <!-- 结果展示 -->
+    <view class="result-card card" wx:if="{{submitResult}}">
+      <view class="result-banner {{submitResult.correct ? 'banner-success' : 'banner-fail'}}">
+        <text class="result-icon">{{submitResult.correct ? '🎉' : '😔'}}</text>
+        <text class="result-text">{{submitResult.correct ? '回答正确！' : '回答错误'}}</text>
+      </view>
+      <text class="result-msg" wx:if="{{submitResult.message}}">{{submitResult.message}}</text>
+      <view wx:if="{{submitResult.expected_solution}}" class="expected-solution">
+        <text class="section-label">参考答案</text>
+        <text class="solution-text">{{submitResult.expected_solution}}</text>
+      </view>
+      <view class="result-actions">
+        <button class="btn-secondary" bindtap="retryExercise">🔄 重新作答</button>
+        <button class="btn-primary" bindtap="goNext">↩ 返回列表</button>
+      </view>
+    </view>
+  </block>
+</view>

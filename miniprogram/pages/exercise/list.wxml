@@ -1,0 +1,59 @@
+<view class="list-page">
+  <view class="search-bar">
+    <view class="search-input-wrap">
+      <text class="search-icon">🔍</text>
+      <input class="search-input" placeholder="搜索练习题..." value="{{keyword}}" bindinput="onSearchInput" bindconfirm="doSearch" confirm-type="search" />
+    </view>
+  </view>
+
+  <view class="filter-bar">
+    <scroll-view scroll-x class="filter-scroll">
+      <view class="filter-tags">
+        <view class="filter-tag {{activeCategory === '' ? 'filter-active' : ''}}" bindtap="selectCategory" data-val="">
+          全部
+        </view>
+        <view wx:for="{{categories}}" wx:key="name" class="filter-tag {{activeCategory === item.name ? 'filter-active' : ''}}" bindtap="selectCategory" data-val="{{item.name}}">
+          {{item.name}}({{item.count}})
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="difficulty-bar">
+    <view class="diff-tag {{activeDifficulty === '' ? 'diff-active' : ''}}" bindtap="selectDifficulty" data-val="">全部难度</view>
+    <view class="diff-tag diff-easy {{activeDifficulty === 'easy' ? 'diff-active' : ''}}" bindtap="selectDifficulty" data-val="easy">简单</view>
+    <view class="diff-tag diff-medium {{activeDifficulty === 'medium' ? 'diff-active' : ''}}" bindtap="selectDifficulty" data-val="medium">中等</view>
+    <view class="diff-tag diff-hard {{activeDifficulty === 'hard' ? 'diff-active' : ''}}" bindtap="selectDifficulty" data-val="hard">困难</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state">
+    <text>加载中...</text>
+  </view>
+
+  <view wx:elif="{{exercises.length === 0}}" class="empty-state">
+    <text class="empty-icon">📝</text>
+    <text class="empty-text">暂无练习题</text>
+  </view>
+
+  <scroll-view wx:else scroll-y class="exercise-scroll" bindscrolltolower="loadMore" lower-threshold="100">
+    <view class="exercise-item card" wx:for="{{exercises}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+      <view class="item-top">
+        <text class="item-title ellipsis-2">{{item.title}}</text>
+        <view class="tag {{item.difficulty === 'easy' ? 'tag-easy' : item.difficulty === 'medium' ? 'tag-medium' : 'tag-hard'}}">
+          {{item.difficulty === 'easy' ? '简单' : item.difficulty === 'medium' ? '中等' : '困难'}}
+        </view>
+      </view>
+      <view class="item-desc ellipsis">{{item.description}}</view>
+      <view class="item-bottom">
+        <view class="item-tags">
+          <text class="item-tag" wx:if="{{item.category}}">{{item.category}}</text>
+          <text class="item-tag" wx:if="{{item.language}}">{{item.language}}</text>
+        </view>
+        <text class="item-time" wx:if="{{item.time_estimate}}">⏱ {{item.time_estimate}}分钟</text>
+      </view>
+    </view>
+    <view wx:if="{{noMore}}" class="no-more">
+      <text>— 没有更多了 —</text>
+    </view>
+  </scroll-view>
+</view>

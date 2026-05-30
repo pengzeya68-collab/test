@@ -1,0 +1,22 @@
+.sched-page { background: #F8F9FA; min-height: 100vh; padding: 20rpx 30rpx; }
+.sched-scroll { height: calc(100vh - 40rpx); }
+.sched-item { margin-bottom: 16rpx; }
+.sched-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10rpx; }
+.sched-name { flex: 1; font-size: 28rpx; font-weight: 600; color: #2D3436; margin-right: 12rpx; }
+.sched-status { font-size: 22rpx; padding: 4rpx 14rpx; border-radius: 6rpx; font-weight: 500; }
+.status-on { background: #D4EDDA; color: #155724; }
+.status-off { background: #F0F0F0; color: #999; }
+.sched-info { display: flex; flex-direction: column; gap: 6rpx; margin-bottom: 12rpx; }
+.sched-cron, .sched-scene { font-size: 24rpx; color: #636E72; }
+.sched-bottom { display: flex; justify-content: space-between; align-items: center; }
+.sched-time { font-size: 22rpx; color: #B2BEC3; }
+.sched-actions { display: flex; gap: 12rpx; }
+.sched-toggle-btn { font-size: 22rpx !important; border-radius: 8rpx !important; }
+.btn-start { background: #00B894 !important; color: #FFF !important; }
+.btn-stop { background: #FDCB6E !important; color: #856404 !important; }
+.sched-run-btn { background: #6C5CE7 !important; color: #FFF !important; border-radius: 8rpx !important; font-size: 22rpx !important; }
+.loading-state { text-align: center; padding: 60rpx; color: #999; }
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 120rpx 40rpx; }
+.empty-icon { font-size: 80rpx; margin-bottom: 20rpx; }
+.empty-text { font-size: 28rpx; color: #999; }
+.empty-hint { font-size: 24rpx; color: #BBB; margin-top: 8rpx; }

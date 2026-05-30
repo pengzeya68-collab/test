@@ -1,0 +1,18 @@
+<view class="custom-tab-bar">
+  <view class="tab-item {{selected === 0 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="0" data-url="/pages/index/index">
+    <view class="tab-icon">{{selected === 0 ? '🏠' : '🏡'}}</view>
+    <text class="tab-text">首页</text>
+  </view>
+  <view class="tab-item {{selected === 1 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="1" data-url="/pages/exercise/list">
+    <view class="tab-icon">{{selected === 1 ? '📝' : '📋'}}</view>
+    <text class="tab-text">练习</text>
+  </view>
+  <view class="tab-item {{selected === 2 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="2" data-url="/pages/autotest/index">
+    <view class="tab-icon">{{selected === 2 ? '🤖' : '⚙️'}}</view>
+    <text class="tab-text">自动化</text>
+  </view>
+  <view class="tab-item {{selected === 3 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="3" data-url="/pages/profile/profile">
+    <view class="tab-icon">{{selected === 3 ? '😊' : '👤'}}</view>
+    <text class="tab-text">我的</text>
+  </view>
+</view>

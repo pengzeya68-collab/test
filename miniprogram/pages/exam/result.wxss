@@ -1,0 +1,8 @@
+.result-page { background: #F8F9FA; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 60rpx 30rpx; }
+.result-header { display: flex; flex-direction: column; align-items: center; padding: 50rpx; width: 100%; }
+.result-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
+.result-score { font-size: 100rpx; font-weight: 800; color: #6C5CE7; line-height: 1; }
+.result-label { font-size: 32rpx; color: #999; margin-top: 4rpx; }
+.result-verdict { font-size: 34rpx; font-weight: 700; color: #2D3436; margin-top: 16rpx; }
+.result-actions { width: 100%; margin-top: 40rpx; }
+.result-actions .btn-primary { width: 100%; }

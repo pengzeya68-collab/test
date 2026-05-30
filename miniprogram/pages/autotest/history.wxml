@@ -1,0 +1,29 @@
+<view class="hist-page">
+  <view class="hist-tabs">
+    <view class="hist-tab {{activeTab === 'all' ? 'hist-tab-active' : ''}}" bindtap="switchTab" data-tab="all">全部</view>
+    <view class="hist-tab {{activeTab === 'completed' ? 'hist-tab-active' : ''}}" bindtap="switchTab" data-tab="completed">成功</view>
+    <view class="hist-tab {{activeTab === 'failed' ? 'hist-tab-active' : ''}}" bindtap="switchTab" data-tab="failed">失败</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">📊</text>
+    <text class="empty-text">暂无执行记录</text>
+  </view>
+  <scroll-view wx:else scroll-y class="hist-scroll" bindscrolltolower="loadMore">
+    <view class="hist-item card" wx:for="{{list}}" wx:key="id">
+      <view class="hist-top">
+        <text class="hist-name ellipsis">{{item.name || item.scenario_name || '测试任务'}}</text>
+        <view class="hist-status status-{{item.status}}">
+          {{item.status === 'running' ? '⏳ 运行中' : item.status === 'completed' ? '✅ 已完成' : item.status === 'failed' ? '❌ 失败' : item.status}}
+        </view>
+      </view>
+      <view class="hist-info">
+        <text wx:if="{{item.total_cases}}">用例: {{item.passed_cases || 0}}/{{item.total_cases}}</text>
+        <text wx:if="{{item.duration}}">耗时: {{item.duration}}s</text>
+      </view>
+      <text class="hist-time">{{item.created_at || item.start_time || ''}}</text>
+    </view>
+    <view wx:if="{{noMore}}" class="no-more"><text>— 没有更多了 —</text></view>
+  </scroll-view>
+</view>

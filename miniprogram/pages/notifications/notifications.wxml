@@ -1,0 +1,22 @@
+<view class="notif-page">
+  <view class="notif-header">
+    <text class="notif-title">消息通知</text>
+    <text class="notif-read-all" bindtap="readAll" wx:if="{{list.length > 0}}">全部已读</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">🔔</text>
+    <text class="empty-text">暂无通知</text>
+  </view>
+  <scroll-view wx:else scroll-y class="notif-scroll">
+    <view class="notif-item card {{item.is_read || item.read ? 'notif-read' : 'notif-unread'}}" wx:for="{{list}}" wx:key="id" bindtap="readNotif" data-id="{{item.id}}" data-index="{{index}}">
+      <view class="notif-dot" wx:if="{{!item.is_read && !item.read}}"></view>
+      <view class="notif-content">
+        <text class="notif-subject">{{item.title || item.subject || '通知'}}</text>
+        <text class="notif-body ellipsis-2">{{item.content || item.body || ''}}</text>
+        <text class="notif-time">{{item.created_at || ''}}</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

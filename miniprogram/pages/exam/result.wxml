@@ -1,0 +1,11 @@
+<view class="result-page">
+  <view class="result-header card">
+    <text class="result-emoji">{{score >= 60 ? '🎉' : '😔'}}</text>
+    <text class="result-score">{{score}}</text>
+    <text class="result-label">分</text>
+    <text class="result-verdict">{{score >= 90 ? '太棒了！' : score >= 60 ? '及格了！' : '继续加油！'}}</text>
+  </view>
+  <view class="result-actions">
+    <button class="btn-primary" bindtap="goBack">返回考试列表</button>
+  </view>
+</view>

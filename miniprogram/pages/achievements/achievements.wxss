@@ -1,0 +1,18 @@
+.ach-page { background: #F8F9FA; min-height: 100vh; padding: 20rpx 30rpx; }
+.ach-summary { display: flex; align-items: baseline; justify-content: center; padding: 30rpx; margin-bottom: 20rpx; }
+.ach-unlocked { font-size: 56rpx; font-weight: 800; color: #6C5CE7; }
+.ach-total { font-size: 28rpx; color: #999; margin-left: 8rpx; }
+.ach-scroll { height: calc(100vh - 200rpx); }
+.ach-item { display: flex; align-items: center; margin-bottom: 16rpx; padding: 24rpx; }
+.ach-locked-item { opacity: 0.5; }
+.ach-icon-wrap { width: 80rpx; height: 80rpx; border-radius: 50%; background: #F0F0F0; display: flex; align-items: center; justify-content: center; margin-right: 20rpx; flex-shrink: 0; }
+.ach-icon-active { background: #F0EEFF; }
+.ach-icon { font-size: 40rpx; }
+.ach-info { flex: 1; }
+.ach-name { font-size: 28rpx; font-weight: 600; color: #2D3436; display: block; margin-bottom: 4rpx; }
+.ach-desc { font-size: 24rpx; color: #999; display: block; }
+.ach-status { font-size: 32rpx; margin-left: 12rpx; }
+.loading-state { text-align: center; padding: 60rpx; color: #999; }
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 120rpx 40rpx; }
+.empty-icon { font-size: 80rpx; margin-bottom: 20rpx; }
+.empty-text { font-size: 28rpx; color: #999; }

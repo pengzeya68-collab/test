@@ -1,0 +1,28 @@
+.cases-page { background: #F8F9FA; min-height: 100vh; }
+.search-bar { padding: 20rpx 30rpx; background: #FFF; }
+.search-wrap { display: flex; align-items: center; background: #F0EEFF; border-radius: 40rpx; padding: 0 24rpx; height: 76rpx; }
+.search-icon { font-size: 28rpx; margin-right: 12rpx; }
+.search-input { flex: 1; font-size: 28rpx; }
+.search-clear { font-size: 28rpx; color: #999; padding: 0 8rpx; }
+.filter-bar { display: flex; gap: 12rpx; padding: 16rpx 30rpx; background: #FFF; overflow-x: auto; white-space: nowrap; }
+.filter-tag { display: inline-block; padding: 10rpx 24rpx; border-radius: 30rpx; font-size: 24rpx; color: #636E72; background: #F0F0F0; flex-shrink: 0; }
+.filter-active { background: #6C5CE7; color: #FFF; }
+.cases-scroll { padding: 20rpx 30rpx; height: calc(100vh - 200rpx); }
+.case-item { margin-bottom: 16rpx; }
+.case-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8rpx; }
+.case-name { flex: 1; font-size: 28rpx; font-weight: 600; color: #2D3436; margin-right: 12rpx; }
+.case-method { font-size: 20rpx; padding: 4rpx 12rpx; border-radius: 6rpx; font-weight: 700; color: #FFF; }
+.method-GET { background: #00B894; }
+.method-POST { background: #6C5CE7; }
+.method-PUT { background: #FDCB6E; color: #856404; }
+.method-DELETE { background: #E17055; }
+.method-PATCH { background: #74B9FF; }
+.case-url { font-size: 24rpx; color: #999; font-family: monospace; margin-bottom: 10rpx; }
+.case-bottom { display: flex; justify-content: space-between; align-items: center; }
+.case-group { font-size: 22rpx; color: #6C5CE7; background: #F0EEFF; padding: 4rpx 12rpx; border-radius: 6rpx; }
+.case-run-btn { background: #6C5CE7 !important; color: #FFF !important; border-radius: 8rpx !important; font-size: 24rpx !important; }
+.loading-state { text-align: center; padding: 60rpx; color: #999; }
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 120rpx 40rpx; }
+.empty-icon { font-size: 80rpx; margin-bottom: 20rpx; }
+.empty-text { font-size: 28rpx; color: #999; }
+.no-more { text-align: center; padding: 30rpx; color: #CCC; font-size: 24rpx; }

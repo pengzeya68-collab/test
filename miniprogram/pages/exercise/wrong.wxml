@@ -1,0 +1,26 @@
+<view class="wrong-page">
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">🎉</text>
+    <text class="empty-text">没有错题，继续保持！</text>
+  </view>
+  <scroll-view wx:else scroll-y class="wrong-scroll" bindscrolltolower="loadMore" lower-threshold="100">
+    <view class="wrong-item card" wx:for="{{list}}" wx:key="id" bindtap="goDetail" data-id="{{item.exercise_id || item.id}}">
+      <view class="wrong-top">
+        <text class="wrong-title ellipsis-2">{{item.exercise_title || item.title || '习题'}}</text>
+        <view class="tag {{item.difficulty === 'easy' ? 'tag-easy' : item.difficulty === 'medium' ? 'tag-medium' : 'tag-hard'}}">
+          {{item.difficulty === 'easy' ? '简单' : item.difficulty === 'medium' ? '中等' : '困难'}}
+        </view>
+      </view>
+      <view class="wrong-info">
+        <text class="wrong-answer">你的答案：{{item.user_answer || '-'}}</text>
+        <text class="wrong-correct" wx:if="{{item.correct_answer}}">正确答案：{{item.correct_answer}}</text>
+      </view>
+      <view class="wrong-bottom">
+        <text class="wrong-time">{{item.created_at || ''}}</text>
+        <text class="wrong-retry">重做 ›</text>
+      </view>
+    </view>
+    <view wx:if="{{noMore}}" class="no-more"><text>— 没有更多了 —</text></view>
+  </scroll-view>
+</view>

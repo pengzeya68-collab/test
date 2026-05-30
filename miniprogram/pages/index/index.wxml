@@ -1,0 +1,99 @@
+<view class="home-page">
+  <view class="header-card">
+    <view class="header-bg"></view>
+    <view class="header-content">
+      <view class="greeting">
+        <text class="greeting-text">{{greeting}}，{{userInfo.username || '同学'}}</text>
+        <text class="greeting-sub">今天也要加油学习哦 💪</text>
+      </view>
+      <view class="avatar-wrap" bindtap="goProfile">
+        <text class="avatar-text">{{userInfo.username ? userInfo.username[0].toUpperCase() : '?'}}</text>
+      </view>
+    </view>
+    <view class="stats-row">
+      <view class="stat-item">
+        <text class="stat-value">{{stats.exerciseCount}}</text>
+        <text class="stat-label">练习题</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item">
+        <text class="stat-value">{{stats.completedCount}}</text>
+        <text class="stat-label">已完成</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item">
+        <text class="stat-value">{{stats.streakDays}}</text>
+        <text class="stat-label">连续天数</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="quick-actions">
+    <view class="action-item" bindtap="goExerciseList">
+      <view class="action-icon" style="background: linear-gradient(135deg, #6C5CE7, #A29BFE);">
+        <text>📝</text>
+      </view>
+      <text class="action-label">练习题库</text>
+    </view>
+    <view class="action-item" bindtap="goAutotest">
+      <view class="action-icon" style="background: linear-gradient(135deg, #00B894, #55EFC4);">
+        <text>🤖</text>
+      </view>
+      <text class="action-label">自动化测试</text>
+    </view>
+    <view class="action-item" bindtap="goExamList">
+      <view class="action-icon" style="background: linear-gradient(135deg, #E17055, #FAB1A0);">
+        <text>📋</text>
+      </view>
+      <text class="action-label">考试中心</text>
+    </view>
+    <view class="action-item" bindtap="goLearningPaths">
+      <view class="action-icon" style="background: linear-gradient(135deg, #FDCB6E, #F39C12);">
+        <text>🛤</text>
+      </view>
+      <text class="action-label">学习路径</text>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">最近练习</text>
+      <text class="section-more" bindtap="goExerciseList">查看全部 ›</text>
+    </view>
+    <view wx:if="{{recentExercises.length === 0}}" class="empty-card">
+      <text class="empty-icon-text">📚</text>
+      <text class="empty-hint">还没有练习记录，快去做题吧</text>
+    </view>
+    <view wx:else class="exercise-list">
+      <view class="exercise-card card" wx:for="{{recentExercises}}" wx:key="id" bindtap="goExerciseDetail" data-id="{{item.id}}">
+        <view class="exercise-card-top">
+          <text class="exercise-title ellipsis">{{item.title}}</text>
+          <view class="tag {{item.difficulty === 'easy' ? 'tag-easy' : item.difficulty === 'medium' ? 'tag-medium' : 'tag-hard'}}">
+            {{item.difficulty === 'easy' ? '简单' : item.difficulty === 'medium' ? '中等' : '困难'}}
+          </view>
+        </view>
+        <view class="exercise-card-bottom">
+          <text class="exercise-category">{{item.category || '未分类'}}</text>
+          <text class="exercise-type">{{item.language || ''}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">每日推荐</text>
+    </view>
+    <view class="daily-card card" bindtap="goExerciseDetail" data-id="{{dailyExercise.id}}">
+      <view class="daily-badge">每日一题</view>
+      <text class="daily-title">{{dailyExercise.title || '暂无推荐'}}</text>
+      <text class="daily-desc ellipsis-2">{{dailyExercise.description || '完成每日练习，保持学习节奏'}}</text>
+      <view class="daily-footer">
+        <view class="tag {{dailyExercise.difficulty === 'easy' ? 'tag-easy' : dailyExercise.difficulty === 'medium' ? 'tag-medium' : 'tag-hard'}}">
+          {{dailyExercise.difficulty === 'easy' ? '简单' : dailyExercise.difficulty === 'medium' ? '中等' : '困难'}}
+        </view>
+        <text class="daily-action">开始练习 ›</text>
+      </view>
+    </view>
+  </view>
+</view>

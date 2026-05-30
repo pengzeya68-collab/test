@@ -1,0 +1,34 @@
+<view class="exam-page">
+  <view class="exam-header">
+    <text class="exam-title">考试中心</text>
+    <text class="exam-sub">检验学习成果</text>
+  </view>
+
+  <view class="exam-tabs">
+    <view class="exam-tab {{activeTab === 'available' ? 'tab-active' : ''}}" bindtap="switchTab" data-tab="available">可参加</view>
+    <view class="exam-tab {{activeTab === 'my' ? 'tab-active' : ''}}" bindtap="switchTab" data-tab="my">我的记录</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state"><text>加载中...</text></view>
+  <view wx:elif="{{list.length === 0}}" class="empty-state">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">{{activeTab === 'available' ? '暂无可参加的考试' : '暂无考试记录'}}</text>
+  </view>
+  <scroll-view wx:else scroll-y class="exam-scroll">
+    <view class="exam-item card" wx:for="{{list}}" wx:key="id" bindtap="goExam" data-id="{{item.id}}">
+      <view class="exam-top">
+        <text class="exam-name ellipsis">{{item.title || item.name}}</text>
+        <view class="exam-badge badge-{{item.status || 'open'}}">
+          {{item.status === 'completed' ? '已完成' : item.status === 'expired' ? '已结束' : '可参加'}}
+        </view>
+      </view>
+      <text class="exam-desc ellipsis">{{item.description || ''}}</text>
+      <view class="exam-bottom">
+        <text class="exam-meta" wx:if="{{item.duration}}">⏱ {{item.duration}}分钟</text>
+        <text class="exam-meta" wx:if="{{item.total_questions}}">📝 {{item.total_questions}}题</text>
+        <text class="exam-meta" wx:if="{{item.score !== undefined}}">🏆 {{item.score}}分</text>
+        <text class="exam-action">{{item.status === 'completed' ? '查看结果' : '开始考试'}} ›</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>
