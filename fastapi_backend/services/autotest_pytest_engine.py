@@ -4,10 +4,11 @@ Pytest 数据驱动执行引擎（迁移自 auto_test_platform/services/pytest_e
 核心功能：
 1. 接收场景步骤 (Steps) 和驱动数据 (DataMatrix)
 2. 动态生成 Pytest 测试文件，使用 @pytest.mark.parametrize
-3. 上下文变量替换机制 ({{变量名}})
+3. 上下文变量替换机制 (${变量名})
 4. 提取器 (Extractors) 机制，上下文传递给下一步
 5. Allure 集成与报告生成
 """
+
 import re
 import json
 import time
@@ -44,7 +45,12 @@ class PytestDataDrivenEngine:
 
         self.run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
-    def execute(self, steps: List[Dict], data_matrix: Dict[str, Any], env_vars: Dict[str, Any] = None) -> Dict[str, Any]:
+    def execute(
+        self,
+        steps: List[Dict],
+        data_matrix: Dict[str, Any],
+        env_vars: Dict[str, Any] = None,
+    ) -> Dict[str, Any]:
         start_time = time.time()
 
         try:
@@ -65,7 +71,7 @@ class PytestDataDrivenEngine:
                 "stdout": result["stdout"],
                 "stderr": result["stderr"],
                 "test_file": str(test_file),
-                "data_file": str(data_file)
+                "data_file": str(data_file),
             }
 
         except Exception as e:
@@ -74,10 +80,15 @@ class PytestDataDrivenEngine:
                 "success": False,
                 "error": str(e),
                 "duration": overall_duration,
-                "report_url": None
+                "report_url": None,
             }
 
-    def _generate_data_file(self, steps: List[Dict], data_matrix: Dict[str, Any], env_vars: Dict[str, Any] = None) -> Path:
+    def _generate_data_file(
+        self,
+        steps: List[Dict],
+        data_matrix: Dict[str, Any],
+        env_vars: Dict[str, Any] = None,
+    ) -> Path:
         data_file = self.temp_dir / f"data_scenario_{self.scenario_id}_{self.run_id}.yaml"
         data = {
             "scenario_id": self.scenario_id,
@@ -85,20 +96,30 @@ class PytestDataDrivenEngine:
             "env_vars": env_vars or {},
             "steps": steps,
             "columns": data_matrix.get("columns", []),
-            "rows": data_matrix.get("rows", [])
+            "rows": data_matrix.get("rows", []),
         }
         with open(data_file, "w", encoding="utf-8") as f:
             yaml.dump(data, f, allow_unicode=True, default_flow_style=False)
         return data_file
 
-    def _generate_test_file(self, steps: List[Dict], data_matrix: Dict[str, Any], env_vars: Dict[str, Any] = None) -> Path:
+    def _generate_test_file(
+        self,
+        steps: List[Dict],
+        data_matrix: Dict[str, Any],
+        env_vars: Dict[str, Any] = None,
+    ) -> Path:
         test_file = self.temp_dir / f"test_scenario_{self.scenario_id}_{self.run_id}.py"
         test_code = self._generate_test_code(steps, data_matrix, env_vars)
         with open(test_file, "w", encoding="utf-8") as f:
             f.write(test_code)
         return test_file
 
-    def _generate_test_code(self, steps: List[Dict], data_matrix: Dict[str, Any], env_vars: Dict[str, Any] = None) -> str:
+    def _generate_test_code(
+        self,
+        steps: List[Dict],
+        data_matrix: Dict[str, Any],
+        env_vars: Dict[str, Any] = None,
+    ) -> str:
         columns = data_matrix.get("columns", [])
         steps_json = json.dumps(steps, ensure_ascii=False, indent=8)
         env_vars_json = json.dumps(env_vars or {}, ensure_ascii=False, indent=8)
@@ -128,7 +149,7 @@ COLUMNS = {json.dumps(columns)}
 def find_variables(text):
     if not isinstance(text, str):
         return []
-    return list(set(re.findall(r'\\{{(\\w+)\\}}', text)))
+    return list(set(re.findall(r'\\$\\{{(\\w+)\\}}', text)))
 
 
 def replace_variables_in_text(text, variables):
@@ -137,7 +158,7 @@ def replace_variables_in_text(text, variables):
     def replace_match(match):
         var_name = match.group(1)
         return str(variables.get(var_name, match.group(0)))
-    return re.sub(r'\\{{(\\w+)\\}}', replace_match, text)
+    return re.sub(r'\\$\\{{(\\w+)\\}}', replace_match, text)
 
 
 def replace_variables(obj, variables):
@@ -377,18 +398,26 @@ def pytest_addoption(parser):
         allure_results_dir_abs = str(self.allure_results_dir.absolute())
 
         import shutil
+
         shutil.rmtree(str(self.allure_results_dir), ignore_errors=True)
         self.allure_results_dir.mkdir(parents=True, exist_ok=True)
 
         python_executable = sys.executable
         cmd1 = [
-            python_executable, "-m", "pytest", str(test_file),
-            f"--data_file={data_file}", f"--alluredir={allure_results_dir_abs}",
-            "-v", "--tb=short", "--no-header", "-p", "no:warnings"
+            python_executable,
+            "-m",
+            "pytest",
+            str(test_file),
+            f"--data_file={data_file}",
+            f"--alluredir={allure_results_dir_abs}",
+            "-v",
+            "--tb=short",
+            "--no-header",
+            "-p",
+            "no:warnings",
         ]
 
-        result = subprocess.run(cmd1, capture_output=True, text=True,
-                                cwd=str(self.temp_dir), timeout=300)
+        result = subprocess.run(cmd1, capture_output=True, text=True, cwd=str(self.temp_dir), timeout=300)
         result_files = list(self.allure_results_dir.glob("*.json"))
 
         if len(result_files) == 0 and result.returncode != 0 and "No module named pytest" in result.stderr:
@@ -396,17 +425,39 @@ def pytest_addoption(parser):
             pytest_exe = python_dir / "Scripts" / "pytest.exe"
 
             if pytest_exe.exists():
-                cmd2 = [str(pytest_exe), str(test_file), f"--data_file={data_file}",
-                        f"--alluredir={allure_results_dir_abs}", "-v", "--tb=short", "--no-header", "-p", "no:warnings"]
-                result = subprocess.run(cmd2, capture_output=True, text=True,
-                                        cwd=str(self.temp_dir), timeout=300)
+                cmd2 = [
+                    str(pytest_exe),
+                    str(test_file),
+                    f"--data_file={data_file}",
+                    f"--alluredir={allure_results_dir_abs}",
+                    "-v",
+                    "--tb=short",
+                    "--no-header",
+                    "-p",
+                    "no:warnings",
+                ]
+                result = subprocess.run(
+                    cmd2,
+                    capture_output=True,
+                    text=True,
+                    cwd=str(self.temp_dir),
+                    timeout=300,
+                )
                 result_files = list(self.allure_results_dir.glob("*.json"))
 
             if len(result_files) == 0:
-                cmd3 = ["pytest", str(test_file), f"--data_file={data_file}",
-                        f"--alluredir={allure_results_dir_abs}", "-v", "--tb=short", "--no-header", "-p", "no:warnings"]
-                result = subprocess.run(cmd3, capture_output=True, text=True,
-                                        cwd=str(self.temp_dir))
+                cmd3 = [
+                    "pytest",
+                    str(test_file),
+                    f"--data_file={data_file}",
+                    f"--alluredir={allure_results_dir_abs}",
+                    "-v",
+                    "--tb=short",
+                    "--no-header",
+                    "-p",
+                    "no:warnings",
+                ]
+                result = subprocess.run(cmd3, capture_output=True, text=True, cwd=str(self.temp_dir))
                 result_files = list(self.allure_results_dir.glob("*.json"))
 
         passed = 0
@@ -426,12 +477,13 @@ def pytest_addoption(parser):
             "stdout": result.stdout,
             "stderr": result.stderr,
             "passed": passed,
-            "failed": failed
+            "failed": failed,
         }
 
     def _generate_allure_report(self) -> str:
         try:
             import shutil
+
             result_files = list(self.allure_results_dir.glob("*.json"))
             if not result_files:
                 return None
@@ -444,9 +496,17 @@ def pytest_addoption(parser):
                 shutil.copytree(str(old_report_history), str(new_results_history))
 
             cmd_result = subprocess.run(
-                ["allure", "generate", str(self.allure_results_dir.absolute()),
-                 "-o", str(self.report_dir.absolute()), "--clean"],
-                capture_output=True, text=True, timeout=60
+                [
+                    "allure",
+                    "generate",
+                    str(self.allure_results_dir.absolute()),
+                    "-o",
+                    str(self.report_dir.absolute()),
+                    "--clean",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
 
             if cmd_result.returncode == 0:
@@ -474,7 +534,13 @@ def pytest_addoption(parser):
             _logger.warning(f"清理临时文件失败: {e}")
 
 
-def run_scenario_pytest(scenario_id: int, scenario_name: str, steps: List[Dict], data_matrix: Dict[str, Any], env_vars: Dict[str, Any] = None) -> Dict[str, Any]:
+def run_scenario_pytest(
+    scenario_id: int,
+    scenario_name: str,
+    steps: List[Dict],
+    data_matrix: Dict[str, Any],
+    env_vars: Dict[str, Any] = None,
+) -> Dict[str, Any]:
     """执行数据驱动测试的入口函数"""
     engine = PytestDataDrivenEngine(scenario_id, scenario_name)
     result = engine.execute(steps, data_matrix, env_vars)

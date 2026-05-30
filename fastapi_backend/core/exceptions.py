@@ -1,6 +1,7 @@
 """
 统一异常处理模块 - 业务异常类定义
 """
+
 from typing import Any, Optional
 
 
@@ -12,7 +13,7 @@ class BusinessException(Exception):
         detail: str,
         code: Optional[str] = None,
         status_code: int = 400,
-        extra: Optional[dict[str, Any]] = None
+        extra: Optional[dict[str, Any]] = None,
     ):
         self.detail = detail
         self.code = code

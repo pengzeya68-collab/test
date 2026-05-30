@@ -18,6 +18,7 @@ class AIEvaluationResponse(BaseModel):
 
 class UserInterviewStatistics(BaseModel):
     """用户面试统计信息"""
+
     # 基础统计
     total_submissions: int = Field(..., description="总提交数")
     completed_submissions: int = Field(..., description="已完成评估的提交数")
@@ -39,19 +40,19 @@ class UserInterviewStatistics(BaseModel):
     # 难度分布
     difficulty_distribution: Dict[str, int] = Field(
         default_factory=dict,
-        description="各难度题目提交分布：{'easy': 5, 'medium': 3, 'hard': 1}"
+        description="各难度题目提交分布：{'easy': 5, 'medium': 3, 'hard': 1}",
     )
 
     # 最近7天每日提交量（用于图表）
     daily_submissions_last_7_days: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="最近7天每日提交量，格式：[{'date': '2024-01-01', 'count': 3}, ...]"
+        description="最近7天每日提交量，格式：[{'date': '2024-01-01', 'count': 3}, ...]",
     )
 
     # 常见弱项（按标签统计）
     weak_tags: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="弱项标签统计，格式：[{'tag': '动态规划', 'count': 5, 'avg_score': 65.5}, ...]"
+        description="弱项标签统计，格式：[{'tag': '动态规划', 'count': 5, 'avg_score': 65.5}, ...]",
     )
 
     # 最近一次提交时间

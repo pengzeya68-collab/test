@@ -1,9 +1,9 @@
-"""Backup management – migrated from Flask backend/api/backup.py."""
+"""Backup management – PostgreSQL pg_dump based backups."""
+
 from __future__ import annotations
 
 import os
-import shutil
-import sqlite3
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from fastapi_backend.deps.auth import require_admin
 from fastapi_backend.models.models import User
+from fastapi_backend.core.config import settings
 
 router = APIRouter(prefix="/api/v1/admin/backups", tags=["backup-management"])
 
@@ -21,8 +22,24 @@ MAX_BACKUPS = 10
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _db_path() -> str:
-    return str(PROJECT_ROOT / "instance" / "testmaster.db")
+def _pg_connection_params() -> dict:
+    url = settings.DATABASE_URL
+    if url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql+asyncpg://", "postgresql://", 1)
+    elif url.startswith("postgresql://"):
+        pass
+    else:
+        return {}
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    return {
+        "host": parsed.hostname or "localhost",
+        "port": str(parsed.port or 5432),
+        "dbname": parsed.path.lstrip("/"),
+        "user": parsed.username or "testmaster",
+        "password": parsed.password or "",
+    }
 
 
 def _list_backups() -> list[dict]:
@@ -30,32 +47,65 @@ def _list_backups() -> list[dict]:
     if not BACKUP_DIR.exists():
         return []
     for f in BACKUP_DIR.iterdir():
-        if f.is_file() and (f.name.startswith("testmaster_backup_") or f.name.startswith("testmaster_emergency_")) and f.suffix == ".db":
+        if f.is_file() and f.name.startswith("testmaster_backup_") and f.suffix == ".sql":
             stat = f.stat()
-            backups.append({
-                "name": f.name,
-                "size": round(stat.st_size / (1024 * 1024), 2),
-                "time": int(stat.st_mtime * 1000),
-            })
+            backups.append(
+                {
+                    "name": f.name,
+                    "size": round(stat.st_size / (1024 * 1024), 2),
+                    "time": int(stat.st_mtime * 1000),
+                }
+            )
     backups.sort(key=lambda x: x["time"], reverse=True)
     return backups
 
 
 def _create_backup() -> tuple[str | None, str | None]:
-    src = _db_path()
-    if not os.path.exists(src):
-        return None, "数据库文件不存在"
+    params = _pg_connection_params()
+    if not params:
+        return None, "数据库不是 PostgreSQL，无法使用 pg_dump"
+
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    name = f"testmaster_backup_{ts}.db"
+    name = f"testmaster_backup_{ts}.sql"
     dst = str(BACKUP_DIR / name)
-    source = None
-    backup_conn = None
+
+    env = os.environ.copy()
+    env["PGPASSWORD"] = params["password"]
+
+    cmd = [
+        "pg_dump",
+        "-h",
+        params["host"],
+        "-p",
+        params["port"],
+        "-U",
+        params["user"],
+        "-d",
+        params["dbname"],
+        "--no-password",
+        "--format=plain",
+        "--no-owner",
+    ]
+
     try:
-        source = sqlite3.connect(src)
-        backup_conn = sqlite3.connect(dst)
-        with backup_conn:
-            source.backup(backup_conn)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=120,
+        )
+        if result.returncode != 0:
+            return None, f"pg_dump 失败: {result.stderr[:200]}"
+
+        with open(dst, "w", encoding="utf-8") as f:
+            f.write(result.stdout)
+
         return name, None
+    except FileNotFoundError:
+        return None, "pg_dump 命令未找到，请确保 PostgreSQL 客户端工具已安装"
+    except subprocess.TimeoutExpired:
+        return None, "pg_dump 超时"
     except Exception as e:
         if os.path.exists(dst):
             try:
@@ -63,11 +113,6 @@ def _create_backup() -> tuple[str | None, str | None]:
             except OSError:
                 pass
         return None, str(e)
-    finally:
-        if source:
-            source.close()
-        if backup_conn:
-            backup_conn.close()
 
 
 def _delete_backup(name: str) -> tuple[bool, str | None]:
@@ -134,15 +179,50 @@ async def restore_backup(
     if not backup_path.exists():
         raise HTTPException(status_code=404, detail="备份文件不存在")
 
-    src_db = _db_path()
-    # Create emergency backup before restore
-    if os.path.exists(src_db):
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        shutil.copy2(src_db, str(BACKUP_DIR / f"testmaster_emergency_{ts}.db"))
+    params = _pg_connection_params()
+    if not params:
+        raise HTTPException(status_code=500, detail="数据库不是 PostgreSQL，无法恢复")
+
+    _create_backup()
+
+    env = os.environ.copy()
+    env["PGPASSWORD"] = params["password"]
+
+    cmd = [
+        "psql",
+        "-h",
+        params["host"],
+        "-p",
+        params["port"],
+        "-U",
+        params["user"],
+        "-d",
+        params["dbname"],
+        "--no-password",
+        "-f",
+        str(backup_path),
+    ]
 
     try:
-        shutil.copy2(str(backup_path), src_db)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=300,
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"恢复失败: {result.stderr[:200]}")
         return {"message": "备份恢复成功"}
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=500,
+            detail="psql 命令未找到，请确保 PostgreSQL 客户端工具已安装",
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="恢复超时")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"恢复失败: {e}")
 

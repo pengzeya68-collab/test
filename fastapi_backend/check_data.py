@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """检查数据库中的课程内容和习题"""
+
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 

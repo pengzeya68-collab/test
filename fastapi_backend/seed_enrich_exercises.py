@@ -2,6 +2,7 @@
 TestMaster 习题扩充脚本
 重点补充软件测试基础、Python、MySQL 三大方向的习题
 """
+
 import asyncio
 import sys
 import os
@@ -69,7 +70,7 @@ NEW_EXERCISES = {
         },
         {
             "title": "测试驱动开发(TDD)的基本流程",
-            "description": "测试驱动开发(TDD)遵循\'红-绿-重构\'的循环。以下哪个是TDD的正确流程？",
+            "description": "测试驱动开发(TDD)遵循'红-绿-重构'的循环。以下哪个是TDD的正确流程？",
             "instructions": "选择TDD的正确流程顺序",
             "solution": "C",
             "difficulty": "intermediate",
@@ -121,7 +122,7 @@ NEW_EXERCISES = {
         },
         {
             "title": "测试的七大原则 - 穷尽测试是不可能的",
-            "description": "ISTQB定义了软件测试的七大原则。\'穷尽测试是不可能的\'是其中一条。以下哪种做法最能体现这一原则？",
+            "description": "ISTQB定义了软件测试的七大原则。'穷尽测试是不可能的'是其中一条。以下哪种做法最能体现这一原则？",
             "instructions": "选择最能体现此原则的做法",
             "solution": "C",
             "difficulty": "intermediate",
@@ -172,7 +173,6 @@ NEW_EXERCISES = {
             "exercise_type": "choice",
         },
     ],
-
     # ============================================================
     # SQL数据库基础 (原本4题 → 新增12题 = 合计16题)
     # ============================================================
@@ -354,7 +354,6 @@ NEW_EXERCISES = {
             "test_cases": None,
         },
     ],
-
     # ============================================================
     # Python编程基础 (原本5题 → 新增11题 = 合计16题)
     # ============================================================
@@ -514,7 +513,6 @@ NEW_EXERCISES = {
             "code_template": "from functools import reduce\n\ndef process_numbers(numbers):\n    # 请在此处编写代码\n    pass",
         },
     ],
-
     # ============================================================
     # Linux基础命令 (原本3题 → 新增5题 = 合计8题)
     # ============================================================
@@ -588,7 +586,6 @@ NEW_EXERCISES = {
             "exercise_type": "choice",
         },
     ],
-
     # ============================================================
     # 计算机基础与网络知识 (原本3题 → 新增5题 = 合计8题)
     # ============================================================
@@ -659,7 +656,6 @@ NEW_EXERCISES = {
             "exercise_type": "choice",
         },
     ],
-
     # ============================================================
     # 接口测试基础 (原本4题 → 新增4题 = 合计8题)
     # ============================================================
@@ -718,7 +714,6 @@ NEW_EXERCISES = {
             "exercise_type": "choice",
         },
     ],
-
     # ============================================================
     # 测试用例设计方法 (原本4题 → 新增4题 = 合计8题)
     # ============================================================
@@ -776,7 +771,6 @@ NEW_EXERCISES = {
             "exercise_type": "choice",
         },
     ],
-
     # ============================================================
     # 其他路径各补充2-3题
     # ============================================================
@@ -808,7 +802,6 @@ NEW_EXERCISES = {
             "exercise_type": "choice",
         },
     ],
-
     "UI自动化测试 - Selenium": [
         {
             "title": "Selenium处理Alert弹窗",
@@ -852,7 +845,6 @@ NEW_EXERCISES = {
             "code_template": "# 编写JS滚动代码\ndriver.",
         },
     ],
-
     "接口自动化测试 - Requests+Pytest": [
         {
             "title": "Pytest conftest.py共享fixture",
@@ -896,7 +888,6 @@ NEW_EXERCISES = {
             "code_template": "import pytest\nimport requests\n\ndef test_timeout():\n    # 请编写代码\n    pass",
         },
     ],
-
     "性能测试 - JMeter与Locust": [
         {
             "title": "性能测试中的瓶颈分析方法",
@@ -925,7 +916,6 @@ NEW_EXERCISES = {
             "exercise_type": "choice",
         },
     ],
-
     "安全测试基础": [
         {
             "title": "文件上传漏洞测试",
@@ -982,7 +972,7 @@ async def enrich_exercises():
             for ex_data in exercises_data:
                 ex_stmt = select(Exercise).where(
                     Exercise.title == ex_data["title"],
-                    Exercise.learning_path_id == path.id
+                    Exercise.learning_path_id == path.id,
                 )
                 ex_result = await session.execute(ex_stmt)
                 if ex_result.scalar_one_or_none():

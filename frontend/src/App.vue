@@ -85,13 +85,13 @@
         </div>
       </aside>
       <main class="main-content-with-sidebar">
-        <router-view :key="$route.fullPath" />
+        <router-view :key="$route.path" />
       </main>
     </div>
 
     <!-- 未登录主内容 -->
     <main class="main-content" v-if="!isLoggedIn || isAuthPage">
-      <router-view :key="$route.fullPath" />
+      <router-view :key="$route.path" />
     </main>
 
     <!-- 页脚 -->
@@ -161,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { User, ArrowDown, Brush, Calendar } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
@@ -270,14 +270,6 @@ onMounted(() => {
   }
 })
 
-watch(
-  () => route.path,
-  () => {
-    if (!isAuthPage.value && userStore.isLoggedIn && !userStore.assessmentCompleted) {
-      userStore.checkAssessmentStatus()
-    }
-  }
-)
 
 const fetchCheckinStatus = async () => {
   try {

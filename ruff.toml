@@ -1,0 +1,14 @@
+line-length = 120
+
+exclude = [
+    "fastapi_backend/alembic/",
+    "fastapi_backend/autotest_data/",
+    "fastapi_backend/verify_exercises.py",
+]
+
+[lint]
+ignore = ["E402", "E721", "E722", "E741", "F821"]
+
+[lint.per-file-ignores]
+"fastapi_backend/tests/**" = ["F401", "F811"]
+"fastapi_backend/schemas/**" = ["F401"]

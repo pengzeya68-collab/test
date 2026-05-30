@@ -3,6 +3,7 @@
 
 提供预置的断言模板，覆盖最常见的测试场景
 """
+
 from fastapi import APIRouter
 
 router = APIRouter(prefix="/api/v1/assert-templates", tags=["断言模板"])
@@ -39,7 +40,13 @@ assert response.status_code == 200""",
         "category": "响应结构",
         "name": "响应为合法 JSON",
         "description": "验证响应体是合法的 JSON 格式",
-        "rules": [{"type": "content_type", "operator": "contains", "expected": "application/json"}],
+        "rules": [
+            {
+                "type": "content_type",
+                "operator": "contains",
+                "expected": "application/json",
+            }
+        ],
         "code_snippet": """import json
 data = response.json()  # 如果抛出异常则断言失败""",
     },
@@ -48,7 +55,13 @@ data = response.json()  # 如果抛出异常则断言失败""",
         "category": "响应结构",
         "name": "字段存在性检查",
         "description": "验证响应 JSON 中包含指定字段（如 id, code, message）",
-        "rules": [{"type": "json_field_exists", "operator": "contains", "expected": "id,code,message"}],
+        "rules": [
+            {
+                "type": "json_field_exists",
+                "operator": "contains",
+                "expected": "id,code,message",
+            }
+        ],
         "code_snippet": """data = response.json()
 assert "id" in data
 assert "code" in data
@@ -105,7 +118,11 @@ assert len(data["list"]) == 10  # page_size""",
         "name": "分页字段完整性",
         "description": "验证分页接口返回 total/page/page_size 等标准字段",
         "rules": [
-            {"type": "json_field_exists", "operator": "contains", "expected": "total,page,page_size"},
+            {
+                "type": "json_field_exists",
+                "operator": "contains",
+                "expected": "total,page,page_size",
+            },
             {"type": "json_field_type", "operator": "eq", "expected": "int"},
         ],
         "code_snippet": """data = response.json()
@@ -119,7 +136,13 @@ assert isinstance(data["total"], int)""",
         "category": "业务逻辑",
         "name": "错误响应格式检查",
         "description": "验证失败时返回标准的错误信息（code/message）",
-        "rules": [{"type": "json_field_exists", "operator": "contains", "expected": "code,message"}],
+        "rules": [
+            {
+                "type": "json_field_exists",
+                "operator": "contains",
+                "expected": "code,message",
+            }
+        ],
         "code_snippet": """data = response.json()
 assert "code" in data, "缺少错误码"
 assert "message" in data, "缺少错误信息"
@@ -153,8 +176,16 @@ assert data["status"] in valid_status""",
         "description": "综合验证：状态码200 + JSON合法 + 字段存在 + 响应时间",
         "rules": [
             {"type": "status_code", "operator": "eq", "expected": 200},
-            {"type": "content_type", "operator": "contains", "expected": "application/json"},
-            {"type": "json_field_exists", "operator": "contains", "expected": "code,message"},
+            {
+                "type": "content_type",
+                "operator": "contains",
+                "expected": "application/json",
+            },
+            {
+                "type": "json_field_exists",
+                "operator": "contains",
+                "expected": "code,message",
+            },
             {"type": "response_time", "operator": "lt", "expected": 2000},
         ],
         "code_snippet": """# 完整测试断言

@@ -1,6 +1,7 @@
 """
 接口用例 Schema
 """
+
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
@@ -8,6 +9,7 @@ from typing import Optional
 
 class ApiCaseBase(BaseModel):
     """用例基础信息"""
+
     group_id: Optional[int] = None
     name: str
     method: str
@@ -21,11 +23,13 @@ class ApiCaseBase(BaseModel):
 
 class ApiCaseCreate(ApiCaseBase):
     """创建用例"""
+
     pass
 
 
 class ApiCaseUpdate(ApiCaseBase):
     """更新用例"""
+
     group_id: Optional[int] = None
     name: Optional[str] = None
     method: Optional[str] = None
@@ -34,6 +38,7 @@ class ApiCaseUpdate(ApiCaseBase):
 
 class ApiCaseResponse(ApiCaseBase):
     """用例响应"""
+
     id: int
     created_at: datetime
     updated_at: datetime
@@ -44,6 +49,7 @@ class ApiCaseResponse(ApiCaseBase):
 
 class ApiCaseListResponse(BaseModel):
     """用例列表分页响应"""
+
     total: int
     items: list[ApiCaseResponse]
     page: int

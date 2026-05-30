@@ -213,7 +213,7 @@ EXERCISES_2["缺陷管理与追踪"] = [
     },
     {
         "title": "缺陷报告-期望与实际",
-        "description": "缺陷报告中\'期望结果\'和\'实际结果\'的作用是什么？\n\nA. 期望结果描述开发人员预期修复时间，实际结果描述修复花费时间\nB. 期望结果描述正确的软件行为，实际结果描述观察到的错误行为\nC. 期望结果描述测试人员的预估，实际结果描述管理层的评估\nD. 两者没有实际意义，可以省略",
+        "description": "缺陷报告中'期望结果'和'实际结果'的作用是什么？\n\nA. 期望结果描述开发人员预期修复时间，实际结果描述修复花费时间\nB. 期望结果描述正确的软件行为，实际结果描述观察到的错误行为\nC. 期望结果描述测试人员的预估，实际结果描述管理层的评估\nD. 两者没有实际意义，可以省略",
         "instructions": "请选择正确的答案",
         "solution": "B",
         "difficulty": "beginner",
@@ -451,7 +451,7 @@ EXERCISES_2["缺陷管理与追踪"] = [
     },
     {
         "title": "5Why分析法",
-        "description": "5Why分析法是一种根因分析方法，通过连续追问\'为什么\'来追溯问题的根本原因，通常追问5次即可找到根因。",
+        "description": "5Why分析法是一种根因分析方法，通过连续追问'为什么'来追溯问题的根本原因，通常追问5次即可找到根因。",
         "instructions": "请判断以下说法是否正确（A-正确，B-错误）",
         "solution": "A",
         "difficulty": "beginner",
@@ -703,7 +703,7 @@ EXERCISES_2["缺陷管理与追踪"] = [
     },
     {
         "title": "缺陷评审决策",
-        "description": "在缺陷评审中，评审团队可以将缺陷标记为\'不予修复(Won't Fix)\'如果该缺陷的影响极小且修复成本远大于影响。",
+        "description": "在缺陷评审中，评审团队可以将缺陷标记为'不予修复(Won't Fix)'如果该缺陷的影响极小且修复成本远大于影响。",
         "instructions": "请判断以下说法是否正确（A-正确，B-错误）",
         "solution": "A",
         "difficulty": "beginner",
@@ -787,7 +787,7 @@ EXERCISES_2["缺陷管理与追踪"] = [
     },
     {
         "title": "缺陷描述规范",
-        "description": "缺陷描述中应该包含主观判断和个人情绪，例如\'这个功能设计得太差劲了\'。",
+        "description": "缺陷描述中应该包含主观判断和个人情绪，例如'这个功能设计得太差劲了'。",
         "instructions": "请判断以下说法是否正确（A-正确，B-错误）",
         "solution": "B",
         "difficulty": "beginner",
@@ -927,7 +927,7 @@ EXERCISES_2["缺陷管理与追踪"] = [
     },
     {
         "title": "缺陷报告模板",
-        "description": "缺陷标题\'登录功能有问题\'比\'Chrome浏览器下，输入正确用户名和密码点击登录按钮后页面无响应\'更有利于开发人员快速定位问题。",
+        "description": "缺陷标题'登录功能有问题'比'Chrome浏览器下，输入正确用户名和密码点击登录按钮后页面无响应'更有利于开发人员快速定位问题。",
         "instructions": "请判断以下说法是否正确（A-正确，B-错误）",
         "solution": "B",
         "difficulty": "beginner",
@@ -1039,7 +1039,7 @@ EXERCISES_2["缺陷管理与追踪"] = [
     },
     {
         "title": "非缺陷处理",
-        "description": "当测试人员提交的\'缺陷\'经确认后发现是需求理解有误而非实际Bug时，应将其标记为\'不是问题\'或\'设计如此\'并关闭。",
+        "description": "当测试人员提交的'缺陷'经确认后发现是需求理解有误而非实际Bug时，应将其标记为'不是问题'或'设计如此'并关闭。",
         "instructions": "请判断以下说法是否正确（A-正确，B-错误）",
         "solution": "A",
         "difficulty": "beginner",
@@ -1445,7 +1445,7 @@ EXERCISES_2["缺陷管理与追踪"] = [
     },
     {
         "title": "缺陷收敛图解读",
-        "description": "在缺陷收敛图中，\'开放缺陷数\'和\'累计发现缺陷数\'两条曲线的开口越来越大，说明什么？\n\nA. 项目即将完美收工\nB. 缺陷发现速度大于修复速度，存在风险\nC. 测试团队工作不饱和\nD. 所有缺陷都已修复",
+        "description": "在缺陷收敛图中，'开放缺陷数'和'累计发现缺陷数'两条曲线的开口越来越大，说明什么？\n\nA. 项目即将完美收工\nB. 缺陷发现速度大于修复速度，存在风险\nC. 测试团队工作不饱和\nD. 所有缺陷都已修复",
         "instructions": "请选择正确的答案",
         "solution": "B",
         "difficulty": "beginner",
@@ -2064,7 +2064,7 @@ EXERCISES_2["接口测试基础"] = [
     },
     {
         "title": "响应断言-JSON字段",
-        "description": "对JSON响应体中的特定字段进行断言属于接口测试的核心验证。以下哪个是合理的JSON断言？\n\nA. 断言状态码为200\nB. 断言 response.body.code == 0 且 response.body.data.name == \'admin\'\nC. 断言网络延迟小于100ms\nD. 断言日志文件存在",
+        "description": "对JSON响应体中的特定字段进行断言属于接口测试的核心验证。以下哪个是合理的JSON断言？\n\nA. 断言状态码为200\nB. 断言 response.body.code == 0 且 response.body.data.name == 'admin'\nC. 断言网络延迟小于100ms\nD. 断言日志文件存在",
         "instructions": "请选择正确的答案",
         "solution": "B",
         "difficulty": "intermediate",
@@ -4814,7 +4814,7 @@ EXERCISES_2["UI自动化测试 - Selenium"] = [
     },
     {
         "title": "ID定位策略",
-        "description": "在Selenium中，通过ID定位元素的方法是什么？\n\nA. driver.find_element_by_name()\nB. driver.find_element(By.ID, \'value\')\nC. driver.find_element_by_id(\'value\')\nD. driver.find_element_by_xpath()",
+        "description": "在Selenium中，通过ID定位元素的方法是什么？\n\nA. driver.find_element_by_name()\nB. driver.find_element(By.ID, 'value')\nC. driver.find_element_by_id('value')\nD. driver.find_element_by_xpath()",
         "instructions": "请选择正确的答案",
         "solution": "B",
         "difficulty": "intermediate",
@@ -4898,7 +4898,7 @@ EXERCISES_2["UI自动化测试 - Selenium"] = [
     },
     {
         "title": "XPath相对路径",
-        "description": "相对路径XPath使用 // 开头，如 //div[@class='content']。以下哪个XPath能定位到包含文本\'登录\'的按钮？\n\nA. //button[text()='登录']\nB. //button[@text='登录']\nC. //button{text='登录'}\nD. //button(class='登录')",
+        "description": "相对路径XPath使用 // 开头，如 //div[@class='content']。以下哪个XPath能定位到包含文本'登录'的按钮？\n\nA. //button[text()='登录']\nB. //button[@text='登录']\nC. //button{text='登录'}\nD. //button(class='登录')",
         "instructions": "请选择正确的答案",
         "solution": "A",
         "difficulty": "intermediate",
@@ -4926,7 +4926,7 @@ EXERCISES_2["UI自动化测试 - Selenium"] = [
     },
     {
         "title": "Partial Link Text",
-        "description": "页面中有一个超链接文本为\'查看更多产品详情\'，使用partial_link_text=\'产品\'能定位到该元素吗？\n\nA. 不能，必须使用完整文本\nB. 可以，因为\'产品\'是链接文本的一部分\nC. 可以，但只会返回null\nD. 取决于浏览器版本",
+        "description": "页面中有一个超链接文本为'查看更多产品详情'，使用partial_link_text='产品'能定位到该元素吗？\n\nA. 不能，必须使用完整文本\nB. 可以，因为'产品'是链接文本的一部分\nC. 可以，但只会返回null\nD. 取决于浏览器版本",
         "instructions": "请选择正确的答案",
         "solution": "B",
         "difficulty": "intermediate",
@@ -4940,7 +4940,7 @@ EXERCISES_2["UI自动化测试 - Selenium"] = [
     },
     {
         "title": "Tag Name定位",
-        "description": "Tag Name定位策略通过HTML标签名来定位元素，例如 find_element(By.TAG_NAME, \'input\') 会找到页面上所有的input元素中的第一个。",
+        "description": "Tag Name定位策略通过HTML标签名来定位元素，例如 find_element(By.TAG_NAME, 'input') 会找到页面上所有的input元素中的第一个。",
         "instructions": "请判断以下说法是否正确（A-正确，B-错误）",
         "solution": "A",
         "difficulty": "intermediate",
@@ -5010,7 +5010,7 @@ EXERCISES_2["UI自动化测试 - Selenium"] = [
     },
     {
         "title": "Alert弹窗处理",
-        "description": "在Selenium中处理JavaScript Alert弹窗，以下哪个方法用于点击弹窗中的\'确定\'按钮？\n\nA. driver.switch_to.alert.dismiss()\nB. driver.switch_to.alert.accept()\nC. driver.switch_to.alert.send_keys()\nD. driver.switch_to.alert.text()",
+        "description": "在Selenium中处理JavaScript Alert弹窗，以下哪个方法用于点击弹窗中的'确定'按钮？\n\nA. driver.switch_to.alert.dismiss()\nB. driver.switch_to.alert.accept()\nC. driver.switch_to.alert.send_keys()\nD. driver.switch_to.alert.text()",
         "instructions": "请选择正确的答案",
         "solution": "B",
         "difficulty": "intermediate",
@@ -8166,7 +8166,7 @@ EXERCISES_2["移动端测试基础"] = [
     },
     {
         "title": "UIAutomator2定位",
-        "description": "Android上Appium支持UIAutomator2选择器，可以用属性组合定位，如 driver.find_element_by_android_uiautomator('text(\'登录\')')。",
+        "description": "Android上Appium支持UIAutomator2选择器，可以用属性组合定位，如 driver.find_element_by_android_uiautomator('text('登录')')。",
         "instructions": "请判断以下说法是否正确（A-正确，B-错误）",
         "solution": "A",
         "difficulty": "intermediate",
@@ -8180,7 +8180,7 @@ EXERCISES_2["移动端测试基础"] = [
     },
     {
         "title": "iOS Predicate定位",
-        "description": "iOS上Appium支持NSPredicate进行元素定位，可以实现更复杂的条件筛选，如 driver.find_element_by_ios_predicate('label == \'登录\'')。",
+        "description": "iOS上Appium支持NSPredicate进行元素定位，可以实现更复杂的条件筛选，如 driver.find_element_by_ios_predicate('label == '登录'')。",
         "instructions": "请判断以下说法是否正确（A-正确，B-错误）",
         "solution": "A",
         "difficulty": "intermediate",

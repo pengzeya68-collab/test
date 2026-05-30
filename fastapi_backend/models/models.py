@@ -1,14 +1,27 @@
 """
 数据模型 - 与实际数据库表名和列名匹配
 """
+
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Float, Index, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    ForeignKey,
+    Boolean,
+    Float,
+    Index,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from fastapi_backend.core.database import Base
 
 
 class User(Base):
     """Frontend user model mapped to the legacy Flask users table."""
+
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -16,13 +29,22 @@ class User(Base):
     email = Column(String(120), unique=True, nullable=False)
     phone = Column(String(20), unique=True)
     password_hash = Column(String(128), nullable=False)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     is_super_admin = Column(Boolean, default=False)
     # RBAC: 关联角色（为 NULL 时回退到 is_admin 判断）
-    role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True, comment="关联角色ID")
+    role_id = Column(
+        Integer,
+        ForeignKey("roles.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="关联角色ID",
+    )
     level = Column(Integer, default=1)
     score = Column(Integer, default=0)
     assessment_score = Column(Integer, nullable=True)
@@ -55,22 +77,29 @@ class User(Base):
 
 class ApiGroup(Base):
     """接口分组表 - 支持树形层级结构"""
+
     __tablename__ = "auto_test_groups"
 
     id = Column(Integer, primary_key=True, index=True, comment="分组ID")
     user_id = Column(Integer, nullable=True, comment="用户ID")
     name = Column(String(100), nullable=False, comment="分组名称")
     description = Column(String(500), nullable=True, comment="分组描述")
-    parent_id = Column(Integer, ForeignKey("auto_test_groups.id"), nullable=True, comment="父分组ID，顶级分组为NULL")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+    parent_id = Column(
+        Integer,
+        ForeignKey("auto_test_groups.id"),
+        nullable=True,
+        comment="父分组ID，顶级分组为NULL",
+    )
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     # 自关联关系
-    children = relationship(
-        "ApiGroup",
-        backref="parent",
-        remote_side=[id]
-    )
+    children = relationship("ApiGroup", backref="parent", remote_side=[id])
 
     def __repr__(self):
         return f"<ApiGroup {self.name}>"
@@ -78,11 +107,17 @@ class ApiGroup(Base):
 
 class ApiCase(Base):
     """接口用例表"""
+
     __tablename__ = "interface_test_cases"
 
     id = Column(Integer, primary_key=True, index=True, comment="用例ID")
     user_id = Column(Integer, nullable=True, comment="用户ID")
-    folder_id = Column(Integer, ForeignKey("interface_test_folders.id"), nullable=True, comment="所属目录ID")
+    folder_id = Column(
+        Integer,
+        ForeignKey("interface_test_folders.id"),
+        nullable=True,
+        comment="所属目录ID",
+    )
     name = Column(String(200), nullable=False, comment="用例名称")
     description = Column(Text, nullable=True, comment="描述")
     url = Column(String(2000), nullable=False, comment="接口地址")
@@ -91,8 +126,13 @@ class ApiCase(Base):
     body = Column(Text, nullable=True, comment="请求体 JSON/表单格式")
     body_type = Column(String(20), default="json", comment="请求体类型: json/form/text")
     is_public = Column(Boolean, default=False, comment="是否公开")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     # 关联目录
     folder = relationship("TestFolder", backref="cases")
@@ -103,18 +143,25 @@ class ApiCase(Base):
 
 class TestFolder(Base):
     """接口测试文件夹表"""
+
     __tablename__ = "interface_test_folders"
 
     id = Column(Integer, primary_key=True, index=True, comment="目录ID")
     user_id = Column(Integer, nullable=True, comment="用户ID")
     name = Column(String(100), nullable=False, comment="目录名称")
     parent_id = Column(Integer, nullable=True, comment="父目录ID")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
 
 class Environment(Base):
     """测试环境表"""
+
     __tablename__ = "interface_test_environments"
 
     id = Column(Integer, primary_key=True, index=True, comment="环境ID")
@@ -123,8 +170,13 @@ class Environment(Base):
     base_url = Column(String(500), nullable=True, comment="基础URL")
     variables = Column(Text, nullable=True, comment="环境变量 JSON 格式")
     is_default = Column(Boolean, default=False, comment="是否默认环境")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     def __repr__(self):
         return f"<Environment {self.name}>"
@@ -132,6 +184,7 @@ class Environment(Base):
 
 class TestPlan(Base):
     """测试计划表"""
+
     __tablename__ = "interface_test_plans"
 
     id = Column(Integer, primary_key=True, index=True, comment="计划ID")
@@ -139,9 +192,19 @@ class TestPlan(Base):
     name = Column(String(200), nullable=False, comment="计划名称")
     description = Column(Text, nullable=True, comment="计划描述")
     case_ids = Column(Text, nullable=False, comment="选中的用例ID JSON 数组")
-    environment_id = Column(Integer, ForeignKey("interface_test_environments.id"), nullable=True, comment="测试环境ID")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+    environment_id = Column(
+        Integer,
+        ForeignKey("interface_test_environments.id"),
+        nullable=True,
+        comment="测试环境ID",
+    )
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     def __repr__(self):
         return f"<TestPlan {self.name}>"
@@ -149,17 +212,23 @@ class TestPlan(Base):
 
 class TestReport(Base):
     """测试报告表"""
+
     __tablename__ = "interface_test_reports"
 
     id = Column(Integer, primary_key=True, index=True, comment="报告ID")
-    plan_id = Column(Integer, ForeignKey("interface_test_plans.id"), nullable=True, comment="所属计划ID")
+    plan_id = Column(
+        Integer,
+        ForeignKey("interface_test_plans.id"),
+        nullable=True,
+        comment="所属计划ID",
+    )
     plan_name = Column(String(200), nullable=True, comment="计划名称快照")
     total_count = Column(Integer, default=0, comment="总用例数")
     success_count = Column(Integer, default=0, comment="成功数")
     failed_count = Column(Integer, default=0, comment="失败数")
     total_time = Column(Integer, default=0, comment="总耗时 毫秒")
     status = Column(String(20), default="pending", comment="状态: pending/running/completed/failed")
-    executed_at = Column(DateTime, default=datetime.now(timezone.utc), comment="执行时间")
+    executed_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="执行时间")
 
     # 关联
     results = relationship("TestReportResult", backref="report", cascade="all, delete-orphan")
@@ -170,11 +239,22 @@ class TestReport(Base):
 
 class TestReportResult(Base):
     """测试结果表 - 单个用例执行结果"""
+
     __tablename__ = "interface_test_report_results"
 
     id = Column(Integer, primary_key=True, index=True, comment="结果ID")
-    report_id = Column(Integer, ForeignKey("interface_test_reports.id"), nullable=False, comment="所属报告ID")
-    case_id = Column(Integer, ForeignKey("interface_test_cases.id"), nullable=True, comment="执行用例ID")
+    report_id = Column(
+        Integer,
+        ForeignKey("interface_test_reports.id"),
+        nullable=False,
+        comment="所属报告ID",
+    )
+    case_id = Column(
+        Integer,
+        ForeignKey("interface_test_cases.id"),
+        nullable=True,
+        comment="执行用例ID",
+    )
     case_name = Column(String(200), nullable=True, comment="用例名称快照")
     method = Column(String(10), nullable=True, comment="请求方法")
     url = Column(String(2000), nullable=True, comment="请求URL")
@@ -186,7 +266,7 @@ class TestReportResult(Base):
     request_body = Column(Text, nullable=True, comment="请求体")
     response = Column(Text, nullable=True, comment="响应体")
     response_headers = Column(Text, nullable=True, comment="响应头 JSON")
-    executed_at = Column(DateTime, default=datetime.now(timezone.utc), comment="执行时间")
+    executed_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="执行时间")
 
     def __repr__(self):
         return f"<TestReportResult {self.case_name} {self.status_code}>"
@@ -194,6 +274,7 @@ class TestReportResult(Base):
 
 class InterviewQuestion(Base):
     """AI模拟面试题目表 - 兼容Flask旧字段和FastAPI新字段"""
+
     __tablename__ = "interview_questions"
 
     id = Column(Integer, primary_key=True, index=True, comment="题目ID")
@@ -218,8 +299,13 @@ class InterviewQuestion(Base):
     reference_solution = Column(Text, nullable=True, comment="参考答案")
     test_cases = Column(Text, nullable=True, default="", comment="测试用例 JSON 格式")
     is_published = Column(Boolean, default=True, comment="是否发布")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     def __repr__(self):
         return f"<InterviewQuestion {self.title} ({self.difficulty})>"
@@ -227,6 +313,7 @@ class InterviewQuestion(Base):
 
 class InterviewSession(Base):
     """AI模拟面试会话表 - 兼容Flask旧字段和FastAPI新字段"""
+
     __tablename__ = "interview_sessions"
 
     id = Column(Integer, primary_key=True, index=True, comment="会话ID")
@@ -238,27 +325,43 @@ class InterviewSession(Base):
     interview_type = Column(String(50), nullable=True, comment="面试类型（旧字段）")
     total_score = Column(Integer, nullable=True, comment="总分（旧字段）")
     user_score = Column(Integer, nullable=True, comment="用户得分（旧字段）")
-    start_time = Column(DateTime, nullable=True, comment="开始时间（旧字段）")
-    end_time = Column(DateTime, nullable=True, comment="结束时间（旧字段）")
+    start_time = Column(DateTime(timezone=True), nullable=True, comment="开始时间（旧字段）")
+    end_time = Column(DateTime(timezone=True), nullable=True, comment="结束时间（旧字段）")
     feedback = Column(Text, nullable=True, comment="反馈（旧字段）")
     improvement_suggestions = Column(Text, nullable=True, comment="改进建议（旧字段）")
     # FastAPI 新字段
-    question_id = Column(Integer, nullable=True, comment="题目ID（可能是InterviewQuestion或Exercise的ID）")
-    status = Column(String(20), default="started", comment="状态: started/submitted/finished/abandoned")
-    started_at = Column(DateTime, default=datetime.now(timezone.utc), comment="开始时间")
-    finished_at = Column(DateTime, nullable=True, comment="结束时间")
+    question_id = Column(
+        Integer,
+        nullable=True,
+        comment="题目ID（可能是InterviewQuestion或Exercise的ID）",
+    )
+    status = Column(
+        String(20),
+        default="started",
+        comment="状态: started/submitted/finished/abandoned",
+    )
+    started_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="开始时间")
+    finished_at = Column(DateTime(timezone=True), nullable=True, comment="结束时间")
     latest_score = Column(Integer, nullable=True, comment="最新成绩 (0-100)")
-    latest_submission_id = Column(Integer, ForeignKey("submissions.id", use_alter=True), nullable=True, comment="最新提交记录ID")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+    latest_submission_id = Column(
+        Integer,
+        ForeignKey("submissions.id", use_alter=True),
+        nullable=True,
+        comment="最新提交记录ID",
+    )
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     # 关联关系
     user = relationship("User", backref="interview_sessions")
     latest_submission = relationship("Submission", foreign_keys=[latest_submission_id], post_update=True)
 
-    __table_args__ = (
-        Index("idx_interview_session_user_status", "user_id", "status"),
-    )
+    __table_args__ = (Index("idx_interview_session_user_status", "user_id", "status"),)
 
     def __repr__(self):
         return f"<InterviewSession {self.id} user:{self.user_id} question:{self.question_id} status:{self.status}>"
@@ -266,22 +369,44 @@ class InterviewSession(Base):
 
 class Submission(Base):
     """代码提交记录表"""
+
     __tablename__ = "submissions"
 
     id = Column(Integer, primary_key=True, index=True, comment="提交ID")
     session_id = Column(Integer, ForeignKey("interview_sessions.id"), nullable=False, comment="会话ID")
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, comment="用户ID")
-    question_id = Column(Integer, nullable=False, comment="题目ID（可能是InterviewQuestion或Exercise的ID）")
-    question_source = Column(String(20), default="interview_question", comment="题目来源: interview_question / exercise")
+    question_id = Column(
+        Integer,
+        nullable=False,
+        comment="题目ID（可能是InterviewQuestion或Exercise的ID）",
+    )
+    question_source = Column(
+        String(20),
+        default="interview_question",
+        comment="题目来源: interview_question / exercise",
+    )
     language = Column(String(20), default="python", comment="编程语言")
     source_code = Column(Text, nullable=False, comment="源代码")
-    execution_status = Column(String(20), default="pending", comment="执行状态: pending/running/success/failed")
-    ai_evaluation_status = Column(String(20), default="pending", comment="AI评估状态: pending/running/completed/failed")
+    execution_status = Column(
+        String(20),
+        default="pending",
+        comment="执行状态: pending/running/success/failed",
+    )
+    ai_evaluation_status = Column(
+        String(20),
+        default="pending",
+        comment="AI评估状态: pending/running/completed/failed",
+    )
     score = Column(Integer, nullable=True, comment="AI评分 (0-100)")
     feedback = Column(Text, nullable=True, comment="AI反馈")
     execution_result = Column(Text, nullable=True, comment="执行结果 JSON 格式")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     # 关联关系
     session = relationship("InterviewSession", backref="submissions", foreign_keys=[session_id])
@@ -298,6 +423,7 @@ class Submission(Base):
 
 class LearningPath(Base):
     """学习路径表"""
+
     __tablename__ = "learning_paths"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -313,8 +439,12 @@ class LearningPath(Base):
     estimated_hours = Column(Integer, default=10)
     exercise_count = Column(Integer, default=0)
     is_public = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     admin_id = Column(Integer, nullable=True)
 
@@ -329,6 +459,7 @@ class LearningPath(Base):
 
 class Exercise(Base):
     """习题表"""
+
     __tablename__ = "exercises"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -348,8 +479,12 @@ class Exercise(Base):
     test_cases = Column(Text)
     code_template = Column(Text)
     expected_output = Column(Text)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     admin_id = Column(Integer, nullable=True)
     learning_path_id = Column(Integer, ForeignKey("learning_paths.id"), nullable=True)
@@ -363,6 +498,7 @@ class Exercise(Base):
 
 class LessonSection(Base):
     """课程章节表 - 存储学习路径的实际教程正文"""
+
     __tablename__ = "lesson_sections"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -372,8 +508,12 @@ class LessonSection(Base):
     sort_order = Column(Integer, default=0)
     knowledge_point = Column(String(200))
     time_estimate = Column(Integer, default=15, comment="预计学习时间(分钟)")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
 
     learning_path = relationship("LearningPath", back_populates="lesson_sections")
 
@@ -383,6 +523,7 @@ class LessonSection(Base):
 
 class Progress(Base):
     """学习进度表"""
+
     __tablename__ = "progress"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -392,8 +533,8 @@ class Progress(Base):
     score = Column(Float)
     time_spent = Column(Integer)
     attempts = Column(Integer, default=0)
-    completed_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    completed_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_progress_user_exercise", "user_id", "exercise_id", unique=True),
@@ -403,6 +544,7 @@ class Progress(Base):
 
 class Post(Base):
     """社区帖子表"""
+
     __tablename__ = "posts"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -417,8 +559,12 @@ class Post(Base):
     is_essence = Column(Boolean, default=False)
     is_top = Column(Boolean, default=False)
     is_approved = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", backref="posts")
@@ -426,12 +572,13 @@ class Post(Base):
 
 class Comment(Base):
     """社区评论表"""
+
     __tablename__ = "comments"
 
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
     like_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
     parent_id = Column(Integer, ForeignKey("comments.id"))
@@ -443,13 +590,14 @@ class Comment(Base):
 
 class Like(Base):
     """点赞表"""
+
     __tablename__ = "likes"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     post_id = Column(Integer, ForeignKey("posts.id"))
     comment_id = Column(Integer, ForeignKey("comments.id"))
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     user = relationship("User", backref="likes")
     post = relationship("Post", backref="likes")
@@ -463,6 +611,7 @@ class Like(Base):
 
 class Favorite(Base):
     """收藏表 - 支持帖子/习题/笔记"""
+
     __tablename__ = "favorites"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -470,8 +619,13 @@ class Favorite(Base):
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=True)
     exercise_id = Column(Integer, ForeignKey("exercises.id"), nullable=True)
     note_id = Column(Integer, ForeignKey("notes.id"), nullable=True)
-    item_type = Column(String(20), nullable=False, default="post", comment="收藏类型: post/exercise/note")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    item_type = Column(
+        String(20),
+        nullable=False,
+        default="post",
+        comment="收藏类型: post/exercise/note",
+    )
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     user = relationship("User", backref="favorites")
     post = relationship("Post", backref="favorites")
@@ -481,17 +635,28 @@ class Favorite(Base):
 
 class TestCase(Base):
     """面试题测试用例表"""
+
     __tablename__ = "interview_test_cases"
 
     id = Column(Integer, primary_key=True, index=True, comment="测试用例ID")
-    question_id = Column(Integer, ForeignKey("interview_questions.id"), nullable=False, comment="关联题目ID")
+    question_id = Column(
+        Integer,
+        ForeignKey("interview_questions.id"),
+        nullable=False,
+        comment="关联题目ID",
+    )
     input = Column(Text, nullable=False, comment="输入数据")
     expected_output = Column(Text, nullable=False, comment="预期输出")
     is_example = Column(Boolean, default=False, comment="是否为示例用例（用户可见）")
     is_hidden = Column(Boolean, default=False, comment="是否为隐藏用例（用户不可见，用于判题）")
     description = Column(Text, nullable=True, comment="用例描述")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     # 关联关系
     question = relationship("InterviewQuestion", backref="interview_test_cases")
@@ -507,6 +672,7 @@ class TestCase(Base):
 
 class Exam(Base):
     """考试表"""
+
     __tablename__ = "exams"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -518,10 +684,14 @@ class Exam(Base):
     total_score = Column(Integer, nullable=False, default=100)
     pass_score = Column(Integer, nullable=False, default=60)
     is_published = Column(Boolean, default=False)
-    start_time = Column(DateTime, nullable=True, comment="考试开始时间")
-    end_time = Column(DateTime, nullable=True, comment="考试结束时间")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    start_time = Column(DateTime(timezone=True), nullable=True, comment="考试开始时间")
+    end_time = Column(DateTime(timezone=True), nullable=True, comment="考试结束时间")
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
@@ -534,11 +704,16 @@ class Exam(Base):
 
 class ExamQuestion(Base):
     """考试题目表"""
+
     __tablename__ = "exam_questions"
 
     id = Column(Integer, primary_key=True, index=True)
     exam_id = Column(Integer, ForeignKey("exams.id"), nullable=False)
-    question_type = Column(String(20), nullable=False, comment="single_choice/multiple_choice/true_false/short_answer/code")
+    question_type = Column(
+        String(20),
+        nullable=False,
+        comment="single_choice/multiple_choice/true_false/short_answer/code",
+    )
     content = Column(Text, nullable=False)
     options = Column(Text, nullable=True, comment="选项JSON格式")
     correct_answer = Column(Text, nullable=True)
@@ -555,17 +730,18 @@ class ExamQuestion(Base):
 
 class ExamAttempt(Base):
     """考试尝试记录表"""
+
     __tablename__ = "exam_attempts"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     exam_id = Column(Integer, ForeignKey("exams.id"), nullable=False)
-    start_time = Column(DateTime, default=datetime.now(timezone.utc))
-    end_time = Column(DateTime, nullable=True)
+    start_time = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    end_time = Column(DateTime(timezone=True), nullable=True)
     score = Column(Integer, nullable=True)
     is_passed = Column(Boolean, nullable=True)
     status = Column(String(20), default="in_progress", comment="in_progress/submitted/graded")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     user = relationship("User", backref="exam_attempts")
     exam = relationship("Exam", backref="attempts")
@@ -577,6 +753,7 @@ class ExamAttempt(Base):
 
 class ExamAnswer(Base):
     """考试答案表"""
+
     __tablename__ = "exam_answers"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -602,7 +779,7 @@ class Achievement(Base):
     category = Column(String(50))
     threshold = Column(Integer, default=1)
     exp_reward = Column(Integer, default=10)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
 
 class UserAchievement(Base):
@@ -611,24 +788,26 @@ class UserAchievement(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     achievement_id = Column(Integer, ForeignKey("achievements.id"), nullable=False)
-    unlocked_at = Column(DateTime, default=datetime.now(timezone.utc))
+    unlocked_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
     progress = Column(Integer, default=1)
 
 
 class DailyCheckin(Base):
     """每日签到表"""
+
     __tablename__ = "daily_checkins"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    checkin_date = Column(DateTime, nullable=False)
+    checkin_date = Column(DateTime(timezone=True), nullable=False)
     streak_count = Column(Integer, default=1)
     exp_earned = Column(Integer, default=5)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
 
 class ExerciseSubmissionRecord(Base):
     """习题提交记录表"""
+
     __tablename__ = "exercise_submissions"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -637,7 +816,7 @@ class ExerciseSubmissionRecord(Base):
     code = Column(Text, nullable=True)
     result = Column(String(20), default="fail")
     score = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_exercise_sub_user_created", "user_id", "created_at"),
@@ -647,6 +826,7 @@ class ExerciseSubmissionRecord(Base):
 
 class Note(Base):
     """学习笔记表"""
+
     __tablename__ = "notes"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -654,12 +834,17 @@ class Note(Base):
     exercise_id = Column(Integer, ForeignKey("exercises.id"), nullable=True)
     title = Column(String(200), nullable=False)
     content = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
 
 
 class AIConfig(Base):
     """AI大模型配置表"""
+
     __tablename__ = "ai_configs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -675,17 +860,23 @@ class AIConfig(Base):
     group_id = Column(String(100), nullable=True, comment="MiniMax Group ID")
     quota_total = Column(Integer, nullable=True, comment="总额度")
     quota_used = Column(Integer, nullable=True, comment="已用额度")
-    quota_updated_at = Column(DateTime, nullable=True, comment="额度更新时间")
-    last_test_at = Column(DateTime, nullable=True, comment="最后测试时间")
+    quota_updated_at = Column(DateTime(timezone=True), nullable=True, comment="额度更新时间")
+    last_test_at = Column(DateTime(timezone=True), nullable=True, comment="最后测试时间")
     last_test_result = Column(String(20), nullable=True, comment="最后测试结果: success/failed")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
 
 
 # ============ RBAC 权限模型 ============
 
+
 class Role(Base):
     """角色表"""
+
     __tablename__ = "roles"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -693,8 +884,12 @@ class Role(Base):
     display_name = Column(String(100), nullable=False, comment="角色显示名称")
     description = Column(Text, nullable=True, comment="角色描述")
     is_system = Column(Boolean, default=False, comment="是否为系统内置角色（不可删除）")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
 
     users = relationship("User", back_populates="role_obj")
     permissions = relationship("Permission", secondary="role_permissions", back_populates="roles")
@@ -702,6 +897,7 @@ class Role(Base):
 
 class Permission(Base):
     """权限表"""
+
     __tablename__ = "permissions"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -709,35 +905,50 @@ class Permission(Base):
     name = Column(String(100), nullable=False, comment="权限名称")
     description = Column(Text, nullable=True, comment="权限描述")
     module = Column(String(50), nullable=False, comment="所属模块: exercise/user/exam等")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     roles = relationship("Role", secondary="role_permissions", back_populates="permissions")
 
 
 class RolePermissionMapping(Base):
     """角色-权限关联表（多对多）"""
+
     __tablename__ = "role_permissions"
 
     id = Column(Integer, primary_key=True, index=True)
     role_id = Column(Integer, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False)
     permission_id = Column(Integer, ForeignKey("permissions.id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
-    __table_args__ = (
-        Index("idx_rbac_role_perm", "role_id", "permission_id", unique=True),
-    )
+    __table_args__ = (Index("idx_rbac_role_perm", "role_id", "permission_id", unique=True),)
 
 
 class TokenBlacklist(Base):
     """Token 黑名单表 - 持久化吊销的 JWT token"""
+
     __tablename__ = "token_blacklist"
 
     id = Column(Integer, primary_key=True, index=True)
-    token_hash = Column(String(64), unique=True, nullable=False, index=True, comment="token 的 SHA256 哈希")
+    token_hash = Column(
+        String(64),
+        unique=True,
+        nullable=False,
+        index=True,
+        comment="token 的 SHA256 哈希",
+    )
     token_type = Column(String(20), default="access", comment="token 类型: access/refresh")
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, comment="关联用户ID")
-    expires_at = Column(DateTime, nullable=False, comment="token 原始过期时间")
-    blacklisted_at = Column(DateTime, default=datetime.now(timezone.utc), comment="加入黑名单时间")
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        comment="关联用户ID",
+    )
+    expires_at = Column(DateTime(timezone=True), nullable=False, comment="token 原始过期时间")
+    blacklisted_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        comment="加入黑名单时间",
+    )
 
     __table_args__ = (
         Index("idx_token_blacklist_hash", "token_hash"),
@@ -747,12 +958,19 @@ class TokenBlacklist(Base):
 
 # ========== 测试项目实战空间模型 ==========
 
+
 class ProjectSpace(Base):
     """项目实战空间表"""
+
     __tablename__ = "project_spaces"
 
     id = Column(Integer, primary_key=True, index=True)
-    learning_path_id = Column(Integer, ForeignKey("learning_paths.id"), nullable=False, comment="所属学习路径ID")
+    learning_path_id = Column(
+        Integer,
+        ForeignKey("learning_paths.id"),
+        nullable=False,
+        comment="所属学习路径ID",
+    )
     title = Column(String(200), nullable=False, comment="项目名称")
     description = Column(Text, nullable=True, comment="项目描述")
     overview = Column(Text, nullable=True, comment="项目概述(背景/目标)")
@@ -760,12 +978,26 @@ class ProjectSpace(Base):
     status = Column(String(20), default="draft", comment="状态: draft/published/archived")
     estimated_hours = Column(Integer, default=8, comment="预计完成时间(小时)")
     sort_order = Column(Integer, default=0, comment="排序")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
 
     learning_path = relationship("LearningPath", backref="project_spaces")
-    tasks = relationship("ProjectTask", back_populates="project", cascade="all, delete-orphan", order_by="ProjectTask.sort_order")
-    resources = relationship("ProjectResource", back_populates="project", cascade="all, delete-orphan", order_by="ProjectResource.sort_order")
+    tasks = relationship(
+        "ProjectTask",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        order_by="ProjectTask.sort_order",
+    )
+    resources = relationship(
+        "ProjectResource",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        order_by="ProjectResource.sort_order",
+    )
     submissions = relationship("ProjectSubmission", back_populates="project", cascade="all, delete-orphan")
     evaluations = relationship("ProjectEvaluation", back_populates="project", cascade="all, delete-orphan")
 
@@ -775,18 +1007,23 @@ class ProjectSpace(Base):
 
 class ProjectTask(Base):
     """项目任务表"""
+
     __tablename__ = "project_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("project_spaces.id"), nullable=False, comment="所属项目ID")
     title = Column(String(200), nullable=False, comment="任务名称")
     description = Column(Text, nullable=True, comment="任务描述")
-    task_type = Column(String(50), nullable=False, comment="任务类型: test_point_design/test_case_design/api_debug/auto_execution/defect_analysis/project_summary")
+    task_type = Column(
+        String(50),
+        nullable=False,
+        comment="任务类型: test_point_design/test_case_design/api_debug/auto_execution/defect_analysis/project_summary",
+    )
     requirements = Column(Text, nullable=True, comment="任务要求")
     hints = Column(Text, nullable=True, comment="提示/参考资料")
     score = Column(Integer, default=10, comment="任务分值")
     sort_order = Column(Integer, default=0, comment="排序")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     project = relationship("ProjectSpace", back_populates="tasks")
     submissions = relationship("ProjectSubmission", back_populates="task")
@@ -806,16 +1043,21 @@ class ProjectTask(Base):
 
 class ProjectResource(Base):
     """项目资料表"""
+
     __tablename__ = "project_resources"
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("project_spaces.id"), nullable=False, comment="所属项目ID")
     title = Column(String(200), nullable=False, comment="资料名称")
-    resource_type = Column(String(50), default="document", comment="资料类型: document/api_doc/test_data/reference/link")
+    resource_type = Column(
+        String(50),
+        default="document",
+        comment="资料类型: document/api_doc/test_data/reference/link",
+    )
     content = Column(Text, nullable=True, comment="内容(Markdown)")
     url = Column(Text, nullable=True, comment="外部链接")
     sort_order = Column(Integer, default=0, comment="排序")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     project = relationship("ProjectSpace", back_populates="resources")
 
@@ -833,10 +1075,9 @@ class ProjectResource(Base):
 
 class ProjectSubmission(Base):
     """项目提交记录表"""
+
     __tablename__ = "project_submissions"
-    __table_args__ = (
-        UniqueConstraint("user_id", "task_id", name="uq_submission_user_task"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "task_id", name="uq_submission_user_task"),)
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("project_spaces.id"), nullable=False, comment="所属项目ID")
@@ -844,10 +1085,14 @@ class ProjectSubmission(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, comment="提交用户ID")
     content = Column(Text, nullable=True, comment="提交内容")
     attachments = Column(Text, nullable=True, comment="附件JSON")
-    status = Column(String(20), default="submitted", comment="状态: submitted/reviewed/accepted/rejected")
+    status = Column(
+        String(20),
+        default="submitted",
+        comment="状态: submitted/reviewed/accepted/rejected",
+    )
     score = Column(Integer, nullable=True, comment="评分")
     feedback = Column(Text, nullable=True, comment="反馈")
-    submitted_at = Column(DateTime, default=datetime.now(timezone.utc))
+    submitted_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     project = relationship("ProjectSpace", back_populates="submissions")
     task = relationship("ProjectTask", back_populates="submissions")
@@ -859,10 +1104,9 @@ class ProjectSubmission(Base):
 
 class ProjectEvaluation(Base):
     """项目验收评价表"""
+
     __tablename__ = "project_evaluations"
-    __table_args__ = (
-        UniqueConstraint("user_id", "project_id", name="uq_evaluation_user_project"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "project_id", name="uq_evaluation_user_project"),)
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("project_spaces.id"), nullable=False, comment="所属项目ID")
@@ -873,7 +1117,7 @@ class ProjectEvaluation(Base):
     strengths = Column(Text, nullable=True, comment="优点")
     improvements = Column(Text, nullable=True, comment="改进建议")
     is_passed = Column(Boolean, default=False, comment="是否通过")
-    evaluated_at = Column(DateTime, default=datetime.now(timezone.utc))
+    evaluated_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     project = relationship("ProjectSpace", back_populates="evaluations")
     user = relationship("User", backref="project_evaluations")
@@ -897,6 +1141,7 @@ NOTIFICATION_TYPES = {
 
 class Notification(Base):
     """通知表"""
+
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -906,7 +1151,7 @@ class Notification(Base):
     type = Column(String(30), default="system", comment="通知类型")
     link = Column(String(500), nullable=True, comment="跳转链接")
     is_read = Column(Boolean, default=False, comment="是否已读")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     user = relationship("User", backref="notifications")
 

@@ -1,8 +1,8 @@
-# 防止敏感文件和开发文件打进 Docker 镜像
 .env
 .git
 .gitignore
 .dockerignore
+.github/
 node_modules
 __pycache__
 *.pyc
@@ -23,7 +23,22 @@ temp/
 .vscode/
 .idea/
 .workbuddy/
+.codebuddy/
 frontend/
 *.out.txt
-*.png
+/*.png
 *.bat
+*.bak
+*.backup
+*.broken
+celerybeat-schedule*
+_report*/
+migrations/
+docs/
+*.md
+!README.md
+deploy.sh
+deploy.bat
+deploy-backend-only.bat
+*.ps1
+ssl/

@@ -5,18 +5,19 @@ TestMaster 习题综合迁移脚本
 3. 绑定所有习题到对应学习路径
 4. 更新学习路径的exercise_count
 """
+
 import asyncio
 import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import select, text, update, delete
+from sqlalchemy import text, update, delete
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from fastapi_backend.core.config import settings
-from fastapi_backend.models.models import Base, Exercise, LearningPath
+from fastapi_backend.models.models import Exercise, LearningPath
 
 DATABASE_URL = settings.DATABASE_URL
 engine = create_async_engine(DATABASE_URL, echo=False)
@@ -30,6 +31,7 @@ ALL_EXERCISES = {}
 for d in [EXERCISES_1, EXERCISES_2, EXERCISES_3]:
     for k, v in d.items():
         ALL_EXERCISES[k] = v
+
 
 async def seed_all():
     async with async_session() as session:
@@ -120,9 +122,7 @@ async def seed_all():
             path_id = path_map.get(path_title)
             if path_id:
                 await session.execute(
-                    update(LearningPath)
-                    .where(LearningPath.id == path_id)
-                    .values(exercise_count=count)
+                    update(LearningPath).where(LearningPath.id == path_id).values(exercise_count=count)
                 )
                 print(f"  {path_title:30s} exercise_count = {count}")
 
@@ -145,6 +145,7 @@ async def seed_all():
         print("=" * 70)
 
     await engine.dispose()
+
 
 if __name__ == "__main__":
     print("\n" + "\u2588" * 70)

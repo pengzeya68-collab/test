@@ -2,6 +2,7 @@
 测试数据工厂服务 - 生成测试数据
 支持规则: fixed, enum, increment, uuid, timestamp, date_offset, phone, email, username, env_ref
 """
+
 import random
 import string
 import uuid
@@ -24,7 +25,11 @@ class DataFactoryEngine:
         for _ in range(min(row_count, 20)):
             row = []
             for field in fields:
-                value = self._generate_value(field["rule_type"], field.get("rule_config") or {}, field["field_name"])
+                value = self._generate_value(
+                    field["rule_type"],
+                    field.get("rule_config") or {},
+                    field["field_name"],
+                )
                 row.append(value)
             rows.append(row)
         return {"columns": columns, "rows": rows}
@@ -35,7 +40,11 @@ class DataFactoryEngine:
         for _ in range(row_count):
             row = []
             for field in fields:
-                value = self._generate_value(field["rule_type"], field.get("rule_config") or {}, field["field_name"])
+                value = self._generate_value(
+                    field["rule_type"],
+                    field.get("rule_config") or {},
+                    field["field_name"],
+                )
                 row.append(value)
             rows.append(row)
         return {"columns": columns, "rows": rows, "row_count": len(rows)}
@@ -65,35 +74,81 @@ class DataFactoryEngine:
                 return raw[:8]
             return raw
         elif rule_type == "timestamp":
-            fmt = config.get("format", "%Y-%m-%d %H:%M:%S")
+            fmt = config.get("format", "seconds")
             offset_seconds = config.get("offset_seconds", 0)
             ts = datetime.now(timezone.utc) + timedelta(seconds=offset_seconds)
-            return ts.strftime(fmt)
+            if fmt == "seconds":
+                return int(ts.timestamp())
+            elif fmt == "milliseconds":
+                return int(ts.timestamp() * 1000)
+            elif fmt == "iso":
+                return ts.isoformat()
+            elif fmt == "datetime":
+                return ts.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                return ts.strftime(fmt)
         elif rule_type == "date_offset":
-            fmt = config.get("format", "%Y-%m-%d")
+            fmt = config.get("format", "date")
             offset_days = config.get("offset_days", 0)
             dt = datetime.now(timezone.utc) + timedelta(days=offset_days)
-            return dt.strftime(fmt)
+            if fmt == "date":
+                return dt.strftime("%Y-%m-%d")
+            elif fmt == "datetime":
+                return dt.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                return dt.strftime(fmt)
         elif rule_type == "phone":
-            prefixes = ["130", "131", "132", "133", "134", "135", "136", "137", "138", "139",
-                        "150", "151", "152", "153", "155", "156", "157", "158", "159",
-                        "180", "181", "182", "183", "184", "185", "186", "187", "188", "189"]
+            prefixes = [
+                "130",
+                "131",
+                "132",
+                "133",
+                "134",
+                "135",
+                "136",
+                "137",
+                "138",
+                "139",
+                "150",
+                "151",
+                "152",
+                "153",
+                "155",
+                "156",
+                "157",
+                "158",
+                "159",
+                "180",
+                "181",
+                "182",
+                "183",
+                "184",
+                "185",
+                "186",
+                "187",
+                "188",
+                "189",
+            ]
             prefix = config.get("prefix", "")
             if prefix:
-                prefix_val = random.choice([p for p in prefixes if p.startswith(prefix[:3])]) if len(prefix) >= 3 else random.choice(prefixes)
+                prefix_val = (
+                    random.choice([p for p in prefixes if p.startswith(prefix[:3])])
+                    if len(prefix) >= 3
+                    else random.choice(prefixes)
+                )
             else:
                 prefix_val = random.choice(prefixes)
-            return prefix_val + ''.join(random.choices(string.digits, k=8))
+            return prefix_val + "".join(random.choices(string.digits, k=8))
         elif rule_type == "email":
-            domains = config.get("domains", ["test.com", "example.com", "mail.test"])
+            domains = config.get("domains", config.get("domain", "test.com"))
             username_prefix = config.get("username_prefix", "testuser")
             domain = random.choice(domains) if isinstance(domains, list) else domains
             return f"{username_prefix}{random.randint(1000, 9999)}@{domain}"
         elif rule_type == "username":
-            prefixes = config.get("prefixes", ["testuser", "user", "tester"])
+            prefixes = config.get("prefixes", config.get("prefix", "testuser"))
             prefix = random.choice(prefixes) if isinstance(prefixes, list) else prefixes
             suffix_length = config.get("suffix_length", 4)
-            suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=suffix_length))
+            suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=suffix_length))
             return f"{prefix}_{suffix}"
         elif rule_type == "env_ref":
             var_name = config.get("variable_name", "")

@@ -6,7 +6,7 @@
 
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 学习路径5的50道精品题
 exercises_data = [
@@ -17,7 +17,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "计算机硬件基础"
+        "category": "计算机硬件基础",
     },
     {
         "title": "关于计算机存储层次，以下说法正确的是？（多选）",
@@ -25,7 +25,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "计算机硬件基础"
+        "category": "计算机硬件基础",
     },
     {
         "title": "请判断：RAM（随机存取存储器）是易失性存储，断电后数据丢失。",
@@ -33,7 +33,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "计算机硬件基础"
+        "category": "计算机硬件基础",
     },
     {
         "title": "关于ROM（只读存储器），以下说法正确的是？",
@@ -41,7 +41,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "计算机硬件基础"
+        "category": "计算机硬件基础",
     },
     {
         "title": "关于硬盘和SSD，以下说法正确的是？（多选）",
@@ -49,7 +49,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "计算机硬件基础"
+        "category": "计算机硬件基础",
     },
     {
         "title": "请判断：GPU（图形处理器）是专门为图形渲染和并行计算设计的处理器。",
@@ -57,7 +57,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "计算机硬件基础"
+        "category": "计算机硬件基础",
     },
     {
         "title": "关于主板，以下说法正确的是？",
@@ -65,7 +65,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "计算机硬件基础"
+        "category": "计算机硬件基础",
     },
     {
         "title": "关于计算机性能指标，以下说法正确的是？（多选）",
@@ -73,7 +73,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "计算机硬件基础"
+        "category": "计算机硬件基础",
     },
     {
         "title": "请判断：32位操作系统的寻址空间最大是4GB，64位操作系统没有此限制。",
@@ -81,7 +81,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "计算机硬件基础"
+        "category": "计算机硬件基础",
     },
     {
         "title": "关于指令集架构（ISA），以下说法正确的是？",
@@ -89,9 +89,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "计算机硬件基础"
+        "category": "计算机硬件基础",
     },
-    
     # ============ 操作系统基础（15题）============
     {
         "title": "关于操作系统（OS），以下说法正确的是？",
@@ -99,7 +98,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "关于进程（Process）和线程（Thread），以下说法正确的是？（多选）",
@@ -107,7 +106,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "请判断：操作系统的内核（Kernel）运行在用户态（User Mode），应用程序运行在内核态（Kernel Mode）。",
@@ -115,7 +114,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "关于进程调度算法，以下说法正确的是？",
@@ -123,7 +122,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "关于内存管理，以下说法正确的是？（多选）",
@@ -131,7 +130,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "请判断：死锁（Deadlock）的四个必要条件是：互斥、占有并等待、不可抢占、循环等待。",
@@ -139,7 +138,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "关于文件系统，以下说法正确的是？",
@@ -147,7 +146,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "关于常见的操作系统，以下说法正确的是？（多选）",
@@ -155,7 +154,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "请判断：系统调用（System Call）是操作系统提供给应用程序的编程接口（API）。",
@@ -163,7 +162,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "关于虚拟内存的工作原理，以下说法正确的是？",
@@ -171,7 +170,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "关于进程间通信（IPC），以下说法正确的是？（多选）",
@@ -179,7 +178,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "请判断：分时操作系统（Time-Sharing OS）允许多个用户同时通过终端使用同一台计算机。",
@@ -187,7 +186,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "关于实时操作系统（RTOS），以下说法正确的是？",
@@ -195,7 +194,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
     {
         "title": "关于Shell（命令行解释器），以下说法正确的是？（多选）",
@@ -203,9 +202,8 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "操作系统基础"
+        "category": "操作系统基础",
     },
-    
     # ============ 网络基础（15题）============
     {
         "title": "关于OSI七层模型，以下说法正确的是？",
@@ -213,7 +211,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "关于TCP/IP四层模型，以下说法正确的是？（多选）",
@@ -221,7 +219,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "请判断：IP地址是用于标识网络中的设备的逻辑地址。",
@@ -229,7 +227,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "关于IPv4地址，以下说法正确的是？",
@@ -237,7 +235,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "关于公有IP和私有IP，以下说法正确的是？（多选）",
@@ -245,7 +243,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "请判断：DHCP（动态主机配置协议）用于自动为网络中的设备分配IP地址、子网掩码、默认网关等网络配置。",
@@ -253,7 +251,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "关于DNS（域名系统），以下说法正确的是？",
@@ -261,7 +259,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "关于TCP和UDP的区别，以下说法正确的是？（多选）",
@@ -269,7 +267,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "请判断：TCP的三次握手（Three-Way Handshake）过程是：SYN → SYN-ACK → ACK。",
@@ -277,7 +275,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "关于HTTP和HTTPS，以下说法正确的是？",
@@ -285,7 +283,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "关于常见的网络命令，以下说法正确的是？（多选）",
@@ -293,7 +291,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "请判断：MAC地址是网络接口控制器（NIC）的物理地址，长度为48位，在全球范围内唯一。",
@@ -301,7 +299,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "关于网络拓扑结构，以下说法正确的是？",
@@ -309,7 +307,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "网络基础"
+        "category": "网络基础",
     },
     {
         "title": "关于网络设备，以下说法正确的是？（多选）",
@@ -317,9 +315,8 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "网络基础"
+        "category": "网络基础",
     },
-    
     # ============ 网络安全基础（10题）============
     {
         "title": "关于网络安全的基本概念，以下说法正确的是？",
@@ -327,7 +324,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "网络安全基础"
+        "category": "网络安全基础",
     },
     {
         "title": "关于常见的网络攻击，以下说法正确的是？（多选）",
@@ -335,7 +332,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "网络安全基础"
+        "category": "网络安全基础",
     },
     {
         "title": "请判断：对称加密使用同一把密钥进行加密和解密，非对称加密使用公钥加密、私钥解密（或相反）。",
@@ -343,7 +340,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "网络安全基础"
+        "category": "网络安全基础",
     },
     {
         "title": "关于防火墙，以下说法正确的是？",
@@ -351,7 +348,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "网络安全基础"
+        "category": "网络安全基础",
     },
     {
         "title": "关于VPN（虚拟专用网络），以下说法正确的是？（多选）",
@@ -359,7 +356,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "网络安全基础"
+        "category": "网络安全基础",
     },
     {
         "title": "请判断：数字证书（Digital Certificate）用于证明公钥的所有权，由可信的证书颁发机构（CA）签发。",
@@ -367,7 +364,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "网络安全基础"
+        "category": "网络安全基础",
     },
     {
         "title": "关于常见的认证方式，以下说法正确的是？",
@@ -375,7 +372,7 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "网络安全基础"
+        "category": "网络安全基础",
     },
     {
         "title": "关于密码安全，以下说法正确的是？（多选）",
@@ -383,7 +380,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "easy",
-        "category": "网络安全基础"
+        "category": "网络安全基础",
     },
     {
         "title": "请判断：哈希（Hash）函数是单向函数，可以将任意长度的数据映射为固定长度的哈希值，且无法通过哈希值反推出原始数据。",
@@ -391,7 +388,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "网络安全基础"
+        "category": "网络安全基础",
     },
     {
         "title": "关于常见的网络协议端口号，以下说法正确的是？",
@@ -399,58 +396,63 @@ exercises_data = [
         "solution": "D",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "网络安全基础"
+        "category": "网络安全基础",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径5的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 5")
     print("🗑️  已删除学习路径5（计算机基础与网络知识）的旧习题")
-    
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 5, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 5", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径5（计算机基础与网络知识）")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 5")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径5现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

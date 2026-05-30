@@ -43,20 +43,22 @@
             </template>
           </el-dropdown>
 
-          <!-- JMeter 导出按钮 -->
-          <el-dropdown trigger="click" @command="handleExportCommand">
-            <el-button type="warning" plain>
+          <el-button v-if="!exportSelectMode" type="warning" plain @click="startExportSelect" :disabled="filteredCases.length === 0">
+            <el-icon><Download /></el-icon>
+            导出 JMX
+          </el-button>
+          <template v-else>
+            <el-button type="warning" @click="handleExportJmx" :loading="jmeterExporting" :disabled="selectedCaseIds.length === 0">
               <el-icon><Download /></el-icon>
-              导出用例
-              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+              导出选中 ({{ selectedCaseIds.length }})
             </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="jmeter_selected">导出选中用例到 JMeter</el-dropdown-item>
-                <el-dropdown-item command="jmeter_all">导出全部用例到 JMeter</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+            <el-button plain @click="handleExportAllJmx" :loading="jmeterExporting">
+              导出全部
+            </el-button>
+            <el-button plain @click="cancelExportSelect">
+              取消
+            </el-button>
+          </template>
 
           <el-button type="primary" @click="handleCreate">
             <el-icon><Plus /></el-icon>
@@ -75,7 +77,9 @@
           row-key="id"
           class="modern-table"
           @row-dblclick="handleRowDblClick"
+          @selection-change="handleSelectionChange"
         >
+          <el-table-column v-if="exportSelectMode" type="selection" width="45" />
           <el-table-column prop="method" label="请求方法" width="100">
             <template #default="{ row }">
               <span :class="['api-method-tag', (row.method || '').toLowerCase()]">{{ row.method }}</span>
@@ -106,7 +110,7 @@
                   <span><el-button type="warning" link :icon="Timer" @click="handleShowHistory(row)" /></span>
                 </el-tooltip>
 
-                <el-tooltip content="导出到 JMeter (.jmx)" placement="top" popper-class="action-tooltip">
+                <el-tooltip content="导出 JMX · 兼容 5.1.1+" placement="top" popper-class="action-tooltip">
                   <span><el-button type="warning" link :icon="Download" @click="handleExportSingleCase(row)" /></span>
                 </el-tooltip>
 
@@ -351,6 +355,7 @@ const emit = defineEmits(['run', 'refresh-groups'])
 const loading = ref(false)
 const cases = ref([])
 const searchKeyword = ref('')
+const searchTimer = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
@@ -499,8 +504,11 @@ watch(() => props.groupId, (newVal) => {
 
 // 搜索
 const handleSearch = () => {
-  currentPage.value = 1
-  loadCases()
+  if (searchTimer.value) clearTimeout(searchTimer.value)
+  searchTimer.value = setTimeout(() => {
+    currentPage.value = 1
+    loadCases()
+  }, 300)
 }
 
 // 分页大小变化
@@ -521,7 +529,6 @@ const handleEnvChange = () => {
 
 // 新建用例
 const handleCreate = () => {
-  console.log('新建用例按钮被点击，当前分组ID:', props.groupId)
   if (!props.groupId) {
     ElMessage.warning('请先从左侧分组树选择一个分组再创建用例')
     return
@@ -530,7 +537,6 @@ const handleCreate = () => {
   isEdit.value = false
   currentGroupId.value = props.groupId
   drawerVisible.value = true
-  console.log('抽屉已打开')
 }
 
 // 编辑用例
@@ -656,47 +662,40 @@ const handleJMeterImport = async () => {
 
 // ===== JMeter 导出逻辑 =====
 
-const handleExportCommand = async (command) => {
-  if (command === 'jmeter_selected') {
-    // 导出选中用例（需要添加选择功能）
-    ElMessage.warning('请先在表格中勾选用例，再点击导出')
-    return
-  } else if (command === 'jmeter_all') {
-    // 导出全部用例
-    await exportCasesToJMeter()
-  }
+const exportSelectMode = ref(false)
+const selectedCaseIds = ref([])
+
+const startExportSelect = () => {
+  exportSelectMode.value = true
+  selectedCaseIds.value = []
 }
 
-const exportCasesToJMeter = async (caseIds = null) => {
+const cancelExportSelect = () => {
+  exportSelectMode.value = false
+  selectedCaseIds.value = []
+}
+
+const handleSelectionChange = (selection) => {
+  selectedCaseIds.value = selection.map(item => item.id)
+}
+
+const doExportJmx = async (caseIds) => {
   jmeterExporting.value = true
   try {
-    const params = {}
-    if (caseIds) {
-      params.case_ids = caseIds
-    } else if (props.groupId) {
-      // 导出当前分组的所有用例
-      params.group_id = props.groupId
-    } else if (filteredCases.value.length > 0) {
-      // 根目录下优先导出当前筛选结果，避免发送空请求导致 400
-      params.case_ids = filteredCases.value.map(item => item.id)
-    } else {
-      ElMessage.warning('当前没有可导出的用例')
-      return
-    }
+    const res = await autoTestRequest.post('/auto-test/export/jmeter/cases', {
+      case_ids: caseIds,
+    }, { responseType: 'blob' })
 
-    const res = await autoTestRequest.post('/auto-test/export/jmeter/cases', params, {
-      responseType: 'blob'
-    })
-
-    // 下载文件
     const blob = new Blob([res], { type: 'application/octet-stream' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `TestMaster_Export_${new Date().getTime()}.jmx`
+    link.download = `TestMaster_Export_${caseIds.length}cases_${new Date().getTime()}.jmx`
     link.click()
     URL.revokeObjectURL(link.href)
 
-    ElMessage.success('导出成功')
+    ElMessage.success(`已导出 ${caseIds.length} 个用例`)
+    exportSelectMode.value = false
+    selectedCaseIds.value = []
   } catch (error) {
     console.error('JMeter 导出失败:', error)
     ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
@@ -705,9 +704,26 @@ const exportCasesToJMeter = async (caseIds = null) => {
   }
 }
 
+const handleExportJmx = () => {
+  if (selectedCaseIds.value.length === 0) {
+    ElMessage.warning('请先勾选要导出的用例')
+    return
+  }
+  doExportJmx(selectedCaseIds.value)
+}
+
+const handleExportAllJmx = () => {
+  const allIds = filteredCases.value.map(item => item.id)
+  if (allIds.length === 0) {
+    ElMessage.warning('当前没有可导出的用例')
+    return
+  }
+  doExportJmx(allIds)
+}
+
 // 导出单个用例到 JMeter
 const openJmeterIde = () => {
-  window.open('/auto-test?tab=jmeter', '_blank')
+  window.open('/#/auto-test?tab=jmeter', '_blank')
 }
 
 const handleExportSingleCase = async (row) => {

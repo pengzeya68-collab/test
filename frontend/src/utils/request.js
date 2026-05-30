@@ -29,22 +29,21 @@ const syncClientAuthState = async () => {
     useUserStore().resetSession()
     useAdminStore().resetSession()
   } catch {
-    // Stores may be unavailable during very early app bootstrap.
   }
 }
 
 service.interceptors.request.use(
   config => {
-    const isAdminReq = config.url?.startsWith('/admin') || 
+    const isAdminReq = config.url?.startsWith('/admin') ||
                       config.url?.startsWith('/autotest')
-    
+
     let token = null
     if (isAdminReq) {
       token = getAuthToken()
     } else {
       token = getToken()
     }
-    
+
     if (token && token !== 'undefined' && token !== 'null' && token !== '[object Object]') {
       config.headers['Authorization'] = `Bearer ${token}`
     }
@@ -75,7 +74,7 @@ service.interceptors.response.use(
       await syncClientAuthState()
 
       ElMessage.error('登录已过期，请重新登录')
-      
+
       if (isAdminRoute()) {
         router.push('/admin/login')
       } else {
@@ -90,5 +89,38 @@ service.interceptors.response.use(
   }
 )
 
+const autoTestRequest = (config) => {
+  return service({
+    ...config,
+    baseURL: '/api',
+    timeout: config.timeout ?? 120000,
+  })
+}
+
+;['get', 'delete', 'head', 'options'].forEach(method => {
+  autoTestRequest[method] = (url, config) => {
+    return service({
+      ...config,
+      method,
+      url,
+      baseURL: '/api',
+      timeout: config?.timeout ?? 120000,
+    })
+  }
+})
+
+;['post', 'put', 'patch'].forEach(method => {
+  autoTestRequest[method] = (url, data, config) => {
+    return service({
+      ...config,
+      method,
+      url,
+      data,
+      baseURL: '/api',
+      timeout: config?.timeout ?? 120000,
+    })
+  }
+})
+
 export default service
-export { setToken }
+export { setToken, autoTestRequest }

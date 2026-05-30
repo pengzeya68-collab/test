@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Bell } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
@@ -139,10 +139,18 @@ const formatTime = (t) => {
   return d.toLocaleDateString()
 }
 
+let pollTimer = null
+
 onMounted(() => {
   fetchUnreadCount()
-  // 每30秒刷新未读数
-  setInterval(fetchUnreadCount, 30000)
+  pollTimer = setInterval(fetchUnreadCount, 30000)
+})
+
+onBeforeUnmount(() => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
 })
 </script>
 

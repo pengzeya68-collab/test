@@ -1,4 +1,5 @@
 """AI Tutor chat / code-review / learning-advice / explain-exercise – migrated from Flask backend/api/ai_tutor.py."""
+
 from __future__ import annotations
 
 import json
@@ -48,7 +49,7 @@ def _trim_history(user_id: int) -> None:
 
 
 async def _get_active_ai_config(db: AsyncSession) -> Optional[AIConfig]:
-    result = await db.execute(select(AIConfig).where(AIConfig.is_active == True))
+    result = await db.execute(select(AIConfig).where(AIConfig.is_active))
     return result.scalar_one_or_none()
 
 
@@ -166,7 +167,10 @@ async def code_review(
     answer = await _get_ai_response(history, db)
     history.append({"role": "assistant", "content": answer})
 
-    return {"review_result": answer, "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {
+        "review_result": answer,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 @router.get("/learning-advice")
@@ -175,9 +179,14 @@ async def learning_advice(
     db: AsyncSession = Depends(get_db),
 ):
     skill_data = {
-        "test_theory": 85, "functional_test": 70, "api_test": 50,
-        "automation_test": 30, "performance_test": 20, "programming": 65,
-        "database": 75, "linux": 60,
+        "test_theory": 85,
+        "functional_test": 70,
+        "api_test": 50,
+        "automation_test": 30,
+        "performance_test": 20,
+        "programming": 65,
+        "database": 75,
+        "linux": 60,
     }
     question = PROMPT_TEMPLATES["learning_advice"].format(
         skill_data=json.dumps(skill_data, ensure_ascii=False, indent=2)
@@ -187,7 +196,11 @@ async def learning_advice(
     _trim_history(current_user.id)
 
     answer = await _get_ai_response(history, db)
-    return {"advice": answer, "skill_data": skill_data, "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {
+        "advice": answer,
+        "skill_data": skill_data,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 @router.post("/explain-exercise")
@@ -208,8 +221,10 @@ async def explain_exercise(
         raise HTTPException(status_code=404, detail="习题不存在")
 
     question = PROMPT_TEMPLATES["exercise_explain"].format(
-        title=ex.title, description=ex.description or "",
-        user_answer=user_answer, correct_answer=ex.solution or "",
+        title=ex.title,
+        description=ex.description or "",
+        user_answer=user_answer,
+        correct_answer=ex.solution or "",
     )
     history = _get_history(current_user.id)
     history.append({"role": "user", "content": question})

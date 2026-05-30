@@ -6,9 +6,8 @@
 """
 
 import sqlite3
-import random
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 基于真实课程内容的50道精品题
 exercises_data = [
@@ -19,7 +18,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "软件测试的定义与目的"
+        "category": "软件测试的定义与目的",
     },
     {
         "title": "软件测试的核心目的包括以下哪些？（多选）",
@@ -27,7 +26,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "软件测试的定义与目的"
+        "category": "软件测试的定义与目的",
     },
     {
         "title": "请判断：测试只能证明缺陷存在，而不能证明缺陷不存在。",
@@ -35,7 +34,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "软件测试的定义与目的"
+        "category": "软件测试的定义与目的",
     },
     {
         "title": "关于「验证（Verification）」和「确认（Validation）」，以下说法正确的是？",
@@ -43,7 +42,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "软件测试的定义与目的"
+        "category": "软件测试的定义与目的",
     },
     {
         "title": "测试与调试的区别包括以下哪些？（多选）",
@@ -51,7 +50,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "easy",
-        "category": "软件测试的定义与目的"
+        "category": "软件测试的定义与目的",
     },
     {
         "title": "请判断：通过早期介入测试（如需求评审、设计评审），可以在缺陷产生之前就发现并纠正问题，大幅降低修复成本。",
@@ -59,7 +58,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "软件测试的定义与目的"
+        "category": "软件测试的定义与目的",
     },
     {
         "title": "软件测试为项目干系人提供关于软件质量的客观信息，这些信息包括？",
@@ -67,7 +66,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "软件测试的定义与目的"
+        "category": "软件测试的定义与目的",
     },
     {
         "title": "关于软件测试的目的，以下说法错误的是？",
@@ -75,7 +74,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "软件测试的定义与目的"
+        "category": "软件测试的定义与目的",
     },
     {
         "title": "请判断：验证（Verification）关注过程，如评审、走查；确认（Validation）关注结果，如系统测试、验收测试。",
@@ -83,7 +82,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "软件测试的定义与目的"
+        "category": "软件测试的定义与目的",
     },
     {
         "title": "软件测试的定义中，'弄清预期结果与实际结果之间的差别'指的是？",
@@ -91,9 +90,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "软件测试的定义与目的"
+        "category": "软件测试的定义与目的",
     },
-    
     # ============ 第2节：测试的七大原则 (15题) ============
     {
         "title": "ISTQB定义的测试七大原则中，原则1是？",
@@ -101,7 +99,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "关于「穷尽测试是不可能的」这一原则，以下说法正确的是？",
@@ -109,7 +107,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "测试七大原则中，关于修复成本递增规律，以下说法正确的是？（多选）",
@@ -117,7 +115,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "请判断：根据缺陷集群性（Defect Clustering）原则，80%的缺陷通常只存在于20%的模块中。",
@@ -125,7 +123,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "关于「杀虫剂悖论（Pesticide Paradox）」，以下说法正确的是？",
@@ -133,7 +131,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "测试七大原则中，「测试依赖于上下文」的含义是？",
@@ -141,7 +139,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "关于「没有缺陷就是好用？」这一原则，以下说法正确的是？（多选）",
@@ -149,7 +147,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "请判断：测试可以证明软件中没有缺陷。",
@@ -157,7 +155,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "ISTQB七大原则中，关于早期测试的原则说明？",
@@ -165,7 +163,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "关于杀虫剂悖论的解决方法，以下说法正确的是？",
@@ -173,7 +171,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "请判断：电商网站和航空控制系统的测试策略可以完全相同。",
@@ -181,7 +179,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "ISTQB七大原则包括哪些？（多选）",
@@ -189,7 +187,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "关于缺陷集群性（Defect Clustering），以下说法正确的是？",
@@ -197,7 +195,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
     {
         "title": "请判断：根据早期测试原则，在需求阶段发现的缺陷，修复成本是编码阶段发现缺陷的50倍。",
@@ -205,9 +203,8 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "测试的七大原则"
+        "category": "测试的七大原则",
     },
-    
     # ============ 第3节：软件开发生命周期与测试模型 (10题) ============
     {
         "title": "关于瀑布模型（Waterfall Model），以下说法正确的是？",
@@ -215,7 +212,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "软件开发生命周期与测试模型"
+        "category": "软件开发生命周期与测试模型",
     },
     {
         "title": "V模型中，测试活动与开发活动的对应关系是？",
@@ -223,7 +220,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "软件开发生命周期与测试模型"
+        "category": "软件开发生命周期与测试模型",
     },
     {
         "title": "关于敏捷开发中的测试，以下说法正确的有？（多选）",
@@ -231,7 +228,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "软件开发生命周期与测试模型"
+        "category": "软件开发生命周期与测试模型",
     },
     {
         "title": "请判断：TDD（测试驱动开发）的「红-绿-重构」循环中，「红」代表编写一个失败的测试用例。",
@@ -239,7 +236,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "软件开发生命周期与测试模型"
+        "category": "软件开发生命周期与测试模型",
     },
     {
         "title": "关于V模型，以下说法正确的是？",
@@ -247,7 +244,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "软件开发生命周期与测试模型"
+        "category": "软件开发生命周期与测试模型",
     },
     {
         "title": "W模型（W-Model）在V模型基础上强调了什么？",
@@ -255,7 +252,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "软件开发生命周期与测试模型"
+        "category": "软件开发生命周期与测试模型",
     },
     {
         "title": "关于TDD的「红-绿-重构」循环，以下说法正确的是？（多选）",
@@ -263,7 +260,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "软件开发生命周期与测试模型"
+        "category": "软件开发生命周期与测试模型",
     },
     {
         "title": "请判断：敏捷开发中，自动化测试是敏捷的基石。",
@@ -271,7 +268,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "软件开发生命周期与测试模型"
+        "category": "软件开发生命周期与测试模型",
     },
     {
         "title": "关于集成测试的策略，以下说法正确的是？",
@@ -279,7 +276,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "软件开发生命周期与测试模型"
+        "category": "软件开发生命周期与测试模型",
     },
     {
         "title": "请判断：BDD（行为驱动开发）使用自然语言描述测试场景。",
@@ -287,9 +284,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "软件开发生命周期与测试模型"
+        "category": "软件开发生命周期与测试模型",
     },
-    
     # ============ 第4节：测试分类体系 (10题) ============
     {
         "title": "关于单元测试（Unit Testing），以下说法正确的是？",
@@ -297,7 +293,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "测试分类体系"
+        "category": "测试分类体系",
     },
     {
         "title": "按测试阶段分类，测试可以分为以下哪些类型？（多选）",
@@ -305,7 +301,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "easy",
-        "category": "测试分类体系"
+        "category": "测试分类体系",
     },
     {
         "title": "关于黑盒测试和白盒测试的区别，以下说法正确的是？",
@@ -313,7 +309,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试分类体系"
+        "category": "测试分类体系",
     },
     {
         "title": "请判断：灰盒测试（Gray-box Testing）介于黑盒和白盒之间，了解部分内部结构但主要从外部测试。",
@@ -321,7 +317,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试分类体系"
+        "category": "测试分类体系",
     },
     {
         "title": "关于验收测试（Acceptance Testing），以下说法正确的是？（多选）",
@@ -329,7 +325,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "测试分类体系"
+        "category": "测试分类体系",
     },
     {
         "title": "白盒测试的覆盖标准包括以下哪些？（多选）",
@@ -337,7 +333,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试分类体系"
+        "category": "测试分类体系",
     },
     {
         "title": "请判断：集成测试是测试多个单元/模块之间的交互是否正确。",
@@ -345,7 +341,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "测试分类体系"
+        "category": "测试分类体系",
     },
     {
         "title": "关于黑盒测试的常用方法，以下说法正确的是？",
@@ -353,7 +349,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试分类体系"
+        "category": "测试分类体系",
     },
     {
         "title": "请判断：系统测试将整个软件系统作为一个整体进行测试，验证其是否满足需求规格。",
@@ -361,7 +357,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "测试分类体系"
+        "category": "测试分类体系",
     },
     {
         "title": "关于静态测试和动态测试的区别，以下说法正确的是？",
@@ -369,9 +365,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试分类体系"
+        "category": "测试分类体系",
     },
-    
     # ============ 第5节：缺陷管理 (5题) ============
     {
         "title": "缺陷（Bug）的生命周期中，正确的状态流转是？",
@@ -379,7 +374,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷管理与追踪"
+        "category": "缺陷管理与追踪",
     },
     {
         "title": "关于缺陷的严重程度（Severity）和优先级（Priority），以下说法正确的是？（多选）",
@@ -387,7 +382,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "缺陷管理与追踪"
+        "category": "缺陷管理与追踪",
     },
     {
         "title": "请判断：当测试人员验证缺陷修复通过后，缺陷状态应该变为「Closed（关闭）」。",
@@ -395,7 +390,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "缺陷管理与追踪"
+        "category": "缺陷管理与追踪",
     },
     {
         "title": "关于缺陷状态「Rejected（拒绝/不是bug）」，以下说法正确的是？",
@@ -403,7 +398,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "缺陷管理与追踪"
+        "category": "缺陷管理与追踪",
     },
     {
         "title": "请判断：缺陷的严重程度（Severity）为Blocker/Critical时，表示系统崩溃、数据丢失等严重问题。",
@@ -411,58 +406,63 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "缺陷管理与追踪"
+        "category": "缺陷管理与追踪",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径1的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 1")
-    print(f"🗑️  已删除学习路径1的旧习题")
-    
+    print("🗑️  已删除学习路径1的旧习题")
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 1, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 1", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径1")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 1")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径1现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

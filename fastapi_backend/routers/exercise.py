@@ -1,6 +1,7 @@
 """
 在线练习路由 - 支持代码执行、真实判题和AI评估
 """
+
 from __future__ import annotations
 
 import json
@@ -13,9 +14,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.models import User, Exercise, Progress, ExerciseSubmissionRecord
+from fastapi_backend.models.models import (
+    User,
+    Exercise,
+    Progress,
+    ExerciseSubmissionRecord,
+)
 from fastapi_backend.schemas.common import SuccessResponse
-from fastapi_backend.schemas.exercise import ExerciseSubmission, ExerciseEvaluationResponse
+from fastapi_backend.schemas.exercise import (
+    ExerciseSubmission,
+    ExerciseEvaluationResponse,
+)
 from fastapi_backend.services.ai_tutor_service import AITutorService
 from fastapi_backend.services.sandbox_service import CodeSandbox
 
@@ -57,23 +66,29 @@ async def _execute_and_judge(
 
             if case_input:
                 exec_result = await sandbox.execute_code(
-                    code=full_code, language="python",
-                    input_data=case_input, timeout=5,
+                    code=full_code,
+                    language="python",
+                    input_data=case_input,
+                    timeout=5,
                 )
             else:
                 exec_result = await sandbox.execute_code(
-                    code=full_code, language="python", timeout=5,
+                    code=full_code,
+                    language="python",
+                    timeout=5,
                 )
 
             actual = exec_result.get("stdout", "").strip()
             passed = actual == expected
-            results.append({
-                "case_index": i + 1,
-                "passed": passed,
-                "expected": expected,
-                "actual": actual[:500],
-                "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
-            })
+            results.append(
+                {
+                    "case_index": i + 1,
+                    "passed": passed,
+                    "expected": expected,
+                    "actual": actual[:500],
+                    "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
+                }
+            )
 
     elif language == "sql":
         for i, tc in enumerate(test_cases):
@@ -87,37 +102,45 @@ async def _execute_and_judge(
             combined_sql += user_sql
 
             exec_result = await sandbox.execute_code(
-                code=combined_sql, language="sql", timeout=3,
+                code=combined_sql,
+                language="sql",
+                timeout=3,
             )
 
             actual = exec_result.get("stdout", "").strip()
             passed = actual == expected
-            results.append({
-                "case_index": i + 1,
-                "passed": passed,
-                "expected": expected,
-                "actual": actual[:500],
-                "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
-            })
+            results.append(
+                {
+                    "case_index": i + 1,
+                    "passed": passed,
+                    "expected": expected,
+                    "actual": actual[:500],
+                    "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
+                }
+            )
     else:
         for i, tc in enumerate(test_cases):
             case_input = tc.get("input", "")
             expected = str(tc.get("expected_output", tc.get("expected", ""))).strip()
 
             exec_result = await sandbox.execute_code(
-                code=source_code, language=language,
-                input_data=case_input or None, timeout=5,
+                code=source_code,
+                language=language,
+                input_data=case_input or None,
+                timeout=5,
             )
 
             actual = exec_result.get("stdout", "").strip()
             passed = actual == expected
-            results.append({
-                "case_index": i + 1,
-                "passed": passed,
-                "expected": expected,
-                "actual": actual[:500],
-                "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
-            })
+            results.append(
+                {
+                    "case_index": i + 1,
+                    "passed": passed,
+                    "expected": expected,
+                    "actual": actual[:500],
+                    "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
+                }
+            )
 
     total = len(results)
     passed_count = sum(1 for r in results if r["passed"])
@@ -158,7 +181,9 @@ async def evaluate_exercise_code(
 
     if submission.test_cases:
         try:
-            test_cases = json.loads(submission.test_cases) if isinstance(submission.test_cases, str) else submission.test_cases
+            test_cases = (
+                json.loads(submission.test_cases) if isinstance(submission.test_cases, str) else submission.test_cases
+            )
             if isinstance(test_cases, list) and len(test_cases) > 0:
                 judge_result = await _execute_and_judge(
                     sandbox=sandbox,
@@ -184,13 +209,15 @@ async def evaluate_exercise_code(
             "failed_count": 0 if passed else 1,
             "pass_rate": 100.0 if passed else 0.0,
             "all_passed": passed,
-            "details": [{
-                "case_index": 1,
-                "passed": passed,
-                "expected": expected[:500],
-                "actual": actual[:500],
-                "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
-            }],
+            "details": [
+                {
+                    "case_index": 1,
+                    "passed": passed,
+                    "expected": expected[:500],
+                    "actual": actual[:500],
+                    "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
+                }
+            ],
             "summary": "通过 1/1 个测试用例" if passed else "未通过测试用例",
         }
 
@@ -246,7 +273,9 @@ async def submit_exercise(
             is_correct = judge_result["all_passed"]
         elif ex.solution:
             exec_result = await sandbox.execute_code(
-                code=solution, language=language, timeout=5,
+                code=solution,
+                language=language,
+                timeout=5,
             )
             actual = exec_result.get("stdout", "").strip()
             expected = ex.solution.strip()
@@ -257,17 +286,21 @@ async def submit_exercise(
                 "failed_count": 0 if is_correct else 1,
                 "pass_rate": 100.0 if is_correct else 0.0,
                 "all_passed": is_correct,
-                "details": [{
-                    "case_index": 1,
-                    "passed": is_correct,
-                    "expected": expected[:500],
-                    "actual": actual[:500],
-                }],
+                "details": [
+                    {
+                        "case_index": 1,
+                        "passed": is_correct,
+                        "expected": expected[:500],
+                        "actual": actual[:500],
+                    }
+                ],
                 "summary": "通过" if is_correct else "未通过",
             }
         else:
             exec_result = await sandbox.execute_code(
-                code=solution, language=language, timeout=5,
+                code=solution,
+                language=language,
+                timeout=5,
             )
             no_errors = exec_result.get("exit_code", -1) == 0 and not exec_result.get("stderr")
             is_correct = no_errors
@@ -278,7 +311,9 @@ async def submit_exercise(
                 "pass_rate": 100.0 if no_errors else 0.0,
                 "all_passed": no_errors,
                 "details": [],
-                "summary": "代码执行成功，无报错" if no_errors else f"代码执行出错: {exec_result.get('stderr', '')[:200]}",
+                "summary": "代码执行成功，无报错"
+                if no_errors
+                else f"代码执行出错: {exec_result.get('stderr', '')[:200]}",
             }
 
     elif language == "sql":
@@ -291,7 +326,9 @@ async def submit_exercise(
         combined_sql += solution
 
         exec_result = await sandbox.execute_code(
-            code=combined_sql, language="sql", timeout=3,
+            code=combined_sql,
+            language="sql",
+            timeout=3,
         )
         actual = exec_result.get("stdout", "").strip()
         expected = expected_output.strip()
@@ -307,12 +344,14 @@ async def submit_exercise(
             "failed_count": 0 if is_correct else 1,
             "pass_rate": 100.0 if is_correct else 0.0,
             "all_passed": is_correct,
-            "details": [{
-                "case_index": 1,
-                "passed": is_correct,
-                "expected": expected[:500] if expected else "(无预期输出)",
-                "actual": actual[:500],
-            }],
+            "details": [
+                {
+                    "case_index": 1,
+                    "passed": is_correct,
+                    "expected": expected[:500] if expected else "(无预期输出)",
+                    "actual": actual[:500],
+                }
+            ],
             "summary": "SQL 执行结果匹配" if is_correct else "SQL 执行结果不匹配",
         }
 
@@ -331,7 +370,12 @@ async def submit_exercise(
     before_scores = {}
     if is_correct:
         try:
-            from fastapi_backend.routers.skills import _calculate_skill_score, SKILL_CATEGORY_MAP, SKILL_DIMENSIONS
+            from fastapi_backend.routers.skills import (
+                _calculate_skill_score,
+                SKILL_CATEGORY_MAP,
+                SKILL_DIMENSIONS,
+            )
+
             for skill_key in SKILL_CATEGORY_MAP:
                 before_scores[skill_key] = await _calculate_skill_score(current_user.id, skill_key, db)
         except Exception as e:
@@ -385,13 +429,15 @@ async def submit_exercise(
             for skill_key in SKILL_CATEGORY_MAP:
                 diff = after_scores[skill_key] - before_scores[skill_key]
                 if diff > 0:
-                    changes.append({
-                        "key": skill_key,
-                        "name": SKILL_DIMENSIONS[skill_key]["name"],
-                        "before": before_scores[skill_key],
-                        "after": after_scores[skill_key],
-                        "change": diff,
-                    })
+                    changes.append(
+                        {
+                            "key": skill_key,
+                            "name": SKILL_DIMENSIONS[skill_key]["name"],
+                            "before": before_scores[skill_key],
+                            "after": after_scores[skill_key],
+                            "change": diff,
+                        }
+                    )
 
             if changes:
                 skill_change = changes
@@ -453,15 +499,17 @@ async def get_recent_activity(
 
     activities = []
     for s in submissions:
-        activities.append({
-            "id": s.id,
-            "type": "exercise_submit",
-            "exercise_id": s.exercise_id,
-            "exercise_title": exercise_map.get(s.exercise_id, f"习题#{s.exercise_id}"),
-            "result": s.result,
-            "score": s.score,
-            "created_at": s.created_at.strftime("%Y-%m-%d %H:%M") if s.created_at else "",
-        })
+        activities.append(
+            {
+                "id": s.id,
+                "type": "exercise_submit",
+                "exercise_id": s.exercise_id,
+                "exercise_title": exercise_map.get(s.exercise_id, f"习题#{s.exercise_id}"),
+                "result": s.result,
+                "score": s.score,
+                "created_at": s.created_at.strftime("%Y-%m-%d %H:%M") if s.created_at else "",
+            }
+        )
 
     return {"activities": activities}
 
@@ -485,12 +533,9 @@ async def get_wrong_answers(
 
     wrong_exercise_ids = list({s.exercise_id for s in wrong_submissions})
 
-    later_correct_stmt = (
-        select(ExerciseSubmissionRecord)
-        .where(
-            ExerciseSubmissionRecord.user_id == current_user.id,
-            ExerciseSubmissionRecord.result == "pass",
-        )
+    later_correct_stmt = select(ExerciseSubmissionRecord).where(
+        ExerciseSubmissionRecord.user_id == current_user.id,
+        ExerciseSubmissionRecord.result == "pass",
     )
     later_correct_result = await db.execute(later_correct_stmt)
     later_correct_ids = {s.exercise_id for s in later_correct_result.scalars().all()}
@@ -518,20 +563,24 @@ async def get_wrong_answers(
         info = exercise_map.get(eid, {})
         subs = [s for s in wrong_submissions if s.exercise_id == eid]
         latest = subs[0] if subs else None
-        wrong_list.append({
-            **info,
-            "status": "wrong",
-            "wrong_count": len(subs),
-            "last_wrong_at": latest.created_at.strftime("%Y-%m-%d %H:%M") if latest and latest.created_at else "",
-        })
+        wrong_list.append(
+            {
+                **info,
+                "status": "wrong",
+                "wrong_count": len(subs),
+                "last_wrong_at": latest.created_at.strftime("%Y-%m-%d %H:%M") if latest and latest.created_at else "",
+            }
+        )
 
     mastered_list = []
     for eid in mastered_ids:
         info = exercise_map.get(eid, {})
-        mastered_list.append({
-            **info,
-            "status": "mastered",
-        })
+        mastered_list.append(
+            {
+                **info,
+                "status": "mastered",
+            }
+        )
 
     return {
         "wrong_answers": wrong_list,
@@ -572,6 +621,7 @@ async def get_daily_tasks(
     checkin_today = False
     try:
         from fastapi_backend.models.models import DailyCheckin
+
         checkin_stmt = select(DailyCheckin).where(
             DailyCheckin.user_id == current_user.id,
             DailyCheckin.checkin_date >= today_start,
@@ -690,14 +740,16 @@ async def get_related_exercises(
 
     related_list = []
     for r in related:
-        related_list.append({
-            "id": r.id,
-            "title": r.title,
-            "difficulty": r.difficulty,
-            "category": r.category,
-            "knowledge_point": r.knowledge_point,
-            "stage": r.stage,
-            "completed": r.id in completed_ids,
-        })
+        related_list.append(
+            {
+                "id": r.id,
+                "title": r.title,
+                "difficulty": r.difficulty,
+                "category": r.category,
+                "knowledge_point": r.knowledge_point,
+                "stage": r.stage,
+                "completed": r.id in completed_ids,
+            }
+        )
 
     return {"related": related_list}

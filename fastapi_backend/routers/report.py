@@ -1,4 +1,5 @@
 """学习周报路由 - 学习数据复盘"""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -10,7 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.models import (
-    User, Exercise, ExerciseSubmissionRecord, DailyCheckin,
+    User,
+    Exercise,
+    ExerciseSubmissionRecord,
+    DailyCheckin,
 )
 
 router = APIRouter(prefix="/api/v1/report", tags=["学习报告"])
@@ -66,12 +70,14 @@ async def get_weekly_report(
         )
         day_result = await db.execute(day_stmt)
         day_row = day_result.one()
-        daily_data.append({
-            "date": day_start.strftime("%m-%d"),
-            "day_name": ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][i],
-            "total": day_row.total or 0,
-            "correct": day_row.correct or 0,
-        })
+        daily_data.append(
+            {
+                "date": day_start.strftime("%m-%d"),
+                "day_name": ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][i],
+                "total": day_row.total or 0,
+                "correct": day_row.correct or 0,
+            }
+        )
 
     # 本周知识点分布
     this_week_exercise_ids = list({s.exercise_id for s in this_week_subs})
@@ -155,14 +161,18 @@ async def get_learning_heatmap(
     now = datetime.now(timezone.utc)
     start_date = now - timedelta(days=365)
 
-    stmt = select(
-        func.date(ExerciseSubmissionRecord.created_at).label("date"),
-        func.count().label("total"),
-        func.sum(case((ExerciseSubmissionRecord.result == "pass", 1), else_=0)).label("correct"),
-    ).where(
-        ExerciseSubmissionRecord.user_id == current_user.id,
-        ExerciseSubmissionRecord.created_at >= start_date,
-    ).group_by(func.date(ExerciseSubmissionRecord.created_at))
+    stmt = (
+        select(
+            func.date(ExerciseSubmissionRecord.created_at).label("date"),
+            func.count().label("total"),
+            func.sum(case((ExerciseSubmissionRecord.result == "pass", 1), else_=0)).label("correct"),
+        )
+        .where(
+            ExerciseSubmissionRecord.user_id == current_user.id,
+            ExerciseSubmissionRecord.created_at >= start_date,
+        )
+        .group_by(func.date(ExerciseSubmissionRecord.created_at))
+    )
 
     result = await db.execute(stmt)
     rows = result.all()
@@ -179,12 +189,14 @@ async def get_learning_heatmap(
     for i in range(364, -1, -1):
         d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
         data = heatmap.get(d, {"total": 0, "correct": 0})
-        days.append({
-            "date": d,
-            "total": data["total"],
-            "correct": data["correct"],
-            "level": min(data["total"], 4),
-        })
+        days.append(
+            {
+                "date": d,
+                "total": data["total"],
+                "correct": data["correct"],
+                "level": min(data["total"], 4),
+            }
+        )
 
     total_days = sum(1 for d in days if d["total"] > 0)
     total_submissions = sum(d["total"] for d in days)

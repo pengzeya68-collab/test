@@ -2,6 +2,7 @@
 后台管理子路由 - 习题管理
 从 admin_manage.py 拆分
 """
+
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
@@ -12,7 +13,9 @@ from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
 from fastapi_backend.models.models import User, Exercise
 from fastapi import UploadFile, File
+
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-习题管理"])
+
 
 @router.get("/exercises")
 async def list_exercises(
@@ -21,15 +24,13 @@ async def list_exercises(
     keyword: Optional[str] = Query(None),
     difficulty: Optional[str] = Query(None),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取习题列表"""
     query = select(Exercise)
 
     if keyword:
-        query = query.where(
-            or_(Exercise.title.contains(keyword), Exercise.description.contains(keyword))
-        )
+        query = query.where(or_(Exercise.title.contains(keyword), Exercise.description.contains(keyword)))
     if difficulty:
         query = query.where(Exercise.difficulty == difficulty)
 
@@ -41,16 +42,18 @@ async def list_exercises(
 
     exercise_list = []
     for e in exercises:
-        exercise_list.append({
-            "id": e.id,
-            "title": e.title,
-            "category": e.category if hasattr(e, "category") else "",
-            "difficulty": e.difficulty,
-            "content": e.description if hasattr(e, "description") else "",
-            "answer": e.solution if hasattr(e, "solution") else "",
-            "passRate": 0,
-            "createTime": e.created_at.isoformat() if e.created_at else "",
-        })
+        exercise_list.append(
+            {
+                "id": e.id,
+                "title": e.title,
+                "category": e.category if hasattr(e, "category") else "",
+                "difficulty": e.difficulty,
+                "content": e.description if hasattr(e, "description") else "",
+                "answer": e.solution if hasattr(e, "solution") else "",
+                "passRate": 0,
+                "createTime": e.created_at.isoformat() if e.created_at else "",
+            }
+        )
 
     return {"list": exercise_list, "total": total or 0}
 
@@ -59,7 +62,7 @@ async def list_exercises(
 async def create_exercise(
     data: dict,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """创建习题"""
     new_exercise = Exercise(
@@ -81,7 +84,7 @@ async def update_exercise(
     exercise_id: int,
     data: dict,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """更新习题"""
     result = await db.execute(select(Exercise).where(Exercise.id == exercise_id))
@@ -108,7 +111,7 @@ async def update_exercise(
 async def delete_exercise(
     exercise_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """删除习题"""
     result = await db.execute(select(Exercise).where(Exercise.id == exercise_id))
@@ -125,7 +128,7 @@ async def delete_exercise(
 async def import_exercises(
     file: UploadFile = File(...),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """批量导入习题"""
     import json
@@ -141,7 +144,11 @@ async def import_exercises(
             if isinstance(items, dict):
                 items = [items]
         else:
-            return {"success_count": 0, "fail_count": 1, "fail_reasons": ["仅支持JSON格式"]}
+            return {
+                "success_count": 0,
+                "fail_count": 1,
+                "fail_reasons": ["仅支持JSON格式"],
+            }
 
         for item in items:
             try:
@@ -176,7 +183,7 @@ async def import_exercises(
 async def get_exercise(
     exercise_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取习题详情"""
     result = await db.execute(select(Exercise).where(Exercise.id == exercise_id))
@@ -203,7 +210,7 @@ async def get_exercise(
 async def batch_import_exercises(
     data: dict,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """批量导入习题（JSON格式）"""
     exercises_data = data.get("exercises", [])
@@ -232,5 +239,3 @@ async def batch_import_exercises(
         await db.refresh(e)
 
     return {"message": f"成功导入 {len(created)} 道习题", "count": len(created)}
-
-

@@ -1,4 +1,5 @@
 """技能证书路由 - 学习成果认证"""
+
 from __future__ import annotations
 
 import hashlib
@@ -94,7 +95,7 @@ def _generate_cert_id(user_id: int, cert_key: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16].upper()
 
 
-@router.get("/")
+@router.get("")
 async def get_certificates(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -106,12 +107,16 @@ async def get_certificates(
     for key in SKILL_DIMENSIONS:
         skill_scores[key] = await _calculate_skill_score(current_user.id, key, db)
 
-    total_stmt = select(func.count()).select_from(Progress).where(
-        Progress.user_id == current_user.id,
-        Progress.completed == True,  # noqa: E712
+    total_stmt = (
+        select(func.count())
+        .select_from(Progress)
+        .where(
+            Progress.user_id == current_user.id,
+            Progress.completed == True,  # noqa: E712
+        )
     )
     total_result = await db.execute(total_stmt)
-    total_completed = total_result.scalar_one()
+    total_result.scalar_one()
 
     certificates = []
     for key, config in CERTIFICATE_LEVELS.items():
@@ -124,18 +129,20 @@ async def get_certificates(
         unlocked = score >= config["required_score"]
         cert_id = _generate_cert_id(current_user.id, key) if unlocked else None
 
-        certificates.append({
-            "key": key,
-            "name": config["name"],
-            "description": config["description"],
-            "icon": config["icon"],
-            "level": config["level"],
-            "required_score": config["required_score"],
-            "current_score": round(score, 1),
-            "unlocked": unlocked,
-            "cert_id": cert_id,
-            "issued_at": "已解锁" if unlocked else None,
-        })
+        certificates.append(
+            {
+                "key": key,
+                "name": config["name"],
+                "description": config["description"],
+                "icon": config["icon"],
+                "level": config["level"],
+                "required_score": config["required_score"],
+                "current_score": round(score, 1),
+                "unlocked": unlocked,
+                "cert_id": cert_id,
+                "issued_at": "已解锁" if unlocked else None,
+            }
+        )
 
     unlocked_count = sum(1 for c in certificates if c["unlocked"])
 

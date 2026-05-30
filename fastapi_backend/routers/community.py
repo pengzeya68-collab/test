@@ -1,4 +1,5 @@
 """Community router – migrated from Flask backend/api/community.py."""
+
 from __future__ import annotations
 
 import math
@@ -15,6 +16,7 @@ from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_active_user, require_admin
 from fastapi_backend.models.models import Comment, Favorite, Like, Post, User
 
+
 async def get_optional_user(
     authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
@@ -22,7 +24,8 @@ async def get_optional_user(
     if not authorization:
         return None
     try:
-        from fastapi_backend.services.auth_service import AuthService, AuthError
+        from fastapi_backend.services.auth_service import AuthService
+
         scheme, _, token = authorization.partition(" ")
         if scheme.lower() != "bearer" or not token:
             return None
@@ -35,6 +38,7 @@ async def get_optional_user(
     except Exception:
         pass
     return None
+
 
 from fastapi_backend.schemas.community import (
     AdminCommentListResponse,
@@ -109,7 +113,9 @@ async def _format_post(post: Post, user_id: int | None = None, db: AsyncSession 
     )
 
 
-async def _format_comment(comment: Comment, user_id: int | None = None, db: AsyncSession | None = None) -> CommentResponse:
+async def _format_comment(
+    comment: Comment, user_id: int | None = None, db: AsyncSession | None = None
+) -> CommentResponse:
     is_liked: bool | None = None
     if user_id and db:
         lk = await db.execute(select(Like).filter_by(user_id=user_id, comment_id=comment.id))
@@ -124,7 +130,9 @@ async def _format_comment(comment: Comment, user_id: int | None = None, db: Asyn
         content=comment.content,
         like_count=comment.like_count,
         created_at=_fmt_dt(comment.created_at),
-        author={"id": comment.user.id, "username": comment.user.username} if comment.user else {"id": 0, "username": "unknown"},
+        author={"id": comment.user.id, "username": comment.user.username}
+        if comment.user
+        else {"id": 0, "username": "unknown"},
         replies=replies,
         is_liked=is_liked,
     )
@@ -145,15 +153,29 @@ async def get_community_stats(db: AsyncSession = Depends(get_db)):
     today_start = datetime.combine(today, datetime.min.time())
     today_posts_q = await db.execute(select(func.count(Post.id)).filter(Post.created_at >= today_start))
     today_posts = today_posts_q.scalar() or 0
-    return CommunityStatsResponse(total_posts=total_posts, total_users=total_users, today_posts=today_posts, online_users=total_users)
+    return CommunityStatsResponse(
+        total_posts=total_posts,
+        total_users=total_users,
+        today_posts=today_posts,
+        online_users=total_users,
+    )
 
 
 @router.get("/posts", response_model=PostPaginatedResponse)
-async def get_posts(page: int = Query(1, ge=1), per_page: int = Query(10, ge=1, le=100), category: Optional[str] = Query(None), tag: Optional[str] = Query(None), search: Optional[str] = Query(None), sort: str = Query("latest"), current_user: Optional[User] = Depends(get_optional_user), db: AsyncSession = Depends(get_db)):
+async def get_posts(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    category: Optional[str] = Query(None),
+    tag: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    sort: str = Query("latest"),
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
     user_id = None
     if current_user:
         user_id = current_user.id
-    q = select(Post).options(selectinload(Post.user)).filter(Post.is_approved == True)
+    q = select(Post).options(selectinload(Post.user)).filter(Post.is_approved)
     if category:
         q = q.filter(Post.category == category)
     if tag:
@@ -161,9 +183,12 @@ async def get_posts(page: int = Query(1, ge=1), per_page: int = Query(10, ge=1, 
     if search:
         q = q.filter(or_(Post.title.like(f"%{search}%"), Post.content.like(f"%{search}%")))
     if sort == "essence":
-        q = q.filter(Post.is_essence == True)
+        q = q.filter(Post.is_essence)
     if sort == "hot":
-        q = q.order_by((Post.like_count + Post.comment_count + Post.view_count / 10).desc(), Post.created_at.desc())
+        q = q.order_by(
+            (Post.like_count + Post.comment_count + Post.view_count / 10).desc(),
+            Post.created_at.desc(),
+        )
     else:
         q = q.order_by(Post.is_top.desc(), Post.created_at.desc())
     count_q = select(func.count()).select_from(q.subquery())
@@ -172,11 +197,21 @@ async def get_posts(page: int = Query(1, ge=1), per_page: int = Query(10, ge=1, 
     q = q.offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(q)
     posts = result.scalars().all()
-    return PostPaginatedResponse(list=[await _format_post(p, user_id, db) for p in posts], total=total, page=page, per_page=per_page, total_pages=math.ceil(total / per_page) if total else 0)
+    return PostPaginatedResponse(
+        list=[await _format_post(p, user_id, db) for p in posts],
+        total=total,
+        page=page,
+        per_page=per_page,
+        total_pages=math.ceil(total / per_page) if total else 0,
+    )
 
 
 @router.get("/posts/{post_id}", response_model=PostListResponse)
-async def get_post_detail(post_id: int, current_user: Optional[User] = Depends(get_optional_user), db: AsyncSession = Depends(get_db)):
+async def get_post_detail(
+    post_id: int,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
     user_id = current_user.id if current_user else None
     q = select(Post).options(selectinload(Post.user)).filter(Post.id == post_id)
     result = await db.execute(q)
@@ -198,11 +233,22 @@ async def get_post_detail(post_id: int, current_user: Optional[User] = Depends(g
 
 
 @router.post("/posts", response_model=PostListResponse, status_code=201)
-async def create_post(payload: PostCreateRequest, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
+async def create_post(
+    payload: PostCreateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     if payload.category not in _VALID_CATEGORIES:
         raise HTTPException(status_code=400, detail="分类不正确")
     tags_str = ",".join([t.strip() for t in payload.tags if t.strip()]) if payload.tags else ""
-    post = Post(title=payload.title.strip(), content=payload.content.strip(), summary=payload.summary.strip() if payload.summary else "", tags=tags_str, category=payload.category, user_id=current_user.id)
+    post = Post(
+        title=payload.title.strip(),
+        content=payload.content.strip(),
+        summary=payload.summary.strip() if payload.summary else "",
+        tags=tags_str,
+        category=payload.category,
+        user_id=current_user.id,
+    )
     db.add(post)
     await db.commit()
     await db.refresh(post)
@@ -213,7 +259,12 @@ async def create_post(payload: PostCreateRequest, current_user: User = Depends(g
 
 
 @router.put("/posts/{post_id}", response_model=PostListResponse)
-async def update_post(post_id: int, payload: PostUpdateRequest, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
+async def update_post(
+    post_id: int,
+    payload: PostUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Post).options(selectinload(Post.user)).filter(Post.id == post_id)
     result = await db.execute(q)
     post = result.scalar_one_or_none()
@@ -221,12 +272,17 @@ async def update_post(post_id: int, payload: PostUpdateRequest, current_user: Us
         raise HTTPException(status_code=404, detail="帖子不存在")
     if post.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="无权限修改此帖子")
-    if payload.title is not None: post.title = payload.title.strip()
-    if payload.content is not None: post.content = payload.content.strip()
-    if payload.summary is not None: post.summary = payload.summary.strip()
+    if payload.title is not None:
+        post.title = payload.title.strip()
+    if payload.content is not None:
+        post.content = payload.content.strip()
+    if payload.summary is not None:
+        post.summary = payload.summary.strip()
     if payload.category is not None:
-        if payload.category in _VALID_CATEGORIES: post.category = payload.category
-    if payload.tags is not None: post.tags = ",".join([t.strip() for t in payload.tags if t.strip()])
+        if payload.category in _VALID_CATEGORIES:
+            post.category = payload.category
+    if payload.tags is not None:
+        post.tags = ",".join([t.strip() for t in payload.tags if t.strip()])
     post.updated_at = datetime.utcnow()
     await db.commit()
     await db.refresh(post)
@@ -237,7 +293,11 @@ async def update_post(post_id: int, payload: PostUpdateRequest, current_user: Us
 
 
 @router.delete("/posts/{post_id}")
-async def delete_post(post_id: int, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
+async def delete_post(
+    post_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Post).filter(Post.id == post_id)
     result = await db.execute(q)
     post = result.scalar_one_or_none()
@@ -251,7 +311,11 @@ async def delete_post(post_id: int, current_user: User = Depends(get_current_act
 
 
 @router.post("/posts/{post_id}/like", response_model=LikeResponse)
-async def like_post(post_id: int, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
+async def like_post(
+    post_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Post).filter(Post.id == post_id)
     result = await db.execute(q)
     post = result.scalar_one_or_none()
@@ -260,18 +324,31 @@ async def like_post(post_id: int, current_user: User = Depends(get_current_activ
     like_q = await db.execute(select(Like).filter_by(user_id=current_user.id, post_id=post_id))
     like = like_q.scalar_one_or_none()
     if like:
-        await db.delete(like); post.like_count = max(0, post.like_count - 1); action = "unliked"
+        await db.delete(like)
+        post.like_count = max(0, post.like_count - 1)
+        action = "unliked"
     else:
-        like = Like(user_id=current_user.id, post_id=post_id); db.add(like); post.like_count += 1; action = "liked"
+        like = Like(user_id=current_user.id, post_id=post_id)
+        db.add(like)
+        post.like_count += 1
+        action = "liked"
     try:
         await db.commit()
     except IntegrityError:
         await db.rollback()
-    return LikeResponse(message="点赞成功" if action == "liked" else "取消点赞成功", action=action, like_count=post.like_count)
+    return LikeResponse(
+        message="点赞成功" if action == "liked" else "取消点赞成功",
+        action=action,
+        like_count=post.like_count,
+    )
 
 
 @router.post("/posts/{post_id}/favorite", response_model=FavoriteResponse)
-async def favorite_post(post_id: int, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
+async def favorite_post(
+    post_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Post).filter(Post.id == post_id)
     result = await db.execute(q)
     post = result.scalar_one_or_none()
@@ -280,27 +357,44 @@ async def favorite_post(post_id: int, current_user: User = Depends(get_current_a
     fav_q = await db.execute(select(Favorite).filter_by(user_id=current_user.id, post_id=post_id))
     fav = fav_q.scalar_one_or_none()
     if fav:
-        await db.delete(fav); action = "unfavorited"
+        await db.delete(fav)
+        action = "unfavorited"
     else:
-        fav = Favorite(user_id=current_user.id, post_id=post_id); db.add(fav); action = "favorited"
+        fav = Favorite(user_id=current_user.id, post_id=post_id)
+        db.add(fav)
+        action = "favorited"
     await db.commit()
     return FavoriteResponse(message="收藏成功" if action == "favorited" else "取消收藏成功", action=action)
 
 
 @router.get("/posts/{post_id}/comments", response_model=list[CommentResponse])
-async def get_comments(post_id: int, current_user: Optional[User] = Depends(get_optional_user), db: AsyncSession = Depends(get_db)):
+async def get_comments(
+    post_id: int,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
     user_id = current_user.id if current_user else None
     post_q = await db.execute(select(Post).filter_by(id=post_id))
     if not post_q.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="帖子不存在")
-    q = select(Comment).options(selectinload(Comment.user), selectinload(Comment.replies)).filter(Comment.post_id == post_id, Comment.parent_id == None).order_by(Comment.created_at.desc())
+    q = (
+        select(Comment)
+        .options(selectinload(Comment.user), selectinload(Comment.replies))
+        .filter(Comment.post_id == post_id, Comment.parent_id is None)
+        .order_by(Comment.created_at.desc())
+    )
     result = await db.execute(q)
     comments = result.scalars().all()
     return [await _format_comment(c, user_id, db) for c in comments]
 
 
 @router.post("/posts/{post_id}/comments", response_model=CommentResponse, status_code=201)
-async def create_comment(post_id: int, payload: CommentCreateRequest, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
+async def create_comment(
+    post_id: int,
+    payload: CommentCreateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     post_q = await db.execute(select(Post).filter_by(id=post_id))
     post = post_q.scalar_one_or_none()
     if not post:
@@ -309,8 +403,16 @@ async def create_comment(post_id: int, payload: CommentCreateRequest, current_us
         parent_q = await db.execute(select(Comment).filter_by(id=payload.parent_id, post_id=post_id))
         if not parent_q.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="父评论不存在")
-    comment = Comment(content=payload.content.strip(), user_id=current_user.id, post_id=post_id, parent_id=payload.parent_id)
-    db.add(comment); post.comment_count += 1; await db.commit(); await db.refresh(comment)
+    comment = Comment(
+        content=payload.content.strip(),
+        user_id=current_user.id,
+        post_id=post_id,
+        parent_id=payload.parent_id,
+    )
+    db.add(comment)
+    post.comment_count += 1
+    await db.commit()
+    await db.refresh(comment)
     q = select(Comment).options(selectinload(Comment.user)).filter(Comment.id == comment.id)
     result = await db.execute(q)
     comment = result.scalar_one()
@@ -318,7 +420,11 @@ async def create_comment(post_id: int, payload: CommentCreateRequest, current_us
 
 
 @router.post("/comments/{comment_id}/like", response_model=LikeResponse)
-async def like_comment(comment_id: int, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
+async def like_comment(
+    comment_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Comment).filter(Comment.id == comment_id)
     result = await db.execute(q)
     comment = result.scalar_one_or_none()
@@ -327,18 +433,33 @@ async def like_comment(comment_id: int, current_user: User = Depends(get_current
     like_q = await db.execute(select(Like).filter_by(user_id=current_user.id, comment_id=comment_id))
     like = like_q.scalar_one_or_none()
     if like:
-        await db.delete(like); comment.like_count = max(0, comment.like_count - 1); action = "unliked"
+        await db.delete(like)
+        comment.like_count = max(0, comment.like_count - 1)
+        action = "unliked"
     else:
-        like = Like(user_id=current_user.id, comment_id=comment_id); db.add(like); comment.like_count += 1; action = "liked"
+        like = Like(user_id=current_user.id, comment_id=comment_id)
+        db.add(like)
+        comment.like_count += 1
+        action = "liked"
     try:
         await db.commit()
     except IntegrityError:
         await db.rollback()
-    return LikeResponse(message="点赞成功" if action == "liked" else "取消点赞成功", action=action, like_count=comment.like_count)
+    return LikeResponse(
+        message="点赞成功" if action == "liked" else "取消点赞成功",
+        action=action,
+        like_count=comment.like_count,
+    )
 
 
 @router.get("/user/{user_id}/posts", response_model=PostPaginatedResponse)
-async def get_user_posts(user_id: int, page: int = Query(1, ge=1), per_page: int = Query(10, ge=1, le=100), current_user: Optional[User] = Depends(get_optional_user), db: AsyncSession = Depends(get_db)):
+async def get_user_posts(
+    user_id: int,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
     me = current_user.id if current_user else None
     user_q = await db.execute(select(User).filter_by(id=user_id))
     if not user_q.scalar_one_or_none():
@@ -349,11 +470,21 @@ async def get_user_posts(user_id: int, page: int = Query(1, ge=1), per_page: int
     q = q.offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(q)
     posts = result.scalars().all()
-    return PostPaginatedResponse(list=[await _format_post(p, me, db) for p in posts], total=total, page=page, per_page=per_page)
+    return PostPaginatedResponse(
+        list=[await _format_post(p, me, db) for p in posts],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
 
 
 @router.get("/user/favorites", response_model=PostPaginatedResponse)
-async def get_user_favorites(page: int = Query(1, ge=1), per_page: int = Query(10, ge=1, le=100), current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
+async def get_user_favorites(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     fav_q = select(Favorite).filter_by(user_id=current_user.id).order_by(Favorite.created_at.desc())
     fav_result = await db.execute(fav_q)
     favorites = fav_result.scalars().all()
@@ -364,57 +495,104 @@ async def get_user_favorites(page: int = Query(1, ge=1), per_page: int = Query(1
     result = await db.execute(q)
     all_posts = result.scalars().all()
     posts_sorted = sorted(all_posts, key=lambda p: post_ids.index(p.id))
-    total = len(posts_sorted); start = (page - 1) * per_page; end = start + per_page; paginated = posts_sorted[start:end]
-    return PostPaginatedResponse(list=[await _format_post(p, current_user.id, db) for p in paginated], total=total, page=page, per_page=per_page)
+    total = len(posts_sorted)
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated = posts_sorted[start:end]
+    return PostPaginatedResponse(
+        list=[await _format_post(p, current_user.id, db) for p in paginated],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
 
 
 @router.get("/admin/posts", response_model=AdminPostListResponse)
-async def admin_get_posts(page: int = Query(1, ge=1), per_page: int = Query(10, ge=1, le=100), is_essence: Optional[bool] = Query(None), is_top: Optional[bool] = Query(None), _admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+async def admin_get_posts(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    is_essence: Optional[bool] = Query(None),
+    is_top: Optional[bool] = Query(None),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Post).options(selectinload(Post.user)).order_by(Post.created_at.desc())
-    if is_essence is not None: q = q.filter(Post.is_essence == is_essence)
-    if is_top is not None: q = q.filter(Post.is_top == is_top)
+    if is_essence is not None:
+        q = q.filter(Post.is_essence == is_essence)
+    if is_top is not None:
+        q = q.filter(Post.is_top == is_top)
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
     q = q.offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(q)
     posts = result.scalars().all()
-    return AdminPostListResponse(list=[await _format_post(p, None, db) for p in posts], total=total, page=page, per_page=per_page)
+    return AdminPostListResponse(
+        list=[await _format_post(p, None, db) for p in posts],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
 
 
 @router.post("/admin/posts/{post_id}/toggle-essence")
-async def admin_toggle_essence(post_id: int, _admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+async def admin_toggle_essence(
+    post_id: int,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Post).filter(Post.id == post_id)
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="帖子不存在")
-    post.is_essence = not post.is_essence; await db.commit(); return {"message": "操作成功"}
+    post.is_essence = not post.is_essence
+    await db.commit()
+    return {"message": "操作成功"}
 
 
 @router.post("/admin/posts/{post_id}/toggle-top")
-async def admin_toggle_top(post_id: int, _admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+async def admin_toggle_top(
+    post_id: int,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Post).filter(Post.id == post_id)
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="帖子不存在")
-    post.is_top = not post.is_top; await db.commit(); return {"message": "操作成功"}
+    post.is_top = not post.is_top
+    await db.commit()
+    return {"message": "操作成功"}
 
 
 @router.delete("/admin/posts/{post_id}")
-async def admin_delete_post(post_id: int, _admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+async def admin_delete_post(
+    post_id: int,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Post).filter(Post.id == post_id)
     result = await db.execute(q)
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="帖子不存在")
-    await db.delete(post); await db.commit(); return {"message": "帖子已删除"}
+    await db.delete(post)
+    await db.commit()
+    return {"message": "帖子已删除"}
 
 
 @router.get("/admin/comments", response_model=AdminCommentListResponse)
-async def admin_get_comments(page: int = Query(1, ge=1), per_page: int = Query(10, ge=1, le=100), post_id: Optional[int] = Query(None), _admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+async def admin_get_comments(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    post_id: Optional[int] = Query(None),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Comment).options(selectinload(Comment.user)).order_by(Comment.created_at.desc())
-    if post_id: q = q.filter(Comment.post_id == post_id)
+    if post_id:
+        q = q.filter(Comment.post_id == post_id)
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
     q = q.offset((page - 1) * per_page).limit(per_page)
@@ -422,15 +600,30 @@ async def admin_get_comments(page: int = Query(1, ge=1), per_page: int = Query(1
     comments = result.scalars().all()
     items = []
     for c in comments:
-        items.append(AdminCommentResponse(id=c.id, content=c.content, like_count=c.like_count, created_at=_fmt_dt(c.created_at), author={"id": c.user.id, "username": c.user.username} if c.user else {"id": 0, "username": "unknown"}, post_id=c.post_id))
+        items.append(
+            AdminCommentResponse(
+                id=c.id,
+                content=c.content,
+                like_count=c.like_count,
+                created_at=_fmt_dt(c.created_at),
+                author={"id": c.user.id, "username": c.user.username} if c.user else {"id": 0, "username": "unknown"},
+                post_id=c.post_id,
+            )
+        )
     return AdminCommentListResponse(list=items, total=total, page=page, per_page=per_page)
 
 
 @router.delete("/admin/comments/{comment_id}")
-async def admin_delete_comment(comment_id: int, _admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+async def admin_delete_comment(
+    comment_id: int,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
     q = select(Comment).filter(Comment.id == comment_id)
     result = await db.execute(q)
     comment = result.scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=404, detail="评论不存在")
-    await db.delete(comment); await db.commit(); return {"message": "评论已删除"}
+    await db.delete(comment)
+    await db.commit()
+    return {"message": "评论已删除"}

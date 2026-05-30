@@ -2,21 +2,31 @@
 后台管理子路由 - 备份/审计/系统
 从 admin_manage.py 拆分
 """
+
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
+from fastapi_backend.core.config import settings
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Exercise, LearningPath, Exam, InterviewQuestion, Submission
+from fastapi_backend.models.models import (
+    User,
+    Exercise,
+    LearningPath,
+    Exam,
+    InterviewQuestion,
+    Submission,
+)
 import os
-import shutil
+import subprocess
 import platform
 import asyncio
 from fastapi.responses import FileResponse
+
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-系统管理"])
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -24,6 +34,27 @@ BACKUP_DIR = PROJECT_ROOT / "backups"
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_BACKUPS = 10
+
+
+def _pg_connection_params() -> dict:
+    url = settings.DATABASE_URL
+    if url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql+asyncpg://", "postgresql://", 1)
+    elif url.startswith("postgresql://"):
+        pass
+    else:
+        return {}
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    return {
+        "host": parsed.hostname or "localhost",
+        "port": str(parsed.port or 5432),
+        "dbname": parsed.path.lstrip("/"),
+        "user": parsed.username or "testmaster",
+        "password": parsed.password or "",
+    }
+
 
 @router.get("/backups")
 async def list_backups(
@@ -33,14 +64,16 @@ async def list_backups(
     os.makedirs(BACKUP_DIR, exist_ok=True)
     backups = []
     for f in sorted(os.listdir(BACKUP_DIR), reverse=True):
-        if f.endswith(".db") or f.endswith(".zip"):
+        if f.endswith(".sql") or f.endswith(".zip"):
             filepath = os.path.join(BACKUP_DIR, f)
             stat = os.stat(filepath)
-            backups.append({
-                "name": f,
-                "size": round(stat.st_size / (1024 * 1024), 2),
-                "time": int(stat.st_mtime * 1000),
-            })
+            backups.append(
+                {
+                    "name": f,
+                    "size": round(stat.st_size / (1024 * 1024), 2),
+                    "time": int(stat.st_mtime * 1000),
+                }
+            )
     return {"backups": backups, "max_backups": MAX_BACKUPS}
 
 
@@ -48,18 +81,45 @@ async def list_backups(
 async def create_backup(
     current_user: User = Depends(require_admin),
 ):
-    """创建数据库备份"""
+    """创建数据库备份 (pg_dump)"""
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    backup_name = f"testmaster_backup_{timestamp}.db"
+    params = _pg_connection_params()
+    if not params:
+        raise HTTPException(status_code=500, detail="数据库不是 PostgreSQL，无法备份")
 
-    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "instance", "testmaster.db")
-    db_path = os.path.abspath(db_path)
-    if os.path.exists(db_path):
-        await asyncio.to_thread(shutil.copy2, db_path, os.path.join(BACKUP_DIR, backup_name))
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    backup_name = f"testmaster_backup_{timestamp}.sql"
+    backup_path = os.path.join(BACKUP_DIR, backup_name)
+
+    env = os.environ.copy()
+    env["PGPASSWORD"] = params["password"]
+
+    cmd = [
+        "pg_dump",
+        "-h",
+        params["host"],
+        "-p",
+        params["port"],
+        "-U",
+        params["user"],
+        "-d",
+        params["dbname"],
+        "--no-password",
+        "--format=plain",
+        "--no-owner",
+    ]
+
+    try:
+        result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, env=env, timeout=120)
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"pg_dump 失败: {result.stderr[:200]}")
+        with open(backup_path, "w", encoding="utf-8") as f:
+            f.write(result.stdout)
         return {"message": "备份创建成功", "name": backup_name}
-    else:
-        return {"message": "数据库文件不存在，跳过备份", "name": None}
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="pg_dump 命令未找到")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="pg_dump 超时")
 
 
 @router.delete("/backups/old")
@@ -68,9 +128,7 @@ async def delete_old_backups(
 ):
     """清理旧备份（保留最近5个）"""
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    files = sorted(
-        [f for f in os.listdir(BACKUP_DIR) if f.endswith(".db") or f.endswith(".zip")]
-    )
+    files = sorted([f for f in os.listdir(BACKUP_DIR) if f.endswith(".sql") or f.endswith(".zip")])
 
     if len(files) <= 5:
         return {"message": "没有需要清理的旧备份"}
@@ -107,14 +165,42 @@ async def restore_backup(
     name: str,
     current_user: User = Depends(require_admin),
 ):
+    """恢复备份 (psql)"""
     backup_path = _safe_backup_path(name)
     if not os.path.exists(backup_path):
         raise HTTPException(status_code=404, detail="备份文件不存在")
 
-    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "instance", "testmaster.db")
-    db_path = os.path.abspath(db_path)
-    await asyncio.to_thread(shutil.copy2, backup_path, db_path)
-    return {"message": "备份恢复成功"}
+    params = _pg_connection_params()
+    if not params:
+        raise HTTPException(status_code=500, detail="数据库不是 PostgreSQL，无法恢复")
+
+    env = os.environ.copy()
+    env["PGPASSWORD"] = params["password"]
+
+    cmd = [
+        "psql",
+        "-h",
+        params["host"],
+        "-p",
+        params["port"],
+        "-U",
+        params["user"],
+        "-d",
+        params["dbname"],
+        "--no-password",
+        "-f",
+        backup_path,
+    ]
+
+    try:
+        result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, env=env, timeout=300)
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"恢复失败: {result.stderr[:200]}")
+        return {"message": "备份恢复成功"}
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="psql 命令未找到")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="恢复超时")
 
 
 @router.delete("/backups/{name}")
@@ -132,12 +218,13 @@ async def delete_backup(
 
 # ============== 审计日志 ==============
 
+
 @router.get("/audit-logs")
 async def list_audit_logs(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取审计日志（基于用户操作记录）"""
     total = await db.scalar(select(func.count(Submission.id))) or 0
@@ -153,27 +240,26 @@ async def list_audit_logs(
         user = user_result.scalar_one_or_none()
         q_result = await db.execute(select(InterviewQuestion).where(InterviewQuestion.id == s.question_id))
         question = q_result.scalar_one_or_none()
-        logs.append({
-            "id": s.id,
-            "user": user.username if user else "unknown",
-            "action": "代码提交",
-            "detail": f"提交了面试题 \"{question.title if question else '未知'}\" 的代码",
-            "status": s.execution_status,
-            "createTime": s.created_at.isoformat() if s.created_at else None,
-        })
+        logs.append(
+            {
+                "id": s.id,
+                "user": user.username if user else "unknown",
+                "action": "代码提交",
+                "detail": f'提交了面试题 "{question.title if question else "未知"}" 的代码',
+                "status": s.execution_status,
+                "createTime": s.created_at.isoformat() if s.created_at else None,
+            }
+        )
 
     return {"logs": logs, "total": total, "page": page, "size": size}
 
 
 # ============== 系统指标 ==============
 
+
 @router.get("/system/metrics")
-async def get_system_metrics(
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
+async def get_system_metrics(current_user: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     """获取系统指标"""
-    # 数据库统计
     total_users = await db.scalar(select(func.count(User.id))) or 0
     total_submissions = await db.scalar(select(func.count(Submission.id))) or 0
     total_exercises = await db.scalar(select(func.count(Exercise.id))) or 0
@@ -181,12 +267,13 @@ async def get_system_metrics(
     total_questions = await db.scalar(select(func.count(InterviewQuestion.id))) or 0
     total_exams = await db.scalar(select(func.count(Exam.id))) or 0
 
-    # 数据库文件大小
-    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "instance", "testmaster.db")
-    db_path = os.path.abspath(db_path)
-    db_size = os.path.getsize(db_path) if os.path.exists(db_path) else 0
+    db_size = 0
+    try:
+        size_result = await db.execute(text("SELECT pg_database_size(current_database())"))
+        db_size = size_result.scalar() or 0
+    except Exception:
+        pass
 
-    # 备份目录大小
     backup_size = 0
     if os.path.exists(BACKUP_DIR):
         for f in os.listdir(BACKUP_DIR):
@@ -195,12 +282,11 @@ async def get_system_metrics(
                 backup_size += os.path.getsize(fp)
 
     backup_count = len(os.listdir(BACKUP_DIR)) if os.path.exists(BACKUP_DIR) else 0
-    
-    # Redis 健康检查
+
     redis_healthy = False
     try:
         from redis.asyncio import Redis as ARedis
-        from fastapi_backend.core.config import settings
+
         r = ARedis.from_url(settings.REDIS_URL or "redis://redis:6379/0", socket_connect_timeout=2)
         redis_healthy = await r.ping()
         await r.close()
@@ -235,11 +321,23 @@ async def get_system_metrics(
         },
         "charts": {
             "table_space": {
-                "labels": ["users", "submissions", "exercises", "paths", "questions", "exams"],
-                "values": [total_users, total_submissions, total_exercises, total_paths, total_questions, total_exams]
+                "labels": [
+                    "users",
+                    "submissions",
+                    "exercises",
+                    "paths",
+                    "questions",
+                    "exams",
+                ],
+                "values": [
+                    total_users,
+                    total_submissions,
+                    total_exercises,
+                    total_paths,
+                    total_questions,
+                    total_exams,
+                ],
             },
-            "system_load_7d": {"labels": [], "values": []}
-        }
+            "system_load_7d": {"labels": [], "values": []},
+        },
     }
-
-

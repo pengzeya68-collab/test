@@ -1,4 +1,5 @@
 """排行榜路由 - 竞争激励系统"""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -27,12 +28,7 @@ async def get_score_leaderboard(
     total = total_result.scalar_one()
 
     offset = (page - 1) * page_size
-    stmt = (
-        select(User)
-        .order_by(desc(User.score))
-        .offset(offset)
-        .limit(page_size)
-    )
+    stmt = select(User).order_by(desc(User.score)).offset(offset).limit(page_size)
     result = await db.execute(stmt)
     users = result.scalars().all()
 
@@ -43,13 +39,15 @@ async def get_score_leaderboard(
     leaderboard = []
     for idx, u in enumerate(users):
         rank = offset + idx + 1
-        leaderboard.append({
-            "rank": rank,
-            "user_id": u.id,
-            "username": u.username,
-            "score": u.score or 0,
-            "is_me": u.id == current_user.id,
-        })
+        leaderboard.append(
+            {
+                "rank": rank,
+                "user_id": u.id,
+                "username": u.username,
+                "score": u.score or 0,
+                "is_me": u.id == current_user.id,
+            }
+        )
 
     return {
         "leaderboard": leaderboard,
@@ -102,14 +100,16 @@ async def get_weekly_leaderboard(
 
     leaderboard = []
     for idx, r in enumerate(rows):
-        leaderboard.append({
-            "rank": idx + 1,
-            "user_id": r.user_id,
-            "username": user_map.get(r.user_id, f"用户{r.user_id}"),
-            "weekly_correct": r.correct_count or 0,
-            "weekly_total": r.submission_count,
-            "is_me": r.user_id == current_user.id,
-        })
+        leaderboard.append(
+            {
+                "rank": idx + 1,
+                "user_id": r.user_id,
+                "username": user_map.get(r.user_id, f"用户{r.user_id}"),
+                "weekly_correct": r.correct_count or 0,
+                "weekly_total": r.submission_count,
+                "is_me": r.user_id == current_user.id,
+            }
+        )
 
     return {
         "leaderboard": leaderboard,
@@ -144,9 +144,14 @@ async def get_streak_leaderboard(
         user_map[r.user_id] = r.username
 
     my_streak = 0
-    my_checkin_stmt = select(DailyCheckin).where(
-        DailyCheckin.user_id == current_user.id,
-    ).order_by(desc(DailyCheckin.streak_count)).limit(1)
+    my_checkin_stmt = (
+        select(DailyCheckin)
+        .where(
+            DailyCheckin.user_id == current_user.id,
+        )
+        .order_by(desc(DailyCheckin.streak_count))
+        .limit(1)
+    )
     my_checkin_result = await db.execute(my_checkin_stmt)
     my_checkin = my_checkin_result.scalar_one_or_none()
     if my_checkin:
@@ -154,13 +159,15 @@ async def get_streak_leaderboard(
 
     leaderboard = []
     for idx, r in enumerate(rows):
-        leaderboard.append({
-            "rank": idx + 1,
-            "user_id": r.user_id,
-            "username": user_map.get(r.user_id, f"用户{r.user_id}"),
-            "streak": r.max_streak,
-            "is_me": r.user_id == current_user.id,
-        })
+        leaderboard.append(
+            {
+                "rank": idx + 1,
+                "user_id": r.user_id,
+                "username": user_map.get(r.user_id, f"用户{r.user_id}"),
+                "streak": r.max_streak,
+                "is_me": r.user_id == current_user.id,
+            }
+        )
 
     return {
         "leaderboard": leaderboard,

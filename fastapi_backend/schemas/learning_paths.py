@@ -1,4 +1,5 @@
 """Schemas for learning paths – migrated from Flask backend/api/learning_paths.py."""
+
 from __future__ import annotations
 
 from typing import Optional
@@ -8,8 +9,10 @@ from pydantic import BaseModel
 
 # ── Exercise schemas ──────────────────────────────────────
 
+
 class ExerciseBrief(BaseModel):
     """Brief exercise info included in learning path responses."""
+
     id: int
     title: str
     description: Optional[str] = None
@@ -24,6 +27,7 @@ class ExerciseBrief(BaseModel):
 
 
 # ── Learning path schemas ─────────────────────────────────
+
 
 class LearningPathCreate(BaseModel):
     title: str
@@ -47,6 +51,7 @@ class LearningPathUpdate(BaseModel):
 
 class LearningPathResponse(BaseModel):
     """Response for list endpoint – no exercises."""
+
     id: int
     title: str
     description: Optional[str] = None
@@ -63,6 +68,7 @@ class LearningPathResponse(BaseModel):
 
 class LearningPathDetail(LearningPathResponse):
     """Detail endpoint – includes exercises and timestamps."""
+
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     exercises: list[ExerciseBrief] = []
@@ -75,6 +81,7 @@ class AddExerciseRequest(BaseModel):
 
 
 # ── Project practice schemas (admin) ──────────────────────
+
 
 class ProjectTaskCreate(BaseModel):
     title: str = ""

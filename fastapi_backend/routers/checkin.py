@@ -1,4 +1,5 @@
 """每日签到路由 - 连续学习激励系统"""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -32,7 +33,7 @@ def _get_streak_exp(streak: int) -> int:
     return STREAK_REWARDS.get(streak, 5)
 
 
-@router.post("/")
+@router.post("")
 async def daily_checkin(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -47,9 +48,7 @@ async def daily_checkin(
     )
     existing_result = await db.execute(existing_stmt)
     if existing_result.scalar_one_or_none():
-        streak_stmt = select(func.max(DailyCheckin.streak_count)).where(
-            DailyCheckin.user_id == current_user.id
-        )
+        streak_stmt = select(func.max(DailyCheckin.streak_count)).where(DailyCheckin.user_id == current_user.id)
         streak_result = await db.execute(streak_stmt)
         actual_streak = streak_result.scalar_one_or_none() or 0
 
@@ -112,9 +111,14 @@ async def checkin_status(
     today_result = await db.execute(today_stmt)
     today_checkin = today_result.scalar_one_or_none()
 
-    latest_stmt = select(DailyCheckin).where(
-        DailyCheckin.user_id == current_user.id,
-    ).order_by(DailyCheckin.checkin_date.desc()).limit(1)
+    latest_stmt = (
+        select(DailyCheckin)
+        .where(
+            DailyCheckin.user_id == current_user.id,
+        )
+        .order_by(DailyCheckin.checkin_date.desc())
+        .limit(1)
+    )
     latest_result = await db.execute(latest_stmt)
     latest_checkin = latest_result.scalar_one_or_none()
 
@@ -123,11 +127,18 @@ async def checkin_status(
         current_streak = today_checkin.streak_count
     elif latest_checkin:
         yesterday = today - timedelta(days=1)
-        if latest_checkin.checkin_date >= yesterday:
+        checkin_date = latest_checkin.checkin_date
+        if checkin_date.tzinfo is None:
+            checkin_date = checkin_date.replace(tzinfo=timezone.utc)
+        if checkin_date >= yesterday:
             current_streak = latest_checkin.streak_count
 
-    total_checkins_stmt = select(func.count()).select_from(DailyCheckin).where(
-        DailyCheckin.user_id == current_user.id,
+    total_checkins_stmt = (
+        select(func.count())
+        .select_from(DailyCheckin)
+        .where(
+            DailyCheckin.user_id == current_user.id,
+        )
     )
     total_result = await db.execute(total_checkins_stmt)
     total_checkins = total_result.scalar_one()

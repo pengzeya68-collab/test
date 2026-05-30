@@ -1,7 +1,7 @@
 """
 Core application settings for fastapi_backend.
 """
-import os
+
 import logging
 from pathlib import Path
 from typing import List, Optional
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     DESCRIPTION: str = "Async FastAPI backend for the TestMaster platform."
     ENVIRONMENT: str = "development"
 
-    DATABASE_URL: str = "sqlite+aiosqlite:///./instance/testmaster.db"
+    DATABASE_URL: str = "postgresql+asyncpg://testmaster:@localhost:5432/testmaster"
 
     SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
@@ -49,8 +49,18 @@ class Settings(BaseSettings):
     SANDBOX_MAX_OUTPUT_LENGTH: int = 1024 * 10
     SANDBOX_MAX_MEMORY_MB: int = 256
     SANDBOX_ALLOWED_MODULES: List[str] = [
-        "math", "random", "datetime", "json", "collections", "itertools",
-        "functools", "typing", "re", "string", "statistics", "decimal"
+        "math",
+        "random",
+        "datetime",
+        "json",
+        "collections",
+        "itertools",
+        "functools",
+        "typing",
+        "re",
+        "string",
+        "statistics",
+        "decimal",
     ]
 
     HOST: str = "0.0.0.0"
@@ -79,6 +89,9 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: Optional[str] = None
     CELERY_RESULT_BACKEND: Optional[str] = None
 
+    WECHAT_MINI_APP_ID: str = ""
+    WECHAT_MINI_APP_SECRET: str = ""
+
     AI_RATE_LIMIT_REQUESTS: int = 10  # 每窗口最大请求数
     AI_RATE_LIMIT_WINDOW_SECONDS: int = 60  # 速率限制窗口（秒）
 
@@ -97,6 +110,7 @@ if not settings.SECRET_KEY:
         raise RuntimeError("生产环境必须在 .env 中设置 SECRET_KEY")
     else:
         import secrets
+
         settings.SECRET_KEY = secrets.token_urlsafe(32)
         _logger.warning("开发环境使用随机生成的 SECRET_KEY，生产环境请务必在 .env 中设置固定密钥")
 
@@ -105,6 +119,7 @@ if not settings.ADMIN_PASSWORD:
         raise RuntimeError("生产环境必须在 .env 中设置 ADMIN_PASSWORD")
     else:
         import secrets
+
         settings.ADMIN_PASSWORD = secrets.token_urlsafe(16)
         _logger.warning("开发环境使用随机生成的 ADMIN_PASSWORD，生产环境请务必在 .env 中设置固定密码")
 
@@ -113,6 +128,7 @@ if not settings.ADMIN_SECRET_KEY:
         raise RuntimeError("生产环境必须在 .env 中设置 ADMIN_SECRET_KEY")
     else:
         import secrets
+
         settings.ADMIN_SECRET_KEY = secrets.token_urlsafe(32)
         _logger.warning("开发环境使用随机生成的 ADMIN_SECRET_KEY，生产环境请务必在 .env 中设置固定密钥")
 

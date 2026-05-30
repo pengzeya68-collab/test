@@ -1,6 +1,7 @@
 """
 AI模拟面试题目 Schema
 """
+
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
@@ -8,10 +9,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class InterviewQuestionBase(BaseModel):
     """题目基础信息"""
+
     title: str = Field(..., min_length=1, max_length=500, description="题目标题")
     slug: Optional[str] = Field(None, min_length=1, max_length=200, description="URL友好标识，需唯一")
     difficulty: str = Field(default="medium", description="难度: easy/medium/hard")
-    tags: Optional[str] = Field(None, description="标签列表 JSON 格式，如 [\"数组\", \"动态规划\"]")
+    tags: Optional[str] = Field(None, description='标签列表 JSON 格式，如 ["数组", "动态规划"]')
     description: Optional[str] = Field(None, description="题目描述，支持Markdown")
     content: Optional[str] = Field(None, description="题目内容（兼容旧字段）")
     answer: Optional[str] = Field(None, description="参考答案（兼容旧字段）")
@@ -29,11 +31,13 @@ class InterviewQuestionBase(BaseModel):
 
 class InterviewQuestionCreate(InterviewQuestionBase):
     """创建题目"""
+
     pass
 
 
 class InterviewQuestionUpdate(BaseModel):
     """更新题目 - 所有字段可选"""
+
     title: Optional[str] = Field(None, min_length=1, max_length=200, description="题目标题")
     slug: Optional[str] = Field(None, min_length=1, max_length=200, description="URL友好标识，需唯一")
     difficulty: Optional[str] = Field(None, description="难度: easy/medium/hard")
@@ -55,6 +59,7 @@ class InterviewQuestionUpdate(BaseModel):
 
 class InterviewQuestionDetail(InterviewQuestionBase):
     """题目详情"""
+
     id: int
     content: Optional[str] = None
     answer: Optional[str] = None
@@ -71,6 +76,7 @@ class InterviewQuestionDetail(InterviewQuestionBase):
 
 class InterviewQuestionList(BaseModel):
     """题目列表项"""
+
     id: int
     title: str
     slug: Optional[str] = None
@@ -90,6 +96,7 @@ class InterviewQuestionList(BaseModel):
 
 class InterviewQuestionListResponse(BaseModel):
     """题目列表响应"""
+
     items: list[InterviewQuestionList]
     total: int
     page: int

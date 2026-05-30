@@ -3,6 +3,7 @@
 
 路径前缀: /api/v1/notifications
 """
+
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, update
@@ -39,15 +40,13 @@ async def get_notifications(
     """获取当前用户的通知列表"""
     base = select(Notification).where(Notification.user_id == current_user.id)
     if unread_only:
-        base = base.where(Notification.is_read == False)
+        base = base.where(not Notification.is_read)
 
     count_q = select(func.count()).select_from(base.subquery())
     total = (await db.execute(count_q)).scalar() or 0
 
     result = await db.execute(
-        base.order_by(Notification.created_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        base.order_by(Notification.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     )
     notifications = result.scalars().all()
 
@@ -69,7 +68,7 @@ async def get_unread_count(
     result = await db.execute(
         select(func.count(Notification.id)).where(
             Notification.user_id == current_user.id,
-            Notification.is_read == False,
+            not Notification.is_read,
         )
     )
     count = result.scalar() or 0
@@ -107,7 +106,7 @@ async def mark_all_as_read(
         update(Notification)
         .where(
             Notification.user_id == current_user.id,
-            Notification.is_read == False,
+            not Notification.is_read,
         )
         .values(is_read=True)
     )

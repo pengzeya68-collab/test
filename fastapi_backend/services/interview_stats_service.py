@@ -2,6 +2,7 @@
 Interview 统计与报告服务
 从 routers/interview.py 下沉的业务逻辑
 """
+
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Any
@@ -9,7 +10,11 @@ from typing import Dict, Optional, Any
 from sqlalchemy import select, func, case, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi_backend.models.models import Submission, InterviewQuestion, InterviewSession
+from fastapi_backend.models.models import (
+    Submission,
+    InterviewQuestion,
+    InterviewSession,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -19,16 +24,11 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     seven_days_ago = now - timedelta(days=7)
 
-    total_result = await db.execute(
-        select(func.count(Submission.id)).where(Submission.user_id == user_id)
-    )
+    total_result = await db.execute(select(func.count(Submission.id)).where(Submission.user_id == user_id))
     total_submissions = total_result.scalar_one() or 0
 
     completed_result = await db.execute(
-        select(func.count(Submission.id)).where(
-            Submission.user_id == user_id,
-            Submission.score.is_not(None)
-        )
+        select(func.count(Submission.id)).where(Submission.user_id == user_id, Submission.score.is_not(None))
     )
     completed_submissions = completed_result.scalar_one() or 0
 
@@ -36,11 +36,8 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
         select(
             func.avg(Submission.score).label("avg_score"),
             func.max(Submission.score).label("max_score"),
-            func.min(Submission.score).label("min_score")
-        ).where(
-            Submission.user_id == user_id,
-            Submission.score.is_not(None)
-        )
+            func.min(Submission.score).label("min_score"),
+        ).where(Submission.user_id == user_id, Submission.score.is_not(None))
     )
     score_stats = score_stats_result.first()
     average_score = float(score_stats.avg_score) if score_stats.avg_score else None
@@ -50,11 +47,8 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
     pass_stats_result = await db.execute(
         select(
             func.count(Submission.id).label("total"),
-            func.sum(case((Submission.score >= 80, 1), else_=0)).label("passed")
-        ).where(
-            Submission.user_id == user_id,
-            Submission.score.is_not(None)
-        )
+            func.sum(case((Submission.score >= 80, 1), else_=0)).label("passed"),
+        ).where(Submission.user_id == user_id, Submission.score.is_not(None))
     )
     pass_stats = pass_stats_result.first()
     total_with_score = pass_stats.total or 0
@@ -63,26 +57,17 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
     pass_rate = (passed_count / total_with_score * 100) if total_with_score > 0 else 0.0
 
     recent_7_days_result = await db.execute(
-        select(func.count(Submission.id)).where(
-            Submission.user_id == user_id,
-            Submission.created_at >= seven_days_ago
-        )
+        select(func.count(Submission.id)).where(Submission.user_id == user_id, Submission.created_at >= seven_days_ago)
     )
     recent_7_days_submissions = recent_7_days_result.scalar_one() or 0
 
     today_result = await db.execute(
-        select(func.count(Submission.id)).where(
-            Submission.user_id == user_id,
-            Submission.created_at >= today_start
-        )
+        select(func.count(Submission.id)).where(Submission.user_id == user_id, Submission.created_at >= today_start)
     )
     today_submissions = today_result.scalar_one() or 0
 
     difficulty_result = await db.execute(
-        select(
-            InterviewQuestion.difficulty,
-            func.count(Submission.id).label("count")
-        )
+        select(InterviewQuestion.difficulty, func.count(Submission.id).label("count"))
         .outerjoin(InterviewQuestion, Submission.question_id == InterviewQuestion.id)
         .where(Submission.user_id == user_id)
         .group_by(InterviewQuestion.difficulty)
@@ -103,19 +88,17 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
             select(func.count(Submission.id)).where(
                 Submission.user_id == user_id,
                 Submission.created_at >= day_start,
-                Submission.created_at < day_end
+                Submission.created_at < day_end,
             )
         )
         day_count = day_result.scalar_one() or 0
-        daily_submissions.append({
-            "date": day_start.strftime("%Y-%m-%d"),
-            "count": day_count
-        })
+        daily_submissions.append({"date": day_start.strftime("%Y-%m-%d"), "count": day_count})
 
     last_submission_result = await db.execute(
-        select(Submission.created_at).where(
-            Submission.user_id == user_id
-        ).order_by(Submission.created_at.desc()).limit(1)
+        select(Submission.created_at)
+        .where(Submission.user_id == user_id)
+        .order_by(Submission.created_at.desc())
+        .limit(1)
     )
     last_submission_time = last_submission_result.scalar_one_or_none()
 
@@ -133,7 +116,7 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
         "difficulty_distribution": difficulty_distribution,
         "daily_submissions_last_7_days": daily_submissions,
         "weak_tags": [],
-        "last_submission_time": last_submission_time
+        "last_submission_time": last_submission_time,
     }
 
 
@@ -149,9 +132,7 @@ async def generate_interview_report(session_id: int, user_id: int, db: AsyncSess
         return None
 
     submissions_result = await db.execute(
-        select(Submission)
-        .where(Submission.session_id == session_id)
-        .order_by(Submission.created_at)
+        select(Submission).where(Submission.session_id == session_id).order_by(Submission.created_at)
     )
     submissions = submissions_result.scalars().all()
 
@@ -173,7 +154,19 @@ async def generate_interview_report(session_id: int, user_id: int, db: AsyncSess
     min_score = min(scores) if scores else 0
     pass_count = sum(1 for s in scores if s >= 60)
 
-    level = "专家" if avg_score >= 90 else "精通" if avg_score >= 80 else "熟练" if avg_score >= 70 else "掌握" if avg_score >= 60 else "了解" if avg_score >= 40 else "入门"
+    level = (
+        "专家"
+        if avg_score >= 90
+        else "精通"
+        if avg_score >= 80
+        else "熟练"
+        if avg_score >= 70
+        else "掌握"
+        if avg_score >= 60
+        else "了解"
+        if avg_score >= 40
+        else "入门"
+    )
 
     high_score_submissions = [s for s in submissions if s.score and s.score >= 80]
     low_score_submissions = [s for s in submissions if s.score and s.score < 60]
@@ -237,6 +230,7 @@ async def complete_session(session_id: int, user_id: int, db: AsyncSession) -> O
 
     if session.status not in ("started", "submitted"):
         from fastapi import HTTPException
+
         raise HTTPException(status_code=400, detail=f"当前状态为 {session.status}，无法完成面试")
 
     now = datetime.now(timezone.utc)
@@ -244,9 +238,7 @@ async def complete_session(session_id: int, user_id: int, db: AsyncSession) -> O
     session.finished_at = now
     session.end_time = now
 
-    sub_result = await db.execute(
-        select(Submission).where(Submission.session_id == session_id)
-    )
+    sub_result = await db.execute(select(Submission).where(Submission.session_id == session_id))
     submissions = sub_result.scalars().all()
     scores = [s.score for s in submissions if s.score is not None]
     if scores:
@@ -326,19 +318,21 @@ async def get_interview_history(
 
     history_items = []
     for submission, question_title, question_difficulty in rows:
-        history_items.append({
-            "id": submission.id,
-            "session_id": submission.session_id,
-            "question_id": submission.question_id,
-            "question_title": question_title,
-            "question_difficulty": question_difficulty,
-            "language": submission.language,
-            "execution_status": submission.execution_status,
-            "ai_evaluation_status": submission.ai_evaluation_status,
-            "score": submission.score,
-            "created_at": submission.created_at,
-            "updated_at": submission.updated_at,
-        })
+        history_items.append(
+            {
+                "id": submission.id,
+                "session_id": submission.session_id,
+                "question_id": submission.question_id,
+                "question_title": question_title,
+                "question_difficulty": question_difficulty,
+                "language": submission.language,
+                "execution_status": submission.execution_status,
+                "ai_evaluation_status": submission.ai_evaluation_status,
+                "score": submission.score,
+                "created_at": submission.created_at,
+                "updated_at": submission.updated_at,
+            }
+        )
 
     return {
         "items": history_items,
@@ -374,8 +368,15 @@ async def get_submission_result_detail(submission_id: int, user_id: int, db: Asy
     if not row:
         return None
 
-    submission, session_status, question_title, question_difficulty, \
-        question_description, question_prompt, question_test_cases = row
+    (
+        submission,
+        session_status,
+        question_title,
+        question_difficulty,
+        question_description,
+        question_prompt,
+        question_test_cases,
+    ) = row
 
     return {
         "id": submission.id,

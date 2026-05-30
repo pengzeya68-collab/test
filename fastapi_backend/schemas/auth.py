@@ -14,7 +14,7 @@ class RegisterRequest(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, v: str) -> str:
-        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         if not re.match(pattern, v):
             raise ValueError("邮箱格式不正确")
         return v
@@ -22,7 +22,7 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        if not re.search(r'[A-Za-z]', v) or not re.search(r'\d', v):
+        if not re.search(r"[A-Za-z]", v) or not re.search(r"\d", v):
             raise ValueError("密码必须包含字母和数字")
         return v
 
@@ -34,7 +34,7 @@ class ChangePasswordRequest(BaseModel):
     @field_validator("new_password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        if not re.search(r'[A-Za-z]', v) or not re.search(r'\d', v):
+        if not re.search(r"[A-Za-z]", v) or not re.search(r"\d", v):
             raise ValueError("密码必须包含字母和数字")
         return v
 
@@ -47,7 +47,7 @@ class ForgotPasswordRequest(BaseModel):
     @field_validator("new_password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        if not re.search(r'[A-Za-z]', v) or not re.search(r'\d', v):
+        if not re.search(r"[A-Za-z]", v) or not re.search(r"\d", v):
             raise ValueError("密码必须包含字母和数字")
         return v
 
@@ -74,6 +74,10 @@ class CurrentUserResponse(BaseModel):
     score: int
     study_time: int
     created_at: datetime | None = None
+
+
+class WechatLoginRequest(BaseModel):
+    code: str = Field(..., min_length=1, description="微信登录凭证code")
 
 
 class TokenResponse(BaseModel):

@@ -2,6 +2,7 @@
 AutoTest 任务状态持久化服务
 从 routers/autotest_execution.py 的任务存储函数下沉
 """
+
 import asyncio
 import json
 import logging
@@ -13,16 +14,13 @@ from typing import Dict, Optional
 _logger = logging.getLogger(__name__)
 
 _task_store: Dict[str, dict] = {}
-_async_lock = asyncio.Lock()
-_sync_lock = threading.Lock()
+_lock = threading.Lock()
+
 
 def _get_store_lock():
-    """根据当前执行环境返回合适的锁：异步环境用 asyncio.Lock，同步环境用 threading.Lock"""
-    try:
-        asyncio.get_running_loop()
-        return _async_lock
-    except RuntimeError:
-        return _sync_lock
+    """Always return threading.Lock for cross-environment safety"""
+    return _lock
+
 
 TASK_TTL_SECONDS = 24 * 60 * 60
 CLEANUP_INTERVAL_SECONDS = 60 * 60
@@ -30,8 +28,9 @@ _cleanup_task: Optional[asyncio.Task] = None
 
 
 def _get_tasks_dir() -> Path:
-    from fastapi_backend.core.autotest_database import INSTANCE_DIR
-    tasks_dir = INSTANCE_DIR / "tasks"
+    from fastapi_backend.core.config import PROJECT_ROOT
+
+    tasks_dir = PROJECT_ROOT / "instance" / "tasks"
     tasks_dir.mkdir(parents=True, exist_ok=True)
     return tasks_dir
 
@@ -59,8 +58,8 @@ def _save_task_to_file(task_id: str, task_info: dict) -> None:
         with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(task_info, f, ensure_ascii=False, indent=2)
         tmp_file.replace(task_file)
-    except Exception:
-        pass
+    except Exception as e:
+        _logger.warning(f"保存任务文件失败 {task_id}: {e}")
 
 
 def _delete_task_file(task_id: str) -> None:
@@ -74,6 +73,8 @@ def _delete_task_file(task_id: str) -> None:
 
 
 def get_task(task_id: str) -> Optional[dict]:
+    if task_id in _task_store:
+        return _task_store[task_id]
     tasks_dir = _get_tasks_dir()
     task_file = tasks_dir / f"{task_id}.json"
     if task_file.exists():
@@ -84,21 +85,19 @@ def get_task(task_id: str) -> Optional[dict]:
                 return task_data
         except Exception:
             pass
-    if task_id in _task_store:
-        return _task_store[task_id]
     return None
 
 
 async def update_task(task_id: str, task_info: dict) -> None:
     if "created_at" not in task_info:
         task_info["created_at"] = time.time()
-    async with _async_lock:
+    with _lock:
         _task_store[task_id] = task_info
         _save_task_to_file(task_id, task_info)
 
 
 async def delete_task(task_id: str) -> None:
-    async with _async_lock:
+    with _lock:
         _task_store.pop(task_id, None)
         _delete_task_file(task_id)
 
@@ -113,7 +112,7 @@ async def _cleanup_expired_tasks() -> None:
         try:
             now = time.time()
             expired_ids = []
-            async with _async_lock:
+            with _lock:
                 for task_id, task_info in list(_task_store.items()):
                     status = task_info.get("status", "")
                     if status in ("completed", "failed", "cancelled"):

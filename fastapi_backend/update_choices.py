@@ -1,4 +1,5 @@
 """Update existing choice exercises with ABCD options in description"""
+
 import asyncio
 import sys
 import os

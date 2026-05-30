@@ -6,7 +6,7 @@
 
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 学习路径9的50道精品题
 exercises_data = [
@@ -17,7 +17,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "接口测试概述"
+        "category": "接口测试概述",
     },
     {
         "title": "关于接口测试的优势，以下说法正确的是？（多选）",
@@ -25,7 +25,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "接口测试概述"
+        "category": "接口测试概述",
     },
     {
         "title": "请判断：接口测试通常在集成测试阶段进行。",
@@ -33,7 +33,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "接口测试概述"
+        "category": "接口测试概述",
     },
     {
         "title": "关于API的类型，以下说法正确的是？",
@@ -41,7 +41,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "接口测试概述"
+        "category": "接口测试概述",
     },
     {
         "title": "关于接口测试与UI测试的区别，以下说法正确的是？（多选）",
@@ -49,7 +49,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口测试概述"
+        "category": "接口测试概述",
     },
     {
         "title": "请判断：接口测试可以测试HTTP状态码、响应时间、数据格式等。",
@@ -57,7 +57,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "接口测试概述"
+        "category": "接口测试概述",
     },
     {
         "title": "关于接口文档，以下说法正确的是？",
@@ -65,7 +65,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "接口测试概述"
+        "category": "接口测试概述",
     },
     {
         "title": "关于接口测试的工具，以下说法正确的是？（多选）",
@@ -73,7 +73,7 @@ exercises_data = [
         "solution": "A,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "接口测试概述"
+        "category": "接口测试概述",
     },
     {
         "title": "请判断：接口测试可以发现前后端数据交互的错误。",
@@ -81,7 +81,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "接口测试概述"
+        "category": "接口测试概述",
     },
     {
         "title": "关于接口测试的粒度，以下说法正确的是？",
@@ -89,9 +89,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口测试概述"
+        "category": "接口测试概述",
     },
-    
     # ============ HTTP协议基础（10题）============
     {
         "title": "关于HTTP协议，以下说法正确的是？",
@@ -99,7 +98,7 @@ exercises_data = [
         "solution": "A,C",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "HTTP协议基础"
+        "category": "HTTP协议基础",
     },
     {
         "title": "关于HTTP请求方法，以下说法正确的是？（多选）",
@@ -107,7 +106,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "HTTP协议基础"
+        "category": "HTTP协议基础",
     },
     {
         "title": "请判断：HTTP状态码200表示请求成功。",
@@ -115,7 +114,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "HTTP协议基础"
+        "category": "HTTP协议基础",
     },
     {
         "title": "关于HTTP状态码的分类，以下说法正确的是？",
@@ -123,7 +122,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "HTTP协议基础"
+        "category": "HTTP协议基础",
     },
     {
         "title": "关于HTTP请求头（Headers），以下说法正确的是？（多选）",
@@ -131,7 +130,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "HTTP协议基础"
+        "category": "HTTP协议基础",
     },
     {
         "title": "请判断：HTTP响应头中的Set-Cookie用于设置客户端的Cookie。",
@@ -139,7 +138,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "HTTP协议基础"
+        "category": "HTTP协议基础",
     },
     {
         "title": "关于HTTP请求体（Request Body），以下说法正确的是？",
@@ -147,7 +146,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "HTTP协议基础"
+        "category": "HTTP协议基础",
     },
     {
         "title": "关于HTTP与HTTPS的区别，以下说法正确的是？（多选）",
@@ -155,7 +154,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "HTTP协议基础"
+        "category": "HTTP协议基础",
     },
     {
         "title": "请判断：HTTP协议默认使用80端口。",
@@ -163,7 +162,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "HTTP协议基础"
+        "category": "HTTP协议基础",
     },
     {
         "title": "关于RESTful API的设计原则，以下说法正确的是？",
@@ -171,9 +170,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "HTTP协议基础"
+        "category": "HTTP协议基础",
     },
-    
     # ============ 接口测试用例设计（10题）============
     {
         "title": "关于接口测试用例的设计，以下说法正确的是？",
@@ -181,7 +179,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "接口测试用例设计"
+        "category": "接口测试用例设计",
     },
     {
         "title": "关于接口测试的参数覆盖，以下说法正确的是？（多选）",
@@ -189,7 +187,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口测试用例设计"
+        "category": "接口测试用例设计",
     },
     {
         "title": "请判断：接口测试用例应该包括请求参数、预期响应、实际响应。",
@@ -197,7 +195,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "接口测试用例设计"
+        "category": "接口测试用例设计",
     },
     {
         "title": "关于接口测试的数据准备，以下说法正确的是？",
@@ -205,7 +203,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口测试用例设计"
+        "category": "接口测试用例设计",
     },
     {
         "title": "关于接口测试的依赖处理，以下说法正确的是？（多选）",
@@ -213,7 +211,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口测试用例设计"
+        "category": "接口测试用例设计",
     },
     {
         "title": "请判断：接口测试用例应该覆盖所有的业务场景。",
@@ -221,7 +219,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "接口测试用例设计"
+        "category": "接口测试用例设计",
     },
     {
         "title": "关于接口测试的错误码覆盖，以下说法正确的是？",
@@ -229,7 +227,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口测试用例设计"
+        "category": "接口测试用例设计",
     },
     {
         "title": "关于接口测试的性能考虑，以下说法正确的是？（多选）",
@@ -237,7 +235,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口测试用例设计"
+        "category": "接口测试用例设计",
     },
     {
         "title": "请判断：接口测试用例应该具有可维护性，便于后续修改和扩展。",
@@ -245,7 +243,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "接口测试用例设计"
+        "category": "接口测试用例设计",
     },
     {
         "title": "关于接口测试的断言（Assertion），以下说法正确的是？",
@@ -253,9 +251,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口测试用例设计"
+        "category": "接口测试用例设计",
     },
-    
     # ============ 常用接口测试工具（10题）============
     {
         "title": "关于Postman，以下说法正确的是？",
@@ -263,7 +260,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "常用接口测试工具"
+        "category": "常用接口测试工具",
     },
     {
         "title": "关于Postman的Collection，以下说法正确的是？（多选）",
@@ -271,7 +268,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "常用接口测试工具"
+        "category": "常用接口测试工具",
     },
     {
         "title": "请判断：Postman支持环境变量和全局变量。",
@@ -279,7 +276,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "常用接口测试工具"
+        "category": "常用接口测试工具",
     },
     {
         "title": "关于JMeter，以下说法正确的是？",
@@ -287,7 +284,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "常用接口测试工具"
+        "category": "常用接口测试工具",
     },
     {
         "title": "关于curl命令，以下说法正确的是？（多选）",
@@ -295,7 +292,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "常用接口测试工具"
+        "category": "常用接口测试工具",
     },
     {
         "title": "请判断：Swagger/OpenAPI可以用于接口文档生成和接口测试。",
@@ -303,7 +300,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "常用接口测试工具"
+        "category": "常用接口测试工具",
     },
     {
         "title": "关于Requests库（Python），以下说法正确的是？",
@@ -311,7 +308,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "常用接口测试工具"
+        "category": "常用接口测试工具",
     },
     {
         "title": "关于接口测试工具的选型，以下说法正确的是？（多选）",
@@ -319,7 +316,7 @@ exercises_data = [
         "solution": "A,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "常用接口测试工具"
+        "category": "常用接口测试工具",
     },
     {
         "title": "请判断：接口测试工具应该支持断言、参数化、报告生成等功能。",
@@ -327,7 +324,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "常用接口测试工具"
+        "category": "常用接口测试工具",
     },
     {
         "title": "关于SoapUI，以下说法正确的是？",
@@ -335,9 +332,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "常用接口测试工具"
+        "category": "常用接口测试工具",
     },
-    
     # ============ 接口自动化测试（10题）============
     {
         "title": "关于接口自动化测试，以下说法正确的是？",
@@ -345,7 +341,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "接口自动化测试"
+        "category": "接口自动化测试",
     },
     {
         "title": "关于接口自动化测试的框架选型，以下说法正确的是？（多选）",
@@ -353,7 +349,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试"
+        "category": "接口自动化测试",
     },
     {
         "title": "请判断：接口自动化测试应该与CI/CD流水线集成。",
@@ -361,7 +357,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "接口自动化测试"
+        "category": "接口自动化测试",
     },
     {
         "title": "关于接口自动化测试的报告，以下说法正确的是？",
@@ -369,7 +365,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "接口自动化测试"
+        "category": "接口自动化测试",
     },
     {
         "title": "关于接口自动化测试的维护，以下说法正确的是？（多选）",
@@ -377,7 +373,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试"
+        "category": "接口自动化测试",
     },
     {
         "title": "请判断：接口自动化测试应该覆盖核心业务场景和高风险场景。",
@@ -385,7 +381,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "接口自动化测试"
+        "category": "接口自动化测试",
     },
     {
         "title": "关于接口自动化测试的数据管理，以下说法正确的是？",
@@ -393,7 +389,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试"
+        "category": "接口自动化测试",
     },
     {
         "title": "关于接口自动化测试的执行策略，以下说法正确的是？（多选）",
@@ -401,7 +397,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试"
+        "category": "接口自动化测试",
     },
     {
         "title": "请判断：接口自动化测试的ROI（投资回报率）通常高于UI自动化测试。",
@@ -409,7 +405,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "接口自动化测试"
+        "category": "接口自动化测试",
     },
     {
         "title": "关于接口自动化测试的最佳实践，以下说法正确的是？",
@@ -417,58 +413,63 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试"
+        "category": "接口自动化测试",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径9的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 9")
     print("🗑️  已删除学习路径9（接口测试基础）的旧习题")
-    
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 9, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 9", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径9（接口测试基础）")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 9")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径9现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

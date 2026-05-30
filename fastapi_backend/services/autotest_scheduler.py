@@ -2,8 +2,8 @@
 定时任务调度器模块（迁移自 auto_test_platform/services/scheduler.py）
 使用 APScheduler 实现定时执行测试场景
 """
+
 import asyncio
-import json
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -14,48 +14,60 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 
-# from fastapi_backend.services.autotest_report_service import write_allure_results
-from fastapi_backend.core.autotest_database import INSTANCE_DIR
+from fastapi_backend.core.config import settings
+from fastapi_backend.services.autotest_report_service import write_allure_results
 
 _logger = logging.getLogger(__name__)
 
-# 项目根目录
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 
-# 全局调度器实例
 scheduler: Optional[AsyncIOScheduler] = None
 
-# 任务存储
 scheduled_tasks: Dict[str, Dict[str, Any]] = {}
 
 
 def _schedule_meta_from_db(scenario_id: int) -> Dict[str, Any]:
-    """从 AutoTest SQLite 读取定时配置（内存丢失或从 Job 重建时补全 Webhook 等）。"""
-    import sqlite3
+    """从 PostgreSQL 读取定时配置（内存丢失或从 Job 重建时补全 Webhook 等）。"""
+    import asyncio
+    from fastapi_backend.core.database import async_session
+    from fastapi_backend.models.autotest import AutoTestScenario
+    from sqlalchemy import select
 
-    path = INSTANCE_DIR / "auto_test.db"
-    if not path.exists():
-        return {}
-    con = sqlite3.connect(str(path))
+    async def _read() -> Dict[str, Any]:
+        async with async_session() as session:
+            res = await session.execute(
+                select(
+                    AutoTestScenario.schedule_webhook_url,
+                    AutoTestScenario.schedule_cron_expression,
+                    AutoTestScenario.schedule_env_id,
+                    AutoTestScenario.schedule_task_name,
+                    AutoTestScenario.schedule_is_active,
+                ).where(AutoTestScenario.id == scenario_id)
+            )
+            row = res.first()
+            if not row:
+                return {}
+            return {
+                "webhook_url": row[0],
+                "cron_expression": row[1] or "",
+                "env_id": row[2],
+                "name": row[3],
+                "is_active": True if row[4] is None else bool(row[4]),
+            }
+
     try:
-        cur = con.execute(
-            "SELECT schedule_webhook_url, schedule_cron_expression, schedule_env_id, "
-            "schedule_task_name, schedule_is_active FROM test_scenarios WHERE id=?",
-            (scenario_id,),
-        )
-        row = cur.fetchone()
-        if not row:
-            return {}
-        return {
-            "webhook_url": row[0],
-            "cron_expression": row[1] or "",
-            "env_id": row[2],
-            "name": row[3],
-            "is_active": True if row[4] is None else bool(row[4]),
-        }
-    finally:
-        con.close()
+        asyncio.get_running_loop()
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(asyncio.run, _read())
+            return future.result(timeout=5)
+    except RuntimeError:
+        return asyncio.run(_read())
+    except Exception as e:
+        _logger.warning(f"读取定时配置失败: {e}")
+        return {}
 
 
 def _failed_step_count(result: Optional[dict]) -> int:
@@ -74,14 +86,20 @@ def get_scheduler() -> AsyncIOScheduler:
     """获取全局调度器实例"""
     global scheduler
     if scheduler is None:
-        jobstore_url = f"sqlite:///{INSTANCE_DIR / 'scheduler_jobs.db'}"
+        db_url = settings.DATABASE_URL
+        if db_url.startswith("postgresql+asyncpg://"):
+            jobstore_url = db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+        elif db_url.startswith("postgresql://"):
+            jobstore_url = db_url
+        else:
+            jobstore_url = f"sqlite:///{PROJECT_ROOT / 'instance' / 'scheduler_jobs.db'}"
         scheduler = AsyncIOScheduler(
-            jobstores={'default': SQLAlchemyJobStore(url=jobstore_url)},
+            jobstores={"default": SQLAlchemyJobStore(url=jobstore_url)},
             job_defaults={
-                'coalesce': True,
-                'max_instances': 1,
-                'misfire_grace_time': 300
-            }
+                "coalesce": True,
+                "max_instances": 1,
+                "misfire_grace_time": 300,
+            },
         )
     return scheduler
 
@@ -132,7 +150,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
 
         # 等待任务完成（异步等待）
         max_wait_time = 300  # 5分钟超时
-        wait_interval = 2    # 每2秒检查一次
+        wait_interval = 2  # 每2秒检查一次
         result = None
 
         try:
@@ -174,6 +192,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
         report_dir = AUTOTEST_DATA_DIR / "reports" / f"scenario_{scenario_id}"
 
         import shutil
+
         if allure_results_dir.exists():
             try:
                 shutil.rmtree(str(allure_results_dir))
@@ -186,6 +205,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
 
         try:
             import shutil
+
             old_report_history = report_dir / "history"
             new_results_history = allure_results_dir / "history"
             if old_report_history.exists() and old_report_history.is_dir():
@@ -194,12 +214,19 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                 shutil.copytree(str(old_report_history), str(new_results_history))
 
             cmd_result = subprocess.run(
-                ["allure", "generate", str(allure_results_dir), "-o", str(report_dir), "--clean"],
+                [
+                    "allure",
+                    "generate",
+                    str(allure_results_dir),
+                    "-o",
+                    str(report_dir),
+                    "--clean",
+                ],
                 capture_output=True,
                 timeout=60,
                 text=True,
-                encoding='utf-8',
-                errors='ignore'
+                encoding="utf-8",
+                errors="ignore",
             )
             if cmd_result.returncode == 0:
                 report_url = f"/reports/scenario_{scenario_id}/index.html"
@@ -223,6 +250,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
             if webhook_url:
                 try:
                     import requests as _req
+
                     webhook_payload = {
                         "scenario_id": scenario_id,
                         "status": scheduled_tasks[task_id]["last_status"],
@@ -230,9 +258,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                         "total_steps": result.get("total_steps", 0) if result else 0,
                         "failed_steps": _failed_step_count(result),
                     }
-                    await asyncio.to_thread(
-                        _req.post, webhook_url, json=webhook_payload, timeout=10
-                    )
+                    await asyncio.to_thread(_req.post, webhook_url, json=webhook_payload, timeout=10)
                 except Exception as wh_err:
                     _logger.warning(f"Webhook 通知失败 {webhook_url}: {wh_err}")
 
@@ -249,178 +275,13 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
             scheduled_tasks[task_id]["status"] = "idle"
 
 
-def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dict, history_id: str):
-    """写入 Allure 结果文件 - 每个步骤生成独立的测试用例JSON，模拟 Pytest Class 架构"""
-    import time as time_module
-
-    start_time = result.get("start_time")
-    if start_time:
-        if isinstance(start_time, (int, float)):
-            base_start_ms = int(start_time * 1000) if start_time < 1e10 else int(start_time)
-        else:
-            try:
-                dt = datetime.fromisoformat(str(start_time).replace('Z', '+00:00'))
-                base_start_ms = int(dt.timestamp() * 1000)
-            except ValueError:
-                base_start_ms = int(time_module.time() * 1000)
-    else:
-        base_start_ms = int(time_module.time() * 1000)
-
-    step_results = result.get("step_results", [])
-    scenario_name = result.get("scenario_name", f"场景 {scenario_id}")
-
-    cumulative_ms = 0
-
-    for i, step in enumerate(step_results):
-        i_plus_1 = i + 1
-        step_duration = step.get("duration", 0)
-        step_start_ms = base_start_ms + cumulative_ms
-        step_stop_ms = step_start_ms + step_duration
-        cumulative_ms += step_duration
-
-        step_status_raw = step.get("status", "success")
-        if step_status_raw == "skipped":
-            step_status = "skipped"
-            status_details = {"message": step.get("skipped_reason", "步骤被跳过")}
-        else:
-            success = step_status_raw != "failed"
-            status_code = step.get("status_code", 0)
-            url = step.get("url", "")
-            is_really_success = success and status_code > 0 and url
-
-            if is_really_success:
-                step_status = "passed"
-                status_details = {}
-            else:
-                step_status = "failed"
-                error_msg = step.get("error", "")
-                if not error_msg:
-                    assertions = step.get("assertions", {})
-                    failed_asserts = assertions.get("failed", [])
-                    if failed_asserts:
-                        msgs = []
-                        for fa in failed_asserts:
-                            if isinstance(fa, dict):
-                                msgs.append(fa.get("reason", str(fa)))
-                            else:
-                                msgs.append(str(fa))
-                        error_msg = "; ".join(msgs)
-                    if not error_msg:
-                        if success and (status_code == 0 or not url):
-                            error_msg = f"请求未成功发出 (status_code={status_code}, url为空)"
-                        else:
-                            error_msg = f"期望 2xx/3xx, 实际返回 {status_code}"
-                status_details = {"message": error_msg}
-
-        api_case_name = step.get("api_case_name", f"步骤 {i_plus_1}")
-        method = step.get("method", "GET")
-        step_title = f"用例{i_plus_1}: {api_case_name}"
-
-        sub_steps = []
-
-        request_step = {
-            "name": f"1. 发起HTTP请求: {method} {url}",
-            "status": step_status,
-            "stage": "finished",
-            "start": step_start_ms,
-            "stop": step_start_ms + max(step_duration // 3, 1),
-            "duration": max(step_duration // 3, 1),
-            "steps": [],
-            "attachments": [],
-        }
-        request_info = {"url": url, "method": method, "headers": step.get("headers", {}), "payload": step.get("payload", {})}
-        request_step["attachments"].append({
-            "name": "请求信息",
-            "type": "application/json",
-            "source": f"request_{i_plus_1}.json",
-            "body": json.dumps(request_info, ensure_ascii=False, indent=2)
-        })
-        sub_steps.append(request_step)
-
-        response_step = {
-            "name": "2. 获取响应信息",
-            "status": step_status,
-            "stage": "finished",
-            "start": step_start_ms + max(step_duration // 3, 1),
-            "stop": step_start_ms + max(step_duration * 2 // 3, 1),
-            "duration": max(step_duration // 3, 1),
-            "steps": [],
-            "attachments": [],
-        }
-        response_body = ""
-        if step.get("response"):
-            response_body = step["response"].get("body", "")
-        response_info = {"status_code": status_code, "response_time_ms": step.get("response_time", 0), "body": str(response_body)[:2000] if response_body else ""}
-        response_step["attachments"].append({
-            "name": "响应信息",
-            "type": "application/json",
-            "source": f"response_{i_plus_1}.json",
-            "body": json.dumps(response_info, ensure_ascii=False, indent=2)
-        })
-        sub_steps.append(response_step)
-
-        assertion_step = {
-            "name": "3. 执行断言校验",
-            "status": step_status,
-            "stage": "finished",
-            "start": step_start_ms + max(step_duration * 2 // 3, 1),
-            "stop": step_stop_ms,
-            "duration": max(step_duration // 3, 1),
-            "steps": [],
-            "attachments": [],
-        }
-        if step.get("extracted_vars"):
-            vars_info = ", ".join([f"{k}={v}" for k, v in step["extracted_vars"].items()])
-            assertion_step["attachments"].append({
-                "name": f"提取变量_{i_plus_1}",
-                "type": "text/plain",
-                "source": f"vars_{i_plus_1}.txt",
-                "body": vars_info
-            })
-        sub_steps.append(assertion_step)
-
-        step_uuid = str(uuid.uuid4())
-        test_case_result = {
-            "name": step_title,
-            "uuid": step_uuid,
-            "historyId": f"TestScenario{scenario_id}.test_step_{i_plus_1}",
-            "fullName": f"TestScenario{scenario_id}.test_step_{i_plus_1}",
-            "status": step_status,
-            "stage": "finished",
-            "start": step_start_ms,
-            "stop": step_stop_ms,
-            "duration": step_duration,
-            "description": f"[{method}] {api_case_name}",
-            "labels": [
-                {"name": "suite", "value": scenario_name},
-                {"name": "feature", "value": scenario_name},
-                {"name": "severity", "value": "normal"},
-                {"name": "scenario_id", "value": str(scenario_id)},
-                {"name": "thread", "value": "main"},
-                {"name": "host", "value": "localhost"},
-            ],
-            "parameters": [],
-            "links": [],
-            "steps": sub_steps,
-            "attachments": [],
-        }
-        if status_details:
-            test_case_result["statusDetails"] = status_details
-
-        output_file = allure_results_dir / f"scenario-{scenario_id}-step-{i_plus_1}-{history_id}.json"
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(test_case_result, f, ensure_ascii=False, indent=2)
-
-
-
-
 def add_scheduled_task(
     scenario_id: int,
     cron_expression: str,
     env_id: Optional[int] = None,
     webhook_url: Optional[str] = None,
     task_name: Optional[str] = None,
-    is_active: Optional[bool] = True
+    is_active: Optional[bool] = True,
 ) -> Dict[str, Any]:
     """添加定时任务"""
     global scheduled_tasks
@@ -463,7 +324,7 @@ def add_scheduled_task(
         "report_url": None,
         "status": "idle",
         "is_active": is_active if is_active is not None else True,
-        "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None
+        "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
     }
 
     scheduled_tasks[task_id] = task_info
@@ -518,7 +379,7 @@ def toggle_task_status(task_id: str) -> Dict[str, Any]:
         "task_id": task_id,
         "is_active": task_info["is_active"],
         "status": task_info["status"],
-        "message": f"任务已{'启用' if task_info['is_active'] else '暂停'}"
+        "message": f"任务已{'启用' if task_info['is_active'] else '暂停'}",
     }
 
 
@@ -539,7 +400,7 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
 
         # 解析cron表达式
         cron_expr = ""
-        if hasattr(job.trigger, 'fields'):
+        if hasattr(job.trigger, "fields"):
             # CronTrigger
             fields = job.trigger.fields
             cron_expr = f"{fields[0]} {fields[1]} {fields[2]} {fields[3]} {fields[4]}"
@@ -561,7 +422,7 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
             "report_url": None,
             "status": "idle",
             "is_active": not job.pending,
-            "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None
+            "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
         }
         scheduled_tasks[task_id] = task_info
         return task_info
@@ -584,7 +445,7 @@ def get_all_scheduled_tasks() -> List[Dict[str, Any]]:
 
             # 解析cron表达式
             cron_expr = ""
-            if hasattr(job.trigger, 'fields'):
+            if hasattr(job.trigger, "fields"):
                 # CronTrigger
                 fields = job.trigger.fields
                 cron_expr = f"{fields[0]} {fields[1]} {fields[2]} {fields[3]} {fields[4]}"
@@ -606,7 +467,7 @@ def get_all_scheduled_tasks() -> List[Dict[str, Any]]:
                 "report_url": None,
                 "status": "idle",
                 "is_active": not job.pending,
-                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None
+                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
             }
             scheduled_tasks[task_id] = task_info
 

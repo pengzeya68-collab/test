@@ -14,7 +14,7 @@ from fastapi_backend.schemas.interview_question import (
     InterviewQuestionUpdate,
     InterviewQuestionDetail,
     InterviewQuestionList,
-    InterviewQuestionListResponse
+    InterviewQuestionListResponse,
 )
 from fastapi_backend.schemas.test_case import (
     TestCaseCreate,
@@ -22,12 +22,12 @@ from fastapi_backend.schemas.test_case import (
     TestCaseDetail,
     TestCaseList,
     TestCaseListResponse,
-    TestCaseBatchCreate
+    TestCaseBatchCreate,
 )
 from fastapi_backend.schemas.interview_statistics import (
     QuestionStatistics,
     QuestionStatisticsListResponse,
-    OverallStatistics
+    OverallStatistics,
 )
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
@@ -40,21 +40,20 @@ async def admin_permission_check(current_user: User = Depends(require_admin)):
 
 # 面试题目管理接口
 
+
 @router.post("/interview/questions", response_model=SuccessResponse[InterviewQuestionDetail])
 async def create_interview_question(
     question_data: InterviewQuestionCreate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """创建新的面试题目（仅管理员）"""
     if question_data.slug:
-        existing = await db.execute(
-            select(InterviewQuestion).where(InterviewQuestion.slug == question_data.slug)
-        )
+        existing = await db.execute(select(InterviewQuestion).where(InterviewQuestion.slug == question_data.slug))
         if existing.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"题目标识 '{question_data.slug}' 已存在"
+                detail=f"题目标识 '{question_data.slug}' 已存在",
             )
 
     new_question = InterviewQuestion(
@@ -74,7 +73,7 @@ async def create_interview_question(
         examples=question_data.examples,
         reference_solution=question_data.reference_solution or question_data.answer or "",
         test_cases=question_data.test_cases,
-        is_published=question_data.is_published
+        is_published=question_data.is_published,
     )
 
     db.add(new_question)
@@ -83,11 +82,14 @@ async def create_interview_question(
 
     return SuccessResponse(
         data=InterviewQuestionDetail.model_validate(new_question),
-        message="题目创建成功"
+        message="题目创建成功",
     )
 
 
-@router.get("/interview/questions", response_model=SuccessResponse[InterviewQuestionListResponse])
+@router.get(
+    "/interview/questions",
+    response_model=SuccessResponse[InterviewQuestionListResponse],
+)
 async def list_interview_questions(
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -96,7 +98,7 @@ async def list_interview_questions(
     category: Optional[str] = Query(None, description="分类筛选"),
     is_published: Optional[bool] = Query(None, description="发布状态筛选"),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取面试题目列表（仅管理员）"""
     query = select(InterviewQuestion)
@@ -107,7 +109,7 @@ async def list_interview_questions(
             or_(
                 InterviewQuestion.title.contains(keyword),
                 InterviewQuestion.description.contains(keyword),
-                InterviewQuestion.tags.contains(keyword)
+                InterviewQuestion.tags.contains(keyword),
             )
         )
 
@@ -134,18 +136,19 @@ async def list_interview_questions(
 
     items = [InterviewQuestionList.model_validate(q) for q in questions]
 
-    list_response = InterviewQuestionListResponse(
-        items=items, total=total, page=page, size=size, pages=pages
-    )
+    list_response = InterviewQuestionListResponse(items=items, total=total, page=page, size=size, pages=pages)
 
     return SuccessResponse(data=list_response, message=f"获取到 {len(items)} 条题目")
 
 
-@router.get("/interview/questions/{question_id}", response_model=SuccessResponse[InterviewQuestionDetail])
+@router.get(
+    "/interview/questions/{question_id}",
+    response_model=SuccessResponse[InterviewQuestionDetail],
+)
 async def get_interview_question(
     question_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取面试题目详情"""
     result = await db.execute(select(InterviewQuestion).where(InterviewQuestion.id == question_id))
@@ -154,15 +157,21 @@ async def get_interview_question(
     if not question:
         raise NotFoundException("题目不存在")
 
-    return SuccessResponse(data=InterviewQuestionDetail.model_validate(question), message="题目详情获取成功")
+    return SuccessResponse(
+        data=InterviewQuestionDetail.model_validate(question),
+        message="题目详情获取成功",
+    )
 
 
-@router.put("/interview/questions/{question_id}", response_model=SuccessResponse[InterviewQuestionDetail])
+@router.put(
+    "/interview/questions/{question_id}",
+    response_model=SuccessResponse[InterviewQuestionDetail],
+)
 async def update_interview_question(
     question_id: int,
     question_data: InterviewQuestionUpdate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """更新面试题目"""
     result = await db.execute(select(InterviewQuestion).where(InterviewQuestion.id == question_id))
@@ -178,7 +187,7 @@ async def update_interview_question(
             existing = await db.execute(
                 select(InterviewQuestion).where(
                     InterviewQuestion.slug == question_data.slug,
-                    InterviewQuestion.id != question_id
+                    InterviewQuestion.id != question_id,
                 )
             )
             if existing.scalar_one_or_none():
@@ -221,11 +230,14 @@ async def update_interview_question(
     return SuccessResponse(data=InterviewQuestionDetail.model_validate(question), message="题目更新成功")
 
 
-@router.delete("/interview/questions/{question_id}", response_model=SuccessResponse[MessageResponse])
+@router.delete(
+    "/interview/questions/{question_id}",
+    response_model=SuccessResponse[MessageResponse],
+)
 async def delete_interview_question(
     question_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """删除面试题目"""
     from fastapi_backend.models.models import InterviewSession
@@ -236,17 +248,20 @@ async def delete_interview_question(
     if not question:
         raise NotFoundException("题目不存在")
 
-    session_count = await db.scalar(
-        select(func.count()).select_from(InterviewSession).where(InterviewSession.question_id == question_id)
-    ) or 0
-    submission_count = await db.scalar(
-        select(func.count()).select_from(Submission).where(Submission.question_id == question_id)
-    ) or 0
+    session_count = (
+        await db.scalar(
+            select(func.count()).select_from(InterviewSession).where(InterviewSession.question_id == question_id)
+        )
+        or 0
+    )
+    submission_count = (
+        await db.scalar(select(func.count()).select_from(Submission).where(Submission.question_id == question_id)) or 0
+    )
 
     if session_count > 0 or submission_count > 0:
         raise HTTPException(
             status_code=400,
-            detail=f"题目无法删除，已有 {session_count} 个会话和 {submission_count} 个提交记录"
+            detail=f"题目无法删除，已有 {session_count} 个会话和 {submission_count} 个提交记录",
         )
 
     await db.delete(question)
@@ -255,12 +270,15 @@ async def delete_interview_question(
     return SuccessResponse(data=MessageResponse(message="题目删除成功"), message="题目删除成功")
 
 
-@router.patch("/interview/questions/{question_id}/publish", response_model=SuccessResponse[InterviewQuestionDetail])
+@router.patch(
+    "/interview/questions/{question_id}/publish",
+    response_model=SuccessResponse[InterviewQuestionDetail],
+)
 async def publish_interview_question(
     question_id: int,
     action: str = Query("publish", pattern="^(publish|unpublish)$"),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """发布/下线面试题目"""
     result = await db.execute(select(InterviewQuestion).where(InterviewQuestion.id == question_id))
@@ -269,7 +287,7 @@ async def publish_interview_question(
     if not question:
         raise NotFoundException("题目不存在")
 
-    question.is_published = (action == "publish")
+    question.is_published = action == "publish"
     message = "题目已发布" if action == "publish" else "题目已下线"
 
     await db.commit()
@@ -280,12 +298,17 @@ async def publish_interview_question(
 
 # 面试题测试用例管理接口
 
-@router.post("/interview/questions/{question_id}/test-cases", response_model=SuccessResponse[TestCaseDetail], status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/interview/questions/{question_id}/test-cases",
+    response_model=SuccessResponse[TestCaseDetail],
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_test_case(
     question_id: int,
     test_case_data: TestCaseCreate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """为面试题创建测试用例"""
     question = await db.get(InterviewQuestion, question_id)
@@ -301,7 +324,7 @@ async def create_test_case(
         expected_output=test_case_data.expected_output,
         is_example=test_case_data.is_example,
         is_hidden=test_case_data.is_hidden,
-        description=test_case_data.description
+        description=test_case_data.description,
     )
 
     db.add(new_test_case)
@@ -311,7 +334,10 @@ async def create_test_case(
     return SuccessResponse(data=TestCaseDetail.model_validate(new_test_case), message="测试用例创建成功")
 
 
-@router.get("/interview/questions/{question_id}/test-cases", response_model=SuccessResponse[TestCaseListResponse])
+@router.get(
+    "/interview/questions/{question_id}/test-cases",
+    response_model=SuccessResponse[TestCaseListResponse],
+)
 async def list_test_cases(
     question_id: int,
     page: int = Query(1, ge=1),
@@ -319,7 +345,7 @@ async def list_test_cases(
     is_example: Optional[bool] = Query(None),
     is_hidden: Optional[bool] = Query(None),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取面试题测试用例列表"""
     question = await db.get(InterviewQuestion, question_id)
@@ -348,12 +374,15 @@ async def list_test_cases(
     return SuccessResponse(data=list_response, message=f"获取到 {len(items)} 个测试用例")
 
 
-@router.get("/interview/questions/{question_id}/test-cases/{test_case_id}", response_model=SuccessResponse[TestCaseDetail])
+@router.get(
+    "/interview/questions/{question_id}/test-cases/{test_case_id}",
+    response_model=SuccessResponse[TestCaseDetail],
+)
 async def get_test_case(
     question_id: int,
     test_case_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取测试用例详情"""
     question = await db.get(InterviewQuestion, question_id)
@@ -367,13 +396,16 @@ async def get_test_case(
     return SuccessResponse(data=TestCaseDetail.model_validate(test_case), message="获取成功")
 
 
-@router.put("/interview/questions/{question_id}/test-cases/{test_case_id}", response_model=SuccessResponse[TestCaseDetail])
+@router.put(
+    "/interview/questions/{question_id}/test-cases/{test_case_id}",
+    response_model=SuccessResponse[TestCaseDetail],
+)
 async def update_test_case(
     question_id: int,
     test_case_id: int,
     test_case_data: TestCaseUpdate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """更新测试用例"""
     question = await db.get(InterviewQuestion, question_id)
@@ -401,12 +433,15 @@ async def update_test_case(
     return SuccessResponse(data=TestCaseDetail.model_validate(test_case), message="更新成功")
 
 
-@router.delete("/interview/questions/{question_id}/test-cases/{test_case_id}", response_model=SuccessResponse[MessageResponse])
+@router.delete(
+    "/interview/questions/{question_id}/test-cases/{test_case_id}",
+    response_model=SuccessResponse[MessageResponse],
+)
 async def delete_test_case(
     question_id: int,
     test_case_id: int,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """删除测试用例"""
     question = await db.get(InterviewQuestion, question_id)
@@ -423,12 +458,16 @@ async def delete_test_case(
     return SuccessResponse(data=MessageResponse(message="测试用例删除成功"), message="删除成功")
 
 
-@router.post("/interview/questions/{question_id}/test-cases/batch", response_model=SuccessResponse[list[TestCaseDetail]], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/interview/questions/{question_id}/test-cases/batch",
+    response_model=SuccessResponse[list[TestCaseDetail]],
+    status_code=status.HTTP_201_CREATED,
+)
 async def batch_create_test_cases(
     question_id: int,
     batch_data: TestCaseBatchCreate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """批量创建测试用例"""
     question = await db.get(InterviewQuestion, question_id)
@@ -443,7 +482,7 @@ async def batch_create_test_cases(
             expected_output=test_case_base.expected_output,
             is_example=test_case_base.is_example,
             is_hidden=test_case_base.is_hidden,
-            description=test_case_base.description
+            description=test_case_base.description,
         )
         db.add(new_test_case)
         created_cases.append(new_test_case)
@@ -454,13 +493,17 @@ async def batch_create_test_cases(
 
     return SuccessResponse(
         data=[TestCaseDetail.model_validate(tc) for tc in created_cases],
-        message=f"批量创建 {len(created_cases)} 个测试用例成功"
+        message=f"批量创建 {len(created_cases)} 个测试用例成功",
     )
 
 
 # 题库统计接口
 
-@router.get("/interview/questions/statistics", response_model=SuccessResponse[QuestionStatisticsListResponse])
+
+@router.get(
+    "/interview/questions/statistics",
+    response_model=SuccessResponse[QuestionStatisticsListResponse],
+)
 async def get_question_statistics(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -469,7 +512,7 @@ async def get_question_statistics(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取题目维度统计信息"""
     now = datetime.now(timezone.utc)
@@ -509,15 +552,16 @@ async def get_question_statistics(
                 raise HTTPException(status_code=400, detail="结束日期格式无效")
 
         total_submissions = await db.scalar(select(func.count(Submission.id)).where(*submission_filters)) or 0
-        completed_submissions = await db.scalar(
-            select(func.count(Submission.id)).where(*submission_filters, Submission.score.is_not(None))
-        ) or 0
+        completed_submissions = (
+            await db.scalar(select(func.count(Submission.id)).where(*submission_filters, Submission.score.is_not(None)))
+            or 0
+        )
 
         score_stats = await db.execute(
             select(
                 func.avg(Submission.score).label("avg_score"),
                 func.max(Submission.score).label("max_score"),
-                func.min(Submission.score).label("min_score")
+                func.min(Submission.score).label("min_score"),
             ).where(*submission_filters, Submission.score.is_not(None))
         )
         score_row = score_stats.first()
@@ -526,7 +570,7 @@ async def get_question_statistics(
         pass_row = await db.execute(
             select(
                 func.count(Submission.id).label("total"),
-                func.sum(case((Submission.score >= 80, 1), else_=0)).label("passed")
+                func.sum(case((Submission.score >= 80, 1), else_=0)).label("passed"),
             ).where(*submission_filters, Submission.score.is_not(None))
         )
         pass_data = pass_row.first()
@@ -534,36 +578,44 @@ async def get_question_statistics(
         passed_count = pass_data.passed or 0 if pass_data.passed else 0
         pass_rate = (passed_count / total_with_score * 100) if total_with_score > 0 else 0.0
 
-        recent_7d = await db.scalar(
-            select(func.count(Submission.id)).where(*submission_filters, Submission.created_at >= seven_days_ago)
-        ) or 0
-        recent_30d = await db.scalar(
-            select(func.count(Submission.id)).where(*submission_filters, Submission.created_at >= thirty_days_ago)
-        ) or 0
+        recent_7d = (
+            await db.scalar(
+                select(func.count(Submission.id)).where(*submission_filters, Submission.created_at >= seven_days_ago)
+            )
+            or 0
+        )
+        recent_30d = (
+            await db.scalar(
+                select(func.count(Submission.id)).where(*submission_filters, Submission.created_at >= thirty_days_ago)
+            )
+            or 0
+        )
 
         last_submission = await db.scalar(
             select(Submission.created_at).where(*submission_filters).order_by(Submission.created_at.desc()).limit(1)
         )
 
-        statistics_items.append(QuestionStatistics(
-            question_id=question.id,
-            title=question.title,
-            slug=question.slug,
-            difficulty=question.difficulty,
-            is_published=question.is_published,
-            total_submissions=total_submissions,
-            completed_submissions=completed_submissions,
-            average_score=average_score,
-            highest_score=score_row.max_score,
-            lowest_score=score_row.min_score,
-            pass_rate=pass_rate,
-            passed_count=passed_count,
-            failed_count=total_with_score - passed_count,
-            recent_7_days_submissions=recent_7d,
-            recent_30_days_submissions=recent_30d,
-            last_submission_time=last_submission,
-            created_at=question.created_at
-        ))
+        statistics_items.append(
+            QuestionStatistics(
+                question_id=question.id,
+                title=question.title,
+                slug=question.slug,
+                difficulty=question.difficulty,
+                is_published=question.is_published,
+                total_submissions=total_submissions,
+                completed_submissions=completed_submissions,
+                average_score=average_score,
+                highest_score=score_row.max_score,
+                lowest_score=score_row.min_score,
+                pass_rate=pass_rate,
+                passed_count=passed_count,
+                failed_count=total_with_score - passed_count,
+                recent_7_days_submissions=recent_7d,
+                recent_30_days_submissions=recent_30d,
+                last_submission_time=last_submission,
+                created_at=question.created_at,
+            )
+        )
 
     list_response = QuestionStatisticsListResponse(
         items=statistics_items, total=total, page=page, size=size, pages=pages
@@ -572,12 +624,15 @@ async def get_question_statistics(
     return SuccessResponse(data=list_response, message=f"获取到 {len(statistics_items)} 个题目的统计信息")
 
 
-@router.get("/interview/questions/overall-statistics", response_model=SuccessResponse[OverallStatistics])
+@router.get(
+    "/interview/questions/overall-statistics",
+    response_model=SuccessResponse[OverallStatistics],
+)
 async def get_overall_statistics(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取整体题库统计信息"""
     now = datetime.now(timezone.utc)
@@ -598,20 +653,21 @@ async def get_overall_statistics(
             raise HTTPException(status_code=400, detail="结束日期格式无效")
 
     total_questions = await db.scalar(select(func.count(InterviewQuestion.id))) or 0
-    published_questions = await db.scalar(
-        select(func.count(InterviewQuestion.id)).where(InterviewQuestion.is_published)
-    ) or 0
+    published_questions = (
+        await db.scalar(select(func.count(InterviewQuestion.id)).where(InterviewQuestion.is_published)) or 0
+    )
 
     total_submissions = await db.scalar(select(func.count(Submission.id)).where(*submission_filters)) or 0
-    completed_submissions = await db.scalar(
-        select(func.count(Submission.id)).where(*submission_filters, Submission.score.is_not(None))
-    ) or 0
+    completed_submissions = (
+        await db.scalar(select(func.count(Submission.id)).where(*submission_filters, Submission.score.is_not(None)))
+        or 0
+    )
 
     score_stats = await db.execute(
         select(
             func.avg(Submission.score).label("avg_score"),
             func.max(Submission.score).label("max_score"),
-            func.min(Submission.score).label("min_score")
+            func.min(Submission.score).label("min_score"),
         ).where(*submission_filters, Submission.score.is_not(None))
     )
     score_row = score_stats.first()
@@ -620,7 +676,7 @@ async def get_overall_statistics(
     pass_row = await db.execute(
         select(
             func.count(Submission.id).label("total"),
-            func.sum(case((Submission.score >= 80, 1), else_=0)).label("passed")
+            func.sum(case((Submission.score >= 80, 1), else_=0)).label("passed"),
         ).where(*submission_filters, Submission.score.is_not(None))
     )
     pass_data = pass_row.first()
@@ -629,8 +685,10 @@ async def get_overall_statistics(
     pass_rate = (passed_count / total_with_score * 100) if total_with_score > 0 else 0.0
 
     difficulty_dist = await db.execute(
-        select(InterviewQuestion.difficulty, func.count(InterviewQuestion.id).label("count"))
-        .group_by(InterviewQuestion.difficulty)
+        select(
+            InterviewQuestion.difficulty,
+            func.count(InterviewQuestion.id).label("count"),
+        ).group_by(InterviewQuestion.difficulty)
     )
     easy_count = medium_count = hard_count = 0
     for diff, cnt in difficulty_dist.all():
@@ -641,12 +699,18 @@ async def get_overall_statistics(
         elif diff == "hard":
             hard_count = cnt
 
-    recent_7d = await db.scalar(
-        select(func.count(Submission.id)).where(*submission_filters, Submission.created_at >= seven_days_ago)
-    ) or 0
-    recent_30d = await db.scalar(
-        select(func.count(Submission.id)).where(*submission_filters, Submission.created_at >= thirty_days_ago)
-    ) or 0
+    recent_7d = (
+        await db.scalar(
+            select(func.count(Submission.id)).where(*submission_filters, Submission.created_at >= seven_days_ago)
+        )
+        or 0
+    )
+    recent_30d = (
+        await db.scalar(
+            select(func.count(Submission.id)).where(*submission_filters, Submission.created_at >= thirty_days_ago)
+        )
+        or 0
+    )
 
     overall_stats = OverallStatistics(
         total_questions=total_questions,
@@ -660,7 +724,7 @@ async def get_overall_statistics(
         hard_count=hard_count,
         recent_7_days_activity=recent_7d,
         recent_30_days_activity=recent_30d,
-        top_questions=[]
+        top_questions=[],
     )
 
     return SuccessResponse(data=overall_stats, message="整体统计信息获取成功")

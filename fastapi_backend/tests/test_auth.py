@@ -2,6 +2,7 @@
 认证相关测试
 覆盖登录、Token刷新、用户信息获取、修改密码
 """
+
 from fastapi_backend.deps.auth import get_auth_service
 from fastapi_backend.main import app
 from fastapi_backend.models.models import User
@@ -13,7 +14,7 @@ class TestAuth:
     def test_login_invalid_credentials(self, client):
         response = client.post(
             "/api/v1/auth/login",
-            json={"username": "nonexistent", "password": "wrongpassword"}
+            json={"username": "nonexistent", "password": "wrongpassword"},
         )
         assert response.status_code == 401
 
@@ -22,16 +23,13 @@ class TestAuth:
         assert response.status_code == 401
 
     def test_refresh_token_invalid(self, client):
-        response = client.post(
-            "/api/v1/auth/refresh",
-            json={"refresh_token": "invalid.token.here"}
-        )
+        response = client.post("/api/v1/auth/refresh", json={"refresh_token": "invalid.token.here"})
         assert response.status_code == 401
 
     def test_change_password_without_token(self, client):
         response = client.post(
             "/api/v1/auth/change-password",
-            json={"old_password": "old", "new_password": "new"}
+            json={"old_password": "old", "new_password": "new"},
         )
         assert response.status_code == 401
 
@@ -80,10 +78,7 @@ class TestAuth:
 
         app.dependency_overrides[get_auth_service] = lambda: FakeAuthService()
 
-        response = client.post(
-            "/api/v1/auth/login",
-            json={"username": "mockuser", "password": "mockpass"}
-        )
+        response = client.post("/api/v1/auth/login", json={"username": "mockuser", "password": "mockpass"})
         assert response.status_code == 200
         app.dependency_overrides.pop(get_auth_service, None)
 
@@ -96,10 +91,7 @@ class TestAssessment:
         assert response.status_code == 401
 
     def test_submit_without_token(self, client):
-        response = client.post(
-            "/api/v1/assessment/submit",
-            json={"answers": []}
-        )
+        response = client.post("/api/v1/assessment/submit", json={"answers": []})
         assert response.status_code == 401
 
     def test_status_without_token(self, client):
@@ -125,14 +117,18 @@ class TestExercise:
     def test_submit_without_token(self, client):
         response = client.post(
             "/api/v1/exercise/submit",
-            json={"exercise_id": 1, "solution": "print('hello')"}
+            json={"exercise_id": 1, "solution": "print('hello')"},
         )
         assert response.status_code == 401
 
     def test_evaluate_without_token(self, client):
         response = client.post(
             "/api/v1/exercise/evaluate",
-            json={"exercise_id": 1, "language": "python", "source_code": "print('hello')"}
+            json={
+                "exercise_id": 1,
+                "language": "python",
+                "source_code": "print('hello')",
+            },
         )
         assert response.status_code in [401, 422]
 
@@ -147,7 +143,7 @@ class TestInterview:
     def test_follow_up_without_token(self, client):
         response = client.post(
             "/api/v1/interview/follow-up",
-            json={"question_title": "test", "user_answer": "test"}
+            json={"question_title": "test", "user_answer": "test"},
         )
         assert response.status_code == 401
 

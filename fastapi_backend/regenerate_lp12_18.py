@@ -1,40 +1,68 @@
-﻿"""
+"""
 閲嶆柊鐢熸垚 LP12-LP18 鐨勯珮璐ㄩ噺涔犻
 鍏堝垹闄ゆ棫鐨勫瀮鍦鹃鐩紝鐒跺悗鏍规嵁璇剧▼鍐呭鐢熸垚鏂伴鐩?
 """
+
 import sqlite3
-import random
-from datetime import datetime
+
 
 def get_db():
-    return sqlite3.connect('instance/testmaster.db')
+    return sqlite3.connect("instance/testmaster.db")
+
 
 def delete_bad_exercises(lp_id):
     """鍒犻櫎鎸囧畾LP鐨勫崰浣嶇鍨冨溇棰樼洰"""
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
+    cursor.execute(
+        """
         DELETE FROM exercises
         WHERE learning_path_id = ?
         AND description LIKE '%閫夐」A%'
         AND description LIKE '%閫夐」B%'
         AND description LIKE '%閫夐」C%'
         AND description LIKE '%閫夐」D%'
-    """, (lp_id,))
+    """,
+        (lp_id,),
+    )
     deleted = cursor.rowcount
     conn.commit()
     conn.close()
     return deleted
 
-def insert_exercise(cursor, title, description, solution, exercise_type, difficulty, learning_path_id, category, lang="涓枃"):
+
+def insert_exercise(
+    cursor,
+    title,
+    description,
+    solution,
+    exercise_type,
+    difficulty,
+    learning_path_id,
+    category,
+    lang="涓枃",
+):
     """???????"""
-    cursor.execute("""
+    cursor.execute(
+        """
         INSERT INTO exercises
         (title, description, solution, exercise_type, difficulty,
          learning_path_id, category, is_public, language,
          created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, datetime('now'), datetime('now'))
-    """, (title, description, solution, exercise_type, difficulty, learning_path_id, category, lang))
+    """,
+        (
+            title,
+            description,
+            solution,
+            exercise_type,
+            difficulty,
+            learning_path_id,
+            category,
+            lang,
+        ),
+    )
+
 
 # ============== LP12: 绉诲姩绔祴璇曞熀纭€ ==============
 def generate_lp12_exercises(cursor):
@@ -46,7 +74,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "绉诲姩绔祴璇曟杩?"
+            "cat": "绉诲姩绔祴璇曟杩?",
         },
         {
             "title": "浠ヤ笅鍝」涓嶆槸绉诲姩绔祴璇曠浉杈冧簬Web绔祴璇曠殑鐗规畩鎸戞垬锛?",
@@ -54,7 +82,7 @@ def generate_lp12_exercises(cursor):
             "sol": "C",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "绉诲姩绔祴璇曟杩?"
+            "cat": "绉诲姩绔祴璇曟杩?",
         },
         {
             "title": "绉诲姩绔簲鐢ㄧ殑銆屽畨瑁呭寘澶у皬銆嶄紭鍖栦富瑕佽€冭檻鍝簺鍥犵礌锛?",
@@ -62,7 +90,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "绉诲姩绔祴璇曟杩?"
+            "cat": "绉诲姩绔祴璇曟杩?",
         },
         {
             "title": "鍏充簬绉诲姩绔簲鐢ㄧ殑鐢熷懡鍛ㄦ湡娴嬭瘯锛屼互涓嬭娉曟纭殑鏄紵",
@@ -70,7 +98,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "绉诲姩绔祴璇曟杩?"
+            "cat": "绉诲姩绔祴璇曟杩?",
         },
         {
             "title": "浠ヤ笅鍝簺鏄Щ鍔ㄧ娴嬭瘯闇€瑕佽鐩栫殑鍏稿瀷鍦烘櫙锛?",
@@ -78,7 +106,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A,B,C,D",
             "type": "multiple_choice",
             "diff": "easy",
-            "cat": "绉诲姩绔祴璇曟杩?"
+            "cat": "绉诲姩绔祴璇曟杩?",
         },
         # 绉诲姩绔姛鑳芥祴璇?
         {
@@ -87,7 +115,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "绉诲姩绔姛鑳芥祴璇?"
+            "cat": "绉诲姩绔姛鑳芥祴璇?",
         },
         {
             "title": "绉诲姩绔簲鐢ㄧ殑銆屾潈闄愭祴璇曘€嶉渶瑕佸叧娉ㄥ摢浜涙柟闈紵",
@@ -95,7 +123,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "绉诲姩绔姛鑳芥祴璇?"
+            "cat": "绉诲姩绔姛鑳芥祴璇?",
         },
         {
             "title": "鍏充簬绉诲姩绔€屾帹閫侀€氱煡銆嶆祴璇曪紝浠ヤ笅璇存硶閿欒鐨勬槸锛?",
@@ -103,7 +131,7 @@ def generate_lp12_exercises(cursor):
             "sol": "C",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "绉诲姩绔姛鑳芥祴璇?"
+            "cat": "绉诲姩绔姛鑳芥祴璇?",
         },
         {
             "title": "绉诲姩绔?瀹夎/鍗歌浇/鍗囩骇'娴嬭瘯闇€瑕侀獙璇佸摢浜涘満鏅紵",
@@ -111,7 +139,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A,B,C,D",
             "type": "multiple_choice",
             "diff": "medium",
-            "cat": "绉诲姩绔姛鑳芥祴璇?"
+            "cat": "绉诲姩绔姛鑳芥祴璇?",
         },
         {
             "title": "绉诲姩绔€屽悗鍙拌繍琛屻€嶆祴璇曚富瑕佸叧娉ㄤ粈涔堬紵",
@@ -119,7 +147,7 @@ def generate_lp12_exercises(cursor):
             "sol": "D",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "绉诲姩绔姛鑳芥祴璇?"
+            "cat": "绉诲姩绔姛鑳芥祴璇?",
         },
         # 鍏煎鎬ф祴璇?
         {
@@ -128,7 +156,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A,B,C,D",
             "type": "multiple_choice",
             "diff": "easy",
-            "cat": "鍏煎鎬ф祴璇?"
+            "cat": "鍏煎鎬ф祴璇?",
         },
         {
             "title": "绉诲姩绔吋瀹规€ф祴璇曚腑锛?灞忓箷閫傞厤'娴嬭瘯闇€瑕佸叧娉ㄥ摢浜涘唴瀹癸紵",
@@ -136,7 +164,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "鍏煎鎬ф祴璇?"
+            "cat": "鍏煎鎬ф祴璇?",
         },
         {
             "title": "iOS搴旂敤鐨勫吋瀹规€ф祴璇曠浉姣擜ndroid鐨勪紭鍔垮湪浜庯紵",
@@ -144,7 +172,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "鍏煎鎬ф祴璇?"
+            "cat": "鍏煎鎬ф祴璇?",
         },
         {
             "title": "绉诲姩绔吋瀹规€ф祴璇曟椂锛屼互涓嬪摢娆惧伐鍏峰彲浠ョ敤浜庤繙绋嬬湡鏈烘祴璇曪紵",
@@ -152,7 +180,7 @@ def generate_lp12_exercises(cursor):
             "sol": "C",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "鍏煎鎬ф祴璇?"
+            "cat": "鍏煎鎬ф祴璇?",
         },
         {
             "title": "鍦ㄨ繘琛岀Щ鍔ㄧ鍏煎鎬ф祴璇曟椂锛屼互涓嬪摢椤逛笉灞炰簬蹇呴』娴嬭瘯鐨勫唴瀹癸紵",
@@ -160,7 +188,7 @@ def generate_lp12_exercises(cursor):
             "sol": "C",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "鍏煎鎬ф祴璇?"
+            "cat": "鍏煎鎬ф祴璇?",
         },
         # 寮辩綉娴嬭瘯
         {
@@ -169,7 +197,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A,B,C,D",
             "type": "multiple_choice",
             "diff": "medium",
-            "cat": "寮辩綉娴嬭瘯"
+            "cat": "寮辩綉娴嬭瘯",
         },
         {
             "title": "绉诲姩绔簲鐢ㄥ湪缃戠粶浠嶹iFi鍒囨崲鍒?G鏃讹紝搴旇鍏峰浠€涔堣兘鍔涳紵",
@@ -177,7 +205,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "寮辩綉娴嬭瘯"
+            "cat": "寮辩綉娴嬭瘯",
         },
         {
             "title": "鍦?G缃戠粶鐜涓嬫祴璇曠Щ鍔ㄧ搴旂敤锛屼富瑕佸叧娉ㄤ粈涔堬紵",
@@ -185,7 +213,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "寮辩綉娴嬭瘯"
+            "cat": "寮辩綉娴嬭瘯",
         },
         {
             "title": "绉诲姩绔€岀绾挎ā寮忋€嶆祴璇曢渶瑕侀獙璇佸摢浜涘姛鑳斤紵",
@@ -193,7 +221,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "寮辩綉娴嬭瘯"
+            "cat": "寮辩綉娴嬭瘯",
         },
         {
             "title": "寮辩綉娴嬭瘯涓紝'瓒呮椂銆屽拰銆嶉噸璇?鏈哄埗鐨勮璁″師鍒欐槸浠€涔堬紵",
@@ -201,7 +229,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "寮辩綉娴嬭瘯"
+            "cat": "寮辩綉娴嬭瘯",
         },
         # Appium鑷姩鍖?
         {
@@ -210,7 +238,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A,B,C,D",
             "type": "multiple_choice",
             "diff": "easy",
-            "cat": "Appium鑷姩鍖?"
+            "cat": "Appium鑷姩鍖?",
         },
         {
             "title": "Appium鐨勫簳灞備娇鐢ㄧ殑鏄摢绉嶅崗璁笌璁惧杩涜閫氫俊锛?",
@@ -218,7 +246,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "Appium鑷姩鍖?"
+            "cat": "Appium鑷姩鍖?",
         },
         {
             "title": "鍦ˋppium涓紝'Accessibility ID'鏄粈涔堝畾浣嶆柟寮忥紵",
@@ -226,7 +254,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "Appium鑷姩鍖?"
+            "cat": "Appium鑷姩鍖?",
         },
         {
             "title": "Appium娴嬭瘯涓紝'Desired Capabilities'鐨勪綔鐢ㄦ槸浠€涔堬紵",
@@ -234,7 +262,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "Appium鑷姩鍖?"
+            "cat": "Appium鑷姩鍖?",
         },
         {
             "title": "浠ヤ笅鍝鎵嬪娍鎿嶄綔鍦ˋppium涓渶瑕佷娇鐢═ouchAction绫诲疄鐜帮紵",
@@ -242,7 +270,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "Appium鑷姩鍖?"
+            "cat": "Appium鑷姩鍖?",
         },
         # 鎬ц兘娴嬭瘯涓嶮onkey
         {
@@ -251,7 +279,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "鎬ц兘娴嬭瘯"
+            "cat": "鎬ц兘娴嬭瘯",
         },
         {
             "title": "Android Monkey娴嬭瘯宸ュ叿鐨勪富瑕佷綔鐢ㄦ槸浠€涔堬紵",
@@ -259,7 +287,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "鎬ц兘娴嬭瘯"
+            "cat": "鎬ц兘娴嬭瘯",
         },
         {
             "title": "浠ヤ笅鍝簺鏄Щ鍔ㄧ鎬ц兘娴嬭瘯闇€瑕佸叧娉ㄧ殑鎸囨爣锛?",
@@ -267,7 +295,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A,B,C,D",
             "type": "multiple_choice",
             "diff": "easy",
-            "cat": "鎬ц兘娴嬭瘯"
+            "cat": "鎬ц兘娴嬭瘯",
         },
         {
             "title": "浣跨敤Monkey杩涜绋冲畾鎬ф祴璇曟椂锛屼互涓嬪摢涓弬鏁板彲浠ヨ缃簨浠跺彂閫佺殑鏃堕棿闂撮殧锛?",
@@ -275,7 +303,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "鎬ц兘娴嬭瘯"
+            "cat": "鎬ц兘娴嬭瘯",
         },
         {
             "title": "绉诲姩绔€屽唴瀛樻硠婕忋€嶆祴璇曢€氬父浣跨敤浠€涔堝伐鍏疯繘琛岋紵",
@@ -283,7 +311,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "鎬ц兘娴嬭瘯"
+            "cat": "鎬ц兘娴嬭瘯",
         },
         # 鍒ゆ柇棰?
         {
@@ -292,7 +320,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "true_false",
             "diff": "easy",
-            "cat": "绉诲姩绔祴璇曟杩?"
+            "cat": "绉诲姩绔祴璇曟杩?",
         },
         {
             "title": "绉诲姩绔簲鐢ㄤ笉闇€瑕佽繘琛屾潈闄愭祴璇曪紝鍥犱负鏉冮檺绠＄悊瀹屽叏鐢辨搷浣滅郴缁熻礋璐ｃ€?",
@@ -300,7 +328,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "true_false",
             "diff": "easy",
-            "cat": "绉诲姩绔姛鑳芥祴璇?"
+            "cat": "绉诲姩绔姛鑳芥祴璇?",
         },
         {
             "title": "Appium鍙互鍚屾椂鏀寔Android鍜宨OS骞冲彴鐨勮嚜鍔ㄥ寲娴嬭瘯銆?",
@@ -308,7 +336,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A",
             "type": "true_false",
             "diff": "easy",
-            "cat": "Appium鑷姩鍖?"
+            "cat": "Appium鑷姩鍖?",
         },
         {
             "title": "Android纰庣墖鍖栭棶棰樻瘮iOS鏇翠弗閲嶏紝鍥犱负Android璁惧鍜岀郴缁熺増鏈洿澶氭牱鍖栥€?",
@@ -316,7 +344,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A",
             "type": "true_false",
             "diff": "easy",
-            "cat": "鍏煎鎬ф祴璇?"
+            "cat": "鍏煎鎬ф祴璇?",
         },
         {
             "title": "Charles Proxy鍙兘鐢ㄤ簬Web璋冭瘯锛屼笉鑳界敤浜庣Щ鍔ㄧ寮辩綉妯℃嫙銆?",
@@ -324,7 +352,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "true_false",
             "diff": "easy",
-            "cat": "寮辩綉娴嬭瘯"
+            "cat": "寮辩綉娴嬭瘯",
         },
         # 鏇村鍗曢€夐
         {
@@ -333,7 +361,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "绉诲姩绔姛鑳芥祴璇?"
+            "cat": "绉诲姩绔姛鑳芥祴璇?",
         },
         {
             "title": "浠ヤ笅鍝釜涓嶆槸甯歌鐨勭Щ鍔ㄧ涓撻」娴嬭瘯绫诲瀷锛?",
@@ -341,7 +369,7 @@ def generate_lp12_exercises(cursor):
             "sol": "C",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "绉诲姩绔姛鑳芥祴璇?"
+            "cat": "绉诲姩绔姛鑳芥祴璇?",
         },
         {
             "title": "鍦ㄧЩ鍔ㄧUI娴嬭瘯涓紝涓轰粈涔堥渶瑕佹祴璇?娣辫壊妯″紡'锛?",
@@ -349,7 +377,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "鍏煎鎬ф祴璇?"
+            "cat": "鍏煎鎬ф祴璇?",
         },
         {
             "title": "绉诲姩绔€岀數閲忔祴璇曘€嶄富瑕佸叧娉ㄤ粈涔堬紵",
@@ -357,7 +385,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "鎬ц兘娴嬭瘯"
+            "cat": "鎬ц兘娴嬭瘯",
         },
         {
             "title": "鍦ˋppium娴嬭瘯涓紝閬囧埌銆屽厓绱犲畾浣嶄笉鍒般€嶇殑闂锛屽彲鑳界殑瑙ｅ喅鏂规硶鏈夊摢浜涳紵",
@@ -365,7 +393,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A,B,C",
             "type": "multiple_choice",
             "diff": "medium",
-            "cat": "Appium鑷姩鍖?"
+            "cat": "Appium鑷姩鍖?",
         },
         {
             "title": "绉诲姩绔祴璇曚腑鐨勩€岀敤鎴蜂綋楠屾祴璇曘€嶅寘鍚摢浜涚淮搴︼紵",
@@ -373,7 +401,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A,B,C,D",
             "type": "multiple_choice",
             "diff": "easy",
-            "cat": "绉诲姩绔姛鑳芥祴璇?"
+            "cat": "绉诲姩绔姛鑳芥祴璇?",
         },
         {
             "title": "浠ヤ笅鍏充簬绉诲姩绔祴璇曞拰Web绔祴璇曞尯鍒殑鎻忚堪锛屾纭殑鏄紵",
@@ -381,7 +409,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "绉诲姩绔祴璇曟杩?"
+            "cat": "绉诲姩绔祴璇曟杩?",
         },
         {
             "title": "鍦ㄨ繘琛岀Щ鍔ㄧ銆屾í绔栧睆鍒囨崲銆嶆祴璇曟椂锛屽簲璇ュ叧娉ㄤ粈涔堬紵",
@@ -389,7 +417,7 @@ def generate_lp12_exercises(cursor):
             "sol": "A",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "绉诲姩绔姛鑳芥祴璇?"
+            "cat": "绉诲姩绔姛鑳芥祴璇?",
         },
         {
             "title": "绉诲姩绔€屽畨鍏ㄦ祴璇曘€嶇浉姣擶eb绔紝鏈夊摢浜涚壒娈婂叧娉ㄧ偣锛?",
@@ -397,7 +425,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "绉诲姩绔祴璇曟杩?"
+            "cat": "绉诲姩绔祴璇曟杩?",
         },
         {
             "title": "Monkey娴嬭瘯涓殑'--ignore-crashes'鍙傛暟鐨勪綔鐢ㄦ槸浠€涔堬紵",
@@ -405,7 +433,7 @@ def generate_lp12_exercises(cursor):
             "sol": "B",
             "type": "single_choice",
             "diff": "medium",
-            "cat": "鎬ц兘娴嬭瘯"
+            "cat": "鎬ц兘娴嬭瘯",
         },
         {
             "title": "浠ヤ笅鍝釜鍛戒护鍙互鍚姩Android Monkey娴嬭瘯锛屽彂閫?000涓殢鏈轰簨浠讹紵",
@@ -413,14 +441,14 @@ def generate_lp12_exercises(cursor):
             "sol": "A",
             "type": "single_choice",
             "diff": "easy",
-            "cat": "鎬ц兘娴嬭瘯"
+            "cat": "鎬ц兘娴嬭瘯",
         },
     ]
     return exercises
 
 
 # ============== 涓诲嚱鏁?==============
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 60)
     print("?????? LP12-LP18 ?????")
     print("=" * 60)
@@ -438,10 +466,18 @@ if __name__ == '__main__':
     lp12_exercises = generate_lp12_exercises(cursor)
     lp12_id = 12
     for ex in lp12_exercises:
-        insert_exercise(cursor, ex['title'], ex['desc'], ex['sol'], ex['type'], ex['diff'], lp12_id, ex['cat'])
+        insert_exercise(
+            cursor,
+            ex["title"],
+            ex["desc"],
+            ex["sol"],
+            ex["type"],
+            ex["diff"],
+            lp12_id,
+            ex["cat"],
+        )
     print(f"LP12: ??? {len(lp12_exercises)} ???")
 
     conn.commit()
     conn.close()
     print("\nLP12 ????")
-

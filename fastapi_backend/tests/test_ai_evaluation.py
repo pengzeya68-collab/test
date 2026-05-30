@@ -2,8 +2,9 @@
 AI导师评估功能测试
 覆盖代码评估、AI反馈生成
 """
+
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 import asyncio
 
 from fastapi_backend.schemas.interview import CodeSubmission
@@ -16,7 +17,7 @@ class TestAIEvaluation:
     def setup_method(self):
         self.tutor = AITutorService()
 
-    @patch('fastapi_backend.services.ai_tutor_service.AITutorService._evaluate_with_real_ai')
+    @patch("fastapi_backend.services.ai_tutor_service.AITutorService._evaluate_with_real_ai")
     @pytest.mark.asyncio
     async def test_evaluate_code_with_mock(self, mock_evaluate):
         """测试代码评估功能 - 使用mock"""
@@ -70,7 +71,7 @@ class TestAIEvaluation:
             assert result is not None
             assert hasattr(result, "score")
 
-    @patch('fastapi_backend.services.ai_tutor_service.AITutorService._evaluate_with_real_ai')
+    @patch("fastapi_backend.services.ai_tutor_service.AITutorService._evaluate_with_real_ai")
     @pytest.mark.asyncio
     async def test_evaluate_code_timeout_handling(self, mock_evaluate):
         """测试AI服务超时处理"""
@@ -87,7 +88,7 @@ class TestAIEvaluation:
         assert result is not None
         assert hasattr(result, "score")
 
-    @patch('fastapi_backend.services.ai_tutor_service.AITutorService._evaluate_with_real_ai')
+    @patch("fastapi_backend.services.ai_tutor_service.AITutorService._evaluate_with_real_ai")
     @pytest.mark.asyncio
     async def test_evaluate_code_error_handling(self, mock_evaluate):
         """测试AI服务异常处理"""

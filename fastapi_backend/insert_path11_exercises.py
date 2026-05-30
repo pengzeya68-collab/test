@@ -6,7 +6,7 @@
 
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 学习路径11的50道精品题
 exercises_data = [
@@ -17,7 +17,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "Requests库基础"
+        "category": "Requests库基础",
     },
     {
         "title": "关于requests.get()方法，以下说法正确的是？（多选）",
@@ -25,7 +25,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Requests库基础"
+        "category": "Requests库基础",
     },
     {
         "title": "请判断：requests.post()方法用于发送POST请求。",
@@ -33,7 +33,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "Requests库基础"
+        "category": "Requests库基础",
     },
     {
         "title": "关于Response对象，以下说法正确的是？",
@@ -41,7 +41,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "Requests库基础"
+        "category": "Requests库基础",
     },
     {
         "title": "关于requests的请求参数，以下说法正确的是？（多选）",
@@ -49,7 +49,7 @@ exercises_data = [
         "solution": "A,B,C,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Requests库基础"
+        "category": "Requests库基础",
     },
     {
         "title": "请判断：response.json()方法用于解析JSON响应体。",
@@ -57,7 +57,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "Requests库基础"
+        "category": "Requests库基础",
     },
     {
         "title": "关于requests的超时设置，以下说法正确的是？",
@@ -65,7 +65,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "Requests库基础"
+        "category": "Requests库基础",
     },
     {
         "title": "关于requests的异常处理，以下说法正确的是？（多选）",
@@ -73,7 +73,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "Requests库基础"
+        "category": "Requests库基础",
     },
     {
         "title": "请判断：requests可以同时处理多个请求（并发）。",
@@ -81,7 +81,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "Requests库基础"
+        "category": "Requests库基础",
     },
     {
         "title": "关于requests.Session()，以下说法正确的是？",
@@ -89,9 +89,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "Requests库基础"
+        "category": "Requests库基础",
     },
-    
     # ============ Pytest框架基础（10题）============
     {
         "title": "关于Pytest框架，以下说法正确的是？",
@@ -99,7 +98,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "Pytest框架基础"
+        "category": "Pytest框架基础",
     },
     {
         "title": "关于Pytest的测试用例发现规则，以下说法正确的是？（多选）",
@@ -107,7 +106,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Pytest框架基础"
+        "category": "Pytest框架基础",
     },
     {
         "title": "请判断：Pytest支持参数化测试（@pytest.mark.parametrize）。",
@@ -115,7 +114,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "Pytest框架基础"
+        "category": "Pytest框架基础",
     },
     {
         "title": "关于Pytest的Fixture，以下说法正确的是？",
@@ -123,7 +122,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "Pytest框架基础"
+        "category": "Pytest框架基础",
     },
     {
         "title": "关于Pytest的断言，以下说法正确的是？（多选）",
@@ -131,7 +130,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "Pytest框架基础"
+        "category": "Pytest框架基础",
     },
     {
         "title": "请判断：Pytest可以生成HTML测试报告（使用pytest-html插件）。",
@@ -139,7 +138,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "Pytest框架基础"
+        "category": "Pytest框架基础",
     },
     {
         "title": "关于Pytest的标记（Marker），以下说法正确的是？",
@@ -147,7 +146,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "Pytest框架基础"
+        "category": "Pytest框架基础",
     },
     {
         "title": "关于Pytest的配置文件，以下说法正确的是？（多选）",
@@ -155,7 +154,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "Pytest框架基础"
+        "category": "Pytest框架基础",
     },
     {
         "title": "请判断：Pytest支持并行执行测试（使用pytest-xdist插件）。",
@@ -163,7 +162,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "Pytest框架基础"
+        "category": "Pytest框架基础",
     },
     {
         "title": "关于Pytest的用例执行顺序，以下说法正确的是？",
@@ -171,9 +170,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "Pytest框架基础"
+        "category": "Pytest框架基础",
     },
-    
     # ============ 接口自动化测试实战（15题）============
     {
         "title": "关于接口自动化测试的框架搭建，以下说法正确的是？",
@@ -181,7 +179,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "关于接口测试用例的组织，以下说法正确的是？（多选）",
@@ -189,7 +187,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "请判断：接口自动化测试应该验证状态码、响应体、响应时间等。",
@@ -197,7 +195,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "关于接口依赖处理，以下说法正确的是？",
@@ -205,7 +203,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "关于测试数据的管理，以下说法正确的是？（多选）",
@@ -213,7 +211,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "请判断：接口自动化测试应该生成详细的测试报告。",
@@ -221,7 +219,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "关于接口测试的断言设计，以下说法正确的是？",
@@ -229,7 +227,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "关于接口测试的日志，以下说法正确的是？（多选）",
@@ -237,7 +235,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "请判断：接口自动化测试应该与CI/CD流水线集成。",
@@ -245,7 +243,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "关于接口测试的异常处理，以下说法正确的是？",
@@ -253,7 +251,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "关于接口测试的执行策略，以下说法正确的是？（多选）",
@@ -261,7 +259,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "请判断：接口自动化测试应该定期执行（如：每天定时执行）。",
@@ -269,7 +267,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "关于接口测试的报告内容，以下说法正确的是？",
@@ -277,7 +275,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "关于接口测试的维护，以下说法正确的是？（多选）",
@@ -285,7 +283,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
     {
         "title": "请判断：接口自动化测试可以提高测试效率，但不能完全替代手工测试。",
@@ -293,9 +291,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "接口自动化测试实战"
+        "category": "接口自动化测试实战",
     },
-    
     # ============ 高级话题（15题）============
     {
         "title": "关于接口mock，以下说法正确的是？",
@@ -303,7 +300,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "高级话题"
+        "category": "高级话题",
     },
     {
         "title": "请判断：可以使用requests-mock库模拟HTTP请求。",
@@ -311,7 +308,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "高级话题"
+        "category": "高级话题",
     },
     {
         "title": "关于接口性能测试，以下说法正确的是？（多选）",
@@ -319,7 +316,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "高级话题"
+        "category": "高级话题",
     },
     {
         "title": "请判断：接口自动化测试应该包含安全测试（如：SQL注入、XSS等）。",
@@ -327,7 +324,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "高级话题"
+        "category": "高级话题",
     },
     {
         "title": "关于接口测试的最佳实践，以下说法正确的是？",
@@ -335,7 +332,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "高级话题"
+        "category": "高级话题",
     },
     {
         "title": "关于接口自动化测试的未来趋势，以下说法正确的是？（多选）",
@@ -343,58 +340,63 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "高级话题"
+        "category": "高级话题",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径11的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 11")
     print("🗑️  已删除学习路径11（接口自动化测试 - Requests+Pytest）的旧习题")
-    
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 11, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 11", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径11（接口自动化测试 - Requests+Pytest）")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 11")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径11现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

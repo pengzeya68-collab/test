@@ -4,6 +4,7 @@
 提供对敏感信息的加密和解密功能
 密钥从环境变量或固定配置中获取，确保重启后可解密
 """
+
 import os
 import base64
 import hashlib
@@ -25,12 +26,10 @@ _KEY_SEED = os.environ.get(_FERNET_KEY_ENV)
 if _KEY_SEED is None:
     env = os.environ.get("ENVIRONMENT", "development")
     if env == "production":
-        raise RuntimeError(
-            f"生产环境必须设置 {_FERNET_KEY_ENV}，"
-            f"请在 .env 文件中配置 TESTMASTER_ENCRYPTION_KEY"
-        )
+        raise RuntimeError(f"生产环境必须设置 {_FERNET_KEY_ENV}，请在 .env 文件中配置 TESTMASTER_ENCRYPTION_KEY")
     else:
         import secrets
+
         _KEY_SEED = secrets.token_urlsafe(32)
         _logger.warning(
             "开发环境使用随机生成的加密密钥，生产环境请务必在 .env 中设置 %s",

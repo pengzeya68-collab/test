@@ -1,4 +1,5 @@
 """Exercises CRUD + SQL execution – migrated from Flask backend/api/exercises.py."""
+
 from __future__ import annotations
 
 import aiosqlite
@@ -29,6 +30,7 @@ async def get_exercises(
     knowledge_point: str = Query(""),
     db: AsyncSession = Depends(get_db),
 ):
+    """获取公开习题列表"""
     stmt = select(Exercise).where(Exercise.is_public == True)  # noqa: E712
 
     if module:
@@ -45,27 +47,29 @@ async def get_exercises(
 
     items = []
     for ex in exercises:
-        items.append({
-            "id": ex.id,
-            "title": ex.title,
-            "description": ex.description,
-            "difficulty": ex.difficulty,
-            "exercise_type": ex.exercise_type,
-            "language": ex.language,
-            "module": ex.module,
-            "category": ex.category,
-            "stage": ex.stage,
-            "knowledge_point": ex.knowledge_point,
-            "time_estimate": ex.time_estimate,
-            "is_public": ex.is_public,
-            "created_by": ex.user_id,
-            "created_at": ex.created_at.isoformat() if ex.created_at else None,
-        })
+        items.append(
+            {
+                "id": ex.id,
+                "title": ex.title,
+                "description": ex.description,
+                "difficulty": ex.difficulty,
+                "exercise_type": ex.exercise_type,
+                "language": ex.language,
+                "module": ex.module,
+                "category": ex.category,
+                "stage": ex.stage,
+                "knowledge_point": ex.knowledge_point,
+                "time_estimate": ex.time_estimate,
+                "is_public": ex.is_public,
+                "created_by": ex.user_id,
+                "created_at": ex.created_at.isoformat() if ex.created_at else None,
+            }
+        )
     return items
 
 
 # ---------------------------------------------------------------------------
-# Categories (MUST be before {exercise_id} route)
+# Categories (MUST be before /exercises/{exercise_id})
 # ---------------------------------------------------------------------------
 
 
@@ -75,6 +79,7 @@ async def get_categories(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """获取习题分类"""
     stmt = select(Exercise).where(
         or_(Exercise.user_id == current_user.id, Exercise.is_public == True)  # noqa: E712
     )
@@ -89,17 +94,19 @@ async def get_categories(
         cat = ex.category or "Uncategorized"
         if cat not in categories:
             categories[cat] = []
-        categories[cat].append({
-            "id": ex.id,
-            "title": ex.title,
-            "difficulty": ex.difficulty,
-            "time_estimate": ex.time_estimate,
-        })
+        categories[cat].append(
+            {
+                "id": ex.id,
+                "title": ex.title,
+                "difficulty": ex.difficulty,
+                "time_estimate": ex.time_estimate,
+            }
+        )
     return categories
 
 
 # ---------------------------------------------------------------------------
-# User's exercises (MUST be before {exercise_id} route)
+# User's exercises (MUST be before /exercises/{exercise_id})
 # ---------------------------------------------------------------------------
 
 
@@ -108,6 +115,7 @@ async def get_user_exercises(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """获取当前用户的习题"""
     stmt = select(Exercise).where(Exercise.user_id == current_user.id)
     result = await db.execute(stmt)
     exercises = result.scalars().all()
@@ -127,7 +135,7 @@ async def get_user_exercises(
 
 
 # ---------------------------------------------------------------------------
-# Public exercises (auth required, MUST be before {exercise_id} route)
+# Public exercises (auth required, MUST be before /exercises/{exercise_id})
 # ---------------------------------------------------------------------------
 
 
@@ -136,6 +144,7 @@ async def get_public_exercises(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """获取公开习题"""
     stmt = select(Exercise).where(Exercise.is_public == True)  # noqa: E712
     result = await db.execute(stmt)
     exercises = result.scalars().all()
@@ -155,7 +164,7 @@ async def get_public_exercises(
 
 
 # ---------------------------------------------------------------------------
-# Submit solution (MUST be before {exercise_id} route)
+# Submit solution (MUST be before /exercises/{exercise_id})
 # ---------------------------------------------------------------------------
 
 
@@ -165,6 +174,7 @@ async def submit_solution(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """提交习题答案"""
     if not body or "exercise_id" not in body or "solution" not in body:
         raise HTTPException(status_code=400, detail="Exercise ID and solution are required")
 
@@ -183,7 +193,7 @@ async def submit_solution(
 
 
 # ---------------------------------------------------------------------------
-# Execute SQL (MUST be before {exercise_id} route)
+# Execute SQL (MUST be before /exercises/{exercise_id})
 # ---------------------------------------------------------------------------
 
 
@@ -192,6 +202,7 @@ async def execute_sql(
     body: dict,
     current_user: User = Depends(get_current_user),
 ):
+    """在内存 SQLite 中执行 SQL"""
     if not body or "setup_sql" not in body or "user_sql" not in body:
         raise HTTPException(status_code=400, detail="缺少必要参数：setup_sql 和 user_sql 都是必填项")
 
@@ -258,6 +269,7 @@ async def get_exercise(
     exercise_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """获取习题详情"""
     stmt = select(Exercise).where(Exercise.id == exercise_id)
     result = await db.execute(stmt)
     ex = result.scalar_one_or_none()
@@ -300,6 +312,7 @@ async def create_exercise(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """创建习题"""
     required = ["title", "description", "language", "category"]
     if not body or any(not body.get(f) for f in required):
         raise HTTPException(status_code=400, detail="标题、描述、语言、分类为必填字段，不能为空")
@@ -345,6 +358,7 @@ async def update_exercise(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """更新习题"""
     stmt = select(Exercise).where(Exercise.id == exercise_id)
     result = await db.execute(stmt)
     ex = result.scalar_one_or_none()
@@ -354,8 +368,16 @@ async def update_exercise(
         raise HTTPException(status_code=403, detail="Access denied")
 
     updatable = [
-        "title", "description", "instructions", "solution", "difficulty",
-        "language", "module", "time_estimate", "is_public", "learning_path_id",
+        "title",
+        "description",
+        "instructions",
+        "solution",
+        "difficulty",
+        "language",
+        "module",
+        "time_estimate",
+        "is_public",
+        "learning_path_id",
     ]
     for field in updatable:
         if field in body:
@@ -380,6 +402,7 @@ async def delete_exercise(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """删除习题"""
     stmt = select(Exercise).where(Exercise.id == exercise_id)
     result = await db.execute(stmt)
     ex = result.scalar_one_or_none()

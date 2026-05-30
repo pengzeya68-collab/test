@@ -1,4 +1,3 @@
-
 """
 场景测试自动生成文件
 Scenario: BrowserScenario01
@@ -6,16 +5,16 @@ Scenario ID: 4
 History ID: 9af13bed
 Total Steps: 0
 """
+
 import pytest
 import sys
 import allure
-import json
-import time
+
 
 @pytest.fixture(scope="session", autouse=True)
 def write_allure_environment(request):
-    import sys
     from pathlib import Path
+
     allure_dir = request.config.getoption("--alluredir")
     if allure_dir:
         env_file = Path(allure_dir) / "environment.properties"
@@ -28,9 +27,8 @@ def write_allure_environment(request):
             f.write("Total_Steps=0\n")
     yield
 
+
 @allure.suite("BrowserScenario01")
 @allure.feature("BrowserScenario01")
 class TestScenario4:
     """场景: BrowserScenario01 (0个步骤)"""
-
-

@@ -1,6 +1,7 @@
 """
 测试报告 Schema
 """
+
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, List
@@ -8,6 +9,7 @@ from typing import Optional, List
 
 class TestReportResultResponse(BaseModel):
     """单个测试结果响应"""
+
     id: int
     case_id: Optional[int]
     case_name: Optional[str]
@@ -28,6 +30,7 @@ class TestReportResultResponse(BaseModel):
 
 class TestReportResponse(BaseModel):
     """测试报告响应"""
+
     id: int
     plan_id: Optional[int]
     plan_name: Optional[str]
@@ -44,6 +47,7 @@ class TestReportResponse(BaseModel):
 
 class TestReportListResponse(BaseModel):
     """测试报告列表响应"""
+
     total: int
     items: list[TestReportResponse]
     page: int

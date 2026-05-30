@@ -1,39 +1,60 @@
 """Persist AutoTest scheduler settings on test_scenarios so reload/restart keeps cron + webhook."""
+
 from __future__ import annotations
 
 from typing import Any, Optional
 import logging
 
 from sqlalchemy import select, text
-from fastapi_backend.core.autotest_database import async_session
+from fastapi_backend.core.database import async_session
 from fastapi_backend.models.autotest import AutoTestScenario
 
 _logger = logging.getLogger(__name__)
 
 
-def _schedule_column_ddl() -> list[tuple[str, str]]:
-    return [
-        ("schedule_cron_expression", "ALTER TABLE test_scenarios ADD COLUMN schedule_cron_expression VARCHAR(200)"),
-        ("schedule_env_id", "ALTER TABLE test_scenarios ADD COLUMN schedule_env_id INTEGER"),
-        ("schedule_webhook_url", "ALTER TABLE test_scenarios ADD COLUMN schedule_webhook_url TEXT"),
-        ("schedule_task_name", "ALTER TABLE test_scenarios ADD COLUMN schedule_task_name VARCHAR(200)"),
-        ("schedule_is_active", "ALTER TABLE test_scenarios ADD COLUMN schedule_is_active BOOLEAN DEFAULT 1"),
-    ]
-
-
 async def ensure_schedule_columns_on_db() -> None:
-    """SQLite: add schedule columns if missing (idempotent)."""
+    """Ensure schedule columns exist on test_scenarios (PostgreSQL compatible)."""
     async with async_session() as session:
 
         def _migrate(sync_conn: Any) -> None:
-            r = sync_conn.execute(text("PRAGMA table_info(test_scenarios)"))
-            existing = {row[1] for row in r.fetchall()}
+            r = sync_conn.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
+                )
+            )
+            existing = {row[0] for row in r.fetchall()}
             for col, ddl in _schedule_column_ddl():
                 if col not in existing:
                     sync_conn.execute(text(ddl))
 
         await session.run_sync(_migrate)
         await session.commit()
+
+
+def _schedule_column_ddl() -> list[tuple[str, str]]:
+    return [
+        (
+            "schedule_cron_expression",
+            "ALTER TABLE test_scenarios ADD COLUMN schedule_cron_expression VARCHAR(200)",
+        ),
+        (
+            "schedule_env_id",
+            "ALTER TABLE test_scenarios ADD COLUMN schedule_env_id INTEGER",
+        ),
+        (
+            "schedule_webhook_url",
+            "ALTER TABLE test_scenarios ADD COLUMN schedule_webhook_url TEXT",
+        ),
+        (
+            "schedule_task_name",
+            "ALTER TABLE test_scenarios ADD COLUMN schedule_task_name VARCHAR(200)",
+        ),
+        (
+            "schedule_is_active",
+            "ALTER TABLE test_scenarios ADD COLUMN schedule_is_active BOOLEAN DEFAULT TRUE",
+        ),
+    ]
 
 
 async def persist_schedule_to_db(
@@ -118,28 +139,30 @@ async def restore_scheduler_jobs_from_db() -> None:
 
 def read_schedule_webhook_sync(scenario_id: int) -> Optional[str]:
     """同步读取场景的定时 Webhook（供 Celery worker 等非 async 上下文使用）。"""
-    import sqlite3
+    import asyncio
+    import concurrent.futures
 
-    from fastapi_backend.core.autotest_database import INSTANCE_DIR
-
-    path = INSTANCE_DIR / "auto_test.db"
-    if not path.exists():
-        return None
-    try:
-        con = sqlite3.connect(str(path))
-        try:
-            cur = con.execute(
-                "SELECT schedule_webhook_url FROM test_scenarios WHERE id = ?",
-                (int(scenario_id),),
+    async def _read() -> Optional[str]:
+        async with async_session() as session:
+            res = await session.execute(
+                select(AutoTestScenario.schedule_webhook_url).where(AutoTestScenario.id == scenario_id)
             )
-            row = cur.fetchone()
-            if not row or not row[0]:
+            row = res.scalar_one_or_none()
+            if not row:
                 return None
-            s = str(row[0]).strip()
+            s = str(row).strip()
             return s or None
-        finally:
-            con.close()
+
+    def _run_in_new_loop():
+        return asyncio.run(_read())
+
+    try:
+        asyncio.get_running_loop()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_run_in_new_loop)
+            return future.result(timeout=5)
+    except RuntimeError:
+        return asyncio.run(_read())
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning(f"读取定时任务 webhook URL 失败: {e}")
+        _logger.warning(f"读取定时任务 webhook URL 失败: {e}")
         return None

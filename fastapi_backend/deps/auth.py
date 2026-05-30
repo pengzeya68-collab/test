@@ -3,7 +3,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
-from fastapi_backend.core.exceptions import AuthenticationException, AuthorizationException
+from fastapi_backend.core.exceptions import (
+    AuthenticationException,
+    AuthorizationException,
+)
 from fastapi_backend.models.models import Role, User
 from fastapi_backend.services.auth_service import AuthError, AuthService
 
@@ -37,7 +40,9 @@ async def get_current_user(
     return user
 
 
-async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
     return current_user
 
 
@@ -70,11 +75,15 @@ def require_role(*allowed_roles: str):
     return role_dependency
 
 
-async def require_admin(current_user: User = Depends(require_role("admin", "super_admin"))) -> User:
+async def require_admin(
+    current_user: User = Depends(require_role("admin", "super_admin")),
+) -> User:
     return current_user
 
 
-async def require_user_or_admin(current_user: User = Depends(require_role("user", "admin", "super_admin"))) -> User:
+async def require_user_or_admin(
+    current_user: User = Depends(require_role("user", "admin", "super_admin")),
+) -> User:
     return current_user
 
 
@@ -85,8 +94,10 @@ async def require_user(current_user: User = Depends(require_role("user"))) -> Us
 
 # ============ RBAC 权限检查（新增）============
 
+
 def require_permission(*required_permissions: str):
     """检查当前用户是否拥有指定权限之一（RBAC 细粒度权限）"""
+
     async def permission_dependency(
         current_user: User = Depends(get_current_active_user),
         db: AsyncSession = Depends(get_db),
@@ -105,10 +116,12 @@ def require_permission(*required_permissions: str):
             raise AuthorizationException("用户未分配角色，请联系管理员")
 
         result = await db.execute(
-            select(Permission.code).join(
+            select(Permission.code)
+            .join(
                 RolePermissionMapping,
                 Permission.id == RolePermissionMapping.permission_id,
-            ).where(RolePermissionMapping.role_id == current_user.role_id)
+            )
+            .where(RolePermissionMapping.role_id == current_user.role_id)
         )
         user_permissions = {row[0] for row in result.all()}
 
@@ -125,8 +138,6 @@ def require_permission(*required_permissions: str):
             if module_wildcard in user_permissions:
                 return current_user
 
-        raise AuthorizationException(
-            f"权限不足。所需权限：{', '.join(required_permissions)}"
-        )
+        raise AuthorizationException(f"权限不足。所需权限：{', '.join(required_permissions)}")
 
     return permission_dependency

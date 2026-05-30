@@ -1,9 +1,10 @@
 <template>
   <el-drawer
+    ref="mainDrawerRef"
     :model-value="modelValue"
     :title="isEdit ? '编辑用例' : '新建用例'"
     direction="rtl"
-    size="50%"
+    :size="drawerSize"
     :close-on-click-modal="true"
     :close-on-press-escape="true"
     @close="handleClose"
@@ -451,7 +452,7 @@
 </template>
 
 <script setup>
-import { ref, watch, toRaw, computed, onMounted } from 'vue'
+import { ref, watch, toRaw, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy, Collection } from '@element-plus/icons-vue'
 import JsonEditor from './JsonEditor.vue'
@@ -469,6 +470,34 @@ const emit = defineEmits(['update:modelValue', 'success', 'run'])
 
 const activeTab = ref('headers')
 const availableVariables = ref([]) // 用于存储当前所有可用变量
+
+// 动态抽屉宽度：根据屏幕宽度自适应，全屏时更大
+const mainDrawerRef = ref(null)
+const drawerSize = ref('50%')
+const updateDrawerSize = () => {
+  if (typeof window === 'undefined') { drawerSize.value = '50%'; return }
+  const w = window.innerWidth
+  if (w >= 1600) drawerSize.value = '70%'
+  else if (w >= 1200) drawerSize.value = '60%'
+  else drawerSize.value = '50%'
+}
+onMounted(() => {
+  updateDrawerSize()
+  window.addEventListener('resize', updateDrawerSize)
+  document.addEventListener('fullscreenchange', updateDrawerSize)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', updateDrawerSize)
+  document.removeEventListener('fullscreenchange', updateDrawerSize)
+})
+// 绕过 Element Plus 内部缓存，直接强制更新 DOM 宽度
+watch([drawerSize, () => props.modelValue], async ([size, visible]) => {
+  if (!visible) return
+  await nextTick()
+  await nextTick() // 等 teleport 渲染完成
+  const el = mainDrawerRef.value?.$el?.querySelector?.('.el-drawer.rtl')
+  if (el) el.style.setProperty('width', size, 'important')
+})
 
 // 变量字典抽屉相关
 const showVarDrawer = ref(false)
@@ -780,8 +809,6 @@ const initFormData = (data) => {
       activeTab.value = 'body'
     }
     
-    // 🔥 调试日志
-    console.log('🔥 initFormData 完成，bodyType:', mappedBodyType, 'payload:', parsedPayload, 'extractors:', parsedExtractors)
   } else {
     // 新建模式
     caseForm.value = {
@@ -1046,7 +1073,6 @@ const handleClose = () => {
 
 // 保存
 const handleSave = async () => {
-  console.log('--- [CaseEditorDrawer] 触发 handleSave 保存函数 ---')
   if (!caseForm.value.name) {
     ElMessage.warning('请输入用例名称')
     return
@@ -1066,7 +1092,6 @@ const handleSave = async () => {
     return
   }
 
-  console.log('--- [CaseEditorDrawer] 开始构建 payload ---')
   try {
     // 🔥 强制深度拷贝，确保拿到响应式对象的真实原生数据
     const rawForm = JSON.parse(JSON.stringify(toRaw(caseForm.value)))
@@ -1156,9 +1181,6 @@ const handleSave = async () => {
       assertions: assertRules
     }
 
-    // 🔥 调试日志：打印准备发送给后端的真实 payload
-    console.log('🔥 准备发送给后端的真实 Payload:', payload)
-
     let createdCaseId = null
     if (props.isEdit) {
       await autoTestRequest.put(`/auto-test/cases/${props.caseData.id}`, payload)
@@ -1169,8 +1191,6 @@ const handleSave = async () => {
       ElMessage.success('创建成功')
       // 假设后端返回新建用例的ID
       createdCaseId = response.id || response.case_id
-      console.log('🔥 新建用例返回的响应:', response)
-      console.log('🔥 新建用例ID:', createdCaseId)
     }
 
     emit('success')

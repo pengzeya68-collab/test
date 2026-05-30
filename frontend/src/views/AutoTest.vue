@@ -337,31 +337,31 @@ const guideTips = {
     title: '第一步：接口调试',
     desc: '在「接口调试」标签页中，输入一个 API 地址（如 https://httpbin.org/get），选择请求方式，点击「发送请求」查看返回结果。这是接口测试最基本的操作。',
     actionLabel: '去调试',
-    action: () => { activeTab.value = 'debug' },
+    action: () => { handleTabChange('debug') },
   },
   2: {
     title: '第二步：创建用例',
     desc: '调试成功的接口可以保存为用例。切换到「接口库」标签页，在左侧创建分组，然后添加接口用例，设置断言规则来验证返回数据。',
     actionLabel: '去接口库',
-    action: () => { activeTab.value = 'interfaces' },
+    action: () => { handleTabChange('interfaces') },
   },
   3: {
     title: '第三步：场景编排',
     desc: '多个接口用例可以编排成测试场景，模拟用户完整操作流程（如：登录→查询→下单→支付）。场景支持步骤间数据传递和条件执行。',
     actionLabel: '去场景管理',
-    action: () => { activeTab.value = 'scenarios' },
+    action: () => { handleTabChange('scenarios') },
   },
   4: {
     title: '第四步：批量执行',
     desc: '创建好场景后，可以一键批量执行所有测试用例，生成测试报告。还可以设置定时任务，让测试自动运行。',
     actionLabel: '去场景管理',
-    action: () => { activeTab.value = 'scenarios' },
+    action: () => { handleTabChange('scenarios') },
   },
   5: {
     title: '第五步：JMeter 压测助手',
     desc: '用可视化 IDE 生成 JMeter 脚本！支持线程组配置、断言、提取器、CSV数据驱动、JDBC等。不会写 JMX？让助手帮你自动生成，还可以从接口库一键导入~',
     actionLabel: '打开助手',
-    action: () => { activeTab.value = 'jmeter' },
+    action: () => { handleTabChange('jmeter') },
   },
 }
 

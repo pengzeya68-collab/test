@@ -28,6 +28,7 @@ class AITutorService:
             return None
         from sqlalchemy import select
         from fastapi_backend.models.models import AIConfig
+
         result = await self.db.execute(select(AIConfig).where(AIConfig.is_active))
         self._config = result.scalar_one_or_none()
         return self._config
@@ -36,7 +37,7 @@ class AITutorService:
         self,
         submission: CodeSubmission,
         question_prompt: Optional[str] = None,
-        judge_result: Optional[Dict[str, Any]] = None
+        judge_result: Optional[Dict[str, Any]] = None,
     ) -> AIEvaluationResponse:
         logger.info(f"收到代码提交: 题目 {submission.question_id}, 语言 {submission.language}")
 
@@ -44,6 +45,7 @@ class AITutorService:
 
         if not config:
             from fastapi_backend.core.config import settings
+
             if not settings.AI_API_KEY or settings.AI_API_KEY == "your_model_api_key_here":
                 logger.warning("AI API密钥未配置，返回模拟评估结果")
                 return await self._get_mock_evaluation()
@@ -63,7 +65,7 @@ class AITutorService:
             max_tokens = config.max_tokens
             temperature = config.temperature
             provider = config.provider.lower()
-            group_id = getattr(config, 'group_id', None)
+            group_id = getattr(config, "group_id", None)
 
         try:
             return await asyncio.wait_for(
@@ -77,9 +79,9 @@ class AITutorService:
                     provider=provider,
                     max_tokens=max_tokens,
                     temperature=temperature,
-                    group_id=group_id
+                    group_id=group_id,
                 ),
-                timeout=timeout + 10
+                timeout=timeout + 10,
             )
         except asyncio.TimeoutError:
             logger.error(f"AI评估超时 (timeout={timeout}s)")
@@ -106,11 +108,20 @@ class AITutorService:
         prompt = self._build_evaluation_prompt(
             submission=submission,
             question_prompt=question_prompt,
-            judge_result=judge_result
+            judge_result=judge_result,
         )
 
         if provider in ("openai", "minimax", "custom"):
-            return await self._call_openai_api(prompt, api_key, base_url, model, provider, max_tokens, temperature, group_id)
+            return await self._call_openai_api(
+                prompt,
+                api_key,
+                base_url,
+                model,
+                provider,
+                max_tokens,
+                temperature,
+                group_id,
+            )
         elif provider == "anthropic":
             return await self._call_anthropic_api(prompt)
         elif provider == "azure":
@@ -123,7 +134,7 @@ class AITutorService:
         self,
         submission: CodeSubmission,
         question_prompt: Optional[str] = None,
-        judge_result: Optional[Dict[str, Any]] = None
+        judge_result: Optional[Dict[str, Any]] = None,
     ) -> str:
         prompt_parts = [
             "你是一个专业的编程面试官。请评估以下代码提交：",
@@ -133,52 +144,60 @@ class AITutorService:
             "",
             "=== 用户代码 ===",
             submission.source_code,
-            ""
+            "",
         ]
 
         if question_prompt:
-            prompt_parts.extend([
-                "=== 题目提示 ===",
-                question_prompt,
-                ""
-            ])
+            prompt_parts.extend(["=== 题目提示 ===", question_prompt, ""])
 
         if judge_result:
-            passed = judge_result.get('passed_count', 0)
-            total = judge_result.get('total_cases', 0)
-            pass_rate = judge_result.get('pass_rate', 0.0)
+            passed = judge_result.get("passed_count", 0)
+            total = judge_result.get("total_cases", 0)
+            pass_rate = judge_result.get("pass_rate", 0.0)
 
-            prompt_parts.extend([
-                "=== 判题结果 ===",
-                f"通过测试用例: {passed}/{total}",
-                f"通过率: {pass_rate:.1f}%",
-                ""
-            ])
+            prompt_parts.extend(
+                [
+                    "=== 判题结果 ===",
+                    f"通过测试用例: {passed}/{total}",
+                    f"通过率: {pass_rate:.1f}%",
+                    "",
+                ]
+            )
 
-        prompt_parts.extend([
-            "=== 评估要求 ===",
-            "请以JSON格式返回评估结果，包含以下字段：",
-            "1. is_correct: boolean - 代码逻辑是否正确",
-            "2. score: integer (0-100) - 代码质量评分",
-            "3. feedback: string - 详细的改进建议",
-            "4. optimized_code: string or null - 优化后的代码示例（可选）",
-            "",
-            "评估时请考虑：",
-            "- 代码正确性（是否解决了问题）",
-            "- 代码可读性",
-            "- 时间复杂度",
-            "- 空间复杂度",
-            "- 边界情况处理",
-            "- 代码风格",
-            "",
-            "请直接返回JSON，不要有其他文字："
-        ])
+        prompt_parts.extend(
+            [
+                "=== 评估要求 ===",
+                "请以JSON格式返回评估结果，包含以下字段：",
+                "1. is_correct: boolean - 代码逻辑是否正确",
+                "2. score: integer (0-100) - 代码质量评分",
+                "3. feedback: string - 详细的改进建议",
+                "4. optimized_code: string or null - 优化后的代码示例（可选）",
+                "",
+                "评估时请考虑：",
+                "- 代码正确性（是否解决了问题）",
+                "- 代码可读性",
+                "- 时间复杂度",
+                "- 空间复杂度",
+                "- 边界情况处理",
+                "- 代码风格",
+                "",
+                "请直接返回JSON，不要有其他文字：",
+            ]
+        )
 
         return "\n".join(prompt_parts)
 
-    async def _call_openai_api(self, prompt: str, api_key: str, base_url: str,
-                                model: str, provider: str, max_tokens: int,
-                                temperature: float, group_id: Optional[str] = None) -> AIEvaluationResponse:
+    async def _call_openai_api(
+        self,
+        prompt: str,
+        api_key: str,
+        base_url: str,
+        model: str,
+        provider: str,
+        max_tokens: int,
+        temperature: float,
+        group_id: Optional[str] = None,
+    ) -> AIEvaluationResponse:
         try:
             import openai
             import httpx
@@ -205,15 +224,18 @@ class AITutorService:
             client = openai.AsyncOpenAI(**client_kwargs)
 
             extra_body = None
-            if provider == 'minimax' and group_id:
+            if provider == "minimax" and group_id:
                 extra_body = {"group_id": group_id}
 
             try:
                 response = await client.chat.completions.create(
                     model=model,
                     messages=[
-                        {"role": "system", "content": "你是一个专业的编程面试官，请评估代码质量。"},
-                        {"role": "user", "content": prompt}
+                        {
+                            "role": "system",
+                            "content": "你是一个专业的编程面试官，请评估代码质量。",
+                        },
+                        {"role": "user", "content": prompt},
                     ],
                     temperature=temperature,
                     max_tokens=max_tokens,
@@ -259,19 +281,16 @@ class AITutorService:
             "is_correct": True,
             "score": 85,
             "feedback": "逻辑基本正确，但时间复杂度可以优化为 O(n)。",
-            "optimized_code": "def optimized_func():\n    pass # 这里是优化的代码"
+            "optimized_code": "def optimized_func():\n    pass # 这里是优化的代码",
         }
 
         return AIEvaluationResponse(**mock_result)
 
-    async def _get_fallback_evaluation(
-        self,
-        judge_result: Optional[Dict[str, Any]] = None
-    ) -> AIEvaluationResponse:
+    async def _get_fallback_evaluation(self, judge_result: Optional[Dict[str, Any]] = None) -> AIEvaluationResponse:
         if judge_result:
-            passed = judge_result.get('passed_count', 0)
-            total = judge_result.get('total_cases', 1)
-            pass_rate = judge_result.get('pass_rate', 0.0)
+            passed = judge_result.get("passed_count", 0)
+            total = judge_result.get("total_cases", 1)
+            pass_rate = judge_result.get("pass_rate", 0.0)
 
             score = int(pass_rate)
             is_correct = score >= 80
@@ -286,9 +305,4 @@ class AITutorService:
             is_correct = False
             feedback = "AI评估暂时不可用，请检查配置后重试。"
 
-        return AIEvaluationResponse(
-            is_correct=is_correct,
-            score=score,
-            feedback=feedback,
-            optimized_code=None
-        )
+        return AIEvaluationResponse(is_correct=is_correct, score=score, feedback=feedback, optimized_code=None)

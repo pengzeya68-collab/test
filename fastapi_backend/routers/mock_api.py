@@ -3,13 +3,13 @@ API Mock 服务路由
 
 提供动态 Mock 接口，用于接口测试教学和练习
 """
-import json
+
 import random
 import string
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
-from fastapi import APIRouter, Request, Response, HTTPException
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/mock", tags=["Mock服务"])
@@ -22,7 +22,10 @@ def _generate_mock_data(schema: dict) -> Any:
     """根据 schema 生成 Mock 数据"""
     stype = schema.get("type", "string")
     if stype == "string":
-        return schema.get("value", "mock_string_" + "".join(random.choices(string.ascii_lowercase, k=6)))
+        return schema.get(
+            "value",
+            "mock_string_" + "".join(random.choices(string.ascii_lowercase, k=6)),
+        )
     elif stype == "number":
         vmin, vmax = schema.get("min", 0), schema.get("max", 100)
         return schema.get("value", random.randint(vmin, vmax))
@@ -37,13 +40,14 @@ def _generate_mock_data(schema: dict) -> Any:
         return {k: _generate_mock_data(v) for k, v in props.items()}
     elif stype == "uuid":
         import uuid
+
         return str(uuid.uuid4())
     elif stype == "timestamp":
         return int(datetime.now(timezone.utc).timestamp())
     elif stype == "email":
-        return f"user{random.randint(1,9999)}@test.com"
+        return f"user{random.randint(1, 9999)}@test.com"
     elif stype == "phone":
-        return f"1{random.randint(30,99)}{random.randint(10000000,99999999)}"
+        return f"1{random.randint(30, 99)}{random.randint(10000000, 99999999)}"
     return None
 
 
@@ -107,6 +111,7 @@ async def mock_endpoint(request: Request, rest_of_path: str):
     delay = rule.get("delay_ms", 0)
     if delay > 0:
         import asyncio
+
         await asyncio.sleep(delay / 1000)
 
     data = _generate_mock_data(rule.get("response_schema", {}))

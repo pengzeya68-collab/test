@@ -3,6 +3,7 @@
 将现有题目的test_cases JSON字段迁移到TestCase表
 用法: python -m scripts.migrate_test_cases
 """
+
 import asyncio
 import json
 import sys
@@ -34,9 +35,7 @@ async def migrate_test_cases():
 
             for question in questions:
                 # 检查是否已有测试用例记录
-                test_case_result = await session.execute(
-                    select(TestCase).where(TestCase.question_id == question.id)
-                )
+                test_case_result = await session.execute(select(TestCase).where(TestCase.question_id == question.id))
                 existing_test_cases = test_case_result.scalars().all()
 
                 if existing_test_cases:
@@ -61,7 +60,7 @@ async def migrate_test_cases():
                     created_count = 0
                     for i, test_case in enumerate(test_cases_json):
                         if not isinstance(test_case, dict):
-                            print(f"题目 #{question.id} 第{i+1}个测试用例不是字典格式，跳过")
+                            print(f"题目 #{question.id} 第{i + 1}个测试用例不是字典格式，跳过")
                             continue
 
                         input_data = test_case.get("input", "")
@@ -77,8 +76,8 @@ async def migrate_test_cases():
                             input=str(input_data),
                             expected_output=str(expected_output),
                             is_example=False,  # 默认为非示例用例
-                            is_hidden=False,   # 默认为非隐藏用例
-                            description=f"从JSON迁移的测试用例 #{i+1}"
+                            is_hidden=False,  # 默认为非隐藏用例
+                            description=f"从JSON迁移的测试用例 #{i + 1}",
                         )
                         session.add(new_test_case)
                         created_count += 1

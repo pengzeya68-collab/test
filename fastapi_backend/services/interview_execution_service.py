@@ -1,6 +1,7 @@
 """
 面试代码执行服务 - 处理代码沙盒执行和AI评估
 """
+
 import json
 import logging
 from sqlalchemy import select
@@ -8,7 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.config import settings
 from fastapi_backend.core.database import get_db
-from fastapi_backend.models.models import Submission, InterviewQuestion, TestCase, Exercise
+from fastapi_backend.models.models import (
+    Submission,
+    InterviewQuestion,
+    TestCase,
+    Exercise,
+)
 from fastapi_backend.schemas.submission import SubmissionUpdate
 from fastapi_backend.services.sandbox_service import CodeSandbox
 from fastapi_backend.services.ai_tutor_service import AITutorService
@@ -21,30 +27,30 @@ async def _get_question_for_submission(db: AsyncSession, submission: Submission)
     source_type: 'interview_question' | 'exercise' | None
     """
     qid = submission.question_id
-    source = getattr(submission, 'question_source', None) or 'interview_question'
+    source = getattr(submission, "question_source", None) or "interview_question"
 
-    if source == 'exercise':
+    if source == "exercise":
         ex_result = await db.execute(select(Exercise).where(Exercise.id == qid))
         exercise = ex_result.scalar_one_or_none()
         if exercise:
-            return exercise, 'exercise'
+            return exercise, "exercise"
 
     iq_result = await db.execute(select(InterviewQuestion).where(InterviewQuestion.id == qid))
     question = iq_result.scalar_one_or_none()
     if question:
-        return question, 'interview_question'
+        return question, "interview_question"
 
     ex_result = await db.execute(select(Exercise).where(Exercise.id == qid))
     exercise = ex_result.scalar_one_or_none()
     if exercise:
-        return exercise, 'exercise'
+        return exercise, "exercise"
 
     return None, None
 
 
 def _extract_question_info(q_obj, source_type: str) -> dict:
     """从InterviewQuestion或Exercise对象提取统一格式的题目信息"""
-    if source_type == 'exercise' and q_obj:
+    if source_type == "exercise" and q_obj:
         return {
             "title": q_obj.title,
             "content": q_obj.description or q_obj.instructions or "",
@@ -67,8 +73,14 @@ def _extract_question_info(q_obj, source_type: str) -> dict:
             "difficulty": q_obj.difficulty or "medium",
         }
     return {
-        "title": "", "content": "", "reference_answer": "", "prompt": "",
-        "test_cases_json": "", "code_template": "", "category": "", "difficulty": "medium"
+        "title": "",
+        "content": "",
+        "reference_answer": "",
+        "prompt": "",
+        "test_cases_json": "",
+        "code_template": "",
+        "category": "",
+        "difficulty": "medium",
     }
 
 
@@ -77,19 +89,14 @@ class InterviewExecutionService:
         self.sandbox = CodeSandbox()
         self.ai_tutor = AITutorService()
 
-    async def execute_and_evaluate_submission_by_id(
-        self,
-        submission_id: int
-    ) -> None:
+    async def execute_and_evaluate_submission_by_id(self, submission_id: int) -> None:
         """
         通过提交ID执行并评估代码提交
         在后台任务中使用，内部创建数据库会话
         """
         async for db in get_db():
             try:
-                result = await db.execute(
-                    select(Submission).where(Submission.id == submission_id)
-                )
+                result = await db.execute(select(Submission).where(Submission.id == submission_id))
                 submission = result.scalar_one_or_none()
 
                 if not submission:
@@ -101,11 +108,7 @@ class InterviewExecutionService:
             except Exception as exc:
                 logger.error(f"处理提交 #{submission_id} 时发生异常: {exc}")
 
-    async def execute_and_evaluate_submission(
-        self,
-        db: AsyncSession,
-        submission: Submission
-    ) -> Submission:
+    async def execute_and_evaluate_submission(self, db: AsyncSession, submission: Submission) -> Submission:
         logger.info(f"开始执行提交 #{submission.id} (会话 #{submission.session_id})")
 
         if submission.language == "text":
@@ -113,7 +116,7 @@ class InterviewExecutionService:
             update_data = SubmissionUpdate(
                 execution_status="skipped",
                 execution_result=json.dumps({"type": "text_answer", "skipped": True}, ensure_ascii=False),
-                ai_evaluation_status="running"
+                ai_evaluation_status="running",
             )
             await self._update_submission(db, submission, update_data)
             await self._evaluate_text_answer(db, submission)
@@ -125,7 +128,7 @@ class InterviewExecutionService:
             else:
                 update_data = SubmissionUpdate(
                     ai_evaluation_status="failed",
-                    feedback=f"代码执行失败，无法进行AI评估。错误: {execution_result.get('stderr', '未知错误')}"
+                    feedback=f"代码执行失败，无法进行AI评估。错误: {execution_result.get('stderr', '未知错误')}",
                 )
                 await self._update_submission(db, submission, update_data)
 
@@ -150,12 +153,12 @@ class InterviewExecutionService:
                     "stderr": f"关联的题目 #{submission.question_id} 不存在",
                     "execution_time_ms": 0,
                     "execution_status": "failed",
-                    "judge_result": None
+                    "judge_result": None,
                 }
 
             test_cases = []
 
-            if source_type == 'exercise':
+            if source_type == "exercise":
                 try:
                     tc_json = json.loads(q_info["test_cases_json"]) if q_info["test_cases_json"] else []
                     if isinstance(tc_json, list):
@@ -169,17 +172,21 @@ class InterviewExecutionService:
 
                 if test_case_objects:
                     for tc in test_case_objects:
-                        test_cases.append({
-                            "input": tc.input,
-                            "output": tc.expected_output,
-                            "is_example": tc.is_example,
-                            "is_hidden": tc.is_hidden,
-                            "description": tc.description
-                        })
+                        test_cases.append(
+                            {
+                                "input": tc.input,
+                                "output": tc.expected_output,
+                                "is_example": tc.is_example,
+                                "is_hidden": tc.is_hidden,
+                                "description": tc.description,
+                            }
+                        )
                     logger.info(f"从TestCase表读取到 {len(test_cases)} 个测试用例")
                 else:
                     try:
-                        test_cases = json.loads(q_obj.test_cases) if hasattr(q_obj, 'test_cases') and q_obj.test_cases else []
+                        test_cases = (
+                            json.loads(q_obj.test_cases) if hasattr(q_obj, "test_cases") and q_obj.test_cases else []
+                        )
                         if not isinstance(test_cases, list):
                             test_cases = []
                         logger.info(f"从JSON字段读取到 {len(test_cases)} 个测试用例")
@@ -190,10 +197,7 @@ class InterviewExecutionService:
             # 如果没有测试用例，只执行代码不判题
             if not test_cases:
                 logger.info(f"题目 #{q_obj.id} 没有测试用例，只执行代码")
-                result = await self.sandbox.execute_python_code(
-                    code=submission.source_code,
-                    timeout=timeout
-                )
+                result = await self.sandbox.execute_python_code(code=submission.source_code, timeout=timeout)
             else:
                 # 进行判题
                 judge_result = await self._judge_code_with_test_cases(submission.source_code, test_cases, timeout)
@@ -205,7 +209,7 @@ class InterviewExecutionService:
                     "stderr": "",
                     "execution_time_ms": judge_result.get("total_execution_time_ms", 0),
                     "execution_status": "success" if judge_result["all_passed"] else "failed",
-                    "judge_result": judge_result
+                    "judge_result": judge_result,
                 }
                 return result
 
@@ -226,7 +230,7 @@ class InterviewExecutionService:
                 "stderr": f"执行过程中发生异常: {exc}",
                 "execution_time_ms": 0,
                 "execution_status": "failed",
-                "judge_result": None
+                "judge_result": None,
             }
 
     async def _judge_code_with_test_cases(self, source_code: str, test_cases: list, timeout: int) -> dict:
@@ -258,9 +262,7 @@ class InterviewExecutionService:
             # 执行代码
             try:
                 sandbox_result = await self.sandbox.execute_python_code_with_input(
-                    code=source_code,
-                    input_data=input_data,
-                    timeout=timeout
+                    code=source_code, input_data=input_data, timeout=timeout
                 )
 
                 execution_time_ms = sandbox_result.get("execution_time_ms", 0)
@@ -282,7 +284,7 @@ class InterviewExecutionService:
                     "passed": passed,
                     "exit_code": sandbox_result.get("exit_code", -1),
                     "stderr": sandbox_result.get("stderr", ""),
-                    "execution_time_ms": execution_time_ms
+                    "execution_time_ms": execution_time_ms,
                 }
 
                 case_results.append(case_result)
@@ -299,7 +301,7 @@ class InterviewExecutionService:
                     "passed": False,
                     "exit_code": -1,
                     "stderr": f"执行异常: {e}",
-                    "execution_time_ms": 0
+                    "execution_time_ms": 0,
                 }
                 case_results.append(case_result)
 
@@ -322,25 +324,20 @@ class InterviewExecutionService:
             "all_passed": all_passed,
             "pass_rate": pass_rate,
             "summary": summary,
-            "total_execution_time_ms": total_execution_time_ms
+            "total_execution_time_ms": total_execution_time_ms,
         }
 
         logger.info(f"判题完成: {summary}")
         return judge_result
 
-    async def _update_execution_result(
-        self,
-        db: AsyncSession,
-        submission: Submission,
-        execution_result: dict
-    ) -> None:
+    async def _update_execution_result(self, db: AsyncSession, submission: Submission, execution_result: dict) -> None:
         """更新提交记录的执行结果"""
         # 构建执行结果JSON，包含判题结果
         execution_result_data = {
             "stdout": execution_result.get("stdout", ""),
             "stderr": execution_result.get("stderr", ""),
             "exit_code": execution_result.get("exit_code", -1),
-            "execution_time_ms": execution_result.get("execution_time_ms", 0)
+            "execution_time_ms": execution_result.get("execution_time_ms", 0),
         }
 
         # 如果有判题结果，也保存
@@ -354,17 +351,13 @@ class InterviewExecutionService:
         update_data = SubmissionUpdate(
             execution_status=execution_result.get("execution_status", "failed"),
             execution_result=execution_result_json,
-            ai_evaluation_status="running" if execution_result.get("exit_code") == 0 else "failed"
+            ai_evaluation_status="running" if execution_result.get("exit_code") == 0 else "failed",
         )
 
         await self._update_submission(db, submission, update_data)
         logger.info(f"提交 #{submission.id} 执行结果已更新: {execution_result.get('execution_status')}")
 
-    async def _evaluate_text_answer(
-        self,
-        db: AsyncSession,
-        submission: Submission
-    ) -> None:
+    async def _evaluate_text_answer(self, db: AsyncSession, submission: Submission) -> None:
         logger.info(f"开始AI评估文本回答 #{submission.id}")
 
         try:
@@ -384,7 +377,7 @@ class InterviewExecutionService:
                 update_data = SubmissionUpdate(
                     ai_evaluation_status="failed",
                     score=50,
-                    feedback="AI服务未配置，无法评估文本回答。请在管理后台配置AI大模型。"
+                    feedback="AI服务未配置，无法评估文本回答。请在管理后台配置AI大模型。",
                 )
                 await self._update_submission(db, submission, update_data)
                 return
@@ -395,7 +388,10 @@ class InterviewExecutionService:
             http_client = httpx.AsyncClient(timeout=ai_config.timeout_seconds, trust_env=False)
 
             try:
-                client_kwargs = {"api_key": ai_config.api_key, "http_client": http_client}
+                client_kwargs = {
+                    "api_key": ai_config.api_key,
+                    "http_client": http_client,
+                }
                 base_url = ai_config.base_url
                 if base_url:
                     if not base_url.endswith("/v1"):
@@ -426,8 +422,11 @@ class InterviewExecutionService:
                 response = await client.chat.completions.create(
                     model=ai_config.model,
                     messages=[
-                        {"role": "system", "content": "你是一位资深软件测试面试官，请客观公正地评估候选人的回答。请以JSON格式回复。"},
-                        {"role": "user", "content": prompt}
+                        {
+                            "role": "system",
+                            "content": "你是一位资深软件测试面试官，请客观公正地评估候选人的回答。请以JSON格式回复。",
+                        },
+                        {"role": "user", "content": prompt},
                     ],
                     temperature=0.3,
                     max_tokens=1000,
@@ -438,6 +437,7 @@ class InterviewExecutionService:
                 content = response.choices[0].message.content if response.choices else ""
 
                 import json as _json
+
                 try:
                     result = _json.loads(content)
                     score = result.get("score", 60)
@@ -453,11 +453,7 @@ class InterviewExecutionService:
                     score = 60
                     feedback = content if content else "AI评估完成"
 
-                update_data = SubmissionUpdate(
-                    ai_evaluation_status="completed",
-                    score=score,
-                    feedback=feedback
-                )
+                update_data = SubmissionUpdate(ai_evaluation_status="completed", score=score, feedback=feedback)
                 await self._update_submission(db, submission, update_data)
                 logger.info(f"文本回答 #{submission.id} AI评估完成，得分: {score}")
 
@@ -472,16 +468,11 @@ class InterviewExecutionService:
             update_data = SubmissionUpdate(
                 ai_evaluation_status="failed",
                 score=50,
-                feedback="AI评估过程中发生异常，请稍后重试。"
+                feedback="AI评估过程中发生异常，请稍后重试。",
             )
             await self._update_submission(db, submission, update_data)
 
-    async def _evaluate_with_ai(
-        self,
-        db: AsyncSession,
-        submission: Submission,
-        execution_result: dict
-    ) -> None:
+    async def _evaluate_with_ai(self, db: AsyncSession, submission: Submission, execution_result: dict) -> None:
         """使用AI评估代码"""
         logger.info(f"开始AI评估提交 #{submission.id}")
 
@@ -494,24 +485,25 @@ class InterviewExecutionService:
             judge_result = execution_result.get("judge_result")
 
             from fastapi_backend.schemas.interview import CodeSubmission
+
             code_submission = CodeSubmission(
                 question_id=str(submission.question_id),
                 language=submission.language,
-                source_code=submission.source_code
+                source_code=submission.source_code,
             )
 
             ai_tutor = AITutorService(db=db)
             ai_result = await ai_tutor.evaluate_code(
                 submission=code_submission,
                 question_prompt=question_prompt,
-                judge_result=judge_result
+                judge_result=judge_result,
             )
 
             # 5. 更新评估结果
             update_data = SubmissionUpdate(
                 ai_evaluation_status="completed",
                 score=ai_result.score,
-                feedback=ai_result.feedback
+                feedback=ai_result.feedback,
             )
 
             await self._update_submission(db, submission, update_data)
@@ -526,24 +518,19 @@ class InterviewExecutionService:
             # 尝试基于判题结果给出更好的fallback
             judge_result = execution_result.get("judge_result")
             if judge_result:
-                passed = judge_result.get('passed_count', 0)
-                total = judge_result.get('total_cases', 1)
-                fallback_score = int(judge_result.get('pass_rate', 50))
+                passed = judge_result.get("passed_count", 0)
+                total = judge_result.get("total_cases", 1)
+                fallback_score = int(judge_result.get("pass_rate", 50))
                 fallback_feedback = f"AI评估失败。代码通过了 {passed}/{total} 个测试用例。"
 
             update_data = SubmissionUpdate(
                 ai_evaluation_status="failed",
                 score=fallback_score,
-                feedback=fallback_feedback
+                feedback=fallback_feedback,
             )
             await self._update_submission(db, submission, update_data)
 
-    async def _update_submission(
-        self,
-        db: AsyncSession,
-        submission: Submission,
-        update_data: SubmissionUpdate
-    ) -> None:
+    async def _update_submission(self, db: AsyncSession, submission: Submission, update_data: SubmissionUpdate) -> None:
         """更新提交记录"""
         for field, value in update_data.model_dump(exclude_unset=True).items():
             if value is not None:

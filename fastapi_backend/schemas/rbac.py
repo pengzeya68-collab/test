@@ -1,12 +1,14 @@
 """
 RBAC Pydantic Schemas - 角色/权限/分配
 """
+
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 
 
 # ============ Role Schemas ============
+
 
 class RoleBase(BaseModel):
     name: str
@@ -33,6 +35,7 @@ class RoleSchema(RoleBase):
 
 # ============ Permission Schemas ============
 
+
 class PermissionBase(BaseModel):
     code: str
     name: str
@@ -53,11 +56,14 @@ class PermissionSchema(PermissionBase):
 
 # ============ Assignment Schemas ============
 
+
 class PermissionAssign(BaseModel):
     """为角色分配权限（覆盖式）"""
+
     permission_codes: list[str]
 
 
 class UserRoleAssign(BaseModel):
     """为用户分配角色"""
+
     role_id: int

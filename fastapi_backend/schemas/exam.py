@@ -1,4 +1,5 @@
 """Schemas for the exam system – migrated from Flask backend/api/exam.py."""
+
 from __future__ import annotations
 
 from typing import Optional
@@ -13,6 +14,7 @@ from pydantic import BaseModel
 
 class ExamGenerateRequest(BaseModel):
     """智能生成试卷请求"""
+
     exam_type: str = "模拟考试"
     difficulty: str = "medium"
     duration: int = 60
@@ -28,12 +30,14 @@ class ExamGenerateRequest(BaseModel):
 
 class ExamSubmitAnswer(BaseModel):
     """单题答案"""
+
     question_id: int
     answer: str = ""
 
 
 class ExamSubmitRequest(BaseModel):
     """提交考试请求"""
+
     answers: list[ExamSubmitAnswer] = []
 
 

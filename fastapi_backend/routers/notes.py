@@ -1,4 +1,5 @@
 """学习笔记路由"""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +13,7 @@ from fastapi_backend.models.models import User, Note
 router = APIRouter(prefix="/api/v1/notes", tags=["学习笔记"])
 
 
-@router.get("/")
+@router.get("")
 async def get_notes(
     exercise_id: int = None,
     current_user: User = Depends(get_current_user),
@@ -41,7 +42,7 @@ async def get_notes(
     }
 
 
-@router.post("/")
+@router.post("")
 async def create_note(
     body: dict,
     current_user: User = Depends(get_current_user),

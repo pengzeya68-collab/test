@@ -6,7 +6,7 @@
 
 import sqlite3
 
-db_path = 'c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db'
+db_path = "c:/Users/lenovo/Desktop/TestMasterProject/instance/testmaster.db"
 
 # 学习路径8的50道精品题
 exercises_data = [
@@ -17,7 +17,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "easy",
-        "category": "测试计划概述"
+        "category": "测试计划概述",
     },
     {
         "title": "关于测试计划的编写者，以下说法正确的是？（多选）",
@@ -25,7 +25,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "测试计划概述"
+        "category": "测试计划概述",
     },
     {
         "title": "请判断：测试计划应该在需求分析完成后、测试执行开始前编写。",
@@ -33,7 +33,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试计划概述"
+        "category": "测试计划概述",
     },
     {
         "title": "关于测试计划的作用，以下说法正确的是？",
@@ -41,7 +41,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试计划概述"
+        "category": "测试计划概述",
     },
     {
         "title": "关于测试计划的版本控制，以下说法正确的是？（多选）",
@@ -49,7 +49,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试计划概述"
+        "category": "测试计划概述",
     },
     {
         "title": "请判断：测试计划应该根据项目风险来调整测试策略和资源分配。",
@@ -57,7 +57,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试计划概述"
+        "category": "测试计划概述",
     },
     {
         "title": "关于测试计划的评审，以下说法正确的是？",
@@ -65,7 +65,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试计划概述"
+        "category": "测试计划概述",
     },
     {
         "title": "关于测试计划与测试策略的关系，以下说法正确的是？（多选）",
@@ -73,7 +73,7 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试计划概述"
+        "category": "测试计划概述",
     },
     {
         "title": "请判断：测试计划应该在项目初期就完成，后续不能修改。",
@@ -81,7 +81,7 @@ exercises_data = [
         "solution": "B",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试计划概述"
+        "category": "测试计划概述",
     },
     {
         "title": "关于测试计划的维护，以下说法正确的是？",
@@ -89,9 +89,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试计划概述"
+        "category": "测试计划概述",
     },
-    
     # ============ 测试计划的内容（15题）============
     {
         "title": "关于测试计划的测试范围（Test Scope），以下说法正确的是？",
@@ -99,7 +98,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "关于测试计划的测试策略（Test Strategy），以下说法正确的是？（多选）",
@@ -107,7 +106,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "请判断：测试计划中的测试交付物（Deliverables）包括测试报告、缺陷报告、测试数据等。",
@@ -115,7 +114,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "关于测试计划的测试进度（Schedule），以下说法正确的是？",
@@ -123,7 +122,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "关于测试计划的测试资源（Resources），以下说法正确的是？（多选）",
@@ -131,7 +130,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "请判断：测试计划中的准入/准出标准（Entry/Exit Criteria）用于定义测试开始和结束的条件。",
@@ -139,7 +138,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "关于测试计划的测试环境（Test Environment），以下说法正确的是？",
@@ -147,7 +146,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "关于测试计划的风险评估（Risk Assessment），以下说法正确的是？（多选）",
@@ -155,7 +154,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "请判断：测试计划中的缺陷管理（Defect Management）应该定义缺陷的生命周期、严重程度、优先级。",
@@ -163,7 +162,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "关于测试计划的测试工具（Test Tools），以下说法正确的是？",
@@ -171,7 +170,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "关于测试计划的测试培训（Training），以下说法正确的是？（多选）",
@@ -179,7 +178,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "请判断：测试计划中的配置管理（Configuration Management）用于管理测试文档、测试脚本、测试数据的版本。",
@@ -187,7 +186,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "关于测试计划的沟通计划（Communication Plan），以下说法正确的是？",
@@ -195,7 +194,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
     {
         "title": "关于测试计划的模板，以下说法正确的是？（多选）",
@@ -203,9 +202,8 @@ exercises_data = [
         "solution": "A,B,D",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "测试计划的内容"
+        "category": "测试计划的内容",
     },
-    
     # ============ 测试进度与里程碑（10题）============
     {
         "title": "关于测试进度计划，以下说法正确的是？",
@@ -213,7 +211,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试进度与里程碑"
+        "category": "测试进度与里程碑",
     },
     {
         "title": "关于测试里程碑（Milestone），以下说法正确的是？（多选）",
@@ -221,7 +219,7 @@ exercises_data = [
         "solution": "A,B,C",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试进度与里程碑"
+        "category": "测试进度与里程碑",
     },
     {
         "title": "请判断：测试进度应该使用甘特图（Gantt Chart）或类似工具来可视化。",
@@ -229,7 +227,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试进度与里程碑"
+        "category": "测试进度与里程碑",
     },
     {
         "title": "关于测试进度的监控，以下说法正确的是？",
@@ -237,7 +235,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试进度与里程碑"
+        "category": "测试进度与里程碑",
     },
     {
         "title": "关于测试进度的风险，以下说法正确的是？（多选）",
@@ -245,7 +243,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试进度与里程碑"
+        "category": "测试进度与里程碑",
     },
     {
         "title": "请判断：测试进度应该预留缓冲时间（Buffer Time），以应对意外情况。",
@@ -253,7 +251,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试进度与里程碑"
+        "category": "测试进度与里程碑",
     },
     {
         "title": "关于测试进度的报告，以下说法正确的是？",
@@ -261,7 +259,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试进度与里程碑"
+        "category": "测试进度与里程碑",
     },
     {
         "title": "关于测试进度的变更管理，以下说法正确的是？（多选）",
@@ -269,7 +267,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试进度与里程碑"
+        "category": "测试进度与里程碑",
     },
     {
         "title": "请判断：测试进度应该与开发进度、需求变更计划保持同步。",
@@ -277,7 +275,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "hard",
-        "category": "测试进度与里程碑"
+        "category": "测试进度与里程碑",
     },
     {
         "title": "关于测试进度的工具支持，以下说法正确的是？",
@@ -285,9 +283,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试进度与里程碑"
+        "category": "测试进度与里程碑",
     },
-    
     # ============ 测试团队管理（10题）============
     {
         "title": "关于测试团队的组织结构，以下说法正确的是？",
@@ -295,7 +292,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试团队管理"
+        "category": "测试团队管理",
     },
     {
         "title": "关于测试人员的技能要求，以下说法正确的是？（多选）",
@@ -303,7 +300,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试团队管理"
+        "category": "测试团队管理",
     },
     {
         "title": "请判断：测试团队应该进行定期的培训和技术分享，提升团队整体能力。",
@@ -311,7 +308,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试团队管理"
+        "category": "测试团队管理",
     },
     {
         "title": "关于测试团队的绩效评估，以下说法正确的是？",
@@ -319,7 +316,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试团队管理"
+        "category": "测试团队管理",
     },
     {
         "title": "关于测试团队的沟通，以下说法正确的是？（多选）",
@@ -327,7 +324,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "medium",
-        "category": "测试团队管理"
+        "category": "测试团队管理",
     },
     {
         "title": "请判断：测试团队的规模应该根据项目规模、复杂度、时间要求来合理确定。",
@@ -335,7 +332,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试团队管理"
+        "category": "测试团队管理",
     },
     {
         "title": "关于测试团队的角色分工，以下说法正确的是？",
@@ -343,7 +340,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试团队管理"
+        "category": "测试团队管理",
     },
     {
         "title": "关于测试团队的激励，以下说法正确的是？（多选）",
@@ -351,7 +348,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试团队管理"
+        "category": "测试团队管理",
     },
     {
         "title": "请判断：测试团队应该定期进行团队建设活动，增强团队凝聚力。",
@@ -359,7 +356,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "easy",
-        "category": "测试团队管理"
+        "category": "测试团队管理",
     },
     {
         "title": "关于测试团队的知识管理，以下说法正确的是？",
@@ -367,9 +364,8 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试团队管理"
+        "category": "测试团队管理",
     },
-    
     # ============ 测试风险管理（6题）============
     {
         "title": "关于测试风险（Test Risk），以下说法正确的是？",
@@ -377,7 +373,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "medium",
-        "category": "测试风险管理"
+        "category": "测试风险管理",
     },
     {
         "title": "请判断：测试风险管理是一个持续的过程，应该贯穿整个项目生命周期。",
@@ -385,7 +381,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试风险管理"
+        "category": "测试风险管理",
     },
     {
         "title": "关于测试风险的识别，以下说法正确的是？（多选）",
@@ -393,7 +389,7 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试风险管理"
+        "category": "测试风险管理",
     },
     {
         "title": "请判断：测试风险应该根据可能性和影响程度进行优先级排序。",
@@ -401,7 +397,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "true_false",
         "difficulty": "medium",
-        "category": "测试风险管理"
+        "category": "测试风险管理",
     },
     {
         "title": "关于测试风险的应对，以下说法正确的是？",
@@ -409,7 +405,7 @@ exercises_data = [
         "solution": "A",
         "exercise_type": "single_choice",
         "difficulty": "hard",
-        "category": "测试风险管理"
+        "category": "测试风险管理",
     },
     {
         "title": "关于测试风险的监控，以下说法正确的是？（多选）",
@@ -417,58 +413,63 @@ exercises_data = [
         "solution": "A,B",
         "exercise_type": "multiple_choice",
         "difficulty": "hard",
-        "category": "测试风险管理"
+        "category": "测试风险管理",
     },
 ]
+
 
 def main():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # 删除学习路径8的旧习题
     cursor.execute("DELETE FROM exercises WHERE learning_path_id = 8")
     print("🗑️  已删除学习路径8（测试计划编写与项目管理）的旧习题")
-    
+
     # 插入50道精品题
     inserted = 0
     for ex in exercises_data:
         try:
-            lang = "python" if ex['exercise_type'] == 'code' else "中文"
-            
-            cursor.execute("""
+            lang = "python" if ex["exercise_type"] == "code" else "中文"
+
+            cursor.execute(
+                """
                 INSERT INTO exercises 
                 (title, description, solution, exercise_type, difficulty, 
                  learning_path_id, category, is_public, language, 
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 8, ?, 1, ?, datetime('now'), datetime('now'))
-            """, (
-                ex['title'],
-                ex['description'],
-                ex['solution'],
-                ex['exercise_type'],
-                ex['difficulty'],
-                ex['category'],
-                lang
-            ))
+            """,
+                (
+                    ex["title"],
+                    ex["description"],
+                    ex["solution"],
+                    ex["exercise_type"],
+                    ex["difficulty"],
+                    ex["category"],
+                    lang,
+                ),
+            )
             inserted += 1
         except Exception as e:
             print(f"⚠️  插入失败: {e}")
             continue
-    
+
     conn.commit()
-    
+
     # 更新 learning_paths 的 exercise_count
     cursor.execute("UPDATE learning_paths SET exercise_count = ? WHERE id = 8", (inserted,))
     conn.commit()
-    
+
     print(f"✅ 成功插入 {inserted} 道精品习题到学习路径8（测试计划编写与项目管理）")
-    
+
     # 验证
     cursor.execute("SELECT COUNT(*) FROM exercises WHERE learning_path_id = 8")
     count = cursor.fetchone()[0]
     print(f"📊 验证：学习路径8现在有 {count} 道习题")
-    
+
     conn.close()
+
 
 if __name__ == "__main__":
     main()

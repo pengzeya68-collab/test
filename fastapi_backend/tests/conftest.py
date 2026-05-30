@@ -6,6 +6,7 @@ TestMaster 测试配置 (优化版)
 2. 测试间用事务回滚隔离，不再整库重建
 3. 减少顶层模型导入，按需加载
 """
+
 from typing import AsyncGenerator
 import os
 
@@ -36,6 +37,7 @@ TestingSessionLocal = async_sessionmaker(
 
 # ========== Session 级 Schema 初始化 ==========
 
+
 @pytest_asyncio.fixture(scope="session")
 async def _init_db():
     """整个测试 session 只建一次表"""
@@ -48,6 +50,7 @@ async def _init_db():
 
 
 # ========== 函数级数据清理 ==========
+
 
 async def _truncate_all_tables():
     """清空所有表数据但不删除表结构"""
@@ -67,6 +70,7 @@ async def db_session_fixture(_init_db) -> AsyncGenerator[AsyncSession, None]:
 
 # ========== 同步 TestClient ==========
 
+
 @pytest.fixture(name="client")
 def client_fixture(db_session: AsyncSession):
     """同步 HTTP 测试客户端，注入当前测试的 db_session"""
@@ -77,6 +81,7 @@ def client_fixture(db_session: AsyncSession):
     app.dependency_overrides[get_db] = _override_get_db
 
     from fastapi.testclient import TestClient
+
     with TestClient(app) as client:
         yield client
 

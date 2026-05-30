@@ -2,6 +2,7 @@
 场景执行引擎（迁移自 auto_test_platform/services/scenario_runner.py）
 核心逻辑：按顺序执行场景中的每个步骤，通过全局上下文传递变量
 """
+
 import asyncio
 import json
 import logging
@@ -13,8 +14,12 @@ from html import escape
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from fastapi_backend.utils.autotest_helpers import convert_to_dict, extract_jsonpath_value
+from fastapi_backend.utils.autotest_helpers import (
+    convert_to_dict,
+    extract_jsonpath_value,
+)
 from fastapi_backend.services.autotest_variable_service import save_variables_to_db
+
 # from fastapi_backend.services.autotest_report_service import write_allure_results
 from fastapi_backend.core.autotest_database import async_session
 from fastapi_backend.models.autotest import (
@@ -35,9 +40,6 @@ _logger = logging.getLogger(__name__)
 # 项目根目录
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
-
-
-
 
 
 class ScenarioExecutionEngine:
@@ -85,14 +87,10 @@ class ScenarioExecutionEngine:
                 # 加载环境变量
                 env = None
                 if self.env_id:
-                    result = await db.execute(
-                        select(AutoTestEnvironment).where(AutoTestEnvironment.id == self.env_id)
-                    )
+                    result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == self.env_id))
                     env = result.scalar_one_or_none()
                 else:
-                    result = await db.execute(
-                        select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True)
-                    )
+                    result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default))
                     env = result.scalar_one_or_none()
                     if not env:
                         result = await db.execute(select(AutoTestEnvironment))
@@ -108,18 +106,42 @@ class ScenarioExecutionEngine:
                         self.context_vars["base_url"] = env.base_url
 
                 # 获取所有启用的步骤并排序
-                all_steps = sorted([s for s in scenario.steps if s.is_active], key=lambda x: x.step_order)
+                all_steps = sorted(
+                    [s for s in scenario.steps if s.is_active],
+                    key=lambda x: x.step_order,
+                )
 
                 total_steps = len(all_steps)
+                fail_fast_enabled = getattr(scenario, "fail_fast", False)
 
                 if self.progress_callback:
-                    self.progress_callback(0, total_steps, '加载场景和环境中...')
+                    self.progress_callback(0, total_steps, "加载场景和环境中...")
 
+                failed_encountered = False
                 for idx, step in enumerate(all_steps):
                     step_name = step.api_case.name if step.api_case else f"Step {step.step_order}"
-                    step_start = time.time()  # 记录每步独立开始时间
+                    step_start = time.time()
+
+                    if failed_encountered and fail_fast_enabled:
+                        self.step_results.append(
+                            {
+                                "step_id": step.id,
+                                "step_order": step.step_order,
+                                "api_case_id": step.api_case_id,
+                                "api_case_name": step.api_case.name if step.api_case else f"Step {step.step_order}",
+                                "method": step.api_case.method if step.api_case else "GET",
+                                "success": False,
+                                "status": "skipped",
+                                "response_time": 0,
+                                "error": "因前序步骤失败且启用 fail_fast，跳过此步骤",
+                            }
+                        )
+                        if self.progress_callback:
+                            self.progress_callback(idx + 1, total_steps, f"跳过: {step_name}")
+                        continue
+
                     if self.progress_callback:
-                        self.progress_callback(idx, total_steps, f'执行: {step_name}')
+                        self.progress_callback(idx, total_steps, f"执行: {step_name}")
 
                     try:
                         step_result = await self._execute_step(db, step)
@@ -127,46 +149,53 @@ class ScenarioExecutionEngine:
                             step_result["status"] = "failed"
                             self.step_results.append(step_result)
                             self.total_duration += step_result.get("duration", 0)
+                            failed_encountered = True
                         else:
                             step_result["status"] = "success"
                             self.step_results.append(step_result)
                             self.total_duration += step_result.get("duration", 0)
 
                         if self.progress_callback:
-                            self.progress_callback(idx + 1, total_steps, f'完成: {step_name}')
+                            self.progress_callback(idx + 1, total_steps, f"完成: {step_name}")
 
                     except AssertionError as e:
                         step_duration = int((time.time() - step_start) * 1000)
-                        self.step_results.append({
-                            "step_id": step.id,
-                            "step_order": step.step_order,
-                            "api_case_id": step.api_case_id,
-                            "api_case_name": step.api_case.name if step.api_case else f"Step {step.step_order}",
-                            "method": step.api_case.method if step.api_case else "GET",
-                            "success": False,
-                            "status": "failed",
-                            "response_time": step_duration,
-                            "error": f"断言失败: {str(e)}"
-                        })
+                        self.step_results.append(
+                            {
+                                "step_id": step.id,
+                                "step_order": step.step_order,
+                                "api_case_id": step.api_case_id,
+                                "api_case_name": step.api_case.name if step.api_case else f"Step {step.step_order}",
+                                "method": step.api_case.method if step.api_case else "GET",
+                                "success": False,
+                                "status": "failed",
+                                "response_time": step_duration,
+                                "error": f"断言失败: {str(e)}",
+                            }
+                        )
+                        failed_encountered = True
 
                         if self.progress_callback:
-                            self.progress_callback(idx + 1, total_steps, f'失败: {step_name}')
+                            self.progress_callback(idx + 1, total_steps, f"失败: {step_name}")
 
                     except Exception as e:
                         step_duration = int((time.time() - step_start) * 1000)
-                        self.step_results.append({
-                            "step_id": step.id,
-                            "step_order": step.step_order,
-                            "api_case_id": step.api_case_id,
-                            "api_case_name": step.api_case.name if step.api_case else f"Step {step.step_order}",
-                            "success": False,
-                            "status": "failed",
-                            "response_time": step_duration,
-                            "error": f"执行异常: {str(e)}"
-                        })
+                        self.step_results.append(
+                            {
+                                "step_id": step.id,
+                                "step_order": step.step_order,
+                                "api_case_id": step.api_case_id,
+                                "api_case_name": step.api_case.name if step.api_case else f"Step {step.step_order}",
+                                "success": False,
+                                "status": "failed",
+                                "response_time": step_duration,
+                                "error": f"执行异常: {str(e)}",
+                            }
+                        )
+                        failed_encountered = True
 
                         if self.progress_callback:
-                            self.progress_callback(idx + 1, total_steps, f'异常: {step_name}')
+                            self.progress_callback(idx + 1, total_steps, f"异常: {step_name}")
 
         finally:
             overall_duration = int((time.time() - start_time) * 1000)
@@ -181,7 +210,9 @@ class ScenarioExecutionEngine:
             report_dir.mkdir(parents=True, exist_ok=True)
 
             test_file_path = self._generate_pytest_test_file(temp_pytest_dir, scenario_name, history_id)
-            report_generated = self._run_pytest_and_generate_report(test_file_path, str(allure_results_dir), str(report_dir))
+            report_generated = self._run_pytest_and_generate_report(
+                test_file_path, str(allure_results_dir), str(report_dir)
+            )
             if not report_generated:
                 self._write_fallback_report(report_dir, scenario_name, env_name, overall_duration)
 
@@ -215,14 +246,16 @@ class ScenarioExecutionEngine:
                 success_steps=success_steps,
                 skipped_steps=skipped_steps,
                 total_time=overall_duration,
-                report_url=report_url
+                report_url=report_url,
             )
             db.add(record)
             await db.commit()
             await db.refresh(record)
 
             # 保存完整的步骤结果到 JSON 文件
-            step_results_file = AUTOTEST_DATA_DIR / "step_results" / f"scenario_{self.scenario_id}_record_{record.id}.json"
+            step_results_file = (
+                AUTOTEST_DATA_DIR / "step_results" / f"scenario_{self.scenario_id}_record_{record.id}.json"
+            )
             step_results_file.parent.mkdir(parents=True, exist_ok=True)
             with open(step_results_file, "w", encoding="utf-8") as f:
                 json.dump(self.step_results, f, ensure_ascii=False, indent=2, default=str)
@@ -263,7 +296,7 @@ class ScenarioExecutionEngine:
             "context_vars": self.context_vars,
             "step_results": self.step_results,
             "report_url": report_url,
-            "execution_record_id": record.id if 'record' in locals() else None,
+            "execution_record_id": record.id if "record" in locals() else None,
             "report_id": f"scenario_{self.scenario_id}" if report_url else None,
         }
 
@@ -280,7 +313,7 @@ class ScenarioExecutionEngine:
 
         for i, step in enumerate(self.step_results):
             i_plus_1 = i + 1
-            step_name = step.get("api_case_name", f"步骤 {i+1}")
+            step_name = step.get("api_case_name", f"步骤 {i + 1}")
             method = step.get("method", "GET")
             url = step.get("url", "")
             headers = step.get("headers", {})
@@ -317,13 +350,15 @@ class ScenarioExecutionEngine:
                 else:
                     step_error = error or "; ".join(assert_messages) or f"期望 2xx/3xx, 实际返回 {status_code}"
 
-            step_error_escaped = step_error.replace('\\', '\\\\').replace('"', '\\"').replace('\n', ' ').replace("'", "\\'")
-            step_name_escaped = step_name.replace('\\', '\\\\').replace('"', '\\"').replace("'", "\\'")
+            step_error_escaped = (
+                step_error.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
+            )
+            step_name_escaped = step_name.replace("\\", "\\\\").replace('"', '\\"').replace("'", "\\'")
 
             if step_status == "failed":
                 assert_block = f'        assert False, "步骤{i_plus_1}失败: {step_error_escaped}"'
             else:
-                assert_block = '        pass'
+                assert_block = "        pass"
 
             step_method = '''
     @allure.title("用例{i_plus_1}: {step_name_escaped}")
@@ -358,20 +393,20 @@ class ScenarioExecutionEngine:
         with allure.step("3. 执行断言校验"):
     {assert_block}
 '''.format(
-    i_plus_1=i_plus_1,
-    step_name_escaped=step_name_escaped,
-    method=method,
-    url=url,
-    headers=json.dumps(headers, ensure_ascii=False),
-    payload=json.dumps(payload, ensure_ascii=False),
-    status_code=status_code,
-    response_time=response_time,
-    response_body_quoted=json.dumps(response_body[:2000] if response_body else "", ensure_ascii=False),
-    assert_block=assert_block
-)
+                i_plus_1=i_plus_1,
+                step_name_escaped=step_name_escaped,
+                method=method,
+                url=url,
+                headers=json.dumps(headers, ensure_ascii=False),
+                payload=json.dumps(payload, ensure_ascii=False),
+                status_code=status_code,
+                response_time=response_time,
+                response_body_quoted=json.dumps(response_body[:2000] if response_body else "", ensure_ascii=False),
+                assert_block=assert_block,
+            )
             step_methods.append(step_method)
 
-        methods_joined = '\n'.join(step_methods)
+        methods_joined = "\n".join(step_methods)
 
         test_code = '''
 """
@@ -410,13 +445,13 @@ class TestScenario{scenario_id}:
 
 {methods_joined}
 '''.format(
-    scenario_name=scenario_name,
-    scenario_id=self.scenario_id,
-    history_id=history_id,
-    history_id_quoted=repr(str(history_id)),
-    len_steps=len(self.step_results),
-    methods_joined=methods_joined
-)
+            scenario_name=scenario_name,
+            scenario_id=self.scenario_id,
+            history_id=history_id,
+            history_id_quoted=repr(str(history_id)),
+            len_steps=len(self.step_results),
+            methods_joined=methods_joined,
+        )
         return test_code
 
     def _run_pytest_and_generate_report(self, test_file_path: Path, allure_results_dir: str, report_dir: str) -> bool:
@@ -442,14 +477,22 @@ class TestScenario{scenario_id}:
         try:
             python_executable = sys.executable
             cmd1 = [
-                python_executable, "-m", "pytest",
+                python_executable,
+                "-m",
+                "pytest",
                 str(test_file_path.absolute()),
                 f"--alluredir={allure_results_dir_abs}",
-                "-v", "--tb=short"
+                "-v",
+                "--tb=short",
             ]
 
-            result = subprocess.run(cmd1, capture_output=True, text=True, timeout=120,
-                                    cwd=str(test_file_path.parent))
+            result = subprocess.run(
+                cmd1,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=str(test_file_path.parent),
+            )
 
             result_files = list(Path(allure_results_dir_abs).glob("*.json"))
 
@@ -458,27 +501,66 @@ class TestScenario{scenario_id}:
                 pytest_exe = python_dir / "Scripts" / "pytest.exe"
 
                 if pytest_exe.exists():
-                    cmd2 = [str(pytest_exe), str(test_file_path.absolute()),
-                            f"--alluredir={allure_results_dir_abs}", "-v", "--tb=short"]
-                    result = subprocess.run(cmd2, capture_output=True, text=True, timeout=120,
-                                            cwd=str(test_file_path.parent))
+                    cmd2 = [
+                        str(pytest_exe),
+                        str(test_file_path.absolute()),
+                        f"--alluredir={allure_results_dir_abs}",
+                        "-v",
+                        "--tb=short",
+                    ]
+                    result = subprocess.run(
+                        cmd2,
+                        capture_output=True,
+                        text=True,
+                        timeout=120,
+                        cwd=str(test_file_path.parent),
+                    )
                     result_files = list(Path(allure_results_dir_abs).glob("*.json"))
 
                 if len(result_files) == 0:
-                    cmd3 = ["pytest", str(test_file_path.absolute()),
-                            f"--alluredir={allure_results_dir_abs}", "-v", "--tb=short"]
-                    result = subprocess.run(cmd3, capture_output=True, text=True, timeout=120,
-                                            cwd=str(test_file_path.parent))
+                    cmd3 = [
+                        "pytest",
+                        str(test_file_path.absolute()),
+                        f"--alluredir={allure_results_dir_abs}",
+                        "-v",
+                        "--tb=short",
+                    ]
+                    result = subprocess.run(
+                        cmd3,
+                        capture_output=True,
+                        text=True,
+                        timeout=120,
+                        cwd=str(test_file_path.parent),
+                    )
                     result_files = list(Path(allure_results_dir_abs).glob("*.json"))
 
             if len(result_files) == 0:
-                install_cmd = [sys.executable, "-m", "pip", "install", "pytest", "allure-pytest"]
+                install_cmd = [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "pytest",
+                    "allure-pytest",
+                ]
                 install_result = subprocess.run(install_cmd, capture_output=True, text=True)
                 if install_result.returncode == 0:
-                    cmd_retry = [sys.executable, "-m", "pytest", str(test_file_path.absolute()),
-                                 f"--alluredir={allure_results_dir_abs}", "-v", "--tb=short"]
-                    result = subprocess.run(cmd_retry, capture_output=True, text=True, timeout=300,
-                                            cwd=str(test_file_path.parent))
+                    cmd_retry = [
+                        sys.executable,
+                        "-m",
+                        "pytest",
+                        str(test_file_path.absolute()),
+                        f"--alluredir={allure_results_dir_abs}",
+                        "-v",
+                        "--tb=short",
+                    ]
+                    result = subprocess.run(
+                        cmd_retry,
+                        capture_output=True,
+                        text=True,
+                        timeout=300,
+                        cwd=str(test_file_path.parent),
+                    )
                     result_files = list(Path(allure_results_dir_abs).glob("*.json"))
 
             if len(result_files) == 0:
@@ -493,8 +575,17 @@ class TestScenario{scenario_id}:
                 _logger.info(f"[AllureReport] 已拷贝历史趋势数据: {old_report_history} -> {new_results_history}")
 
             report_result = subprocess.run(
-                ["allure", "generate", allure_results_dir_abs, "-o", report_dir_abs, "--clean"],
-                capture_output=True, text=True, timeout=60
+                [
+                    "allure",
+                    "generate",
+                    allure_results_dir_abs,
+                    "-o",
+                    report_dir_abs,
+                    "--clean",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
 
             if report_result.returncode == 0:
@@ -512,7 +603,9 @@ class TestScenario{scenario_id}:
             _logger.error(f"Pytest 执行或 Allure 报告生成失败: {e}", exc_info=True)
             return False
 
-    def _write_fallback_report(self, report_dir: Path, scenario_name: str, env_name: str, overall_duration: int) -> None:
+    def _write_fallback_report(
+        self, report_dir: Path, scenario_name: str, env_name: str, overall_duration: int
+    ) -> None:
         """Allure 生成失败时，兜底写一个可查看的静态 HTML 报告。"""
         report_dir.mkdir(parents=True, exist_ok=True)
         success_steps = len([r for r in self.step_results if r.get("status") == "success"])
@@ -523,7 +616,11 @@ class TestScenario{scenario_id}:
         for index, step in enumerate(self.step_results, start=1):
             status = step.get("status", "unknown")
             status_text = {"success": "通过", "failed": "失败", "skipped": "跳过"}.get(status, status)
-            color = {"success": "#67c23a", "failed": "#f56c6c", "skipped": "#909399"}.get(status, "#409eff")
+            color = {
+                "success": "#67c23a",
+                "failed": "#f56c6c",
+                "skipped": "#909399",
+            }.get(status, "#409eff")
             method = escape(str(step.get("method", "GET")))
             name = escape(str(step.get("api_case_name", f"步骤 {index}")))
             url = escape(str(step.get("url", "")))
@@ -538,10 +635,10 @@ class TestScenario{scenario_id}:
                 <span class="method">{method}</span>
                 <span class="name">{name}</span>
               </div>
-              <div class="meta">URL: {url or '-'}</div>
+              <div class="meta">URL: {url or "-"}</div>
               <div class="meta">状态码: {step.get("status_code", "-")} | 耗时: {step.get("response_time", 0)}ms</div>
-              <div class="meta">错误: {error_text or '-'}</div>
-              <pre>{response_preview or '(无响应体)'}</pre>
+              <div class="meta">错误: {error_text or "-"}</div>
+              <pre>{response_preview or "(无响应体)"}</pre>
             </div>
             """)
 
@@ -569,7 +666,7 @@ class TestScenario{scenario_id}:
   <div class="wrap">
     <div class="header">
       <h1>{escape(scenario_name)}</h1>
-      <div>环境: {escape(env_name or '未指定')}</div>
+      <div>环境: {escape(env_name or "未指定")}</div>
       <div>总耗时: {overall_duration}ms</div>
       <div class="stats">
         <div class="stat">总步骤: {len(self.step_results)}</div>
@@ -578,14 +675,21 @@ class TestScenario{scenario_id}:
         <div class="stat">跳过: {skipped_steps}</div>
       </div>
     </div>
-    {''.join(cards) if cards else '<div class="step-card">暂无步骤数据</div>'}
+    {"".join(cards) if cards else '<div class="step-card">暂无步骤数据</div>'}
   </div>
 </body>
 </html>"""
 
         (report_dir / "index.html").write_text(html, encoding="utf-8")
 
-    def write_allure_results(self, allure_results_dir: Path, scenario_name: str, history_id: str, start_time: float, duration: int):
+    def write_allure_results(
+        self,
+        allure_results_dir: Path,
+        scenario_name: str,
+        history_id: str,
+        start_time: float,
+        duration: int,
+    ):
         """已废弃，保留兼容"""
         pass
 
@@ -594,8 +698,9 @@ class TestScenario{scenario_id}:
         if api_case is None:
             return {
                 "step_order": step.step_order,
-                "step_name": step.step_name or f"步骤{step.step_order}",
+                "api_case_name": f"步骤{step.step_order}",
                 "status": "error",
+                "success": False,
                 "error": f"关联的接口用例不存在 (api_case_id={step.api_case_id})",
                 "assertion_results": [],
                 "variable_extractions": [],
@@ -607,8 +712,8 @@ class TestScenario{scenario_id}:
                 "method": api_case.method,
                 "url": api_case.url,
                 "headers": api_case.headers or {},
-                "body": getattr(api_case, 'body', None) or getattr(api_case, 'payload', None) or "",
-                "payload": getattr(api_case, 'body', None) or getattr(api_case, 'payload', None) or "",
+                "body": getattr(api_case, "body", None) or getattr(api_case, "payload", None) or "",
+                "payload": getattr(api_case, "body", None) or getattr(api_case, "payload", None) or "",
             }
 
             if step.variable_overrides:
@@ -652,21 +757,21 @@ class TestScenario{scenario_id}:
                         parsed_json = json.loads(raw_payload)
                         req_kwargs["json"] = parsed_json
                     except json.JSONDecodeError:
-                        req_kwargs["content"] = raw_payload.encode('utf-8')
+                        req_kwargs["content"] = raw_payload.encode("utf-8")
                         if not any(k.lower() == "content-type" for k in final_headers.keys()):
                             final_headers["Content-Type"] = "application/json"
                 elif isinstance(raw_payload, dict):
                     req_kwargs["json"] = raw_payload
                 else:
-                    req_kwargs["content"] = str(raw_payload).encode('utf-8')
+                    req_kwargs["content"] = str(raw_payload).encode("utf-8")
 
-            if method.upper() in ['POST', 'PUT', 'PATCH']:
-                if not any(k.lower() == 'content-type' for k in final_headers.keys()):
-                    final_headers['Content-Type'] = 'application/json'
+            if method.upper() in ["POST", "PUT", "PATCH"]:
+                if not any(k.lower() == "content-type" for k in final_headers.keys()):
+                    final_headers["Content-Type"] = "application/json"
 
             req_kwargs["headers"] = final_headers
 
-            if not raw_payload and 'application/json' in final_headers.get('Content-Type', ''):
+            if not raw_payload and "application/json" in final_headers.get("Content-Type", ""):
                 req_kwargs["json"] = {}
 
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -676,7 +781,6 @@ class TestScenario{scenario_id}:
 
             # 默认断言：状态码 >= 400 视为失败
             assertions = api_case.assert_rules
-            has_status_code_assertion = False
             if assertions:
                 if isinstance(assertions, list):
                     for rule in assertions:
@@ -686,7 +790,7 @@ class TestScenario{scenario_id}:
                             break
                 elif isinstance(assertions, dict):
                     if "status_code" in assertions:
-                        has_status_code_assertion = True
+                        pass
 
             if response.status_code >= 400:
                 raise AssertionError(f"默认断言失败: 期望 2xx/3xx (< 400), 实际返回 {response.status_code}")
@@ -713,17 +817,21 @@ class TestScenario{scenario_id}:
                     normalized_assertions = []
                     for key, value in assertions.items():
                         if isinstance(value, dict):
-                            normalized_assertions.append({
-                                "field": key,
-                                "operator": value.get("operator", "equals"),
-                                "expectedValue": value.get("expectedValue") or value.get("eq")
-                            })
+                            normalized_assertions.append(
+                                {
+                                    "field": key,
+                                    "operator": value.get("operator", "equals"),
+                                    "expectedValue": value.get("expectedValue") or value.get("eq"),
+                                }
+                            )
                         else:
-                            normalized_assertions.append({
-                                "field": key,
-                                "operator": "equals",
-                                "expectedValue": value
-                            })
+                            normalized_assertions.append(
+                                {
+                                    "field": key,
+                                    "operator": "equals",
+                                    "expectedValue": value,
+                                }
+                            )
                     assertions = normalized_assertions
             elif not isinstance(assertions, list):
                 assertions = []
@@ -742,7 +850,7 @@ class TestScenario{scenario_id}:
                         failed_assertions.append({"assertion": assertion, "reason": reason})
 
             # 提取变量
-            extractors = getattr(api_case, 'extractors', None) or []
+            extractors = getattr(api_case, "extractors", None) or []
             self._extract_variables(extractors, response_data)
 
             step_result = {
@@ -753,7 +861,9 @@ class TestScenario{scenario_id}:
                 "method": api_case.method,
                 "url": request_config["url"],
                 "headers": final_headers,
-                "payload": raw_payload if isinstance(raw_payload, dict) else (json.loads(raw_payload) if raw_payload and raw_payload.strip() else {}),
+                "payload": raw_payload
+                if isinstance(raw_payload, dict)
+                else (json.loads(raw_payload) if raw_payload and raw_payload.strip() else {}),
                 "success": len(failed_assertions) == 0,
                 "status_code": response.status_code,
                 "response_time": step_duration,
@@ -761,9 +871,9 @@ class TestScenario{scenario_id}:
                 "assertions": {
                     "total": total_assertions,
                     "passed": passed_assertions,
-                    "failed": failed_assertions
+                    "failed": failed_assertions,
                 },
-                "extracted_vars": {k: v for k, v in self.context_vars.items() if k not in self._get_initial_vars()}
+                "extracted_vars": {k: v for k, v in self.context_vars.items() if k not in self._get_initial_vars()},
             }
 
             return step_result
@@ -811,10 +921,18 @@ class TestScenario{scenario_id}:
                 actual = ""
 
             op_map = {
-                "eq": "equals", "equals": "equals", "equal": "equals",
-                "ne": "not_equals", "not_equals": "not_equals", "not_equal": "not_equals",
-                "contains": "contains", "not_contains": "not_contains",
-                "gt": "gt", "lt": "lt", "regex": "regex", "match": "regex"
+                "eq": "equals",
+                "equals": "equals",
+                "equal": "equals",
+                "ne": "not_equals",
+                "not_equals": "not_equals",
+                "not_equal": "not_equals",
+                "contains": "contains",
+                "not_contains": "not_contains",
+                "gt": "gt",
+                "lt": "lt",
+                "regex": "regex",
+                "match": "regex",
             }
             operator = op_map.get(operator, operator)
 
@@ -836,6 +954,7 @@ class TestScenario{scenario_id}:
                 passed = float(actual) <= float(expected) if actual and expected else False
             elif operator == "regex":
                 import re
+
                 passed = bool(re.search(str(expected), str(actual)))
             elif operator == "range":
                 range_text = str(expected).lower()
@@ -883,6 +1002,7 @@ class TestScenario{scenario_id}:
                         value = extract_jsonpath_value(json_data, expression, default_value)
                 elif extractor_type == "regex":
                     import re
+
                     match = re.search(expression, body)
                     if match:
                         value = match.group(1) if match.groups() else match.group(0)
@@ -918,7 +1038,7 @@ class DataDrivenScenarioExecutionEngine:
                 select(AutoTestScenario)
                 .options(
                     selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case),
-                    selectinload(AutoTestScenario.dataset)
+                    selectinload(AutoTestScenario.dataset),
                 )
                 .where(AutoTestScenario.id == self.scenario_id)
             )
@@ -940,14 +1060,10 @@ class DataDrivenScenarioExecutionEngine:
             env_config = {}
             env = None
             if self.env_id:
-                result = await db.execute(
-                    select(AutoTestEnvironment).where(AutoTestEnvironment.id == self.env_id)
-                )
+                result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == self.env_id))
                 env = result.scalar_one_or_none()
             else:
-                result = await db.execute(
-                    select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True)
-                )
+                result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default))
                 env = result.scalar_one_or_none()
                 if not env:
                     result = await db.execute(select(AutoTestEnvironment))
@@ -958,8 +1074,12 @@ class DataDrivenScenarioExecutionEngine:
 
             for row_index, row_data in enumerate(rows):
                 iteration_result = await self._execute_iteration(
-                    db=db, scenario=scenario, columns=columns,
-                    row_data=row_data, row_index=row_index, env_config=env_config
+                    db=db,
+                    scenario=scenario,
+                    columns=columns,
+                    row_data=row_data,
+                    row_index=row_index,
+                    env_config=env_config,
                 )
                 self.iterations.append(iteration_result)
                 self.total_duration += iteration_result.get("duration", 0)
@@ -980,8 +1100,13 @@ class DataDrivenScenarioExecutionEngine:
         }
 
     async def _execute_iteration(
-        self, db, scenario, columns: List[str], row_data: List[Any],
-        row_index: int, env_config: Dict[str, Any]
+        self,
+        db,
+        scenario,
+        columns: List[str],
+        row_data: List[Any],
+        row_index: int,
+        env_config: Dict[str, Any],
     ) -> Dict[str, Any]:
         iteration_start_time = time.time()
 
@@ -1004,7 +1129,7 @@ class DataDrivenScenarioExecutionEngine:
                 "success": result.get("failed_steps", 0) == 0,
                 "duration": iteration_duration,
                 "context_vars": engine.context_vars,
-                "error": None
+                "error": None,
             }
         except Exception as e:
             iteration_duration = int((time.time() - iteration_start_time) * 1000)
@@ -1015,25 +1140,19 @@ class DataDrivenScenarioExecutionEngine:
                 "success": False,
                 "duration": iteration_duration,
                 "context_vars": engine.context_vars,
-                "error": str(e)
+                "error": str(e),
             }
 
 
 async def run_scenario_data_driven(
-    scenario_id: int,
-    env_id: Optional[int] = None,
-    progress_callback=None
+    scenario_id: int, env_id: Optional[int] = None, progress_callback=None
 ) -> Dict[str, Any]:
     """数据驱动执行场景的入口函数"""
     engine = DataDrivenScenarioExecutionEngine(scenario_id, env_id, progress_callback=progress_callback)
     return await engine.execute()
 
 
-async def run_scenario(
-    scenario_id: int,
-    env_id: Optional[int] = None,
-    progress_callback=None
-) -> Dict[str, Any]:
+async def run_scenario(scenario_id: int, env_id: Optional[int] = None, progress_callback=None) -> Dict[str, Any]:
     """普通场景执行入口，不要求预先配置数据集。"""
     engine = ScenarioExecutionEngine(scenario_id, env_id, progress_callback=progress_callback)
     return await engine.execute()

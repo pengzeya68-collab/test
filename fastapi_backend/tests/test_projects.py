@@ -1,14 +1,16 @@
 """
 测试项目实战空间API集成测试
 """
-import pytest
+
 import pytest_asyncio
-from datetime import datetime, timezone
-from unittest.mock import patch, AsyncMock
 
 from fastapi_backend.models.models import (
-    User, LearningPath, Exercise, ProjectSpace, ProjectTask,
-    ProjectResource, ProjectSubmission, ProjectEvaluation, Progress,
+    User,
+    LearningPath,
+    Exercise,
+    ProjectSpace,
+    ProjectTask,
+    ProjectResource,
 )
 
 
@@ -112,12 +114,14 @@ async def test_project(db_session, test_path, test_user):
 def make_auth_override(user):
     async def override():
         return user
+
     return override
 
 
 class TestProjectList:
     def test_list_projects_empty(self, client, test_user, test_path):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.get(f"/api/v1/learning-paths/{test_path.id}/projects")
@@ -128,6 +132,7 @@ class TestProjectList:
 
     def test_list_projects_with_data(self, client, test_user, test_path, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.get(f"/api/v1/learning-paths/{test_path.id}/projects")
@@ -139,6 +144,7 @@ class TestProjectList:
 
     def test_list_projects_path_not_found(self, client, test_user):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.get("/api/v1/learning-paths/9999/projects")
@@ -148,6 +154,7 @@ class TestProjectList:
 class TestProjectDetail:
     def test_get_project(self, client, test_user, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.get(f"/api/v1/projects/{test_project.id}")
@@ -161,6 +168,7 @@ class TestProjectDetail:
 
     def test_get_project_not_found(self, client, test_user):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.get("/api/v1/projects/9999")
@@ -170,6 +178,7 @@ class TestProjectDetail:
 class TestProjectTasks:
     def test_get_tasks(self, client, test_user, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.get(f"/api/v1/projects/{test_project.id}/tasks")
@@ -180,6 +189,7 @@ class TestProjectTasks:
 
     def test_get_resources(self, client, test_user, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.get(f"/api/v1/projects/{test_project.id}/resources")
@@ -192,6 +202,7 @@ class TestProjectTasks:
 class TestProjectProgress:
     def test_get_progress(self, client, test_user, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.get(f"/api/v1/projects/{test_project.id}/progress")
@@ -205,6 +216,7 @@ class TestProjectProgress:
 class TestTaskSubmission:
     def test_submit_task(self, client, test_user, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         tasks_resp = client.get(f"/api/v1/projects/{test_project.id}/tasks")
@@ -212,7 +224,7 @@ class TestTaskSubmission:
 
         response = client.post(
             f"/api/v1/projects/{test_project.id}/tasks/{first_task['id']}/submit",
-            json={"content": "提交内容：测试点设计成果"}
+            json={"content": "提交内容：测试点设计成果"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -225,6 +237,7 @@ class TestTaskSubmission:
 
     def test_submit_task_reupdate(self, client, test_user, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         tasks_resp = client.get(f"/api/v1/projects/{test_project.id}/tasks")
@@ -232,16 +245,17 @@ class TestTaskSubmission:
 
         client.post(
             f"/api/v1/projects/{test_project.id}/tasks/{first_task['id']}/submit",
-            json={"content": "first"}
+            json={"content": "first"},
         )
         response = client.post(
             f"/api/v1/projects/{test_project.id}/tasks/{first_task['id']}/submit",
-            json={"content": "updated"}
+            json={"content": "updated"},
         )
         assert response.status_code == 200
 
     def test_submit_all_tasks_completes_path(self, client, test_user, test_path, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         tasks_resp = client.get(f"/api/v1/projects/{test_project.id}/tasks")
@@ -250,13 +264,13 @@ class TestTaskSubmission:
         for t in tasks:
             resp = client.post(
                 f"/api/v1/projects/{test_project.id}/tasks/{t['id']}/submit",
-                json={"content": f"提交内容: {t['title']}"}
+                json={"content": f"提交内容: {t['title']}"},
             )
             assert resp.status_code == 200
 
         last_resp = client.post(
             f"/api/v1/projects/{test_project.id}/tasks/{tasks[-1]['id']}/submit",
-            json={"content": "final"}
+            json={"content": "final"},
         )
         assert last_resp.json()["all_submitted"] is True
 
@@ -269,6 +283,7 @@ class TestTaskSubmission:
 class TestProjectStart:
     def test_start_project(self, client, test_user, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.post(f"/api/v1/projects/{test_project.id}/start")
@@ -280,6 +295,7 @@ class TestProjectStart:
 class TestProjectEvaluation:
     def test_evaluation_empty(self, client, test_user, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.get(f"/api/v1/projects/{test_project.id}/evaluation")
@@ -291,6 +307,7 @@ class TestProjectEvaluation:
 class TestProjectExam:
     def test_exam_start_no_exam_id(self, client, test_user, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.post(f"/api/v1/projects/{test_project.id}/exam/start", json={})
@@ -300,6 +317,7 @@ class TestProjectExam:
 
     def test_exam_start_with_id(self, client, test_user, test_project):
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.post(f"/api/v1/projects/{test_project.id}/exam/start", json={"exam_id": 1})
@@ -312,6 +330,7 @@ class TestRegression:
     def test_resubmit_does_not_double_score(self, client, test_user, test_project):
         """重复提交不会重复加分"""
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         tasks_resp = client.get(f"/api/v1/projects/{test_project.id}/tasks")
@@ -320,7 +339,7 @@ class TestRegression:
         for t in tasks:
             client.post(
                 f"/api/v1/projects/{test_project.id}/tasks/{t['id']}/submit",
-                json={"content": f"提交: {t['title']}"}
+                json={"content": f"提交: {t['title']}"},
             )
 
         eval_resp = client.get(f"/api/v1/projects/{test_project.id}/evaluation")
@@ -331,7 +350,7 @@ class TestRegression:
 
         client.post(
             f"/api/v1/projects/{test_project.id}/tasks/{tasks[0]['id']}/submit",
-            json={"content": "修改后的提交"}
+            json={"content": "修改后的提交"},
         )
 
         eval_resp2 = client.get(f"/api/v1/projects/{test_project.id}/evaluation")
@@ -341,6 +360,7 @@ class TestRegression:
     def test_last_task_submission_generates_evaluation(self, client, test_user, test_project):
         """提交最后一个任务后立即生成评价"""
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         tasks_resp = client.get(f"/api/v1/projects/{test_project.id}/tasks")
@@ -349,7 +369,7 @@ class TestRegression:
         for t in tasks[:-1]:
             client.post(
                 f"/api/v1/projects/{test_project.id}/tasks/{t['id']}/submit",
-                json={"content": f"提交: {t['title']}"}
+                json={"content": f"提交: {t['title']}"},
             )
 
         eval_before = client.get(f"/api/v1/projects/{test_project.id}/evaluation")
@@ -357,7 +377,7 @@ class TestRegression:
 
         last_resp = client.post(
             f"/api/v1/projects/{test_project.id}/tasks/{tasks[-1]['id']}/submit",
-            json={"content": "最终提交"}
+            json={"content": "最终提交"},
         )
         assert last_resp.json()["all_submitted"] is True
 
@@ -368,11 +388,12 @@ class TestRegression:
     def test_scenario_ownership_validation_in_autotest_run(self, client, test_user, test_project):
         """非项目场景不能冒充项目执行"""
         from fastapi_backend.deps.auth import get_current_user
+
         client.app.dependency_overrides[get_current_user] = make_auth_override(test_user)
 
         response = client.post(
             f"/api/v1/projects/{test_project.id}/autotest/run",
-            json={"scenario_id": 99999}
+            json={"scenario_id": 99999},
         )
         assert response.status_code == 400
         assert "不存在" in response.json()["detail"]

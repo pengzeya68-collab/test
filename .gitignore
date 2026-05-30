@@ -83,6 +83,23 @@ tmp/
 temp/
 *.tmp
 
+# Celery beat schedule
+celerybeat-schedule*
+
+# Backup/broken files
+*.bak
+*.backup
+*.broken
+
+# Debug screenshots (root level)
+/*.png
+
+# Report extraction directories
+_report*/
+
+# SSL certificates
+ssl/*.pem
+
 # AutoTest data (runtime generated)
 fastapi_backend/autotest_data/reports/
 fastapi_backend/autotest_data/screenshots/
@@ -91,5 +108,28 @@ fastapi_backend/autotest_data/logs/
 # Keep example data
 !fastapi_backend/autotest_data/.gitkeep
 
-# Local deployment scripts (contain server passwords)
+# Local deployment/temp scripts (contain server passwords)
 _ssh_*.py
+_deploy*.py
+_test*.py
+_check*.py
+_verify*.py
+_sync*.py
+_upload*.py
+_fix*.py
+_restart*.py
+_gen_*.py
+_debug_*.py
+_tmp_*.py
+_quick*.py
+_d.py
+_dpx.py
+_dp*.py
+_qrd.py
+_v2.py
+_final*.py
+_full_*.py
+_simple*.py
+_server_*.py
+_sftp_*.py
+_migrate_data.py

@@ -4,19 +4,28 @@ AutoTest 统一路由 - 用例管理
 路径前缀: /api/auto-test/cases
 映射原 auto_test_platform 的 /api/cases
 """
+
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.autotest import AutoTestCase, AutoTestHistory
+from fastapi_backend.models.autotest import (
+    AutoTestCase,
+    AutoTestHistory,
+    AutoTestScenarioStep,
+)
 from fastapi_backend.schemas.autotest import (
     AutoTestCaseCreate,
     AutoTestCaseUpdate,
 )
 
-router = APIRouter(prefix="/api/auto-test/cases", tags=["AutoTest-用例"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/auto-test/cases",
+    tags=["AutoTest-用例"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _case_to_dict(case):
@@ -29,8 +38,8 @@ def _case_to_dict(case):
         "url": case.url,
         "headers": case.headers,
         "params": case.params,
-        "body_type": getattr(case, 'body_type', 'none'),
-        "content_type": getattr(case, 'content_type', 'application/json'),
+        "body_type": getattr(case, "body_type", "none"),
+        "content_type": getattr(case, "content_type", "application/json"),
         "payload": case.payload,
         "assert_rules": case.assert_rules,
         "extractors": case.extractors,
@@ -74,15 +83,18 @@ async def list_cases(
         # 查询每个 case_id 的最新历史记录
         # 先获取所有 case_id 的最大 created_at
         max_time_subq = (
-            select(AutoTestHistory.case_id, func.max(AutoTestHistory.created_at).label("max_time"))
+            select(
+                AutoTestHistory.case_id,
+                func.max(AutoTestHistory.created_at).label("max_time"),
+            )
             .where(AutoTestHistory.case_id.in_(case_ids))
             .group_by(AutoTestHistory.case_id)
             .subquery()
         )
         latest_history_stmt = select(AutoTestHistory).join(
             max_time_subq,
-            (AutoTestHistory.case_id == max_time_subq.c.case_id) &
-            (AutoTestHistory.created_at == max_time_subq.c.max_time)
+            (AutoTestHistory.case_id == max_time_subq.c.case_id)
+            & (AutoTestHistory.created_at == max_time_subq.c.max_time),
         )
         latest_history_result = await db.execute(latest_history_stmt)
         history_map = {h.case_id: h for h in latest_history_result.scalars().all()}
@@ -118,33 +130,36 @@ async def get_all_cases(
         query = query.where(AutoTestCase.group_id == group_id)
     result = await db.execute(query)
     cases = result.scalars().all()
-    
+
     # 批量查询每个用例的最近执行状态（避免 N+1 查询）
     case_ids = [case.id for case in cases]
     if case_ids:
         max_time_subq = (
-            select(AutoTestHistory.case_id, func.max(AutoTestHistory.created_at).label("max_time"))
+            select(
+                AutoTestHistory.case_id,
+                func.max(AutoTestHistory.created_at).label("max_time"),
+            )
             .where(AutoTestHistory.case_id.in_(case_ids))
             .group_by(AutoTestHistory.case_id)
             .subquery()
         )
         latest_history_stmt = select(AutoTestHistory).join(
             max_time_subq,
-            (AutoTestHistory.case_id == max_time_subq.c.case_id) &
-            (AutoTestHistory.created_at == max_time_subq.c.max_time)
+            (AutoTestHistory.case_id == max_time_subq.c.case_id)
+            & (AutoTestHistory.created_at == max_time_subq.c.max_time),
         )
         latest_history_result = await db.execute(latest_history_stmt)
         history_map = {h.case_id: h for h in latest_history_result.scalars().all()}
     else:
         history_map = {}
-    
+
     cases_with_status = []
     for case in cases:
         case_dict = _case_to_dict(case)
         last_history = history_map.get(case.id)
         case_dict["lastRunStatus"] = last_history.status if last_history else None
         cases_with_status.append(case_dict)
-    
+
     return cases_with_status
 
 
@@ -155,15 +170,20 @@ async def get_case(case_id: int, db: AsyncSession = Depends(get_db)):
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
-    
+
     # 查询最近的执行历史
-    history_query = select(AutoTestHistory).where(AutoTestHistory.case_id == case.id).order_by(AutoTestHistory.created_at.desc()).limit(1)
+    history_query = (
+        select(AutoTestHistory)
+        .where(AutoTestHistory.case_id == case.id)
+        .order_by(AutoTestHistory.created_at.desc())
+        .limit(1)
+    )
     history_result = await db.execute(history_query)
     last_history = history_result.scalar_one_or_none()
-    
+
     case_dict = _case_to_dict(case)
     case_dict["lastRunStatus"] = last_history.status if last_history else None
-    
+
     return case_dict
 
 
@@ -173,7 +193,7 @@ async def create_case(case_in: AutoTestCaseCreate, db: AsyncSession = Depends(ge
     # URL格式校验
     if case_in.url and not case_in.url.startswith(("/", "http://", "https://")):
         raise HTTPException(status_code=400, detail="URL格式不正确，必须以/或http://或https://开头")
-    
+
     data = case_in.model_dump(exclude_none=True)
     if "assertions" in data:
         data["assert_rules"] = data.pop("assertions")
@@ -201,7 +221,7 @@ async def update_case(
     # URL格式校验
     if case_in.url is not None and case_in.url != "" and not case_in.url.startswith(("/", "http://", "https://")):
         raise HTTPException(status_code=400, detail="URL格式不正确，必须以/或http://或https://开头")
-    
+
     result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id))
     case = result.scalar_one_or_none()
     if not case:
@@ -233,6 +253,15 @@ async def delete_case(case_id: int, db: AsyncSession = Depends(get_db)):
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
+
+    ref_result = await db.execute(select(AutoTestScenarioStep).where(AutoTestScenarioStep.api_case_id == case_id))
+    ref_steps = ref_result.scalars().all()
+    if ref_steps:
+        scenario_ids = list({step.scenario_id for step in ref_steps})
+        raise HTTPException(
+            status_code=409,
+            detail=f"该用例被 {len(ref_steps)} 个场景步骤引用（场景ID: {scenario_ids}），无法删除。请先移除相关场景步骤后再删除。",
+        )
 
     await db.delete(case)
     await db.commit()

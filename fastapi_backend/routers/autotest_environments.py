@@ -4,6 +4,7 @@ AutoTest 统一路由 - 环境管理
 路径前缀: /api/auto-test/environments
 映射原 auto_test_platform 的 /api/environments
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
@@ -15,7 +16,23 @@ from fastapi_backend.schemas.autotest import (
     AutoTestEnvironmentUpdate,
 )
 
-router = APIRouter(prefix="/api/auto-test/environments", tags=["AutoTest-环境"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/auto-test/environments",
+    tags=["AutoTest-环境"],
+    dependencies=[Depends(get_current_user)],
+)
+
+
+import re
+
+_SENSITIVE_PATTERN = re.compile(r"(password|secret|key|token)", re.IGNORECASE)
+
+
+def _mask_variables(variables):
+    """对敏感 key 的值做脱敏处理"""
+    if not isinstance(variables, dict):
+        return variables
+    return {k: "****" if _SENSITIVE_PATTERN.search(k) else v for k, v in variables.items()}
 
 
 def _env_to_dict(env):
@@ -25,7 +42,7 @@ def _env_to_dict(env):
         "name": env.env_name,
         "env_name": env.env_name,
         "base_url": env.base_url,
-        "variables": env.variables,
+        "variables": _mask_variables(env.variables),
         "is_default": env.is_default,
         "created_at": env.created_at.isoformat() if env.created_at else None,
     }
@@ -60,10 +77,7 @@ async def create_environment(
         data["env_name"] = data.pop("name")
 
     if data.get("is_default"):
-        await db.execute(
-            update(AutoTestEnvironment)
-            .values(is_default=False)
-        )
+        await db.execute(update(AutoTestEnvironment).values(is_default=False))
 
     env = AutoTestEnvironment(**data)
     db.add(env)
@@ -85,11 +99,7 @@ async def update_environment(
         raise HTTPException(status_code=404, detail="环境不存在")
 
     if env_in.is_default:
-        await db.execute(
-            update(AutoTestEnvironment)
-            .where(AutoTestEnvironment.id != env_id)
-            .values(is_default=False)
-        )
+        await db.execute(update(AutoTestEnvironment).where(AutoTestEnvironment.id != env_id).values(is_default=False))
 
     for field, value in env_in.model_dump(exclude_unset=True).items():
         if field == "name":

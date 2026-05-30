@@ -1,4 +1,5 @@
 """Learning paths router – migrated from Flask backend/api/learning_paths.py."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -11,7 +12,13 @@ from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_active_user
-from fastapi_backend.models.models import Exercise, LearningPath, User, Progress, LessonSection
+from fastapi_backend.models.models import (
+    Exercise,
+    LearningPath,
+    User,
+    Progress,
+    LessonSection,
+)
 from fastapi_backend.schemas.learning_paths import (
     AddExerciseRequest,
     LearningPathCreate,
@@ -29,15 +36,14 @@ def _fmt_dt(dt: datetime | None) -> str:
 
 # ── Public endpoints ──────────────────────────────────────
 
-@router.get("/", response_model=list[LearningPathResponse])
+
+@router.get("", response_model=list[LearningPathResponse])
 async def get_learning_paths(
     stage: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all public learning paths, optionally filtered by stage."""
-    q = select(LearningPath).options(selectinload(LearningPath.exercises)).filter(
-        LearningPath.is_public
-    )
+    q = select(LearningPath).options(selectinload(LearningPath.exercises)).filter(LearningPath.is_public)
     if stage is not None:
         q = q.filter(LearningPath.stage == stage)
 
@@ -67,8 +73,12 @@ async def get_all_paths_progress(
     db: AsyncSession = Depends(get_db),
 ):
     """Get current user's progress for all learning paths."""
-    q = select(LearningPath).options(selectinload(LearningPath.exercises)).filter(
-        LearningPath.is_public == True  # noqa: E712
+    q = (
+        select(LearningPath)
+        .options(selectinload(LearningPath.exercises))
+        .filter(
+            LearningPath.is_public == True  # noqa: E712
+        )
     )
     result = await db.execute(q)
     paths = result.scalars().all()
@@ -98,12 +108,14 @@ async def get_all_paths_progress(
     for p in paths:
         info = path_exercise_map[p.id]
         completed = sum(1 for eid in info["ids"] if progress_map.get(eid, False))
-        result_list.append({
-            "path_id": p.id,
-            "total_exercises": info["total"],
-            "completed_exercises": completed,
-            "progress_percent": round(completed / info["total"] * 100, 1) if info["total"] > 0 else 0,
-        })
+        result_list.append(
+            {
+                "path_id": p.id,
+                "total_exercises": info["total"],
+                "completed_exercises": completed,
+                "progress_percent": round(completed / info["total"] * 100, 1) if info["total"] > 0 else 0,
+            }
+        )
 
     return {"progress": result_list}
 
@@ -114,11 +126,7 @@ async def get_learning_path(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single learning path with its exercises."""
-    q = (
-        select(LearningPath)
-        .options(selectinload(LearningPath.exercises))
-        .filter(LearningPath.id == path_id)
-    )
+    q = select(LearningPath).options(selectinload(LearningPath.exercises)).filter(LearningPath.id == path_id)
     result = await db.execute(q)
     path = result.scalar_one_or_none()
 
@@ -159,7 +167,8 @@ async def get_learning_path(
 
 # ── Authenticated endpoints ───────────────────────────────
 
-@router.post("/", response_model=LearningPathDetail, status_code=201)
+
+@router.post("", response_model=LearningPathDetail, status_code=201)
 async def create_learning_path(
     payload: LearningPathCreate,
     current_user: User = Depends(get_current_active_user),
@@ -205,9 +214,7 @@ async def update_learning_path(
     db: AsyncSession = Depends(get_db),
 ):
     """Update a learning path (owner only)."""
-    result = await db.execute(
-        select(LearningPath).filter(LearningPath.id == path_id)
-    )
+    result = await db.execute(select(LearningPath).filter(LearningPath.id == path_id))
     path = result.scalar_one_or_none()
 
     if not path:
@@ -241,9 +248,7 @@ async def delete_learning_path(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a learning path (owner only)."""
-    result = await db.execute(
-        select(LearningPath).filter(LearningPath.id == path_id)
-    )
+    result = await db.execute(select(LearningPath).filter(LearningPath.id == path_id))
     path = result.scalar_one_or_none()
 
     if not path:
@@ -258,6 +263,7 @@ async def delete_learning_path(
 
 # ── Exercises in a learning path ──────────────────────────
 
+
 @router.get("/{path_id}/exercises", response_model=list[dict])
 async def get_path_exercises(
     path_id: int,
@@ -265,11 +271,7 @@ async def get_path_exercises(
     db: AsyncSession = Depends(get_db),
 ):
     """Get all exercises in a learning path."""
-    q = (
-        select(LearningPath)
-        .options(selectinload(LearningPath.exercises))
-        .filter(LearningPath.id == path_id)
-    )
+    q = select(LearningPath).options(selectinload(LearningPath.exercises)).filter(LearningPath.id == path_id)
     result = await db.execute(q)
     path = result.scalar_one_or_none()
 
@@ -301,9 +303,7 @@ async def add_exercise_to_path(
     db: AsyncSession = Depends(get_db),
 ):
     """Add an exercise to a learning path (owner only)."""
-    result = await db.execute(
-        select(LearningPath).filter(LearningPath.id == path_id)
-    )
+    result = await db.execute(select(LearningPath).filter(LearningPath.id == path_id))
     path = result.scalar_one_or_none()
 
     if not path:
@@ -311,9 +311,7 @@ async def add_exercise_to_path(
     if path.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    ex_result = await db.execute(
-        select(Exercise).filter(Exercise.id == payload.exercise_id)
-    )
+    ex_result = await db.execute(select(Exercise).filter(Exercise.id == payload.exercise_id))
     exercise = ex_result.scalar_one_or_none()
 
     if not exercise:
@@ -333,11 +331,7 @@ async def get_learning_path_progress(
     db: AsyncSession = Depends(get_db),
 ):
     """Get current user's progress for a specific learning path."""
-    q = (
-        select(LearningPath)
-        .options(selectinload(LearningPath.exercises))
-        .filter(LearningPath.id == path_id)
-    )
+    q = select(LearningPath).options(selectinload(LearningPath.exercises)).filter(LearningPath.id == path_id)
     result = await db.execute(q)
     path = result.scalar_one_or_none()
 
@@ -376,13 +370,15 @@ async def get_learning_path_progress(
     exercises = []
     for ex in path.exercises:
         p = progress_map.get(ex.id, {})
-        exercises.append({
-            "id": ex.id,
-            "title": ex.title,
-            "completed": p.get("completed", False),
-            "score": p.get("score"),
-            "attempts": p.get("attempts", 0),
-        })
+        exercises.append(
+            {
+                "id": ex.id,
+                "title": ex.title,
+                "completed": p.get("completed", False),
+                "score": p.get("score"),
+                "attempts": p.get("attempts", 0),
+            }
+        )
 
     return {
         "path_id": path_id,
@@ -395,17 +391,14 @@ async def get_learning_path_progress(
 
 # ── Lessons in a learning path ────────────────────────────
 
+
 @router.get("/{path_id}/lessons")
 async def get_path_lessons(
     path_id: int,
     db: AsyncSession = Depends(get_db),
 ):
     """Get all lesson sections for a learning path (without full content)."""
-    q = (
-        select(LearningPath)
-        .options(selectinload(LearningPath.lesson_sections))
-        .filter(LearningPath.id == path_id)
-    )
+    q = select(LearningPath).options(selectinload(LearningPath.lesson_sections)).filter(LearningPath.id == path_id)
     result = await db.execute(q)
     path = result.scalar_one_or_none()
 
@@ -448,31 +441,33 @@ async def get_path_lesson_detail(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    path_result = await db.execute(
-        select(LearningPath).filter(LearningPath.id == path_id)
-    )
+    path_result = await db.execute(select(LearningPath).filter(LearningPath.id == path_id))
     path = path_result.scalar_one_or_none()
     if not path or not path.is_public:
         raise HTTPException(status_code=403, detail="Access denied")
 
     all_lessons_result = await db.execute(
-        select(LessonSection)
-        .filter(LessonSection.learning_path_id == path_id)
-        .order_by(LessonSection.sort_order)
+        select(LessonSection).filter(LessonSection.learning_path_id == path_id).order_by(LessonSection.sort_order)
     )
     all_lessons = all_lessons_result.scalars().all()
 
-    current_index = next(
-        (i for i, s in enumerate(all_lessons) if s.id == lesson_id), -1
-    )
+    current_index = next((i for i, s in enumerate(all_lessons) if s.id == lesson_id), -1)
 
     prev_lesson = (
-        {"id": all_lessons[current_index - 1].id, "title": all_lessons[current_index - 1].title}
-        if current_index > 0 else None
+        {
+            "id": all_lessons[current_index - 1].id,
+            "title": all_lessons[current_index - 1].title,
+        }
+        if current_index > 0
+        else None
     )
     next_lesson = (
-        {"id": all_lessons[current_index + 1].id, "title": all_lessons[current_index + 1].title}
-        if current_index < len(all_lessons) - 1 else None
+        {
+            "id": all_lessons[current_index + 1].id,
+            "title": all_lessons[current_index + 1].title,
+        }
+        if current_index < len(all_lessons) - 1
+        else None
     )
 
     return {
@@ -493,13 +488,14 @@ async def get_path_lesson_detail(
 
 # ── Projects in a learning path ──
 
+
 @router.get("/{path_id}/projects")
 async def get_path_projects(
     path_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from fastapi_backend.models.models import ProjectSpace, ProjectTask, ProjectSubmission
+    from fastapi_backend.models.models import ProjectSpace
     from sqlalchemy import select as sa_select
     from sqlalchemy.orm import selectinload as sa_selectinload
 
@@ -512,13 +508,18 @@ async def get_path_projects(
     if not path.is_public and path.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    q2 = sa_select(ProjectSpace).options(
-        sa_selectinload(ProjectSpace.tasks),
-        sa_selectinload(ProjectSpace.submissions),
-    ).where(
-        ProjectSpace.learning_path_id == path_id,
-        ProjectSpace.status == "published",
-    ).order_by(ProjectSpace.sort_order)
+    q2 = (
+        sa_select(ProjectSpace)
+        .options(
+            sa_selectinload(ProjectSpace.tasks),
+            sa_selectinload(ProjectSpace.submissions),
+        )
+        .where(
+            ProjectSpace.learning_path_id == path_id,
+            ProjectSpace.status == "published",
+        )
+        .order_by(ProjectSpace.sort_order)
+    )
     projects_result = await db.execute(q2)
     projects = projects_result.scalars().all()
 
@@ -527,19 +528,21 @@ async def get_path_projects(
         task_count = len(p.tasks) if p.tasks else 0
         user_subs = [s for s in p.submissions if s.user_id == current_user.id]
         submitted_count = len(set(s.task_id for s in user_subs))
-        project_list.append({
-            "id": p.id,
-            "title": p.title,
-            "description": p.description,
-            "difficulty": p.difficulty,
-            "estimated_hours": p.estimated_hours,
-            "task_count": task_count,
-            "sort_order": p.sort_order,
-            "progress": {
-                "total_tasks": task_count,
-                "completed_tasks": submitted_count,
-                "percent": round(submitted_count / task_count * 100, 1) if task_count > 0 else 0,
-            },
-        })
+        project_list.append(
+            {
+                "id": p.id,
+                "title": p.title,
+                "description": p.description,
+                "difficulty": p.difficulty,
+                "estimated_hours": p.estimated_hours,
+                "task_count": task_count,
+                "sort_order": p.sort_order,
+                "progress": {
+                    "total_tasks": task_count,
+                    "completed_tasks": submitted_count,
+                    "percent": round(submitted_count / task_count * 100, 1) if task_count > 0 else 0,
+                },
+            }
+        )
 
     return {"path_id": path_id, "path_title": path.title, "projects": project_list}
