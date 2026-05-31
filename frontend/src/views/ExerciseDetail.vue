@@ -210,6 +210,7 @@
               v-model="userCode"
               :language="exercise.language?.toLowerCase() || 'python'"
               :template="exercise.code_template || ''"
+              :setupSql="exercise.setup_sql || ''"
               @run="onCodeRun"
             />
           </div>
@@ -748,6 +749,10 @@ const fetchExerciseDetail = async () => {
     if (!res || !res.id) {
       console.warn('[ExerciseDetail] Invalid response data:', res)
       ElMessage.warning('习题数据异常')
+    } else {
+      if (res.exercise_type === 'code' && res.code_template) {
+        userCode.value = res.code_template
+      }
     }
   } catch (error) {
     console.error('获取习题详情失败:', error?.response?.status, error?.response?.data || error.message)

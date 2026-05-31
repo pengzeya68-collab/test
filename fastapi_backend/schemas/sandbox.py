@@ -13,6 +13,7 @@ class SandboxRequest(BaseModel):
         le=settings.SANDBOX_MAX_TIMEOUT_SECONDS,
         description=f"执行超时时间（秒），最大 {settings.SANDBOX_MAX_TIMEOUT_SECONDS} 秒",
     )
+    setup_sql: str | None = Field(None, description="SQL题建表和初始数据")
 
 
 class SandboxResult(BaseModel):

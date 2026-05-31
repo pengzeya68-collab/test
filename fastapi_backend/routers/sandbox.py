@@ -30,6 +30,7 @@ async def execute_code(request: SandboxRequest, sandbox: CodeSandbox = Depends(g
         language=request.language,
         input_data=request.input_data,
         timeout=request.timeout,
+        setup_sql=request.setup_sql,
     )
 
     # 将字典转换为SandboxResult模型

@@ -1,4 +1,4 @@
-﻿﻿<template>
+<template>
   <div class="code-editor-container">
     <!-- 工具栏 -->
     <div class="editor-toolbar">
@@ -84,6 +84,10 @@ const props = defineProps({
   template: {
     type: String,
     default: ''
+  },
+  setupSql: {
+    type: String,
+    default: ''
   }
 })
 
@@ -137,8 +141,9 @@ const createEditor = () => {
     })
   ].filter(Boolean)
 
+  const startDoc = props.modelValue || props.template || getDefaultTemplate(currentLanguage.value)
   const startState = EditorState.create({
-    doc: props.modelValue || props.template || getDefaultTemplate(currentLanguage.value),
+    doc: startDoc,
     extensions: extList
   })
 
@@ -183,14 +188,16 @@ const runCode = async () => {
   outputResult.value = null
   
   try {
-    const res = await request.post('/sandbox/execute', {
+    const payload = {
       code,
       language: currentLanguage.value,
       timeout: 5
-    })
-    // FastAPI 返回 {success, data, message}，data 包含 {stdout, stderr, exit_code, ...}
+    }
+    if (currentLanguage.value === 'sql' && props.setupSql) {
+      payload.setup_sql = props.setupSql
+    }
+    const res = await request.post('/sandbox/execute', payload)
     const result = res.data || res
-    // 统一字段名：FastAPI 用 exit_code，前端用 returncode
     outputResult.value = {
       stdout: result.stdout || '',
       stderr: result.stderr || '',
