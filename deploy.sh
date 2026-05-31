@@ -133,15 +133,43 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
-echo "运行种子数据脚本..."
-docker exec testmaster-backend python -m fastapi_backend.seed_all_data 2>&1 || {
-    echo "种子数据脚本执行失败，尝试备用方式..."
+MIGRATION_FILE="${3:-}"
+if [ -n "$MIGRATION_FILE" ] && [ -f "$MIGRATION_FILE" ]; then
+    echo "检测到数据迁移文件: $MIGRATION_FILE"
+    echo "导入旧服务器数据..."
+
+    if [[ "$MIGRATION_FILE" == *.gz ]]; then
+        gunzip -c "$MIGRATION_FILE" | docker exec -i testmaster-postgres psql -U testmaster -d testmaster 2>&1 || echo "导入完成（部分警告可忽略）"
+    else
+        docker exec -i testmaster-postgres psql -U testmaster -d testmaster < "$MIGRATION_FILE" 2>&1 || echo "导入完成（部分警告可忽略）"
+    fi
+    echo "数据迁移完成！"
+
+    echo "运行代码题修复..."
     docker exec testmaster-backend python -c "
+import asyncio
+from fastapi_backend.seed_all_data import _fix_code_exercises
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from fastapi_backend.core.config import settings
+engine = create_async_engine(settings.DATABASE_URL, echo=False)
+async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async def fix():
+    async with async_session() as session:
+        await _fix_code_exercises(session)
+asyncio.run(fix())
+" 2>&1 || echo "代码题修复跳过"
+else
+    echo "未指定迁移文件，运行种子数据脚本..."
+    docker exec testmaster-backend python -m fastapi_backend.seed_all_data 2>&1 || {
+        echo "种子数据脚本执行失败，尝试备用方式..."
+        docker exec testmaster-backend python -c "
 import asyncio
 from fastapi_backend.seed_all_data import seed_all
 asyncio.run(seed_all())
 " 2>&1 || echo "警告：种子数据初始化失败，可能需要手动执行"
-}
+    }
+fi
 
 # ==================== 8. 验证部署 ====================
 echo ""

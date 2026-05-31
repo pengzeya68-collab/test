@@ -1,7 +1,9 @@
 """
 TestMaster 一键部署脚本（从本地 Windows 部署到远程 Linux 服务器）
-用法: python deploy.py [服务器IP] [SSH密码]
-示例: python deploy.py 34.150.26.84 PENGZEYA19940821
+用法: python deploy.py <新服务器IP> <新服务器密码> [旧服务器IP] [旧服务器密码]
+示例:
+  全新部署:           python deploy.py 1.2.3.4 NewServerPass
+  从旧服务器迁移数据: python deploy.py 1.2.3.4 NewServerPass 34.150.26.84 PENGZEYA19940821
 """
 
 import paramiko
@@ -12,8 +14,10 @@ import time
 HOST = sys.argv[1] if len(sys.argv) > 1 else "34.150.26.84"
 PASS = sys.argv[2] if len(sys.argv) > 2 else "PENGZEYA19940821"
 USER = "root"
-REPO_URL = "https://github.com/pengzeya/TestMaster.git"
+REPO_URL = "https://github.com/pengzeya68-collab/test.git"
 INSTALL_DIR = "/root/TestMasterProject"
+OLD_SERVER = sys.argv[3] if len(sys.argv) > 3 else ""
+OLD_PASS = sys.argv[4] if len(sys.argv) > 4 else PASS
 
 LOCAL_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")
 
@@ -188,7 +192,53 @@ for i in $(seq 1 30); do
 done
 """, "等待 PostgreSQL")
 
-        run_ssh(transport, f"""
+        if OLD_SERVER:
+            print(f"\n  从旧服务器 {OLD_SERVER} 迁移数据...")
+            old_transport = paramiko.Transport((OLD_SERVER, 22))
+            try:
+                old_transport.connect(username=USER)
+                old_transport.auth_password(USER, OLD_PASS)
+                print("  旧服务器连接成功")
+                run_ssh(old_transport, "docker exec testmaster-postgres pg_dump -U testmaster -d testmaster --no-owner --no-acl > /root/testmaster_migration.sql && gzip -f /root/testmaster_migration.sql && echo 'DUMP_OK'", "导出旧数据库", timeout=120)
+            finally:
+                old_transport.close()
+
+            print("  下载备份文件...")
+            old_transport2 = paramiko.Transport((OLD_SERVER, 22))
+            old_transport2.connect(username=USER)
+            old_transport2.auth_password(USER, OLD_PASS)
+            old_sftp = paramiko.SFTPClient.from_transport(old_transport2)
+            local_dump = os.path.join(os.path.dirname(os.path.abspath(__file__)), "testmaster_migration.sql.gz")
+            old_sftp.get("/root/testmaster_migration.sql.gz", local_dump)
+            old_sftp.close()
+            old_transport2.close()
+            print(f"  备份文件已下载: {local_dump} ({os.path.getsize(local_dump)} bytes)")
+
+            print("  上传到新服务器...")
+            sftp.put(local_dump, f"{INSTALL_DIR}/testmaster_migration.sql.gz")
+            print("  导入数据...")
+            run_ssh(transport, f"gunzip -c {INSTALL_DIR}/testmaster_migration.sql.gz | docker exec -i testmaster-postgres psql -U testmaster -d testmaster 2>&1 | tail -5", "导入旧数据", timeout=120)
+            print("  数据迁移完成！")
+
+            print("  运行代码题修复...")
+            run_ssh(transport, f"""
+docker exec testmaster-backend python -c "
+import asyncio
+from fastapi_backend.seed_all_data import _fix_code_exercises
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from fastapi_backend.core.config import settings
+engine = create_async_engine(settings.DATABASE_URL, echo=False)
+async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async def fix():
+    async with async_session() as session:
+        await _fix_code_exercises(session)
+asyncio.run(fix())
+" 2>&1 || echo "代码题修复跳过"
+""", "代码题修复", timeout=60)
+        else:
+            print("  未指定旧服务器，运行种子数据...")
+            run_ssh(transport, f"""
 docker exec testmaster-backend python -c "
 import asyncio
 from fastapi_backend.seed_all_data import seed_all
