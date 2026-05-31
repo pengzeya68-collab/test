@@ -75,7 +75,7 @@
           </div>
 
           <div class="left-panel-body">
-            <div v-show="leftTab === 'desc'" class="tab-content">
+            <div v-if="leftTab === 'desc'" class="tab-content">
               <h2 class="problem-title">{{ exercise.title }}</h2>
               <div class="problem-meta">
                 <span>⏱ {{ exercise.time_estimate }} 分钟</span>
@@ -100,7 +100,7 @@
               </div>
             </div>
 
-            <div v-show="leftTab === 'result'" class="tab-content">
+            <div v-if="leftTab === 'result' && submitResult" class="tab-content">
               <div class="judge-panel" :class="{ 'judge-pass': submitResult.correct, 'judge-fail': !submitResult.correct }">
                 <div class="judge-status-row">
                   <span class="judge-tag" :class="submitResult.correct ? 'success' : 'fail'">
@@ -134,7 +134,7 @@
               </div>
             </div>
 
-            <div v-show="leftTab === 'skill'" class="tab-content">
+            <div v-if="leftTab === 'skill' && submitResult?.correct && submitResult.skill_change?.length" class="tab-content">
               <div class="skill-panel">
                 <div class="skill-item" v-for="sc in submitResult.skill_change" :key="sc.key">
                   <span class="skill-name">{{ sc.name }}</span>
@@ -150,13 +150,13 @@
               </div>
             </div>
 
-            <div v-show="leftTab === 'solution'" class="tab-content">
+            <div v-if="leftTab === 'solution'" class="tab-content">
               <div class="solution-card">
                 <pre class="solution-text">{{ exercise.solution }}</pre>
               </div>
             </div>
 
-            <div v-show="leftTab === 'notes'" class="tab-content">
+            <div v-if="leftTab === 'notes'" class="tab-content">
               <div class="notebook-container">
                 <div class="note-list" v-if="exerciseNotes.length > 0">
                   <div v-for="note in exerciseNotes" :key="note.id" class="note-entry">
@@ -176,7 +176,7 @@
               </div>
             </div>
 
-            <div v-show="leftTab === 'related'" class="tab-content">
+            <div v-if="leftTab === 'related'" class="tab-content">
               <div class="recommend-list">
                 <div
                   v-for="rel in relatedExercises"
@@ -280,11 +280,11 @@
           <div class="output-panel judge-quick-view" v-if="submitResult && isCodeOrSqlType">
             <div class="output-header">
               <span>判题结果</span>
-              <span class="judge-quick-tag" :class="submitResult.correct ? 'pass' : 'fail'">
-                {{ submitResult.correct ? '✓ 通过' : '✗ 未通过' }}
+              <span class="judge-quick-tag" :class="submitResult?.correct ? 'pass' : 'fail'">
+                {{ submitResult?.correct ? '✓ 通过' : '✗ 未通过' }}
               </span>
             </div>
-            <div class="judge-quick-body" v-if="submitResult.judge_result">
+            <div class="judge-quick-body" v-if="submitResult?.judge_result">
               <span>通过 {{ submitResult.judge_result.passed_count }}/{{ submitResult.judge_result.total_cases }}</span>
               <button class="link-btn" @click="leftTab = 'result'">查看详情 ›</button>
             </div>
@@ -317,9 +317,9 @@
               class="choice-option-card"
               :class="{
                 'selected': isChoiceSelected(opt.key),
-                'correct-answer': submitResult && !submitResult.correct && opt.key === submitResult.correct_answer,
-                'wrong-answer': submitResult && !submitResult.correct && isChoiceSelected(opt.key) && opt.key !== submitResult.correct_answer,
-                'my-correct': submitResult && submitResult.correct && isChoiceSelected(opt.key),
+                'correct-answer': submitResult && !submitResult?.correct && opt.key === submitResult?.correct_answer,
+                'wrong-answer': submitResult && !submitResult?.correct && isChoiceSelected(opt.key) && opt.key !== submitResult?.correct_answer,
+                'my-correct': submitResult && submitResult?.correct && isChoiceSelected(opt.key),
                 'disabled': !!submitResult
               }"
               @click="!submitResult && (isMultipleChoice ? toggleChoice(opt.key) : userAnswer = opt.key)"
@@ -327,7 +327,7 @@
               <span class="option-label">{{ opt.key }}</span>
               <span class="option-text">{{ opt.text }}</span>
               <span class="option-check" v-if="isChoiceSelected(opt.key)">
-                <template v-if="submitResult && !submitResult.correct && opt.key !== submitResult.correct_answer">✗</template>
+                <template v-if="submitResult && !submitResult?.correct && opt.key !== submitResult?.correct_answer">✗</template>
                 <template v-else>✓</template>
               </span>
             </div>
@@ -341,14 +341,14 @@
             </button>
           </div>
 
-          <div class="choice-result" v-if="submitResult" :class="submitResult.correct ? 'result-pass' : 'result-fail'">
+          <div class="choice-result" v-if="submitResult" :class="submitResult?.correct ? 'result-pass' : 'result-fail'">
             <div class="result-status">
-              <span class="result-icon">{{ submitResult.correct ? '🎉' : '❌' }}</span>
-              <span class="result-text">{{ submitResult.correct ? '回答正确！' : '回答错误' }}</span>
-              <span class="result-msg">{{ submitResult.message }}</span>
+              <span class="result-icon">{{ submitResult?.correct ? '🎉' : '❌' }}</span>
+              <span class="result-text">{{ submitResult?.correct ? '回答正确！' : '回答错误' }}</span>
+              <span class="result-msg">{{ submitResult?.message }}</span>
             </div>
-            <div v-if="!submitResult.correct && submitResult.correct_answer" class="correct-answer-hint">
-              正确答案：<strong>{{ submitResult.correct_answer }}</strong>
+            <div v-if="!submitResult?.correct && submitResult?.correct_answer" class="correct-answer-hint">
+              正确答案：<strong>{{ submitResult?.correct_answer }}</strong>
             </div>
           </div>
 
@@ -456,14 +456,14 @@
           </div>
 
           <div class="text-result" v-if="submitResult">
-            <div class="judge-panel" :class="{ 'judge-pass': submitResult.correct, 'judge-fail': !submitResult.correct }">
+            <div class="judge-panel" :class="{ 'judge-pass': submitResult?.correct, 'judge-fail': !submitResult?.correct }">
               <div class="judge-status-row">
-                <span class="judge-tag" :class="submitResult.correct ? 'success' : 'fail'">
-                  {{ submitResult.correct ? '✓ 通过' : '✗ 未通过' }}
+                <span class="judge-tag" :class="submitResult?.correct ? 'success' : 'fail'">
+                  {{ submitResult?.correct ? '✓ 通过' : '✗ 未通过' }}
                 </span>
-                <span class="judge-msg">{{ submitResult.message }}</span>
+                <span class="judge-msg">{{ submitResult?.message }}</span>
               </div>
-              <div v-if="submitResult.judge_result" class="judge-body">
+              <div v-if="submitResult?.judge_result" class="judge-body">
                 <div class="judge-stats-row">
                   <span>通过 {{ submitResult.judge_result.passed_count }}/{{ submitResult.judge_result.total_cases }} 个测试用例</span>
                   <span>通过率 {{ submitResult.judge_result.pass_rate }}%</span>
@@ -748,10 +748,15 @@ const fetchExerciseDetail = async () => {
   loading.value = true
   try {
     const res = await request.get(`/exercises/${exerciseId}`)
+    console.log('[ExerciseDetail] API response:', res)
     exercise.value = res
+    if (!res || !res.id) {
+      console.warn('[ExerciseDetail] Invalid response data:', res)
+      ElMessage.warning('习题数据异常')
+    }
   } catch (error) {
-    console.error('获取习题详情失败:', error)
-    ElMessage.error('获取习题详情失败')
+    console.error('获取习题详情失败:', error?.response?.status, error?.response?.data || error.message)
+    ElMessage.error(`获取习题详情失败: ${error?.response?.data?.detail || error.message}`)
     exercise.value = null
   } finally {
     loading.value = false

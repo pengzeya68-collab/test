@@ -692,7 +692,7 @@ async def get_related_exercises(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取与指定习题相关的推荐习题"""
+    """获取与指定习题相关的推荐习题（同类型+同语言+相关知识点）"""
     ex_stmt = select(Exercise).where(Exercise.id == exercise_id)
     ex_result = await db.execute(ex_stmt)
     exercise = ex_result.scalar_one_or_none()
@@ -700,33 +700,36 @@ async def get_related_exercises(
     if not exercise:
         return {"related": []}
 
-    conditions = []
-    if exercise.category:
-        conditions.append(Exercise.category == exercise.category)
-    if exercise.knowledge_point:
-        conditions.append(Exercise.knowledge_point == exercise.knowledge_point)
-    if exercise.stage:
-        conditions.append(Exercise.stage == exercise.stage)
+    base_conditions = [
+        Exercise.id != exercise_id,
+        Exercise.is_public == True,
+    ]
+    if exercise.exercise_type:
+        base_conditions.append(Exercise.exercise_type == exercise.exercise_type)
+    if exercise.language:
+        base_conditions.append(Exercise.language == exercise.language)
 
-    if conditions:
+    soft_conditions = []
+    if exercise.knowledge_point:
+        soft_conditions.append(Exercise.knowledge_point == exercise.knowledge_point)
+    if exercise.category:
+        soft_conditions.append(Exercise.category == exercise.category)
+
+    if soft_conditions:
         related_stmt = (
             select(Exercise)
             .where(
-                Exercise.id != exercise_id,
-                Exercise.is_public == True,  # noqa: E712
-                or_(*conditions),
+                *base_conditions,
+                or_(*soft_conditions),
             )
-            .order_by(Exercise.stage, Exercise.difficulty)
+            .order_by(Exercise.stage.nulls_first(), Exercise.difficulty)
             .limit(6)
         )
     else:
         related_stmt = (
             select(Exercise)
-            .where(
-                Exercise.id != exercise_id,
-                Exercise.is_public == True,  # noqa: E712
-            )
-            .order_by(Exercise.stage, Exercise.difficulty)
+            .where(*base_conditions)
+            .order_by(Exercise.stage.nulls_first(), Exercise.difficulty)
             .limit(6)
         )
     related_result = await db.execute(related_stmt)

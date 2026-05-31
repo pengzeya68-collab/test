@@ -58,13 +58,32 @@
           <span
             class="pill"
             :class="{ 'pill--active': currentType === 'code' }"
-            @click="currentType = 'code'"
+            @click="currentType = 'code'; currentLanguage = ''"
           >代码题</span>
           <span
             class="pill"
             :class="{ 'pill--active': currentType === 'sql' }"
-            @click="currentType = 'sql'"
+            @click="currentType = 'code'; currentLanguage = 'sql'"
           >SQL题</span>
+        </div>
+      </div>
+
+      <!-- 代码语言子分类（选中代码题时显示） -->
+      <div class="filter-row" v-if="currentType === 'code'">
+        <div class="filter-label">语言</div>
+        <div class="pill-group">
+          <span
+            class="pill pill--lang"
+            :class="{ 'pill--active': !currentLanguage }"
+            @click="currentLanguage = ''"
+          >全部</span>
+          <span
+            v-for="lang in availableLanguages"
+            :key="lang.value"
+            class="pill pill--lang"
+            :class="{ 'pill--active': currentLanguage === lang.value }"
+            @click="currentLanguage = lang.value"
+          >{{ lang.label }}</span>
         </div>
       </div>
 
@@ -128,6 +147,7 @@
           placeholder="学习阶段"
           style="width: 130px;"
         >
+          <el-option :value="0" label="全部阶段" />
           <el-option :value="1" label="阶段1" />
           <el-option :value="2" label="阶段2" />
           <el-option :value="3" label="阶段3" />
@@ -177,6 +197,7 @@
           }"
           v-for="exercise in paginatedExercises"
           :key="exercise.id"
+          @click="goToDetail(exercise.id)"
         >
           <div class="col col-status">
             <span class="status-icon" v-if="isExerciseCompleted(exercise.id) && !isExerciseWrong(exercise.id)">✅</span>
@@ -208,7 +229,7 @@
             <span class="score-text score-text--none" v-else>--</span>
           </div>
           <div class="col col-action">
-            <button class="practice-btn" @click="goToDetail(exercise.id)">
+            <button class="practice-btn" @click.stop="goToDetail(exercise.id)">
               {{ isExerciseCompleted(exercise.id) ? '再做一次' : '开始练习' }}
             </button>
           </div>
@@ -256,9 +277,10 @@ const userStore = useUserStore()
 const exercises = ref([])
 const loading = ref(false)
 const currentModule = ref('')
-const currentStage = ref(1)
+const currentStage = ref(0)
 const currentDifficulty = ref('')
 const currentType = ref('')
+const currentLanguage = ref('')
 const currentPathId = ref(null)
 const searchKeyword = ref('')
 const currentPage = ref(1)
@@ -271,6 +293,15 @@ const availableModules = computed(() => {
     if (e.module) modules.add(e.module)
   })
   return [...modules].sort()
+})
+
+const availableLanguages = computed(() => {
+  const langMap = { python: 'Python', sql: 'SQL', javascript: 'JavaScript', java: 'Java', go: 'Go', rust: 'Rust', c: 'C', cpp: 'C++' }
+  const langs = new Set()
+  exercises.value.forEach(e => {
+    if (e.language && e.exercise_type === 'code') langs.add(e.language)
+  })
+  return [...langs].map(l => ({ value: l, label: langMap[l] || l.toUpperCase() })).sort((a, b) => a.label.localeCompare(b.label))
 })
 
 const completedCount = computed(() => {
@@ -341,6 +372,10 @@ const filteredExercises = computed(() => {
 
   if (currentType.value) {
     result = result.filter(item => item.exercise_type === currentType.value)
+  }
+
+  if (currentLanguage.value) {
+    result = result.filter(item => (item.language || '').toLowerCase() === currentLanguage.value.toLowerCase())
   }
 
   if (currentPathId.value) {
@@ -690,6 +725,13 @@ const randomPractice = () => {
   color: #F87171;
 }
 
+.pill--lang.pill--active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #A78BFA;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+}
+
 .filter-row--tools {
   margin-top: 4px;
   padding-top: 14px;
@@ -801,6 +843,7 @@ const randomPractice = () => {
   padding: 14px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.02);
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .exercise-row:last-child {
