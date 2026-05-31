@@ -26,6 +26,19 @@
     <view class="diff-tag diff-hard {{activeDifficulty === 'hard' ? 'diff-active' : ''}}" bindtap="selectDifficulty" data-val="hard">困难</view>
   </view>
 
+  <view class="type-bar">
+    <scroll-view scroll-x class="filter-scroll">
+      <view class="filter-tags">
+        <view class="diff-tag {{activeType === '' ? 'diff-active' : ''}}" bindtap="selectType" data-val="">全部类型</view>
+        <view class="diff-tag {{activeType === 'choice' ? 'diff-active' : ''}}" bindtap="selectType" data-val="choice">选择题</view>
+        <view class="diff-tag {{activeType === 'multiple_choice' ? 'diff-active' : ''}}" bindtap="selectType" data-val="multiple_choice">多选题</view>
+        <view class="diff-tag {{activeType === 'true_false' ? 'diff-active' : ''}}" bindtap="selectType" data-val="true_false">判断题</view>
+        <view class="diff-tag {{activeType === 'code' ? 'diff-active' : ''}}" bindtap="selectType" data-val="code">代码题</view>
+        <view class="diff-tag {{activeType === 'sql' ? 'diff-active' : ''}}" bindtap="selectType" data-val="sql">SQL题</view>
+      </view>
+    </scroll-view>
+  </view>
+
   <view wx:if="{{loading}}" class="loading-state">
     <text>加载中...</text>
   </view>

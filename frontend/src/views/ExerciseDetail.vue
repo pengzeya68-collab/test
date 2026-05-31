@@ -62,10 +62,10 @@
               v-for="opt in choiceOptions"
               :key="opt.key"
               class="option-item"
-              :class="{ active: userAnswer === opt.key }"
-              @click="userAnswer = opt.key"
+              :class="{ active: isChoiceSelected(opt.key), 'multi-mode': isMultipleChoice }"
+              @click="isMultipleChoice ? toggleChoice(opt.key) : userAnswer = opt.key"
             >
-              <span class="option-radio">{{ opt.key }}.</span>
+              <span class="option-radio">{{ isMultipleChoice ? (isChoiceSelected(opt.key) ? '☑' : '☐') : opt.key + '.' }}</span>
               <span class="option-text">{{ opt.text }}</span>
             </div>
           </div>
@@ -130,6 +130,7 @@
           </button>
         </div>
         <div class="action-button-group" v-if="isChoiceType">
+          <button class="btn-hint" @click="showHintDialog" v-if="exercise?.hint">💡 提示</button>
           <button class="btn-purple-glow" @click="showSolution = true">查看答案</button>
           <button class="btn-green-glow" @click="submitAnswer" :disabled="submitting">
             {{ submitting ? '判题中...' : '提交答案' }}
@@ -259,7 +260,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import request from '@/utils/request'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import CodeEditor from '@/components/CodeEditor.vue'
 import { useUserStore } from '@/stores/user'
 
@@ -271,6 +272,7 @@ const exercise = ref(null)
 const loading = ref(false)
 const submitting = ref(false)
 const userAnswer = ref('')
+const selectedChoices = ref([])
 const userCode = ref('')
 const userSql = ref('')
 const showSolution = ref(false)
@@ -289,6 +291,26 @@ const isChoiceType = computed(() => {
   const t = exercise.value?.exercise_type
   return t === 'choice' || t === 'single_choice' || t === 'multiple_choice' || t === 'true_false'
 })
+
+const isMultipleChoice = computed(() => {
+  return exercise.value?.exercise_type === 'multiple_choice'
+})
+
+const toggleChoice = (key) => {
+  const index = selectedChoices.value.indexOf(key)
+  if (index > -1) {
+    selectedChoices.value.splice(index, 1)
+  } else {
+    selectedChoices.value.push(key)
+  }
+}
+
+const isChoiceSelected = (key) => {
+  if (isMultipleChoice.value) {
+    return selectedChoices.value.includes(key)
+  }
+  return userAnswer.value === key
+}
 
 const choiceOptions = computed(() => {
   if (!exercise.value || !isChoiceType.value) return []
@@ -403,6 +425,9 @@ const formatDate = (dateStr) => {
 
 const submitAnswer = async () => {
   let answerContent = exercise.value?.exercise_type === 'code' ? userCode.value : userAnswer.value
+  if (exercise.value?.exercise_type === 'multiple_choice') {
+    answerContent = selectedChoices.value.sort().join(',')
+  }
   if (exercise.value?.language?.toLowerCase() === 'sql') {
     answerContent = userSql.value
   }
@@ -464,6 +489,20 @@ const nextExercise = () => {
   if (nextExerciseId.value) {
     router.push(`/exercises/${nextExerciseId.value}`)
   }
+}
+
+const showHintDialog = () => {
+  if (!exercise.value?.hint) return
+  ElMessageBox.alert(
+    `<div style="color: #a5b4fc; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${exercise.value.hint}</div>`,
+    '💡 提示',
+    {
+      dangerouslyUseHTMLString: true,
+      confirmButtonText: '知道了',
+      customClass: 'hint-dialog',
+      center: true,
+    }
+  )
 }
 </script>
 
@@ -611,6 +650,10 @@ const nextExercise = () => {
   border-color: var(--tm-color-primary);
   background: rgba(var(--tm-color-primary-rgb), 0.1);
 }
+.option-item.multi-mode .option-radio {
+  font-size: 18px;
+  color: var(--tm-color-primary);
+}
 .option-radio {
   font-size: 16px;
   font-weight: 700;
@@ -676,6 +719,20 @@ const nextExercise = () => {
   transition: all 0.3s ease;
 }
 .btn-outline:hover { border-color: var(--tm-color-primary); color: var(--tm-color-primary); }
+
+.btn-hint {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border: none;
+  border-radius: 8px;
+  color: #1a1a2e;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 14px rgba(251, 191, 36, 0.3);
+  transition: all 0.3s ease;
+}
+.btn-hint:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(251, 191, 36, 0.45); }
 
 /* ========== SQL ========== */
 .sql-block { width: 100%; }

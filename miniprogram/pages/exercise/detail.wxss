@@ -290,7 +290,7 @@
 .choice-marker {
   width: 52rpx;
   height: 52rpx;
-  border-radius: 50%;
+  border-radius: 10rpx;
   background: #FFFFFF;
   display: flex;
   align-items: center;

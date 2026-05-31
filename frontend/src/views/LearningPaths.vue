@@ -282,6 +282,52 @@ const goToDetail = (id) => {
   gap: 20px;
 }
 
+.filters :deep(.el-radio-group) {
+  display: flex;
+  gap: 0;
+  background: rgba(15, 15, 25, 0.6);
+  border-radius: 12px;
+  padding: 4px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
+}
+
+.filters :deep(.el-radio-button) {
+  margin-right: 0;
+}
+
+.filters :deep(.el-radio-button__inner) {
+  background: transparent;
+  border: none;
+  color: rgba(163, 180, 252, 0.7);
+  font-weight: 500;
+  padding: 10px 22px;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 14px;
+  box-shadow: none !important;
+}
+
+.filters :deep(.el-radio-button__inner:hover) {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.filters :deep(.el-radio-button.is-active .el-radio-button__inner) {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35), 0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+.filters :deep(.el-radio-button:first-child .el-radio-button__inner) {
+  border-radius: 8px 0 0 8px;
+}
+
+.filters :deep(.el-radio-button:last-child .el-radio-button__inner) {
+  border-radius: 0 8px 8px 0;
+}
+
 .stage-info {
   margin-bottom: 32px;
 }

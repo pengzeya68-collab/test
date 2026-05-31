@@ -7,6 +7,7 @@ Page({
     keyword: '',
     activeCategory: '',
     activeDifficulty: '',
+    activeType: '',
     categories: [],
     exercises: [],
     loading: false,
@@ -60,6 +61,7 @@ Page({
       const params = []
       if (this.data.activeCategory) params.push(`category=${encodeURIComponent(this.data.activeCategory)}`)
       if (this.data.activeDifficulty) params.push(`difficulty=${this.data.activeDifficulty}`)
+      if (this.data.activeType) params.push(`exercise_type=${encodeURIComponent(this.data.activeType)}`)
       if (this.data.keyword && this.data.keyword.trim()) params.push(`search=${encodeURIComponent(this.data.keyword.trim())}`)
       const query = params.length ? `?${params.join('&')}` : ''
 
@@ -84,6 +86,7 @@ Page({
     const params = []
     if (this.data.activeCategory) params.push(`category=${encodeURIComponent(this.data.activeCategory)}`)
     if (this.data.activeDifficulty) params.push(`difficulty=${this.data.activeDifficulty}`)
+    if (this.data.activeType) params.push(`exercise_type=${encodeURIComponent(this.data.activeType)}`)
     if (this.data.keyword && this.data.keyword.trim()) params.push(`search=${encodeURIComponent(this.data.keyword.trim())}`)
     params.push(`page=${nextPage}`)
     params.push(`page_size=${this.data.pageSize}`)
@@ -118,6 +121,11 @@ Page({
 
   selectDifficulty(e) {
     this.setData({ activeDifficulty: e.currentTarget.dataset.val, page: 1, exercises: [], noMore: false })
+    this.loadExercises()
+  },
+
+  selectType(e) {
+    this.setData({ activeType: e.currentTarget.dataset.val, page: 1, exercises: [], noMore: false })
     this.loadExercises()
   },
 
