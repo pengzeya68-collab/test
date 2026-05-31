@@ -1,112 +1,187 @@
 <template>
   <div class="learning-paths" style="position: relative; z-index: 1;">
     <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
-      <!-- 顶部筛选 -->
-      <div class="filter-bar">
-        <h1 class="page-title">学习路径</h1>
-        <div class="filters">
-          <el-radio-group v-model="currentStage" @change="handleStageChange">
-            <el-radio-button :value="1">阶段1</el-radio-button>
-            <el-radio-button :value="2">阶段2</el-radio-button>
-            <el-radio-button :value="3">阶段3</el-radio-button>
-            <el-radio-button :value="4">阶段4</el-radio-button>
-            <el-radio-button :value="5">阶段5</el-radio-button>
-          </el-radio-group>
-          <el-select
-            v-model="currentDifficulty"
-            placeholder="难度筛选"
-            @change="fetchLearningPaths"
-            style="width: 120px; margin-left: 20px;"
-          >
-            <el-option label="全部" value="" />
-            <el-option label="初级" value="beginner" />
-            <el-option label="中级" value="intermediate" />
-            <el-option label="高级" value="advanced" />
-          </el-select>
+
+    <div class="quick-stats" v-if="isLoggedIn">
+      <div class="stat-card">
+        <div class="stat-icon-wrap stat-icon-green">
+          <el-icon :size="22"><CircleCheck /></el-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ displayCompleted }}</div>
+          <div class="stat-label">已完成习题</div>
         </div>
       </div>
-
-      <!-- 阶段说明 -->
-      <div class="stage-info" v-if="currentStage > 0">
-        <el-alert
-          :title="stageInfo.title"
-          :description="stageInfo.description"
-          type="info"
-          show-icon
-          :closable="false"
-        />
+      <div class="stat-card">
+        <div class="stat-icon-wrap stat-icon-orange">
+          <el-icon :size="22"><Timer /></el-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ displayStreak }}<small> 天</small></div>
+          <div class="stat-label">连续学习</div>
+        </div>
       </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap stat-icon-purple">
+          <el-icon :size="22"><DataAnalysis /></el-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ skillLevel }}</div>
+          <div class="stat-label">技能等级</div>
+        </div>
+      </div>
+    </div>
 
-      <!-- 学习路径列表 -->
-      <div class="paths-grid">
+    <div class="lp-layout">
+      <div class="mobile-stage-tabs">
         <div
-          class="path-card"
-          v-for="path in learningPaths"
-          :key="path.id"
+          class="mobile-tab"
+          v-for="stage in stageConfigs"
+          :key="stage.id"
+          :class="{ active: currentStage === stage.id }"
+          @click="switchStage(stage.id)"
         >
-          <div class="path-header">
-            <el-tag :type="getStageTagType(path.stage)" size="small">
-              阶段{{ path.stage }}
-            </el-tag>
-            <el-tag :type="getDifficultyTagType(path.difficulty)" size="small">
-              {{ getDifficultyText(path.difficulty) }}
-            </el-tag>
-          </div>
-          <h3 class="path-title">{{ path.title }}</h3>
-          <p class="path-desc">{{ path.description }}</p>
-
-          <!-- 进度条 -->
-          <div class="path-progress" v-if="isLoggedIn && getPathProgress(path.id)">
-            <div class="progress-info">
-              <span class="progress-text">已完成 {{ getPathProgress(path.id).completed_exercises }}/{{ getPathProgress(path.id).total_exercises }} 题</span>
-              <span class="progress-percent">{{ getPathProgress(path.id).progress_percent }}%</span>
-            </div>
-            <el-progress
-              :percentage="getPathProgress(path.id).progress_percent"
-              :stroke-width="6"
-              :show-text="false"
-              :color="getPathProgressColor(path.id)"
-            />
-          </div>
-
-          <div class="path-meta">
-            <div class="meta-item">
-              <el-icon size="16"><Timer /></el-icon>
-              <span>{{ path.estimated_hours }}小时</span>
-            </div>
-            <div class="meta-item">
-              <el-icon size="16"><Document /></el-icon>
-              <span>{{ path.exercise_count }}个习题</span>
-            </div>
-            <div class="meta-item">
-              <el-icon size="16"><Collection /></el-icon>
-              <span>{{ path.language }}</span>
-            </div>
-          </div>
-          <div class="path-footer">
-            <el-button type="primary" size="small" plain @click.stop="goToDetail(path.id)">
-              {{ getPathProgress(path.id)?.completed_exercises > 0 ? '继续学习' : '开始学习' }}
-            </el-button>
-          </div>
+          <span class="mobile-tab-num">{{ stage.id }}</span>
+          <span class="mobile-tab-title">{{ stage.shortTitle }}</span>
         </div>
       </div>
 
-      <!-- 空状态 -->
-      <div class="empty-state" v-if="learningPaths.length === 0 && !loading">
-        <el-empty description="该阶段暂无学习路径" />
-      </div>
+      <aside class="lp-sidebar">
+        <div class="sidebar-header">
+          <el-icon :size="18"><Reading /></el-icon>
+          <span>学习路线</span>
+        </div>
+        <div class="sidebar-stages">
+          <div
+            class="sidebar-stage"
+            v-for="stage in stageConfigs"
+            :key="stage.id"
+            :class="{ active: currentStage === stage.id }"
+            @click="switchStage(stage.id)"
+          >
+            <div class="stage-num-badge">
+              <el-icon v-if="isLoggedIn && getStageProgress(stage.id) >= 100" :size="18" style="color:#4ADE80"><CircleCheck /></el-icon>
+              <span v-else>{{ stage.id }}</span>
+            </div>
+            <div class="stage-body">
+              <div class="stage-title">{{ stage.shortTitle }}</div>
+              <div class="stage-desc">{{ stage.desc }}</div>
+              <div class="stage-progress-mini">
+                <div class="progress-track">
+                  <div class="progress-fill" :style="{ width: getStageProgress(stage.id) + '%' }"></div>
+                </div>
+                <span class="progress-pct">{{ getStageProgress(stage.id) }}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
 
-      <!-- 加载状态 -->
-      <div class="loading" v-if="loading">
-        <el-icon class="is-loading" size="40"><Loading /></el-icon>
-      </div>
+      <main class="lp-main">
+        <div class="hero-banner" :class="'hero-stage-' + currentStage">
+          <div class="hero-deco"></div>
+          <div class="hero-content">
+            <div class="hero-badge">阶段 {{ currentStage }}</div>
+            <h2 class="hero-title">{{ stageInfo.title }}</h2>
+            <p class="hero-desc">{{ stageInfo.description }}</p>
+            <div class="hero-meta">
+              <div class="hero-meta-item">
+                <el-icon><Timer /></el-icon>
+                <span>预计 {{ currentStageStats.hours }} 小时</span>
+              </div>
+              <div class="hero-meta-item">
+                <el-icon><Document /></el-icon>
+                <span>{{ currentStageStats.exercises }} 个习题</span>
+              </div>
+              <div class="hero-meta-item">
+                <el-icon><Collection /></el-icon>
+                <span>{{ currentStageStats.paths }} 条路径</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="content-toolbar">
+          <div class="toolbar-left">
+            <h3 class="section-title">课程列表</h3>
+            <span class="result-count">共 {{ learningPaths.length }} 条</span>
+          </div>
+          <div class="toolbar-right">
+            <el-select
+              v-model="currentDifficulty"
+              placeholder="难度筛选"
+              @change="fetchLearningPaths"
+              style="width: 130px;"
+            >
+              <el-option label="全部难度" value="" />
+              <el-option label="初级" value="beginner" />
+              <el-option label="中级" value="intermediate" />
+              <el-option label="高级" value="advanced" />
+            </el-select>
+          </div>
+        </div>
+
+        <div class="path-list" v-if="learningPaths.length > 0 && !loading">
+          <div class="path-list-header">
+            <span class="col-icon"></span>
+            <span class="col-title">路径名称</span>
+            <span class="col-count">习题</span>
+            <span class="col-hours">时长</span>
+            <span class="col-diff">难度</span>
+            <span class="col-action">操作</span>
+          </div>
+          <div
+            class="path-row"
+            v-for="path in learningPaths"
+            :key="path.id"
+            @click="goToDetail(path.id)"
+          >
+            <div class="col-icon">
+              <span class="lang-icon">{{ getLanguageIcon(path.language) }}</span>
+            </div>
+            <div class="col-title">
+              <div class="path-name">
+                <el-icon v-if="isLoggedIn && isPathCompleted(path.id)" class="completed-check" :size="16"><CircleCheck /></el-icon>
+                {{ path.title }}
+              </div>
+              <div class="path-desc-snippet">{{ path.description }}</div>
+              <div class="path-progress-inline" v-if="isLoggedIn && getPathProgress(path.id)">
+                <div class="progress-bar-mini">
+                  <div class="progress-fill" :style="{ width: getPathProgress(path.id).progress_percent + '%', background: getPathProgressColor(path.id) }"></div>
+                </div>
+                <span class="progress-label">{{ getPathProgress(path.id).completed_exercises }}/{{ getPathProgress(path.id).total_exercises }}</span>
+              </div>
+            </div>
+            <div class="col-count">{{ path.exercise_count }}</div>
+            <div class="col-hours">{{ path.estimated_hours }}h</div>
+            <div class="col-diff">
+              <span class="difficulty-badge" :class="'diff-' + path.difficulty">{{ getDifficultyText(path.difficulty) }}</span>
+            </div>
+            <div class="col-action">
+              <el-button type="primary" size="small" @click.stop="goToDetail(path.id)">
+                {{ isLoggedIn && isPathCompleted(path.id) ? '复习' : (isLoggedIn && getPathProgress(path.id)?.completed_exercises > 0 ? '继续' : '开始') }}
+              </el-button>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-state" v-if="learningPaths.length === 0 && !loading">
+          <el-empty description="该阶段暂无学习路径" />
+        </div>
+
+        <div class="loading-state" v-if="loading">
+          <el-icon class="is-loading" :size="36"><Loading /></el-icon>
+          <span>加载中...</span>
+        </div>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Timer, Document, Collection, Loading } from '@element-plus/icons-vue'
+import { Timer, Document, Collection, Loading, CircleCheck, Reading, DataAnalysis } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 
@@ -117,10 +192,22 @@ const userStore = useUserStore()
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 
 const learningPaths = ref([])
+const allPaths = ref([])
 const loading = ref(false)
 const currentStage = ref(1)
 const currentDifficulty = ref('')
 const allProgress = ref([])
+
+const displayCompleted = ref(0)
+const displayStreak = ref(0)
+
+const stageConfigs = [
+  { id: 1, shortTitle: '测试入门筑基', desc: '零基础入门，掌握测试基础', estimatedWeeks: 4 },
+  { id: 2, shortTitle: '功能测试精通', desc: '精通各类项目功能测试', estimatedWeeks: 8 },
+  { id: 3, shortTitle: '测试技术进阶', desc: '接口、Linux、性能测试', estimatedWeeks: 12 },
+  { id: 4, shortTitle: '自动化测试专家', desc: 'Python、接口/UI自动化', estimatedWeeks: 16 },
+  { id: 5, shortTitle: '测试架构师之路', desc: '平台开发、DevOps、质量体系', estimatedWeeks: 20 },
+]
 
 const stageInfos = {
   1: {
@@ -149,12 +236,71 @@ const stageInfo = computed(() => {
   return stageInfos[currentStage.value] || {}
 })
 
+const totalCompletedExercises = computed(() => {
+  return allProgress.value.reduce((sum, p) => sum + (p.completed_exercises || 0), 0)
+})
+
+const skillLevel = computed(() => {
+  const total = totalCompletedExercises.value
+  if (total >= 100) return '专家'
+  if (total >= 60) return '高级'
+  if (total >= 30) return '中级'
+  if (total >= 10) return '初级'
+  return '入门'
+})
+
+const currentStageStats = computed(() => {
+  const paths = learningPaths.value
+  return {
+    hours: paths.reduce((sum, p) => sum + (p.estimated_hours || 0), 0),
+    exercises: paths.reduce((sum, p) => sum + (p.exercise_count || 0), 0),
+    paths: paths.length
+  }
+})
+
+const stageProgressMap = computed(() => {
+  const map = {}
+  for (let i = 1; i <= 5; i++) {
+    const stagePaths = allPaths.value.filter(p => p.stage === i)
+    const stagePathIds = new Set(stagePaths.map(p => p.id))
+    const stageProgressEntries = allProgress.value.filter(p => stagePathIds.has(p.path_id))
+    const totalExercises = stageProgressEntries.reduce((sum, p) => sum + (p.total_exercises || 0), 0)
+    const completedExercises = stageProgressEntries.reduce((sum, p) => sum + (p.completed_exercises || 0), 0)
+    map[i] = totalExercises > 0 ? Math.round(completedExercises / totalExercises * 100) : 0
+  }
+  return map
+})
+
+const languageIconMap = {
+  'Python': '🐍', 'Java': '☕', 'SQL': '🗃️', 'Linux': '🐧',
+  'JavaScript': '📜', 'HTTP': '🌐', 'Shell': '💻', 'Bash': '💻',
+  'HTML': '🌐', 'CSS': '🎨', 'Postman': '📮', 'JMeter': '📊',
+  'Selenium': '🤖', 'Appium': '📱', 'Docker': '🐳', 'Git': '📂',
+  '性能测试': '⚡', '接口测试': '🔌', '自动化': '🤖',
+}
+
+const animateValue = (refVar, target, duration = 800) => {
+  const start = refVar.value
+  const diff = target - start
+  if (diff === 0) return
+  const startTime = performance.now()
+  const step = (currentTime) => {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    const eased = 1 - Math.pow(1 - progress, 3)
+    refVar.value = Math.round(start + diff * eased)
+    if (progress < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
+
 onMounted(() => {
   if (route.query.stage) {
     currentStage.value = parseInt(route.query.stage)
   }
   fetchLearningPaths()
   if (isLoggedIn.value) {
+    fetchAllPaths()
     fetchAllProgress()
   }
 })
@@ -179,10 +325,22 @@ const fetchLearningPaths = async () => {
   }
 }
 
+const fetchAllPaths = async () => {
+  try {
+    const res = await request.get('/learning-paths')
+    allPaths.value = res
+  } catch (error) {
+    console.error('获取所有路径失败:', error)
+  }
+}
+
 const fetchAllProgress = async () => {
   try {
     const res = await request.get('/learning-paths/all-progress')
     allProgress.value = res.progress || []
+    nextTick(() => {
+      animateValue(displayCompleted, totalCompletedExercises.value, 1000)
+    })
   } catch (error) {
     console.error('获取学习进度失败:', error)
   }
@@ -201,8 +359,30 @@ const getPathProgressColor = (pathId) => {
   return '#909399'
 }
 
+const getStageProgress = (stageId) => {
+  return stageProgressMap.value[stageId] || 0
+}
+
+const switchStage = (stageId) => {
+  currentStage.value = stageId
+  fetchLearningPaths()
+}
+
 const handleStageChange = () => {
   fetchLearningPaths()
+}
+
+const isPathCompleted = (pathId) => {
+  const p = getPathProgress(pathId)
+  return p && p.progress_percent >= 100
+}
+
+const getLanguageIcon = (lang) => {
+  if (!lang) return '📘'
+  for (const [key, icon] of Object.entries(languageIconMap)) {
+    if (lang.toLowerCase().includes(key.toLowerCase())) return icon
+  }
+  return '📘'
 }
 
 const getStageTagType = (stage) => {
@@ -249,185 +429,526 @@ const goToDetail = (id) => {
   pointer-events: none;
 }
 
-.filter-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-  flex-wrap: wrap;
-  gap: 20px;
-  background: var(--tm-glass-bg);
-  backdrop-filter: var(--tm-glass-blur);
-  -webkit-backdrop-filter: var(--tm-glass-blur);
-  padding: 24px;
-  border-radius: 16px;
-  border: var(--tm-glass-border);
-  box-shadow: var(--tm-shadow-card);
-}
-
-.page-title {
-  font-size: 32px;
-  font-weight: 700;
-  background: var(--tm-gradient-brand);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 0;
-}
-
-.filters {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.filters :deep(.el-radio-group) {
-  display: flex;
-  gap: 0;
-  background: rgba(15, 15, 25, 0.6);
-  border-radius: 12px;
-  padding: 4px;
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
-}
-
-.filters :deep(.el-radio-button) {
-  margin-right: 0;
-}
-
-.filters :deep(.el-radio-button__inner) {
-  background: transparent;
-  border: none;
-  color: rgba(163, 180, 252, 0.7);
-  font-weight: 500;
-  padding: 10px 22px;
-  border-radius: 8px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 14px;
-  box-shadow: none !important;
-}
-
-.filters :deep(.el-radio-button__inner:hover) {
-  color: #a5b4fc;
-  background: rgba(99, 102, 241, 0.12);
-}
-
-.filters :deep(.el-radio-button.is-active .el-radio-button__inner) {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #ffffff;
-  font-weight: 600;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35), 0 0 20px rgba(139, 92, 246, 0.2);
-}
-
-.filters :deep(.el-radio-button:first-child .el-radio-button__inner) {
-  border-radius: 8px 0 0 8px;
-}
-
-.filters :deep(.el-radio-button:last-child .el-radio-button__inner) {
-  border-radius: 0 8px 8px 0;
-}
-
-.stage-info {
-  margin-bottom: 32px;
-}
-
-.paths-grid {
+.quick-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 24px;
-  position: relative;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
-.path-card {
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
   background: var(--tm-glass-bg);
   backdrop-filter: var(--tm-glass-blur);
   -webkit-backdrop-filter: var(--tm-glass-blur);
-  border-radius: 16px;
-  padding: 28px;
+  border-radius: 14px;
   border: var(--tm-glass-border);
   box-shadow: var(--tm-shadow-card);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.path-card:hover {
-  transform: translateY(-6px) scale(1.02);
+.stat-card:hover {
+  transform: translateY(-2px);
   box-shadow: var(--tm-shadow-glow), var(--tm-shadow-hover);
-  border-color: rgba(214, 51, 108, 0.2);
 }
 
-.path-header {
+.stat-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.path-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--tm-text-primary);
-  margin-bottom: 12px;
-  line-height: 1.4;
-}
-
-.path-desc {
-  color: var(--tm-text-secondary);
-  line-height: 1.7;
-  margin-bottom: 16px;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  font-size: 14px;
-}
-
-.path-progress {
-  margin-bottom: 16px;
-  padding: 14px 16px;
-  background: rgba(214, 51, 108, 0.04);
-  border-radius: 10px;
-  border: 1px solid rgba(214, 51, 108, 0.08);
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.progress-text {
+.stat-icon-green {
+  background: rgba(74, 222, 128, 0.12);
+  color: #4ADE80;
+}
+
+.stat-icon-orange {
+  background: rgba(250, 204, 21, 0.12);
+  color: #FACC15;
+}
+
+.stat-icon-purple {
+  background: rgba(168, 85, 247, 0.12);
+  color: #A855F7;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--tm-text-primary);
+  line-height: 1.2;
+}
+
+.stat-value small {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--tm-text-secondary);
+}
+
+.stat-label {
   font-size: 13px;
   color: var(--tm-text-secondary);
 }
 
-.progress-percent {
+.lp-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.mobile-stage-tabs {
+  display: none;
+  overflow-x: auto;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mobile-stage-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-tab {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--tm-glass-bg);
+  border: var(--tm-glass-border);
+  color: var(--tm-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.mobile-tab.active {
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 16px rgba(var(--tm-color-primary-rgb), 0.35);
+}
+
+.mobile-tab-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mobile-tab.active .mobile-tab-num {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.lp-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  border-radius: 16px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
+  overflow: hidden;
+  position: sticky;
+  top: 20px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 20px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tm-text-primary);
+  border-bottom: 1px solid var(--tm-border-light);
+}
+
+.sidebar-stages {
+  padding: 8px;
+}
+
+.sidebar-stage {
+  display: flex;
+  gap: 14px;
+  padding: 14px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 3px solid transparent;
+  margin-bottom: 4px;
+}
+
+.sidebar-stage:hover {
+  background: var(--tm-bg-hover);
+}
+
+.sidebar-stage.active {
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
+  border-left-color: var(--tm-color-primary);
+  box-shadow: -4px 0 16px rgba(var(--tm-color-primary-rgb), 0.2);
+}
+
+.stage-num-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--tm-text-secondary);
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+
+.sidebar-stage.active .stage-num-badge {
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(var(--tm-color-primary-rgb), 0.35);
+}
+
+.stage-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-stage .stage-title {
   font-size: 14px;
   font-weight: 600;
+  color: var(--tm-text-primary);
+  margin-bottom: 3px;
+  transition: color 0.3s;
+}
+
+.sidebar-stage.active .stage-title {
   color: var(--tm-color-primary);
 }
 
-.path-meta {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--tm-border-light);
+.sidebar-stage .stage-desc {
+  font-size: 12px;
+  color: var(--tm-text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.4;
 }
 
-.meta-item {
+.stage-progress-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-track .progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-stage.active .progress-track .progress-fill {
+  background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary-light));
+  box-shadow: 0 0 8px rgba(var(--tm-color-primary-rgb), 0.4);
+}
+
+.progress-pct {
+  font-size: 11px;
+  color: var(--tm-text-secondary);
+  font-weight: 500;
+  min-width: 28px;
+  text-align: right;
+}
+
+.sidebar-stage.active .progress-pct {
+  color: var(--tm-color-primary);
+}
+
+.lp-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-banner {
+  position: relative;
+  border-radius: 16px;
+  padding: 32px 36px;
+  margin-bottom: 24px;
+  overflow: hidden;
+  border: var(--tm-glass-border);
+}
+
+.hero-stage-1 { background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.08), rgba(24, 24, 27, 0.9)); }
+.hero-stage-2 { background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.08), rgba(24, 24, 27, 0.9)); }
+.hero-stage-3 { background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(139, 92, 246, 0.08), rgba(24, 24, 27, 0.9)); }
+.hero-stage-4 { background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(251, 146, 60, 0.08), rgba(24, 24, 27, 0.9)); }
+.hero-stage-5 { background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(244, 63, 94, 0.08), rgba(24, 24, 27, 0.9)); }
+
+.hero-deco {
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(var(--tm-color-primary-rgb), 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  background: rgba(var(--tm-color-primary-rgb), 0.15);
+  color: var(--tm-color-primary);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.25);
+}
+
+.hero-stage-1 .hero-badge { background: rgba(34, 197, 94, 0.15); color: #22C55E; border-color: rgba(34, 197, 94, 0.25); }
+.hero-stage-2 .hero-badge { background: rgba(59, 130, 246, 0.15); color: #3B82F6; border-color: rgba(59, 130, 246, 0.25); }
+.hero-stage-3 .hero-badge { background: rgba(168, 85, 247, 0.15); color: #A855F7; border-color: rgba(168, 85, 247, 0.25); }
+.hero-stage-4 .hero-badge { background: rgba(245, 158, 11, 0.15); color: #F59E0B; border-color: rgba(245, 158, 11, 0.25); }
+.hero-stage-5 .hero-badge { background: rgba(236, 72, 153, 0.15); color: #EC4899; border-color: rgba(236, 72, 153, 0.25); }
+
+.hero-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--tm-text-primary);
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.hero-desc {
+  font-size: 14px;
+  color: var(--tm-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 20px;
+  max-width: 600px;
+}
+
+.hero-meta {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.hero-meta-item {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  color: var(--tm-text-regular);
+}
+
+.hero-meta-item .el-icon {
+  color: var(--tm-color-primary);
+}
+
+.content-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 0 4px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--tm-text-primary);
+  margin: 0;
+}
+
+.result-count {
+  font-size: 13px;
   color: var(--tm-text-secondary);
 }
 
-.path-footer {
+.path-list {
+  background: var(--tm-glass-bg);
+  backdrop-filter: var(--tm-glass-blur);
+  -webkit-backdrop-filter: var(--tm-glass-blur);
+  border-radius: 14px;
+  border: var(--tm-glass-border);
+  box-shadow: var(--tm-shadow-card);
+  overflow: hidden;
+}
+
+.path-list-header {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--tm-border-light);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tm-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.path-list-header .col-icon { width: 44px; flex-shrink: 0; }
+.path-list-header .col-title { flex: 1; min-width: 0; }
+.path-list-header .col-count { width: 64px; text-align: center; flex-shrink: 0; }
+.path-list-header .col-hours { width: 64px; text-align: center; flex-shrink: 0; }
+.path-list-header .col-diff { width: 72px; text-align: center; flex-shrink: 0; }
+.path-list-header .col-action { width: 84px; text-align: center; flex-shrink: 0; }
+
+.path-row {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--tm-border-light);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.path-row:last-child {
+  border-bottom: none;
+}
+
+.path-row:hover {
+  background: var(--tm-bg-hover);
+}
+
+.path-row:hover .path-name {
+  color: var(--tm-color-primary);
+}
+
+.path-row .col-icon { width: 44px; flex-shrink: 0; }
+.path-row .col-title { flex: 1; min-width: 0; padding-right: 16px; }
+.path-row .col-count { width: 64px; text-align: center; flex-shrink: 0; font-size: 14px; color: var(--tm-text-regular); }
+.path-row .col-hours { width: 64px; text-align: center; flex-shrink: 0; font-size: 14px; color: var(--tm-text-regular); }
+.path-row .col-diff { width: 72px; text-align: center; flex-shrink: 0; }
+.path-row .col-action { width: 84px; text-align: center; flex-shrink: 0; }
+
+.lang-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.path-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tm-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  transition: color 0.25s;
+}
+
+.completed-check {
+  color: #4ADE80;
+}
+
+.path-desc-snippet {
+  font-size: 13px;
+  color: var(--tm-text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.path-progress-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-bar-mini {
+  width: 100px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-mini .progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-label {
+  font-size: 11px;
+  color: var(--tm-text-secondary);
+  white-space: nowrap;
+}
+
+.difficulty-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.diff-beginner {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ADE80;
+  border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.diff-intermediate {
+  background: rgba(250, 204, 21, 0.1);
+  color: #FACC15;
+  border: 1px solid rgba(250, 204, 21, 0.2);
+}
+
+.diff-advanced {
+  background: rgba(248, 113, 113, 0.1);
+  color: #F87171;
+  border: 1px solid rgba(248, 113, 113, 0.2);
 }
 
 .empty-state {
@@ -441,29 +962,87 @@ const goToDetail = (id) => {
   text-align: center;
 }
 
-.loading {
-  background: var(--tm-glass-bg);
-  backdrop-filter: var(--tm-glass-blur);
-  -webkit-backdrop-filter: var(--tm-glass-blur);
-  padding: 80px 20px;
-  border-radius: 16px;
-  border: var(--tm-glass-border);
-  box-shadow: var(--tm-shadow-card);
-  text-align: center;
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 20px;
+  color: var(--tm-text-secondary);
+  font-size: 14px;
+}
+
+@media (max-width: 1024px) {
+  .lp-sidebar {
+    width: 240px;
+  }
 }
 
 @media (max-width: 768px) {
-  .filter-bar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .page-title {
-    font-size: 24px;
-  }
-
-  .paths-grid {
+  .quick-stats {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px 16px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .mobile-stage-tabs {
+    display: flex;
+  }
+
+  .lp-sidebar {
+    display: none;
+  }
+
+  .lp-layout {
+    flex-direction: column;
+  }
+
+  .hero-banner {
+    padding: 24px 20px;
+  }
+
+  .hero-title {
+    font-size: 20px;
+  }
+
+  .hero-meta {
+    gap: 12px;
+  }
+
+  .path-list-header {
+    display: none;
+  }
+
+  .path-row {
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    gap: 0;
+  }
+
+  .path-row .col-icon { width: 36px; }
+  .path-row .col-title { flex: 1; min-width: 0; padding-right: 0; }
+  .path-row .col-count { display: none; }
+  .path-row .col-hours { display: none; }
+  .path-row .col-diff { width: auto; margin-top: 8px; }
+  .path-row .col-action { width: auto; margin-top: 8px; margin-left: auto; }
+
+  .lang-icon {
+    font-size: 22px;
+  }
+
+  .path-name {
+    font-size: 14px;
+  }
+
+  .path-desc-snippet {
+    -webkit-line-clamp: 2;
   }
 }
 </style>
