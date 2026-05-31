@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿<template>
+﻿﻿﻿<template>
   <div class="code-editor-container">
     <!-- 工具栏 -->
     <div class="editor-toolbar">
@@ -257,10 +257,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .code-editor-container {
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--tm-border-light, rgba(255,255,255,0.08));
   border-radius: 8px;
   overflow: hidden;
-  background: #18181B;
+  background: #1e1e2e;
 }
 
 .editor-toolbar {
@@ -268,8 +268,8 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: var(--tm-bg-card);
-  border-bottom: 1px solid #ebeef5;
+  background: var(--tm-card-bg, #1a1a2e);
+  border-bottom: 1px solid var(--tm-border-light, rgba(255,255,255,0.08));
 }
 
 .toolbar-left, .toolbar-right {
@@ -283,10 +283,11 @@ onBeforeUnmount(() => {
   font-size: 14px;
 }
 
-/* 覆盖codemirror默认样式 */
 :deep(.cm-editor) {
   height: 100%;
   min-height: 300px;
+  background: #1e1e2e;
+  color: #cdd6f4;
 }
 
 :deep(.cm-scroller) {
@@ -294,8 +295,44 @@ onBeforeUnmount(() => {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
 }
 
+:deep(.cm-gutters) {
+  background: #181825;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  color: #6c7086;
+}
+
+:deep(.cm-activeLineGutter) {
+  background: rgba(137, 180, 250, 0.08);
+  color: #89b4fa;
+}
+
+:deep(.cm-activeLine) {
+  background: rgba(137, 180, 250, 0.06);
+}
+
+:deep(.cm-cursor) {
+  border-left-color: #89b4fa;
+}
+
+:deep(.cm-selectionBackground) {
+  background: rgba(137, 180, 250, 0.18) !important;
+}
+
+:deep(.cm-focused .cm-selectionBackground) {
+  background: rgba(137, 180, 250, 0.25) !important;
+}
+
+:deep(.cm-matchingBracket) {
+  background: rgba(166, 227, 161, 0.2);
+  outline: 1px solid rgba(166, 227, 161, 0.4);
+}
+
+:deep(.cm-content) {
+  caret-color: #89b4fa;
+}
+
 .output-container {
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--tm-border-light, rgba(255,255,255,0.08));
 }
 
 .output-header {
@@ -303,32 +340,33 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 16px;
-  background: var(--tm-bg-elevated);
-  border-bottom: 1px solid #ebeef5;
+  background: var(--tm-card-bg, #1a1a2e);
+  border-bottom: 1px solid var(--tm-border-light, rgba(255,255,255,0.08));
 }
 
 .output-title {
   font-weight: 500;
-  color: var(--tm-text-primary);
+  color: var(--tm-text-primary, #cdd6f4);
   font-size: 14px;
 }
 
 .output-content {
   padding: 16px;
-  background: var(--tm-bg-card);
+  background: #11111b;
   max-height: 200px;
   overflow-y: auto;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.6;
+  color: #a6e3a1;
 }
 
 .output-content.error {
-  background: #fef0f0;
+  background: rgba(243, 139, 168, 0.06);
 }
 
 .stderr {
-  color: #f56c6c;
+  color: #f38ba8;
   margin-top: 8px;
 }
 
