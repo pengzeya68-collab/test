@@ -8,6 +8,7 @@ from pydantic import (
     Field,
     BeforeValidator,
     ConfigDict,
+    computed_field,
     field_validator,
     model_validator,
 )
@@ -118,17 +119,12 @@ class AutoTestCaseResponse(AutoTestCaseBase):
 
 
 class AutoTestEnvironmentBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100, description="环境名称")
+    name: str = Field(..., alias="env_name", min_length=1, max_length=100, description="环境名称")
     base_url: Optional[str] = Field(None, description="基础路径")
     variables: Dict[str, Any] = Field(default_factory=dict, description="全局变量")
     is_default: bool = Field(False, description="是否为默认环境")
 
-    @model_validator(mode="before")
-    @classmethod
-    def normalize_env_name(cls, data):
-        if isinstance(data, dict) and "name" not in data and data.get("env_name"):
-            data = {**data, "name": data["env_name"]}
-        return data
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class AutoTestEnvironmentCreate(AutoTestEnvironmentBase):
@@ -136,24 +132,24 @@ class AutoTestEnvironmentCreate(AutoTestEnvironmentBase):
 
 
 class AutoTestEnvironmentUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    name: Optional[str] = Field(None, alias="env_name", min_length=1, max_length=100)
     base_url: Optional[str] = None
     variables: Optional[Dict[str, Any]] = None
     is_default: Optional[bool] = None
 
-    @model_validator(mode="before")
-    @classmethod
-    def normalize_env_name(cls, data):
-        if isinstance(data, dict) and "name" not in data and data.get("env_name"):
-            data = {**data, "name": data["env_name"]}
-        return data
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class AutoTestEnvironmentResponse(AutoTestEnvironmentBase):
     id: int
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    @computed_field
+    @property
+    def env_name(self) -> str:
+        return self.name
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 # ========== AutoTestHistory Schema ==========

@@ -41,11 +41,6 @@ from fastapi_backend.schemas.exam import (
 router = APIRouter(prefix="/api/v1/exams", tags=["exams"])
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
 def _fmt_exam(exam: Exam, user_id: int | None = None) -> dict:
     data = {
         "id": exam.id,
@@ -97,8 +92,7 @@ def _simple_code_scoring(user_code: str, correct_answer: str | None, question_sc
     if not user_code:
         return 0, False, "未提交代码"
 
-    "".join(user_code.split()).lower()
-    score_ratio = 0.1  # base: just having code
+    score_ratio = 0.1
 
     if correct_answer:
         func_pattern = r"def\s+(\w+)\s*\("
@@ -128,7 +122,6 @@ def _simple_code_scoring(user_code: str, correct_answer: str | None, question_sc
 
 
 async def _calculate_score(attempt: ExamAttempt, db: AsyncSession) -> int:
-    """Auto-grade all answers for an attempt."""
     total_score = 0
     ans_stmt = select(ExamAnswer).where(ExamAnswer.attempt_id == attempt.id)
     ans_result = await db.execute(ans_stmt)
@@ -145,38 +138,29 @@ async def _calculate_score(attempt: ExamAttempt, db: AsyncSession) -> int:
             if answer.user_answer == question.correct_answer:
                 answer.is_correct = True
                 answer.score = question.score
-                total_score += question.score
             else:
                 answer.is_correct = False
                 answer.score = 0
+            total_score += answer.score
         elif question.question_type == "code":
             user_code = answer.user_answer or ""
             if not user_code:
                 answer.is_correct = False
                 answer.score = 0
             else:
-                # Try test-case-based judging first (simplified – no sandbox here)
-                if question.test_cases:
-                    # For now, fall back to simple scoring.
-                    # Full sandbox integration should use sandbox_service later.
-                    try:
-                        answer.score, answer.is_correct, answer.feedback = _simple_code_scoring(
-                            user_code, question.correct_answer, question.score
-                        )
-                    except Exception as e:
-                        answer.score = 0
-                        answer.is_correct = False
-                        answer.feedback = f"判题异常: {e}"
-                else:
+                try:
                     answer.score, answer.is_correct, answer.feedback = _simple_code_scoring(
                         user_code, question.correct_answer, question.score
                     )
-                total_score += answer.score
+                except Exception as e:
+                    answer.score = 0
+                    answer.is_correct = False
+                    answer.feedback = f"判题异常: {e}"
+            total_score += answer.score
         else:
             answer.is_correct = None
             answer.score = 0
 
-    # Update attempt
     exam_stmt = select(Exam).where(Exam.id == attempt.exam_id)
     exam_result = await db.execute(exam_stmt)
     exam = exam_result.scalar_one_or_none()
@@ -202,7 +186,7 @@ def _parse_options_from_content(content: str | None) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Endpoints – fixed-path routes MUST come before /{exam_id}
 # ---------------------------------------------------------------------------
 
 
@@ -228,7 +212,6 @@ async def get_exams(
 
     stmt = stmt.order_by(Exam.created_at.desc())
 
-    # Count total
     count_stmt = select(func.count()).select_from(Exam).where(Exam.is_published)  # noqa: E712
     if type:
         count_stmt = count_stmt.where(Exam.exam_type == type)
@@ -264,262 +247,6 @@ async def get_exams(
         items.append(d)
 
     return ExamListResponse(list=items, total=total, page=page, per_page=per_page)
-
-
-@router.get("/{exam_id}")
-async def get_exam_detail(
-    exam_id: int,
-    current_user: Optional[User] = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """获取考试详情（包含题目列表）"""
-    stmt = select(Exam).where(Exam.id == exam_id).options(selectinload(Exam.user), selectinload(Exam.questions))
-    result = await db.execute(stmt)
-    exam = result.scalar_one_or_none()
-    if not exam:
-        raise HTTPException(status_code=404, detail="考试不存在")
-    if not exam.is_published:
-        raise HTTPException(status_code=403, detail="考试未发布")
-
-    user_id = current_user.id if current_user else None
-    data = _fmt_exam(exam, user_id)
-
-    if user_id:
-        att_stmt = (
-            select(ExamAttempt)
-            .where(ExamAttempt.user_id == user_id, ExamAttempt.exam_id == exam_id)
-            .order_by(ExamAttempt.created_at.desc())
-            .limit(1)
-        )
-        att_result = await db.execute(att_stmt)
-        att = att_result.scalar_one_or_none()
-        if att:
-            data["attempt_status"] = att.status
-            data["attempt_score"] = att.score
-            data["attempt_id"] = att.id
-            data["is_passed"] = att.is_passed
-
-    questions = sorted(exam.questions, key=lambda q: q.sort_order)
-    data["questions"] = [_fmt_question(q) for q in questions]
-    return data
-
-
-@router.delete("/{exam_id}")
-async def delete_exam(
-    exam_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """删除考试"""
-    stmt = select(Exam).where(Exam.id == exam_id)
-    result = await db.execute(stmt)
-    exam = result.scalar_one_or_none()
-    if not exam:
-        raise HTTPException(status_code=404, detail="考试不存在")
-    if exam.user_id != current_user.id and not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="无权限删除此考试")
-
-    # Check for in-progress attempts
-    att_stmt = select(ExamAttempt).where(ExamAttempt.exam_id == exam_id, ExamAttempt.status == "in_progress")
-    att_result = await db.execute(att_stmt)
-    if att_result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="有用户正在进行此考试，无法删除")
-
-    # Delete answers, attempts, questions, exam
-    attempt_ids_stmt = select(ExamAttempt.id).where(ExamAttempt.exam_id == exam_id)
-    attempt_ids_result = await db.execute(attempt_ids_stmt)
-    attempt_ids = [row[0] for row in attempt_ids_result.all()]
-
-    if attempt_ids:
-        await db.execute(delete(ExamAnswer).where(ExamAnswer.attempt_id.in_(attempt_ids)))
-    await db.execute(delete(ExamAttempt).where(ExamAttempt.exam_id == exam_id))
-    await db.execute(delete(ExamQuestion).where(ExamQuestion.exam_id == exam_id))
-    await db.execute(delete(Exam).where(Exam.id == exam_id))
-    await db.commit()
-    return {"message": "考试删除成功"}
-
-
-@router.get("/{exam_id}/questions", response_model=ExamStartResponse)
-async def get_exam_questions(
-    exam_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """获取考试题目（开始考试）"""
-    stmt = select(Exam).where(Exam.id == exam_id).options(selectinload(Exam.user), selectinload(Exam.questions))
-    result = await db.execute(stmt)
-    exam = result.scalar_one_or_none()
-    if not exam:
-        raise HTTPException(status_code=404, detail="考试不存在")
-    if not exam.is_published:
-        raise HTTPException(status_code=403, detail="考试未发布")
-
-    now = datetime.now(timezone.utc)
-    if exam.start_time and now < exam.start_time:
-        raise HTTPException(status_code=403, detail="考试尚未开始")
-    if exam.end_time and now > exam.end_time:
-        raise HTTPException(status_code=403, detail="考试已结束")
-
-    user_id = current_user.id
-
-    # Check for existing in-progress attempt
-    att_stmt = select(ExamAttempt).where(
-        ExamAttempt.user_id == user_id,
-        ExamAttempt.exam_id == exam_id,
-        ExamAttempt.status == "in_progress",
-    )
-    att_result = await db.execute(att_stmt)
-    existing = att_result.scalar_one_or_none()
-
-    if existing:
-        attempt_id = existing.id
-    else:
-        attempt = ExamAttempt(user_id=user_id, exam_id=exam_id, start_time=now)
-        db.add(attempt)
-        await db.commit()
-        await db.refresh(attempt)
-        attempt_id = attempt.id
-
-    questions = sorted(exam.questions, key=lambda q: q.sort_order)
-    return ExamStartResponse(
-        attempt_id=attempt_id,
-        exam=ExamBrief(**_fmt_exam(exam)),
-        questions=[QuestionBrief(**_fmt_question(q)) for q in questions],
-    )
-
-
-@router.post("/attempts/{attempt_id}/submit", response_model=ExamSubmitResponse)
-async def submit_exam(
-    attempt_id: int,
-    body: ExamSubmitRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """提交考试"""
-    stmt = select(ExamAttempt).where(ExamAttempt.id == attempt_id)
-    result = await db.execute(stmt)
-    attempt = result.scalar_one_or_none()
-    if not attempt:
-        raise HTTPException(status_code=404, detail="考试记录不存在")
-    if attempt.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="无权限操作此考试")
-    if attempt.status != "in_progress":
-        raise HTTPException(status_code=400, detail="考试已经提交过了")
-
-    # Save answers
-    for ans in body.answers:
-        answer = ExamAnswer(
-            attempt_id=attempt_id,
-            question_id=ans.question_id,
-            user_answer=ans.answer,
-        )
-        db.add(answer)
-
-    attempt.end_time = datetime.now(timezone.utc)
-    attempt.status = "submitted"
-    await db.commit()
-
-    # Auto-grade
-    total_score = await _calculate_score(attempt, db)
-    return ExamSubmitResponse(
-        message="考试提交成功",
-        score=total_score,
-        is_passed=attempt.is_passed,
-        attempt_id=attempt_id,
-    )
-
-
-@router.get("/attempts/{attempt_id}/result")
-async def get_exam_result(
-    attempt_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """获取考试结果"""
-    stmt = select(ExamAttempt).where(ExamAttempt.id == attempt_id)
-    result = await db.execute(stmt)
-    attempt = result.scalar_one_or_none()
-    if not attempt:
-        raise HTTPException(status_code=404, detail="考试记录不存在")
-    if attempt.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="无权限查看此考试结果")
-    if attempt.status == "in_progress":
-        raise HTTPException(status_code=400, detail="考试尚未提交")
-
-    # Get answers
-    ans_stmt = select(ExamAnswer).where(ExamAnswer.attempt_id == attempt_id)
-    ans_result = await db.execute(ans_stmt)
-    answers = ans_result.scalars().all()
-
-    result_items = []
-    for ans in answers:
-        q_stmt = select(ExamQuestion).where(ExamQuestion.id == ans.question_id)
-        q_result = await db.execute(q_stmt)
-        question = q_result.scalar_one_or_none()
-        if not question:
-            continue
-        result_items.append(
-            AnswerResult(
-                question=QuestionBrief(**_fmt_question(question, show_answer=True)),
-                user_answer=ans.user_answer,
-                is_correct=ans.is_correct,
-                score=ans.score,
-                feedback=ans.feedback,
-            ).model_dump()
-        )
-
-    # Get exam for formatting
-    exam_stmt = (
-        select(Exam).where(Exam.id == attempt.exam_id).options(selectinload(Exam.user), selectinload(Exam.questions))
-    )
-    exam_result = await db.execute(exam_stmt)
-    exam = exam_result.scalar_one_or_none()
-
-    duration_min = None
-    if attempt.start_time and attempt.end_time:
-        duration_min = int((attempt.end_time - attempt.start_time).total_seconds() / 60)
-
-    # Statistics
-    question_types: dict = {}
-    for item in result_items:
-        q_type = item["question"]["question_type"]
-        if q_type not in question_types:
-            question_types[q_type] = {
-                "total": 0,
-                "correct": 0,
-                "score": 0,
-                "total_score": 0,
-            }
-        question_types[q_type]["total"] += 1
-        question_types[q_type]["total_score"] += item["question"]["score"]
-        if item["is_correct"]:
-            question_types[q_type]["correct"] += 1
-        question_types[q_type]["score"] += item["score"] or 0
-
-    correct_count = sum(1 for i in result_items if i["is_correct"] is True)
-    wrong_count = sum(1 for i in result_items if i["is_correct"] is False)
-    score_rate = round(attempt.score / exam.total_score * 100, 1) if exam and exam.total_score > 0 else 0
-
-    return {
-        "exam": _fmt_exam(exam) if exam else {},
-        "attempt": {
-            "id": attempt.id,
-            "start_time": attempt.start_time.strftime("%Y-%m-%d %H:%M:%S") if attempt.start_time else None,
-            "end_time": attempt.end_time.strftime("%Y-%m-%d %H:%M:%S") if attempt.end_time else None,
-            "duration": duration_min,
-            "score": attempt.score,
-            "is_passed": attempt.is_passed,
-            "status": attempt.status,
-        },
-        "result": result_items,
-        "statistics": {
-            "total_questions": len(result_items),
-            "correct_count": correct_count,
-            "wrong_count": wrong_count,
-            "score_rate": score_rate,
-            "question_type_stats": question_types,
-        },
-    }
 
 
 @router.get("/my-attempts", response_model=MyAttemptsResponse)
@@ -590,7 +317,6 @@ async def generate_exam(
             stmt = stmt.where(Exercise.learning_path_id == lp_id)
         return stmt
 
-    # Single choice
     sc_count = body.question_count.get("single_choice", 0)
     if sc_count > 0:
         result = await db.execute(_base_stmt("single_choice"))
@@ -612,7 +338,6 @@ async def generate_exam(
             )
             total_score += 2
 
-    # Multiple choice
     mc_count = body.question_count.get("multiple_choice", 0)
     if mc_count > 0:
         result = await db.execute(_base_stmt("multiple_choice"))
@@ -638,7 +363,6 @@ async def generate_exam(
             )
             total_score += 4
 
-    # True/False
     tf_count = body.question_count.get("true_false", 0)
     if tf_count > 0:
         result = await db.execute(_base_stmt("true_false"))
@@ -648,7 +372,7 @@ async def generate_exam(
         for q in all_tf:
             used_ids.add(q.id)
             ans = q.solution.strip().upper() if q.solution else "B"
-            if ans == "A":
+            if ans in ("A", "TRUE", "对", "正确"):
                 ans = "true"
             else:
                 ans = "false"
@@ -663,7 +387,6 @@ async def generate_exam(
             )
             total_score += 2
 
-    # Code questions
     code_count = body.question_count.get("code", 0)
     if code_count > 0:
         result = await db.execute(_base_stmt("code"))
@@ -691,7 +414,6 @@ async def generate_exam(
             detail=f"题库中{difficulty}难度的题目不足，请尝试其他难度或联系管理员添加更多题目",
         )
 
-    # Create exam
     sc_n = sum(1 for q in questions_data if q["type"] == "single_choice")
     mc_n = sum(1 for q in questions_data if q["type"] == "multiple_choice")
     tf_n = sum(1 for q in questions_data if q["type"] == "true_false")
@@ -741,7 +463,6 @@ async def generate_exam(
     await db.commit()
     await db.refresh(exam)
 
-    # Load relationships for formatting
     stmt = select(Exam).where(Exam.id == exam.id).options(selectinload(Exam.user), selectinload(Exam.questions))
     result = await db.execute(stmt)
     exam = result.scalar_one()
@@ -751,6 +472,255 @@ async def generate_exam(
         exam_id=exam.id,
         exam=ExamBrief(**_fmt_exam(exam)),
     )
+
+
+# --- Parameterized routes below ---
+
+
+@router.get("/{exam_id}")
+async def get_exam_detail(
+    exam_id: int,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取考试详情"""
+    stmt = select(Exam).where(Exam.id == exam_id).options(selectinload(Exam.user), selectinload(Exam.questions))
+    result = await db.execute(stmt)
+    exam = result.scalar_one_or_none()
+    if not exam:
+        raise HTTPException(status_code=404, detail="考试不存在")
+    if not exam.is_published:
+        raise HTTPException(status_code=403, detail="考试未发布")
+
+    user_id = current_user.id if current_user else None
+    data = _fmt_exam(exam, user_id)
+
+    if user_id:
+        att_stmt = (
+            select(ExamAttempt)
+            .where(ExamAttempt.user_id == user_id, ExamAttempt.exam_id == exam_id)
+            .order_by(ExamAttempt.created_at.desc())
+            .limit(1)
+        )
+        att_result = await db.execute(att_stmt)
+        att = att_result.scalar_one_or_none()
+        if att:
+            data["attempt_status"] = att.status
+            data["attempt_score"] = att.score
+            data["attempt_id"] = att.id
+            data["is_passed"] = att.is_passed
+
+    questions = sorted(exam.questions, key=lambda q: q.sort_order)
+    data["questions"] = [_fmt_question(q) for q in questions]
+    return data
+
+
+@router.delete("/{exam_id}")
+async def delete_exam(
+    exam_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除考试"""
+    stmt = select(Exam).where(Exam.id == exam_id)
+    result = await db.execute(stmt)
+    exam = result.scalar_one_or_none()
+    if not exam:
+        raise HTTPException(status_code=404, detail="考试不存在")
+    if exam.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="无权限删除此考试")
+
+    att_stmt = select(ExamAttempt).where(ExamAttempt.exam_id == exam_id, ExamAttempt.status == "in_progress")
+    att_result = await db.execute(att_stmt)
+    in_progress = att_result.scalars().first()
+    if in_progress:
+        raise HTTPException(status_code=400, detail="有用户正在进行此考试，无法删除")
+
+    attempt_ids_stmt = select(ExamAttempt.id).where(ExamAttempt.exam_id == exam_id)
+    attempt_ids_result = await db.execute(attempt_ids_stmt)
+    attempt_ids = [row[0] for row in attempt_ids_result.all()]
+
+    if attempt_ids:
+        await db.execute(delete(ExamAnswer).where(ExamAnswer.attempt_id.in_(attempt_ids)))
+    await db.execute(delete(ExamAttempt).where(ExamAttempt.exam_id == exam_id))
+    await db.execute(delete(ExamQuestion).where(ExamQuestion.exam_id == exam_id))
+    await db.execute(delete(Exam).where(Exam.id == exam_id))
+    await db.commit()
+    return {"message": "考试删除成功"}
+
+
+@router.get("/{exam_id}/questions", response_model=ExamStartResponse)
+async def get_exam_questions(
+    exam_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取考试题目（开始考试）"""
+    stmt = select(Exam).where(Exam.id == exam_id).options(selectinload(Exam.user), selectinload(Exam.questions))
+    result = await db.execute(stmt)
+    exam = result.scalar_one_or_none()
+    if not exam:
+        raise HTTPException(status_code=404, detail="考试不存在")
+    if not exam.is_published:
+        raise HTTPException(status_code=403, detail="考试未发布")
+
+    now = datetime.now(timezone.utc)
+    if exam.start_time and now < exam.start_time:
+        raise HTTPException(status_code=403, detail="考试尚未开始")
+    if exam.end_time and now > exam.end_time:
+        raise HTTPException(status_code=403, detail="考试已结束")
+
+    user_id = current_user.id
+
+    att_stmt = select(ExamAttempt).where(
+        ExamAttempt.user_id == user_id,
+        ExamAttempt.exam_id == exam_id,
+        ExamAttempt.status == "in_progress",
+    )
+    att_result = await db.execute(att_stmt)
+    existing = att_result.scalar_one_or_none()
+
+    if existing:
+        attempt_id = existing.id
+    else:
+        attempt = ExamAttempt(
+            user_id=user_id, exam_id=exam_id, start_time=now, status="in_progress", score=0
+        )
+        db.add(attempt)
+        await db.commit()
+        await db.refresh(attempt)
+        attempt_id = attempt.id
+
+    questions = sorted(exam.questions, key=lambda q: q.sort_order)
+    return ExamStartResponse(
+        attempt_id=attempt_id,
+        exam=ExamBrief(**_fmt_exam(exam)),
+        questions=[QuestionBrief(**_fmt_question(q)) for q in questions],
+    )
+
+
+@router.post("/attempts/{attempt_id}/submit", response_model=ExamSubmitResponse)
+async def submit_exam(
+    attempt_id: int,
+    body: ExamSubmitRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """提交考试"""
+    stmt = select(ExamAttempt).where(ExamAttempt.id == attempt_id)
+    result = await db.execute(stmt)
+    attempt = result.scalar_one_or_none()
+    if not attempt:
+        raise HTTPException(status_code=404, detail="考试记录不存在")
+    if attempt.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权限操作此考试")
+    if attempt.status != "in_progress":
+        raise HTTPException(status_code=400, detail="考试已经提交过了")
+
+    for ans in body.answers:
+        answer = ExamAnswer(
+            attempt_id=attempt_id,
+            question_id=ans.question_id,
+            user_answer=ans.answer,
+        )
+        db.add(answer)
+
+    attempt.end_time = datetime.now(timezone.utc)
+    attempt.status = "submitted"
+    await db.commit()
+
+    total_score = await _calculate_score(attempt, db)
+    return ExamSubmitResponse(
+        message="考试提交成功",
+        score=total_score,
+        is_passed=attempt.is_passed,
+        attempt_id=attempt_id,
+    )
+
+
+@router.get("/attempts/{attempt_id}/result")
+async def get_exam_result(
+    attempt_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取考试结果"""
+    stmt = select(ExamAttempt).where(ExamAttempt.id == attempt_id)
+    result = await db.execute(stmt)
+    attempt = result.scalar_one_or_none()
+    if not attempt:
+        raise HTTPException(status_code=404, detail="考试记录不存在")
+    if attempt.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权限查看此考试结果")
+    if attempt.status == "in_progress":
+        raise HTTPException(status_code=400, detail="考试尚未提交")
+
+    ans_stmt = select(ExamAnswer).where(ExamAnswer.attempt_id == attempt_id)
+    ans_result = await db.execute(ans_stmt)
+    answers = ans_result.scalars().all()
+
+    result_items = []
+    for ans in answers:
+        q_stmt = select(ExamQuestion).where(ExamQuestion.id == ans.question_id)
+        q_result = await db.execute(q_stmt)
+        question = q_result.scalar_one_or_none()
+        if not question:
+            continue
+        result_items.append(
+            AnswerResult(
+                question=QuestionBrief(**_fmt_question(question, show_answer=True)),
+                user_answer=ans.user_answer,
+                is_correct=ans.is_correct,
+                score=ans.score,
+                feedback=ans.feedback,
+            ).model_dump()
+        )
+
+    exam_stmt = (
+        select(Exam).where(Exam.id == attempt.exam_id).options(selectinload(Exam.user), selectinload(Exam.questions))
+    )
+    exam_result = await db.execute(exam_stmt)
+    exam = exam_result.scalar_one_or_none()
+
+    duration_min = None
+    if attempt.start_time and attempt.end_time:
+        duration_min = int((attempt.end_time - attempt.start_time).total_seconds() / 60)
+
+    question_types: dict = {}
+    for item in result_items:
+        q_type = item["question"]["question_type"]
+        if q_type not in question_types:
+            question_types[q_type] = {"total": 0, "correct": 0, "score": 0, "total_score": 0}
+        question_types[q_type]["total"] += 1
+        question_types[q_type]["total_score"] += item["question"]["score"]
+        if item["is_correct"]:
+            question_types[q_type]["correct"] += 1
+        question_types[q_type]["score"] += item["score"] or 0
+
+    correct_count = sum(1 for i in result_items if i["is_correct"] is True)
+    wrong_count = sum(1 for i in result_items if i["is_correct"] is False)
+    score_rate = round(attempt.score / exam.total_score * 100, 1) if exam and exam.total_score > 0 else 0
+
+    return {
+        "exam": _fmt_exam(exam) if exam else {},
+        "attempt": {
+            "id": attempt.id,
+            "start_time": attempt.start_time.strftime("%Y-%m-%d %H:%M:%S") if attempt.start_time else None,
+            "end_time": attempt.end_time.strftime("%Y-%m-%d %H:%M:%S") if attempt.end_time else None,
+            "duration": duration_min,
+            "score": attempt.score,
+            "is_passed": attempt.is_passed,
+            "status": attempt.status,
+        },
+        "result": result_items,
+        "statistics": {
+            "total_questions": len(result_items),
+            "correct_count": correct_count,
+            "wrong_count": wrong_count,
+            "score_rate": score_rate,
+            "question_type_stats": question_types,
+        },
+    }
 
 
 @router.get("/{exam_id}/analysis")
@@ -771,7 +741,6 @@ async def get_exam_analysis(
     if exam.user_id != user_id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="无权限查看考试分析")
 
-    # Get all attempts
     att_stmt = select(ExamAttempt).where(ExamAttempt.exam_id == exam_id)
     att_result = await db.execute(att_stmt)
     attempts = att_result.scalars().all()
@@ -779,7 +748,6 @@ async def get_exam_analysis(
     if not attempts:
         raise HTTPException(status_code=404, detail="暂无考试记录")
 
-    # Score distribution
     score_dist = {"0-20%": 0, "21-40%": 0, "41-60%": 0, "61-80%": 0, "81-100%": 0}
     for att in attempts:
         if att.score is None:
@@ -796,12 +764,10 @@ async def get_exam_analysis(
         else:
             score_dist["81-100%"] += 1
 
-    # Questions
     q_stmt = select(ExamQuestion).where(ExamQuestion.exam_id == exam_id).order_by(ExamQuestion.sort_order)
     q_result = await db.execute(q_stmt)
     questions = q_result.scalars().all()
 
-    # All answers
     attempt_ids = [a.id for a in attempts]
     all_answers = []
     if attempt_ids:
@@ -809,7 +775,6 @@ async def get_exam_analysis(
         aa_result = await db.execute(aa_stmt)
         all_answers = aa_result.scalars().all()
 
-    # Question pass rate
     question_pass_rate = []
     for question in questions:
         q_answers = [a for a in all_answers if a.question_id == question.id]
@@ -829,7 +794,6 @@ async def get_exam_analysis(
             }
         )
 
-    # Wrong question ranking
     wrong_ranking = []
     for rd in question_pass_rate:
         if rd["total_count"] > 0:
@@ -845,7 +809,6 @@ async def get_exam_analysis(
             )
     wrong_ranking.sort(key=lambda x: x["error_rate"], reverse=True)
 
-    # Question type stats
     qt_stats: dict = {}
     for question in questions:
         q_type = question.question_type
@@ -867,7 +830,6 @@ async def get_exam_analysis(
             stats["pass_rate"] = 0
             stats["avg_score"] = 0
 
-    # Overall stats
     total_attempts = len(attempts)
     valid_scores = [a.score for a in attempts if a.score is not None]
     if valid_scores:

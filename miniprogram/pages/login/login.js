@@ -33,12 +33,13 @@ Page({
     const { username, password } = this.data
     if (!username.trim()) { showToast('请输入用户名'); return }
     if (!password.trim()) { showToast('请输入密码'); return }
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) { showToast('密码必须同时包含字母和数字'); return }
 
     this.setData({ loading: true })
     try {
       await auth.login(username, password)
       showToast('登录成功', 'success')
-      wx.reLaunch({ url: '/pages/index/index' })
+      setTimeout(() => { wx.reLaunch({ url: '/pages/index/index' }) }, 500)
     } catch (err) {
       showToast(err.message || '登录失败')
     } finally {
@@ -62,7 +63,7 @@ Page({
         password: regPassword
       })
       showToast('注册成功', 'success')
-      wx.reLaunch({ url: '/pages/index/index' })
+      setTimeout(() => { wx.reLaunch({ url: '/pages/index/index' }) }, 500)
     } catch (err) {
       showToast(err.message || '注册失败')
     } finally {

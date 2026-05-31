@@ -1,20 +1,17 @@
 const api = require('../../utils/api')
-const auth = require('../../utils/auth')
 const { showToast, showLoading, hideLoading } = require('../../utils/util')
 
 Page({
-  data: { exam: {}, questions: [], answers: {}, currentIndex: 0, timer: '', submitting: false },
+  data: { exam: {}, questions: [], answers: {}, currentIndex: 0, timer: '', timerSeconds: 0, submitting: false, attemptId: '' },
 
   onLoad(options) {
-    if (!auth.isLoggedIn()) {
-      wx.reLaunch({ url: '/pages/login/login' })
-      return
-    }
-    if (options && options.id) {
-      this.loadExam(options.id)
-    } else {
-      showToast('缺少考试ID')
-      setTimeout(() => wx.navigateBack(), 1500)
+    if (options && options.id) this.loadExam(options.id)
+  },
+
+  onUnload() {
+    if (this._timerInterval) {
+      clearInterval(this._timerInterval)
+      this._timerInterval = null
     }
   },
 
@@ -31,6 +28,14 @@ Page({
     }
 
     try {
+      const attemptData = await api.post(`/api/v1/exams/${id}/start`)
+      const attemptId = attemptData.id || attemptData.attempt_id || ''
+      this.setData({ attemptId })
+    } catch (err) {
+      this.setData({ attemptId: '' })
+    }
+
+    try {
       const qData = await api.get(`/api/v1/exams/${id}/questions`)
       const list = Array.isArray(qData) ? qData : (qData?.items || qData?.questions || [])
       this.setData({ questions: list })
@@ -38,6 +43,38 @@ Page({
       showToast('加载题目失败')
     }
     hideLoading()
+
+    this.startTimer()
+  },
+
+  startTimer() {
+    const duration = this.data.exam.duration || this.data.exam.time_limit || 0
+    if (!duration) return
+
+    let seconds = duration * 60
+    this.setData({ timerSeconds: seconds })
+    this._updateTimerDisplay(seconds)
+
+    this._timerInterval = setInterval(() => {
+      seconds--
+      this.setData({ timerSeconds: seconds })
+      this._updateTimerDisplay(seconds)
+
+      if (seconds <= 0) {
+        clearInterval(this._timerInterval)
+        this._timerInterval = null
+        showToast('考试时间到，自动提交')
+        this.doSubmit()
+      }
+    }, 1000)
+  },
+
+  _updateTimerDisplay(seconds) {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    const pad = n => String(n).padStart(2, '0')
+    this.setData({ timer: h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}` })
   },
 
   selectAnswer(e) {
@@ -80,7 +117,14 @@ Page({
   },
 
   async doSubmit() {
+    if (this.data.submitting) return
     this.setData({ submitting: true })
+
+    if (this._timerInterval) {
+      clearInterval(this._timerInterval)
+      this._timerInterval = null
+    }
+
     try {
       const answerList = []
       for (const [idx, ans] of Object.entries(this.data.answers)) {
@@ -89,9 +133,12 @@ Page({
           answer: ans
         })
       }
-      const data = await api.post(`/api/v1/exams/${this.data.exam.id}/submit`, { answers: answerList })
+
+      const { attemptId, exam } = this.data
+      const submitId = attemptId || exam.id
+      const data = await api.post(`/api/v1/exams/attempts/${submitId}/submit`, { answers: answerList })
       showToast('提交成功', 'success')
-      wx.redirectTo({ url: `/pages/exam/result?attempt_id=${data.id || data.attempt_id || ''}&score=${data.score || 0}` })
+      wx.redirectTo({ url: `/pages/exam/result?attempt_id=${data.id || data.attempt_id || submitId}&score=${data.score || 0}` })
     } catch (err) {
       showToast(err.message || '提交失败')
     } finally {

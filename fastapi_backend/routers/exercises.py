@@ -3,18 +3,41 @@
 from __future__ import annotations
 
 import aiosqlite
+import re
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.models import Exercise, User
+from fastapi_backend.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/v1", tags=["exercises"])
+
+
+async def _get_optional_user(
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    try:
+        auth_service = AuthService(db=db)
+        payload = await auth_service.decode_token(token, expected_type="access")
+        user_id = int(payload["sub"])
+        user = await auth_service.get_user_by_id(db, user_id)
+        if user and user.is_active:
+            return user
+        return None
+    except Exception:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -212,17 +235,26 @@ async def execute_sql(
     if not user_sql:
         raise HTTPException(status_code=400, detail="请输入SQL语句")
 
-    dangerous = ["drop", "truncate", "alter", "pragma"]
-    lower_sql = user_sql.lower()
-    for kw in dangerous:
-        if kw in lower_sql:
-            raise HTTPException(status_code=400, detail=f"禁止执行包含 {kw} 关键字的SQL语句")
+    dangerous_patterns = [
+        r"\bdrop\b", r"\btruncate\b", r"\balter\b", r"\bpragma\b",
+        r"\battach\b", r"\bdetach\b", r"\bexec\b", r"\bexecute\b",
+    ]
+
+    def _check_sql(sql: str, label: str) -> None:
+        lower_sql = sql.lower()
+        for pattern in dangerous_patterns:
+            if re.search(pattern, lower_sql):
+                kw = pattern.replace(r"\b", "")
+                raise HTTPException(status_code=400, detail=f"禁止在{label}中包含 {kw} 关键字的SQL语句")
+
+    _check_sql(user_sql, "user_sql")
+    if setup_sql and setup_sql.strip():
+        _check_sql(setup_sql, "setup_sql")
 
     start_time = time.time()
     conn = await aiosqlite.connect(":memory:")
-    cursor = await conn.cursor()
-
     try:
+        cursor = await conn.cursor()
         if setup_sql.strip():
             await cursor.executescript(setup_sql)
             await conn.commit()
@@ -233,7 +265,6 @@ async def execute_sql(
             columns = [d[0] for d in cursor.description] if cursor.description else []
             rows = await cursor.fetchall()
             await conn.commit()
-            await conn.close()
             elapsed_ms = int((time.time() - start_time) * 1000)
             return {
                 "success": True,
@@ -245,7 +276,6 @@ async def execute_sql(
         else:
             await conn.commit()
             row_count = cursor.rowcount
-            await conn.close()
             elapsed_ms = int((time.time() - start_time) * 1000)
             return {
                 "success": True,
@@ -254,9 +284,10 @@ async def execute_sql(
                 "elapsed_ms": elapsed_ms,
             }
     except aiosqlite.Error as e:
-        await conn.close()
         elapsed_ms = int((time.time() - start_time) * 1000)
         return {"success": False, "error": str(e), "elapsed_ms": elapsed_ms}
+    finally:
+        await conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +299,7 @@ async def execute_sql(
 async def get_exercise(
     exercise_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(_get_optional_user),
 ):
     """获取习题详情"""
     stmt = select(Exercise).where(Exercise.id == exercise_id)
@@ -278,12 +310,13 @@ async def get_exercise(
     if not ex.is_public:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    return {
+    is_admin = current_user is not None and (current_user.is_admin or current_user.is_super_admin)
+
+    resp = {
         "id": ex.id,
         "title": ex.title,
         "description": ex.description,
         "instructions": ex.instructions,
-        "solution": ex.solution,
         "difficulty": ex.difficulty,
         "exercise_type": ex.exercise_type,
         "language": ex.language,
@@ -299,6 +332,9 @@ async def get_exercise(
         "created_at": ex.created_at.isoformat() if ex.created_at else None,
         "updated_at": ex.updated_at.isoformat() if ex.updated_at else None,
     }
+    if is_admin:
+        resp["solution"] = ex.solution
+    return resp
 
 
 # ---------------------------------------------------------------------------

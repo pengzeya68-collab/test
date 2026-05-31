@@ -22,7 +22,7 @@ Page({
 
   async loadResult(attemptId) {
     try {
-      const data = await api.get(`/api/v1/exams/attempts/${attemptId}`)
+      const data = await api.get(`/api/v1/exams/attempts/${attemptId}/result`)
       if (data) {
         this.setData({
           result: data,
@@ -31,6 +31,17 @@ Page({
         })
       }
     } catch (err) {
+      try {
+        const data = await api.get(`/api/v1/exams/attempts/${attemptId}`)
+        if (data) {
+          this.setData({
+            result: data,
+            score: data.score || this.data.score,
+            loading: false
+          })
+          return
+        }
+      } catch (err2) { }
       this.setData({ loading: false })
     }
   },

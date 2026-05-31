@@ -1,9 +1,59 @@
 const { getApiUrl } = require('./config')
 
 let isRedirecting = false
+let isRefreshing = false
+let refreshSubscribers = []
+
+function subscribeTokenRefresh(cb) {
+  refreshSubscribers.push(cb)
+}
+
+function onTokenRefreshed(newToken) {
+  refreshSubscribers.forEach(cb => cb(newToken))
+  refreshSubscribers = []
+}
 
 function getToken() {
   return wx.getStorageSync('token') || ''
+}
+
+function getRefreshToken() {
+  return wx.getStorageSync('refreshToken') || ''
+}
+
+async function tryRefreshToken() {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return null
+
+  try {
+    const res = await new Promise((resolve, reject) => {
+      wx.request({
+        url: getApiUrl('/api/v1/auth/refresh'),
+        method: 'POST',
+        data: { refresh_token: refreshToken },
+        header: { 'Content-Type': 'application/json' },
+        success(res) {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(res.data)
+          } else {
+            reject(new Error('刷新失败'))
+          }
+        },
+        fail: reject
+      })
+    })
+
+    if (res.access_token) {
+      wx.setStorageSync('token', res.access_token)
+      if (res.refresh_token) {
+        wx.setStorageSync('refreshToken', res.refresh_token)
+      }
+      return res.access_token
+    }
+    return null
+  } catch (err) {
+    return null
+  }
 }
 
 function request(options) {
@@ -24,17 +74,49 @@ function request(options) {
       header,
       success(res) {
         if (res.statusCode === 401) {
-          wx.removeStorageSync('token')
-          wx.removeStorageSync('refreshToken')
-          wx.removeStorageSync('userInfo')
-          if (!isRedirecting) {
-            isRedirecting = true
-            wx.reLaunch({
-              url: '/pages/login/login',
-              complete() { isRedirecting = false }
+          if (options._isRetry) {
+            wx.removeStorageSync('token')
+            wx.removeStorageSync('refreshToken')
+            wx.removeStorageSync('userInfo')
+            if (!isRedirecting) {
+              isRedirecting = true
+              wx.reLaunch({
+                url: '/pages/login/login',
+                complete() { isRedirecting = false }
+              })
+            }
+            reject(new Error('登录已过期'))
+            return
+          }
+
+          if (!isRefreshing) {
+            isRefreshing = true
+            tryRefreshToken().then(newToken => {
+              isRefreshing = false
+              if (newToken) {
+                onTokenRefreshed(newToken)
+                const retryOptions = { ...options, _isRetry: true }
+                request(retryOptions).then(resolve).catch(reject)
+              } else {
+                wx.removeStorageSync('token')
+                wx.removeStorageSync('refreshToken')
+                wx.removeStorageSync('userInfo')
+                if (!isRedirecting) {
+                  isRedirecting = true
+                  wx.reLaunch({
+                    url: '/pages/login/login',
+                    complete() { isRedirecting = false }
+                  })
+                }
+                reject(new Error('登录已过期'))
+              }
+            })
+          } else {
+            subscribeTokenRefresh(() => {
+              const retryOptions = { ...options, _isRetry: true }
+              request(retryOptions).then(resolve).catch(reject)
             })
           }
-          reject(new Error('登录已过期'))
           return
         }
         if (res.statusCode >= 200 && res.statusCode < 300) {

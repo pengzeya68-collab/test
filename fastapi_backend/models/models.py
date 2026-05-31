@@ -632,6 +632,8 @@ class Favorite(Base):
     exercise = relationship("Exercise")
     note = relationship("Note")
 
+    __table_args__ = (UniqueConstraint('user_id', 'exercise_id', name='uq_favorites_user_exercise'),)
+
 
 class TestCase(Base):
     """面试题测试用例表"""
@@ -764,6 +766,8 @@ class ExamAnswer(Base):
     score = Column(Integer, nullable=True)
     feedback = Column(Text, nullable=True)
 
+    __table_args__ = (UniqueConstraint('attempt_id', 'question_id', name='uq_exam_answer_attempt_question'),)
+
     def __repr__(self):
         return f"<ExamAnswer {self.id} attempt:{self.attempt_id} q:{self.question_id}>"
 
@@ -791,6 +795,8 @@ class UserAchievement(Base):
     unlocked_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
     progress = Column(Integer, default=1)
 
+    __table_args__ = (UniqueConstraint('user_id', 'achievement_id', name='uq_user_achievement'),)
+
 
 class DailyCheckin(Base):
     """每日签到表"""
@@ -803,6 +809,8 @@ class DailyCheckin(Base):
     streak_count = Column(Integer, default=1)
     exp_earned = Column(Integer, default=5)
     created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+
+    __table_args__ = (UniqueConstraint('user_id', 'checkin_date', name='uq_checkin_user_date'),)
 
 
 class ExerciseSubmissionRecord(Base):

@@ -28,7 +28,11 @@ Page({
       const data = await api.get('/api/auto-test/groups/tree')
       const groups = Array.isArray(data) ? data : (data?.items || [])
       this.setData({ groups })
-    } catch (err) { }
+    } catch (err) {
+      if (err.message !== '登录已过期') {
+        console.error('加载分组失败:', err.message)
+      }
+    }
   },
 
   async loadData() {
@@ -40,6 +44,9 @@ Page({
       this.filterList()
     } catch (err) {
       this.setData({ allList: [], list: [] })
+      if (err.message !== '登录已过期') {
+        showToast('加载用例失败')
+      }
     } finally {
       this.setData({ loading: false })
     }
@@ -49,8 +56,10 @@ Page({
     const { allList, keyword, activeGroup } = this.data
     let list = allList
     if (activeGroup) {
+      const group = this.data.groups.find(g => g.id === activeGroup)
+      const groupName = group ? group.name : ''
       list = list.filter(item =>
-        item.group_id === activeGroup || item.group_name === activeGroup
+        item.group_id === activeGroup || item.group_name === groupName
       )
     }
     if (keyword) {

@@ -34,12 +34,20 @@ Page({
       const exData = await api.get(`/api/v1/learning-paths/${id}/exercises`)
       const list = Array.isArray(exData) ? exData : (exData?.items || [])
       this.setData({ exercises: list })
-    } catch (err) { }
+    } catch (err) {
+      if (err.message !== '登录已过期') {
+        console.error('加载路径习题失败:', err.message)
+      }
+    }
 
     try {
       const pData = await api.get(`/api/v1/learning-paths/${id}/progress`)
       if (pData) this.setData({ progress: pData })
-    } catch (err) { }
+    } catch (err) {
+      if (err.message !== '登录已过期') {
+        console.error('加载路径进度失败:', err.message)
+      }
+    }
 
     hideLoading()
   },

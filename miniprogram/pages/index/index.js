@@ -5,9 +5,11 @@ Page({
   data: {
     userInfo: {},
     greeting: '',
-    stats: { exerciseCount: 0, completedCount: 0, streakDays: 0 },
+    stats: { exerciseCount: 0, completedCount: 0, streakDays: 0, score: 0 },
     recentExercises: [],
-    dailyExercise: {}
+    dailyExercise: {},
+    loading: true,
+    loadError: false
   },
 
   onLoad() {
@@ -27,25 +29,24 @@ Page({
       return
     }
     const userInfo = auth.getUserInfo() || {}
-    this.setData({ userInfo })
+    this.setData({ userInfo, loading: true, loadError: false })
     this.loadData()
   },
 
   async loadData() {
+    let hasError = false
+
     try {
       const exercises = await api.get('/api/v1/exercises')
       const list = (exercises || []).slice(0, 5)
+      const totalCount = Array.isArray(exercises) ? exercises.length : (exercises?.items?.length || 0)
       this.setData({
         recentExercises: list,
-        stats: {
-          exerciseCount: (exercises || []).length,
-          completedCount: 0,
-          streakDays: 0
-        },
-        dailyExercise: list[0] || {}
+        'stats.exerciseCount': totalCount
       })
     } catch (err) {
-      console.error('加载首页数据失败:', err)
+      if (err.message === '登录已过期') return
+      hasError = true
     }
 
     try {
@@ -53,23 +54,39 @@ Page({
       if (progress && typeof progress === 'object') {
         this.setData({
           'stats.completedCount': progress.completed_count || progress.completedCount || 0,
-          'stats.streakDays': progress.streak_days || progress.streakDays || 0
+          'stats.streakDays': progress.streak_days || progress.streakDays || 0,
+          'stats.score': progress.score || 0
         })
       }
     } catch (err) {
-      // progress接口可能未部署，静默处理
+      if (err.message === '登录已过期') return
+      hasError = true
+    }
+
+    try {
+      const dailyData = await api.get('/api/v1/exercise/daily-tasks')
+      const dailyList = Array.isArray(dailyData) ? dailyData : (dailyData?.items || dailyData?.tasks || [])
+      if (dailyList.length > 0) {
+        this.setData({ dailyExercise: dailyList[0] })
+      }
+    } catch (err) {
+      if (!this.data.dailyExercise.id && this.data.recentExercises.length > 0) {
+        this.setData({ dailyExercise: this.data.recentExercises[0] })
+      }
     }
 
     try {
       const me = await api.get('/api/v1/auth/me')
       if (me && typeof me === 'object') {
         this.setData({
-          'stats.exerciseCount': me.score || this.data.stats.exerciseCount
+          'stats.score': me.score || this.data.stats.score
         })
       }
     } catch (err) {
-      // 静默处理
+      if (err.message === '登录已过期') return
     }
+
+    this.setData({ loading: false, loadError: hasError })
   },
 
   goExerciseList() { wx.switchTab({ url: '/pages/exercise/list' }) },

@@ -23,8 +23,52 @@
 }
 
 .tab-icon {
-  font-size: 40rpx;
+  width: 44rpx;
+  height: 44rpx;
   margin-bottom: 4rpx;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.icon-home {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3Cpolyline points='9 22 9 12 15 12 15 22'/%3E%3C/svg%3E") no-repeat center / contain;
+  -webkit-mask-size: contain;
+  background-color: #999;
+}
+
+.tab-active .icon-home {
+  background-color: #6C5CE7;
+}
+
+.icon-exercise {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/%3E%3Cpath d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/%3E%3C/svg%3E") no-repeat center / contain;
+  -webkit-mask-size: contain;
+  background-color: #999;
+}
+
+.tab-active .icon-exercise {
+  background-color: #6C5CE7;
+}
+
+.icon-autotest {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Crect x='2' y='3' width='20' height='14' rx='2' ry='2'/%3E%3Cline x1='8' y1='21' x2='16' y2='21'/%3E%3Cline x1='12' y1='17' x2='12' y2='21'/%3E%3C/svg%3E") no-repeat center / contain;
+  -webkit-mask-size: contain;
+  background-color: #999;
+}
+
+.tab-active .icon-autotest {
+  background-color: #6C5CE7;
+}
+
+.icon-profile {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") no-repeat center / contain;
+  -webkit-mask-size: contain;
+  background-color: #999;
+}
+
+.tab-active .icon-profile {
+  background-color: #6C5CE7;
 }
 
 .tab-text {

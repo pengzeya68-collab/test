@@ -30,10 +30,9 @@ Page({
 
   async unfavorite(e) {
     const id = e.currentTarget.dataset.id
-    const index = e.currentTarget.dataset.index
     try {
       await api.post('/api/v1/favorites/toggle', { exercise_id: id })
-      const list = this.data.list.filter((_, i) => i !== index)
+      const list = this.data.list.filter(item => item.id !== id)
       this.setData({ list })
       showToast('已取消收藏')
     } catch (err) {

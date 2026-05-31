@@ -34,18 +34,30 @@ Page({
     let hasError = false
 
     try {
-      const exercises = await api.get('/api/v1/exercises')
-      if (!this._mounted) return
-      const exerciseCount = Array.isArray(exercises) ? exercises.length : (exercises && exercises.items ? exercises.items.length : 0)
-      this.setData({ 'stats.exercises': exerciseCount })
-    } catch (err) {
-      if (err.message === '登录已过期') return
-      hasError = true
-    }
+      const [exercises, progress, status] = await Promise.all([
+        api.get('/api/v1/exercises').catch(err => {
+          if (err.message === '登录已过期') throw err
+          hasError = true
+          return null
+        }),
+        api.get('/api/v1/exercise/progress').catch(err => {
+          if (err.message === '登录已过期') throw err
+          hasError = true
+          return null
+        }),
+        api.get('/api/v1/checkin/status').catch(err => {
+          if (err.message === '登录已过期') throw err
+          return null
+        })
+      ])
 
-    try {
-      const progress = await api.get('/api/v1/exercise/progress')
       if (!this._mounted) return
+
+      if (exercises) {
+        const exerciseCount = Array.isArray(exercises) ? exercises.length : (exercises && exercises.items ? exercises.items.length : 0)
+        this.setData({ 'stats.exercises': exerciseCount })
+      }
+
       if (progress && typeof progress === 'object') {
         this.setData({
           'stats.completed': progress.completed_count || progress.completedCount || 0,
@@ -53,14 +65,7 @@ Page({
           'stats.streak': progress.streak_days || progress.streakDays || 0
         })
       }
-    } catch (err) {
-      if (err.message === '登录已过期') return
-      hasError = true
-    }
 
-    try {
-      const status = await api.get('/api/v1/checkin/status')
-      if (!this._mounted) return
       if (status && typeof status === 'object') {
         this.setData({ checkedIn: !!status.checked_in || !!status.checkedIn })
       }
@@ -93,12 +98,12 @@ Page({
           showLoading('签到中...')
           try {
             await api.post('/api/v1/checkin/')
+            hideLoading()
             showToast('签到成功！+10积分', 'success')
             this.setData({ checkedIn: true, 'stats.streak': this.data.stats.streak + 1 })
           } catch (err) {
-            showToast(err.message || '签到失败')
-          } finally {
             hideLoading()
+            showToast(err.message || '签到失败')
           }
         }
       }

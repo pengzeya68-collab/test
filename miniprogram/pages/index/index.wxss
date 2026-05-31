@@ -254,3 +254,31 @@
   color: #6C5CE7;
   font-weight: 600;
 }
+
+.loading-state {
+  text-align: center;
+  padding: 60rpx;
+  color: #999;
+  font-size: 28rpx;
+}
+
+.error-tip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #FFF3CD;
+  border-radius: 16rpx;
+  padding: 20rpx 30rpx;
+  margin: 20rpx 30rpx;
+}
+
+.error-tip-text {
+  font-size: 26rpx;
+  color: #856404;
+}
+
+.error-tip-retry {
+  font-size: 26rpx;
+  color: #6C5CE7;
+  font-weight: 600;
+}

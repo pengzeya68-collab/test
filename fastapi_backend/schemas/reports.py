@@ -17,11 +17,11 @@ class TestReportResultResponse(BaseModel):
     url: Optional[str]
     status_code: Optional[int]
     success: bool
-    time_ms: Optional[int]
+    time: Optional[int]
     error: Optional[str]
     request_headers: Optional[str]
     request_body: Optional[str]
-    response_body: Optional[str]
+    response: Optional[str]
     response_headers: Optional[str]
     executed_at: datetime
 

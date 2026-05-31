@@ -9,17 +9,17 @@
     <view class="top-item top-2">
       <view class="top-avatar"><text>🥈</text></view>
       <text class="top-name">{{topList[1].username || '-'}}</text>
-      <text class="top-score">{{topList[1].score || topList[1].streak || 0}}</text>
+      <text class="top-score">{{activeTab === 'streak' ? (topList[1].streak || 0) : (topList[1].score !== undefined && topList[1].score !== null ? topList[1].score : (topList[1].streak || 0))}}</text>
     </view>
     <view class="top-item top-1">
       <view class="top-avatar"><text>🥇</text></view>
       <text class="top-name">{{topList[0].username || '-'}}</text>
-      <text class="top-score">{{topList[0].score || topList[0].streak || 0}}</text>
+      <text class="top-score">{{activeTab === 'streak' ? (topList[0].streak || 0) : (topList[0].score !== undefined && topList[0].score !== null ? topList[0].score : (topList[0].streak || 0))}}</text>
     </view>
     <view class="top-item top-3">
       <view class="top-avatar"><text>🥉</text></view>
       <text class="top-name">{{topList[2].username || '-'}}</text>
-      <text class="top-score">{{topList[2].score || topList[2].streak || 0}}</text>
+      <text class="top-score">{{activeTab === 'streak' ? (topList[2].streak || 0) : (topList[2].score !== undefined && topList[2].score !== null ? topList[2].score : (topList[2].streak || 0))}}</text>
     </view>
   </view>
 
@@ -27,7 +27,7 @@
     <view class="rank-item card" wx:for="{{rankList}}" wx:key="id" wx:if="{{index >= 3}}">
       <text class="rank-num">{{index + 1}}</text>
       <text class="rank-name">{{item.username || '-'}}</text>
-      <text class="rank-score">{{item.score || item.streak || 0}}</text>
+      <text class="rank-score">{{activeTab === 'streak' ? (item.streak || 0) : (item.score !== undefined && item.score !== null ? item.score : (item.streak || 0))}}</text>
     </view>
   </view>
 

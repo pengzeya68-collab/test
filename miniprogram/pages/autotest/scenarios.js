@@ -29,6 +29,9 @@ Page({
       this.filterList()
     } catch (err) {
       this.setData({ allList: [], list: [] })
+      if (err.message !== '登录已过期') {
+        showToast('加载场景失败')
+      }
     } finally {
       this.setData({ loading: false })
     }

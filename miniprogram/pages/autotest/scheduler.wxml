@@ -20,7 +20,7 @@
       <view class="sched-bottom">
         <text class="sched-time">{{item.created_at || ''}}</text>
         <view class="sched-actions">
-          <button class="sched-toggle-btn {{item.enabled || item.is_active ? 'btn-stop' : 'btn-start'}}" size="mini" catchtap="toggleTask" data-id="{{item.id}}" data-enabled="{{item.enabled || item.is_active}}">
+          <button class="sched-toggle-btn {{item.enabled || item.is_active ? 'btn-stop' : 'btn-start'}}" size="mini" catchtap="toggleTask" data-id="{{item.id}}" data-enabled="{{!!(item.enabled || item.is_active)}}">
             {{item.enabled || item.is_active ? '⏸ 停用' : '▶ 启用'}}
           </button>
           <button class="sched-run-btn" size="mini" catchtap="runTask" data-id="{{item.id}}">▶ 立即执行</button>

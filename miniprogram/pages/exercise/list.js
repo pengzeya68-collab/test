@@ -28,6 +28,7 @@ Page({
     if (this.data.categories.length === 0) {
       this.loadCategories()
     }
+    this.setData({ page: 1, exercises: [], noMore: false })
     this.loadExercises()
   },
 
@@ -46,7 +47,9 @@ Page({
         }
       }
       this.setData({ categories })
-    } catch (err) { }
+    } catch (err) {
+      console.error('加载分类失败:', err.message)
+    }
   },
 
   async loadExercises() {
@@ -56,11 +59,12 @@ Page({
     try {
       const params = []
       if (this.data.activeCategory) params.push(`category=${encodeURIComponent(this.data.activeCategory)}`)
-      if (this.data.activeDifficulty) params.push(`module=${this.data.activeDifficulty}`)
+      if (this.data.activeDifficulty) params.push(`difficulty=${this.data.activeDifficulty}`)
+      if (this.data.keyword && this.data.keyword.trim()) params.push(`search=${encodeURIComponent(this.data.keyword.trim())}`)
       const query = params.length ? `?${params.join('&')}` : ''
 
       const data = await api.get(`/api/v1/exercises${query}`)
-      const list = Array.isArray(data) ? data : []
+      const list = Array.isArray(data) ? data : (data?.items || [])
       this.setData({
         exercises: list,
         noMore: list.length < this.data.pageSize
@@ -74,6 +78,28 @@ Page({
 
   loadMore() {
     if (this.data.noMore || this.data.loading) return
+    const nextPage = this.data.page + 1
+    this.setData({ page: nextPage, loading: true })
+
+    const params = []
+    if (this.data.activeCategory) params.push(`category=${encodeURIComponent(this.data.activeCategory)}`)
+    if (this.data.activeDifficulty) params.push(`difficulty=${this.data.activeDifficulty}`)
+    if (this.data.keyword && this.data.keyword.trim()) params.push(`search=${encodeURIComponent(this.data.keyword.trim())}`)
+    params.push(`page=${nextPage}`)
+    params.push(`page_size=${this.data.pageSize}`)
+    const query = params.length ? `?${params.join('&')}` : ''
+
+    api.get(`/api/v1/exercises${query}`).then(data => {
+      const list = Array.isArray(data) ? data : (data?.items || [])
+      this.setData({
+        exercises: [...this.data.exercises, ...list],
+        noMore: list.length < this.data.pageSize,
+        loading: false
+      })
+    }).catch(() => {
+      this.setData({ loading: false })
+      showToast('加载更多失败')
+    })
   },
 
   onSearchInput(e) {
@@ -86,12 +112,12 @@ Page({
   },
 
   selectCategory(e) {
-    this.setData({ activeCategory: e.currentTarget.dataset.val, page: 1, exercises: [] })
+    this.setData({ activeCategory: e.currentTarget.dataset.val, page: 1, exercises: [], noMore: false })
     this.loadExercises()
   },
 
   selectDifficulty(e) {
-    this.setData({ activeDifficulty: e.currentTarget.dataset.val, page: 1, exercises: [] })
+    this.setData({ activeDifficulty: e.currentTarget.dataset.val, page: 1, exercises: [], noMore: false })
     this.loadExercises()
   },
 

@@ -399,9 +399,10 @@ async def submit_exercise(
         progress = progress_result.scalar_one_or_none()
 
         if progress:
-            progress.completed = is_correct
-            progress.score = 100 if is_correct else 0
+            progress.attempts = (progress.attempts or 0) + 1
             if is_correct:
+                progress.completed = True
+                progress.score = 100
                 progress.completed_at = datetime.now(timezone.utc)
         else:
             progress = Progress(
@@ -410,6 +411,7 @@ async def submit_exercise(
                 completed=is_correct,
                 score=100 if is_correct else 0,
                 completed_at=datetime.now(timezone.utc) if is_correct else None,
+                attempts=1,
             )
             db.add(progress)
 

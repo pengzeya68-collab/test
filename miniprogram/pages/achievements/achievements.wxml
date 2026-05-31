@@ -10,8 +10,8 @@
     <text class="empty-text">暂无成就数据</text>
   </view>
   <scroll-view wx:else scroll-y class="ach-scroll">
-    <view class="ach-item card {{item.unlocked ? 'ach-unlocked-item' : 'ach-locked-item'}}" wx:for="{{list}}" wx:key="id">
-      <view class="ach-icon-wrap {{item.unlocked ? 'ach-icon-active' : ''}}">
+    <view class="ach-item card {{item.unlocked || item.is_unlocked ? 'ach-unlocked-item' : 'ach-locked-item'}}" wx:for="{{list}}" wx:key="id">
+      <view class="ach-icon-wrap {{item.unlocked || item.is_unlocked ? 'ach-icon-active' : ''}}">
         <text class="ach-icon">{{item.icon || '🏅'}}</text>
       </view>
       <view class="ach-info">
@@ -19,7 +19,7 @@
         <text class="ach-desc">{{item.description || ''}}</text>
       </view>
       <view class="ach-status">
-        <text wx:if="{{item.unlocked}}" class="ach-done">✅</text>
+        <text wx:if="{{item.unlocked || item.is_unlocked}}" class="ach-done">✅</text>
         <text wx:else class="ach-locked">🔒</text>
       </view>
     </view>
