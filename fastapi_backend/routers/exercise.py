@@ -312,7 +312,6 @@ async def submit_exercise(
 
     elif language == "sql":
         setup_sql = ex.setup_sql or ""
-        expected_output = ex.solution or ""
 
         exec_result = await sandbox.execute_code(
             code=solution,
@@ -321,29 +320,69 @@ async def submit_exercise(
             setup_sql=setup_sql,
         )
         actual = exec_result.get("stdout", "").strip()
-        expected = expected_output.strip()
 
-        if expected:
-            is_correct = actual == expected
-        else:
+        if exec_result.get("returncode", 1) != 0 and exec_result.get("exit_code", 1) != 0:
             is_correct = False
+            judge_result = {
+                "total_cases": 1,
+                "passed_count": 0,
+                "failed_count": 1,
+                "pass_rate": 0.0,
+                "all_passed": False,
+                "details": [
+                    {
+                        "case_index": 1,
+                        "passed": False,
+                        "expected": "SQL执行成功",
+                        "actual": actual[:500] or exec_result.get("stderr", "")[:500],
+                    }
+                ],
+                "summary": "SQL执行失败",
+            }
+        elif ex.solution and ex.solution.strip():
+            ref_result = await sandbox.execute_code(
+                code=ex.solution,
+                language="sql",
+                timeout=3,
+                setup_sql=setup_sql,
+            )
+            expected = ref_result.get("stdout", "").strip()
+            is_correct = actual == expected and actual != ""
 
-        judge_result = {
-            "total_cases": 1,
-            "passed_count": 1 if is_correct else 0,
-            "failed_count": 0 if is_correct else 1,
-            "pass_rate": 100.0 if is_correct else 0.0,
-            "all_passed": is_correct,
-            "details": [
-                {
-                    "case_index": 1,
-                    "passed": is_correct,
-                    "expected": expected[:500] if expected else "(无预期输出)",
-                    "actual": actual[:500],
-                }
-            ],
-            "summary": "SQL 执行结果匹配" if is_correct else "SQL 执行结果不匹配",
-        }
+            judge_result = {
+                "total_cases": 1,
+                "passed_count": 1 if is_correct else 0,
+                "failed_count": 0 if is_correct else 1,
+                "pass_rate": 100.0 if is_correct else 0.0,
+                "all_passed": is_correct,
+                "details": [
+                    {
+                        "case_index": 1,
+                        "passed": is_correct,
+                        "expected": expected[:500] if expected else "(无输出)",
+                        "actual": actual[:500] if actual else "(无输出)",
+                    }
+                ],
+                "summary": "SQL 执行结果匹配" if is_correct else "SQL 执行结果不匹配",
+            }
+        else:
+            is_correct = actual != ""
+            judge_result = {
+                "total_cases": 1,
+                "passed_count": 1 if is_correct else 0,
+                "failed_count": 0 if is_correct else 1,
+                "pass_rate": 100.0 if is_correct else 0.0,
+                "all_passed": is_correct,
+                "details": [
+                    {
+                        "case_index": 1,
+                        "passed": is_correct,
+                        "expected": "SQL执行成功并返回结果",
+                        "actual": actual[:500] if actual else "(无输出)",
+                    }
+                ],
+                "summary": "SQL 执行成功" if is_correct else "SQL 未返回结果",
+            }
 
     else:
         is_correct = solution.strip() == (ex.solution or "").strip()
