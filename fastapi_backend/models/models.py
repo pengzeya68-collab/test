@@ -480,6 +480,7 @@ class Exercise(Base):
     code_template = Column(Text)
     expected_output = Column(Text)
     hint = Column(Text, nullable=True, comment="提示信息")
+    setup_sql = Column(Text, nullable=True, comment="SQL题建表和初始数据")
     created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
     updated_at = Column(
         DateTime(timezone=True),

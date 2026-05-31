@@ -92,19 +92,15 @@ async def _execute_and_judge(
 
     elif language == "sql":
         for i, tc in enumerate(test_cases):
-            setup_sql = tc.get("setup_sql", setup_code or "")
+            tc_setup = tc.get("setup_sql", setup_code or "")
             user_sql = source_code
             expected = str(tc.get("expected_output", tc.get("expected", ""))).strip()
 
-            combined_sql = ""
-            if setup_sql:
-                combined_sql = setup_sql + ";\n"
-            combined_sql += user_sql
-
             exec_result = await sandbox.execute_code(
-                code=combined_sql,
+                code=user_sql,
                 language="sql",
                 timeout=3,
+                setup_sql=tc_setup,
             )
 
             actual = exec_result.get("stdout", "").strip()
@@ -315,18 +311,14 @@ async def submit_exercise(
             }
 
     elif language == "sql":
-        setup_sql = ex.test_cases or ""
+        setup_sql = ex.setup_sql or ""
         expected_output = ex.solution or ""
 
-        combined_sql = ""
-        if setup_sql:
-            combined_sql = setup_sql + ";\n"
-        combined_sql += solution
-
         exec_result = await sandbox.execute_code(
-            code=combined_sql,
+            code=solution,
             language="sql",
             timeout=3,
+            setup_sql=setup_sql,
         )
         actual = exec_result.get("stdout", "").strip()
         expected = expected_output.strip()

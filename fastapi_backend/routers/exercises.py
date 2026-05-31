@@ -348,6 +348,8 @@ async def get_exercise(
         "created_by": ex.user_id,
         "learning_path_id": ex.learning_path_id,
         "test_cases": ex.test_cases,
+        "code_template": ex.code_template,
+        "setup_sql": ex.setup_sql,
         "hint": ex.hint,
         "created_at": ex.created_at.isoformat() if ex.created_at else None,
         "updated_at": ex.updated_at.isoformat() if ex.updated_at else None,

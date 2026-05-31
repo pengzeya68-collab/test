@@ -828,7 +828,7 @@ const runSql = async () => {
   sqlResult.value = null
   try {
     const res = await request.post('/exercises/execute-sql', {
-      setup_sql: exercise.value.test_cases || '',
+      setup_sql: exercise.value.setup_sql || '',
       user_sql: userSql.value
     })
     sqlResult.value = res

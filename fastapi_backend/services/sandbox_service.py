@@ -184,6 +184,7 @@ class CodeSandbox:
         language: str = "python",
         input_data: str = None,
         timeout: int = None,
+        setup_sql: str = None,
     ) -> dict:
         if language not in self.LANGUAGE_CONFIG:
             return {
@@ -208,7 +209,7 @@ class CodeSandbox:
         if language == "python":
             return await self._execute_python(code, input_data, timeout)
         elif language == "sql":
-            return await self._execute_sql(code, timeout)
+            return await self._execute_sql(code, timeout, setup_sql=setup_sql)
         elif language == "shell":
             return await self._execute_shell(code, timeout)
         else:
@@ -349,7 +350,7 @@ class CodeSandbox:
     async def execute_python_code_with_input(self, code: str, input_data: str = None, timeout: int = None) -> dict:
         return await self._execute_python(code, input_data=input_data, timeout=timeout)
 
-    async def _execute_sql(self, code: str, timeout: int = None) -> dict:
+    async def _execute_sql(self, code: str, timeout: int = None, setup_sql: str = None) -> dict:
         import sqlite3
 
         if timeout is None:
@@ -361,7 +362,16 @@ class CodeSandbox:
 
         try:
             cursor = conn.cursor()
-            cursor.execute("PRAGMA query_only = ON")
+
+            if setup_sql and setup_sql.strip():
+                for stmt in setup_sql.split(";"):
+                    stmt = stmt.strip()
+                    if stmt:
+                        try:
+                            cursor.execute(stmt)
+                        except sqlite3.Error:
+                            pass
+                conn.commit()
 
             statements = [s.strip() for s in code.split(";") if s.strip()]
 

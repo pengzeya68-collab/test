@@ -1,4 +1,4 @@
-﻿﻿﻿<template>
+﻿﻿<template>
   <div class="code-editor-container">
     <!-- 工具栏 -->
     <div class="editor-toolbar">
@@ -152,7 +152,7 @@ const createEditor = () => {
 const getDefaultTemplate = (lang) => {
   const templates = {
     python: '# 在这里写你的Python代码\nprint("Hello World!")',
-    sql: '-- 在这里写你的SQL语句\nSELECT * FROM users WHERE age > 18;',
+    sql: '-- 在这里写你的SQL查询语句\nSELECT * FROM users LIMIT 10;',
     shell: '# 在这里写你的Shell脚本\necho "Hello World!"'
   }
   return templates[lang] || ''
