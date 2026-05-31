@@ -207,10 +207,29 @@ async def submit_solution(
     if not ex:
         raise HTTPException(status_code=404, detail="Exercise not found")
 
-    is_correct = body["solution"].strip() == (ex.solution or "").strip()
+    is_correct = False
+    message = ""
+    exercise_type_val = (ex.exercise_type or "").lower()
+    user_solution = body["solution"].strip()
+    expected_solution = (ex.solution or "").strip()
+
+    if exercise_type_val in ("single_choice", "multiple_choice", "true_false"):
+        normalized_user = user_solution.replace(" ", "").upper()
+        normalized_expected = expected_solution.replace(" ", "").upper()
+        if exercise_type_val == "multiple_choice":
+            user_keys = sorted(normalized_user.split(","))
+            expected_keys = sorted(normalized_expected.split(","))
+            is_correct = user_keys == expected_keys
+        else:
+            is_correct = normalized_user == normalized_expected
+        message = "答案正确！" if is_correct else "答案不正确，请再试试"
+    else:
+        is_correct = user_solution == expected_solution
+        message = "答案正确！" if is_correct else "答案不正确，请再试试"
+
     return {
         "correct": is_correct,
-        "message": "Solution submitted successfully",
+        "message": message,
         "expected_solution": ex.solution if is_correct else None,
     }
 
@@ -329,6 +348,7 @@ async def get_exercise(
         "created_by": ex.user_id,
         "learning_path_id": ex.learning_path_id,
         "test_cases": ex.test_cases,
+        "hint": ex.hint,
         "created_at": ex.created_at.isoformat() if ex.created_at else None,
         "updated_at": ex.updated_at.isoformat() if ex.updated_at else None,
     }

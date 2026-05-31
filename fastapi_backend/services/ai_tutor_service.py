@@ -278,10 +278,10 @@ class AITutorService:
         await asyncio.sleep(2)
 
         mock_result = {
-            "is_correct": True,
-            "score": 85,
-            "feedback": "逻辑基本正确，但时间复杂度可以优化为 O(n)。",
-            "optimized_code": "def optimized_func():\n    pass # 这里是优化的代码",
+            "is_correct": False,
+            "score": 0,
+            "feedback": "AI评估暂未配置，无法判定答案正确性，请等待人工审核",
+            "optimized_code": None,
         }
 
         return AIEvaluationResponse(**mock_result)

@@ -479,6 +479,7 @@ class Exercise(Base):
     test_cases = Column(Text)
     code_template = Column(Text)
     expected_output = Column(Text)
+    hint = Column(Text, nullable=True, comment="提示信息")
     created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
     updated_at = Column(
         DateTime(timezone=True),

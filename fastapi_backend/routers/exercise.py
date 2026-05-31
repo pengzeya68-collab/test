@@ -303,17 +303,15 @@ async def submit_exercise(
                 timeout=5,
             )
             no_errors = exec_result.get("exit_code", -1) == 0 and not exec_result.get("stderr")
-            is_correct = no_errors
+            is_correct = False
             judge_result = {
                 "total_cases": 1,
-                "passed_count": 1 if no_errors else 0,
-                "failed_count": 0 if no_errors else 1,
-                "pass_rate": 100.0 if no_errors else 0.0,
-                "all_passed": no_errors,
+                "passed_count": 0,
+                "failed_count": 1,
+                "pass_rate": 0.0,
+                "all_passed": False,
                 "details": [],
-                "summary": "代码执行成功，无报错"
-                if no_errors
-                else f"代码执行出错: {exec_result.get('stderr', '')[:200]}",
+                "summary": "缺少测试用例，无法自动判定",
             }
 
     elif language == "sql":
@@ -336,7 +334,7 @@ async def submit_exercise(
         if expected:
             is_correct = actual == expected
         else:
-            is_correct = exec_result.get("exit_code", -1) == 0
+            is_correct = False
 
         judge_result = {
             "total_cases": 1,

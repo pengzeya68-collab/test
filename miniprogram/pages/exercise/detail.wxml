@@ -54,6 +54,7 @@
       <button class="btn-primary submit-btn" bindtap="submitAnswer" loading="{{submitting}}" disabled="{{selectedChoices.length === 0 || submitting}}">
         提交答案
       </button>
+      <button class="btn-secondary hint-btn" bindtap="showHint" wx:if="{{hint}}">💡 提示</button>
     </view>
 
     <!-- 单选题模式 -->
@@ -74,6 +75,7 @@
       <button class="btn-primary submit-btn" bindtap="submitAnswer" loading="{{submitting}}" disabled="{{!selectedChoice || submitting}}">
         提交答案
       </button>
+      <button class="btn-secondary hint-btn" bindtap="showHint" wx:if="{{hint}}">💡 提示</button>
     </view>
 
     <!-- SQL练习模式 -->
@@ -83,6 +85,7 @@
       <view class="sql-actions">
         <button class="btn-secondary" bindtap="executeSql" loading="{{executing}}">▶ 执行SQL</button>
         <button class="btn-primary" bindtap="submitAnswer" loading="{{submitting}}">提交答案</button>
+        <button class="btn-secondary hint-btn" bindtap="showHint" wx:if="{{hint}}">💡 提示</button>
       </view>
 
       <view wx:if="{{sqlResult}}" class="sql-result">
@@ -112,6 +115,7 @@
       <button class="btn-primary submit-btn" bindtap="submitAnswer" loading="{{submitting}}" disabled="{{submitting}}">
         提交答案
       </button>
+      <button class="btn-secondary hint-btn" bindtap="showHint" wx:if="{{hint}}">💡 提示</button>
     </view>
 
     <!-- 结果展示 -->

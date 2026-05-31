@@ -19,7 +19,8 @@ Page({
     correctAnswerKey: '',
     correctAnswerKeys: [],
     loaded: false,
-    loadError: false
+    loadError: false,
+    hint: ''
   },
 
   onLoad(options) {
@@ -41,7 +42,7 @@ Page({
         showToast('习题不存在')
         return
       }
-      this.setData({ exercise: data, loaded: true, loadError: false })
+      this.setData({ exercise: data, loaded: true, loadError: false, hint: data.hint || '' })
       wx.setNavigationBarTitle({ title: data.title || '练习详情' })
       this.detectQuestionType(data)
     } catch (err) {
@@ -130,7 +131,7 @@ Page({
 
     this.setData({ submitting: true })
     try {
-      const data = await api.post('/api/v1/exercises/submit', {
+      const data = await api.post('/api/v1/exercise/submit', {
         exercise_id: exercise.id,
         solution: solution
       })
@@ -186,6 +187,16 @@ Page({
     } finally {
       this.setData({ executing: false })
     }
+  },
+
+  showHint() {
+    const hint = this.data.hint
+    wx.showModal({
+      title: '💡 提示',
+      content: hint || '暂无提示信息',
+      showCancel: false,
+      confirmText: '知道了'
+    })
   },
 
   retryExercise() {
