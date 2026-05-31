@@ -354,7 +354,7 @@ async def get_exercise(
         "created_at": ex.created_at.isoformat() if ex.created_at else None,
         "updated_at": ex.updated_at.isoformat() if ex.updated_at else None,
     }
-    if is_admin:
+    if is_admin or ex.exercise_type == "code":
         resp["solution"] = ex.solution
     return resp
 

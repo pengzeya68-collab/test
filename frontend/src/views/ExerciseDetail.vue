@@ -205,21 +205,12 @@
         </div>
 
         <div class="oj-right-panel">
-          <div class="editor-wrapper" v-if="exercise?.exercise_type === 'code'">
+          <div class="editor-wrapper" v-if="isCodeOrSqlType">
             <CodeEditor
               v-model="userCode"
               :language="exercise.language?.toLowerCase() || 'python'"
-              :template="exercise.code_template"
+              :template="exercise.code_template || ''"
               @run="onCodeRun"
-            />
-          </div>
-
-          <div class="editor-wrapper sql-editor-wrapper" v-else-if="exercise?.language?.toLowerCase() === 'sql'">
-            <CodeEditor
-              v-model="userSql"
-              language="sql"
-              :template="''"
-              @run="runSql"
             />
           </div>
 
@@ -231,9 +222,9 @@
             <div class="action-bar-right">
               <button
                 class="btn-run-sm"
-                @click="runSql"
+                @click="runCurrentCode"
                 :disabled="sqlRunning"
-                v-if="exercise?.language?.toLowerCase() === 'sql'"
+                v-if="isSqlExercise"
               >
                 {{ sqlRunning ? '运行中...' : '▶ 运行SQL' }}
               </button>
@@ -251,7 +242,7 @@
             Ctrl+Enter 提交 · Ctrl+Shift+R 运行
           </div>
 
-          <div class="output-panel" v-if="exercise?.language?.toLowerCase() === 'sql' && sqlResult">
+          <div class="output-panel" v-if="isSqlExercise && sqlResult">
             <div class="output-header">
               <span>执行结果 ({{ sqlResult.elapsed_ms }}ms)</span>
               <span class="sql-result-tag" :class="sqlResult.success ? 'success' : 'fail'">
@@ -570,7 +561,11 @@ const isMultipleChoice = computed(() => {
 })
 
 const isCodeOrSqlType = computed(() => {
-  return exercise.value?.exercise_type === 'code' || exercise.value?.language?.toLowerCase() === 'sql'
+  return exercise.value?.exercise_type === 'code'
+})
+
+const isSqlExercise = computed(() => {
+  return exercise.value?.exercise_type === 'code' && exercise.value?.language?.toLowerCase() === 'sql'
 })
 
 const hasChoiceAnswer = computed(() => {
@@ -652,7 +647,7 @@ const handleKeydown = (e) => {
   }
   if (e.ctrlKey && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
     e.preventDefault()
-    if (exercise.value?.language?.toLowerCase() === 'sql') {
+    if (isSqlExercise.value) {
       runSql()
     }
   }
@@ -783,12 +778,13 @@ const formatDate = (dateStr) => {
 }
 
 const submitAnswer = async () => {
-  let answerContent = exercise.value?.exercise_type === 'code' ? userCode.value : userAnswer.value
-  if (exercise.value?.exercise_type === 'multiple_choice') {
+  let answerContent = ''
+  if (isCodeOrSqlType.value) {
+    answerContent = userCode.value
+  } else if (exercise.value?.exercise_type === 'multiple_choice') {
     answerContent = selectedChoices.value.sort().join(',')
-  }
-  if (exercise.value?.language?.toLowerCase() === 'sql') {
-    answerContent = userSql.value
+  } else {
+    answerContent = userAnswer.value
   }
   if (!answerContent || !answerContent.trim()) {
     ElMessage.warning('请输入答案后再提交')
@@ -819,8 +815,14 @@ const submitAnswer = async () => {
 const goBack = () => { router.back() }
 const onCodeRun = (result) => { console.log('代码运行结果:', result) }
 
+const runCurrentCode = async () => {
+  if (isSqlExercise.value) {
+    await runSql()
+  }
+}
+
 const runSql = async () => {
-  if (!userSql.value || !userSql.value.trim()) {
+  if (!userCode.value || !userCode.value.trim()) {
     ElMessage.warning('请输入SQL语句')
     return
   }
@@ -829,7 +831,7 @@ const runSql = async () => {
   try {
     const res = await request.post('/exercises/execute-sql', {
       setup_sql: exercise.value.setup_sql || '',
-      user_sql: userSql.value
+      user_sql: userCode.value
     })
     sqlResult.value = res
     if (res.success) {
