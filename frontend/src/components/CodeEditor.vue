@@ -3,14 +3,11 @@
     <!-- 工具栏 -->
     <div class="editor-toolbar">
       <div class="toolbar-left">
-        <el-select v-model="currentLanguage" @change="onLanguageChange" size="small" style="width: 120px;">
-          <el-option label="Python" value="python" />
-          <el-option label="SQL" value="sql" />
-          <el-option label="Shell" value="shell" />
-        </el-select>
+        <span class="lang-tag">{{ langLabel }}</span>
       </div>
       <div class="toolbar-right">
         <el-button 
+          v-if="!hideRun"
           type="primary" 
           size="small" 
           @click="runCode" 
@@ -57,7 +54,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap } from '@codemirror/commands'
@@ -88,6 +85,10 @@ const props = defineProps({
   setupSql: {
     type: String,
     default: ''
+  },
+  hideRun: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -99,6 +100,11 @@ const editorView = ref(null)
 const running = ref(false)
 const showOutput = ref(false)
 const outputResult = ref(null)
+
+const langLabel = computed(() => {
+  const map = { python: 'Python', sql: 'SQL', shell: 'Shell', javascript: 'JavaScript' }
+  return map[currentLanguage.value] || currentLanguage.value
+})
 
 // 语言配置
 const languageExtensions = {}
@@ -163,10 +169,8 @@ const getDefaultTemplate = (lang) => {
   return templates[lang] || ''
 }
 
-// 切换语言
 const onLanguageChange = () => {
   if (editorView.value) {
-    const currentContent = editorView.value.state.doc.toString()
     editorView.value.destroy()
     editorView.value = null
   }
@@ -283,6 +287,16 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.lang-tag {
+  padding: 4px 12px;
+  background: rgba(137, 180, 250, 0.12);
+  border: 1px solid rgba(137, 180, 250, 0.2);
+  border-radius: 4px;
+  color: #89b4fa;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .code-editor {

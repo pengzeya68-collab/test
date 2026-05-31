@@ -252,65 +252,7 @@ async def submit_exercise(
     judge_result = None
     is_correct = False
 
-    if exercise_type == "code" or language in ("python", "shell"):
-        test_cases_raw = ex.test_cases if ex.test_cases else "[]"
-        try:
-            test_cases = json.loads(test_cases_raw) if isinstance(test_cases_raw, str) else test_cases_raw
-        except (json.JSONDecodeError, TypeError):
-            test_cases = []
-
-        if isinstance(test_cases, list) and len(test_cases) > 0:
-            judge_result = await _execute_and_judge(
-                sandbox=sandbox,
-                language=language,
-                source_code=solution,
-                test_cases=test_cases,
-            )
-            is_correct = judge_result["all_passed"]
-        elif ex.solution:
-            exec_result = await sandbox.execute_code(
-                code=solution,
-                language=language,
-                timeout=5,
-            )
-            actual = exec_result.get("stdout", "").strip()
-            expected = ex.solution.strip()
-            is_correct = actual == expected
-            judge_result = {
-                "total_cases": 1,
-                "passed_count": 1 if is_correct else 0,
-                "failed_count": 0 if is_correct else 1,
-                "pass_rate": 100.0 if is_correct else 0.0,
-                "all_passed": is_correct,
-                "details": [
-                    {
-                        "case_index": 1,
-                        "passed": is_correct,
-                        "expected": expected[:500],
-                        "actual": actual[:500],
-                    }
-                ],
-                "summary": "通过" if is_correct else "未通过",
-            }
-        else:
-            exec_result = await sandbox.execute_code(
-                code=solution,
-                language=language,
-                timeout=5,
-            )
-            no_errors = exec_result.get("exit_code", -1) == 0 and not exec_result.get("stderr")
-            is_correct = False
-            judge_result = {
-                "total_cases": 1,
-                "passed_count": 0,
-                "failed_count": 1,
-                "pass_rate": 0.0,
-                "all_passed": False,
-                "details": [],
-                "summary": "缺少测试用例，无法自动判定",
-            }
-
-    elif language == "sql":
+    if language == "sql":
         setup_sql = ex.setup_sql or ""
 
         exec_result = await sandbox.execute_code(
@@ -382,6 +324,101 @@ async def submit_exercise(
                     }
                 ],
                 "summary": "SQL 执行成功" if is_correct else "SQL 未返回结果",
+            }
+
+    elif language == "javascript":
+        is_correct = False
+        judge_result = {
+            "total_cases": 0,
+            "passed_count": 0,
+            "failed_count": 0,
+            "pass_rate": 0.0,
+            "all_passed": False,
+            "details": [],
+            "summary": "JavaScript 暂不支持在线判题，请参考答案在本地环境练习",
+        }
+
+    elif exercise_type == "code" or language in ("python", "shell"):
+        test_cases_raw = ex.test_cases if ex.test_cases else "[]"
+        try:
+            test_cases = json.loads(test_cases_raw) if isinstance(test_cases_raw, str) else test_cases_raw
+        except (json.JSONDecodeError, TypeError):
+            test_cases = []
+
+        if isinstance(test_cases, list) and len(test_cases) > 0:
+            judge_result = await _execute_and_judge(
+                sandbox=sandbox,
+                language=language,
+                source_code=solution,
+                test_cases=test_cases,
+            )
+            is_correct = judge_result["all_passed"]
+        elif ex.solution:
+            exec_result = await sandbox.execute_code(
+                code=solution,
+                language=language,
+                timeout=5,
+            )
+            actual = exec_result.get("stdout", "").strip()
+
+            if exec_result.get("exit_code", -1) != 0 or exec_result.get("stderr", ""):
+                is_correct = False
+                judge_result = {
+                    "total_cases": 1,
+                    "passed_count": 0,
+                    "failed_count": 1,
+                    "pass_rate": 0.0,
+                    "all_passed": False,
+                    "details": [
+                        {
+                            "case_index": 1,
+                            "passed": False,
+                            "expected": "代码运行无错误",
+                            "actual": exec_result.get("stderr", "")[:500],
+                        }
+                    ],
+                    "summary": "代码运行出错",
+                }
+            else:
+                ref_result = await sandbox.execute_code(
+                    code=ex.solution,
+                    language=language,
+                    timeout=5,
+                )
+                expected = ref_result.get("stdout", "").strip()
+                is_correct = actual == expected and actual != ""
+
+                judge_result = {
+                    "total_cases": 1,
+                    "passed_count": 1 if is_correct else 0,
+                    "failed_count": 0 if is_correct else 1,
+                    "pass_rate": 100.0 if is_correct else 0.0,
+                    "all_passed": is_correct,
+                    "details": [
+                        {
+                            "case_index": 1,
+                            "passed": is_correct,
+                            "expected": expected[:500] if expected else "(无输出)",
+                            "actual": actual[:500] if actual else "(无输出)",
+                        }
+                    ],
+                    "summary": "输出正确" if is_correct else "输出不匹配",
+                }
+        else:
+            exec_result = await sandbox.execute_code(
+                code=solution,
+                language=language,
+                timeout=5,
+            )
+            is_correct = False
+            judge_result = {
+                "total_cases": 1,
+                "passed_count": 0,
+                "failed_count": 1,
+                "pass_rate": 0.0,
+                "all_passed": False,
+                "details": [],
+                "summary": "缺少测试用例，无法自动判定",
             }
 
     else:

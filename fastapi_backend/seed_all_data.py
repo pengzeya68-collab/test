@@ -1067,6 +1067,9 @@ async def seed_all():
 
         await session.commit()
 
+        await _fix_code_exercises(session)
+        stats["code_exercise_fixes"] = "applied"
+
         print("\n" + "=" * 60)
         print("[DONE] Seed Summary:")
         for k, v in stats.items():
@@ -1083,3 +1086,303 @@ if __name__ == "__main__":
     print("[START] Seeding all TestMaster data...")
     print("=" * 60)
     asyncio.run(seed_all())
+
+
+SQL_SETUP_DATA = {
+    911: (
+        "CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, email TEXT, age INTEGER, city TEXT);"
+        "INSERT INTO users VALUES (1,'张三','zhangsan@gmail.com',25,'北京');"
+        "INSERT INTO users VALUES (2,'李四','lisi@163.com',30,'上海');"
+        "INSERT INTO users VALUES (3,'王五','wangwu@qq.com',22,'广州');"
+        "INSERT INTO users VALUES (4,'赵六','zhaoliu@gmail.com',28,'深圳');"
+        "INSERT INTO users VALUES (5,'钱七','qianqi@outlook.com',35,'杭州');"
+        "CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER, product TEXT, amount REAL, order_date TEXT);"
+        "INSERT INTO orders VALUES (1,1,'笔记本电脑',5999.00,'2024-01-15');"
+        "INSERT INTO orders VALUES (2,2,'手机',3999.00,'2024-02-20');"
+        "INSERT INTO orders VALUES (3,1,'耳机',299.00,'2024-03-10');"
+        "INSERT INTO orders VALUES (4,3,'平板',2999.00,'2024-04-05');"
+        "INSERT INTO orders VALUES (5,2,'键盘',699.00,'2024-05-18');"
+        "INSERT INTO orders VALUES (6,4,'显示器',2499.00,'2024-06-22');"
+        "INSERT INTO orders VALUES (7,5,'鼠标',199.00,'2024-07-30');"
+        "INSERT INTO orders VALUES (8,3,'摄像头',499.00,'2024-08-14');"
+    ),
+    912: (
+        "CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, email TEXT, age INTEGER);"
+        "INSERT INTO users VALUES (1,'张三','zhangsan@gmail.com',25);"
+        "INSERT INTO users VALUES (2,'李四','lisi@163.com',30);"
+        "INSERT INTO users VALUES (3,'王五','wangwu@qq.com',22);"
+        "CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER, product TEXT, amount REAL, order_date TEXT);"
+        "INSERT INTO orders VALUES (1,1,'笔记本电脑',5999.00,'2024-01-15');"
+        "INSERT INTO orders VALUES (2,2,'手机',3999.00,'2024-02-20');"
+        "INSERT INTO orders VALUES (3,1,'耳机',299.00,'2024-03-10');"
+        "INSERT INTO orders VALUES (4,3,'平板',2999.00,'2024-04-05');"
+        "INSERT INTO orders VALUES (5,2,'键盘',699.00,'2024-05-18');"
+    ),
+    913: (
+        "CREATE TABLE orders (id INTEGER PRIMARY KEY, username TEXT, product TEXT, amount REAL, order_date TEXT);"
+        "INSERT INTO orders VALUES (1,'张三','笔记本电脑',5999.00,'2024-01-15');"
+        "INSERT INTO orders VALUES (2,'李四','手机',3999.00,'2024-02-20');"
+        "INSERT INTO orders VALUES (3,'张三','耳机',299.00,'2024-03-10');"
+        "INSERT INTO orders VALUES (4,'王五','平板',2999.00,'2024-04-05');"
+        "INSERT INTO orders VALUES (5,'李四','键盘',699.00,'2024-05-18');"
+        "INSERT INTO orders VALUES (6,'张三','显示器',2499.00,'2024-06-22');"
+    ),
+    914: (
+        "CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department TEXT, salary REAL, hire_date TEXT);"
+        "INSERT INTO employees VALUES (1,'张三','技术部',15000.00,'2022-01-15');"
+        "INSERT INTO employees VALUES (2,'李四','市场部',12000.00,'2022-03-20');"
+        "INSERT INTO employees VALUES (3,'王五','技术部',18000.00,'2021-06-10');"
+        "INSERT INTO employees VALUES (4,'赵六','人事部',10000.00,'2023-02-01');"
+        "INSERT INTO employees VALUES (5,'钱七','技术部',20000.00,'2020-08-15');"
+        "CREATE TABLE departments (id INTEGER PRIMARY KEY, name TEXT, budget REAL);"
+        "INSERT INTO departments VALUES (1,'技术部',500000.00);"
+        "INSERT INTO departments VALUES (2,'市场部',300000.00);"
+        "INSERT INTO departments VALUES (3,'人事部',200000.00);"
+    ),
+    1041: (
+        "CREATE TABLE scores (id INTEGER PRIMARY KEY, name TEXT, score REAL, subject TEXT);"
+        "INSERT INTO scores VALUES (1,'张三',85.5,'数学');"
+        "INSERT INTO scores VALUES (2,'李四',92.0,'数学');"
+        "INSERT INTO scores VALUES (3,'王五',78.5,'数学');"
+        "INSERT INTO scores VALUES (4,'赵六',95.0,'数学');"
+        "INSERT INTO scores VALUES (5,'钱七',88.0,'数学');"
+    ),
+    1042: (
+        "CREATE TABLE sales (id INTEGER PRIMARY KEY, product TEXT, amount REAL, sale_date TEXT, region TEXT);"
+        "INSERT INTO sales VALUES (1,'手机',3999.00,'2024-01-15','华东');"
+        "INSERT INTO sales VALUES (2,'电脑',5999.00,'2024-01-20','华北');"
+        "INSERT INTO sales VALUES (3,'耳机',299.00,'2024-02-10','华东');"
+        "INSERT INTO sales VALUES (4,'平板',2999.00,'2024-02-15','华南');"
+        "INSERT INTO sales VALUES (5,'手机',3999.00,'2024-03-01','华北');"
+    ),
+    1043: (
+        "CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department TEXT, salary REAL, hire_date TEXT);"
+        "INSERT INTO employees VALUES (1,'张三','技术部',15000.00,'2022-01-15');"
+        "INSERT INTO employees VALUES (2,'李四','市场部',12000.00,'2022-03-20');"
+        "INSERT INTO employees VALUES (3,'王五','技术部',18000.00,'2021-06-10');"
+        "INSERT INTO employees VALUES (4,'赵六','人事部',10000.00,'2023-02-01');"
+        "INSERT INTO employees VALUES (5,'钱七','技术部',20000.00,'2020-08-15');"
+    ),
+    1044: (
+        "CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department TEXT, salary REAL);"
+        "INSERT INTO employees VALUES (1,'张三','技术部',15000.00);"
+        "INSERT INTO employees VALUES (2,'李四','市场部',12000.00);"
+        "INSERT INTO employees VALUES (3,'王五','技术部',18000.00);"
+        "INSERT INTO employees VALUES (4,'赵六','人事部',10000.00);"
+        "INSERT INTO employees VALUES (5,'钱七','技术部',20000.00);"
+    ),
+    1045: (
+        "CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, category TEXT, price REAL, stock INTEGER);"
+        "INSERT INTO products VALUES (1,'手机','电子',3999.00,100);"
+        "INSERT INTO products VALUES (2,'电脑','电子',5999.00,50);"
+        "INSERT INTO products VALUES (3,'耳机','电子',299.00,200);"
+        "INSERT INTO products VALUES (4,'T恤','服装',99.00,500);"
+        "INSERT INTO products VALUES (5,'牛仔裤','服装',199.00,300);"
+    ),
+    1046: (
+        "CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, category TEXT, price REAL);"
+        "INSERT INTO products VALUES (1,'苹果手机','电子',3999.00);"
+        "INSERT INTO products VALUES (2,'联想电脑','电子',5999.00);"
+        "INSERT INTO products VALUES (3,'索尼耳机','电子',299.00);"
+        "INSERT INTO products VALUES (4,'耐克T恤','服装',99.00);"
+        "INSERT INTO products VALUES (5,'李维斯牛仔裤','服装',199.00);"
+    ),
+    1047: (
+        "CREATE TABLE sales (id INTEGER PRIMARY KEY, product TEXT, amount REAL, sale_date TEXT);"
+        "INSERT INTO sales VALUES (1,'手机',3999.00,'2024-01-15');"
+        "INSERT INTO sales VALUES (2,'电脑',5999.00,'2024-02-20');"
+        "INSERT INTO sales VALUES (3,'耳机',299.00,'2024-03-10');"
+        "INSERT INTO sales VALUES (4,'平板',2999.00,'2024-04-05');"
+        "INSERT INTO sales VALUES (5,'键盘',699.00,'2024-05-18');"
+    ),
+    1048: (
+        "CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department TEXT, salary REAL, level INTEGER);"
+        "INSERT INTO employees VALUES (1,'张三','技术部',15000.00,5);"
+        "INSERT INTO employees VALUES (2,'李四','市场部',12000.00,3);"
+        "INSERT INTO employees VALUES (3,'王五','技术部',18000.00,7);"
+        "INSERT INTO employees VALUES (4,'赵六','人事部',10000.00,2);"
+        "INSERT INTO employees VALUES (5,'钱七','技术部',20000.00,8);"
+    ),
+    1049: (
+        "CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, age INTEGER);"
+        "INSERT INTO users VALUES (1,'张三',25);"
+        "INSERT INTO users VALUES (2,'李四',30);"
+        "INSERT INTO users VALUES (3,'王五',22);"
+        "CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER, product TEXT, amount REAL);"
+        "INSERT INTO orders VALUES (1,1,'笔记本电脑',5999.00);"
+        "INSERT INTO orders VALUES (2,2,'手机',3999.00);"
+        "INSERT INTO orders VALUES (3,1,'耳机',299.00);"
+        "INSERT INTO orders VALUES (4,3,'平板',2999.00);"
+        "INSERT INTO orders VALUES (5,2,'键盘',699.00);"
+    ),
+    1050: (
+        "CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department TEXT, salary REAL);"
+        "INSERT INTO employees VALUES (1,'张三','技术部',15000.00);"
+        "INSERT INTO employees VALUES (2,'李四','市场部',12000.00);"
+        "INSERT INTO employees VALUES (3,'王五','技术部',18000.00);"
+        "INSERT INTO employees VALUES (4,'赵六','人事部',10000.00);"
+        "INSERT INTO employees VALUES (5,'钱七','技术部',20000.00);"
+    ),
+    1051: (
+        "CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department TEXT, salary REAL, level INTEGER);"
+        "INSERT INTO employees VALUES (1,'张三','技术部',15000.00,5);"
+        "INSERT INTO employees VALUES (2,'李四','市场部',12000.00,3);"
+        "INSERT INTO employees VALUES (3,'王五','技术部',18000.00,7);"
+        "INSERT INTO employees VALUES (4,'赵六','人事部',10000.00,2);"
+        "INSERT INTO employees VALUES (5,'钱七','技术部',20000.00,8);"
+    ),
+    1052: (
+        "CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, category TEXT, price REAL, stock INTEGER);"
+        "INSERT INTO products VALUES (1,'手机','电子',3999.00,100);"
+        "INSERT INTO products VALUES (2,'电脑','电子',5999.00,50);"
+        "INSERT INTO products VALUES (3,'耳机','电子',299.00,0);"
+        "INSERT INTO products VALUES (4,'T恤','服装',99.00,500);"
+        "INSERT INTO products VALUES (5,'牛仔裤','服装',199.00,NULL);"
+    ),
+    1053: (
+        "CREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT, department TEXT, salary REAL);"
+        "INSERT INTO employees VALUES (1,'张三','技术部',15000.00);"
+        "INSERT INTO employees VALUES (2,'李四','市场部',12000.00);"
+        "INSERT INTO employees VALUES (3,'王五','技术部',18000.00);"
+        "INSERT INTO employees VALUES (4,'赵六','人事部',10000.00);"
+        "INSERT INTO employees VALUES (5,'钱七','技术部',20000.00);"
+    ),
+    1054: (
+        "CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, category TEXT, price REAL, stock INTEGER);"
+        "INSERT INTO products VALUES (1,'手机','电子',3999.00,100);"
+        "INSERT INTO products VALUES (2,'电脑','电子',5999.00,50);"
+        "INSERT INTO products VALUES (3,'耳机','电子',299.00,200);"
+        "INSERT INTO products VALUES (4,'T恤','服装',99.00,500);"
+        "INSERT INTO products VALUES (5,'牛仔裤','服装',199.00,300);"
+    ),
+    1055: (
+        "CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, age INTEGER, city TEXT);"
+        "INSERT INTO users VALUES (1,'张三',25,'北京');"
+        "INSERT INTO users VALUES (2,'李四',30,'上海');"
+        "INSERT INTO users VALUES (3,'王五',22,'广州');"
+        "CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER, product TEXT, amount REAL);"
+        "INSERT INTO orders VALUES (1,1,'笔记本电脑',5999.00);"
+        "INSERT INTO orders VALUES (2,2,'手机',3999.00);"
+        "INSERT INTO orders VALUES (3,1,'耳机',299.00);"
+        "INSERT INTO orders VALUES (4,3,'平板',2999.00);"
+        "INSERT INTO orders VALUES (5,2,'键盘',699.00);"
+    ),
+}
+
+SQL_CODE_TEMPLATES = {
+    911: "-- 请在此编写SQL查询\nSELECT ... FROM ... WHERE ...;",
+    912: "-- 请使用JOIN连接查询\nSELECT ... FROM ... JOIN ... ON ...;",
+    913: "-- 请使用GROUP BY和HAVING完成分组统计\nSELECT ..., ...(...) as ..., ...(...) as ... FROM orders GROUP BY ... HAVING ...(...) > ... ORDER BY ... DESC;",
+    914: "-- 请使用子查询查找满足条件的员工\nSELECT ... FROM employees WHERE ... > (SELECT ...(...) FROM ...);",
+    1041: "-- 请编写排序和筛选SQL\nSELECT ... FROM ... WHERE ... ORDER BY ...;",
+    1042: "-- 请使用CTE(通用表表达式)查询\nWITH ... AS (...) SELECT ... FROM ...;",
+    1043: "-- 请查询满足条件的员工记录\nSELECT ... FROM employees WHERE ...;",
+    1044: "-- 请使用子查询查找满足条件的员工\nSELECT ... FROM employees WHERE ... > (SELECT ...(...) FROM ...);",
+    1045: "-- 请按分类统计商品总价值\nSELECT ..., ...(... * ...) as ... FROM products GROUP BY ...;",
+    1046: "-- 请使用字符串函数处理商品名称\nSELECT ...(...), ...(...) FROM products;",
+    1047: "-- 请查询指定日期之后的销售记录\nSELECT ... FROM sales WHERE ... >= '...';",
+    1048: "-- 请使用CASE条件查询\nSELECT ..., CASE WHEN ... THEN ... ELSE ... END as ... FROM employees;",
+    1049: "-- 请使用多表JOIN查询\nSELECT ... FROM ... JOIN ... ON ...;",
+    1050: "-- 请查询指定部门的员工\nSELECT ... FROM employees WHERE ... = ...;",
+    1051: "-- 请查询指定级别及以上的员工\nSELECT ... FROM employees WHERE ... >= ...;",
+    1052: "-- 请查询有库存的商品并按价格排序\nSELECT ... FROM products WHERE ... > 0 ORDER BY ...;",
+    1053: "-- 请查询薪资最高的前N名员工\nSELECT ... FROM employees ORDER BY ... DESC LIMIT ...;",
+    1054: "-- 请查询指定分类的商品\nSELECT ... FROM products WHERE ... = '...';",
+    1055: "-- 请编写连接查询\nSELECT ... FROM ... JOIN ... ON ...;",
+}
+
+
+async def _fix_code_exercises(session):
+    print("\n[STEP] 修复代码题数据...")
+    from sqlalchemy import text as sql_text
+
+    result = await session.execute(
+        sql_text("SELECT id, language, exercise_type FROM exercises WHERE exercise_type = 'code'")
+    )
+    code_exercises = result.fetchall()
+
+    sql_fixed = 0
+    python_fixed = 0
+
+    for row in code_exercises:
+        eid, lang, etype = row
+
+        if lang and lang.lower() == "sql":
+            if eid in SQL_SETUP_DATA:
+                await session.execute(
+                    sql_text("UPDATE exercises SET setup_sql = :sql WHERE id = :id AND (setup_sql IS NULL OR setup_sql = '')"),
+                    {"sql": SQL_SETUP_DATA[eid], "id": eid},
+                )
+            if eid in SQL_CODE_TEMPLATES:
+                await session.execute(
+                    sql_text("UPDATE exercises SET code_template = :tpl WHERE id = :id AND (code_template IS NULL OR code_template = '' OR code_template = solution)"),
+                    {"tpl": SQL_CODE_TEMPLATES[eid], "id": eid},
+                )
+            sql_fixed += 1
+
+        elif lang and lang.lower() == "python":
+            await session.execute(
+                sql_text("UPDATE exercises SET test_cases = NULL WHERE id = :id AND test_cases IS NOT NULL AND test_cases != '' AND test_cases NOT LIKE '[%'"),
+                {"id": eid},
+            )
+            result2 = await session.execute(
+                sql_text("SELECT solution FROM exercises WHERE id = :id"),
+                {"id": eid},
+            )
+            sol_row = result2.fetchone()
+            if sol_row and sol_row[0]:
+                sol = sol_row[0]
+                tpl = _generate_python_template(sol)
+                if tpl:
+                    await session.execute(
+                        sql_text("UPDATE exercises SET code_template = :tpl WHERE id = :id AND (code_template IS NULL OR code_template = '')"),
+                        {"tpl": tpl, "id": eid},
+                    )
+            python_fixed += 1
+
+    await session.commit()
+    print(f"  [OK] SQL题修复: {sql_fixed} 道")
+    print(f"  [OK] Python题修复: {python_fixed} 道")
+
+
+def _generate_python_template(solution: str) -> str:
+    import re
+    lines = solution.strip().split("\n")
+    template_lines = []
+    in_function = False
+    in_class = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        if stripped.startswith("def "):
+            sig = re.sub(r":\s*$/, "", stripped)
+            template_lines.append(line[: len(line) - len(line.lstrip())] + sig + ":")
+            indent = line[: len(line) - len(line.lstrip())]
+            template_lines.append(indent + "    # TODO: 在此写代码")
+            template_lines.append(indent + "    pass")
+            in_function = True
+            continue
+
+        if stripped.startswith("class "):
+            sig = re.sub(r":\s*$/, "", stripped)
+            template_lines.append(line[: len(line) - len(line.lstrip())] + sig + ":")
+            in_class = True
+            continue
+
+        if stripped.startswith("import ") or stripped.startswith("from "):
+            template_lines.append(line)
+            continue
+
+        if stripped.startswith('"""') or stripped.startswith("'''"):
+            template_lines.append(line)
+            continue
+
+        if not in_function and not in_class and stripped and not stripped.startswith("#"):
+            template_lines.append("# TODO: 在此写代码")
+            break
+
+    if not template_lines:
+        return "# TODO: 在此写代码\npass"
+
+    return "\n".join(template_lines)

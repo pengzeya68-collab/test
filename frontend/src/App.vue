@@ -284,7 +284,7 @@ const fetchCheckinStatus = async () => {
 const doCheckin = async () => {
   checkinLoading.value = true
   try {
-    const res = await request.post('/checkin/')
+    const res = await request.post('/checkin')
     if (res.checked_in) {
       ElNotification({
         title: '🎉 签到成功！',

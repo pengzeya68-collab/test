@@ -206,11 +206,15 @@
 
         <div class="oj-right-panel">
           <div class="editor-wrapper" v-if="isCodeOrSqlType">
+            <div class="js-notice" v-if="isJsExercise">
+              <span>⚠️ JavaScript题目暂不支持在线运行和自动判题，请参考答案在本地环境练习</span>
+            </div>
             <CodeEditor
               v-model="userCode"
               :language="exercise.language?.toLowerCase() || 'python'"
               :template="exercise.code_template || ''"
               :setupSql="exercise.setup_sql || ''"
+              :hideRun="true"
               @run="onCodeRun"
             />
           </div>
@@ -224,15 +228,23 @@
               <button
                 class="btn-run-sm"
                 @click="runCurrentCode"
-                :disabled="sqlRunning"
+                :disabled="sqlRunning || pythonRunning"
                 v-if="isSqlExercise"
               >
                 {{ sqlRunning ? '运行中...' : '▶ 运行SQL' }}
               </button>
               <button
+                class="btn-run-sm"
+                @click="runPythonCode"
+                :disabled="pythonRunning"
+                v-if="isPythonExercise"
+              >
+                {{ pythonRunning ? '运行中...' : '▶ 运行代码' }}
+              </button>
+              <button
                 class="btn-submit-sm"
                 @click="submitAnswer"
-                :disabled="submitting"
+                :disabled="submitting || isJsExercise"
               >
                 {{ submitting ? '判题中...' : '✓ 提交' }}
               </button>
@@ -267,6 +279,20 @@
               <div class="sql-result-count">返回 {{ sqlResult.row_count }} 行记录</div>
             </div>
             <div v-if="sqlResult.success && sqlResult.message" class="sql-result-msg">{{ sqlResult.message }}</div>
+          </div>
+
+          <div class="output-panel" v-if="isPythonExercise && pythonResult">
+            <div class="output-header">
+              <span>运行结果</span>
+              <span class="sql-result-tag" :class="(pythonResult.exit_code === 0 || pythonResult.returncode === 0) ? 'success' : 'fail'">
+                {{ (pythonResult.exit_code === 0 || pythonResult.returncode === 0) ? '成功' : '失败' }}
+              </span>
+            </div>
+            <div class="python-output-content">
+              <pre v-if="pythonResult.stdout" class="python-stdout">{{ pythonResult.stdout }}</pre>
+              <pre v-if="pythonResult.stderr" class="python-stderr">{{ pythonResult.stderr }}</pre>
+              <div v-if="!pythonResult.stdout && !pythonResult.stderr" class="python-no-output">(无输出)</div>
+            </div>
           </div>
 
           <div class="output-panel judge-quick-view" v-if="submitResult && isCodeOrSqlType">
@@ -533,7 +559,6 @@ const submitting = ref(false)
 const userAnswer = ref('')
 const selectedChoices = ref([])
 const userCode = ref('')
-const userSql = ref('')
 const showSolution = ref(false)
 const nextExerciseId = ref(null)
 const submitResult = ref(null)
@@ -544,6 +569,8 @@ const newNoteContent = ref('')
 const noteSaving = ref(false)
 const sqlRunning = ref(false)
 const sqlResult = ref(null)
+const pythonRunning = ref(false)
+const pythonResult = ref(null)
 const exerciseId = route.params.id
 
 const leftTab = ref('desc')
@@ -567,6 +594,14 @@ const isCodeOrSqlType = computed(() => {
 
 const isSqlExercise = computed(() => {
   return exercise.value?.exercise_type === 'code' && exercise.value?.language?.toLowerCase() === 'sql'
+})
+
+const isJsExercise = computed(() => {
+  return exercise.value?.exercise_type === 'code' && exercise.value?.language?.toLowerCase() === 'javascript'
+})
+
+const isPythonExercise = computed(() => {
+  return exercise.value?.exercise_type === 'code' && exercise.value?.language?.toLowerCase() === 'python'
 })
 
 const hasChoiceAnswer = computed(() => {
@@ -648,9 +683,7 @@ const handleKeydown = (e) => {
   }
   if (e.ctrlKey && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
     e.preventDefault()
-    if (isSqlExercise.value) {
-      runSql()
-    }
+    runCurrentCode()
   }
 }
 
@@ -823,6 +856,39 @@ const onCodeRun = (result) => { console.log('代码运行结果:', result) }
 const runCurrentCode = async () => {
   if (isSqlExercise.value) {
     await runSql()
+  } else if (isPythonExercise.value) {
+    await runPythonCode()
+  }
+}
+
+const runPythonCode = async () => {
+  if (!userCode.value || !userCode.value.trim()) {
+    ElMessage.warning('请先写代码再运行')
+    return
+  }
+  pythonRunning.value = true
+  pythonResult.value = null
+  try {
+    const res = await request.post('/sandbox/execute', {
+      code: userCode.value,
+      language: 'python',
+      timeout: 5,
+    })
+    const result = res.data || res
+    pythonResult.value = result
+    if (result.exit_code === 0 || result.returncode === 0) {
+      if (result.stdout && result.stdout.trim()) {
+        ElMessage.success('代码运行成功')
+      } else {
+        ElMessage.info('代码运行完成，无输出')
+      }
+    } else {
+      ElMessage.error('代码运行出错')
+    }
+  } catch {
+    ElMessage.error('运行请求失败，请稍后重试')
+  } finally {
+    pythonRunning.value = false
   }
 }
 
@@ -1240,6 +1306,17 @@ const showHintDialog = () => {
   flex-direction: column;
 }
 
+.js-notice {
+  padding: 10px 16px;
+  background: rgba(251, 191, 36, 0.1);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  flex-shrink: 0;
+}
+
 .editor-wrapper :deep(.code-editor-container) {
   flex: 1;
   display: flex;
@@ -1439,6 +1516,34 @@ const showHintDialog = () => {
   background: rgba(52, 211, 153, 0.06);
   color: #34d399;
   font-size: 13px;
+}
+
+.python-output-content {
+  padding: 12px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.python-stdout {
+  margin: 0;
+  color: #a6e3a1;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.python-stderr {
+  margin: 0;
+  color: #f38ba8;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.python-no-output {
+  color: var(--tm-text-secondary);
+  font-style: italic;
 }
 
 .judge-quick-view .output-header {
