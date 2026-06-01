@@ -371,12 +371,12 @@ const handleSubmit = async () => {
 .btn-primary {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
   border: none;
-  box-shadow: 0 2px 10px rgba(var(--tm-color-primary), 0.3);
+  box-shadow: 0 2px 10px rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
 .btn-primary:hover {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
-  box-shadow: 0 4px 15px rgba(var(--tm-color-primary), 0.4);
+  box-shadow: 0 4px 15px rgba(var(--tm-color-primary-rgb), 0.4);
 }
 
 .btn-search {
@@ -397,7 +397,7 @@ const handleSubmit = async () => {
 }
 
 .btn-search:hover {
-  background: rgba(var(--tm-color-primary), 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .list-card {
@@ -414,33 +414,6 @@ const handleSubmit = async () => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
-}
-
-.dark-table :deep(.el-table) {
-  background: transparent;
-  color: var(--tm-text-primary);
-}
-
-.dark-table :deep(.el-table tr) {
-  background: var(--tm-card-bg);
-}
-
-.dark-table :deep(.el-table th) {
-  background: var(--tm-card-bg);
-  color: var(--tm-text-secondary);
-}
-
-.dark-table :deep(.el-table td) {
-  border-bottom: 1px solid var(--tm-border-light);
-  color: var(--tm-text-primary);
-}
-
-.dark-table :deep(.el-table--border) {
-  border-color: var(--tm-border-light);
-}
-
-.dark-table :deep(.el-table__row:hover > td) {
-  background-color: rgba(var(--tm-color-primary), 0.08);
 }
 
 .btn-edit {
@@ -485,7 +458,7 @@ const handleSubmit = async () => {
 
 .dark-pagination :deep(.el-pagination .el-pager li.active) {
   color: var(--tm-color-primary);
-  background: rgba(var(--tm-color-primary), 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .dark-pagination :deep(.el-pagination .el-pager li:hover) {

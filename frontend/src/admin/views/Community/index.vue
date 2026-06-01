@@ -365,40 +365,13 @@ onMounted(fetchPosts)
 }
 
 .btn-search:hover {
-  background: rgba(var(--tm-color-primary), 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .pagination-wrapper {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
-}
-
-.dark-table :deep(.el-table) {
-  background: transparent;
-  color: var(--tm-text-primary);
-}
-
-.dark-table :deep(.el-table tr) {
-  background: var(--tm-card-bg);
-}
-
-.dark-table :deep(.el-table th) {
-  background: var(--tm-card-bg);
-  color: var(--tm-text-secondary);
-}
-
-.dark-table :deep(.el-table td) {
-  border-bottom: 1px solid var(--tm-border-light);
-  color: var(--tm-text-primary);
-}
-
-.dark-table :deep(.el-table--border) {
-  border-color: var(--tm-border-light);
-}
-
-.dark-table :deep(.el-table__row:hover > td) {
-  background-color: rgba(var(--tm-color-primary), 0.08);
 }
 
 .dark-pagination :deep(.el-pagination) {
@@ -417,7 +390,7 @@ onMounted(fetchPosts)
 
 .dark-pagination :deep(.el-pagination .el-pager li.active) {
   color: var(--tm-color-primary);
-  background: rgba(var(--tm-color-primary), 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .dark-pagination :deep(.el-pagination .el-pager li:hover) {

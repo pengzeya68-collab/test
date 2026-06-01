@@ -203,14 +203,14 @@ const handleLogin = async () => {
 .btn-login {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
   border: none;
-  box-shadow: 0 4px 15px rgba(var(--tm-color-primary), 0.3);
+  box-shadow: 0 4px 15px rgba(var(--tm-color-primary-rgb), 0.3);
   font-size: 16px;
   padding: 12px 0;
 }
 
 .btn-login:hover {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
-  box-shadow: 0 6px 20px rgba(var(--tm-color-primary), 0.4);
+  box-shadow: 0 6px 20px rgba(var(--tm-color-primary-rgb), 0.4);
 }
 
 .login-footer {

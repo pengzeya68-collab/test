@@ -84,7 +84,7 @@ const route = useRoute()
 const router = useRouter()
 const adminStore = useAdminStore()
 
-const adminInfo = ref(null)
+const adminInfo = computed(() => adminStore.adminInfo)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 
@@ -124,7 +124,6 @@ const changeTheme = (themeId) => {
 }
 
 onMounted(() => {
-  adminInfo.value = adminStore.adminInfo
   const savedThemeId = loadSavedTheme()
   applyTheme(savedThemeId)
   const saved = localStorage.getItem('admin_sidebar_collapsed')
@@ -216,13 +215,13 @@ const logout = async () => {
   overflow: hidden;
 }
 .menu-item:hover {
-  background: rgba(var(--tm-color-primary), 0.08);
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
   color: var(--tm-color-primary);
 }
 .menu-item.active {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
   color: #fff;
-  box-shadow: 0 2px 8px rgba(var(--tm-color-primary), 0.3);
+  box-shadow: 0 2px 8px rgba(var(--tm-color-primary-rgb), 0.3);
 }
 .menu-icon {
   font-size: 18px;
@@ -253,7 +252,7 @@ const logout = async () => {
   transition: all 0.2s;
 }
 .collapse-btn:hover {
-  background: rgba(var(--tm-color-primary), 0.08);
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
   color: var(--tm-color-primary);
 }
 .collapse-icon {

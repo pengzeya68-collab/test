@@ -336,7 +336,6 @@ onMounted(() => {
   font-size: 12px;
   color: var(--tm-text-secondary);
   line-height: 1.5;
-  color: var(--tm-text-secondary);
 }
 
 .dark-input :deep(.el-input__wrapper) {

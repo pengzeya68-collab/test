@@ -59,11 +59,11 @@
 .admin-btn-primary {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
   border: none;
-  box-shadow: 0 2px 8px rgba(var(--tm-color-primary), 0.25);
+  box-shadow: 0 2px 8px rgba(var(--tm-color-primary-rgb), 0.25);
 }
 .admin-btn-primary:hover {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
-  box-shadow: 0 4px 12px rgba(var(--tm-color-primary), 0.35);
+  box-shadow: 0 4px 12px rgba(var(--tm-color-primary-rgb), 0.35);
 }
 .admin-btn-search {
   color: var(--tm-color-primary);
@@ -71,7 +71,7 @@
   background: transparent;
 }
 .admin-btn-search:hover {
-  background: rgba(var(--tm-color-primary), 0.08);
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
 }
 .admin-btn-cancel {
   color: var(--tm-text-secondary);
@@ -96,7 +96,7 @@
   background: var(--tm-card-bg);
 }
 .admin-table :deep(.el-table th) {
-  background: var(--tm-fill-color-light);
+  background: rgba(var(--tm-text-primary-rgb), 0.05);
   color: var(--tm-text-secondary);
   font-weight: 600;
 }
@@ -108,7 +108,7 @@
   border-color: var(--tm-border-light);
 }
 .admin-table :deep(.el-table__row:hover > td) {
-  background-color: rgba(var(--tm-color-primary), 0.06);
+  background-color: rgba(var(--tm-color-primary-rgb), 0.06);
 }
 .admin-table :deep(.el-table__empty-block) {
   min-height: 200px;
@@ -128,7 +128,7 @@
 }
 .admin-pagination :deep(.el-pagination .el-pager li.is-active) {
   color: var(--tm-color-primary);
-  background: rgba(var(--tm-color-primary), 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
 }
 .admin-pagination :deep(.el-pagination .el-pager li:hover) {
   color: var(--tm-color-primary);
@@ -174,6 +174,35 @@
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* ===== Select 下拉 ===== */
+.dark-select :deep(.el-input__wrapper) {
+  background: var(--tm-card-bg);
+  box-shadow: 0 0 0 1px var(--tm-border-light) inset;
+}
+.dark-select :deep(.el-input__inner) {
+  color: var(--tm-text-primary);
+}
+
+/* ===== Dialog 弹窗 ===== */
+.dark-dialog {
+  background: var(--tm-card-bg);
+  border: var(--tm-card-border);
+}
+.dark-dialog :deep(.el-dialog__header) {
+  border-bottom: 1px solid var(--tm-border-light);
+}
+.dark-dialog :deep(.el-dialog__title) {
+  color: var(--tm-text-primary);
+}
+.dark-dialog :deep(.el-dialog__body) {
+  color: var(--tm-text-primary);
+}
+
+/* ===== Radio 单选 ===== */
+.dark-radio :deep(.el-radio__label) {
+  color: var(--tm-text-primary);
 }
 
 /* ===== 响应式 ===== */

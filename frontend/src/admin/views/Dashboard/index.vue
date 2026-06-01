@@ -57,6 +57,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
 const stats = ref([])
@@ -84,6 +85,7 @@ const fetchData = async () => {
     if (res?.recentExercises) recentExercises.value = res.recentExercises
   } catch (e) {
     console.error('获取统计数据失败:', e)
+    ElMessage.error('获取统计数据失败')
   } finally {
     loading.value = false
   }
@@ -139,7 +141,7 @@ onMounted(fetchData)
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  background: rgba(var(--tm-color-primary), 0.08);
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
 }
 
 .tables-row {

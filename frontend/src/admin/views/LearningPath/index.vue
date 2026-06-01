@@ -314,12 +314,12 @@ onMounted(() => {
 .btn-primary {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
   border: none;
-  box-shadow: 0 2px 10px rgba(var(--tm-color-primary), 0.3);
+  box-shadow: 0 2px 10px rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
 .btn-primary:hover {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
-  box-shadow: 0 4px 15px rgba(var(--tm-color-primary), 0.4);
+  box-shadow: 0 4px 15px rgba(var(--tm-color-primary-rgb), 0.4);
 }
 
 .btn-search {
@@ -329,7 +329,7 @@ onMounted(() => {
 }
 
 .btn-search:hover {
-  background: rgba(var(--tm-color-primary), 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .paths-grid {
@@ -354,7 +354,7 @@ onMounted(() => {
 .path-card:hover {
   transform: translateY(-6px);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), var(--tm-glow-effect);
-  border-color: var(--tm-primary-color);
+  border-color: var(--tm-color-primary);
 }
 
 .card-header {
@@ -459,7 +459,7 @@ onMounted(() => {
 
 .dark-pagination :deep(.el-pagination .el-pager li.active) {
   color: var(--tm-color-primary);
-  background: rgba(var(--tm-color-primary), 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .dark-pagination :deep(.el-pagination .el-pager li:hover) {
