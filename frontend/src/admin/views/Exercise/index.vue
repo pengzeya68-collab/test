@@ -86,7 +86,7 @@
 
     <!-- 列表 -->
     <div class="list-card">
-      <el-table :data="list" border stripe class="dark-table">
+      <el-table :data="list" border stripe v-loading="loading" class="admin-table" empty-text="暂无习题数据">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="习题标题" min-width="200" />
         <el-table-column prop="category" label="分类" width="120" />
@@ -180,6 +180,7 @@ const page = ref(1)
 const size = ref(10)
 const total = ref(0)
 const list = ref([])
+const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 
@@ -214,6 +215,7 @@ const getDifficultyText = (val) => {
 }
 
 const fetchList = async () => {
+  loading.value = true
   try {
     const res = await request.get('/admin/exercises', {
       params: {
@@ -230,6 +232,8 @@ const fetchList = async () => {
   } catch (e) {
     console.error('获取习题列表失败:', e)
     ElMessage.error('获取列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -361,6 +365,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import '../../admin-common.css';
 .exercise-management-dark {
   width: 100%;
 }

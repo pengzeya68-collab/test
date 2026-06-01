@@ -1,214 +1,159 @@
 <template>
-  <div class="dashboard-dark">
-    <h1 class="page-title">数据统计</h1>
-
-    <!-- 数据卡片 -->
-    <el-row :gutter="20" class="stats-row">
-      <el-col :span="6" v-for="item in stats" :key="item.title">
-        <div class="stat-card" :style="{ '--card-color': getColor(item.title) }">
-          <div class="stat-info">
+  <div class="dashboard-page">
+    <!-- 统计卡片 -->
+    <el-row :gutter="16" class="stats-row">
+      <el-col :xs="12" :sm="6" v-for="item in stats" :key="item.title">
+        <div class="stat-card" :style="{ '--accent': getColor(item.title) }">
+          <div class="stat-content">
             <p class="stat-label">{{ item.title }}</p>
             <p class="stat-value">{{ item.value }}</p>
           </div>
-          <div class="stat-icon">
-            {{ getIcon(item.title) }}
-          </div>
+          <div class="stat-icon">{{ getIcon(item.title) }}</div>
         </div>
       </el-col>
     </el-row>
 
-    <!-- 数据表格区域 -->
-    <el-row :gutter="20" class="tables-row">
-      <el-col :span="12">
-        <div class="data-card">
-          <h3 class="card-title">最近注册用户</h3>
-          <el-table :data="recentUsers" border stripe class="dark-table">
-            <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column prop="username" label="用户名" />
-            <el-table-column prop="email" label="邮箱" />
-            <el-table-column prop="registerTime" label="注册时间" />
-          </el-table>
-        </div>
-      </el-col>
-      <el-col :span="12">
-        <div class="data-card">
-          <h3 class="card-title">最近添加习题</h3>
-          <el-table :data="recentExercises" border stripe class="dark-table">
-            <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column prop="title" label="习题标题" />
-            <el-table-column prop="difficulty" label="难度" width="80" />
-            <el-table-column prop="createTime" label="创建时间" />
-          </el-table>
-        </div>
-      </el-col>
-    </el-row>
+    <!-- 加载骨架 -->
+    <template v-if="loading">
+      <el-row :gutter="16">
+        <el-col :span="12"><el-skeleton :rows="5" animated /></el-col>
+        <el-col :span="12"><el-skeleton :rows="5" animated /></el-col>
+      </el-row>
+    </template>
+
+    <!-- 数据表格 -->
+    <template v-else>
+      <el-row :gutter="16" class="tables-row">
+        <el-col :xs="24" :lg="12">
+          <div class="admin-card">
+            <h3 class="card-title">最近注册用户</h3>
+            <el-table :data="recentUsers" stripe class="admin-table" empty-text="暂无数据">
+              <el-table-column prop="id" label="ID" width="70" />
+              <el-table-column prop="username" label="用户名" />
+              <el-table-column prop="email" label="邮箱" show-overflow-tooltip />
+              <el-table-column prop="registerTime" label="注册时间" width="160" />
+            </el-table>
+          </div>
+        </el-col>
+        <el-col :xs="24" :lg="12">
+          <div class="admin-card">
+            <h3 class="card-title">最近添加习题</h3>
+            <el-table :data="recentExercises" stripe class="admin-table" empty-text="暂无数据">
+              <el-table-column prop="id" label="ID" width="70" />
+              <el-table-column prop="title" label="习题标题" show-overflow-tooltip />
+              <el-table-column prop="difficulty" label="难度" width="80">
+                <template #default="{ row }">
+                  <el-tag :type="diffType(row.difficulty)" size="small">{{ diffText(row.difficulty) }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="createTime" label="创建时间" width="160" />
+            </el-table>
+          </div>
+        </el-col>
+      </el-row>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import request from '@/utils/request'
-import { ElMessage } from 'element-plus'
 
 const stats = ref([])
 const recentUsers = ref([])
 const recentExercises = ref([])
+const loading = ref(true)
 
 const getIcon = (title) => {
-  const iconMap = {
-    '总用户数': '👥',
-    '习题总数': '📝',
-    '学习路径': '📚',
-    '社区帖子': '💬'
-  }
-  return iconMap[title] || '📊'
+  const map = { '总用户数': '👥', '习题总数': '📝', '学习路径': '🗺️', '社区帖子': '💬' }
+  return map[title] || '📊'
 }
-
 const getColor = (title) => {
-  const colorMap = {
-    '总用户数': '#409EFF',
-    '习题总数': '#67C23A',
-    '学习路径': '#E6A23C',
-    '社区帖子': '#F56C6C'
-  }
-  return colorMap[title] || '#409EFF'
+  const map = { '总用户数': '#409EFF', '习题总数': '#67C23A', '学习路径': '#E6A23C', '社区帖子': '#F56C6C' }
+  return map[title] || '#409EFF'
 }
+const diffType = d => ({ easy: 'success', medium: 'warning', hard: 'danger' }[d] || 'info')
+const diffText = d => ({ easy: '简单', medium: '中等', hard: '困难' }[d] || d)
 
 const fetchData = async () => {
+  loading.value = true
   try {
     const res = await request.get('/admin/dashboard/stats')
-    if (res && res.stats) {
-      stats.value = res.stats
-    }
-    if (res && res.recentUsers) {
-      recentUsers.value = res.recentUsers
-    }
-    if (res && res.recentExercises) {
-      recentExercises.value = res.recentExercises
-    }
-    ElMessage.success('数据加载成功')
+    if (res?.stats) stats.value = res.stats
+    if (res?.recentUsers) recentUsers.value = res.recentUsers
+    if (res?.recentExercises) recentExercises.value = res.recentExercises
   } catch (e) {
     console.error('获取统计数据失败:', e)
-    ElMessage.error('获取统计数据失败')
+  } finally {
+    loading.value = false
   }
 }
 
-onMounted(() => {
-  fetchData()
-})
+onMounted(fetchData)
 </script>
 
 <style scoped>
-.dashboard-dark {
-  width: 100%;
-  padding: 0;
-}
+@import '../../admin-common.css';
 
-.page-title {
-  margin: 0 0 24px 0;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--tm-text-primary);
-  letter-spacing: 0.5px;
+.dashboard-page {
+  width: 100%;
 }
 
 .stats-row {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
   background: var(--tm-card-bg);
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border: var(--tm-card-border);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), var(--tm-glow-effect);
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
 }
-
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 180, 216, 0.2);
-  border-color: var(--card-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border-color: var(--accent);
 }
-
-.stat-info {
-  flex: 1;
-}
-
+.stat-content { flex: 1; }
 .stat-label {
-  margin: 0 0 8px 0;
+  margin: 0 0 6px;
   color: var(--tm-text-secondary);
-  font-size: 14px;
-  font-weight: 400;
+  font-size: 13px;
 }
-
 .stat-value {
   margin: 0;
-  font-size: 36px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--tm-text-primary);
-  line-height: 1.2;
 }
-
 .stat-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
-  background: linear-gradient(135deg, var(--card-color), rgba(var(--card-color), 0.7));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 24px;
+  background: rgba(var(--tm-color-primary), 0.08);
 }
 
 .tables-row {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
-
-.data-card {
-  background: var(--tm-card-bg);
-  border-radius: 16px;
-  padding: 24px;
-  border: var(--tm-card-border);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
 .card-title {
-  margin: 0 0 16px 0;
-  font-size: 18px;
+  margin: 0 0 16px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--tm-text-primary);
 }
 
-/* Dark Table */
-.dark-table :deep(.el-table) {
-  background: transparent;
-  color: var(--tm-text-primary);
-}
-
-.dark-table :deep(.el-table tr) {
-  background: var(--tm-card-bg);
-}
-
-.dark-table :deep(.el-table th) {
-  background: rgba(var(--tm-text-primary), 0.05);
-  color: var(--tm-text-secondary);
-}
-
-.dark-table :deep(.el-table td) {
-  border-bottom: 1px solid rgba(var(--tm-text-primary), 0.1);
-  color: var(--tm-text-primary);
-}
-
-.dark-table :deep(.el-table__row:hover > td) {
-  background-color: rgba(0, 180, 216, 0.08);
+@media (max-width: 768px) {
+  .stat-value { font-size: 22px; }
+  .stat-icon { width: 40px; height: 40px; font-size: 20px; }
 }
 </style>

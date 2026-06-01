@@ -36,7 +36,7 @@
 
     <!-- 列表 -->
     <div class="list-card">
-      <el-table :data="list" border stripe v-loading="loading" class="dark-table">
+      <el-table :data="list" border stripe v-loading="loading" class="admin-table" empty-text="暂无面试题数据">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="title" label="题目标题" min-width="260" show-overflow-tooltip />
         <el-table-column prop="category" label="分类" width="110" />
@@ -303,6 +303,7 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
+@import '../../admin-common.css';
 .interview-management-dark {
   width: 100%;
 }

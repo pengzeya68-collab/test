@@ -146,19 +146,27 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .login-card {
-  width: 420px;
+  width: 100%;
+  max-width: 420px;
   background: var(--tm-card-bg);
   padding: 48px 40px;
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), var(--tm-glow-effect);
   border: var(--tm-card-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 32px 24px;
+    margin: 0 16px;
+    border-radius: 12px;
+  }
+  .login-header h2 {
+    font-size: 26px;
+  }
 }
 
 .login-header {

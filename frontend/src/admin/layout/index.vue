@@ -1,49 +1,67 @@
 <template>
-  <div class="admin-layout-dark">
+  <div class="admin-layout">
+    <!-- 移动端遮罩 -->
+    <div v-if="sidebarOpen" class="sidebar-overlay" @click="sidebarOpen = false" />
+
     <!-- 侧边栏 -->
-    <aside class="sidebar">
-      <div class="logo">
-        <h1>TestMaster</h1>
-        <span class="badge">Admin</span>
+    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed, 'mobile-open': sidebarOpen }">
+      <div class="logo" @click="$router.push('/admin/dashboard')">
+        <span class="logo-icon">TM</span>
+        <span v-if="!sidebarCollapsed" class="logo-text">Admin</span>
       </div>
+
       <nav class="menu">
         <div
           v-for="menu in menus"
           :key="menu.path"
           class="menu-item"
-          :class="{ active: $route.path === menu.path }"
-          @click="$router.push(menu.path)"
+          :class="{ active: isActive(menu.path) }"
+          :title="sidebarCollapsed ? menu.title : ''"
+          @click="handleMenuClick(menu.path)"
         >
-          <span class="menu-title">{{ menu.title }}</span>
+          <span class="menu-icon">{{ menu.icon }}</span>
+          <span v-if="!sidebarCollapsed" class="menu-title">{{ menu.title }}</span>
         </div>
       </nav>
+
+      <div class="sidebar-footer">
+        <div class="collapse-btn" @click="toggleCollapse" :title="sidebarCollapsed ? '展开' : '收起'">
+          <span class="collapse-icon">{{ sidebarCollapsed ? '▶' : '◀' }}</span>
+          <span v-if="!sidebarCollapsed" class="collapse-text">收起菜单</span>
+        </div>
+      </div>
     </aside>
 
     <!-- 右侧内容 -->
     <main class="main-content">
       <!-- 顶部导航 -->
       <header class="top-nav">
-        <div class="page-title">
-          <h2>{{ currentTitle }}</h2>
+        <div class="nav-left">
+          <button class="hamburger" @click="sidebarOpen = !sidebarOpen">
+            <span></span><span></span><span></span>
+          </button>
+          <h2 class="page-title">{{ currentTitle }}</h2>
         </div>
-        <div class="user-info">
+        <div class="nav-right">
           <el-dropdown trigger="click" @command="changeTheme">
-            <el-button link class="theme-btn">
-              <el-icon><Brush /></el-icon>
-              <span>美化中心</span>
-              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-            </el-button>
+            <button class="nav-btn theme-btn">
+              <span class="btn-icon">🎨</span>
+              <span class="btn-text">主题</span>
+            </button>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item v-for="theme in themes" :key="theme.id" :command="theme.id">
-                  <span class="theme-color-dot" :style="{ backgroundColor: theme.primary }"></span>
+                  <span class="theme-dot" :style="{ background: theme.primary }" />
                   {{ theme.name }}
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <span class="user-name">{{ adminInfo?.username || 'Admin' }}</span>
-          <el-button link class="logout-btn" @click="logout">退出登录</el-button>
+          <div class="user-badge">
+            <span class="user-avatar">{{ (adminInfo?.username || 'A')[0].toUpperCase() }}</span>
+            <span class="user-name">{{ adminInfo?.username || 'Admin' }}</span>
+          </div>
+          <button class="nav-btn logout-btn" @click="logout">退出</button>
         </div>
       </header>
 
@@ -58,8 +76,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Brush, ArrowDown } from '@element-plus/icons-vue'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import { themes, applyTheme, loadSavedTheme } from '@/utils/ThemeConfig'
 import { useAdminStore } from '@/stores/admin'
 
@@ -68,24 +85,38 @@ const router = useRouter()
 const adminStore = useAdminStore()
 
 const adminInfo = ref(null)
+const sidebarCollapsed = ref(false)
+const sidebarOpen = ref(false)
 
 const menus = [
-  { path: '/admin/dashboard', title: '数据统计' },
-  { path: '/admin/exercises', title: '习题管理' },
-  { path: '/admin/paths', title: '学习路径' },
-  { path: '/admin/users', title: '用户管理' },
-  { path: '/admin/exams', title: '考试管理' },
-  { path: '/admin/interview', title: '面试题库' },
-  { path: '/admin/community', title: '社区管理' },
-  { path: '/admin/backup', title: '备份管理' },
-  { path: '/admin/ai-config', title: 'AI配置' },
-  { path: '/admin/settings', title: '系统设置' }
+  { path: '/admin/dashboard', title: '数据统计', icon: '📊' },
+  { path: '/admin/exercises', title: '习题管理', icon: '📝' },
+  { path: '/admin/paths', title: '学习路径', icon: '🗺️' },
+  { path: '/admin/users', title: '用户管理', icon: '👥' },
+  { path: '/admin/exams', title: '考试管理', icon: '📋' },
+  { path: '/admin/interview', title: '面试题库', icon: '🎤' },
+  { path: '/admin/community', title: '社区管理', icon: '💬' },
+  { path: '/admin/backup', title: '备份管理', icon: '💾' },
+  { path: '/admin/ai-config', title: 'AI配置', icon: '🤖' },
+  { path: '/admin/settings', title: '系统设置', icon: '⚙️' },
 ]
 
+const isActive = (path) => route.path.startsWith(path)
+
 const currentTitle = computed(() => {
-  const menu = menus.find(m => m.path === route.path)
+  const menu = menus.find(m => route.path.startsWith(m.path))
   return menu ? menu.title : '后台管理'
 })
+
+const handleMenuClick = (path) => {
+  router.push(path)
+  sidebarOpen.value = false
+}
+
+const toggleCollapse = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  localStorage.setItem('admin_sidebar_collapsed', sidebarCollapsed.value)
+}
 
 const changeTheme = (themeId) => {
   const theme = applyTheme(themeId)
@@ -96,6 +127,8 @@ onMounted(() => {
   adminInfo.value = adminStore.adminInfo
   const savedThemeId = loadSavedTheme()
   applyTheme(savedThemeId)
+  const saved = localStorage.getItem('admin_sidebar_collapsed')
+  if (saved === 'true') sidebarCollapsed.value = true
 })
 
 const logout = async () => {
@@ -104,190 +137,290 @@ const logout = async () => {
     cancelButtonText: '取消',
     type: 'warning'
   })
-
   await adminStore.clearAdminInfo()
-  ElMessage.success('退出成功')
   router.push('/admin/login')
 }
 </script>
 
 <style scoped>
-.admin-layout-dark {
+.admin-layout {
   height: 100vh;
   width: 100%;
   display: flex;
   background: var(--tm-bg-color);
-  background-color: #09090B;
-  background-attachment: fixed;
-  font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   overflow: hidden;
 }
 
-/* 侧边栏 */
+/* ===== 侧边栏 ===== */
 .sidebar {
-  width: 240px;
+  width: 220px;
+  min-width: 220px;
   background: var(--tm-sidebar-bg);
   border-right: var(--tm-card-border);
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.2);
+  transition: width 0.25s ease, min-width 0.25s ease;
+  z-index: 100;
+}
+.sidebar.collapsed {
+  width: 64px;
+  min-width: 64px;
 }
 
+/* Logo */
 .logo {
-  height: 80px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  background: linear-gradient(135deg, var(--tm-color-primary) 0%, var(--tm-color-primary-dark) 100%);
-  border-bottom: var(--tm-card-border);
+  gap: 8px;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  cursor: pointer;
+  flex-shrink: 0;
 }
-
-.logo h1 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: white;
+.logo-icon {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
   letter-spacing: 1px;
 }
-
-.logo .badge {
-  font-size: 11px;
-  opacity: 0.8;
-  color: white;
-  margin-top: 4px;
+.logo-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
 }
 
+/* 菜单 */
 .menu {
-  padding: 16px 12px;
   flex: 1;
+  padding: 12px 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
+.menu::-webkit-scrollbar { width: 4px; }
+.menu::-webkit-scrollbar-thumb { background: var(--tm-border-light); border-radius: 2px; }
 
 .menu-item {
-  padding: 14px 18px;
-  margin-bottom: 8px;
-  cursor: pointer;
   display: flex;
   align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
   border-radius: 8px;
+  cursor: pointer;
   color: var(--tm-text-secondary);
-  font-size: 15px;
-  transition: all 0.3s ease;
-  border: 1px solid transparent;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
 }
-
 .menu-item:hover {
-  background: rgba(var(--tm-color-primary), 0.1);
-  border-color: rgba(var(--tm-color-primary), 0.3);
+  background: rgba(var(--tm-color-primary), 0.08);
   color: var(--tm-color-primary);
-  transform: translateX(4px);
 }
-
 .menu-item.active {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
-  border-color: var(--tm-color-primary);
-  color: white;
-  box-shadow: 0 4px 12px var(--tm-glow-effect);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(var(--tm-color-primary), 0.3);
+}
+.menu-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+}
+.menu-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* 主内容区 */
+/* 折叠按钮 */
+.sidebar-footer {
+  padding: 8px;
+  border-top: 1px solid var(--tm-border-light);
+  flex-shrink: 0;
+}
+.collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--tm-text-secondary);
+  font-size: 13px;
+  transition: all 0.2s;
+}
+.collapse-btn:hover {
+  background: rgba(var(--tm-color-primary), 0.08);
+  color: var(--tm-color-primary);
+}
+.collapse-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* ===== 主内容区 ===== */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
+/* 顶部导航 */
 .top-nav {
-  height: 70px;
+  height: 56px;
   background: var(--tm-card-bg);
   border-bottom: var(--tm-card-border);
-  padding: 0 24px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
 }
-
-.page-title h2 {
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.page-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--tm-text-primary);
 }
 
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+/* 汉堡按钮 (移动端) */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.hamburger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--tm-text-primary);
+  border-radius: 1px;
+  transition: all 0.2s;
 }
 
-.theme-btn {
+.nav-right {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: var(--tm-color-primary);
-  font-size: 14px;
-  padding: 6px 12px;
-  border: 1px solid rgba(var(--tm-color-primary), 0.3);
+  gap: 12px;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
   border-radius: 6px;
+  border: 1px solid var(--tm-border-light);
+  background: transparent;
+  color: var(--tm-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-
-.theme-btn:hover {
-  background: rgba(var(--tm-color-primary), 0.1);
+.nav-btn:hover {
+  border-color: var(--tm-color-primary);
   color: var(--tm-color-primary);
 }
+.btn-icon { font-size: 14px; }
 
-.theme-color-dot {
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.user-name {
+  color: var(--tm-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.logout-btn {
+  color: var(--tm-color-danger, #f56c6c);
+  border-color: transparent;
+}
+.logout-btn:hover {
+  background: rgba(245, 108, 108, 0.08);
+  border-color: rgba(245, 108, 108, 0.3);
+}
+
+.theme-dot {
   display: inline-block;
   width: 12px;
   height: 12px;
   border-radius: 50%;
   margin-right: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255,255,255,0.2);
 }
 
-.user-name {
-  color: var(--tm-text-secondary);
-  font-size: 14px;
-}
-
-.logout-btn {
-  color: #ff6b6b;
-  font-size: 14px;
-}
-
-.logout-btn:hover {
-  color: #ff8787;
-  background: rgba(255, 107, 107, 0.1);
-}
-
+/* 内容区域 */
 .content-area {
   flex: 1;
   padding: 20px;
-  background: transparent;
   overflow-y: auto;
+  overflow-x: hidden;
+}
+.content-area::-webkit-scrollbar { width: 6px; }
+.content-area::-webkit-scrollbar-thumb { background: var(--tm-border-light); border-radius: 3px; }
+.content-area::-webkit-scrollbar-thumb:hover { background: var(--tm-color-primary); }
+
+/* ===== 移动端遮罩 ===== */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
 }
 
-/* 滚动条美化 */
-.content-area::-webkit-scrollbar {
-  width: 8px;
-}
-
-.content-area::-webkit-scrollbar-track {
-  background: rgba(var(--tm-bg-page-rgb), 0.5);
-}
-
-.content-area::-webkit-scrollbar-thumb {
-  background: var(--tm-border-light);
-  border-radius: 4px;
-}
-
-.content-area::-webkit-scrollbar-thumb:hover {
-  background: var(--tm-color-primary);
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .hamburger {
+    display: flex;
+  }
+  .sidebar {
+    position: fixed;
+    left: -220px;
+    top: 0;
+    bottom: 0;
+    transition: left 0.25s ease;
+  }
+  .sidebar.mobile-open {
+    left: 0;
+  }
+  .sidebar-overlay {
+    display: block;
+  }
+  .btn-text {
+    display: none;
+  }
+  .user-name {
+    display: none;
+  }
 }
 </style>

@@ -29,7 +29,7 @@
 
     <!-- 用户列表 -->
     <div class="list-card">
-      <el-table :data="list" border stripe class="dark-table" row-key="id">
+      <el-table :data="list" border stripe v-loading="loading" class="admin-table" row-key="id" empty-text="暂无用户数据">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="email" label="邮箱" min-width="200" />
@@ -165,6 +165,7 @@ const page = ref(1)
 const size = ref(10)
 const total = ref(0)
 const list = ref([])
+const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const currentAdminId = computed(() => {
@@ -188,6 +189,7 @@ const form = reactive({
 })
 
 const fetchList = async () => {
+  loading.value = true
   try {
     const res = await request.get('/admin/users', {
       params: {
@@ -207,6 +209,8 @@ const fetchList = async () => {
   } catch (e) {
     console.error('获取用户列表失败:', e)
     ElMessage.error('获取列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -361,6 +365,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import '../../admin-common.css';
 .user-management-dark {
   width: 100%;
 }

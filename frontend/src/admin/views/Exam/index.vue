@@ -34,7 +34,7 @@
 
     <!-- 列表 -->
     <div class="list-card">
-      <el-table :data="list" border stripe v-loading="loading" class="dark-table">
+      <el-table :data="list" border stripe v-loading="loading" class="admin-table" empty-text="暂无考试数据">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="exam_type" label="类型" width="100" />
@@ -494,6 +494,7 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
+@import '../../admin-common.css';
 .exam-management-dark {
   width: 100%;
 }

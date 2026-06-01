@@ -37,7 +37,7 @@
         </div>
       </div>
 
-      <el-table :data="postList" border stripe v-loading="postLoading" class="dark-table">
+      <el-table :data="postList" border stripe v-loading="postLoading" class="admin-table" empty-text="暂无帖子数据">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
         <el-table-column prop="author" label="作者" width="110" />
@@ -112,7 +112,7 @@
         </div>
       </div>
 
-      <el-table :data="commentList" border stripe v-loading="commentLoading" class="dark-table">
+      <el-table :data="commentList" border stripe v-loading="commentLoading" class="admin-table" empty-text="暂无评论数据">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="content" label="评论内容" min-width="300" show-overflow-tooltip />
         <el-table-column prop="author" label="评论者" width="110" />
@@ -269,6 +269,7 @@ onMounted(fetchPosts)
 </script>
 
 <style scoped>
+@import '../../admin-common.css';
 .community-admin-dark {
   width: 100%;
 }

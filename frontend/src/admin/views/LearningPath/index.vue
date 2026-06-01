@@ -27,7 +27,8 @@
     </div>
 
     <!-- 卡片列表 -->
-    <el-row :gutter="20" class="paths-grid">
+    <div v-loading="loading">
+    <el-row :gutter="20" class="paths-grid" v-if="list.length">
       <el-col :span="8" v-for="item in list" :key="item.id" class="path-col">
         <div class="path-card">
           <div class="card-header">
@@ -56,6 +57,8 @@
         </div>
       </el-col>
     </el-row>
+    <el-empty v-else description="暂无学习路径" class="admin-empty" />
+    </div>
 
     <!-- 分页 -->
     <div class="pagination-wrapper">
@@ -122,6 +125,7 @@ const page = ref(1)
 const size = ref(9)
 const total = ref(0)
 const list = ref([])
+const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const exerciseOptions = ref([])
@@ -145,6 +149,7 @@ const getLevelText = (val) => {
 }
 
 const fetchList = async () => {
+  loading.value = true
   try {
     const res = await request.get('/admin/paths', {
       params: {
@@ -161,6 +166,8 @@ const fetchList = async () => {
   } catch (e) {
     console.error('获取学习路径失败:', e)
     ElMessage.error('获取列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -243,6 +250,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import '../../admin-common.css';
 .learning-path-management-dark {
   width: 100%;
 }

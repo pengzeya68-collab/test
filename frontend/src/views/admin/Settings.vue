@@ -266,15 +266,15 @@ onMounted(() => {
 }
 
 .dark-tabs :deep(.el-tabs__header) {
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--tm-border-light);
 }
 
 .dark-tabs :deep(.el-tabs__nav-wrap::after) {
-  background-color: #444;
+  background-color: var(--tm-border-light);
 }
 
 .dark-tabs :deep(.el-tabs__item) {
-  color: #a0a0a0;
+  color: var(--tm-text-secondary);
 }
 
 .dark-tabs :deep(.el-tabs__item.is-active) {
@@ -298,7 +298,7 @@ onMounted(() => {
 
 .avatar-uploader {
   :deep(.el-upload) {
-    border: 1px dashed #555;
+    border: 1px dashed var(--tm-border-light);
     border-radius: 6px;
     cursor: pointer;
     position: relative;
@@ -313,7 +313,7 @@ onMounted(() => {
 
   .avatar-uploader-icon {
     font-size: 28px;
-    color: #8c939d;
+    color: var(--tm-text-secondary);
     width: 120px;
     height: 120px;
     text-align: center;
@@ -336,12 +336,12 @@ onMounted(() => {
   font-size: 12px;
   color: var(--tm-text-secondary);
   line-height: 1.5;
-  color: #a0a0a0;
+  color: var(--tm-text-secondary);
 }
 
 .dark-input :deep(.el-input__wrapper) {
-  background: #3d3d3d;
-  box-shadow: 0 0 0 1px #4a4a4a inset;
+  background: var(--tm-card-bg);
+  box-shadow: 0 0 0 1px var(--tm-border-light) inset;
   border-radius: 6px;
 }
 

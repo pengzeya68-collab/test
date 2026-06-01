@@ -1,0 +1,192 @@
+/* 后管共享样式 - 统一设计语言 */
+
+/* ===== 卡片基础 ===== */
+.admin-card {
+  background: var(--tm-card-bg);
+  border-radius: 12px;
+  padding: 20px;
+  border: var(--tm-card-border);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== 工具栏 ===== */
+.admin-toolbar {
+  background: var(--tm-card-bg);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border: var(--tm-card-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.admin-toolbar-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.admin-toolbar-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ===== 搜索/筛选输入 ===== */
+.admin-search-input {
+  width: 240px;
+}
+.admin-search-input :deep(.el-input__wrapper) {
+  background: var(--tm-card-bg);
+  box-shadow: 0 0 0 1px var(--tm-border-light) inset;
+  border-radius: 8px;
+}
+.admin-search-input :deep(.el-input__inner) {
+  color: var(--tm-text-primary);
+}
+.admin-filter-select {
+  width: 140px;
+}
+.admin-filter-select :deep(.el-input__wrapper) {
+  background: var(--tm-card-bg);
+  box-shadow: 0 0 0 1px var(--tm-border-light) inset;
+}
+
+/* ===== 按钮 ===== */
+.admin-btn-primary {
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  border: none;
+  box-shadow: 0 2px 8px rgba(var(--tm-color-primary), 0.25);
+}
+.admin-btn-primary:hover {
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  box-shadow: 0 4px 12px rgba(var(--tm-color-primary), 0.35);
+}
+.admin-btn-search {
+  color: var(--tm-color-primary);
+  border: 1px solid var(--tm-color-primary);
+  background: transparent;
+}
+.admin-btn-search:hover {
+  background: rgba(var(--tm-color-primary), 0.08);
+}
+.admin-btn-cancel {
+  color: var(--tm-text-secondary);
+  background: transparent;
+  border: 1px solid var(--tm-border-light);
+}
+.admin-btn-cancel:hover {
+  color: var(--tm-text-primary);
+  border-color: var(--tm-color-primary);
+}
+.admin-btn-edit {
+  border-color: var(--tm-color-primary);
+  color: var(--tm-color-primary);
+}
+
+/* ===== 表格 ===== */
+.admin-table :deep(.el-table) {
+  background: transparent;
+  color: var(--tm-text-primary);
+}
+.admin-table :deep(.el-table tr) {
+  background: var(--tm-card-bg);
+}
+.admin-table :deep(.el-table th) {
+  background: var(--tm-fill-color-light);
+  color: var(--tm-text-secondary);
+  font-weight: 600;
+}
+.admin-table :deep(.el-table td) {
+  border-bottom: 1px solid var(--tm-border-light);
+  color: var(--tm-text-primary);
+}
+.admin-table :deep(.el-table--border) {
+  border-color: var(--tm-border-light);
+}
+.admin-table :deep(.el-table__row:hover > td) {
+  background-color: rgba(var(--tm-color-primary), 0.06);
+}
+.admin-table :deep(.el-table__empty-block) {
+  min-height: 200px;
+}
+
+/* ===== 分页 ===== */
+.admin-pagination :deep(.el-pagination) {
+  color: var(--tm-text-secondary);
+}
+.admin-pagination :deep(.el-pagination button) {
+  background: var(--tm-card-bg);
+  border-color: var(--tm-border-light);
+  color: var(--tm-text-secondary);
+}
+.admin-pagination :deep(.el-pagination .el-pager li) {
+  color: var(--tm-text-secondary);
+}
+.admin-pagination :deep(.el-pagination .el-pager li.is-active) {
+  color: var(--tm-color-primary);
+  background: rgba(var(--tm-color-primary), 0.1);
+}
+.admin-pagination :deep(.el-pagination .el-pager li:hover) {
+  color: var(--tm-color-primary);
+}
+
+/* ===== 输入框 ===== */
+.admin-input :deep(.el-input__wrapper) {
+  background: var(--tm-card-bg);
+  box-shadow: 0 0 0 1px var(--tm-border-light) inset;
+  border-radius: 6px;
+}
+.admin-input :deep(.el-input__inner) {
+  color: var(--tm-text-primary);
+}
+
+/* ===== Tabs ===== */
+.admin-tabs :deep(.el-tabs__header) {
+  border-bottom: 1px solid var(--tm-border-light);
+}
+.admin-tabs :deep(.el-tabs__nav-wrap::after) {
+  background-color: var(--tm-border-light);
+}
+.admin-tabs :deep(.el-tabs__item) {
+  color: var(--tm-text-secondary);
+}
+.admin-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--tm-color-primary);
+}
+.admin-tabs :deep(.el-tabs__active-bar) {
+  background-color: var(--tm-color-primary);
+}
+
+/* ===== 空状态 ===== */
+.admin-empty {
+  padding: 40px 0;
+}
+.admin-empty :deep(.el-empty__description p) {
+  color: var(--tm-text-secondary);
+}
+
+/* ===== 分页容器 ===== */
+.admin-pagination-wrap {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .admin-toolbar-left,
+  .admin-toolbar-right {
+    width: 100%;
+  }
+  .admin-search-input {
+    width: 100%;
+  }
+}
