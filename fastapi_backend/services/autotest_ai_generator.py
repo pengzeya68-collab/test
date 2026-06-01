@@ -62,7 +62,7 @@ class AITestCaseGenerator:
                             "name": p.get("name", ""),
                             "in": p.get("in", ""),
                             "required": p.get("required", False),
-                            "type": p.get("schema", {}).get("type", p.get("type", "string")),
+                            "type": (p.get("schema") or {}).get("type", p.get("type", "string")),
                             "description": p.get("description", ""),
                         }
                     )
@@ -73,7 +73,7 @@ class AITestCaseGenerator:
                 if rb:
                     content = rb.get("content", {})
                     for ct, ct_detail in content.items():
-                        schema = ct_detail.get("schema", {})
+                        schema = (ct_detail.get("schema") or {})
                         request_body = {"content_type": ct, "schema": schema}
                         break
 
@@ -84,7 +84,7 @@ class AITestCaseGenerator:
                     for ct, ct_detail in resp_content.items():
                         responses[status] = {
                             "description": resp.get("description", ""),
-                            "schema": ct_detail.get("schema", {}),
+                            "schema": (ct_detail.get("schema") or {}),
                         }
                         break
                     if status not in responses:
