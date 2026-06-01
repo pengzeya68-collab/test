@@ -45,6 +45,7 @@ class SuiteUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     env_id: Optional[int] = None
+    case_ids: Optional[List[int]] = None
 
 
 class SuiteCaseAdd(BaseModel):
@@ -189,7 +190,7 @@ async def get_suite(suite_id: int):
 
 @router.put("/{suite_id}")
 async def update_suite(suite_id: int, body: SuiteUpdate):
-    """更新套件基本信息"""
+    """更新套件基本信息和用例关联"""
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(TestSuite).where(TestSuite.id == suite_id))
         suite = result.scalar_one_or_none()
@@ -202,6 +203,24 @@ async def update_suite(suite_id: int, body: SuiteUpdate):
             suite.description = body.description
         if body.env_id is not None:
             suite.env_id = body.env_id
+
+        # 如果提供了 case_ids，替换所有用例关联
+        if body.case_ids is not None:
+            # 删除旧的关联
+            old_cases = await db.execute(
+                select(TestSuiteCase).where(TestSuiteCase.suite_id == suite_id)
+            )
+            for sc in old_cases.scalars().all():
+                await db.delete(sc)
+
+            # 添加新的关联
+            for idx, case_id in enumerate(body.case_ids):
+                sc = TestSuiteCase(
+                    suite_id=suite_id,
+                    case_id=case_id,
+                    sort_order=idx,
+                )
+                db.add(sc)
 
         await db.commit()
         return {"message": "更新成功"}

@@ -122,12 +122,15 @@ async def list_cases(
 @router.get("/all")
 async def get_all_cases(
     group_id: int = Query(None, description="按分组筛选"),
+    keyword: str = Query("", description="按名称搜索"),
     db: AsyncSession = Depends(get_db),
 ):
     """获取所有用例（用于选择）"""
     query = select(AutoTestCase).order_by(AutoTestCase.updated_at.desc())
     if group_id is not None:
         query = query.where(AutoTestCase.group_id == group_id)
+    if keyword:
+        query = query.where(AutoTestCase.name.contains(keyword))
     result = await db.execute(query)
     cases = result.scalars().all()
 

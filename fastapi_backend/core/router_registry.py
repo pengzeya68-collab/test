@@ -36,6 +36,7 @@ _ROUTER_MODULES = {
         "fastapi_backend.routers.autotest_suites",
         "fastapi_backend.routers.autotest_ai_generate",
         "fastapi_backend.routers.autotest_coverage",
+        "fastapi_backend.routers.autotest_export",
         "fastapi_backend.routers.performance_report",
     ],
     "learning": [

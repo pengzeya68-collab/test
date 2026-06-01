@@ -347,6 +347,10 @@ const props = defineProps({
   environmentList: {
     type: Array,
     default: () => []
+  },
+  curlData: {
+    type: Object,
+    default: null
   }
 })
 
@@ -501,6 +505,23 @@ watch(() => props.groupId, (newVal) => {
   currentPage.value = 1
   loadCases()
 }, { immediate: true })
+
+// 监听 curlData 变化，自动打开创建对话框
+watch(() => props.curlData, (newVal) => {
+  if (newVal && newVal.method) {
+    currentCase.value = {
+      name: `${newVal.method} ${newVal.url || ''}`,
+      method: newVal.method || 'GET',
+      url: newVal.url || '',
+      headers: newVal.headers || {},
+      payload: newVal.body || null,
+      body_type: newVal.body ? 'json' : 'none'
+    }
+    isEdit.value = false
+    currentGroupId.value = props.groupId
+    drawerVisible.value = true
+  }
+})
 
 // 搜索
 const handleSearch = () => {

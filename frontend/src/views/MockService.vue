@@ -129,6 +129,10 @@
         <el-form-item label="项目名称" required>
           <el-input v-model="projectForm.name" placeholder="请输入项目名称" />
         </el-form-item>
+        <el-form-item label="URL标识" required>
+          <el-input v-model="projectForm.base_url_slug" placeholder="用于 Mock 地址，如: myapi" />
+          <div class="form-tip">Mock 地址: /api/mock/api/{{ projectForm.base_url_slug || '{slug}' }}/*</div>
+        </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="projectForm.description" type="textarea" :rows="3" placeholder="请输入项目描述" />
         </el-form-item>
@@ -210,7 +214,7 @@ const editingProject = ref(null)
 const editingRule = ref(null)
 
 // 表单数据
-const projectForm = ref({ name: '', description: '' })
+const projectForm = ref({ name: '', description: '', base_url_slug: '' })
 const ruleForm = ref({
   name: '',
   method: 'GET',
@@ -228,7 +232,7 @@ const loadProjects = async () => {
   loading.value = true
   try {
     const res = await autoTestRequest.get(`${API_BASE}/projects`)
-    projects.value = res.data
+    projects.value = res.list || []
   } catch (err) {
     ElMessage.error('加载项目失败: ' + (err.response?.data?.detail || err.message))
   } finally {
@@ -248,7 +252,7 @@ const loadRules = async (projectId) => {
   rulesLoading.value = true
   try {
     const res = await autoTestRequest.get(`${API_BASE}/projects/${projectId}/rules`)
-    rules.value = res.data
+    rules.value = res.list || []
   } catch (err) {
     ElMessage.error('加载规则失败: ' + (err.response?.data?.detail || err.message))
   } finally {
@@ -261,7 +265,7 @@ const loadLogs = async (projectId) => {
   logsLoading.value = true
   try {
     const res = await autoTestRequest.get(`${API_BASE}/projects/${projectId}/logs`)
-    logs.value = res.data
+    logs.value = res.list || []
   } catch (err) {
     ElMessage.error('加载日志失败: ' + (err.response?.data?.detail || err.message))
   } finally {
@@ -278,8 +282,8 @@ const refreshLogs = () => {
 
 // 保存项目
 const saveProject = async () => {
-  if (!projectForm.value.name) {
-    ElMessage.warning('请输入项目名称')
+  if (!projectForm.value.name || !projectForm.value.base_url_slug) {
+    ElMessage.warning('请填写项目名称和URL标识')
     return
   }
   saving.value = true
@@ -293,10 +297,12 @@ const saveProject = async () => {
     }
     showCreateProject.value = false
     editingProject.value = null
-    projectForm.value = { name: '', description: '' }
+    projectForm.value = { name: '', description: '', base_url_slug: '' }
     await loadProjects()
   } catch (err) {
-    ElMessage.error('保存失败: ' + (err.response?.data?.detail || err.message))
+    const detail = err.response?.data?.detail
+    const msg = Array.isArray(detail) ? detail.map(d => d.msg).join('; ') : (detail || err.message)
+    ElMessage.error('保存失败: ' + msg)
   } finally {
     saving.value = false
   }
@@ -305,7 +311,7 @@ const saveProject = async () => {
 // 编辑项目
 const editProject = (project) => {
   editingProject.value = project
-  projectForm.value = { name: project.name, description: project.description }
+  projectForm.value = { name: project.name, description: project.description, base_url_slug: project.base_url_slug }
   showCreateProject.value = true
 }
 

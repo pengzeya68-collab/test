@@ -156,6 +156,7 @@
       <InterfaceLibrary
         ref="interfaceLibraryRef"
         :environment-list="environmentList"
+        :curl-data="curlImportData"
         @run-cases="handleRunCases"
       />
     </div>
@@ -246,6 +247,7 @@ const scenarioListRef = ref(null)
 const interfaceLibraryRef = ref(null)
 
 const showCurlImport = ref(false)
+const curlImportData = ref(null)
 
 const resultDialogVisible = ref(false)
 const runResult = ref({
@@ -362,11 +364,11 @@ const onCaseSaved = () => {
 }
 
 const handleCurlImport = (parsedData) => {
-  // 将解析的 cURL 数据传递给接口库或调试器
+  // 将解析的 cURL 数据传递给接口库
+  curlImportData.value = parsedData
   ElMessage.success('cURL 已解析，请在接口库中创建用例')
   // 切换到接口库标签页
   handleTabChange('interfaces')
-  // 可以通过事件总线或 ref 传递数据给 InterfaceLibrary
 }
 
 const handleEditScenario = (scenario) => {

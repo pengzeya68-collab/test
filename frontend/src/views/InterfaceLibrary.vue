@@ -45,6 +45,7 @@
         ref="caseListRef"
         :group-id="currentGroupId"
         :environment-list="environmentList"
+        :curl-data="curlData"
         @run="(caseData, envId) => emit('run-cases', caseData, envId)"
       />
     </div>
@@ -82,6 +83,10 @@ const props = defineProps({
   environmentList: {
     type: Array,
     default: () => []
+  },
+  curlData: {
+    type: Object,
+    default: null
   }
 })
 

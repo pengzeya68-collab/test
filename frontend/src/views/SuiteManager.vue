@@ -112,18 +112,18 @@
     <el-dialog v-model="showResultDialog" title="执行结果" width="700px">
       <div v-if="executionResult">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="总用例数">{{ executionResult.total }}</el-descriptions-item>
+          <el-descriptions-item label="总用例数">{{ executionResult.total_cases }}</el-descriptions-item>
           <el-descriptions-item label="通过数">
-            <span class="text-success">{{ executionResult.passed }}</span>
+            <span class="text-success">{{ executionResult.passed_cases }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="失败数">
-            <span class="text-danger">{{ executionResult.failed }}</span>
+            <span class="text-danger">{{ executionResult.failed_cases }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="执行时间">{{ executionResult.duration_ms }}ms</el-descriptions-item>
         </el-descriptions>
 
         <h4 style="margin-top: 20px;">执行详情</h4>
-        <el-table :data="executionResult.details || []" stripe size="small">
+        <el-table :data="executionResult.case_results || []" stripe size="small">
           <el-table-column prop="case_name" label="用例" min-width="200" />
           <el-table-column prop="status" label="状态" width="100" align="center">
             <template #default="{ row }">
@@ -132,7 +132,7 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="duration_ms" label="耗时(ms)" width="100" />
+          <el-table-column prop="execution_time" label="耗时(ms)" width="100" />
           <el-table-column prop="error" label="错误信息" min-width="200" />
         </el-table>
       </div>
@@ -180,8 +180,8 @@ const loadSuites = async () => {
     const res = await autoTestRequest.get(API_BASE, {
       params: { page: currentPage.value, size: pageSize.value }
     })
-    suites.value = res.data.list || []
-    total.value = res.data.total || 0
+    suites.value = res.list || []
+    total.value = res.total || 0
   } catch (err) {
     ElMessage.error('加载套件失败: ' + (err.response?.data?.detail || err.message))
   } finally {
@@ -193,7 +193,7 @@ const loadSuites = async () => {
 const searchCases = async (query) => {
   try {
     const res = await autoTestRequest.get(`${CASES_API}/all`, { params: { keyword: query } })
-    availableCases.value = res.data || []
+    availableCases.value = res || []
   } catch (err) {
     console.error('搜索用例失败:', err)
   }
@@ -203,7 +203,7 @@ const searchCases = async (query) => {
 const viewSuite = async (suite) => {
   try {
     const res = await autoTestRequest.get(`${API_BASE}/${suite.id}`)
-    currentSuite.value = res.data
+    currentSuite.value = res
     showDetailDialog.value = true
   } catch (err) {
     ElMessage.error('获取套件详情失败')
@@ -215,7 +215,7 @@ const editSuite = async (suite) => {
   editingSuite.value = suite
   try {
     const res = await autoTestRequest.get(`${API_BASE}/${suite.id}`)
-    const detail = res.data
+    const detail = res
     suiteForm.value = {
       name: detail.name,
       description: detail.description,
@@ -240,10 +240,9 @@ const saveSuite = async () => {
     if (editingSuite.value) {
       await autoTestRequest.put(`${API_BASE}/${editingSuite.value.id}`, {
         name: suiteForm.value.name,
-        description: suiteForm.value.description
+        description: suiteForm.value.description,
+        case_ids: suiteForm.value.case_ids
       })
-      // 更新用例关联
-      // 先删除旧的，再添加新的（简化处理）
       ElMessage.success('套件更新成功')
     } else {
       await autoTestRequest.post(API_BASE, suiteForm.value)
@@ -265,7 +264,7 @@ const runSuite = async (suite) => {
   suite.running = true
   try {
     const res = await autoTestRequest.post(`${API_BASE}/${suite.id}/run`)
-    executionResult.value = res.data
+    executionResult.value = res
     showResultDialog.value = true
     await loadSuites() // 刷新状态
   } catch (err) {

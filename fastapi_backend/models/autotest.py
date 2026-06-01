@@ -243,6 +243,11 @@ class AutoTestScenarioStep(Base):
     step_order = Column(Integer, nullable=False, default=0, comment="执行顺序")
     is_active = Column(Boolean, default=True, comment="是否启用")
     variable_overrides = Column(JSON, nullable=True, comment="局部变量覆盖")
+    condition = Column(JSON, nullable=True, comment="条件执行规则: {field, operator, value}")
+    on_error = Column(String(20), nullable=False, default="stop", comment="错误处理: stop/continue/retry")
+    retry_count = Column(Integer, nullable=False, default=0, comment="重试次数")
+    retry_delay_ms = Column(Integer, nullable=False, default=1000, comment="重试间隔(ms)")
+    wait_ms = Column(Integer, nullable=False, default=0, comment="执行前等待(ms)")
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -539,3 +544,186 @@ class TestDataTemplateField(Base):
     )
 
     template = relationship("TestDataTemplate", back_populates="fields")
+
+
+# ========== Mock 服务模型 ==========
+
+
+class MockProject(Base):
+    """Mock 项目表"""
+
+    __tablename__ = "mock_projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False, comment="项目名称")
+    description = Column(Text, nullable=True, comment="项目描述")
+    base_url_slug = Column(String(100), nullable=False, unique=True, comment="URL标识(slug)")
+    swagger_source_id = Column(Integer, nullable=True, comment="关联的Swagger数据源ID")
+    is_active = Column(Boolean, default=True, comment="是否启用")
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        comment="创建时间",
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )
+
+    rules = relationship("MockRule", back_populates="project", cascade="all, delete-orphan")
+    request_logs = relationship("MockRequestLog", back_populates="project", cascade="all, delete-orphan")
+
+
+class MockRule(Base):
+    """Mock 规则表"""
+
+    __tablename__ = "mock_rules"
+    __table_args__ = (Index("idx_mock_rules_project_id", "project_id"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(
+        Integer,
+        ForeignKey("mock_projects.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="所属项目ID",
+    )
+    method = Column(String(10), nullable=False, default="GET", comment="请求方法")
+    path = Column(String(500), nullable=False, comment="匹配路径(支持通配符)")
+    name = Column(String(200), nullable=True, comment="规则名称")
+    description = Column(Text, nullable=True, comment="规则描述")
+    response_status = Column(Integer, nullable=False, default=200, comment="响应状态码")
+    response_headers = Column(JSON, nullable=True, default=dict, comment="响应头")
+    response_body = Column(JSON, nullable=True, comment="响应体(JSON)")
+    delay_ms = Column(Integer, nullable=False, default=0, comment="模拟延迟(毫秒)")
+    condition = Column(JSON, nullable=True, comment="条件响应规则")
+    priority = Column(Integer, nullable=False, default=0, comment="优先级(越高越优先)")
+    is_active = Column(Boolean, default=True, comment="是否启用")
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        comment="创建时间",
+    )
+
+    project = relationship("MockProject", back_populates="rules")
+
+
+class MockRequestLog(Base):
+    """Mock 请求日志表"""
+
+    __tablename__ = "mock_request_logs"
+    __table_args__ = (
+        Index("idx_mock_logs_project_id", "project_id"),
+        Index("idx_mock_logs_created_at", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(
+        Integer,
+        ForeignKey("mock_projects.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="所属项目ID",
+    )
+    rule_id = Column(Integer, nullable=True, comment="匹配到的规则ID")
+    method = Column(String(10), nullable=False, comment="请求方法")
+    path = Column(String(500), nullable=False, comment="请求路径")
+    request_headers = Column(JSON, nullable=True, comment="请求头")
+    request_body = Column(Text, nullable=True, comment="请求体")
+    response_status = Column(Integer, nullable=True, comment="响应状态码")
+    response_body = Column(Text, nullable=True, comment="响应体")
+    response_time_ms = Column(Integer, nullable=True, comment="响应耗时(ms)")
+    matched_rule_name = Column(String(200), nullable=True, comment="匹配的规则名称")
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        comment="请求时间",
+    )
+
+    project = relationship("MockProject", back_populates="request_logs")
+
+
+# ========== 测试套件模型 ==========
+
+
+class TestSuite(Base):
+    """测试套件表"""
+
+    __tablename__ = "test_suites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False, comment="套件名称")
+    description = Column(Text, nullable=True, comment="套件描述")
+    env_id = Column(Integer, nullable=True, comment="默认执行环境ID")
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        comment="创建时间",
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )
+
+    cases = relationship("TestSuiteCase", back_populates="suite", cascade="all, delete-orphan")
+    executions = relationship("TestSuiteExecution", back_populates="suite", cascade="all, delete-orphan")
+
+
+class TestSuiteCase(Base):
+    """套件-用例关联表"""
+
+    __tablename__ = "test_suite_cases"
+    __table_args__ = (
+        Index("idx_suite_cases_suite_id", "suite_id"),
+        UniqueConstraint("suite_id", "case_id", name="uq_suite_case"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    suite_id = Column(
+        Integer,
+        ForeignKey("test_suites.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="套件ID",
+    )
+    case_id = Column(
+        Integer,
+        ForeignKey("api_cases.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="用例ID",
+    )
+    sort_order = Column(Integer, nullable=False, default=0, comment="执行顺序")
+
+    suite = relationship("TestSuite", back_populates="cases")
+    case = relationship("AutoTestCase")
+
+
+class TestSuiteExecution(Base):
+    """套件执行记录表"""
+
+    __tablename__ = "test_suite_executions"
+    __table_args__ = (Index("idx_suite_exec_suite_id", "suite_id"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    suite_id = Column(
+        Integer,
+        ForeignKey("test_suites.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="套件ID",
+    )
+    env_id = Column(Integer, nullable=True, comment="执行环境ID")
+    status = Column(String(20), nullable=False, default="pending", comment="执行状态")
+    total_cases = Column(Integer, nullable=False, default=0, comment="总用例数")
+    passed_cases = Column(Integer, nullable=False, default=0, comment="通过用例数")
+    failed_cases = Column(Integer, nullable=False, default=0, comment="失败用例数")
+    duration_ms = Column(Integer, nullable=True, comment="执行总耗时(ms)")
+    started_at = Column(DateTime(timezone=True), nullable=True, comment="开始时间")
+    finished_at = Column(DateTime(timezone=True), nullable=True, comment="结束时间")
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        comment="创建时间",
+    )
+
+    suite = relationship("TestSuite", back_populates="executions")

@@ -16,17 +16,22 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
+from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import MockProject, MockRule, MockRequestLog
 from fastapi_backend.services.mock_service import mock_engine
 
-router = APIRouter(prefix="/api/mock", tags=["Mock服务"])
+router = APIRouter(
+    prefix="/api/mock",
+    tags=["Mock服务"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 # ========== Pydantic 模型 ==========
@@ -378,6 +383,7 @@ async def import_swagger(project_id: int, body: dict):
     "/api/{slug}/{rest_of_path:path}",
     methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     tags=["Mock动态端点"],
+    dependencies=[],  # 动态 Mock 端点不需要认证
 )
 async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
     """

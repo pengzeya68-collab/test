@@ -76,7 +76,7 @@ const parseCurl = async () => {
     const res = await autoTestRequest.post('/auto-test/import/curl', {
       curl_string: curlString.value
     })
-    parsedResult.value = res.data.data
+    parsedResult.value = res.data
     ElMessage.success('解析成功')
   } catch (err) {
     ElMessage.error('解析失败: ' + (err.response?.data?.detail || err.message))
