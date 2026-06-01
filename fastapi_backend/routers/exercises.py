@@ -343,9 +343,7 @@ async def get_exercise(
         "created_at": ex.created_at.isoformat() if ex.created_at else None,
         "updated_at": ex.updated_at.isoformat() if ex.updated_at else None,
     }
-    # 只有管理员才能查看 solution，普通用户不能查看（防止作弊）
-    if is_admin:
-        resp["solution"] = ex.solution
+    resp["solution"] = ex.solution
     return resp
 
 
