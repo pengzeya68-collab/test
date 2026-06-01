@@ -51,32 +51,20 @@ async def get_exercises(
     stage: Optional[int] = Query(None),
     category: str = Query(""),
     knowledge_point: str = Query(""),
-    page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取公开习题列表（支持分页）"""
-    from sqlalchemy import func
+    """获取公开习题列表"""
+    stmt = select(Exercise).where(Exercise.is_public == True)  # noqa: E712
 
-    # 构建查询条件
-    conditions = [Exercise.is_public == True]  # noqa: E712
     if module:
-        conditions.append(Exercise.module == module)
+        stmt = stmt.where(Exercise.module == module)
     if stage is not None:
-        conditions.append(Exercise.stage == stage)
+        stmt = stmt.where(Exercise.stage == stage)
     if category:
-        conditions.append(Exercise.category == category)
+        stmt = stmt.where(Exercise.category == category)
     if knowledge_point:
-        conditions.append(Exercise.knowledge_point.contains(knowledge_point))
+        stmt = stmt.where(Exercise.knowledge_point.contains(knowledge_point))
 
-    # 获取总数
-    count_stmt = select(func.count()).select_from(Exercise).where(*conditions)
-    total_result = await db.execute(count_stmt)
-    total = total_result.scalar()
-
-    # 分页查询
-    stmt = select(Exercise).where(*conditions)
-    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
     exercises = result.scalars().all()
 
@@ -100,13 +88,7 @@ async def get_exercises(
                 "created_at": ex.created_at.isoformat() if ex.created_at else None,
             }
         )
-    return {
-        "items": items,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": (total + page_size - 1) // page_size,
-    }
+    return items
 
 
 # ---------------------------------------------------------------------------
