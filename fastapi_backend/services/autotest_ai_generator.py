@@ -126,25 +126,37 @@ class AITestCaseGenerator:
         parts.append(f"Base URL: {parsed['base_url']}")
         parts.append("")
 
-        if parsed["schemas"]:
+        if parsed.get("schemas"):
             parts.append("=== 数据模型定义 ===")
             for name, schema in list(parsed["schemas"].items())[:20]:  # 限制模型数量
-                parts.append(f"【{name}】: {json.dumps(schema, ensure_ascii=False)[:500]}")
+                try:
+                    parts.append(f"【{name}】: {json.dumps(schema, ensure_ascii=False, default=str)[:500]}")
+                except Exception:
+                    parts.append(f"【{name}】: {str(schema)[:500]}")
             parts.append("")
 
         parts.append("=== 接口列表 ===")
         for api in parsed["apis"]:
-            parts.append(f"\n【{api['method']} {api['path']}】{api['summary']}")
-            if api["tags"]:
+            parts.append(f"\n【{api['method']} {api['path']}】{api.get('summary', '')}")
+            if api.get("tags"):
                 parts.append(f"  标签: {', '.join(api['tags'])}")
-            if api["params"]:
-                parts.append(f"  参数: {json.dumps(api['params'], ensure_ascii=False)}")
-            if api["request_body"]:
+            if api.get("params"):
+                try:
+                    parts.append(f"  参数: {json.dumps(api['params'], ensure_ascii=False, default=str)}")
+                except Exception:
+                    parts.append(f"  参数: {str(api['params'])[:500]}")
+            if api.get("request_body"):
                 rb = api["request_body"]
-                parts.append(f"  请求体({rb['content_type']}): {json.dumps(rb['schema'], ensure_ascii=False)[:800]}")
-            if api["responses"]:
+                try:
+                    parts.append(f"  请求体({rb.get('content_type', '')}): {json.dumps(rb.get('schema', {}), ensure_ascii=False, default=str)[:800]}")
+                except Exception:
+                    parts.append(f"  请求体: {str(rb)[:500]}")
+            if api.get("responses"):
                 for status, resp in api["responses"].items():
-                    resp_str = json.dumps(resp, ensure_ascii=False)[:300]
+                    try:
+                        resp_str = json.dumps(resp, ensure_ascii=False, default=str)[:300]
+                    except Exception:
+                        resp_str = str(resp)[:300]
                     parts.append(f"  响应 [{status}]: {resp_str}")
 
         parts.append("")
@@ -209,8 +221,12 @@ class AITestCaseGenerator:
         if not parsed["apis"]:
             return {"cases": [], "scenarios": [], "message": "未发现可测试的接口"}
 
-        config = await load_ai_config(self.db)
-        params = resolve_ai_params(config)
+        try:
+            config = await load_ai_config(self.db)
+            params = resolve_ai_params(config)
+        except Exception as e:
+            _logger.warning("加载 AI 配置失败，使用规则回退: %s", e)
+            return self._generate_fallback(parsed)
 
         if not params.api_key:
             return self._generate_fallback(parsed)

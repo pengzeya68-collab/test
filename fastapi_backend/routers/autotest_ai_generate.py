@@ -25,15 +25,24 @@ def _parse_swagger_content(content: bytes) -> dict:
     text = content.decode("utf-8")
     # 先尝试 JSON
     try:
-        return json.loads(text)
+        result = json.loads(text)
+        if isinstance(result, dict):
+            return result
     except (json.JSONDecodeError, ValueError):
         pass
     # 再尝试 YAML
     try:
         import yaml
-        return yaml.safe_load(text)
-    except Exception:
-        pass
+        result = yaml.safe_load(text)
+        if isinstance(result, dict):
+            return result
+        raise ValueError(f"YAML 解析结果不是字典，而是 {type(result).__name__}")
+    except ImportError:
+        raise ValueError("服务器未安装 PyYAML，无法解析 YAML 文件。请使用 JSON 格式。")
+    except ValueError:
+        raise
+    except Exception as e:
+        raise ValueError(f"YAML 解析失败: {str(e)}")
     raise ValueError("无法解析文件，请确保是有效的 JSON 或 YAML 格式")
 
 router = APIRouter(
@@ -57,29 +66,52 @@ async def generate_from_swagger(
 
     返回生成的用例列表和场景链，不写入数据库。用户确认后调用 /confirm 导入。
     """
-    content = await file.read()
     try:
-        swagger_data = _parse_swagger_content(content)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        content = await file.read()
+        _logger.info("收到 Swagger 文件: %s, 大小: %d bytes", file.filename, len(content))
 
-    generator = AITestCaseGenerator(db)
-    result = await generator.generate(
-        swagger_data,
-        {
-            "max_cases_per_api": max_cases_per_api,
-            "include_boundary": include_boundary,
-            "include_auth": include_auth,
-            "include_chain": include_chain,
-        },
-    )
+        # 1. 解析文件内容
+        try:
+            swagger_data = _parse_swagger_content(content)
+        except ValueError as e:
+            _logger.warning("Swagger 文件解析失败: %s", e)
+            raise HTTPException(status_code=400, detail=str(e))
 
-    return {
-        "cases": result.get("cases", []),
-        "scenarios": result.get("scenarios", []),
-        "message": result.get("message", f"生成完成，共 {len(result.get('cases', []))} 个用例"),
-        "total": len(result.get("cases", [])),
-    }
+        if not isinstance(swagger_data, dict):
+            raise HTTPException(status_code=400, detail=f"解析结果不是有效的字典对象，类型: {type(swagger_data).__name__}")
+
+        _logger.info("Swagger 解析成功, paths 数量: %d", len(swagger_data.get("paths", {})))
+
+        # 2. 生成测试用例
+        generator = AITestCaseGenerator(db)
+        result = await generator.generate(
+            swagger_data,
+            {
+                "max_cases_per_api": max_cases_per_api,
+                "include_boundary": include_boundary,
+                "include_auth": include_auth,
+                "include_chain": include_chain,
+            },
+        )
+
+        cases = result.get("cases", []) or []
+        scenarios = result.get("scenarios", []) or []
+        message = result.get("message", f"生成完成，共 {len(cases)} 个用例")
+
+        _logger.info("测试用例生成完成: %d 个用例, %d 个场景", len(cases), len(scenarios))
+
+        return {
+            "cases": cases,
+            "scenarios": scenarios,
+            "message": message,
+            "total": len(cases),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        _logger.exception("AI 生成测试用例异常: %s", e)
+        raise HTTPException(status_code=500, detail=f"生成失败: {type(e).__name__}: {str(e)}")
 
 
 @router.post("/from-swagger-url")
@@ -96,35 +128,45 @@ async def generate_from_swagger_url(
 
     自动拉取远程 Swagger 文档并生成用例。
     """
-    import httpx
-
     try:
+        import httpx
+
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(url)
             resp.raise_for_status()
             swagger_data = _parse_swagger_content(resp.content)
+
+        if not isinstance(swagger_data, dict):
+            raise HTTPException(status_code=400, detail=f"URL 内容解析结果不是字典，类型: {type(swagger_data).__name__}")
+
+        generator = AITestCaseGenerator(db)
+        result = await generator.generate(
+            swagger_data,
+            {
+                "max_cases_per_api": max_cases_per_api,
+                "include_boundary": include_boundary,
+                "include_auth": include_auth,
+                "include_chain": include_chain,
+            },
+        )
+
+        cases = result.get("cases", []) or []
+        scenarios = result.get("scenarios", []) or []
+
+        return {
+            "cases": cases,
+            "scenarios": scenarios,
+            "message": result.get("message", f"生成完成，共 {len(cases)} 个用例"),
+            "total": len(cases),
+        }
+
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"获取 Swagger 文档失败: {str(e)}")
-
-    generator = AITestCaseGenerator(db)
-    result = await generator.generate(
-        swagger_data,
-        {
-            "max_cases_per_api": max_cases_per_api,
-            "include_boundary": include_boundary,
-            "include_auth": include_auth,
-            "include_chain": include_chain,
-        },
-    )
-
-    return {
-        "cases": result.get("cases", []),
-        "scenarios": result.get("scenarios", []),
-        "message": result.get("message", f"生成完成，共 {len(result.get('cases', []))} 个用例"),
-        "total": len(result.get("cases", [])),
-    }
+        _logger.exception("AI 从 URL 生成测试用例异常: %s", e)
+        raise HTTPException(status_code=500, detail=f"生成失败: {type(e).__name__}: {str(e)}")
 
 
 @router.post("/confirm")
