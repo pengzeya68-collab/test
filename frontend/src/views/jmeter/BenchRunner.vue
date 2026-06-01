@@ -1,12 +1,15 @@
 <template>
-  <div class="bench-control-panel" :class="{ expanded: benchPanelExpanded }">
+  <div class="bench-control-panel" :class="{ expanded: benchPanelExpanded, running: benching }">
+    <!-- Header: 始终显示,但运行时简化 -->
     <div class="bcp-header" @click="benchPanelExpanded = !benchPanelExpanded">
       <div class="bcp-header-left">
         <span class="bcp-plan-name">{{ planName }}</span>
         <el-tag size="small" type="info">{{ totalSamplers }} 请求 · {{ totalNodes }} 元素</el-tag>
         <el-tag v-if="totalThreads" size="small" effect="plain">👥 {{ totalThreads }} 线程</el-tag>
       </div>
-      <div class="bcp-header-center">
+
+      <!-- 配置项: 仅在未运行时显示 -->
+      <div v-if="!benching && !benchResult" class="bcp-header-center">
         <div class="bcp-config-item">
           <label>并发数</label>
           <el-input-number v-model="benchConcurrency" :min="1" :max="200" size="small" controls-position="right" style="width:90px" />
@@ -20,13 +23,26 @@
           <el-input-number v-model="benchRampUp" :min="0" :max="10" size="small" controls-position="right" style="width:90px" />
         </div>
       </div>
+
+      <!-- 运行中: 显示进度 -->
+      <div v-if="benching" class="bcp-header-center">
+        <div class="bcp-progress-inline">
+          <el-progress :percentage="benchPercent" :stroke-width="6" :status="benchPercent >= 100 ? 'success' : ''" style="width:200px" />
+          <span class="bcp-progress-text">{{ benchProgress }} {{ benchEta }}</span>
+        </div>
+      </div>
+
       <div class="bcp-header-right">
         <el-button v-if="!benching" type="danger" @click.stop="startBench" size="default" class="bcp-start-btn">
           ⚡ 启动压测（{{ benchConcurrency }}并发 × {{ benchDuration }}秒）
         </el-button>
-        <template v-else>
-          <el-button :icon="SwitchButton" @click.stop="stopBench" size="default" type="danger"> 停止</el-button>
-        </template>
+        <el-button v-else :icon="SwitchButton" @click.stop="stopBench" size="default" type="danger">停止</el-button>
+
+        <!-- 结果操作按钮 -->
+        <el-button v-if="benchResult && !analyzing" size="small" type="primary" plain @click.stop="analyzeBenchResult">🤖 AI 分析</el-button>
+        <el-button v-if="analyzing" size="small" type="warning" plain loading @click.stop>分析中...</el-button>
+        <el-button v-if="benchResult" size="small" type="success" plain @click.stop="exportReport">📄 导出报告</el-button>
+
         <el-button size="default" @click.stop="showBenchHistory = !showBenchHistory">
           📋 历史{{ benchHistory.length > 0 ? '(' + benchHistory.length + ')' : '' }}
         </el-button>
@@ -34,21 +50,21 @@
       </div>
     </div>
 
+    <!-- 展开内容区 -->
     <div class="bcp-body" v-show="benchPanelExpanded">
+      <!-- 压测接口标签 -->
       <div class="bcp-requests" v-if="allSamplers.length > 0">
         <span class="bcp-requests-label">压测接口：</span>
         <el-tag v-for="(s, si) in allSamplers" :key="si" size="small" effect="plain" type="info" class="bcp-req-tag" :title="s.url">
           <b>{{ s.method }}</b> {{ s.name }}
         </el-tag>
       </div>
-      <div v-if="benching || benchProgress" class="bcp-progress">
-        <el-progress :percentage="benchPercent" :stroke-width="8" :status="benchPercent >= 100 ? 'success' : ''" />
-        <span class="bcp-progress-text">{{ benchProgress }}<em v-if="benchEta" style="margin-left:8px;font-style:normal;color:var(--tm-text-secondary)">{{ benchEta }}</em></span>
-      </div>
+
+      <!-- 实时图表(运行中显示) -->
       <div v-if="benchSnapshots.length > 0" class="bcp-charts">
         <div class="bcp-charts-row">
-          <div class="bcp-chart-card"><div class="bpu-header">📈 TPS/QPS 实时曲线</div><div ref="benchChartRef" class="bcp-chart-box"></div></div>
-          <div class="bcp-chart-card"><div class="bpu-header">⏱️ 响应时间趋势</div><div ref="benchChartRef2" class="bcp-chart-box"></div></div>
+          <div class="bcp-chart-card"><div class="bpu-header"> TPS/QPS 实时曲线</div><div ref="benchChartRef" class="bcp-chart-box"></div></div>
+          <div class="bcp-chart-card"><div class="bpu-header">️ 响应时间趋势</div><div ref="benchChartRef2" class="bcp-chart-box"></div></div>
         </div>
         <div class="bcp-charts-row">
           <div class="bcp-chart-card"><div class="bpu-header">📊 状态码分布</div><div ref="benchChartRef3" class="bcp-chart-box"></div></div>
@@ -56,79 +72,143 @@
         </div>
       </div>
 
-      <!-- 压测报告 Tab 切换 -->
-      <div v-if="benchResult" class="bcp-report-tabs-wrapper">
-        <el-tabs v-model="benchReportTab" type="card" size="small" class="bcp-report-tabs">
-          <!-- Tab 1: 总览 + 统计 -->
-          <el-tab-pane label="📊 总览统计" name="overview">
-            <div class="bcp-tab-content">
-              <div class="bcp-quick-stats">
-                <div class="bcp-stat" :class="benchResult.failed > 0 ? 'bcp-stat-err' : 'bcp-stat-ok'"><span class="bcp-stat-val">{{ benchResult.total }}</span><span class="bcp-stat-lbl">总请求</span></div>
-                <div class="bcp-stat bcp-stat-ok"><span class="bcp-stat-val">{{ benchResult.success }}</span><span class="bcp-stat-lbl">成功</span></div>
-                <div class="bcp-stat" :class="benchResult.failed > 0 ? 'bcp-stat-err' : ''"><span class="bcp-stat-val">{{ benchResult.failed }}</span><span class="bcp-stat-lbl">失败</span></div>
-                <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.tps }}</span><span class="bcp-stat-lbl">TPS</span></div>
-                <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.avg_ms }}ms</span><span class="bcp-stat-lbl">平均</span></div>
-                <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.min_ms || '-' }}ms</span><span class="bcp-stat-lbl">最小</span></div>
-                <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.max_ms || '-' }}ms</span><span class="bcp-stat-lbl">最大</span></div>
-                <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p50_ms || '-' }}ms</span><span class="bcp-stat-lbl">P50</span></div>
-                <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p90_ms || '-' }}ms</span><span class="bcp-stat-lbl">P90</span></div>
-                <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p95_ms }}ms</span><span class="bcp-stat-lbl">P95</span></div>
-                <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.p99_ms }}ms</span><span class="bcp-stat-lbl">P99</span></div>
-                <div class="bcp-stat"><span class="bcp-stat-val">{{ benchResult.stddev_ms || '-' }}ms</span><span class="bcp-stat-lbl">标准差</span></div>
-                <el-button v-if="!analyzing" size="small" type="primary" plain @click="analyzeBenchResult" style="margin-left:auto">🤖 AI 分析</el-button>
-                <el-button v-if="analyzing" size="small" type="warning" plain loading style="margin-left:auto">分析中...</el-button>
-                <el-button size="small" type="success" plain @click="exportReport">📄 导出报告</el-button>
-              </div>
-              <el-alert v-if="analyzing" title="🤖 AI 正在深度分析性能数据..." type="info" :closable="false" show-icon class="bcp-analyze-banner">
-                <template #default><p style="margin:0;font-size:12px;color:#94a3b8;">正在分析性能数据，请耐心等待...</p></template>
-              </el-alert>
-            </div>
-          </el-tab-pane>
+      <!-- AI分析横幅 -->
+      <el-alert v-if="analyzing" title="🤖 AI 正在深度分析性能数据..." type="info" :closable="false" show-icon class="bcp-analyze-banner">
+        <template #default><p style="margin:0;font-size:12px;color:#94a3b8;">正在分析性能数据，请耐心等待...</p></template>
+      </el-alert>
 
-          <!-- Tab 2: 按接口统计 -->
-          <el-tab-pane v-if="benchResult.per_url && benchResult.per_url.length > 0" label="📋 按接口统计" name="per_url">
-            <div class="bcp-tab-content bcp-tab-scrollable">
-              <div class="bcp-per-url">
-                <table class="bpu-table">
-                  <thead><tr><th>接口</th><th>总次数</th><th>成功</th><th>失败</th><th>成功率</th><th>平均(ms)</th><th>P95(ms)</th><th>P99(ms)</th><th>最小(ms)</th><th>最大(ms)</th></tr></thead>
-                  <tbody>
-                    <tr v-for="(pu, pi) in benchResult.per_url" :key="pi" :class="pu.failed > 0 ? 'bpu-row-err' : ''">
-                      <td class="bpu-url" :title="pu.url"><b>{{ pu.method || 'GET' }}</b> {{ pu.name || pu.url }}</td>
-                      <td>{{ pu.count }}</td><td class="bpu-ok">{{ pu.success }}</td>
-                      <td :class="pu.failed > 0 ? 'bpu-err' : ''">{{ pu.failed }}</td>
-                      <td><span :class="pu.success_rate < 100 ? 'bpu-err' : 'bpu-ok'">{{ pu.success_rate }}%</span></td>
-                      <td>{{ pu.avg_ms }}</td><td>{{ pu.p95_ms }}</td><td>{{ pu.p99_ms }}</td>
-                      <td>{{ pu.min_ms || '-' }}</td><td>{{ pu.max_ms || '-' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </el-tab-pane>
+      <!-- 压测结果区域(完成后显示) -->
+      <div v-if="benchResult" class="bcp-report-section">
+        <!-- 统计指标栏 -->
+        <div class="bcp-quick-stats">
+          <div class="bcp-stat" :class="benchResult.failed > 0 ? 'bcp-stat-err' : 'bcp-stat-ok'">
+            <span class="bcp-stat-val">{{ benchResult.total }}</span>
+            <span class="bcp-stat-lbl">总请求</span>
+          </div>
+          <div class="bcp-stat bcp-stat-ok">
+            <span class="bcp-stat-val">{{ benchResult.success }}</span>
+            <span class="bcp-stat-lbl">成功</span>
+          </div>
+          <div class="bcp-stat" :class="benchResult.failed > 0 ? 'bcp-stat-err' : ''">
+            <span class="bcp-stat-val">{{ benchResult.failed }}</span>
+            <span class="bcp-stat-lbl">失败</span>
+          </div>
+          <div class="bcp-stat">
+            <span class="bcp-stat-val">{{ benchResult.tps }}</span>
+            <span class="bcp-stat-lbl">TPS</span>
+          </div>
+          <div class="bcp-stat">
+            <span class="bcp-stat-val">{{ benchResult.avg_ms }}ms</span>
+            <span class="bcp-stat-lbl">平均</span>
+          </div>
+          <div class="bcp-stat">
+            <span class="bcp-stat-val">{{ benchResult.min_ms || '-' }}ms</span>
+            <span class="bcp-stat-lbl">最小</span>
+          </div>
+          <div class="bcp-stat">
+            <span class="bcp-stat-val">{{ benchResult.max_ms || '-' }}ms</span>
+            <span class="bcp-stat-lbl">最大</span>
+          </div>
+          <div class="bcp-stat">
+            <span class="bcp-stat-val">{{ benchResult.p50_ms || '-' }}ms</span>
+            <span class="bcp-stat-lbl">P50</span>
+          </div>
+          <div class="bcp-stat">
+            <span class="bcp-stat-val">{{ benchResult.p90_ms || '-' }}ms</span>
+            <span class="bcp-stat-lbl">P90</span>
+          </div>
+          <div class="bcp-stat">
+            <span class="bcp-stat-val">{{ benchResult.p95_ms }}ms</span>
+            <span class="bcp-stat-lbl">P95</span>
+          </div>
+          <div class="bcp-stat">
+            <span class="bcp-stat-val">{{ benchResult.p99_ms }}ms</span>
+            <span class="bcp-stat-lbl">P99</span>
+          </div>
+          <div class="bcp-stat">
+            <span class="bcp-stat-val">{{ benchResult.stddev_ms || '-' }}ms</span>
+            <span class="bcp-stat-lbl">标准差</span>
+          </div>
+        </div>
 
-          <!-- Tab 3: 响应体采样 -->
-          <el-tab-pane v-if="benchResult.body_samples && benchResult.body_samples.length > 0" label="📄 响应体采样" name="body_samples">
-            <div class="bcp-tab-content bcp-tab-scrollable">
-              <div class="bcp-body-samples">
-                <div style="display:flex;flex-direction:column;gap:6px">
-                  <div v-for="(bs, bi) in benchResult.body_samples" :key="bi" class="bcp-sample-card">
-                    <div class="bcp-sample-header">
-                      <el-tag :type="bs.status >= 200 && bs.status < 400 ? 'success' : 'danger'" size="small">{{ bs.status }}</el-tag>
-                      <span class="bcp-sample-url" :title="bs.url">{{ shortUrl(bs.url) }}</span>
-                      <span class="bcp-sample-hint">最多 1000 字符</span>
-                    </div>
-                    <pre class="bcp-sample-body">{{ bs.body }}</pre>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </el-tab-pane>
+        <!-- 按接口统计表格 -->
+        <div v-if="benchResult.per_url && benchResult.per_url.length > 0" class="bcp-per-url">
+          <div class="bpu-header">📊 按接口统计</div>
+          <div class="bpu-table-wrapper">
+            <table class="bpu-table">
+              <thead><tr><th>接口</th><th>总次数</th><th>成功</th><th>失败</th><th>成功率</th><th>平均(ms)</th><th>P95(ms)</th><th>P99(ms)</th><th>最小(ms)</th><th>最大(ms)</th></tr></thead>
+              <tbody>
+                <tr v-for="(pu, pi) in benchResult.per_url" :key="pi" :class="pu.failed > 0 ? 'bpu-row-err' : ''">
+                  <td class="bpu-url" :title="pu.url"><b>{{ pu.method || 'GET' }}</b> {{ pu.name || pu.url }}</td>
+                  <td>{{ pu.count }}</td><td class="bpu-ok">{{ pu.success }}</td>
+                  <td :class="pu.failed > 0 ? 'bpu-err' : ''">{{ pu.failed }}</td>
+                  <td><span :class="pu.success_rate < 100 ? 'bpu-err' : 'bpu-ok'">{{ pu.success_rate }}%</span></td>
+                  <td>{{ pu.avg_ms }}</td><td>{{ pu.p95_ms }}</td><td>{{ pu.p99_ms }}</td>
+                  <td>{{ pu.min_ms || '-' }}</td><td>{{ pu.max_ms || '-' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-          <!-- Tab 4: 错误详情 -->
-          <el-tab-pane v-if="benchResult.errors && benchResult.errors.length > 0" :label="`🔴 错误详情 (${benchResult.errors.length})`" name="errors">
-            <div class="bcp-tab-content bcp-tab-scrollable">
+        <!-- 状态码分布 -->
+        <div v-if="benchResult.status_distribution" class="bcp-status-dist">
+          <div class="bpu-header">状态码分布</div>
+          <div class="bsd-tags">
+            <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code" :type="code >= 200 && code < 400 ? 'success' : 'danger'" size="small" effect="plain">{{ code }}: {{ count }}次</el-tag>
+          </div>
+        </div>
+
+        <!-- 响应时间分布 -->
+        <div v-if="benchResult.rt_distribution" class="bcp-rt-dist">
+          <div class="bpu-header">响应时间分布</div>
+          <div class="rt-dist-bars">
+            <div v-for="(count, range) in benchResult.rt_distribution" :key="range" class="rt-dist-bar">
+              <div class="rt-dist-label">{{ range }}</div>
+              <div class="rt-dist-track"><div class="rt-dist-fill" :style="{ width: (count / Math.max(...Object.values(benchResult.rt_distribution), 1) * 100) + '%' }"></div></div>
+              <div class="rt-dist-count">{{ count }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 吞吐量趋势 -->
+        <div v-if="benchResult.throughput_trend && benchResult.throughput_trend.length > 0" class="bcp-throughput">
+          <div class="bpu-header">吞吐量趋势 (5秒窗口)</div>
+          <div class="tp-table">
+            <table><thead><tr><th>时间(s)</th><th>TPS</th><th>请求数</th><th>趋势</th></tr></thead>
+              <tbody><tr v-for="(tp, ti) in benchResult.throughput_trend" :key="ti">
+                <td>{{ tp.t }}-{{ tp.t + 5 }}</td><td>{{ tp.tps }}</td><td>{{ tp.count }}</td>
+                <td><div class="tp-bar"><div class="tp-fill" :style="{ width: (tp.tps / Math.max(...benchResult.throughput_trend.map(t => t.tps), 1) * 100) + '%' }"></div></div></td>
+              </tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 响应体采样 -->
+        <div v-if="benchResult.body_samples && benchResult.body_samples.length > 0" class="bcp-body-samples">
+          <div class="bpu-header">📄 响应体采样 (前 {{ Math.min(benchResult.body_samples.length, 10) }} 条)
+            <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">最多 1000 字符</span>
+          </div>
+          <div class="bcp-samples-scroll">
+            <div v-for="(bs, bi) in benchResult.body_samples.slice(0, 10)" :key="bi" class="bcp-sample-card">
+              <div class="bcp-sample-header">
+                <el-tag :type="bs.status >= 200 && bs.status < 400 ? 'success' : 'danger'" size="small">{{ bs.status }}</el-tag>
+                <span class="bcp-sample-url" :title="bs.url">{{ shortUrl(bs.url) }}</span>
+              </div>
+              <pre class="bcp-sample-body">{{ bs.body }}</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- 错误详情 -->
+        <div v-if="benchResult.errors && benchResult.errors.length > 0" class="bcp-errors-section">
+          <el-collapse v-model="errorCollapseActive">
+            <el-collapse-item name="errors">
+              <template #title>
+                <span class="bcp-errors-title"> 错误详情 ({{ benchResult.errors.length }})</span>
+              </template>
               <div class="bcp-errors-list">
-                <div v-for="(err, ei) in benchResult.errors.slice(0, 50)" :key="ei" class="bcp-error-item">
+                <div v-for="(err, ei) in benchResult.errors.slice(0, 20)" :key="ei" class="bcp-error-item">
                   <div class="bcp-error-header">
                     <span class="bcp-error-name">{{ err.name || err.url || '未知接口' }}</span>
                     <el-tag size="small" type="danger">{{ err.method || 'GET' }}</el-tag>
@@ -139,47 +219,16 @@
                   <div v-if="err.request_body" class="bcp-error-req"><details><summary>📤 请求体</summary><pre>{{ err.request_body.substring(0, 500) }}</pre></details></div>
                   <div v-if="err.response_body" class="bcp-error-res"><details><summary>📥 响应体</summary><pre>{{ err.response_body.substring(0, 1000) }}</pre></details></div>
                 </div>
-                <div v-if="benchResult.errors.length > 50" class="bcp-error-more">... 还有 {{ benchResult.errors.length - 50 }} 条错误未显示</div>
+                <div v-if="benchResult.errors.length > 20" class="bcp-error-more">... 还有 {{ benchResult.errors.length - 20 }} 条错误</div>
               </div>
-            </div>
-          </el-tab-pane>
-
-          <!-- Tab 5: 分布图表 -->
-          <el-tab-pane label="📈 分布图表" name="distributions">
-            <div class="bcp-tab-content bcp-tab-scrollable">
-              <div v-if="benchResult.status_distribution" class="bcp-status-dist">
-                <div class="bpu-header">状态码分布</div>
-                <div class="bsd-tags">
-                  <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code" :type="code >= 200 && code < 400 ? 'success' : 'danger'" size="small" effect="plain">{{ code }}: {{ count }}次</el-tag>
-                </div>
-              </div>
-              <div v-if="benchResult.rt_distribution" class="bcp-rt-dist">
-                <div class="bpu-header">响应时间分布</div>
-                <div class="rt-dist-bars">
-                  <div v-for="(count, range) in benchResult.rt_distribution" :key="range" class="rt-dist-bar">
-                    <div class="rt-dist-label">{{ range }}</div>
-                    <div class="rt-dist-track"><div class="rt-dist-fill" :style="{ width: (count / Math.max(...Object.values(benchResult.rt_distribution), 1) * 100) + '%' }"></div></div>
-                    <div class="rt-dist-count">{{ count }}</div>
-                  </div>
-                </div>
-              </div>
-              <div v-if="benchResult.throughput_trend && benchResult.throughput_trend.length > 0" class="bcp-throughput">
-                <div class="bpu-header">吞吐量趋势 (5秒窗口)</div>
-                <div class="tp-table">
-                  <table><thead><tr><th>时间(s)</th><th>TPS</th><th>请求数</th><th>趋势</th></tr></thead>
-                    <tbody><tr v-for="(tp, ti) in benchResult.throughput_trend" :key="ti">
-                      <td>{{ tp.t }}-{{ tp.t + 5 }}</td><td>{{ tp.tps }}</td><td>{{ tp.count }}</td>
-                      <td><div class="tp-bar"><div class="tp-fill" :style="{ width: (tp.tps / Math.max(...benchResult.throughput_trend.map(t => t.tps), 1) * 100) + '%' }"></div></div></td>
-                    </tr></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </el-tab-pane>
-        </el-tabs>
+            </el-collapse-item>
+          </el-collapse>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- 历史面板 -->
   <div v-if="showBenchHistory && benchHistory.length > 0" class="bench-history-panel">
     <div class="bh-header">
       <span>📋 执行历史 ({{ benchHistory.length }})</span>
@@ -232,7 +281,6 @@ const aiAnalysisText = ref('')
 const aiAnalysisDialogVisible = ref(false)
 const errorCollapseActive = ref([])
 const benchPanelExpanded = ref(false)
-const benchReportTab = ref('overview')
 const benchChartRef = ref(null)
 const benchChartRef2 = ref(null)
 const benchChartRef3 = ref(null)
@@ -391,6 +439,8 @@ defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurre
 <style scoped>
 .bench-control-panel { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin: 8px 12px; flex-shrink: 0; overflow: hidden; transition: all 0.3s ease; }
 .bench-control-panel.expanded { height: calc(100vh - 48px); display: flex; flex-direction: column; }
+.bench-control-panel.running .bcp-header { background: #fff; border-bottom: 2px solid #3b82f6; }
+
 .bcp-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; flex-wrap: wrap; cursor: pointer; user-select: none; transition: background 0.15s; }
 .bcp-header:hover { background: #f1f5f9; }
 .bcp-header-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -402,31 +452,41 @@ defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurre
 .bcp-config-item { display: flex; align-items: center; gap: 4px; }
 .bcp-config-item label { font-size: 11px; color: #64748b; white-space: nowrap; }
 .bcp-start-btn { font-weight: 700 !important; font-size: 14px !important; }
+
+.bcp-progress-inline { display: flex; align-items: center; gap: 10px; }
+.bcp-progress-text { font-size: 11px; color: #64748b; white-space: nowrap; }
+
 .bcp-body { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
+
 .bcp-requests { display: flex; align-items: center; gap: 6px; padding: 8px 14px; flex-wrap: wrap; border-top: 1px solid #e2e8f0; background: #f8fafc; flex-shrink: 0; }
 .bcp-requests-label { font-size: 11px; color: #64748b; white-space: nowrap; }
 .bcp-req-tag { cursor: default; font-size: 11px !important; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bcp-progress { padding: 8px 14px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.bcp-progress :deep(.el-progress) { flex: 1; }
-.bcp-progress-text { font-size: 11px; color: #64748b; white-space: nowrap; }
+
 .bcp-charts { padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0; }
 .bcp-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .bcp-charts-row:last-child { margin-bottom: 0; }
 .bcp-chart-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; }
 .bcp-chart-box { width: 100%; height: 200px; }
+
+.bcp-analyze-banner { margin: 12px 14px; border-radius: 10px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #93c5fd; animation: analyzePulse 2s ease-in-out infinite; }
+@keyframes analyzePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
+:deep(.analyzing-toast) { border-left: 4px solid #3b82f6 !important; }
+
+/* 报告区域 - 纵向单页布局 */
+.bcp-report-section { flex: 1; min-height: 0; overflow-y: auto; }
+
 .bcp-quick-stats { display: flex; align-items: center; gap: 8px; padding: 8px 14px; flex-wrap: wrap; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0; }
 .bcp-stat { text-align: center; padding: 2px 8px; border-radius: 4px; background: #f1f5f9; }
 .bcp-stat-ok { border-left: 3px solid #10b981; }
 .bcp-stat-err { border-left: 3px solid #ef4444; background: #fef2f2; }
 .bcp-stat-val { font-size: 16px; font-weight: 700; display: block; color: #1e293b; }
 .bcp-stat-lbl { font-size: 10px; color: #94a3b8; }
-.bcp-analyze-banner { margin: 12px 0; border-radius: 10px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #93c5fd; animation: analyzePulse 2s ease-in-out infinite; }
-@keyframes analyzePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
-:deep(.analyzing-toast) { border-left: 4px solid #3b82f6 !important; }
-.bcp-per-url { padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0; }
+
+.bcp-per-url { padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; }
 .bpu-header { font-weight: 600; font-size: 12px; color: #1e293b; margin-bottom: 6px; }
+.bpu-table-wrapper { max-height: 250px; overflow-y: auto; }
 .bpu-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-.bpu-table th { background: #f8fafc; padding: 4px 6px; text-align: left; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+.bpu-table th { background: #f8fafc; padding: 4px 6px; text-align: left; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; white-space: nowrap; position: sticky; top: 0; z-index: 1; }
 .bpu-table td { padding: 4px 6px; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
 .bpu-table tr:hover { background: #f8fafc; }
 .bpu-row-err { background: #fff5f5; }
@@ -434,10 +494,36 @@ defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurre
 .bpu-url { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bpu-ok { color: #10b981; font-weight: 600; }
 .bpu-err { color: #ef4444; font-weight: 600; }
-.bcp-errors-collapse { margin: 0 14px; border-top: 1px solid #e2e8f0; background: #fff5f5; flex-shrink: 0; }
-.bcp-errors-collapse :deep(.el-collapse-item__header) { background: #fff5f5; padding: 0 14px; }
+
+.bcp-status-dist { padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; }
+.bsd-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.bcp-rt-dist { padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; }
+.rt-dist-bars { display: flex; flex-direction: column; gap: 4px; }
+.rt-dist-bar { display: flex; align-items: center; gap: 8px; }
+.rt-dist-label { font-size: 11px; color: #64748b; width: 70px; flex-shrink: 0; }
+.rt-dist-track { flex: 1; height: 16px; background: #f1f5f9; border-radius: 8px; overflow: hidden; }
+.rt-dist-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 8px; transition: width 0.5s ease; }
+.rt-dist-count { font-size: 11px; color: #1e293b; font-weight: 600; width: 40px; text-align: right; flex-shrink: 0; }
+
+.bcp-throughput { padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; }
+.tp-table table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.tp-table th { background: #f8fafc; padding: 4px 6px; text-align: left; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+.tp-table td { padding: 3px 6px; border-bottom: 1px solid #f1f5f9; }
+.tp-bar { width: 100%; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden; }
+.tp-fill { height: 100%; background: linear-gradient(90deg, #10b981, #34d399); border-radius: 6px; transition: width 0.5s ease; }
+
+.bcp-body-samples { padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; }
+.bcp-samples-scroll { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.bcp-sample-card { background: #f8fafc; border-radius: 8px; padding: 8px 10px; border: 1px solid #e2e8f0; }
+.bcp-sample-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; }
+.bcp-sample-url { flex: 1; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bcp-sample-body { background: #0f172a; color: #e2e8f0; font-family: 'Consolas','Monaco',monospace; font-size: 11px; padding: 10px; border-radius: 6px; max-height: 100px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid rgba(148,163,184,0.15); }
+
+.bcp-errors-section { margin: 0 14px 8px; border-top: 1px solid #e2e8f0; background: #fff5f5; }
+.bcp-errors-section :deep(.el-collapse-item__header) { background: #fff5f5; padding: 0 14px; }
 .bcp-errors-title { font-weight: 600; font-size: 13px; }
-.bcp-errors-list { max-height: 300px; overflow-y: auto; padding: 8px 0; }
+.bcp-errors-list { max-height: 250px; overflow-y: auto; padding: 8px 0; }
 .bcp-error-item { padding: 8px 12px; margin-bottom: 6px; background: #fff; border-radius: 6px; border: 1px solid #fee2e2; }
 .bcp-error-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .bcp-error-name { font-weight: 600; font-size: 12px; color: #1e293b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -448,21 +534,7 @@ defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurre
 .bcp-error-req details, .bcp-error-res details { font-size: 11px; }
 .bcp-error-req pre, .bcp-error-res pre { background: #f8fafc; padding: 6px 8px; border-radius: 4px; font-size: 10px; max-height: 100px; overflow-y: auto; margin: 4px 0 0; white-space: pre-wrap; word-break: break-all; }
 .bcp-error-more { padding: 4px 0; font-size: 11px; color: #94a3b8; }
-.bcp-status-dist { padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0; }
-.bsd-tags { display: flex; gap: 6px; flex-wrap: wrap; }
-.bcp-rt-dist { padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0; }
-.rt-dist-bars { display: flex; flex-direction: column; gap: 4px; }
-.rt-dist-bar { display: flex; align-items: center; gap: 8px; }
-.rt-dist-label { font-size: 11px; color: #64748b; width: 70px; flex-shrink: 0; }
-.rt-dist-track { flex: 1; height: 16px; background: #f1f5f9; border-radius: 8px; overflow: hidden; }
-.rt-dist-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 8px; transition: width 0.5s ease; }
-.rt-dist-count { font-size: 11px; color: #1e293b; font-weight: 600; width: 40px; text-align: right; flex-shrink: 0; }
-.bcp-throughput { padding: 8px 14px; border-top: 1px solid #e2e8f0; background: #fff; flex-shrink: 0; }
-.tp-table table { width: 100%; border-collapse: collapse; font-size: 11px; }
-.tp-table th { background: #f8fafc; padding: 4px 6px; text-align: left; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; }
-.tp-table td { padding: 3px 6px; border-bottom: 1px solid #f1f5f9; }
-.tp-bar { width: 100%; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden; }
-.tp-fill { height: 100%; background: linear-gradient(90deg, #10b981, #34d399); border-radius: 6px; transition: width 0.5s ease; }
+
 .bench-history-panel { margin: 0 12px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
 .bh-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; font-weight: 600; font-size: 13px; border-bottom: 1px solid #e2e8f0; }
 .bh-list { max-height: 200px; overflow-y: auto; }
@@ -474,27 +546,6 @@ defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurre
 .bh-tps { color: #3b82f6; font-weight: 600; }
 .bh-ok { color: #10b981; font-weight: 600; }
 .bh-err { color: #ef4444; font-weight: 600; }
+
 .bench-body-preview { background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); padding: 12px; border-radius: 8px; font-size: 11.5px; color: #e2e8f0; font-family: 'Consolas','Monaco',monospace; max-height: 160px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid rgba(148,163,184,0.1); box-shadow: inset 0 2px 6px rgba(0,0,0,0.15); }
-
-/* Tab 容器样式 */
-.bcp-report-tabs-wrapper { border-top: 1px solid #e2e8f0; background: #fff; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.bcp-report-tabs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.bcp-report-tabs :deep(.el-tabs__header) { margin: 0; padding: 0 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
-.bcp-report-tabs :deep(.el-tabs__content) { flex: 1; min-height: 0; overflow: hidden; padding: 0; }
-.bcp-report-tabs :deep(.el-tabs__nav-wrap) { padding: 8px 0 0; }
-
-/* Tab 内容区 */
-.bcp-tab-content { padding: 10px 14px; }
-.bcp-tab-content.bcp-tab-scrollable { overflow-y: auto; max-height: calc(100vh - 320px); }
-
-/* 响应体采样卡片 */
-.bcp-body-samples { display: flex; flex-direction: column; gap: 8px; }
-.bcp-sample-card { background: #f8fafc; border-radius: 8px; padding: 8px 10px; border: 1px solid #e2e8f0; }
-.bcp-sample-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; }
-.bcp-sample-url { flex: 1; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bcp-sample-hint { color: #94a3b8; font-size: 10px; flex-shrink: 0; }
-.bcp-sample-body { background: #0f172a; color: #e2e8f0; font-family: 'Consolas','Monaco',monospace; font-size: 11px; padding: 10px; border-radius: 6px; max-height: 150px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid rgba(148,163,184,0.15); }
-
-/* 错误列表在 Tab 内 */
-.bcp-tab-content .bcp-errors-list { max-height: none; padding: 0; }
 </style>
