@@ -272,7 +272,7 @@
                 </thead>
                 <tbody>
                   <tr v-for="(row, ri) in sqlResult.rows" :key="ri">
-                    <td v-for="col in sqlResult.columns" :key="col">{{ row[col] }}</td>
+                    <td v-for="(col, ci) in sqlResult.columns" :key="col">{{ row[ci] }}</td>
                   </tr>
                 </tbody>
               </table>
