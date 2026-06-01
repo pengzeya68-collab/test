@@ -20,6 +20,10 @@
           <el-icon><FullScreen /></el-icon>
           {{ isFullscreen ? '退出全屏' : '全屏' }}
         </el-button>
+        <el-button size="small" @click="showCurlImport = true">
+          <el-icon><Upload /></el-icon>
+          导入cURL
+        </el-button>
         <el-button size="small" @click="showHelp = true">
           ❓ 使用说明
         </el-button>
@@ -270,16 +274,19 @@
       :intro="helpData.intro"
       :sections="helpData.sections"
     />
+
+    <CurlImportDialog v-model="showCurlImport" @import="handleCurlImport" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Right, Delete, Clock, Timer, MagicStick, DocumentCopy, DataAnalysis, Document, Plus, Search, Edit, FullScreen } from '@element-plus/icons-vue'
+import { Right, Delete, Clock, Timer, MagicStick, DocumentCopy, DataAnalysis, Document, Plus, Search, Edit, FullScreen, Upload } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
+import CurlImportDialog from './CurlImportDialog.vue'
 
 const props = defineProps({
   environmentList: { type: Array, default: () => [] }
@@ -309,6 +316,20 @@ const apiLibraryForm = ref({ name: '', group_id: '', description: '' })
 const apiGroups = ref([])
 const showHelp = ref(false)
 const helpData = helpContent.apiDebugger
+const showCurlImport = ref(false)
+
+const handleCurlImport = (parsedData) => {
+  if (!parsedData) return
+  debugForm.value.method = parsedData.method || 'GET'
+  debugForm.value.url = parsedData.url || ''
+  debugForm.value.body = parsedData.body || ''
+  debugForm.value.bodyType = 'json'
+  if (parsedData.headers && typeof parsedData.headers === 'object') {
+    debugForm.value.headers = Object.entries(parsedData.headers).map(([key, value]) => ({ key, value: String(value) }))
+  }
+  showCurlImport.value = false
+  ElMessage.success('cURL 已解析，可点击发送进行调试')
+}
 
 const toggleFullscreen = () => {
   const el = document.querySelector('.debug-container')
@@ -460,7 +481,7 @@ const saveToApiLibrary = async () => {
   } catch (error) { if (error !== 'cancel') ElMessage.error('加载接口分组失败') }
 }
 
-const loadApiGroups = async () => { try { const res = await autoTestRequest.get('/auto-test/groups'); apiGroups.value = res || [] } catch (error) { throw error } }
+const loadApiGroups = async () => { try { const res = await autoTestRequest.get('/auto-test/groups'); apiGroups.value = res || [] } catch (error) { console.error('加载分组失败', error) } }
 
 const confirmSaveToApiLibrary = async () => {
   if (!apiLibraryForm.value.name) { ElMessage.warning('请输入接口名称'); return }

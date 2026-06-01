@@ -145,13 +145,6 @@
           <el-icon><Collection /></el-icon>
           <span>测试套件 <el-tag size="small" type="warning" class="new-tag">新</el-tag></span>
         </div>
-        <div class="tab-item" @click="showCurlImport = true">
-          <el-icon><Upload /></el-icon>
-          <span>导入 cURL</span>
-        </div>
-        <div class="tab-item help-tab" @click="showHelp = true">
-          <span>❓ 使用说明</span>
-        </div>
       </div>
     </div>
 
@@ -159,7 +152,6 @@
       <InterfaceLibrary
         ref="interfaceLibraryRef"
         :environment-list="environmentList"
-        :curl-data="curlImportData"
         @run-cases="handleRunCases"
       />
     </div>
@@ -207,18 +199,9 @@
       <SuiteManager />
     </div>
 
-    <CurlImportDialog v-model="showCurlImport" @import="handleCurlImport" />
-
     <ExecutionResultDialog
       v-model="resultDialogVisible"
       :result="runResult"
-    />
-
-    <HelpDrawer
-      v-model="showHelp"
-      :title="helpData.title"
-      :intro="helpData.intro"
-      :sections="helpData.sections"
     />
   </div>
 </template>
@@ -227,7 +210,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Document, FolderOpened, Position, DataAnalysis, Coin, Connection, Monitor, Collection, Upload } from '@element-plus/icons-vue'
+import { Document, FolderOpened, Position, DataAnalysis, Coin, Connection, Monitor, Collection } from '@element-plus/icons-vue'
 import ScenarioList from './ScenarioList.vue'
 import ScenarioEditor from './ScenarioEditor.vue'
 import GlobalVariableManager from '../components/GlobalVariableManager.vue'
@@ -237,10 +220,7 @@ import InterfaceLibrary from './InterfaceLibrary.vue'
 import JmeterAssistant from './JmeterAssistant.vue'
 import MockService from './MockService.vue'
 import SuiteManager from './SuiteManager.vue'
-import CurlImportDialog from './CurlImportDialog.vue'
 import ExecutionResultDialog from './ExecutionResultDialog.vue'
-import HelpDrawer from '../components/HelpDrawer.vue'
-import { helpContent } from '@/utils/help-content'
 import autoTestRequest from '@/utils/autoTestRequest'
 
 const route = useRoute()
@@ -257,11 +237,6 @@ const currentScenarioId = ref(parseScenarioId(route.query.scenarioId))
 const environmentList = ref([])
 const scenarioListRef = ref(null)
 const interfaceLibraryRef = ref(null)
-
-const showCurlImport = ref(false)
-const curlImportData = ref(null)
-const showHelp = ref(false)
-const helpData = helpContent.autoTest
 
 const resultDialogVisible = ref(false)
 const runResult = ref({
@@ -375,14 +350,6 @@ const onCaseSaved = () => {
   if (interfaceLibraryRef.value) {
     interfaceLibraryRef.value.refreshCaseList()
   }
-}
-
-const handleCurlImport = (parsedData) => {
-  // 将解析的 cURL 数据传递给接口库
-  curlImportData.value = parsedData
-  ElMessage.success('cURL 已解析，请在接口库中创建用例')
-  // 切换到接口库标签页
-  handleTabChange('interfaces')
 }
 
 const handleEditScenario = (scenario) => {
