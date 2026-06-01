@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     DESCRIPTION: str = "Async FastAPI backend for the TestMaster platform."
     ENVIRONMENT: str = "development"
 
-    DATABASE_URL: str = "sqlite+aiosqlite:///./instance/testmaster.db"
+    DATABASE_URL: str = "postgresql+asyncpg://testmaster:@localhost:5432/testmaster"
 
     SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
