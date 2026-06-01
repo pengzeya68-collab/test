@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Post, Comment
+from fastapi_backend.models.models import User, Post, Comment, Like, Favorite
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-社区管理"])
 
@@ -120,10 +120,15 @@ async def admin_delete_post(
     if not post:
         raise HTTPException(status_code=404, detail="帖子不存在")
 
-    # 删除关联评论
-    c_result = await db.execute(select(Comment).where(Comment.post_id == post_id))
-    for c in c_result.scalars().all():
-        await db.delete(c)
+    from sqlalchemy import delete as sql_delete
+
+    # 删除关联的 Like、Favorite、评论
+    comment_ids = (await db.execute(select(Comment.id).where(Comment.post_id == post_id))).scalars().all()
+    if comment_ids:
+        await db.execute(sql_delete(Like).where(Like.comment_id.in_(comment_ids)))
+    await db.execute(sql_delete(Like).where(Like.post_id == post_id))
+    await db.execute(sql_delete(Favorite).where(Favorite.post_id == post_id))
+    await db.execute(sql_delete(Comment).where(Comment.post_id == post_id))
 
     await db.delete(post)
     await db.commit()
@@ -150,19 +155,22 @@ async def list_comments(
     result = await db.execute(query)
     comments = result.scalars().all()
 
+    # 批量获取帖子标题，避免 N+1 查询
+    post_ids = list({c.post_id for c in comments})
+    post_titles = {}
+    if post_ids:
+        title_result = await db.execute(select(Post.id, Post.title).where(Post.id.in_(post_ids)))
+        post_titles = {row[0]: row[1] for row in title_result.all()}
+
     comment_list = []
     for c in comments:
-        # 获取帖子标题
-        post_result = await db.execute(select(Post.title).where(Post.id == c.post_id))
-        post_title = post_result.scalar_one_or_none() or ""
-
         comment_list.append(
             {
                 "id": c.id,
                 "content": c.content,
                 "author": getattr(c, "author_name", "") or f"用户{c.user_id}",
                 "post_id": c.post_id,
-                "post_title": post_title,
+                "post_title": post_titles.get(c.post_id, ""),
                 "like_count": getattr(c, "like_count", 0),
                 "created_at": c.created_at.isoformat() if c.created_at else "",
             }

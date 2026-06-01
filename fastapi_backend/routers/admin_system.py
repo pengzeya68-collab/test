@@ -234,18 +234,26 @@ async def list_audit_logs(
     result = await db.execute(query)
     submissions = result.scalars().all()
 
+    # 批量获取用户和题目信息，避免 N+1 查询
+    user_ids = {s.user_id for s in submissions}
+    question_ids = {s.question_id for s in submissions if s.question_id}
+    users_map = {}
+    questions_map = {}
+    if user_ids:
+        user_rows = (await db.execute(select(User.id, User.username).where(User.id.in_(user_ids)))).all()
+        users_map = {row[0]: row[1] for row in user_rows}
+    if question_ids:
+        q_rows = (await db.execute(select(InterviewQuestion.id, InterviewQuestion.title).where(InterviewQuestion.id.in_(question_ids)))).all()
+        questions_map = {row[0]: row[1] for row in q_rows}
+
     logs = []
     for s in submissions:
-        user_result = await db.execute(select(User).where(User.id == s.user_id))
-        user = user_result.scalar_one_or_none()
-        q_result = await db.execute(select(InterviewQuestion).where(InterviewQuestion.id == s.question_id))
-        question = q_result.scalar_one_or_none()
         logs.append(
             {
                 "id": s.id,
-                "user": user.username if user else "unknown",
+                "user": users_map.get(s.user_id, "unknown"),
                 "action": "代码提交",
-                "detail": f'提交了面试题 "{question.title if question else "未知"}" 的代码',
+                "detail": f'提交了面试题 "{questions_map.get(s.question_id, "未知")}" 的代码',
                 "status": s.execution_status,
                 "createTime": s.created_at.isoformat() if s.created_at else None,
             }

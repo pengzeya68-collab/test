@@ -566,6 +566,7 @@ async def batch_run(case_ids: List[int], env_id: int = None, db: AsyncSession = 
 
     formatted_results = []
     success_count = 0
+    history_records = []
     for case, result in zip(cases, results):
         if isinstance(result, Exception):
             formatted_results.append(
@@ -576,9 +577,40 @@ async def batch_run(case_ids: List[int], env_id: int = None, db: AsyncSession = 
                     "error": str(result),
                 }
             )
+            history_records.append(AutoTestHistory(
+                case_id=case.id,
+                case_name=case.name,
+                method=case.method,
+                url=case.url,
+                status="error",
+                status_code=None,
+                response_time=None,
+                error_message=str(result),
+                env_id=env.id if env else None,
+            ))
         else:
             success_count += 1 if result["success"] else 0
             formatted_results.append({"case_id": case.id, "case_name": case.name, **result})
+            history_records.append(AutoTestHistory(
+                case_id=case.id,
+                case_name=case.name,
+                method=case.method,
+                url=case.url,
+                status="success" if result["success"] else "failed",
+                status_code=result.get("status_code"),
+                response_time=result.get("response_time"),
+                error_message=result.get("error"),
+                env_id=env.id if env else None,
+            ))
+
+    # 批量保存执行历史
+    if history_records:
+        db.add_all(history_records)
+        try:
+            await db.commit()
+        except Exception as e:
+            await db.rollback()
+            logging.getLogger(__name__).warning(f"保存批量执行历史失败: {e}")
 
     return {
         "total": total,

@@ -4,13 +4,14 @@ AutoTest 统一路由 - 全局变量管理
 路径前缀: /api/auto-test/global-variables
 """
 
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestGlobalVariable
+from fastapi_backend.schemas.autotest import GlobalVariableCreate, GlobalVariableUpdate
 from fastapi_backend.utils.encryption import encrypt, decrypt
 
 router = APIRouter(
@@ -39,11 +40,27 @@ def _variable_to_dict(variable):
 
 
 @router.get("")
-async def get_all_global_variables(db: AsyncSession = Depends(get_db)):
-    """获取所有全局变量"""
-    result = await db.execute(select(AutoTestGlobalVariable).order_by(AutoTestGlobalVariable.name))
+async def get_all_global_variables(
+    page: int = Query(1, ge=1),
+    size: int = Query(50, ge=1, le=200),
+    keyword: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取全局变量列表（分页）"""
+    query = select(AutoTestGlobalVariable)
+    if keyword:
+        query = query.where(AutoTestGlobalVariable.name.contains(keyword))
+    total = await db.scalar(select(func.count()).select_from(query.subquery()))
+    offset = (page - 1) * size
+    query = query.order_by(AutoTestGlobalVariable.name).offset(offset).limit(size)
+    result = await db.execute(query)
     variables = result.scalars().all()
-    return [_variable_to_dict(v) for v in variables]
+    return {
+        "list": [_variable_to_dict(v) for v in variables],
+        "total": total or 0,
+        "page": page,
+        "size": size,
+    }
 
 
 @router.get("/{variable_id}")
@@ -58,21 +75,22 @@ async def get_global_variable(variable_id: int, db: AsyncSession = Depends(get_d
 
 @router.post("", status_code=201)
 async def create_global_variable(
-    variable_in: dict,
+    variable_in: GlobalVariableCreate,
     db: AsyncSession = Depends(get_db),
 ):
     """创建全局变量"""
     # 检查变量名是否已存在
-    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_in["name"]))
+    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_in.name))
     existing_variable = result.scalar_one_or_none()
     if existing_variable:
         raise HTTPException(status_code=400, detail="变量名已存在")
 
+    data = variable_in.model_dump()
     # 对加密的变量值进行加密
-    if variable_in.get("is_encrypted"):
-        variable_in["value"] = encrypt(variable_in["value"])
+    if data.get("is_encrypted"):
+        data["value"] = encrypt(data["value"])
 
-    variable = AutoTestGlobalVariable(**variable_in)
+    variable = AutoTestGlobalVariable(**data)
     db.add(variable)
     await db.commit()
     await db.refresh(variable)
@@ -82,7 +100,7 @@ async def create_global_variable(
 @router.put("/{variable_id}")
 async def update_global_variable(
     variable_id: int,
-    variable_in: dict,
+    variable_in: GlobalVariableUpdate,
     db: AsyncSession = Depends(get_db),
 ):
     """更新全局变量"""
@@ -91,26 +109,28 @@ async def update_global_variable(
     if not variable:
         raise HTTPException(status_code=404, detail="全局变量不存在")
 
+    update_data = variable_in.model_dump(exclude_unset=True)
+
     # 检查变量名是否已被其他变量使用
-    if "name" in variable_in and variable_in["name"] != variable.name:
+    if "name" in update_data and update_data["name"] != variable.name:
         result = await db.execute(
-            select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_in["name"])
+            select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == update_data["name"])
         )
         existing_variable = result.scalar_one_or_none()
         if existing_variable:
             raise HTTPException(status_code=400, detail="变量名已存在")
 
     # 对加密的变量值进行加密
-    if "is_encrypted" in variable_in or "value" in variable_in:
-        is_encrypted = variable_in.get("is_encrypted", variable.is_encrypted)
+    if "is_encrypted" in update_data or "value" in update_data:
+        is_encrypted = update_data.get("is_encrypted", variable.is_encrypted)
         if is_encrypted:
-            variable_in["value"] = encrypt(variable_in.get("value", variable.value))
+            update_data["value"] = encrypt(update_data.get("value", variable.value))
         else:
             # 如果从加密改为非加密，需要先解密当前值
-            if variable.is_encrypted and "value" not in variable_in:
-                variable_in["value"] = decrypt(variable.value)
+            if variable.is_encrypted and "value" not in update_data:
+                update_data["value"] = decrypt(variable.value)
 
-    for field, value in variable_in.items():
+    for field, value in update_data.items():
         setattr(variable, field, value)
 
     await db.commit()

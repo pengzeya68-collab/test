@@ -5,6 +5,7 @@
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column,
+    Date,
     Integer,
     String,
     Text,
@@ -64,8 +65,11 @@ class User(Base):
     @property
     def permissions(self) -> list:
         """获取用户所有权限代码列表"""
-        if self.role_obj:
-            return [p.code for p in self.role_obj.permissions]
+        try:
+            if self.role_obj:
+                return [p.code for p in self.role_obj.permissions]
+        except Exception:
+            pass
         # 向后兼容：旧管理员拥有所有权限
         if self.is_admin:
             return ["*"]
@@ -618,8 +622,8 @@ class Like(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    post_id = Column(Integer, ForeignKey("posts.id"))
-    comment_id = Column(Integer, ForeignKey("comments.id"))
+    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"))
+    comment_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"))
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", backref="likes")
@@ -639,9 +643,9 @@ class Favorite(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=True)
-    exercise_id = Column(Integer, ForeignKey("exercises.id"), nullable=True)
-    note_id = Column(Integer, ForeignKey("notes.id"), nullable=True)
+    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=True)
+    exercise_id = Column(Integer, ForeignKey("exercises.id", ondelete="CASCADE"), nullable=True)
+    note_id = Column(Integer, ForeignKey("notes.id", ondelete="CASCADE"), nullable=True)
     item_type = Column(
         String(20),
         nullable=False,
@@ -842,7 +846,7 @@ class DailyCheckin(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    checkin_date = Column(DateTime(timezone=True), nullable=False)
+    checkin_date = Column(Date, nullable=False)
     streak_count = Column(Integer, default=1)
     exp_earned = Column(Integer, default=5)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

@@ -353,6 +353,23 @@ class TestEmailRequest(BaseModel):
     to_email: str
 
 
+# ========== 全局变量 Schema ==========
+
+
+class GlobalVariableCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200, description="变量名")
+    value: str = Field(default="", description="变量值")
+    description: Optional[str] = Field(None, description="变量描述")
+    is_encrypted: bool = Field(False, description="是否加密存储")
+
+
+class GlobalVariableUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200, description="变量名")
+    value: Optional[str] = Field(None, description="变量值")
+    description: Optional[str] = Field(None, description="变量描述")
+    is_encrypted: Optional[bool] = Field(None, description="是否加密存储")
+
+
 # ========== 变量预览 Schema ==========
 
 

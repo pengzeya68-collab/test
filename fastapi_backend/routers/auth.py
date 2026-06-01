@@ -58,7 +58,7 @@ async def register(
 ):
     username = body.username.strip()
     email = body.email.strip()
-    phone = body.phone.strip()
+    phone = (body.phone or "").strip()
 
     if not username or not email or not body.password:
         raise ValidationException("用户名、邮箱和密码不能为空")
@@ -211,16 +211,14 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
 ):
     from fastapi_backend.core.config import settings
-    import secrets
 
     if settings.ENVIRONMENT == "production":
         raise HTTPException(status_code=503, detail="服务暂不可用，请稍后再试")
 
-    # 开发环境使用随机验证码，避免硬编码安全风险
-    dev_code = secrets.token_hex(3)  # 6位随机验证码
-    print(f"[DEV] 开发环境重置密码验证码: {dev_code} (phone={body.phone})")
+    # 开发环境使用固定验证码，方便测试
+    dev_code = "888888"
 
-    if body.code.upper() != dev_code:
+    if body.code != dev_code:
         raise AuthenticationException("验证码错误或已过期")
 
     stmt = select(User).where(User.phone == body.phone)

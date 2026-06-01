@@ -365,16 +365,18 @@ async def reorder_steps(
     db: AsyncSession = Depends(get_db),
 ):
     """批量更新步骤顺序"""
-    for item in step_orders:
-        result = await db.execute(
-            select(AutoTestScenarioStep).where(
-                AutoTestScenarioStep.id == item["step_id"],
-                AutoTestScenarioStep.scenario_id == scenario_id,
-            )
+    step_ids = [item["step_id"] for item in step_orders]
+    order_map = {item["step_id"]: item["step_order"] for item in step_orders}
+
+    result = await db.execute(
+        select(AutoTestScenarioStep).where(
+            AutoTestScenarioStep.id.in_(step_ids),
+            AutoTestScenarioStep.scenario_id == scenario_id,
         )
-        db_step = result.scalar_one_or_none()
-        if db_step:
-            db_step.step_order = item["step_order"]
+    )
+    for db_step in result.scalars().all():
+        if db_step.id in order_map:
+            db_step.step_order = order_map[db_step.id]
 
     await db.commit()
     return {"message": "排序更新成功"}

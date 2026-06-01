@@ -8,7 +8,7 @@ import time
 import asyncio
 from typing import Dict, List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
 from fastapi_backend.core.autotest_database import get_autotest_db
@@ -132,7 +132,7 @@ async def health_check_single(env_id: int, db=Depends(get_autotest_db)):
         result = await session.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id))
         env = result.scalar_one_or_none()
         if not env:
-            return {"error": "环境不存在"}
+            raise HTTPException(status_code=404, detail="环境不存在")
 
         url = _parse_env_url(env)
         if not url:

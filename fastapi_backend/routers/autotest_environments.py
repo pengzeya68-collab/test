@@ -7,7 +7,7 @@ AutoTest 统一路由 - 环境管理
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestEnvironment
@@ -118,6 +118,14 @@ async def delete_environment(env_id: int, db: AsyncSession = Depends(get_db)):
     env = result.scalar_one_or_none()
     if not env:
         raise HTTPException(status_code=404, detail="环境不存在")
+
+    # 检查是否有场景引用此环境
+    from fastapi_backend.models.autotest import AutoTestScenario
+    ref_count = await db.scalar(
+        select(func.count()).where(AutoTestScenario.schedule_env_id == env_id)
+    )
+    if ref_count and ref_count > 0:
+        raise HTTPException(status_code=400, detail=f"该环境被 {ref_count} 个场景引用，无法删除")
 
     await db.delete(env)
     await db.commit()

@@ -3,7 +3,7 @@
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
@@ -26,11 +26,13 @@ async def global_search(
     offset = (page - 1) * page_size
 
     if not category or category == "exercises":
-        stmt = select(Exercise).where(or_(Exercise.title.contains(q), Exercise.description.contains(q)))
+        base = select(Exercise).where(or_(Exercise.title.contains(q), Exercise.description.contains(q)))
+        count = await db.scalar(select(func.count()).select_from(base.subquery()))
+        total += count or 0
         if category:
-            stmt = stmt.offset(offset).limit(page_size)
+            stmt = base.offset(offset).limit(page_size)
         else:
-            stmt = stmt.limit(5)
+            stmt = base.limit(5)
         r = await db.execute(stmt)
         results["exercises"] = [
             {
@@ -43,33 +45,38 @@ async def global_search(
         ]
 
     if not category or category == "posts":
-        stmt = select(Post).where(or_(Post.title.contains(q), Post.content.contains(q)))
+        base = select(Post).where(or_(Post.title.contains(q), Post.content.contains(q)))
+        count = await db.scalar(select(func.count()).select_from(base.subquery()))
+        total += count or 0
         if category:
-            stmt = stmt.offset(offset).limit(page_size)
+            stmt = base.offset(offset).limit(page_size)
         else:
-            stmt = stmt.limit(5)
+            stmt = base.limit(5)
         r = await db.execute(stmt)
         results["posts"] = [
             {"id": p.id, "title": p.title, "summary": p.summary, "category": p.category} for p in r.scalars().all()
         ]
 
     if not category or category == "exams":
-        stmt = select(Exam).where(Exam.title.contains(q))
+        base = select(Exam).where(Exam.title.contains(q))
+        count = await db.scalar(select(func.count()).select_from(base.subquery()))
+        total += count or 0
         if category:
-            stmt = stmt.offset(offset).limit(page_size)
+            stmt = base.offset(offset).limit(page_size)
         else:
-            stmt = stmt.limit(5)
+            stmt = base.limit(5)
         r = await db.execute(stmt)
         results["exams"] = [{"id": e.id, "title": e.title, "difficulty": e.difficulty} for e in r.scalars().all()]
 
     if not category or category == "paths":
-        stmt = select(LearningPath).where(or_(LearningPath.title.contains(q), LearningPath.description.contains(q)))
+        base = select(LearningPath).where(or_(LearningPath.title.contains(q), LearningPath.description.contains(q)))
+        count = await db.scalar(select(func.count()).select_from(base.subquery()))
+        total += count or 0
         if category:
-            stmt = stmt.offset(offset).limit(page_size)
+            stmt = base.offset(offset).limit(page_size)
         else:
-            stmt = stmt.limit(5)
+            stmt = base.limit(5)
         r = await db.execute(stmt)
         results["paths"] = [{"id": lp.id, "title": lp.title, "difficulty": lp.difficulty} for lp in r.scalars().all()]
 
-    total = sum(len(v) for v in results.values())
     return {"query": q, "total": total, "page": page, "page_size": page_size, "results": results}

@@ -148,6 +148,12 @@ async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
     if children:
         raise HTTPException(status_code=400, detail="请先删除子分组")
 
+    # 检查关联用例数量
+    from fastapi_backend.models.autotest import AutoTestCase
+    case_count = await db.scalar(select(func.count()).where(AutoTestCase.group_id == group_id))
+    if case_count and case_count > 0:
+        raise HTTPException(status_code=400, detail=f"该分组下有 {case_count} 个用例，请先删除用例")
+
     await db.delete(group)
     await db.commit()
     return {"success": True, "message": "删除成功"}

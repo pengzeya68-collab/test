@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
 from fastapi_backend.models.models import User, Exercise
+from fastapi_backend.schemas.admin import AdminExerciseCreate, AdminExerciseUpdate
 from fastapi import UploadFile, File
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-习题管理"])
@@ -60,18 +61,18 @@ async def list_exercises(
 
 @router.post("/exercises")
 async def create_exercise(
-    data: dict,
+    data: AdminExerciseCreate,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """创建习题"""
     new_exercise = Exercise(
-        title=data.get("title", ""),
-        description=data.get("content", ""),
-        solution=data.get("answer", ""),
-        difficulty=data.get("difficulty", "easy"),
-        language=data.get("language", "通用"),
-        category=data.get("category", ""),
+        title=data.title,
+        description=data.content,
+        solution=data.answer,
+        difficulty=data.difficulty,
+        language=data.language,
+        category=data.category,
     )
     db.add(new_exercise)
     await db.commit()
@@ -82,7 +83,7 @@ async def create_exercise(
 @router.put("/exercises/{exercise_id}")
 async def update_exercise(
     exercise_id: int,
-    data: dict,
+    data: AdminExerciseUpdate,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -92,16 +93,17 @@ async def update_exercise(
     if not exercise:
         raise HTTPException(status_code=404, detail="习题不存在")
 
-    if "title" in data:
-        exercise.title = data["title"]
-    if "content" in data:
-        exercise.description = data["content"]
-    if "answer" in data:
-        exercise.solution = data["answer"]
-    if "difficulty" in data:
-        exercise.difficulty = data["difficulty"]
-    if "category" in data:
-        exercise.category = data["category"]
+    update_data = data.model_dump(exclude_unset=True)
+    if "title" in update_data:
+        exercise.title = update_data["title"]
+    if "content" in update_data:
+        exercise.description = update_data["content"]
+    if "answer" in update_data:
+        exercise.solution = update_data["answer"]
+    if "difficulty" in update_data:
+        exercise.difficulty = update_data["difficulty"]
+    if "category" in update_data:
+        exercise.category = update_data["category"]
 
     await db.commit()
     return {"message": "更新成功"}
@@ -150,21 +152,23 @@ async def import_exercises(
                 "fail_reasons": ["仅支持JSON格式"],
             }
 
-        for item in items:
+        for idx, item in enumerate(items):
+            new_exercise = Exercise(
+                title=item.get("title", ""),
+                description=item.get("description", item.get("instructions", "")),
+                solution=item.get("solution", item.get("answer", "")),
+                difficulty=item.get("difficulty", "easy"),
+                language=item.get("language", "通用"),
+                category=item.get("category", ""),
+            )
+            db.add(new_exercise)
             try:
-                new_exercise = Exercise(
-                    title=item.get("title", ""),
-                    description=item.get("description", item.get("instructions", "")),
-                    solution=item.get("solution", item.get("answer", "")),
-                    difficulty=item.get("difficulty", "easy"),
-                    language=item.get("language", "通用"),
-                    category=item.get("category", ""),
-                )
-                db.add(new_exercise)
+                await db.flush()
                 success_count += 1
             except Exception as e:
+                await db.rollback()
                 fail_count += 1
-                fail_reasons.append(f"行{success_count + fail_count}: {str(e)}")
+                fail_reasons.append(f"行{idx + 1}: {str(e)}")
 
         await db.commit()
     except Exception as e:

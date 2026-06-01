@@ -19,6 +19,15 @@ from fastapi_backend.models.models import (
     Post,
     Comment,
     Submission,
+    Like,
+    Favorite,
+)
+from fastapi_backend.schemas.admin import (
+    AdminUserCreate,
+    AdminUserUpdate,
+    AdminResetPassword,
+    AdminLoginRequest,
+    AdminUserStatusUpdate,
 )
 from fastapi_backend.services.auth_service import AuthService
 
@@ -128,27 +137,26 @@ async def list_users(
 
 @router.post("/users")
 async def create_user(
-    data: dict,
+    data: AdminUserCreate,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """创建用户"""
     existing = await db.execute(
-        select(User).where(or_(User.username == data.get("username"), User.email == data.get("email")))
+        select(User).where(or_(User.username == data.username, User.email == data.email))
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="用户名或邮箱已存在")
 
-    password = data.get("password", "123456")
     new_user = User(
-        username=data.get("username", ""),
-        email=data.get("email", ""),
-        phone=data.get("phone"),
-        password_hash=AuthService.hash_password(password),
-        is_admin=data.get("is_admin", False),
-        is_active=data.get("status", "active") == "active",
-        level=data.get("level", 1),
-        score=data.get("score", 0),
+        username=data.username,
+        email=data.email,
+        phone=data.phone,
+        password_hash=AuthService.hash_password(data.password),
+        is_admin=data.is_admin,
+        is_active=data.status == "active",
+        level=data.level,
+        score=data.score,
     )
     db.add(new_user)
     try:
@@ -170,7 +178,7 @@ async def create_user(
 @router.put("/users/{user_id}")
 async def update_user(
     user_id: int,
-    data: dict,
+    data: AdminUserUpdate,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -180,22 +188,23 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    if "username" in data:
-        user.username = data["username"]
-    if "email" in data:
-        user.email = data["email"]
-    if "phone" in data:
-        user.phone = data["phone"]
-    if "level" in data:
-        user.level = data["level"]
-    if "score" in data:
-        user.score = data["score"]
-    if "is_admin" in data:
-        user.is_admin = data["is_admin"]
-    if "status" in data:
-        user.is_active = data["status"] == "active"
-    if "password" in data and data["password"]:
-        user.password_hash = AuthService.hash_password(data["password"])
+    update_data = data.model_dump(exclude_unset=True)
+    if "username" in update_data:
+        user.username = update_data["username"]
+    if "email" in update_data:
+        user.email = update_data["email"]
+    if "phone" in update_data:
+        user.phone = update_data["phone"]
+    if "level" in update_data:
+        user.level = update_data["level"]
+    if "score" in update_data:
+        user.score = update_data["score"]
+    if "is_admin" in update_data:
+        user.is_admin = update_data["is_admin"]
+    if "status" in update_data:
+        user.is_active = update_data["status"] == "active"
+    if "password" in update_data and update_data["password"]:
+        user.password_hash = AuthService.hash_password(update_data["password"])
 
     try:
         await db.commit()
@@ -227,18 +236,21 @@ async def delete_user(
         ExamAttempt,
         UserProgress,
     )
+    from sqlalchemy import delete as sql_delete
 
-    for model in [Comment, Submission, InterviewSession, ExamAttempt, UserProgress]:
+    # 批量删除关联数据
+    for model in [Comment, Submission, InterviewSession, ExamAttempt, UserProgress, Like, Favorite]:
         try:
-            related = await db.execute(select(model).where(model.user_id == user_id))
-            for obj in related.scalars().all():
-                await db.delete(obj)
+            await db.execute(sql_delete(model).where(model.user_id == user_id))
         except Exception as e:
             logging.getLogger(__name__).warning(f"删除用户时清理 {model.__name__} 关联数据失败: {e}")
 
-    related_posts = await db.execute(select(Post).where(Post.user_id == user_id))
-    for post in related_posts.scalars().all():
-        await db.delete(post)
+    # 删除用户帖子关联的 Like 和 Favorite，再删帖子
+    user_post_ids = (await db.execute(select(Post.id).where(Post.user_id == user_id))).scalars().all()
+    if user_post_ids:
+        await db.execute(sql_delete(Like).where(Like.post_id.in_(user_post_ids)))
+        await db.execute(sql_delete(Favorite).where(Favorite.post_id.in_(user_post_ids)))
+    await db.execute(sql_delete(Post).where(Post.user_id == user_id))
 
     await db.delete(user)
     try:
@@ -263,7 +275,12 @@ async def toggle_user_status(
         raise HTTPException(status_code=404, detail="用户不存在")
 
     user.is_active = not user.is_active
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logging.getLogger(__name__).error(f"切换用户状态失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="操作失败")
     action = "启用" if user.is_active else "禁用"
     return {"message": f"用户已{action}"}
 
@@ -284,7 +301,12 @@ async def toggle_user_admin(
         raise HTTPException(status_code=404, detail="用户不存在")
 
     user.is_admin = not user.is_admin
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logging.getLogger(__name__).error(f"切换管理员权限失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="操作失败")
     action = "设置为管理员" if user.is_admin else "取消管理员权限"
     return {"message": f"用户已{action}"}
 
@@ -292,7 +314,7 @@ async def toggle_user_admin(
 @router.put("/users/{user_id}/reset-password")
 async def reset_user_password(
     user_id: int,
-    data: dict,
+    data: AdminResetPassword,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -302,17 +324,21 @@ async def reset_user_password(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    new_password = data.get("new_password", "123456")
-    user.password_hash = AuthService.hash_password(new_password)
-    await db.commit()
+    user.password_hash = AuthService.hash_password(data.new_password)
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logging.getLogger(__name__).error(f"重置密码失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="密码重置失败")
     return {"message": "密码重置成功"}
 
 
 @router.post("/login")
-async def admin_login(data: dict):
+async def admin_login(data: AdminLoginRequest):
     """管理员登录"""
-    username = data.get("username", "")
-    password = data.get("password", "")
+    username = data.username
+    password = data.password
 
     auth_service = AuthService()
 
@@ -357,7 +383,7 @@ async def get_admin_info(current_user: User = Depends(require_admin)):
 @router.patch("/users/{user_id}/status")
 async def update_user_status(
     user_id: int,
-    data: dict,
+    data: AdminUserStatusUpdate,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -367,10 +393,16 @@ async def update_user_status(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    if "is_active" in data:
-        user.is_active = data["is_active"]
-    if "is_admin" in data:
-        user.is_admin = data["is_admin"]
+    update_data = data.model_dump(exclude_unset=True)
+    if "is_active" in update_data:
+        user.is_active = update_data["is_active"]
+    if "is_admin" in update_data:
+        user.is_admin = update_data["is_admin"]
 
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logging.getLogger(__name__).error(f"更新用户状态失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="状态更新失败")
     return {"message": "状态更新成功"}

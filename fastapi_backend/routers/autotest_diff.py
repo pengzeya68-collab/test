@@ -10,9 +10,10 @@ from typing import Dict, Any, List
 import json
 
 from fastapi_backend.core.autotest_database import get_autotest_db
+from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestCase
 
-router = APIRouter(prefix="/api/auto-test/diff", tags=["API-Diff"])
+router = APIRouter(prefix="/api/auto-test/diff", tags=["API-Diff"], dependencies=[Depends(get_current_user)])
 
 
 def _deep_diff(a: Any, b: Any, path: str = "") -> List[Dict]:

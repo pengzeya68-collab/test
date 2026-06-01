@@ -211,7 +211,8 @@ class ScenarioExecutionEngine:
             report_dir.mkdir(parents=True, exist_ok=True)
 
             test_file_path = self._generate_pytest_test_file(temp_pytest_dir, scenario_name, history_id)
-            report_generated = self._run_pytest_and_generate_report(
+            report_generated = await asyncio.to_thread(
+                self._run_pytest_and_generate_report,
                 test_file_path, str(allure_results_dir), str(report_dir)
             )
             if not report_generated:
@@ -984,6 +985,7 @@ class TestScenario{scenario_id}:
             return
 
         body = response_data.get("body", "")
+        newly_extracted = {}
 
         for extractor in extractors:
             var_name = extractor.get("variableName")
@@ -1011,12 +1013,13 @@ class TestScenario{scenario_id}:
                 _logger.warning(f"变量提取失败 {var_name}: {str(e)}")
 
             self.context_vars[var_name] = value
+            newly_extracted[var_name] = value
 
-        # 🔥 修复：将提取的变量持久化到全局变量表
-        if self.context_vars:
+        # 只将本次新提取的变量持久化到全局变量表
+        if newly_extracted:
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(save_variables_to_db(dict(self.context_vars)))
+                loop.create_task(save_variables_to_db(dict(newly_extracted)))
             except RuntimeError:
                 _logger.debug("无运行中的事件循环，跳过变量持久化")
 

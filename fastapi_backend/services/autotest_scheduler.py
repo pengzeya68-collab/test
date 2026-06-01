@@ -125,7 +125,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                     scheduled_tasks[task_id]["last_error"] = "场景已停用，跳过执行"
                 return
     except Exception as e:
-        _logger.info(f"[Scheduler] 检查场景状态失败: {e}")
+        _logger.warning(f"[Scheduler] 检查场景状态失败: {e}")
 
     if task_id in scheduled_tasks:
         scheduled_tasks[task_id]["last_run"] = datetime.now(timezone.utc).isoformat()
@@ -213,7 +213,8 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                     shutil.rmtree(str(new_results_history))
                 shutil.copytree(str(old_report_history), str(new_results_history))
 
-            cmd_result = subprocess.run(
+            cmd_result = await asyncio.to_thread(
+                subprocess.run,
                 [
                     "allure",
                     "generate",
@@ -268,7 +269,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
             scheduled_tasks[task_id]["last_status"] = "cancelled"
             scheduled_tasks[task_id]["status"] = "idle"
     except Exception as e:
-        _logger.info(f"[Scheduler] 任务 {task_id} 执行失败: {str(e)}")
+        _logger.error(f"[Scheduler] 任务 {task_id} 执行失败: {str(e)}")
         if task_id in scheduled_tasks:
             scheduled_tasks[task_id]["last_status"] = "error"
             scheduled_tasks[task_id]["last_error"] = str(e)

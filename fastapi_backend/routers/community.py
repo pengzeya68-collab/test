@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -149,7 +149,7 @@ async def get_community_stats(db: AsyncSession = Depends(get_db)):
     total_posts = total_posts_q.scalar() or 0
     total_users_q = await db.execute(select(func.count(User.id)))
     total_users = total_users_q.scalar() or 0
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     today_start = datetime.combine(today, datetime.min.time())
     today_posts_q = await db.execute(select(func.count(Post.id)).filter(Post.created_at >= today_start))
     today_posts = today_posts_q.scalar() or 0
@@ -157,7 +157,7 @@ async def get_community_stats(db: AsyncSession = Depends(get_db)):
         total_posts=total_posts,
         total_users=total_users,
         today_posts=today_posts,
-        online_users=total_users,
+        online_users=max(1, total_users // 10),
     )
 
 
@@ -303,7 +303,7 @@ async def delete_post(
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="帖子不存在")
-    if post.user_id != current_user.id:
+    if post.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="无权限删除此帖子")
     await db.delete(post)
     await db.commit()
@@ -475,6 +475,7 @@ async def get_user_posts(
         total=total,
         page=page,
         per_page=per_page,
+        total_pages=math.ceil(total / per_page) if per_page else 0,
     )
 
 

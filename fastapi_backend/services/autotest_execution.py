@@ -16,12 +16,10 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
-from datetime import datetime, timezone
 import requests
 
 from fastapi_backend.utils.autotest_helpers import extract_jsonpath_value
 
-# from fastapi_backend.services.autotest_variable_service import save_variables_to_db
 from fastapi_backend.utils.parser import replace_variables
 from fastapi_backend.models.autotest import (
     AutoTestCase,
@@ -627,7 +625,8 @@ def compare_values(actual: Any, operator: str, expected: Any) -> bool:
             return False
     elif operator == "json_exists":
         return actual is not None
-    return True
+    _logger.warning(f"未知的断言操作符: {operator}")
+    return False
 
 
 def get_operator_text(operator: str) -> str:
@@ -715,46 +714,6 @@ async def extract_variables_from_response(
 
     return extracted
 
-
-async def save_variables_to_db(variables: Dict[str, str]) -> bool:
-    """
-    将提取的变量保存到全局变量表
-    Args:
-        variables: 变量字典 {变量名: 变量值}
-    Returns:
-        是否保存成功
-    """
-    if not variables:
-        return False
-
-    from fastapi_backend.core.autotest_database import AsyncSessionLocal
-    from sqlalchemy import select
-
-    try:
-        async with AsyncSessionLocal() as session:
-            for var_name, var_value in variables.items():
-                result = await session.execute(
-                    select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == var_name)
-                )
-                existing_var = result.scalar_one_or_none()
-
-                if existing_var:
-                    existing_var.value = str(var_value)
-                    existing_var.updated_at = datetime.now(timezone.utc)
-                else:
-                    new_var = AutoTestGlobalVariable(
-                        name=var_name,
-                        value=str(var_value),
-                        description="从测试用例提取",
-                        is_encrypted=False,
-                    )
-                    session.add(new_var)
-
-            await session.commit()
-            return True
-    except Exception as e:
-        _logger.info(f"保存变量失败: {str(e)}")
-        return False
 
 
 def generate_test_yaml(case_data: Dict[str, Any], output_path: Path) -> None:

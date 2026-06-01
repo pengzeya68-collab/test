@@ -3,6 +3,7 @@
 从 admin_manage.py 拆分
 """
 
+import json
 import logging
 from typing import Optional
 
@@ -13,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
 from fastapi_backend.models.models import User, Exam, ExamQuestion
+from fastapi_backend.schemas.admin import AdminExamCreate, AdminExamUpdate, AdminExamPublishToggle
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-考试管理"])
 
@@ -126,23 +128,22 @@ async def get_exam(
 
 @router.post("/exams")
 async def create_exam(
-    data: dict,
+    data: AdminExamCreate,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """创建考试"""
-    questions = data.pop("questions", [])
     new_exam = Exam(
-        title=data.get("title", ""),
-        description=data.get("description", ""),
-        exam_type=data.get("exam_type", "模拟考试"),
-        difficulty=data.get("difficulty", "medium"),
-        duration=data.get("duration", 60),
-        total_score=data.get("total_score", 100),
-        pass_score=data.get("pass_score", 60),
-        is_published=data.get("is_published", False),
-        start_time=data.get("start_time"),
-        end_time=data.get("end_time"),
+        title=data.title,
+        description=data.description,
+        exam_type=data.exam_type,
+        difficulty=data.difficulty,
+        duration=data.duration,
+        total_score=data.total_score,
+        pass_score=data.pass_score,
+        is_published=data.is_published,
+        start_time=data.start_time,
+        end_time=data.end_time,
         user_id=current_user.id,
     )
 
@@ -150,15 +151,15 @@ async def create_exam(
     await db.flush()
 
     # 添加题目
-    for q_data in questions:
+    for q_data in data.questions:
         new_q = ExamQuestion(
             exam_id=new_exam.id,
-            question_type=q_data.get("question_type", "single_choice"),
-            content=q_data.get("content", ""),
-            correct_answer=q_data.get("correct_answer", ""),
-            score=q_data.get("score", 10),
-            analysis=q_data.get("analysis", ""),
-            options=str(q_data.get("options", [])) if q_data.get("options") else None,
+            question_type=q_data.question_type,
+            content=q_data.content,
+            correct_answer=q_data.correct_answer,
+            score=q_data.score,
+            analysis=q_data.analysis,
+            options=json.dumps(q_data.options, ensure_ascii=False) if q_data.options else None,
         )
         db.add(new_q)
 
@@ -174,7 +175,7 @@ async def create_exam(
 @router.put("/exams/{exam_id}")
 async def update_exam(
     exam_id: int,
-    data: dict,
+    data: AdminExamUpdate,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -184,6 +185,7 @@ async def update_exam(
     if not exam:
         raise HTTPException(status_code=404, detail="考试不存在")
 
+    update_data = data.model_dump(exclude_unset=True)
     for field in [
         "title",
         "description",
@@ -195,27 +197,26 @@ async def update_exam(
         "start_time",
         "end_time",
     ]:
-        if field in data and hasattr(exam, field):
-            setattr(exam, field, data[field])
-    if "is_published" in data and hasattr(exam, "is_published"):
-        exam.is_published = data["is_published"]
+        if field in update_data and hasattr(exam, field):
+            setattr(exam, field, update_data[field])
+    if "is_published" in update_data and hasattr(exam, "is_published"):
+        exam.is_published = update_data["is_published"]
 
     # 更新题目（简单策略：先删后加）
-    questions = data.get("questions", None)
-    if questions is not None:
+    if data.questions is not None:
         old_q_result = await db.execute(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id))
         for old_q in old_q_result.scalars().all():
             await db.delete(old_q)
 
-        for q_data in questions:
+        for q_data in data.questions:
             new_q = ExamQuestion(
                 exam_id=exam_id,
-                question_type=q_data.get("question_type", "single_choice"),
-                content=q_data.get("content", ""),
-                correct_answer=q_data.get("correct_answer", ""),
-                score=q_data.get("score", 10),
-                analysis=q_data.get("analysis", ""),
-                options=str(q_data.get("options", [])) if q_data.get("options") else None,
+                question_type=q_data.question_type,
+                content=q_data.content,
+                correct_answer=q_data.correct_answer,
+                score=q_data.score,
+                analysis=q_data.analysis,
+                options=json.dumps(q_data.options, ensure_ascii=False) if q_data.options else None,
             )
             db.add(new_q)
 
@@ -258,7 +259,7 @@ async def delete_exam(
 @router.put("/exams/{exam_id}/publish")
 async def toggle_exam_publish(
     exam_id: int,
-    data: dict,
+    data: AdminExamPublishToggle,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -269,6 +270,11 @@ async def toggle_exam_publish(
         raise HTTPException(status_code=404, detail="考试不存在")
 
     if hasattr(exam, "is_published"):
-        exam.is_published = data.get("is_published", not exam.is_published)
-        await db.commit()
+        exam.is_published = data.is_published if data.is_published is not None else not exam.is_published
+        try:
+            await db.commit()
+        except Exception as e:
+            await db.rollback()
+            logging.getLogger(__name__).error(f"切换考试发布状态失败: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="操作失败")
     return {"message": "操作成功"}

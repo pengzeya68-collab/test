@@ -56,7 +56,7 @@ class AutoTestCase(Base):
     id = Column(Integer, primary_key=True, index=True)
     group_id = Column(
         Integer,
-        ForeignKey("api_groups.id", ondelete="SET NULL"),
+        ForeignKey("api_groups.id", ondelete="CASCADE"),
         nullable=False,
         comment="所属分组",
     )

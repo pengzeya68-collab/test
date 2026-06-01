@@ -26,6 +26,14 @@ def _get_http_client() -> httpx.AsyncClient:
     return _http_client
 
 
+async def close_http_client():
+    """关闭 HTTP 客户端，释放连接池资源"""
+    global _http_client
+    if _http_client is not None and not _http_client.is_closed:
+        await _http_client.aclose()
+        _http_client = None
+
+
 async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any]) -> Dict[str, Any]:
     """
     加载全局变量和环境变量，合并到 variables 中
