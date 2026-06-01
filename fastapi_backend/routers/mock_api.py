@@ -33,6 +33,15 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)],
 )
 
+# 动态 Mock 端点需要独立路由，不能继承父级鉴权
+mock_public_router = APIRouter(
+    prefix="/api/mock",
+    tags=["Mock动态端点"],
+)
+
+# 声明额外路由供 router_registry 自动发现
+EXTRA_ROUTERS = ["mock_public_router"]
+
 
 # ========== Pydantic 模型 ==========
 
@@ -364,6 +373,13 @@ async def list_logs(
 async def import_swagger(project_id: int, body: dict):
     """从 Swagger 文档导入 Mock 规则"""
     swagger_data = body.get("swagger_data", body)
+    # 支持 YAML 字符串
+    if isinstance(swagger_data, str):
+        try:
+            import yaml
+            swagger_data = yaml.safe_load(swagger_data)
+        except Exception:
+            raise HTTPException(status_code=400, detail="YAML 解析失败")
     if not swagger_data or not isinstance(swagger_data, dict):
         raise HTTPException(status_code=400, detail="请提供有效的 Swagger/OpenAPI 数据")
 
@@ -379,11 +395,9 @@ async def import_swagger(project_id: int, body: dict):
 # ========== 动态 Mock 端点 ==========
 
 
-@router.api_route(
+@mock_public_router.api_route(
     "/api/{slug}/{rest_of_path:path}",
     methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
-    tags=["Mock动态端点"],
-    dependencies=[],  # 动态 Mock 端点不需要认证
 )
 async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
     """

@@ -412,8 +412,40 @@ const toggleRule = async (rule) => {
 }
 
 // 从 Swagger 导入
-const importFromSwagger = async () => {
-  ElMessage.info('Swagger 导入功能开发中...')
+const swaggerFileInput = ref(null)
+
+const importFromSwagger = () => {
+  if (!currentProject.value) {
+    ElMessage.warning('请先选择一个项目')
+    return
+  }
+  // 创建隐藏的 file input
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json,.yaml,.yml'
+  input.onchange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      let swaggerData
+      try {
+        swaggerData = JSON.parse(text)
+      } catch {
+        // 尝试 YAML（简单处理，依赖后端解析）
+        swaggerData = text
+      }
+      const res = await autoTestRequest.post(
+        `${API_BASE}/projects/${currentProject.value.id}/import-swagger`,
+        { swagger_data: swaggerData }
+      )
+      ElMessage.success(res.message || '导入成功')
+      await loadRules(currentProject.value.id)
+    } catch (err) {
+      ElMessage.error('导入失败: ' + (err.response?.data?.detail || err.message))
+    }
+  }
+  input.click()
 }
 
 // 重置规则表单

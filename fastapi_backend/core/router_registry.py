@@ -85,6 +85,20 @@ def _load_router(module_name: str) -> Any:
         return None
 
 
+def _load_extra_routers(module_name: str) -> list:
+    """加载模块中除 router 外的额外路由（如 mock_public_router）"""
+    try:
+        mod = importlib.import_module(module_name)
+        extra_names = getattr(mod, "EXTRA_ROUTERS", [])
+        routers = []
+        for name in extra_names:
+            if hasattr(mod, name):
+                routers.append(getattr(mod, name))
+        return routers
+    except Exception:
+        return []
+
+
 def discover_routers() -> dict[str, Any]:
     result: dict[str, Any] = {}
     for group_name, modules in _ROUTER_MODULES.items():
@@ -104,6 +118,10 @@ def discover_routers() -> dict[str, Any]:
                 router = _load_router(mod_name)
                 if router is not None:
                     group_router.include_router(router)
+                    loaded += 1
+                # 加载额外路由
+                for extra in _load_extra_routers(mod_name):
+                    group_router.include_router(extra)
                     loaded += 1
             if loaded > 0:
                 result[group_name] = group_router

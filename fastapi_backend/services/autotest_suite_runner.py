@@ -109,7 +109,7 @@ class SuiteRunner:
                     # 保存历史记录
                     history = AutoTestHistory(
                         case_id=case.id,
-                        status="success" if run_result["success"] else "failed",
+                        status="passed" if run_result["success"] else "failed",
                         execution_time=run_result.get("execution_time", 0),
                         response_data=run_result.get("response"),
                         error_message=run_result.get("error"),

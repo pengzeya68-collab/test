@@ -81,10 +81,10 @@
                   v-for="(date, dateIdx) in displayDates"
                   :key="dateIdx"
                   class="heat-cell"
-                  :class="getCellClass(apiIdx, dateIdx)"
+                  :class="getCellClass(api, dateIdx)"
                   @click="showDetail(api, date)"
                 >
-                  <span class="cell-tooltip">{{ api.method }} {{ api.url }}<br/>{{ date }}: {{ getCellStatus(apiIdx, dateIdx) }}</span>
+                  <span class="cell-tooltip">{{ api.method }} {{ api.url }}<br/>{{ date }}: {{ getCellStatus(api, dateIdx) }}</span>
                 </td>
                 <td class="stat-cell">
                   <el-progress
@@ -199,17 +199,22 @@ const groupStats = computed(() => {
   })).sort((a, b) => b.count - a.count)
 })
 
-const getCellClass = (apiIdx, dateIdx) => {
+const getCellClass = (api, dateIdx) => {
+  const allApis = heatmapData.value.apis || []
+  const apiIdx = allApis.indexOf(api)
+  if (apiIdx < 0) return 'none'
   const matrix = heatmapData.value.matrix || []
   const row = matrix[apiIdx]
   if (!row) return 'none'
-  // displayDates 可能是 dates 的子集，需要计算偏移
   const offset = (heatmapData.value.dates || []).length - displayDates.value.length
   const val = row[dateIdx + offset]
   return val || 'none'
 }
 
-const getCellStatus = (apiIdx, dateIdx) => {
+const getCellStatus = (api, dateIdx) => {
+  const allApis = heatmapData.value.apis || []
+  const apiIdx = allApis.indexOf(api)
+  if (apiIdx < 0) return '未执行'
   const matrix = heatmapData.value.matrix || []
   const row = matrix[apiIdx]
   if (!row) return '未执行'

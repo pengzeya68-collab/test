@@ -19,6 +19,23 @@ from fastapi_backend.services.autotest_ai_generator import AITestCaseGenerator
 
 _logger = logging.getLogger(__name__)
 
+
+def _parse_swagger_content(content: bytes) -> dict:
+    """解析 Swagger/OpenAPI 内容，支持 JSON 和 YAML 格式"""
+    text = content.decode("utf-8")
+    # 先尝试 JSON
+    try:
+        return json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        pass
+    # 再尝试 YAML
+    try:
+        import yaml
+        return yaml.safe_load(text)
+    except Exception:
+        pass
+    raise ValueError("无法解析文件，请确保是有效的 JSON 或 YAML 格式")
+
 router = APIRouter(
     prefix="/api/auto-test/ai-generate",
     tags=["AutoTest-AI生成用例"],
@@ -42,9 +59,9 @@ async def generate_from_swagger(
     """
     content = await file.read()
     try:
-        swagger_data = json.loads(content.decode("utf-8"))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"JSON 解析失败: {str(e)}")
+        swagger_data = _parse_swagger_content(content)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     generator = AITestCaseGenerator(db)
     result = await generator.generate(
@@ -85,7 +102,9 @@ async def generate_from_swagger_url(
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(url)
             resp.raise_for_status()
-            swagger_data = resp.json()
+            swagger_data = _parse_swagger_content(resp.content)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"获取 Swagger 文档失败: {str(e)}")
 
