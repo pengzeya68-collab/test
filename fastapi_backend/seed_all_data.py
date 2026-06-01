@@ -1311,19 +1311,25 @@ async def _fix_code_exercises(session):
         if lang and lang.lower() == "sql":
             if eid in SQL_SETUP_DATA:
                 await session.execute(
-                    sql_text("UPDATE exercises SET setup_sql = :sql WHERE id = :id AND (setup_sql IS NULL OR setup_sql = '')"),
+                    sql_text(
+                        "UPDATE exercises SET setup_sql = :sql WHERE id = :id AND (setup_sql IS NULL OR setup_sql = '')"
+                    ),
                     {"sql": SQL_SETUP_DATA[eid], "id": eid},
                 )
             if eid in SQL_CODE_TEMPLATES:
                 await session.execute(
-                    sql_text("UPDATE exercises SET code_template = :tpl WHERE id = :id AND (code_template IS NULL OR code_template = '' OR code_template = solution)"),
+                    sql_text(
+                        "UPDATE exercises SET code_template = :tpl WHERE id = :id AND (code_template IS NULL OR code_template = '' OR code_template = solution)"
+                    ),
                     {"tpl": SQL_CODE_TEMPLATES[eid], "id": eid},
                 )
             sql_fixed += 1
 
         elif lang and lang.lower() == "python":
             await session.execute(
-                sql_text("UPDATE exercises SET test_cases = NULL WHERE id = :id AND test_cases IS NOT NULL AND test_cases != '' AND test_cases NOT LIKE '[%'"),
+                sql_text(
+                    "UPDATE exercises SET test_cases = NULL WHERE id = :id AND test_cases IS NOT NULL AND test_cases != '' AND test_cases NOT LIKE '[%'"
+                ),
                 {"id": eid},
             )
             result2 = await session.execute(
@@ -1336,7 +1342,9 @@ async def _fix_code_exercises(session):
                 tpl = _generate_python_template(sol)
                 if tpl:
                     await session.execute(
-                        sql_text("UPDATE exercises SET code_template = :tpl WHERE id = :id AND (code_template IS NULL OR code_template = '')"),
+                        sql_text(
+                            "UPDATE exercises SET code_template = :tpl WHERE id = :id AND (code_template IS NULL OR code_template = '')"
+                        ),
                         {"tpl": tpl, "id": eid},
                     )
             python_fixed += 1
@@ -1348,6 +1356,7 @@ async def _fix_code_exercises(session):
 
 def _generate_python_template(solution: str) -> str:
     import re
+
     lines = solution.strip().split("\n")
     template_lines = []
     in_function = False
@@ -1357,7 +1366,7 @@ def _generate_python_template(solution: str) -> str:
         stripped = line.strip()
 
         if stripped.startswith("def "):
-            sig = re.sub(r":\s*$/, "", stripped)
+            sig = re.sub(r":\s*$", "", stripped)
             template_lines.append(line[: len(line) - len(line.lstrip())] + sig + ":")
             indent = line[: len(line) - len(line.lstrip())]
             template_lines.append(indent + "    # TODO: 在此写代码")
@@ -1366,7 +1375,7 @@ def _generate_python_template(solution: str) -> str:
             continue
 
         if stripped.startswith("class "):
-            sig = re.sub(r":\s*$/, "", stripped)
+            sig = re.sub(r":\s*$", "", stripped)
             template_lines.append(line[: len(line) - len(line.lstrip())] + sig + ":")
             in_class = True
             continue

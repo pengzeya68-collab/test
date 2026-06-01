@@ -116,25 +116,3 @@ export function clearAdminAuth() {
   localStorage.removeItem(ADMIN_TOKEN_KEY)
   localStorage.removeItem(ADMIN_INFO_KEY)
 }
-
-const authUtil = {
-  isAdminRoute,
-  getToken,
-  getAuthToken,
-  getUserToken,
-  getAdminToken,
-  setToken,
-  setUserInfo,
-  setAdminToken,
-  setAdminInfo,
-  clearAllAuth,
-  clearUserAuth,
-  clearAdminAuth,
-  safeJsonParse,
-  TOKEN_KEY,
-  USER_KEY,
-  ADMIN_TOKEN_KEY,
-  ADMIN_INFO_KEY,
-  ASSESSMENT_KEY,
-  SKILL_PROFILE_KEY,
-}

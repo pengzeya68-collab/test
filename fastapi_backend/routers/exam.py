@@ -583,9 +583,7 @@ async def get_exam_questions(
     if existing:
         attempt_id = existing.id
     else:
-        attempt = ExamAttempt(
-            user_id=user_id, exam_id=exam_id, start_time=now, status="in_progress", score=0
-        )
+        attempt = ExamAttempt(user_id=user_id, exam_id=exam_id, start_time=now, status="in_progress", score=0)
         db.add(attempt)
         await db.commit()
         await db.refresh(attempt)

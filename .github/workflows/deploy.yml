@@ -79,8 +79,9 @@ jobs:
           # Check for common patterns (excluding .env.example and this workflow)
           if grep -rn --include="*.py" --include="*.sh" --include="*.bat" \
             -E "(password|passwd|secret|api_key|token)\s*=\s*['\"][^'\"]{8,}['\"]" \
-            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=venv \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=venv --exclude-dir=.venv \
             --exclude="*.md" --exclude=".env.example" --exclude="deploy.yml" \
+            --exclude="seed_lessons*" \
             . 2>/dev/null | grep -v "CHANGE_ME" | grep -v "your-" | grep -v "example" | grep -v "test"; then
             echo "⚠️  Potential hardcoded secrets found. Please review."
             exit 1

@@ -65,6 +65,7 @@ async def _call_ai_with_config(messages: list[dict], config: AIConfig) -> str:
     client = None
     try:
         from fastapi_backend.utils.encryption import decrypt, DecryptionError
+
         try:
             api_key = decrypt(config.api_key)
         except (DecryptionError, Exception):

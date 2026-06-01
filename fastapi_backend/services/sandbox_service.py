@@ -76,9 +76,9 @@ class CodeSandbox:
 
     def _is_code_safe(self, code: str, language: str) -> tuple[bool, str]:
         # 移除注释和字符串中的内容，防止绕过
-        code_stripped = re.sub(r'#[^\n]*', '', code)  # 移除单行注释
-        code_stripped = re.sub(r'"""[\s\S]*?"""', '', code_stripped)  # 移除多行字符串
-        code_stripped = re.sub(r"'''[\s\S]*?'''", '', code_stripped)  # 移除多行字符串
+        code_stripped = re.sub(r"#[^\n]*", "", code)  # 移除单行注释
+        code_stripped = re.sub(r'"""[\s\S]*?"""', "", code_stripped)  # 移除多行字符串
+        code_stripped = re.sub(r"'''[\s\S]*?'''", "", code_stripped)  # 移除多行字符串
         code_lower = code_stripped.lower()
         code_original = code_stripped
 
@@ -201,7 +201,7 @@ class CodeSandbox:
             ]
             for pattern in advanced_bypass_patterns:
                 if re.search(pattern, code_original):
-                    return False, f"检测到潜在的沙箱绕过技术"
+                    return False, "检测到潜在的沙箱绕过技术"
 
         if language == "shell":
             lines = code.split("\n")
@@ -407,13 +407,25 @@ class CodeSandbox:
             # 允许的语句类型
             allowed_prefixes = ("SELECT", "SHOW", "DESCRIBE", "EXPLAIN", "PRAGMA")
             if not any(stmt_upper.startswith(prefix) for prefix in allowed_prefixes):
-                return False, f"只允许 SELECT/SHOW/DESCRIBE/EXPLAIN/PRAGMA 语句"
+                return False, "只允许 SELECT/SHOW/DESCRIBE/EXPLAIN/PRAGMA 语句"
             # 检测危险关键字
             dangerous_keywords = [
-                r"\bINSERT\b", r"\bUPDATE\b", r"\bDELETE\b", r"\bDROP\b",
-                r"\bCREATE\b", r"\bALTER\b", r"\bTRUNCATE\b", r"\bREPLACE\b",
-                r"\bGRANT\b", r"\bREVOKE\b", r"\bEXEC\b", r"\bEXECUTE\b",
-                r"\bVACUUM\b", r"\bATTACH\b", r"\bDETACH\b", r"\bLOAD_EXTENSION\b",
+                r"\bINSERT\b",
+                r"\bUPDATE\b",
+                r"\bDELETE\b",
+                r"\bDROP\b",
+                r"\bCREATE\b",
+                r"\bALTER\b",
+                r"\bTRUNCATE\b",
+                r"\bREPLACE\b",
+                r"\bGRANT\b",
+                r"\bREVOKE\b",
+                r"\bEXEC\b",
+                r"\bEXECUTE\b",
+                r"\bVACUUM\b",
+                r"\bATTACH\b",
+                r"\bDETACH\b",
+                r"\bLOAD_EXTENSION\b",
             ]
             for pattern in dangerous_keywords:
                 if re.search(pattern, stmt_upper):

@@ -389,6 +389,7 @@ class InterviewExecutionService:
 
             try:
                 from fastapi_backend.utils.encryption import decrypt, DecryptionError
+
                 try:
                     _api_key = decrypt(ai_config.api_key)
                 except (DecryptionError, Exception):

@@ -561,9 +561,9 @@ async def get_question_statistics(
                 func.avg(Submission.score).filter(Submission.score.is_not(None)).label("avg_score"),
                 func.max(Submission.score).label("max_score"),
                 func.min(Submission.score).label("min_score"),
-                func.count(Submission.id).filter(
-                    Submission.score.is_not(None), Submission.score >= 80
-                ).label("passed_count"),
+                func.count(Submission.id)
+                .filter(Submission.score.is_not(None), Submission.score >= 80)
+                .label("passed_count"),
                 func.count(Submission.id).filter(Submission.score.is_not(None)).label("total_with_score"),
                 func.count(Submission.id).filter(Submission.created_at >= seven_days_ago).label("recent_7d"),
                 func.count(Submission.id).filter(Submission.created_at >= thirty_days_ago).label("recent_30d"),

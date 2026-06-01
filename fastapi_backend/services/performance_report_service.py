@@ -66,6 +66,7 @@ async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict
 
     if config:
         from fastapi_backend.utils.encryption import decrypt, DecryptionError
+
         try:
             api_key = decrypt(config.api_key)
         except (DecryptionError, Exception):

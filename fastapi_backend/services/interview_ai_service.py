@@ -33,6 +33,7 @@ async def _call_openai_chat(
     http_client = httpx.AsyncClient(timeout=ai_config.timeout_seconds, trust_env=False)
     try:
         from fastapi_backend.utils.encryption import decrypt, DecryptionError
+
         try:
             api_key = decrypt(ai_config.api_key)
         except (DecryptionError, Exception):

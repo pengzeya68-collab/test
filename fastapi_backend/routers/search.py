@@ -26,10 +26,7 @@ async def global_search(
     offset = (page - 1) * page_size
 
     if not category or category == "exercises":
-        stmt = (
-            select(Exercise)
-            .where(or_(Exercise.title.contains(q), Exercise.description.contains(q)))
-        )
+        stmt = select(Exercise).where(or_(Exercise.title.contains(q), Exercise.description.contains(q)))
         if category:
             stmt = stmt.offset(offset).limit(page_size)
         else:
@@ -46,10 +43,7 @@ async def global_search(
         ]
 
     if not category or category == "posts":
-        stmt = (
-            select(Post)
-            .where(or_(Post.title.contains(q), Post.content.contains(q)))
-        )
+        stmt = select(Post).where(or_(Post.title.contains(q), Post.content.contains(q)))
         if category:
             stmt = stmt.offset(offset).limit(page_size)
         else:
@@ -69,10 +63,7 @@ async def global_search(
         results["exams"] = [{"id": e.id, "title": e.title, "difficulty": e.difficulty} for e in r.scalars().all()]
 
     if not category or category == "paths":
-        stmt = (
-            select(LearningPath)
-            .where(or_(LearningPath.title.contains(q), LearningPath.description.contains(q)))
-        )
+        stmt = select(LearningPath).where(or_(LearningPath.title.contains(q), LearningPath.description.contains(q)))
         if category:
             stmt = stmt.offset(offset).limit(page_size)
         else:

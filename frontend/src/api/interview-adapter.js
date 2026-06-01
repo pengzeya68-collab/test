@@ -12,9 +12,8 @@ export async function chat(params) {
         params: { page: 1, size: 1, status_filter: 'started' }
       })
 
-      let sessionId
       if (sessionsRes.data?.items?.length > 0) {
-        sessionId = sessionsRes.data.items[0].id
+        // reuse existing session
       } else {
         const questionsRes = await request.get('/interview/questions', {
           params: { page: 1, size: 1 }
@@ -22,10 +21,9 @@ export async function chat(params) {
 
         if (questionsRes.data?.items?.length > 0) {
           const questionId = questionsRes.data.items[0].id
-          const sessionRes = await request.post('/interview/sessions', {
+          await request.post('/interview/sessions', {
             question_id: questionId
           })
-          sessionId = sessionRes.data.id
         } else {
           return { answer: '目前没有可用的面试题目，请联系管理员添加题目。' }
         }
@@ -141,7 +139,7 @@ export async function startInterview(params) {
         answer += '**要求**:\n请实现解决方案，并说明你的思路。'
         return { answer }
       }
-    } catch {}
+    } catch { /* fallback below */ }
     return {
       answer: `欢迎参加${position}${round}模拟面试！\n\n**模拟面试题目**:\n请实现一个函数，检查字符串是否是回文。\n\n**要求**:\n1. 忽略空格和标点符号\n2. 不区分大小写\n3. 说明时间复杂度和空间复杂度\n\n请开始你的回答。`
     }

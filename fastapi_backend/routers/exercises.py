@@ -270,8 +270,12 @@ async def execute_sql(
 
         # 检测危险关键字（即使是查询也可能包含危险操作）
         dangerous_keywords = [
-            r"\bATTACH\b", r"\bDETACH\b", r"\bVACUUM\b", r"\bLOAD_EXTENSION\b",
-            r"\bEXEC\b", r"\bEXECUTE\b",
+            r"\bATTACH\b",
+            r"\bDETACH\b",
+            r"\bVACUUM\b",
+            r"\bLOAD_EXTENSION\b",
+            r"\bEXEC\b",
+            r"\bEXECUTE\b",
         ]
         for pattern in dangerous_keywords:
             if re.search(pattern, sql_upper):

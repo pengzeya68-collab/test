@@ -137,6 +137,7 @@ async def logout(
             await auth_service.add_to_blacklist(body.refresh_token, token_type="refresh", user_id=current_user.id)
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"吊销 refresh token 失败: {e}", exc_info=True)
 

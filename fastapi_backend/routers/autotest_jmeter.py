@@ -1003,6 +1003,7 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, db: AsyncSession = Depe
 
     if config:
         from fastapi_backend.utils.encryption import decrypt, DecryptionError
+
         try:
             api_key = decrypt(config.api_key)
         except (DecryptionError, Exception):

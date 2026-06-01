@@ -630,13 +630,10 @@ async def get_wrong_answers(
         }
 
     # 使用子查询找出已经有成功记录的习题ID
-    correct_exercises_stmt = (
-        select(distinct(ExerciseSubmissionRecord.exercise_id))
-        .where(
-            ExerciseSubmissionRecord.user_id == current_user.id,
-            ExerciseSubmissionRecord.result == "pass",
-            ExerciseSubmissionRecord.exercise_id.in_(wrong_exercise_ids),
-        )
+    correct_exercises_stmt = select(distinct(ExerciseSubmissionRecord.exercise_id)).where(
+        ExerciseSubmissionRecord.user_id == current_user.id,
+        ExerciseSubmissionRecord.result == "pass",
+        ExerciseSubmissionRecord.exercise_id.in_(wrong_exercise_ids),
     )
     correct_result = await db.execute(correct_exercises_stmt)
     mastered_ids = {row[0] for row in correct_result.all()}
@@ -698,10 +695,7 @@ async def get_wrong_answers(
     end = start + page_size
     paginated_wrong = wrong_list[start:end]
 
-    mastered_list = [
-        {**exercise_map.get(eid, {}), "status": "mastered"}
-        for eid in mastered_ids
-    ]
+    mastered_list = [{**exercise_map.get(eid, {}), "status": "mastered"} for eid in mastered_ids]
 
     return {
         "wrong_answers": paginated_wrong,
@@ -726,15 +720,12 @@ async def get_daily_tasks(
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     # 使用数据库聚合查询今日提交统计
-    today_stats_stmt = (
-        select(
-            func.count().label("total"),
-            func.sum(func.cast(ExerciseSubmissionRecord.result == "pass", Integer)).label("correct"),
-        )
-        .where(
-            ExerciseSubmissionRecord.user_id == current_user.id,
-            ExerciseSubmissionRecord.created_at >= today_start,
-        )
+    today_stats_stmt = select(
+        func.count().label("total"),
+        func.sum(func.cast(ExerciseSubmissionRecord.result == "pass", Integer)).label("correct"),
+    ).where(
+        ExerciseSubmissionRecord.user_id == current_user.id,
+        ExerciseSubmissionRecord.created_at >= today_start,
     )
     today_result = await db.execute(today_stats_stmt)
     today_stats = today_result.one()
@@ -837,7 +828,7 @@ async def get_related_exercises(
 
     base_conditions = [
         Exercise.id != exercise_id,
-        Exercise.is_public == True,
+        Exercise.is_public,
     ]
     if exercise.exercise_type:
         base_conditions.append(Exercise.exercise_type == exercise.exercise_type)
