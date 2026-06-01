@@ -254,7 +254,7 @@ class AITestCaseGenerator:
             # 正向用例
             assert_rules = []
             for status in api.get("responses", {}):
-                if status.isdigit() and int(status) < 400:
+                if str(status).isdigit() and int(status) < 400:
                     assert_rules.append(
                         {
                             "field": "$",
