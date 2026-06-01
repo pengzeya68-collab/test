@@ -123,11 +123,18 @@ async def update_global_variable(
     # 对加密的变量值进行加密
     if "is_encrypted" in update_data or "value" in update_data:
         is_encrypted = update_data.get("is_encrypted", variable.is_encrypted)
+        new_value = update_data.get("value")
         if is_encrypted:
-            update_data["value"] = encrypt(update_data.get("value", variable.value))
+            if new_value is not None:
+                # 有新值：加密新值
+                update_data["value"] = encrypt(new_value)
+            elif not variable.is_encrypted:
+                # 无新值但原来没加密：加密当前值
+                update_data["value"] = encrypt(variable.value)
+            # 无新值且原来已加密：不需要重新加密，跳过
         else:
             # 如果从加密改为非加密，需要先解密当前值
-            if variable.is_encrypted and "value" not in update_data:
+            if variable.is_encrypted and new_value is None:
                 update_data["value"] = decrypt(variable.value)
 
     for field, value in update_data.items():
@@ -158,26 +165,37 @@ async def batch_create_global_variables(
 ):
     """批量创建全局变量"""
     created_variables = []
+    skipped_names = []
     for variable_data in variables_in:
+        # 验证必填字段
+        if not variable_data.get("name") or "value" not in variable_data:
+            continue
         # 检查变量名是否已存在
         result = await db.execute(
             select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_data["name"])
         )
         existing_variable = result.scalar_one_or_none()
-        if not existing_variable:
-            # 对加密的变量值进行加密
-            if variable_data.get("is_encrypted"):
-                variable_data["value"] = encrypt(variable_data["value"])
-            variable = AutoTestGlobalVariable(**variable_data)
-            db.add(variable)
-            created_variables.append(variable)
+        if existing_variable:
+            skipped_names.append(variable_data["name"])
+            continue
+        # 对加密的变量值进行加密
+        if variable_data.get("is_encrypted"):
+            variable_data["value"] = encrypt(variable_data["value"])
+        variable = AutoTestGlobalVariable(**variable_data)
+        db.add(variable)
+        created_variables.append(variable)
 
     if created_variables:
         await db.commit()
         for variable in created_variables:
             await db.refresh(variable)
 
-    return [_variable_to_dict(v) for v in created_variables]
+    return {
+        "created": [_variable_to_dict(v) for v in created_variables],
+        "skipped": skipped_names,
+        "created_count": len(created_variables),
+        "skipped_count": len(skipped_names),
+    }
 
 
 @router.delete("/batch")
@@ -186,6 +204,7 @@ async def batch_delete_global_variables(
     db: AsyncSession = Depends(get_db),
 ):
     """批量删除全局变量"""
-    await db.execute(delete(AutoTestGlobalVariable).where(AutoTestGlobalVariable.id.in_(variable_ids)))
+    result = await db.execute(delete(AutoTestGlobalVariable).where(AutoTestGlobalVariable.id.in_(variable_ids)))
     await db.commit()
-    return {"message": f"成功删除 {len(variable_ids)} 个全局变量"}
+    deleted_count = result.rowcount
+    return {"message": f"成功删除 {deleted_count} 个全局变量", "deleted_count": deleted_count}

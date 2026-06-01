@@ -18,6 +18,10 @@ from fastapi_backend.utils.autotest_helpers import (
     convert_to_dict,
     extract_jsonpath_value,
 )
+from fastapi_backend.services.autotest_assertion_engine import (
+    execute_assertions,
+    extract_variables_from_response,
+)
 from fastapi_backend.services.autotest_variable_service import save_variables_to_db
 
 # from fastapi_backend.services.autotest_report_service import write_allure_results
@@ -106,6 +110,9 @@ class ScenarioExecutionEngine:
                         self.base_url = env.base_url
                         self.context_vars["base_url"] = env.base_url
 
+                # 记录初始变量名，用于后续区分新提取的变量
+                self._initial_var_names = set(self.context_vars.keys())
+
                 # 获取所有启用的步骤并排序
                 all_steps = sorted(
                     [s for s in scenario.steps if s.is_active],
@@ -150,9 +157,12 @@ class ScenarioExecutionEngine:
                             step_result["status"] = "failed"
                             self.step_results.append(step_result)
                             self.total_duration += step_result.get("duration", 0)
-                            failed_encountered = True
+                            # on_error=continue 时不触发 fail_fast
+                            on_error = getattr(step, "on_error", "stop") or "stop"
+                            if on_error != "continue":
+                                failed_encountered = True
                         else:
-                            step_result["status"] = "success"
+                            step_result["status"] = "success" if step_result.get("status") != "skipped" else "skipped"
                             self.step_results.append(step_result)
                             self.total_duration += step_result.get("duration", 0)
 
@@ -709,6 +719,125 @@ class TestScenario{scenario_id}:
             }
         step_start_time = time.time()
 
+        # ---- 条件判断 ----
+        condition = getattr(step, "condition", None)
+        if condition and isinstance(condition, dict):
+            cond_field = condition.get("field", "")
+            cond_operator = condition.get("operator", "equals")
+            cond_expected = condition.get("value", "")
+            if cond_field:
+                from fastapi_backend.utils.autotest_helpers import extract_jsonpath_value
+                cond_actual = extract_jsonpath_value(self.context_vars, cond_field)
+                cond_passed = self._check_condition_value(cond_actual, cond_operator, cond_expected)
+                if not cond_passed:
+                    return {
+                        "step_id": step.id,
+                        "step_order": step.step_order,
+                        "api_case_id": step.api_case_id,
+                        "api_case_name": api_case.name if api_case else f"Step {step.step_order}",
+                        "method": api_case.method if api_case else "GET",
+                        "success": True,
+                        "status": "skipped",
+                        "response_time": 0,
+                        "error": None,
+                        "skip_reason": f"条件不满足: {cond_field} {cond_operator} {cond_expected} (实际: {cond_actual})",
+                    }
+
+        # ---- 执行前等待 ----
+        wait_ms = getattr(step, "wait_ms", 0) or 0
+        if wait_ms > 0:
+            await asyncio.sleep(wait_ms / 1000.0)
+
+        # ---- 重试配置 ----
+        retry_count = getattr(step, "retry_count", 0) or 0
+        retry_delay_ms = getattr(step, "retry_delay_ms", 1000) or 1000
+        on_error = getattr(step, "on_error", "stop") or "stop"
+
+        last_error = None
+        last_result = None
+
+        for attempt in range(retry_count + 1):
+            if attempt > 0:
+                _logger.info(f"步骤 {step.step_order} 第 {attempt} 次重试")
+                await asyncio.sleep(retry_delay_ms / 1000.0)
+
+            try:
+                result = await self._execute_step_core(db, step, api_case, step_start_time)
+                last_result = result
+                if result.get("success", False):
+                    if attempt > 0:
+                        result["retry_attempt"] = attempt
+                    return result
+                else:
+                    last_error = result.get("error", "断言失败")
+                    if attempt < retry_count:
+                        continue  # 还有重试机会
+            except AssertionError as e:
+                last_error = str(e)
+                if attempt < retry_count:
+                    continue
+                raise
+            except Exception as e:
+                last_error = str(e)
+                if attempt < retry_count:
+                    continue
+                raise
+
+        # 所有重试都失败了
+        if last_result:
+            last_result["retry_attempt"] = retry_count
+            if on_error == "continue":
+                last_result["on_error_continued"] = True
+                _logger.warning(f"步骤 {step.step_order} 失败但 on_error=continue，继续执行")
+                return last_result
+            return last_result
+
+        raise AssertionError(last_error or "步骤执行失败")
+
+    def _check_condition_value(self, actual: Any, operator: str, expected: Any) -> bool:
+        """检查条件值是否满足"""
+        try:
+            if actual is None:
+                if operator in ("exists",):
+                    return False
+                if operator in ("not_exists",):
+                    return True
+                if operator in ("empty",):
+                    return True
+                if operator in ("not_empty",):
+                    return False
+                if operator in ("not_equals", "ne", "!="):
+                    return True
+                return False
+
+            if operator in ("equals", "eq", "=="):
+                return str(actual) == str(expected)
+            elif operator in ("not_equals", "ne", "!="):
+                return str(actual) != str(expected)
+            elif operator == "contains":
+                return str(expected) in str(actual)
+            elif operator in ("gt", ">"):
+                return float(actual) > float(expected)
+            elif operator in ("lt", "<"):
+                return float(actual) < float(expected)
+            elif operator in ("gte", ">="):
+                return float(actual) >= float(expected)
+            elif operator in ("lte", "<="):
+                return float(actual) <= float(expected)
+            elif operator == "exists":
+                return actual is not None
+            elif operator == "not_exists":
+                return actual is None
+            elif operator == "empty":
+                return not actual
+            elif operator == "not_empty":
+                return bool(actual)
+        except Exception:
+            return False
+        return False
+
+    async def _execute_step_core(self, db, step, api_case, step_start_time) -> Dict[str, Any]:
+        """步骤核心执行逻辑（单次尝试）"""
         try:
             request_config = {
                 "method": api_case.method,
@@ -725,12 +854,20 @@ class TestScenario{scenario_id}:
                 if "headers" in overrides:
                     request_config["headers"].update(overrides["headers"])
                 if "payload" in overrides:
-                    request_config["payload"].update(overrides["payload"])
+                    if isinstance(request_config["payload"], dict):
+                        request_config["payload"].update(overrides["payload"])
+                    elif isinstance(request_config["payload"], str):
+                        # 字符串 payload 无法 merge，用 override 替换
+                        request_config["payload"] = overrides["payload"]
 
             all_vars = dict(self.context_vars)
             request_config["url"] = replace_variables(request_config["url"], all_vars)
             request_config["headers"] = replace_variables(request_config["headers"], all_vars)
             request_config["payload"] = replace_variables(request_config["payload"], all_vars)
+            # 替换 query params 中的变量
+            raw_params = getattr(api_case, "params", None)
+            if raw_params and isinstance(raw_params, dict):
+                request_config["params"] = replace_variables(raw_params, all_vars)
 
             if not request_config["url"].startswith(("http://", "https://")):
                 if self.base_url:
@@ -750,22 +887,70 @@ class TestScenario{scenario_id}:
                 final_headers.update(raw_headers)
 
             raw_payload = request_config.get("body") or request_config.get("payload") or ""
+            body_type = getattr(api_case, "body_type", "none") or "none"
+            content_type = getattr(api_case, "content_type", "application/json") or "application/json"
 
             req_kwargs = {"method": method, "url": url}
 
-            if raw_payload:
-                if isinstance(raw_payload, str):
-                    try:
-                        parsed_json = json.loads(raw_payload)
-                        req_kwargs["json"] = parsed_json
-                    except json.JSONDecodeError:
-                        req_kwargs["content"] = raw_payload.encode("utf-8")
-                        if not any(k.lower() == "content-type" for k in final_headers.keys()):
-                            final_headers["Content-Type"] = "application/json"
-                elif isinstance(raw_payload, dict):
-                    req_kwargs["json"] = raw_payload
+            # 添加 query params
+            request_params = request_config.get("params")
+            if request_params:
+                req_kwargs["params"] = request_params
+
+            # 根据 body_type 构建请求体
+            if raw_payload and method.upper() in ("POST", "PUT", "PATCH"):
+                if body_type == "graphql":
+                    graphql_body = {}
+                    if isinstance(raw_payload, dict):
+                        graphql_body["query"] = raw_payload.get("query", str(raw_payload))
+                        if "variables" in raw_payload:
+                            graphql_body["variables"] = raw_payload["variables"]
+                    elif isinstance(raw_payload, str):
+                        try:
+                            parsed = json.loads(raw_payload)
+                            graphql_body["query"] = parsed.get("query", raw_payload)
+                            if "variables" in parsed:
+                                graphql_body["variables"] = parsed["variables"]
+                        except json.JSONDecodeError:
+                            graphql_body["query"] = raw_payload
+                    req_kwargs["json"] = graphql_body
+                    final_headers["Content-Type"] = "application/json"
+                elif body_type == "multipart":
+                    if isinstance(raw_payload, dict):
+                        import base64
+                        files = {}
+                        data = {}
+                        for k, v in raw_payload.items():
+                            if isinstance(v, dict) and v.get("__file__"):
+                                file_content = base64.b64decode(v.get("content", ""))
+                                files[k] = (v.get("filename", "file"), file_content, v.get("content_type", "application/octet-stream"))
+                            else:
+                                data[k] = v
+                        if files:
+                            req_kwargs["files"] = files
+                        if data:
+                            req_kwargs["data"] = data
+                    else:
+                        req_kwargs["data"] = raw_payload
+                elif body_type in ("xml", "raw_xml"):
+                    req_kwargs["data"] = str(raw_payload) if raw_payload else ""
+                    final_headers["Content-Type"] = content_type if content_type != "application/json" else "application/xml"
+                elif body_type == "form-data":
+                    req_kwargs["data"] = raw_payload
                 else:
-                    req_kwargs["content"] = str(raw_payload).encode("utf-8")
+                    # 默认: json / raw / none
+                    if isinstance(raw_payload, str):
+                        try:
+                            parsed_json = json.loads(raw_payload)
+                            req_kwargs["json"] = parsed_json
+                        except json.JSONDecodeError:
+                            req_kwargs["content"] = raw_payload.encode("utf-8")
+                            if not any(k.lower() == "content-type" for k in final_headers.keys()):
+                                final_headers["Content-Type"] = "application/json"
+                    elif isinstance(raw_payload, dict):
+                        req_kwargs["json"] = raw_payload
+                    else:
+                        req_kwargs["content"] = str(raw_payload).encode("utf-8")
 
             if method.upper() in ["POST", "PUT", "PATCH"]:
                 if not any(k.lower() == "content-type" for k in final_headers.keys()):
@@ -773,29 +958,10 @@ class TestScenario{scenario_id}:
 
             req_kwargs["headers"] = final_headers
 
-            if not raw_payload and "application/json" in final_headers.get("Content-Type", ""):
-                req_kwargs["json"] = {}
-
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.request(**req_kwargs)
 
             step_duration = int((time.time() - step_start_time) * 1000)
-
-            # 默认断言：状态码 >= 400 视为失败
-            assertions = api_case.assert_rules
-            if assertions:
-                if isinstance(assertions, list):
-                    for rule in assertions:
-                        field = rule.get("field") or rule.get("target", "")
-                        if field == "status_code":
-                            # has_status_code_assertion = True
-                            break
-                elif isinstance(assertions, dict):
-                    if "status_code" in assertions:
-                        pass
-
-            if response.status_code >= 400:
-                raise AssertionError(f"默认断言失败: 期望 2xx/3xx (< 400), 实际返回 {response.status_code}")
 
             # 解析响应
             response_data = {
@@ -809,47 +975,23 @@ class TestScenario{scenario_id}:
             except Exception as e:
                 _logger.debug(f"响应JSON解析失败: {e}")
 
-            # 执行断言
-            if not assertions:
-                assertions = []
-            elif isinstance(assertions, dict):
-                if len(assertions) == 0:
-                    assertions = []
-                else:
-                    normalized_assertions = []
-                    for key, value in assertions.items():
-                        if isinstance(value, dict):
-                            normalized_assertions.append(
-                                {
-                                    "field": key,
-                                    "operator": value.get("operator", "equals"),
-                                    "expectedValue": value.get("expectedValue") or value.get("eq"),
-                                }
-                            )
-                        else:
-                            normalized_assertions.append(
-                                {
-                                    "field": key,
-                                    "operator": "equals",
-                                    "expectedValue": value,
-                                }
-                            )
-                    assertions = normalized_assertions
-            elif not isinstance(assertions, list):
-                assertions = []
+            # 使用统一断言引擎执行断言
+            assertions = api_case.assert_rules
+            assert_result = execute_assertions(
+                assertions, response.status_code,
+                response_json if "response_json" in dir() else response_data.get("json"),
+                step_duration, dict(response.headers)
+            )
 
-            passed_assertions = 0
-            failed_assertions = []
-            total_assertions = 0
+            passed_assertions = sum(1 for d in assert_result.get("details", []) if d.get("passed"))
+            failed_assertions = [
+                {"assertion": {"field": d.get("field", ""), "operator": d.get("operator", ""), "expectedValue": d.get("expected", "")}, "reason": d.get("actual", "")}
+                for d in assert_result.get("details", []) if not d.get("passed")
+            ]
+            total_assertions = len(assert_result.get("details", []))
 
-            if assertions:
-                total_assertions = len(assertions)
-                for assertion in assertions:
-                    passed, reason = self._check_assertion(assertion, response_data)
-                    if passed:
-                        passed_assertions += 1
-                    else:
-                        failed_assertions.append({"assertion": assertion, "reason": reason})
+            if not assert_result["passed"]:
+                raise AssertionError(assert_result["message"])
 
             # 提取变量
             extractors = getattr(api_case, "extractors", None) or []
@@ -888,135 +1030,71 @@ class TestScenario{scenario_id}:
             raise
 
     def _get_initial_vars(self) -> set:
-        return set()
+        """返回场景执行开始时已有的变量名集合，用于区分新提取的变量"""
+        # 在 execute() 中初始化时已设置
+        return getattr(self, '_initial_var_names', set())
 
-    def _check_assertion(self, assertion: Dict, response_data: Dict) -> tuple:
-        field = assertion.get("field") or assertion.get("target", "")
-        operator = assertion.get("operator") or assertion.get("condition", "equals")
-        expected = assertion.get("expectedValue") or assertion.get("value", "")
-        expression = assertion.get("expression", "")
+    def _check_assertion(self, assertion: Dict, response_data: Dict, response_time_ms: float = 0) -> tuple:
+        """
+        检查单个断言规则（委托给统一断言引擎）。
+        """
+        from fastapi_backend.services.autotest_assertion_engine import (
+            get_field_value as _get_field,
+            compare_values as _compare,
+            _normalize_expected,
+            _normalize_operator,
+            _normalize_field,
+        )
+
+        field = _normalize_field(assertion)
+        operator = _normalize_operator(assertion)
+        expected = _normalize_expected(assertion)
 
         try:
             if field == "status_code":
                 actual = response_data.get("status", 0)
+            elif field == "response_time":
+                actual = response_time_ms
             elif field == "body":
                 actual = response_data.get("body", "")
-            elif expression:
-                if isinstance(response_data.get("json"), dict):
-                    keys = expression.replace("$.", "").split(".")
-                    actual = response_data["json"]
-                    for key in keys:
-                        if isinstance(actual, dict) and key in actual:
-                            actual = actual[key]
-                        else:
-                            actual = None
+            elif field == "headers":
+                actual = response_data.get("headers", {})
+            elif field.startswith("headers."):
+                header_name = field[len("headers."):]
+                actual = response_data.get("headers", {}).get(header_name)
+            else:
+                json_data = response_data.get("json")
+                if json_data is not None and isinstance(json_data, dict):
+                    path = field
+                    for prefix in ("json_body.", "response.", "body."):
+                        if path.startswith(prefix):
+                            path = path[len(prefix):]
                             break
+                    actual = extract_jsonpath_value(json_data, path)
                 else:
                     actual = None
-            elif field.startswith("body."):
-                parts = field.split(".", 1)
-                if len(parts) == 2 and isinstance(response_data.get("json"), dict):
-                    actual = response_data["json"].get(parts[1], "")
-                else:
-                    actual = ""
-            else:
-                actual = ""
 
-            op_map = {
-                "eq": "equals",
-                "equals": "equals",
-                "equal": "equals",
-                "ne": "not_equals",
-                "not_equals": "not_equals",
-                "not_equal": "not_equals",
-                "contains": "contains",
-                "not_contains": "not_contains",
-                "gt": "gt",
-                "lt": "lt",
-                "regex": "regex",
-                "match": "regex",
-            }
-            operator = op_map.get(operator, operator)
-
-            if operator == "equals":
-                passed = str(actual) == str(expected)
-            elif operator == "not_equals":
-                passed = str(actual) != str(expected)
-            elif operator == "contains":
-                passed = str(expected) in str(actual)
-            elif operator == "not_contains":
-                passed = str(expected) not in str(actual)
-            elif operator == "gt":
-                passed = float(actual) > float(expected) if actual and expected else False
-            elif operator == "lt":
-                passed = float(actual) < float(expected) if actual and expected else False
-            elif operator == "gte":
-                passed = float(actual) >= float(expected) if actual and expected else False
-            elif operator == "lte":
-                passed = float(actual) <= float(expected) if actual and expected else False
-            elif operator == "regex":
-                import re
-
-                passed = bool(re.search(str(expected), str(actual)))
-            elif operator == "range":
-                range_text = str(expected).lower()
-                if "2xx/3xx" in range_text or ("2xx" in range_text and "3xx" in range_text):
-                    passed = 200 <= actual < 400
-                elif "2xx" == range_text:
-                    passed = 200 <= actual < 300
-                elif "3xx" == range_text:
-                    passed = 300 <= actual < 400
-                elif "5xx" == range_text:
-                    passed = 500 <= actual < 600
-                elif "4xx" == range_text:
-                    passed = 400 <= actual < 500
-                else:
-                    passed = 200 <= actual < 400
-            else:
-                passed = False
-
+            passed = _compare(actual, operator, expected)
             return passed, "" if passed else f"期望 {expected}，实际 {actual}"
 
         except Exception as e:
             return False, f"断言检查异常: {str(e)}"
 
     def _extract_variables(self, extractors: List[Dict], response_data: Dict):
+        """提取变量（使用统一引擎），并持久化新变量"""
         if not extractors:
             return
 
         body = response_data.get("body", "")
-        newly_extracted = {}
+        json_data = response_data.get("json")
+        headers = response_data.get("headers", {})
 
-        for extractor in extractors:
-            var_name = extractor.get("variableName")
-            extractor_type = extractor.get("extractorType", "jsonpath")
-            expression = extractor.get("expression")
-            default_value = extractor.get("defaultValue", "")
+        newly_extracted = extract_variables_from_response(
+            extractors, json_data, body, headers
+        )
 
-            if not var_name or not expression:
-                continue
-
-            value = default_value
-
-            try:
-                if extractor_type == "jsonpath":
-                    json_data = response_data.get("json")
-                    if json_data is not None:
-                        value = extract_jsonpath_value(json_data, expression, default_value)
-                elif extractor_type == "regex":
-                    import re
-
-                    match = re.search(expression, body)
-                    if match:
-                        value = match.group(1) if match.groups() else match.group(0)
-            except Exception as e:
-                _logger.warning(f"变量提取失败 {var_name}: {str(e)}")
-
-            self.context_vars[var_name] = value
-            newly_extracted[var_name] = value
-
-        # 只将本次新提取的变量持久化到全局变量表
         if newly_extracted:
+            self.context_vars.update(newly_extracted)
             try:
                 loop = asyncio.get_running_loop()
                 loop.create_task(save_variables_to_db(dict(newly_extracted)))

@@ -25,7 +25,7 @@ router = APIRouter(
 
 import re
 
-_SENSITIVE_PATTERN = re.compile(r"(password|secret|key|token)", re.IGNORECASE)
+_SENSITIVE_PATTERN = re.compile(r"(password|secret|key|token|auth|credential|private|api_key|apikey|access_key|secret_key)", re.IGNORECASE)
 
 
 def _mask_variables(variables):

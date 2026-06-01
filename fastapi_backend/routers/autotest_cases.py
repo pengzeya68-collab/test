@@ -59,7 +59,7 @@ async def list_cases(
     """获取接口用例列表，支持分页、搜索、筛选"""
     query = select(AutoTestCase)
 
-    if group_id:
+    if group_id is not None:
         query = query.where(AutoTestCase.group_id == group_id)
     if keyword:
         query = query.where(
@@ -126,7 +126,7 @@ async def get_all_cases(
 ):
     """获取所有用例（用于选择）"""
     query = select(AutoTestCase).order_by(AutoTestCase.updated_at.desc())
-    if group_id:
+    if group_id is not None:
         query = query.where(AutoTestCase.group_id == group_id)
     result = await db.execute(query)
     cases = result.scalars().all()
@@ -227,7 +227,7 @@ async def update_case(
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
 
-    update_data = case_in.model_dump(exclude_unset=True, exclude_none=True)
+    update_data = case_in.model_dump(exclude_unset=True)
     if "assertions" in update_data:
         update_data["assert_rules"] = update_data.pop("assertions")
     if update_data.get("folder_id") is not None:

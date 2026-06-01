@@ -116,7 +116,7 @@ async def get_available_cases(
     query = select(AutoTestCase)
     if keyword:
         query = query.where(AutoTestCase.name.like(f"%{keyword}%"))
-    if group_id:
+    if group_id is not None:
         query = query.where(AutoTestCase.group_id == group_id)
 
     result = await db.execute(query.order_by(AutoTestCase.updated_at.desc()))
@@ -451,7 +451,11 @@ async def parse_dataset_file(
     import csv
     import io
 
+    # 文件大小限制（10MB）
+    max_size = 10 * 1024 * 1024
     content = await file.read()
+    if len(content) > max_size:
+        raise HTTPException(status_code=413, detail="文件大小超过 10MB 限制")
 
     try:
         if file.filename.endswith(".csv"):
@@ -497,9 +501,11 @@ async def run_scenario_with_pytest(
         raise HTTPException(status_code=404, detail="场景不存在")
 
     try:
+        import asyncio
         from fastapi_backend.services.autotest_pytest_engine import run_scenario_pytest
 
-        exec_result = run_scenario_pytest(
+        exec_result = await asyncio.to_thread(
+            run_scenario_pytest,
             scenario_id=scenario_id,
             scenario_name=scenario.name,
             steps=request.steps,

@@ -436,7 +436,7 @@ async def run_case(case_id: int, body: CaseRunRequest = None, db: AsyncSession =
     logger.info(f"[run_case] case_id={case_id}, DB中查出的Params: {case.params}, type={type(case.params)}")
 
     env = None
-    if env_id:
+    if env_id is not None:
         try:
             env_id_int = int(env_id)
             result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id_int))
@@ -484,7 +484,7 @@ async def quick_run(
         raise HTTPException(status_code=404, detail="用例不存在")
 
     env = None
-    if env_id:
+    if env_id is not None:
         try:
             env_id_int = int(env_id)
             if env_id_int > 0:
@@ -539,7 +539,7 @@ async def batch_run(case_ids: List[int], env_id: int = None, db: AsyncSession = 
     cases = result.scalars().all()
 
     env = None
-    if env_id:
+    if env_id is not None:
         result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id))
         env = result.scalar_one_or_none()
     else:
@@ -579,28 +579,19 @@ async def batch_run(case_ids: List[int], env_id: int = None, db: AsyncSession = 
             )
             history_records.append(AutoTestHistory(
                 case_id=case.id,
-                case_name=case.name,
-                method=case.method,
-                url=case.url,
                 status="error",
-                status_code=None,
-                response_time=None,
+                execution_time=0,
                 error_message=str(result),
-                env_id=env.id if env else None,
             ))
         else:
             success_count += 1 if result["success"] else 0
             formatted_results.append({"case_id": case.id, "case_name": case.name, **result})
             history_records.append(AutoTestHistory(
                 case_id=case.id,
-                case_name=case.name,
-                method=case.method,
-                url=case.url,
                 status="success" if result["success"] else "failed",
-                status_code=result.get("status_code"),
-                response_time=result.get("response_time"),
+                execution_time=result.get("execution_time", 0),
+                response_data=result.get("response"),
                 error_message=result.get("error"),
-                env_id=env.id if env else None,
             ))
 
     # 批量保存执行历史

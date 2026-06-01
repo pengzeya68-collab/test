@@ -14,7 +14,7 @@ def find_variables(text: str) -> List[str]:
     """查找字符串中所有的 {{variable_name}} 占位符"""
     if not isinstance(text, str):
         return []
-    pattern = r"\{\{(\w+)\}\}"
+    pattern = r"\{\{([\w\-\.]+)\}\}"
     matches = re.findall(pattern, text)
     return list(set(matches))
 
@@ -46,7 +46,7 @@ def replace_variables_in_text(text: str, variables: Dict[str, Any]) -> str:
             return str(variables[var_name])
         return match.group(0)
 
-    pattern = r"\{\{(\w+)\}\}"
+    pattern = r"\{\{([\w\-\.]+)\}\}"
     return re.sub(pattern, replace_match, text)
 
 
