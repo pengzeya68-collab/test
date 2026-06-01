@@ -475,10 +475,11 @@ const fetchExercises = async () => {
       params.module = currentModule.value
     }
     const res = await request.get('/exercises', { params })
-    if (Array.isArray(res.data)) {
-      exercises.value = res.data
-    } else if (Array.isArray(res)) {
-      exercises.value = res
+    const data = res.data ?? res
+    if (Array.isArray(data)) {
+      exercises.value = data
+    } else if (data && Array.isArray(data.items)) {
+      exercises.value = data.items
     } else {
       exercises.value = []
     }
