@@ -30,6 +30,7 @@
             导入环境
           </el-button>
         </el-upload>
+        <el-button type="warning" @click="showHelp = true">❓ 使用说明</el-button>
       </div>
 
       <!-- 环境变量说明 -->
@@ -152,6 +153,7 @@
         </span>
       </template>
     </el-dialog>
+    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </el-drawer>
 </template>
 
@@ -160,6 +162,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { Plus, Download, Upload } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import autoTestRequest from '@/utils/autoTestRequest'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const props = defineProps({
   modelValue: {
@@ -189,6 +193,9 @@ const formData = ref({
 })
 
 const vars = ref([{ key: '', value: '' }])
+
+const showHelp = ref(false)
+const helpData = helpContent.environmentManager
 
 const addVar = () => {
   vars.value.push({ key: '', value: '' })

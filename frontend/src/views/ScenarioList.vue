@@ -39,6 +39,7 @@
         <el-tooltip content="环境管理" placement="top" popper-class="action-tooltip">
           <el-button :icon="Setting" @click="openEnvManager" />
         </el-tooltip>
+        <el-button @click="showHelp = true">❓ 使用说明</el-button>
         <el-button type="primary" @click="handleCreate">
           <el-icon><Plus /></el-icon>
           新建场景
@@ -184,6 +185,7 @@
       v-model="envManagerDrawerVisible"
       @close="handleEnvManagerClose"
     />
+    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </div>
 </template>
 
@@ -196,8 +198,12 @@ import EnvironmentManager from '@/components/EnvironmentManager.vue'
 import ScenarioExecutionDialog from '@/components/ScenarioExecutionDialog.vue'
 import ScheduleDialog from '@/views/scenario/ScheduleDialog.vue'
 import ExecutionHistoryDrawer from '@/views/scenario/ExecutionHistoryDrawer.vue'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const loading = ref(false)
+const showHelp = ref(false)
+const helpData = helpContent.scenarioList
 const scenarios = ref([])
 const totalScenarios = ref(0)
 const searchKeyword = ref('')

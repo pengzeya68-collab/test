@@ -212,26 +212,30 @@ class ScenarioExecutionEngine:
             overall_duration = int((time.time() - start_time) * 1000)
             history_id = str(uuid.uuid4())[:8]
 
-            temp_pytest_dir = AUTOTEST_DATA_DIR / "temp_pytest_tests"
-            allure_results_dir = AUTOTEST_DATA_DIR / "allure-results" / f"scenario_{self.scenario_id}_{history_id}"
-            report_dir = AUTOTEST_DATA_DIR / "reports" / f"scenario_{self.scenario_id}_{history_id}"
+            try:
+                temp_pytest_dir = AUTOTEST_DATA_DIR / "temp_pytest_tests"
+                allure_results_dir = AUTOTEST_DATA_DIR / "allure-results" / f"scenario_{self.scenario_id}_{history_id}"
+                report_dir = AUTOTEST_DATA_DIR / "reports" / f"scenario_{self.scenario_id}_{history_id}"
 
-            temp_pytest_dir.mkdir(parents=True, exist_ok=True)
-            allure_results_dir.mkdir(parents=True, exist_ok=True)
-            report_dir.mkdir(parents=True, exist_ok=True)
+                temp_pytest_dir.mkdir(parents=True, exist_ok=True)
+                allure_results_dir.mkdir(parents=True, exist_ok=True)
+                report_dir.mkdir(parents=True, exist_ok=True)
 
-            test_file_path = self._generate_pytest_test_file(temp_pytest_dir, scenario_name, history_id)
-            report_generated = await asyncio.to_thread(
-                self._run_pytest_and_generate_report,
-                test_file_path, str(allure_results_dir), str(report_dir)
-            )
-            if not report_generated:
-                self._write_fallback_report(report_dir, scenario_name, env_name, overall_duration)
+                test_file_path = self._generate_pytest_test_file(temp_pytest_dir, scenario_name, history_id)
+                report_generated = await asyncio.to_thread(
+                    self._run_pytest_and_generate_report,
+                    test_file_path, str(allure_results_dir), str(report_dir)
+                )
+                if not report_generated:
+                    self._write_fallback_report(report_dir, scenario_name, env_name, overall_duration)
 
-            index_html = report_dir / "index.html"
-            if index_html.exists():
-                report_url = f"/reports/scenario_{self.scenario_id}_{history_id}/index.html"
-            else:
+                index_html = report_dir / "index.html"
+                if index_html.exists():
+                    report_url = f"/reports/scenario_{self.scenario_id}_{history_id}/index.html"
+                else:
+                    report_url = None
+            except Exception as report_err:
+                _logger.error(f"报告生成失败（不影响执行结果）: {report_err}")
                 report_url = None
 
         # 统计
@@ -969,17 +973,17 @@ class TestScenario{scenario_id}:
                 "body": response.text,
                 "headers": dict(response.headers),
             }
+            response_json = None
             try:
                 response_json = response.json()
                 response_data["json"] = response_json
             except Exception as e:
                 _logger.debug(f"响应JSON解析失败: {e}")
 
-            # 使用统一断言引擎执行断言
             assertions = api_case.assert_rules
             assert_result = execute_assertions(
                 assertions, response.status_code,
-                response_json if "response_json" in dir() else response_data.get("json"),
+                response_json,
                 step_duration, dict(response.headers)
             )
 
@@ -1007,7 +1011,7 @@ class TestScenario{scenario_id}:
                 "headers": final_headers,
                 "payload": raw_payload
                 if isinstance(raw_payload, dict)
-                else (json.loads(raw_payload) if raw_payload and raw_payload.strip() else {}),
+                else (json.loads(raw_payload) if raw_payload and raw_payload.strip() and raw_payload.strip().startswith(("{", "[")) else raw_payload),
                 "success": len(failed_assertions) == 0,
                 "status_code": response.status_code,
                 "response_time": step_duration,

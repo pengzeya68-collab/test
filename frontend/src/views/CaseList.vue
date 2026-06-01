@@ -13,6 +13,7 @@
             />
           </el-select>
           <el-button type="primary" plain icon="Setting" @click="openEnvManager" />
+          <el-button size="default" @click="showHelp = true">❓ 使用说明</el-button>
         </div>
         <div class="toolbar-right">
           <el-input
@@ -315,6 +316,13 @@
         </el-table>
       </div>
     </el-dialog>
+
+    <HelpDrawer
+      v-model="showHelp"
+      :title="helpData.title"
+      :intro="helpData.intro"
+      :sections="helpData.sections"
+    />
   </el-card>
 </template>
 
@@ -337,6 +345,8 @@ import {
 } from '@element-plus/icons-vue'
 import CaseEditorDrawer from './CaseEditorDrawer.vue'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 import autoTestRequest from '@/utils/autoTestRequest'
 
 const props = defineProps({
@@ -359,6 +369,8 @@ const emit = defineEmits(['run', 'refresh-groups'])
 const loading = ref(false)
 const cases = ref([])
 const searchKeyword = ref('')
+const showHelp = ref(false)
+const helpData = helpContent.caseList
 const searchTimer = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(20)

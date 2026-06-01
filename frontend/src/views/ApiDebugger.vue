@@ -20,6 +20,9 @@
           <el-icon><FullScreen /></el-icon>
           {{ isFullscreen ? '退出全屏' : '全屏' }}
         </el-button>
+        <el-button size="small" @click="showHelp = true">
+          ❓ 使用说明
+        </el-button>
       </div>
     </div>
 
@@ -260,6 +263,13 @@
         <el-button type="primary" @click="confirmSaveToApiLibrary">确定</el-button>
       </template>
     </el-dialog>
+
+    <HelpDrawer
+      v-model="showHelp"
+      :title="helpData.title"
+      :intro="helpData.intro"
+      :sections="helpData.sections"
+    />
   </div>
 </template>
 
@@ -268,6 +278,8 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Right, Delete, Clock, Timer, MagicStick, DocumentCopy, DataAnalysis, Document, Plus, Search, Edit, FullScreen } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const props = defineProps({
   environmentList: { type: Array, default: () => [] }
@@ -295,6 +307,8 @@ const showHistory = ref(false)
 const saveToApiLibraryDialog = ref(false)
 const apiLibraryForm = ref({ name: '', group_id: '', description: '' })
 const apiGroups = ref([])
+const showHelp = ref(false)
+const helpData = helpContent.apiDebugger
 
 const toggleFullscreen = () => {
   const el = document.querySelector('.debug-container')

@@ -149,6 +149,9 @@
           <el-icon><Upload /></el-icon>
           <span>导入 cURL</span>
         </div>
+        <div class="tab-item help-tab" @click="showHelp = true">
+          <span>❓ 使用说明</span>
+        </div>
       </div>
     </div>
 
@@ -210,6 +213,13 @@
       v-model="resultDialogVisible"
       :result="runResult"
     />
+
+    <HelpDrawer
+      v-model="showHelp"
+      :title="helpData.title"
+      :intro="helpData.intro"
+      :sections="helpData.sections"
+    />
   </div>
 </template>
 
@@ -229,6 +239,8 @@ import MockService from './MockService.vue'
 import SuiteManager from './SuiteManager.vue'
 import CurlImportDialog from './CurlImportDialog.vue'
 import ExecutionResultDialog from './ExecutionResultDialog.vue'
+import HelpDrawer from '../components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 import autoTestRequest from '@/utils/autoTestRequest'
 
 const route = useRoute()
@@ -248,6 +260,8 @@ const interfaceLibraryRef = ref(null)
 
 const showCurlImport = ref(false)
 const curlImportData = ref(null)
+const showHelp = ref(false)
+const helpData = helpContent.autoTest
 
 const resultDialogVisible = ref(false)
 const runResult = ref({

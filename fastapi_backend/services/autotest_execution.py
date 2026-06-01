@@ -98,24 +98,18 @@ def _validate_url(url: str) -> bool:
 
 
 def _smart_type_convert(obj: Any) -> Any:
-    """
-    递归地将 dict/list 中看起来像数字的字符串值转换为数字类型。
-    注意：不转换 bool/null 字符串，避免破坏 API 的枚举值或字符串字段。
-    """
     if isinstance(obj, dict):
         return {k: _smart_type_convert(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [_smart_type_convert(item) for item in obj]
     elif isinstance(obj, str):
-        # 仅转换纯数字字符串（正整数和浮点数），不转换 bool/null
-        if obj and obj.lstrip("-").isdigit():
+        if obj and obj.lstrip("-").isdigit() and len(obj) > 1:
             try:
                 return int(obj)
             except ValueError:
                 pass
         try:
             float_val = float(obj)
-            # 确保是合法的数字字符串表示
             if obj.count(".") == 1 and obj.replace(".", "", 1).replace("-", "", 1).isdigit():
                 return float_val
         except (ValueError, OverflowError):
@@ -152,7 +146,10 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
         if isinstance(headers, dict):
             headers_str = json.dumps(headers, ensure_ascii=False)
             headers_str = replace_variables(headers_str, variables)
-            headers = json.loads(headers_str)
+            try:
+                headers = json.loads(headers_str)
+            except json.JSONDecodeError:
+                headers = replace_variables(headers, variables)
             headers = _smart_type_convert(headers)
         else:
             headers = replace_variables(headers, variables)
@@ -162,7 +159,10 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
         if isinstance(payload, dict):
             payload_str = json.dumps(payload, ensure_ascii=False)
             payload_str = replace_variables(payload_str, variables)
-            payload = json.loads(payload_str)
+            try:
+                payload = json.loads(payload_str)
+            except json.JSONDecodeError:
+                payload = replace_variables(payload, variables)
             payload = _smart_type_convert(payload)
         else:
             payload = replace_variables(payload, variables)
@@ -330,7 +330,7 @@ async def quick_run_case(
         extractors = None
         if hasattr(case, "extractors"):
             extractors = case.extractors
-        extracted_vars = await extract_variables_from_response(
+        extracted_vars = extract_variables_from_response(
             extractors, response_data, response.text, dict(response.headers)
         )
         if extracted_vars:

@@ -6,6 +6,7 @@
         <span class="df-subtitle">定义规则，一键生成测试数据</span>
       </div>
       <div class="df-header-right">
+        <el-button @click="showHelp = true">❓ 使用说明</el-button>
         <el-button @click="showPresetDialog = true">
           <el-icon><MagicStick /></el-icon>
           从预设创建
@@ -370,6 +371,8 @@
         <el-button type="primary" @click="doBind" :loading="bindLoading" :disabled="!bindScenarioId">绑定</el-button>
       </template>
     </el-dialog>
+
+    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </div>
 </template>
 
@@ -378,6 +381,8 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Refresh, Download, VideoPlay, MagicStick, Loading } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const commonRules = [
   { type: 'fixed', label: '固定值', icon: '📌' },
@@ -511,6 +516,8 @@ const runResult = ref(null)
 const showPresetDialog = ref(false)
 const showBindDialog = ref(false)
 const bindScenarioId = ref(null)
+const showHelp = ref(false)
+const helpData = helpContent.dataFactory
 
 const addField = () => {
   form.value.fields.push({

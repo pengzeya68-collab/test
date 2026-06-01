@@ -1,8 +1,13 @@
 <template>
   <div class="mock-service-page">
     <div class="page-header">
-      <h2>Mock 服务管理</h2>
-      <p class="subtitle">创建和管理 Mock API，支持条件响应和请求日志</p>
+      <div class="header-row">
+        <div>
+          <h2>Mock 服务管理</h2>
+          <p class="subtitle">创建和管理 Mock API，支持条件响应和请求日志</p>
+        </div>
+        <el-button @click="showHelp = true">❓ 使用说明</el-button>
+      </div>
     </div>
 
     <!-- Mock 项目列表 -->
@@ -186,6 +191,8 @@
         <el-button type="primary" @click="saveRule" :loading="saving">保存</el-button>
       </template>
     </el-dialog>
+
+    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </div>
 </template>
 
@@ -194,6 +201,8 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, Refresh, Upload, Loading } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const API_BASE = '/mock'
 
@@ -212,6 +221,9 @@ const showCreateProject = ref(false)
 const showCreateRule = ref(false)
 const editingProject = ref(null)
 const editingRule = ref(null)
+
+const showHelp = ref(false)
+const helpData = helpContent.mockService
 
 // 表单数据
 const projectForm = ref({ name: '', description: '', base_url_slug: '' })
@@ -496,6 +508,12 @@ onMounted(() => {
 
 .page-header {
   margin-bottom: 30px;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .page-header h2 {

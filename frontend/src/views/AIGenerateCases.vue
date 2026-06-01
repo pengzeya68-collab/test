@@ -8,6 +8,9 @@
         <h2>AI 智能生成测试用例</h2>
         <p class="subtitle">上传 Swagger/OpenAPI 文档，AI 自动生成带断言、变量提取、场景链的完整用例</p>
       </div>
+      <div class="header-right">
+        <el-button @click="showHelp = true">❓ 使用说明</el-button>
+      </div>
     </div>
 
     <!-- 步骤条 -->
@@ -205,6 +208,7 @@
         </el-button>
       </div>
     </div>
+    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </div>
 </template>
 
@@ -214,8 +218,13 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, UploadFilled, Loading } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const router = useRouter()
+
+const showHelp = ref(false)
+const helpData = helpContent.aiGenerateCases
 
 const currentStep = ref(0)
 const swaggerFile = ref(null)

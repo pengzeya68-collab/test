@@ -1,8 +1,11 @@
 <template>
   <div class="suite-manager-page">
     <div class="page-header">
-      <h2>测试套件管理</h2>
-      <p class="subtitle">创建和管理测试套件，批量执行用例</p>
+      <div>
+        <h2>测试套件管理</h2>
+        <p class="subtitle">创建和管理测试套件，批量执行用例</p>
+      </div>
+      <el-button @click="showHelp = true">❓ 使用说明</el-button>
     </div>
 
     <!-- 套件列表 -->
@@ -137,6 +140,7 @@
         </el-table>
       </div>
     </el-dialog>
+    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </div>
 </template>
 
@@ -145,6 +149,8 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const API_BASE = '/auto-test/suites'
 const CASES_API = '/auto-test/cases'
@@ -165,6 +171,8 @@ const editingSuite = ref(null)
 const currentSuite = ref(null)
 const executionResult = ref(null)
 const availableCases = ref([])
+const showHelp = ref(false)
+const helpData = helpContent.suiteManager
 
 // 表单数据
 const suiteForm = ref({
@@ -314,6 +322,9 @@ onMounted(() => {
 }
 
 .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 30px;
 }
 

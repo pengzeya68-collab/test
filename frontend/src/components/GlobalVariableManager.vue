@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿<template>
   <div class="global-variable-manager">
     <el-card>
       <template #header>
@@ -21,6 +21,9 @@
             <el-button type="info" size="small" @click="handleDebugVariables">
               <el-icon><View /></el-icon>
               变量调试
+            </el-button>
+            <el-button size="small" @click="showHelp = true">
+              ❓ 使用说明
             </el-button>
           </div>
         </div>
@@ -235,6 +238,7 @@
         </template>
       </el-dialog>
     </el-card>
+    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </div>
 </template>
 
@@ -243,12 +247,16 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Download, Upload, Delete, View } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const variables = ref([])
 const dialogVisible = ref(false)
 const editingRowId = ref(null)
 const selectedVariables = ref([])
 const debugDialogVisible = ref(false)
+const showHelp = ref(false)
+const helpData = helpContent.globalVariableManager
 const form = ref({
   name: '',
   value: '',

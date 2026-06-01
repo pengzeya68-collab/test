@@ -3,6 +3,7 @@
     <div class="page-header">
       <h2>测试覆盖率看板</h2>
       <p class="subtitle">接口 × 用例 × 执行 热力图，一目了然掌握测试覆盖情况</p>
+      <el-button class="help-btn" @click="showHelp = true">❓ 使用说明</el-button>
     </div>
 
     <!-- 汇总卡片 -->
@@ -146,6 +147,8 @@
         </el-table>
       </div>
     </el-dialog>
+
+    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </div>
 </template>
 
@@ -153,6 +156,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -160,6 +165,8 @@ const detailVisible = ref(false)
 const detailTitle = ref('')
 const selectedDays = ref(30)
 const searchKeyword = ref('')
+const showHelp = ref(false)
+const helpData = helpContent.testCoverage
 
 const summary = ref({})
 const heatmapData = ref({ apis: [], dates: [], matrix: [] })

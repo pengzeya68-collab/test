@@ -43,6 +43,7 @@
               </div>
             </template>
           </el-autocomplete>
+          <el-button size="small" @click="showHelp = true" style="margin-left: 10px;">❓ 使用说明</el-button>
         </div>
       </div>
 
@@ -422,6 +423,7 @@
         </el-button>
       </div>
     </template>
+    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </el-drawer>
 
   <!-- 断言模板选择对话框 -->
@@ -458,6 +460,8 @@ import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy, Collectio
 import JsonEditor from './JsonEditor.vue'
 import draggable from 'vuedraggable'
 import autoTestRequest from '@/utils/autoTestRequest'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -469,6 +473,8 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'success', 'run'])
 
 const activeTab = ref('headers')
+const showHelp = ref(false)
+const helpData = helpContent.caseEditor
 const availableVariables = ref([]) // 用于存储当前所有可用变量
 
 // 动态抽屉宽度：根据屏幕宽度自适应，全屏时更大

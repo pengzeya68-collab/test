@@ -16,13 +16,17 @@ from fastapi_backend.utils.autotest_helpers import convert_to_dict
 
 _logger = logging.getLogger(__name__)
 
+import asyncio
+
 _http_client: Optional[httpx.AsyncClient] = None
+_client_lock = asyncio.Lock()
 
 
-def _get_http_client() -> httpx.AsyncClient:
+async def _get_http_client() -> httpx.AsyncClient:
     global _http_client
-    if _http_client is None or _http_client.is_closed:
-        _http_client = httpx.AsyncClient(timeout=30, verify=True)
+    async with _client_lock:
+        if _http_client is None or _http_client.is_closed:
+            _http_client = httpx.AsyncClient(timeout=30, verify=True)
     return _http_client
 
 
@@ -155,7 +159,7 @@ async def execute_http_request(
                     }
             req_kwargs["json"] = processed_body
 
-        client = _get_http_client()
+        client = await _get_http_client()
         resp = await client.request(method, url, **req_kwargs)
 
         execution_time = int((time.time() - start_time) * 1000)

@@ -30,6 +30,7 @@
         <el-button size="small" @click="showGuide = !showGuide">
           <el-icon><QuestionFilled /></el-icon> 帮助
         </el-button>
+        <el-button size="small" @click="showHelp = true">❓ 使用说明</el-button>
       </div>
     </div>
 
@@ -1463,6 +1464,7 @@
       <el-button type="primary" @click="copyAiAnalysis">📋 复制结果</el-button>
     </template>
   </el-dialog>
+  <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
 </template>
 
 <script setup>
@@ -1475,8 +1477,13 @@ import request from '@/utils/request'
 import BenchRunner from '@/views/jmeter/BenchRunner.vue'
 import ScriptHistory from '@/views/jmeter/ScriptHistory.vue'
 import TreeEditor from '@/views/jmeter/TreeEditor.vue'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+import { helpContent } from '@/utils/help-content'
 
 const router = useRouter()
+
+const showHelp = ref(false)
+const helpData = helpContent.jmeterAssistant
 
 const benchRunnerRef = ref(null)
 
