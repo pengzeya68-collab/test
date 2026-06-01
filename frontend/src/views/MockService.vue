@@ -189,9 +189,9 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, Refresh, Upload, Loading } from '@element-plus/icons-vue'
-import axios from 'axios'
+import autoTestRequest from '@/utils/autoTestRequest'
 
-const API_BASE = '/api/mock'
+const API_BASE = '/mock'
 
 // 状态
 const loading = ref(false)
@@ -227,7 +227,7 @@ const ruleForm = ref({
 const loadProjects = async () => {
   loading.value = true
   try {
-    const res = await axios.get(`${API_BASE}/projects`)
+    const res = await autoTestRequest.get(`${API_BASE}/projects`)
     projects.value = res.data
   } catch (err) {
     ElMessage.error('加载项目失败: ' + (err.response?.data?.detail || err.message))
@@ -247,7 +247,7 @@ const selectProject = async (project) => {
 const loadRules = async (projectId) => {
   rulesLoading.value = true
   try {
-    const res = await axios.get(`${API_BASE}/projects/${projectId}/rules`)
+    const res = await autoTestRequest.get(`${API_BASE}/projects/${projectId}/rules`)
     rules.value = res.data
   } catch (err) {
     ElMessage.error('加载规则失败: ' + (err.response?.data?.detail || err.message))
@@ -260,7 +260,7 @@ const loadRules = async (projectId) => {
 const loadLogs = async (projectId) => {
   logsLoading.value = true
   try {
-    const res = await axios.get(`${API_BASE}/projects/${projectId}/logs`)
+    const res = await autoTestRequest.get(`${API_BASE}/projects/${projectId}/logs`)
     logs.value = res.data
   } catch (err) {
     ElMessage.error('加载日志失败: ' + (err.response?.data?.detail || err.message))
@@ -285,10 +285,10 @@ const saveProject = async () => {
   saving.value = true
   try {
     if (editingProject.value) {
-      await axios.put(`${API_BASE}/projects/${editingProject.value.id}`, projectForm.value)
+      await autoTestRequest.put(`${API_BASE}/projects/${editingProject.value.id}`, projectForm.value)
       ElMessage.success('项目更新成功')
     } else {
-      await axios.post(`${API_BASE}/projects`, projectForm.value)
+      await autoTestRequest.post(`${API_BASE}/projects`, projectForm.value)
       ElMessage.success('项目创建成功')
     }
     showCreateProject.value = false
@@ -313,7 +313,7 @@ const editProject = (project) => {
 const deleteProject = async (project) => {
   try {
     await ElMessageBox.confirm('确定要删除该项目及其所有规则吗？', '确认删除', { type: 'warning' })
-    await axios.delete(`${API_BASE}/projects/${project.id}`)
+    await autoTestRequest.delete(`${API_BASE}/projects/${project.id}`)
     ElMessage.success('删除成功')
     if (currentProject.value?.id === project.id) {
       currentProject.value = null
@@ -345,10 +345,10 @@ const saveRule = async () => {
     delete data.response_body_str
 
     if (editingRule.value) {
-      await axios.put(`${API_BASE}/projects/${currentProject.value.id}/rules/${editingRule.value.id}`, data)
+      await autoTestRequest.put(`${API_BASE}/projects/${currentProject.value.id}/rules/${editingRule.value.id}`, data)
       ElMessage.success('规则更新成功')
     } else {
-      await axios.post(`${API_BASE}/projects/${currentProject.value.id}/rules`, data)
+      await autoTestRequest.post(`${API_BASE}/projects/${currentProject.value.id}/rules`, data)
       ElMessage.success('规则创建成功')
     }
     showCreateRule.value = false
@@ -383,7 +383,7 @@ const editRule = (rule) => {
 const deleteRule = async (rule) => {
   try {
     await ElMessageBox.confirm('确定要删除该规则吗？', '确认删除', { type: 'warning' })
-    await axios.delete(`${API_BASE}/projects/${currentProject.value.id}/rules/${rule.id}`)
+    await autoTestRequest.delete(`${API_BASE}/projects/${currentProject.value.id}/rules/${rule.id}`)
     ElMessage.success('删除成功')
     await loadRules(currentProject.value.id)
   } catch (err) {
@@ -396,7 +396,7 @@ const deleteRule = async (rule) => {
 // 切换规则状态
 const toggleRule = async (rule) => {
   try {
-    await axios.put(`${API_BASE}/projects/${currentProject.value.id}/rules/${rule.id}`, {
+    await autoTestRequest.put(`${API_BASE}/projects/${currentProject.value.id}/rules/${rule.id}`, {
       is_active: rule.is_active
     })
   } catch (err) {

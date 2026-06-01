@@ -39,7 +39,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import autoTestRequest from '@/utils/autoTestRequest'
 
 const props = defineProps({
   modelValue: Boolean
@@ -73,7 +73,7 @@ const parseCurl = async () => {
   }
   parsing.value = true
   try {
-    const res = await axios.post('/api/auto-test/import/curl', {
+    const res = await autoTestRequest.post('/auto-test/import/curl', {
       curl_string: curlString.value
     })
     parsedResult.value = res.data.data

@@ -144,10 +144,10 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import axios from 'axios'
+import autoTestRequest from '@/utils/autoTestRequest'
 
-const API_BASE = '/api/auto-test/suites'
-const CASES_API = '/api/auto-test/cases'
+const API_BASE = '/auto-test/suites'
+const CASES_API = '/auto-test/cases'
 
 // 状态
 const loading = ref(false)
@@ -177,7 +177,7 @@ const suiteForm = ref({
 const loadSuites = async () => {
   loading.value = true
   try {
-    const res = await axios.get(API_BASE, {
+    const res = await autoTestRequest.get(API_BASE, {
       params: { page: currentPage.value, size: pageSize.value }
     })
     suites.value = res.data.list || []
@@ -192,7 +192,7 @@ const loadSuites = async () => {
 // 搜索用例
 const searchCases = async (query) => {
   try {
-    const res = await axios.get(`${CASES_API}/all`, { params: { keyword: query } })
+    const res = await autoTestRequest.get(`${CASES_API}/all`, { params: { keyword: query } })
     availableCases.value = res.data || []
   } catch (err) {
     console.error('搜索用例失败:', err)
@@ -202,7 +202,7 @@ const searchCases = async (query) => {
 // 查看套件详情
 const viewSuite = async (suite) => {
   try {
-    const res = await axios.get(`${API_BASE}/${suite.id}`)
+    const res = await autoTestRequest.get(`${API_BASE}/${suite.id}`)
     currentSuite.value = res.data
     showDetailDialog.value = true
   } catch (err) {
@@ -214,7 +214,7 @@ const viewSuite = async (suite) => {
 const editSuite = async (suite) => {
   editingSuite.value = suite
   try {
-    const res = await axios.get(`${API_BASE}/${suite.id}`)
+    const res = await autoTestRequest.get(`${API_BASE}/${suite.id}`)
     const detail = res.data
     suiteForm.value = {
       name: detail.name,
@@ -238,7 +238,7 @@ const saveSuite = async () => {
   saving.value = true
   try {
     if (editingSuite.value) {
-      await axios.put(`${API_BASE}/${editingSuite.value.id}`, {
+      await autoTestRequest.put(`${API_BASE}/${editingSuite.value.id}`, {
         name: suiteForm.value.name,
         description: suiteForm.value.description
       })
@@ -246,7 +246,7 @@ const saveSuite = async () => {
       // 先删除旧的，再添加新的（简化处理）
       ElMessage.success('套件更新成功')
     } else {
-      await axios.post(API_BASE, suiteForm.value)
+      await autoTestRequest.post(API_BASE, suiteForm.value)
       ElMessage.success('套件创建成功')
     }
     showCreateDialog.value = false
@@ -264,7 +264,7 @@ const saveSuite = async () => {
 const runSuite = async (suite) => {
   suite.running = true
   try {
-    const res = await axios.post(`${API_BASE}/${suite.id}/run`)
+    const res = await autoTestRequest.post(`${API_BASE}/${suite.id}/run`)
     executionResult.value = res.data
     showResultDialog.value = true
     await loadSuites() // 刷新状态
@@ -279,7 +279,7 @@ const runSuite = async (suite) => {
 const deleteSuite = async (suite) => {
   try {
     await ElMessageBox.confirm('确定要删除该套件吗？', '确认删除', { type: 'warning' })
-    await axios.delete(`${API_BASE}/${suite.id}`)
+    await autoTestRequest.delete(`${API_BASE}/${suite.id}`)
     ElMessage.success('删除成功')
     await loadSuites()
   } catch (err) {
