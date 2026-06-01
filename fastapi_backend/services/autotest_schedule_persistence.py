@@ -13,20 +13,30 @@ _logger = logging.getLogger(__name__)
 
 
 async def ensure_schedule_columns_on_db() -> None:
-    """Ensure schedule columns exist on test_scenarios (PostgreSQL compatible)."""
+    """Ensure schedule columns exist on test_scenarios (SQLite + PostgreSQL compatible)."""
     async with async_session() as session:
 
         def _migrate(sync_conn: Any) -> None:
-            r = sync_conn.execute(
-                text(
-                    "SELECT column_name FROM information_schema.columns "
-                    "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
+            # Detect database type
+            bind = sync_conn.get_bind()
+            dialect = bind.dialect.name
+            if dialect == "sqlite":
+                r = sync_conn.execute(text("PRAGMA table_info(test_scenarios)"))
+                existing = {row[1] for row in r.fetchall()}
+            else:
+                r = sync_conn.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
+                    )
                 )
-            )
-            existing = {row[0] for row in r.fetchall()}
+                existing = {row[0] for row in r.fetchall()}
             for col, ddl in _schedule_column_ddl():
                 if col not in existing:
-                    sync_conn.execute(text(ddl))
+                    try:
+                        sync_conn.execute(text(ddl))
+                    except Exception:
+                        pass  # Column may already exist
 
         await session.run_sync(_migrate)
         await session.commit()

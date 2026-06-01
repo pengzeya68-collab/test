@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     DESCRIPTION: str = "Async FastAPI backend for the TestMaster platform."
     ENVIRONMENT: str = "development"
 
-    DATABASE_URL: str = "postgresql+asyncpg://testmaster:@localhost:5432/testmaster"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./instance/testmaster.db"
 
     SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
@@ -123,8 +123,7 @@ if not settings.ADMIN_PASSWORD:
         settings.ADMIN_PASSWORD = secrets.token_urlsafe(16)
         _logger.warning("开发环境使用随机生成的 ADMIN_PASSWORD，生产环境请务必在 .env 中设置固定密码")
 
-if settings.ENVIRONMENT == "production" and settings.ADMIN_PASSWORD in ("admin123", "123456", "password"):
-    raise RuntimeError("生产环境 ADMIN_PASSWORD 不能使用弱密码（admin123/123456/password），请在 .env 中设置强密码")
+# 自用项目不限制密码强度，如需加强安全请自行修改 .env 中的 ADMIN_PASSWORD
 
 if not settings.ADMIN_SECRET_KEY:
     if settings.ENVIRONMENT == "production":

@@ -9,9 +9,22 @@ import logging
 
 from fastapi_backend.core.database import (
     engine,
+    AsyncSessionLocal,
+    async_session,
+    Base,
+    get_db,
 )
 
 _logger = logging.getLogger(__name__)
+
+# 向后兼容导出
+AutoTestBase = Base
+
+
+async def get_autotest_db():
+    """AutoTest 数据库会话（现在使用主数据库）"""
+    async for session in get_db():
+        yield session
 
 
 async def init_autotest_db() -> None:
