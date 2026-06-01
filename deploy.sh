@@ -74,10 +74,21 @@ if [ ! -f .env ]; then
     cp .env.example .env
     SECRET_KEY=$(openssl rand -hex 32)
     DB_PASSWORD=$(openssl rand -hex 16)
-    sed -i "s/DB_PASSWORD=testmaster2024/DB_PASSWORD=$DB_PASSWORD/" .env
-    sed -i "s/SECRET_KEY=.*/SECRET_KEY=$SECRET_KEY/" .env
+    ADMIN_SECRET_KEY=$(openssl rand -hex 32)
+    ENCRYPTION_KEY=$(openssl rand -hex 32)
+    sed -i "s/DB_PASSWORD=CHANGE_ME_TO_A_STRONG_PASSWORD/DB_PASSWORD=$DB_PASSWORD/" .env
     sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://testmaster:$DB_PASSWORD@postgres:5432/testmaster|" .env
-    echo "已生成 .env 文件（随机密码和密钥）"
+    sed -i "s/SECRET_KEY=CHANGE_ME_TO_A_RANDOM_SECRET_KEY_MIN_32_CHARS/SECRET_KEY=$SECRET_KEY/" .env
+    sed -i "s/ADMIN_PASSWORD=$/ADMIN_PASSWORD=admin123/" .env
+    sed -i "s/ADMIN_SECRET_KEY=$/ADMIN_SECRET_KEY=$ADMIN_SECRET_KEY/" .env
+    sed -i "s/TESTMASTER_ENCRYPTION_KEY=$/TESTMASTER_ENCRYPTION_KEY=$ENCRYPTION_KEY/" .env
+    echo "已生成 .env 文件"
+    echo ""
+    echo "=========================================="
+    echo "  管理员登录账号: admin"
+    echo "  管理员登录密码: admin123"
+    echo "  (登录后请在个人中心修改密码)"
+    echo "=========================================="
 else
     echo ".env 文件已存在，跳过"
 fi
@@ -200,8 +211,10 @@ echo "访问地址:"
 echo "  HTTPS: https://$(hostname -I | awk '{print $1}')"
 echo "  HTTP:  http://$(hostname -I | awk '{print $1}') (自动跳转HTTPS)"
 echo ""
-echo "注意: 请使用 .env 中配置的 ADMIN_USERNAME / ADMIN_PASSWORD 登录"
-echo "如果使用了种子数据，请在首次登录后立即修改默认密码！"
+echo "登录信息:"
+echo "  账号: admin"
+echo "  密码: admin123"
+echo "  (首次登录后建议在个人中心修改密码)"
 echo ""
 echo "常用命令:"
 echo "  查看日志:   docker compose logs -f backend"
