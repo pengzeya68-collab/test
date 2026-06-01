@@ -40,7 +40,6 @@
           <el-icon><VideoPlay /></el-icon>
           运行场景
         </el-button>
-        <el-button @click="showHelp = true">❓ 使用说明</el-button>
       </div>
     </div>
 
@@ -171,8 +170,6 @@
     </el-dialog>
 
     <ScenarioExecutionDialog ref="executionDialogRef" v-model="resultDialogVisible" @completed="handleExecutionCompleted" />
-
-    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </div>
 </template>
 
@@ -185,8 +182,6 @@ import autoTestRequest from '@/utils/autoTestRequest'
 import ScenarioExecutionDialog from '@/components/ScenarioExecutionDialog.vue'
 import DataDrivenPanel from '@/views/scenario/DataDrivenPanel.vue'
 import StepList from '@/views/scenario/StepList.vue'
-import HelpDrawer from '@/components/HelpDrawer.vue'
-import { helpContent } from '@/utils/help-content'
 
 const props = defineProps({
   scenarioId: {
@@ -232,8 +227,6 @@ const selectedEnvId = ref(null)
 
 const isRunning = ref(false)
 const saving = ref(false)
-const showHelp = ref(false)
-const helpData = helpContent.scenarioEditor
 
 const getMethodType = (method) => {
   const types = { GET: 'success', POST: 'warning', PUT: 'primary', DELETE: 'danger', PATCH: 'info' }

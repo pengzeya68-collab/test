@@ -39,7 +39,6 @@
         <el-tooltip content="环境管理" placement="top" popper-class="action-tooltip">
           <el-button :icon="Setting" @click="openEnvManager" />
         </el-tooltip>
-        <el-button @click="showHelp = true">❓ 使用说明</el-button>
         <el-button type="primary" @click="handleCreate">
           <el-icon><Plus /></el-icon>
           新建场景
@@ -59,7 +58,7 @@
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
         <el-table-column label="步骤数" width="100" align="center">
           <template #default="{ row }">
-            <el-tag type="info" effect="plain" round>{{ row.step_count ?? (row.steps ? row.steps.length : 0) }}</el-tag>
+            <el-tag type="info" effect="plain" round>{{ row.steps ? row.steps.length : 0 }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
@@ -143,7 +142,7 @@
       v-model:visible="scheduleDialogVisible"
       :scenario-id="scheduleRow?.id ?? null"
       :scenario-name="scheduleRow?.name ?? ''"
-      :cron-expression="scheduleRow?.schedule_cron ?? ''"
+      :cron-expression="scheduleRow?.cron_expression ?? ''"
       :webhook-url="scheduleRow?.webhook_url ?? ''"
       :environments="environments"
       @schedule-changed="handleScheduleChanged"
@@ -185,7 +184,6 @@
       v-model="envManagerDrawerVisible"
       @close="handleEnvManagerClose"
     />
-    <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
   </div>
 </template>
 
@@ -198,14 +196,9 @@ import EnvironmentManager from '@/components/EnvironmentManager.vue'
 import ScenarioExecutionDialog from '@/components/ScenarioExecutionDialog.vue'
 import ScheduleDialog from '@/views/scenario/ScheduleDialog.vue'
 import ExecutionHistoryDrawer from '@/views/scenario/ExecutionHistoryDrawer.vue'
-import HelpDrawer from '@/components/HelpDrawer.vue'
-import { helpContent } from '@/utils/help-content'
 
 const loading = ref(false)
-const showHelp = ref(false)
-const helpData = helpContent.scenarioList
 const scenarios = ref([])
-const totalScenarios = ref(0)
 const searchKeyword = ref('')
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -334,13 +327,7 @@ const loadScenarios = async () => {
   loading.value = true
   try {
     const res = await autoTestRequest.get('/auto-test/scenarios')
-    if (res && res.items) {
-      scenarios.value = res.items || []
-      totalScenarios.value = res.total || 0
-    } else {
-      scenarios.value = res || []
-      totalScenarios.value = scenarios.value.length
-    }
+    scenarios.value = res || []
   } catch (error) {
     console.error('加载场景失败:', error)
   } finally {
@@ -524,7 +511,7 @@ const handleRun = async (row) => {
     ElMessage.warning('该场景已停用，无法运行！')
     return
   }
-  const stepCount = row.step_count ?? (row.steps ? row.steps.length : 0)
+  const stepCount = row.steps ? row.steps.length : 0
   executionDialogRef.value?.startExecution(row.id, selectedEnvId.value, stepCount)
 }
 
