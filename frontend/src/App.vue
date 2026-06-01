@@ -211,6 +211,8 @@ const sidebarGroups = computed(() => {
         { name: '代码练习室', path: '/code-playground', icon: '💻' },
         { name: '自动化测试', path: '/auto-test', icon: '⚙️' },
         { name: 'JMeter 助手', path: '/jmeter-assistant', icon: '⚡' },
+        { name: 'AI生成用例', path: '/ai-generate-cases', icon: '🧪' },
+        { name: '覆盖率看板', path: '/test-coverage', icon: '📐' },
         { name: '测试工具导航', path: '/tools', icon: '🧭' },
       ],
     },

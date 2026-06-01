@@ -148,6 +148,18 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/ai-generate-cases',
+    name: 'AIGenerateCases',
+    component: () => import(/* webpackChunkName: "autotest" */ '@/views/AIGenerateCases.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/test-coverage',
+    name: 'TestCoverage',
+    component: () => import(/* webpackChunkName: "autotest" */ '@/views/TestCoverage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/assessment',
     name: 'OnboardingAssessment',
     component: () => import(/* webpackChunkName: "learning" */ '@/views/OnboardingAssessment.vue'),

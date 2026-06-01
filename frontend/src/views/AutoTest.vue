@@ -121,6 +121,14 @@
           <el-icon><Connection /></el-icon>
           <span>JMeter 助手 <el-tag size="small" type="danger" class="new-tag">新</el-tag></span>
         </div>
+        <div class="tab-item ai-tab" @click="$router.push('/ai-generate-cases')">
+          <span>🧪 AI生成用例</span>
+          <el-tag size="small" type="warning" class="new-tag">新</el-tag>
+        </div>
+        <div class="tab-item coverage-tab" @click="$router.push('/test-coverage')">
+          <span>📐 覆盖率看板</span>
+          <el-tag size="small" type="warning" class="new-tag">新</el-tag>
+        </div>
       </div>
     </div>
 
