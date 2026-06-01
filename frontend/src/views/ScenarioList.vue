@@ -327,7 +327,7 @@ const loadScenarios = async () => {
   loading.value = true
   try {
     const res = await autoTestRequest.get('/auto-test/scenarios')
-    scenarios.value = res || []
+    scenarios.value = Array.isArray(res) ? res : (res?.items || [])
   } catch (error) {
     console.error('加载场景失败:', error)
   } finally {
@@ -358,13 +358,18 @@ const handleSave = async () => {
       await autoTestRequest.put(`/auto-test/scenarios/${currentScenarioId.value}`, scenarioForm.value)
       ElMessage.success('更新成功')
     } else {
-      await autoTestRequest.post('/auto-test/scenarios', scenarioForm.value)
+      const created = await autoTestRequest.post('/auto-test/scenarios', scenarioForm.value)
       ElMessage.success('创建成功')
+      dialogVisible.value = false
+      if (created?.id) {
+        emit('edit', created)
+        return
+      }
     }
     dialogVisible.value = false
     loadScenarios()
   } catch (error) {
-    ElMessage.error('操作失败')
+    ElMessage.error('操作失败: ' + (error.response?.data?.detail || error.message || '未知错误'))
   }
 }
 
