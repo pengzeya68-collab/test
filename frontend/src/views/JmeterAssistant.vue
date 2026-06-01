@@ -1005,134 +1005,6 @@
           </div>
         </div>
       </div>
-
-      <!-- 底部运行结果面板（可折叠、可拖拽高度） -->
-      <div class="bottom-result-panel" :class="{ collapsed: !bottomPanelVisible }" :style="{ height: bottomPanelVisible ? bottomPanelHeight + 'px' : '36px' }">
-        <div class="brp-header" @click="bottomPanelVisible = !bottomPanelVisible">
-          <span class="brp-title">📊 运行结果</span>
-          <div class="brp-header-right">
-            <span v-if="benchResult" class="brp-badge">{{ benchResult.total }} 请求 · {{ benchResult.success }} 成功 · {{ benchResult.failed }} 失败</span>
-            <span v-if="benching" class="brp-badge brp-running"> 运行中 {{ benchPercent }}%</span>
-            <el-button size="small" :icon="bottomPanelVisible ? 'ArrowUp' : 'ArrowDown'" link @click.stop="bottomPanelVisible = !bottomPanelVisible"></el-button>
-          </div>
-        </div>
-        <div class="brp-body" v-show="bottomPanelVisible">
-          <div class="brp-resize-handle" @mousedown="onBottomResize"></div>
-          <el-tabs v-model="bottomResultTab" type="card" size="small">
-            <el-tab-pane label="采样器列表" name="samples">
-              <div v-if="!benchResult && !benching && !benchProgress" class="empty-state" style="padding:40px 0">点击上方「启动」运行测试，结果将在此处显示</div>
-              <template v-else>
-                <div v-if="benching || benchProgress" class="bench-progress-inline" style="padding:0 16px 8px">
-                  <el-progress :percentage="benchPercent" :stroke-width="6" :status="benchPercent >= 100 ? 'success' : ''" />
-                  <span>{{ benchProgress }}</span>
-                </div>
-                <div v-if="benchResult && benchResult.samples && benchResult.samples.length > 0">
-                  <div class="vrt-toolbar" style="padding:8px 16px 4px">
-                    <span class="vrt-toolbar-label">查找:</span>
-                    <el-input v-model="sampleSearchQuery" size="small" clearable style="width:150px" @keyup.enter="doVrtSearch" />
-                    <el-checkbox v-model="searchCaseSensitive" size="small">区分大小写</el-checkbox>
-                    <el-checkbox v-model="searchRegex" size="small">正则表达式</el-checkbox>
-                    <el-button size="small" type="primary" plain @click="doVrtSearch">查找</el-button>
-                    <el-button size="small" @click="resetVrtSearch">重置</el-button>
-                    <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="全部" style="width:85px;margin-left:auto">
-                      <el-option label="成功" value="success" />
-                      <el-option label="失败" value="error" />
-                      <el-option label="异常" value="exception" />
-                    </el-select>
-                  </div>
-                  <div class="vrt-bottom-container">
-                    <div class="vrt-bottom-left">
-                      <div class="vrt-sample-list">
-                        <div v-for="(s, si) in filteredSamples" :key="si"
-                          class="vrt-sample-item" :class="{ active: selectedSampleIdx === si }" @click="selectSample(si)">
-                          <el-tag :type="s.status >= 200 && s.status < 400 ? 'success' : s.status === 0 ? 'danger' : 'warning'" size="small">{{ s.status || 'ERR' }}</el-tag>
-                          <span class="vrt-time">{{ s.elapsed_ms }}ms</span>
-                          <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
-                          <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
-                        </div>
-                        <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
-                      </div>
-                    </div>
-                    <div v-if="selectedSample" class="vrt-detail-panel">
-                      <el-tabs v-model="selectedSampleTab" size="small" class="vrt-tabs">
-                        <el-tab-pane label="采样器结果" name="sampler">
-                          <table class="vrt-table">
-                            <tr><td class="vrt-label">Thread Name</td><td>{{ selectedSample.thread_name || '线程组 1-' + (selectedSampleIdx + 1) }}</td></tr>
-                            <tr><td class="vrt-label">Sample Start</td><td>{{ selectedSample.start_time || '-' }}</td></tr>
-                            <tr><td class="vrt-label">Load time</td><td><b>{{ selectedSample.elapsed_ms || 0 }}</b> ms</td></tr>
-                            <tr><td class="vrt-label">Connect Time</td><td>{{ selectedSample.connect_time_ms ?? '-' }} ms</td></tr>
-                            <tr><td class="vrt-label">Latency</td><td>{{ (selectedSample.latency_ms ?? selectedSample.elapsed_ms) }} ms</td></tr>
-                            <tr><td class="vrt-label">Size in bytes</td><td>{{ selectedSample.body_size || 0 }}</td></tr>
-                            <tr><td class="vrt-label">Sent bytes</td><td>{{ selectedSample.sent_bytes || 0 }}</td></tr>
-                            <tr><td class="vrt-label">Headers size in bytes</td><td>{{ selectedSample.headers_size || 0 }}</td></tr>
-                            <tr><td class="vrt-label">Error Count</td><td :style="{ color: selectedSample.error ? 'var(--el-color-danger)' : 'var(--el-color-success)' }">{{ selectedSample.error ? '1' : '0' }}</td></tr>
-                            <tr><td class="vrt-label">Data type</td><td>{{ selectedSample.data_type || 'text' }}</td></tr>
-                            <tr><td class="vrt-label">Response code</td><td><el-tag :type="selectedSample.status >= 200 && selectedSample.status < 400 ? 'success' : 'danger'" size="small">{{ selectedSample.status || 'ERR' }}</el-tag></td></tr>
-                            <tr><td class="vrt-label">Response message</td><td>{{ selectedSample.response_message || (selectedSample.status >= 200 && selectedSample.status < 400 ? 'OK' : 'Error') }}</td></tr>
-                          </table>
-                        </el-tab-pane>
-                        <el-tab-pane label="请求" name="request">
-                          <div v-if="selectedSample.method || selectedSample.url" class="vrt-http-line">
-                            <code>{{ selectedSample.method || '?' }} {{ selectedSample.url || '' }}</code>
-                          </div>
-                          <el-tabs v-model="selectedRequestTab" size="small" class="vrt-inner-tabs">
-                            <el-tab-pane label="Request Body" name="rbody">
-                              <pre class="vrt-code">{{ selectedSample.request_body || '(无请求体)' }}</pre>
-                            </el-tab-pane>
-                            <el-tab-pane label="Request Headers" name="rheaders">
-                              <pre class="vrt-code"><template v-if="selectedSample.request_headers">{{ formatHeaders(selectedSample.request_headers) }}</template><template v-else>(无请求头信息)</template></pre>
-                            </el-tab-pane>
-                          </el-tabs>
-                        </el-tab-pane>
-                        <el-tab-pane label="响应数据" name="response">
-                          <el-tabs v-model="selectedResponseTab" size="small" class="vrt-inner-tabs">
-                            <el-tab-pane label="Response Body" name="resbody">
-                              <pre class="vrt-code" :class="{ 'vrt-error-body': selectedSample.error }">{{ selectedSample.response_body || selectedSample.error || '(空响应)' }}</pre>
-                            </el-tab-pane>
-                            <el-tab-pane label="Response Headers" name="resheaders">
-                              <pre class="vrt-code"><template v-if="selectedSample.response_headers">{{ formatHeaders(selectedSample.response_headers) }}</template><template v-else>(无响应头信息)</template></pre>
-                            </el-tab-pane>
-                          </el-tabs>
-                        </el-tab-pane>
-                      </el-tabs>
-                    </div>
-                    <div v-else class="vrt-empty-detail">👆 点击左侧样本查看详情</div>
-                  </div>
-                </div>
-                <div v-else-if="benchResult" style="padding:12px 16px;text-align:center;color:#94a3b8;font-size:12px">暂无采样器数据</div>
-              </template>
-            </el-tab-pane>
-            <el-tab-pane label="统计图表" name="stats">
-              <div v-if="!benchResult" class="empty-state" style="padding:40px 0">暂无运行结果</div>
-              <div v-else style="padding:12px 16px">
-                <div class="mini-stats" style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap">
-                  <div><b>{{ benchResult.total }}</b><small>总计</small></div>
-                  <div class="text-success"><b>{{ benchResult.success }}</b><small>成功</small></div>
-                  <div :class="benchResult.failed > 0 ? 'text-danger' : ''"><b>{{ benchResult.failed }}</b><small>失败</small></div>
-                  <div><b>{{ benchResult.avg_ms }}ms</b><small>平均</small></div>
-                  <div><b>{{ benchResult.tps }}</b><small>TPS</small></div>
-                  <div><b>{{ benchResult.p50_ms }}ms</b><small>P50</small></div>
-                  <div><b>{{ benchResult.p95_ms }}ms</b><small>P95</small></div>
-                  <div><b>{{ benchResult.p99_ms }}ms</b><small>P99</small></div>
-                </div>
-                <div v-if="benchResult.per_url && benchResult.per_url.length > 0">
-                  <div style="font-weight:600;font-size:12px;margin-bottom:8px">📊 每接口统计</div>
-                  <table class="per-url-table" style="width:100%;font-size:12px;border-collapse:collapse">
-                    <thead><tr style="background:#f1f5f9"><th style="padding:4px 8px;text-align:left">URL</th><th style="padding:4px 8px">次数</th><th style="padding:4px 8px">成功</th><th style="padding:4px 8px">失败</th><th style="padding:4px 8px">成功率</th><th style="padding:4px 8px">平均(ms)</th><th style="padding:4px 8px">P95(ms)</th><th style="padding:4px 8px">最大(ms)</th></tr></thead>
-                    <tbody><tr v-for="pu in benchResult.per_url" :key="pu.url" style="border-bottom:1px solid #e2e8f0"><td style="padding:4px 8px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>{{ pu.method || 'GET' }}</b> {{ pu.name || pu.url }}</td><td style="padding:4px 8px;text-align:center">{{ pu.count }}</td><td style="padding:4px 8px;text-align:center;color:#10b981">{{ pu.success }}</td><td style="padding:4px 8px;text-align:center" :style="{ color: pu.failed > 0 ? '#ef4444' : '#10b981' }">{{ pu.failed }}</td><td style="padding:4px 8px;text-align:center" :class="pu.success_rate < 100 ? 'text-danger' : ''">{{ pu.success_rate }}%</td><td style="padding:4px 8px;text-align:center">{{ pu.avg_ms }}</td><td style="padding:4px 8px;text-align:center">{{ pu.p95_ms }}</td><td style="padding:4px 8px;text-align:center">{{ pu.max_ms || '-' }}</td></tr></tbody>
-                  </table>
-                </div>
-                <div v-if="benchResult.status_distribution" style="margin-top:12px">
-                  <div style="font-weight:600;font-size:12px;margin-bottom:6px"> 状态码分布</div>
-                  <div style="display:flex;gap:6px;flex-wrap:wrap">
-                    <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code" :type="code >= 200 && code < 400 ? 'success' : 'danger'" size="small" effect="plain">{{ code }}: {{ count }}次</el-tag>
-                  </div>
-                </div>
-              </div>
-            </el-tab-pane>
-          </el-tabs>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -3095,9 +2967,9 @@ onBeforeUnmount(() => {
 .text-success { color: #059669; font-weight: 700; }
 .text-danger { color: #dc2626; font-weight: 700; }
 
-.right-tabs :deep(.el-tabs__content) { overflow: visible; }
-.right-tabs :deep(.el-tab-pane) { height: 100%; display: flex; flex-direction: column; }
-.right-tabs :deep(.el-tabs__header) { margin-bottom: 6px; }
+.right-tabs :deep(.el-tabs__content) { overflow: hidden; flex: 1; min-height: 0; }
+.right-tabs :deep(.el-tab-pane) { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.right-tabs :deep(.el-tabs__header) { margin-bottom: 6px; flex-shrink: 0; }
 
 /* ===== 按接口统计（聚合报告） ===== */
 .per-url-table { font-size: 12px; }
@@ -3125,7 +2997,7 @@ onBeforeUnmount(() => {
 .vrt-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #6b7280; font-size: 10px; }
 .vrt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #1f2937; font-size: 11px; font-weight: 500; }
 .vrt-err { color: #dc2626; font-size: 10px; flex-shrink: 0; }
-.vrt-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 6px; background: #e8eaed; border-bottom: 1px solid #ccc; align-items: center; flex-shrink: 0; }
+.vrt-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 6px; background: #e8eaed; border-bottom: 1px solid #ccc; align-items: center; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
 .vrt-toolbar-label { font-size: 12px; color: #333; white-space: nowrap; flex-shrink: 0; }
 .vrt-toolbar .el-checkbox { margin-right: 0; font-size: 11px; height: 24px; }
 .vrt-toolbar .el-checkbox__label { font-size: 11px; padding-left: 3px; }

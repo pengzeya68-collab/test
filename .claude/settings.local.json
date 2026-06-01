@@ -76,7 +76,9 @@
       "Bash(/c/Users/lenovo/AppData/Local/Programs/Python/Python310/python.exe -c \"\nimport paramiko\n\nssh = paramiko.SSHClient\\(\\)\nssh.set_missing_host_key_policy\\(paramiko.AutoAddPolicy\\(\\)\\)\nssh.connect\\('34.150.26.84', username='root', password='PENGZEYA19940821', timeout=10\\)\n\ncommands = [\n    'cd /root/TestMasterProject && git reset --hard origin/main',\n    'cd /root/TestMasterProject && docker compose up -d --build',\n]\n\nfor cmd in commands:\n    print\\(f'>>> {cmd}'\\)\n    stdin, stdout, stderr = ssh.exec_command\\(cmd\\)\n    exit_code = stdout.channel.recv_exit_status\\(\\)\n    out = stdout.read\\(\\).decode\\('utf-8', errors='replace'\\)\n    err = stderr.read\\(\\).decode\\('utf-8', errors='replace'\\)\n    if out: print\\(out[:1500]\\)\n    if err: print\\(err[:500]\\)\n    print\\(f'Exit: {exit_code}'\\)\n    print\\(\\)\n\nssh.close\\(\\)\nprint\\('DONE'\\)\n\")",
       "Bash(/c/Users/lenovo/AppData/Local/Programs/Python/Python310/python.exe -c \"\nimport paramiko\n\nssh = paramiko.SSHClient\\(\\)\nssh.set_missing_host_key_policy\\(paramiko.AutoAddPolicy\\(\\)\\)\nssh.connect\\('34.150.26.84', username='root', password='PENGZEYA19940821', timeout=10\\)\n\nstdin, stdout, stderr = ssh.exec_command\\('cd /root/TestMasterProject && git fetch --all && git reset --hard origin/main && git log --oneline -3'\\)\nprint\\(stdout.read\\(\\).decode\\('utf-8', errors='replace'\\)\\)\n\nssh.close\\(\\)\n\")",
       "Bash(/c/Users/lenovo/AppData/Local/Programs/Python/Python310/python.exe -c \"\nimport paramiko\n\nssh = paramiko.SSHClient\\(\\)\nssh.set_missing_host_key_policy\\(paramiko.AutoAddPolicy\\(\\)\\)\nssh.connect\\('34.150.26.84', username='root', password='PENGZEYA19940821', timeout=10\\)\n\nstdin, stdout, stderr = ssh.exec_command\\('cd /root/TestMasterProject && docker compose restart nginx && docker compose ps'\\)\nprint\\(stdout.read\\(\\).decode\\('utf-8', errors='replace'\\)\\)\n\nssh.close\\(\\)\n\")",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(grep -c '\\\\$ref' \"docs/接口文档-openapi.yaml\")",
+      "Bash(sshpass:*)"
     ]
   }
 }
