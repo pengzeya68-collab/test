@@ -1,5 +1,9 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import removeConsole from 'vite-plugin-remove-console'
 import path from 'path'
 
 export default defineConfig(({ mode }) => {
@@ -10,7 +14,19 @@ export default defineConfig(({ mode }) => {
     'http://127.0.0.1:5001'
 
   return {
-    plugins: [vue()],
+    plugins: [
+      vue(),
+      AutoImport({
+        resolvers: [ElementPlusResolver()],
+        imports: ['vue', 'vue-router', 'pinia'],
+        dts: false,
+      }),
+      Components({
+        resolvers: [ElementPlusResolver()],
+        dts: false,
+      }),
+      removeConsole({ excludes: ['error', 'warn'] }),
+    ],
     css: {
       preprocessorOptions: {
         scss: {

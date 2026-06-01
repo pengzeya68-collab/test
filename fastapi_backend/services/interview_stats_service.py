@@ -52,7 +52,7 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
     )
     pass_stats = pass_stats_result.first()
     total_with_score = pass_stats.total or 0
-    passed_count = pass_stats.passed or 0 if pass_stats.passed else 0
+    passed_count = pass_stats.passed or 0
     failed_count = total_with_score - passed_count
     pass_rate = (passed_count / total_with_score * 100) if total_with_score > 0 else 0.0
 

@@ -1,9 +1,12 @@
 """
 TestMaster 一键部署脚本（从本地 Windows 部署到远程 Linux 服务器）
-用法: python deploy.py <新服务器IP> <新服务器密码> [旧服务器IP] [旧服务器密码]
+用法: python deploy.py <服务器IP> <服务器密码> [旧服务器IP] [旧服务器密码]
 示例:
-  全新部署:           python deploy.py 1.2.3.4 NewServerPass
-  从旧服务器迁移数据: python deploy.py 1.2.3.4 NewServerPass 34.150.26.84 PENGZEYA19940821
+  全新部署:           python deploy.py 1.2.3.4 YourServerPass
+  从旧服务器迁移数据: python deploy.py 1.2.3.4 YourServerPass 10.0.0.1 OldServerPass
+
+安全提示: 建议使用 SSH 密钥认证，避免在命令行中传递密码。
+         也可设置环境变量 SERVER_HOST / SERVER_PASS。
 """
 
 import paramiko
@@ -11,8 +14,13 @@ import os
 import sys
 import time
 
-HOST = sys.argv[1] if len(sys.argv) > 1 else "34.150.26.84"
-PASS = sys.argv[2] if len(sys.argv) > 2 else "PENGZEYA19940821"
+if len(sys.argv) < 3 and not (os.environ.get("SERVER_HOST") and os.environ.get("SERVER_PASS")):
+    print("错误: 必须提供服务器 IP 和密码")
+    print("用法: python deploy.py <服务器IP> <服务器密码> [旧服务器IP] [旧服务器密码]")
+    sys.exit(1)
+
+HOST = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("SERVER_HOST", "")
+PASS = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("SERVER_PASS", "")
 USER = "root"
 REPO_URL = "https://github.com/pengzeya68-collab/test.git"
 INSTALL_DIR = "/root/TestMasterProject"
@@ -258,7 +266,8 @@ asyncio.run(seed_all())
         print("  部署完成！")
         print("=" * 60)
         print(f"\n  访问地址: https://{HOST}")
-        print("  默认管理员: admin / admin123")
+        print("  注意: 请使用 .env 中配置的 ADMIN_USERNAME / ADMIN_PASSWORD 登录")
+        print("  如果使用了种子数据，请在首次登录后立即修改默认密码！")
 
     finally:
         sftp.close()

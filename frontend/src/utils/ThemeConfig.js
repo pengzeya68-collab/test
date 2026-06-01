@@ -1,6 +1,8 @@
 /**
  * TestMaster 主题配置系统
  * 五套高颜值主题模板
+ *
+ * 注意：背景图已本地化，避免依赖外部服务（Unsplash Source 已于2024年停止运营）
  */
 
 export const themes = [
@@ -10,7 +12,7 @@ export const themes = [
     description: '极致温柔，透光质感',
     primary: '#ffb7c5',
     primaryDark: '#ff8fa3',
-    bg: "url('https://source.unsplash.com/featured/1920x1080/?sakura,pink,flower')",
+    bg: 'linear-gradient(135deg, #ffe4e9 0%, #ffd1dc 50%, #ffb7c5 100%)',
     bgColor: 'rgba(255, 235, 240, 0.5)',
     cardBg: 'rgba(255, 255, 255, 0.7)',
     cardBorder: '1px solid rgba(255, 255, 255, 0.8)',
@@ -25,7 +27,7 @@ export const themes = [
     description: '黑金底色搭配粉紫霓虹',
     primary: '#bd00ff',
     primaryDark: '#9d00cc',
-    bg: "url('https://source.unsplash.com/featured/1920x1080/?cyberpunk,night,purple')",
+    bg: 'linear-gradient(135deg, #0a0a14 0%, #1a0a2e 50%, #0a0a14 100%)',
     bgColor: 'rgba(10, 10, 20, 0.85)',
     cardBg: 'rgba(25, 25, 40, 0.7)',
     cardBorder: '1px solid rgba(189, 0, 255, 0.5)',
@@ -71,7 +73,7 @@ export const themes = [
     description: 'Vercel风格高级深色质感',
     primary: '#3b82f6',
     primaryDark: '#2563eb',
-    bg: "url('https://source.unsplash.com/featured/1920x1080/?ocean,dark,blue')",
+    bg: 'linear-gradient(135deg, #09090b 0%, #0a1628 50%, #09090b 100%)',
     bgColor: '#09090b',
     cardBg: '#141415',
     cardBorder: '1px solid rgba(255, 255, 255, 0.08)',

@@ -55,6 +55,7 @@ class ScenarioExecutionEngine:
     def __init__(self, scenario_id: int, env_id: Optional[int] = None, progress_callback=None):
         self.scenario_id = scenario_id
         self.env_id = env_id
+        self.env = None
         self.context_vars: Dict[str, Any] = {}
         self.step_results: List[Dict[str, Any]] = []
         self.total_duration = 0

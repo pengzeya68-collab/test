@@ -65,7 +65,11 @@ async def _call_ai_analysis(scenarios: List[Dict], summary: Dict, test_env: Dict
     model = None
 
     if config:
-        api_key = config.api_key
+        from fastapi_backend.utils.encryption import decrypt, DecryptionError
+        try:
+            api_key = decrypt(config.api_key)
+        except (DecryptionError, Exception):
+            api_key = config.api_key
         base_url = config.base_url
         model = config.model
     else:
@@ -473,7 +477,6 @@ def generate_performance_report(
     doc.add_paragraph("接口压测结果数据如下：")
 
     passed = sum(1 for s in scenarios if s.get("result", "") in ("通过", "pass", "Pass", "PASS", "PASSED", "成功"))
-    len(scenarios) - passed
     overall_qps = sum(float(s.get("actual_qps", 0) or 0) for s in scenarios)
 
     # 汇总表

@@ -58,7 +58,11 @@ class AITutorService:
             provider = settings.AI_PROVIDER.lower()
             group_id = None
         else:
-            api_key = config.api_key
+            from fastapi_backend.utils.encryption import decrypt, DecryptionError
+            try:
+                api_key = decrypt(config.api_key)
+            except (DecryptionError, Exception):
+                api_key = config.api_key
             base_url = config.base_url
             model = config.model
             timeout = config.timeout_seconds

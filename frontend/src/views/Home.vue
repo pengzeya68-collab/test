@@ -92,7 +92,7 @@
             <span class="stat-num">{{ dashboardData.favoritesCount || 0 }}</span>
             <span class="stat-label">收藏夹 →</span>
           </div>
-          <div class="mini-stat-card clickable" @click="router.push('/projects')">
+          <div class="mini-stat-card clickable" @click="router.push('/learning-paths')">
             <span class="stat-num">{{ dashboardData.projectsCount || 0 }}</span>
             <span class="stat-label">项目实战 →</span>
           </div>

@@ -47,7 +47,8 @@
         </el-form-item>
       </el-form>
 
-      <div class="login-footer">
+      <!-- 测试账号提示仅在开发环境显示 -->
+      <div v-if="isDev" class="login-footer">
         <span>默认账号: admin / admin123</span>
       </div>
     </div>
@@ -69,6 +70,7 @@ const route = useRoute()
 const formRef = ref()
 const loading = ref(false)
 const adminStore = useAdminStore()
+const isDev = import.meta.env.DEV
 
 const form = ref({
   username: '',

@@ -35,7 +35,7 @@ from fastapi_backend.utils.encryption import decrypt
 _logger = logging.getLogger(__name__)
 
 # 项目根目录
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 BASE_DIR = AUTOTEST_DATA_DIR
 

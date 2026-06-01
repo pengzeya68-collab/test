@@ -571,7 +571,7 @@ const sqlRunning = ref(false)
 const sqlResult = ref(null)
 const pythonRunning = ref(false)
 const pythonResult = ref(null)
-const exerciseId = route.params.id
+const exerciseId = computed(() => route.params.id)
 
 const leftTab = ref('desc')
 const leftPanelWidth = ref(null)
@@ -671,6 +671,12 @@ onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
 })
 
+watch(exerciseId, () => {
+  fetchExerciseDetail()
+  fetchRelatedExercises()
+  fetchNotes()
+})
+
 onBeforeUnmount(() => {
   if (timerInterval.value) clearInterval(timerInterval.value)
   document.removeEventListener('keydown', handleKeydown)
@@ -721,7 +727,7 @@ const viewSolution = () => {
 
 const fetchRelatedExercises = async () => {
   try {
-    const res = await request.get(`/exercise/${exerciseId}/related`)
+    const res = await request.get(`/exercise/${exerciseId.value}/related`)
     relatedExercises.value = res.related || []
     if (relatedExercises.value.length > 0) {
       nextExerciseId.value = relatedExercises.value[0].id
@@ -731,7 +737,7 @@ const fetchRelatedExercises = async () => {
 
 const fetchNotes = async () => {
   try {
-    const res = await request.get('/notes', { params: { exercise_id: exerciseId } })
+    const res = await request.get('/notes', { params: { exercise_id: exerciseId.value } })
     exerciseNotes.value = res.notes || []
   } catch {}
 }
@@ -746,7 +752,7 @@ const saveNote = async () => {
     await request.post('/notes', {
       title: newNoteTitle.value,
       content: newNoteContent.value,
-      exercise_id: parseInt(exerciseId),
+      exercise_id: parseInt(exerciseId.value),
     })
     ElMessage.success('笔记保存成功')
     newNoteTitle.value = ''
@@ -776,7 +782,7 @@ const goToExercise = (id) => {
 const fetchExerciseDetail = async () => {
   loading.value = true
   try {
-    const res = await request.get(`/exercises/${exerciseId}`)
+    const res = await request.get(`/exercises/${exerciseId.value}`)
     console.log('[ExerciseDetail] API response:', res)
     exercise.value = res
     if (!res || !res.id) {
@@ -831,7 +837,7 @@ const submitAnswer = async () => {
   submitting.value = true
   try {
     const res = await request.post('/exercise/submit', {
-      exercise_id: parseInt(exerciseId),
+      exercise_id: parseInt(exerciseId.value),
       solution: answerContent,
       exercise_type: exercise.value?.exercise_type || 'text',
       language: exercise.value?.language || 'python',

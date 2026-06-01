@@ -21,6 +21,9 @@ class CodeSandbox:
         "shell": {"command": "bash", "extension": ".sh", "timeout": 5},
     }
 
+    # 并发限制：同时运行的沙箱进程数
+    _concurrency_semaphore = asyncio.Semaphore(10)
+
     BLOCKED_BUILTINS = frozenset(
         {
             "exec",
@@ -72,7 +75,12 @@ class CodeSandbox:
         return True, ""
 
     def _is_code_safe(self, code: str, language: str) -> tuple[bool, str]:
-        code_lower = code.lower()
+        # 移除注释和字符串中的内容，防止绕过
+        code_stripped = re.sub(r'#[^\n]*', '', code)  # 移除单行注释
+        code_stripped = re.sub(r'"""[\s\S]*?"""', '', code_stripped)  # 移除多行字符串
+        code_stripped = re.sub(r"'''[\s\S]*?'''", '', code_stripped)  # 移除多行字符串
+        code_lower = code_stripped.lower()
+        code_original = code_stripped
 
         DANGEROUS_PATTERNS = [
             r"\brm\s+-[rf]*",
@@ -140,32 +148,60 @@ class CodeSandbox:
                 return False, "检测到危险代码模式"
 
         if language == "python":
+            # 增强的模块检测：包括别名导入、间接导入等
             for mod in self.BLOCKED_MODULES:
-                # 改进正则表达式，检测别名导入和多种导入方式
                 patterns = [
                     rf"\bimport\s+{mod}\b",
                     rf"\bfrom\s+{mod}\b",
-                    r"\bimport\s+\w+\s+as\s+\w+",
-                    r"\bfrom\s+\w+\s+import\s+\w+\s+as\s+\w+",
+                    rf"\bimport\s+{mod}\s+as\s+\w+",
+                    rf"\bfrom\s+{mod}\s+import\s+",
+                    # 检测字符串形式的模块引用
+                    rf"['\"]{mod}['\"]",
                 ]
                 for pattern in patterns:
                     if re.search(pattern, code_lower):
-                        # 进一步检查是否包含被禁止的模块名
-                        if mod in code_lower:
-                            return False, f"禁止导入模块: {mod}"
+                        return False, f"禁止导入模块: {mod}"
 
+            # 检测危险内置函数
             for builtin_name in self.BLOCKED_BUILTINS:
-                if re.search(rf"\b{builtin_name}\s*\(", code):
+                # 改进：支持各种调用方式，包括带空格、括号内换行等
+                if re.search(rf"\b{builtin_name}\s*\(", code_original):
                     return False, f"禁止使用内置函数: {builtin_name}"
 
-            if re.search(r"\bopen\s*\(", code):
+            # 检测文件操作
+            if re.search(r"\bopen\s*\(", code_original):
                 return False, "禁止使用 open() 函数"
 
-            if re.search(r"\bexec\s*\(", code) or re.search(r"\beval\s*\(", code):
+            # 检测 exec/eval 的各种变体
+            if re.search(r"\bexec\s*\(", code_original) or re.search(r"\beval\s*\(", code_original):
                 return False, "禁止使用 exec/eval"
 
-            if re.search(r"\bcompile\s*\(", code):
+            # 检测 compile
+            if re.search(r"\bcompile\s*\(", code_original):
                 return False, "禁止使用 compile()"
+
+            # 额外安全检查：检测 type.mro() 链、__subclasses__() 等高级绕过技术
+            advanced_bypass_patterns = [
+                r"\btype\s*\([^)]*\)\s*\.\s*mro\s*\(",
+                r"\b__subclasses__\s*\(",
+                r"\b__bases__\b",
+                r"\b__globals__\b",
+                r"\b__code__\b",
+                r"\b__class__\b",
+                r"\b__mro__\b",
+                r"\b__dict__\b",
+                r"\bvars\s*\(",
+                r"\bdir\s*\(",
+                r"\bglobals\s*\(",
+                r"\blocals\s*\(",
+                r"\bgetattr\s*\(",
+                r"\bsetattr\s*\(",
+                r"\bdelattr\s*\(",
+                r"\bhasattr\s*\(",
+            ]
+            for pattern in advanced_bypass_patterns:
+                if re.search(pattern, code_original):
+                    return False, f"检测到潜在的沙箱绕过技术"
 
         if language == "shell":
             lines = code.split("\n")
@@ -175,6 +211,12 @@ class CodeSandbox:
                     continue
                 if re.search(r"\b(?:bash|sh|zsh)\s+-c\s+", line):
                     return False, "禁止嵌套执行shell命令"
+                # 检测 base64 编码执行
+                if re.search(r"\bbase64\s+(-d|--decode)\b", line):
+                    return False, "禁止 base64 解码执行"
+                # 检测 eval 变量替换
+                if re.search(r"\beval\s+", line):
+                    return False, "禁止使用 eval"
 
         return True, "安全"
 
@@ -244,105 +286,107 @@ class CodeSandbox:
 
         logger.info(f"开始执行 Python 代码, timeout={timeout}s, has_input={input_data is not None}")
 
-        start_time = time.perf_counter()
-        temp_path: Optional[Path] = None
-        process = None
-
-        try:
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                suffix=".py",
-                prefix="sandbox_",
-                delete=False,
-                encoding="utf-8",
-            ) as temp_file:
-                temp_file.write(code)
-                temp_path = Path(temp_file.name)
-
-            safe_env = {
-                "PATH": os.environ.get("PATH", ""),
-                "PYTHONPATH": "",
-                "HOME": os.environ.get("HOME", ""),
-                "USER": os.environ.get("USER", ""),
-                "TMPDIR": tempfile.gettempdir(),
-            }
-
-            process = await asyncio.create_subprocess_exec(
-                sys.executable,
-                "-I",
-                str(temp_path),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                stdin=asyncio.subprocess.PIPE if input_data else asyncio.subprocess.DEVNULL,
-                cwd=tempfile.gettempdir(),
-                env=safe_env,
-            )
+        # 使用信号量限制并发
+        async with self._concurrency_semaphore:
+            start_time = time.perf_counter()
+            temp_path: Optional[Path] = None
+            process = None
 
             try:
-                if input_data:
-                    stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                        process.communicate(input=input_data.encode("utf-8")),
-                        timeout=timeout,
-                    )
-                else:
-                    stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                        process.communicate(),
-                        timeout=timeout,
-                    )
-            except asyncio.TimeoutError:
-                logger.warning(f"代码执行超时 (timeout={timeout}s)")
-                process.kill()
-                await process.communicate()
+                with tempfile.NamedTemporaryFile(
+                    mode="w",
+                    suffix=".py",
+                    prefix="sandbox_",
+                    delete=False,
+                    encoding="utf-8",
+                ) as temp_file:
+                    temp_file.write(code)
+                    temp_path = Path(temp_file.name)
+
+                safe_env = {
+                    "PATH": os.environ.get("PATH", ""),
+                    "PYTHONPATH": "",
+                    "HOME": os.environ.get("HOME", ""),
+                    "USER": os.environ.get("USER", ""),
+                    "TMPDIR": tempfile.gettempdir(),
+                }
+
+                process = await asyncio.create_subprocess_exec(
+                    sys.executable,
+                    "-I",
+                    str(temp_path),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    stdin=asyncio.subprocess.PIPE if input_data else asyncio.subprocess.DEVNULL,
+                    cwd=tempfile.gettempdir(),
+                    env=safe_env,
+                )
+
+                try:
+                    if input_data:
+                        stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                            process.communicate(input=input_data.encode("utf-8")),
+                            timeout=timeout,
+                        )
+                    else:
+                        stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                            process.communicate(),
+                            timeout=timeout,
+                        )
+                except asyncio.TimeoutError:
+                    logger.warning(f"代码执行超时 (timeout={timeout}s)")
+                    process.kill()
+                    await process.communicate()
+                    return {
+                        "exit_code": -1,
+                        "stdout": "",
+                        "stderr": f"代码执行超时，超过 {timeout} 秒限制",
+                        "execution_time_ms": int((time.perf_counter() - start_time) * 1000),
+                    }
+
+                stdout = self._truncate_output(stdout_bytes.decode("utf-8", errors="replace"))
+                stderr = self._truncate_output(stderr_bytes.decode("utf-8", errors="replace"))
+                execution_time_ms = int((time.perf_counter() - start_time) * 1000)
+
+                logger.info(f"执行完成, exit_code={process.returncode}, execution_time={execution_time_ms}ms")
+
+                return {
+                    "exit_code": process.returncode if process.returncode is not None else -1,
+                    "stdout": stdout,
+                    "stderr": stderr,
+                    "execution_time_ms": execution_time_ms,
+                }
+            except FileNotFoundError:
+                error_msg = "未找到 Python 运行时，无法执行代码"
+                logger.error(error_msg)
                 return {
                     "exit_code": -1,
                     "stdout": "",
-                    "stderr": f"代码执行超时，超过 {timeout} 秒限制",
+                    "stderr": error_msg,
                     "execution_time_ms": int((time.perf_counter() - start_time) * 1000),
                 }
-
-            stdout = self._truncate_output(stdout_bytes.decode("utf-8", errors="replace"))
-            stderr = self._truncate_output(stderr_bytes.decode("utf-8", errors="replace"))
-            execution_time_ms = int((time.perf_counter() - start_time) * 1000)
-
-            logger.info(f"执行完成, exit_code={process.returncode}, execution_time={execution_time_ms}ms")
-
-            return {
-                "exit_code": process.returncode if process.returncode is not None else -1,
-                "stdout": stdout,
-                "stderr": stderr,
-                "execution_time_ms": execution_time_ms,
-            }
-        except FileNotFoundError:
-            error_msg = "未找到 Python 运行时，无法执行代码"
-            logger.error(error_msg)
-            return {
-                "exit_code": -1,
-                "stdout": "",
-                "stderr": error_msg,
-                "execution_time_ms": int((time.perf_counter() - start_time) * 1000),
-            }
-        except Exception as exc:
-            error_msg = f"沙盒执行失败: {exc}"
-            logger.error(error_msg)
-            return {
-                "exit_code": -1,
-                "stdout": "",
-                "stderr": error_msg,
-                "execution_time_ms": int((time.perf_counter() - start_time) * 1000),
-            }
-        finally:
-            if process and process.returncode is None:
-                logger.warning("进程仍在运行，强制终止")
-                process.kill()
-                try:
-                    await process.communicate()
-                except Exception as e:
-                    logger.warning(f"终止进程时出错: {e}")
-            if temp_path and temp_path.exists():
-                try:
-                    os.remove(temp_path)
-                except OSError as e:
-                    logger.warning(f"清理临时文件失败: {e}")
+            except Exception as exc:
+                error_msg = f"沙盒执行失败: {exc}"
+                logger.error(error_msg)
+                return {
+                    "exit_code": -1,
+                    "stdout": "",
+                    "stderr": error_msg,
+                    "execution_time_ms": int((time.perf_counter() - start_time) * 1000),
+                }
+            finally:
+                if process and process.returncode is None:
+                    logger.warning("进程仍在运行，强制终止")
+                    process.kill()
+                    try:
+                        await process.communicate()
+                    except Exception as e:
+                        logger.warning(f"终止进程时出错: {e}")
+                if temp_path and temp_path.exists():
+                    try:
+                        os.remove(temp_path)
+                    except OSError as e:
+                        logger.warning(f"清理临时文件失败: {e}")
 
     async def execute_python_code(self, code: str, timeout: int = None) -> dict:
         return await self._execute_python(code, input_data=None, timeout=timeout)
@@ -352,34 +396,65 @@ class CodeSandbox:
 
     async def _execute_sql(self, code: str, timeout: int = None, setup_sql: str = None) -> dict:
         import sqlite3
+        import re
 
         if timeout is None:
             timeout = self.LANGUAGE_CONFIG["sql"]["timeout"]
 
-        conn = sqlite3.connect(":memory:")
-        conn.row_factory = sqlite3.Row
-        output = []
+        # 白名单策略：只允许安全的只读语句
+        def is_safe_sql(stmt: str) -> tuple[bool, str]:
+            stmt_upper = stmt.strip().upper()
+            # 允许的语句类型
+            allowed_prefixes = ("SELECT", "SHOW", "DESCRIBE", "EXPLAIN", "PRAGMA")
+            if not any(stmt_upper.startswith(prefix) for prefix in allowed_prefixes):
+                return False, f"只允许 SELECT/SHOW/DESCRIBE/EXPLAIN/PRAGMA 语句"
+            # 检测危险关键字
+            dangerous_keywords = [
+                r"\bINSERT\b", r"\bUPDATE\b", r"\bDELETE\b", r"\bDROP\b",
+                r"\bCREATE\b", r"\bALTER\b", r"\bTRUNCATE\b", r"\bREPLACE\b",
+                r"\bGRANT\b", r"\bREVOKE\b", r"\bEXEC\b", r"\bEXECUTE\b",
+                r"\bVACUUM\b", r"\bATTACH\b", r"\bDETACH\b", r"\bLOAD_EXTENSION\b",
+            ]
+            for pattern in dangerous_keywords:
+                if re.search(pattern, stmt_upper):
+                    return False, f"检测到危险关键字: {pattern}"
+            return True, ""
 
-        try:
-            cursor = conn.cursor()
+        def _sync_execute():
+            """同步执行 SQL，用于在线程池中运行"""
+            conn = sqlite3.connect(":memory:")
+            conn.row_factory = sqlite3.Row
+            output = []
 
-            if setup_sql and setup_sql.strip():
-                for stmt in setup_sql.split(";"):
-                    stmt = stmt.strip()
-                    if stmt:
-                        try:
-                            cursor.execute(stmt)
-                        except sqlite3.Error:
-                            pass
-                conn.commit()
+            try:
+                cursor = conn.cursor()
 
-            statements = [s.strip() for s in code.split(";") if s.strip()]
+                # setup_sql 用于建表和初始数据，允许执行 DDL
+                if setup_sql and setup_sql.strip():
+                    for stmt in setup_sql.split(";"):
+                        stmt = stmt.strip()
+                        if stmt:
+                            try:
+                                cursor.execute(stmt)
+                            except sqlite3.Error:
+                                pass
+                    conn.commit()
 
-            for statement in statements:
-                try:
-                    cursor.execute(statement)
+                statements = [s.strip() for s in code.split(";") if s.strip()]
 
-                    if statement.upper().startswith("SELECT") or statement.upper().startswith("PRAGMA"):
+                for statement in statements:
+                    # 安全检查：只允许只读查询
+                    safe, msg = is_safe_sql(statement)
+                    if not safe:
+                        return {
+                            "exit_code": 1,
+                            "stdout": "\n".join(output),
+                            "stderr": f"安全检查失败：{msg}",
+                            "execution_time_ms": 0,
+                        }
+
+                    try:
+                        cursor.execute(statement)
                         rows = cursor.fetchall()
                         if rows:
                             columns = [description[0] for description in cursor.description]
@@ -389,76 +464,86 @@ class CodeSandbox:
                                 output.append("\t".join(str(cell) for cell in row))
                         else:
                             output.append("(没有数据)")
-                    else:
-                        conn.commit()
-                        output.append(f"执行成功，影响行数: {cursor.rowcount}")
+                    except sqlite3.Error as e:
+                        output.append(f"SQL错误: {str(e)}")
+                        return {
+                            "exit_code": 1,
+                            "stdout": "\n".join(output),
+                            "stderr": str(e),
+                            "execution_time_ms": 0,
+                        }
 
-                except sqlite3.Error as e:
-                    output.append(f"SQL错误: {str(e)}")
-                    return {
-                        "exit_code": 1,
-                        "stdout": "\n".join(output),
-                        "stderr": str(e),
-                        "execution_time_ms": 0,
-                    }
+                return {
+                    "exit_code": 0,
+                    "stdout": "\n".join(output) if output else "执行成功",
+                    "stderr": "",
+                    "execution_time_ms": 0,
+                }
+            except Exception as e:
+                return {
+                    "exit_code": 1,
+                    "stdout": "\n".join(output) if output else "",
+                    "stderr": str(e),
+                    "execution_time_ms": 0,
+                }
+            finally:
+                conn.close()
 
-            return {
-                "exit_code": 0,
-                "stdout": "\n".join(output) if output else "执行成功",
-                "stderr": "",
-                "execution_time_ms": 0,
-            }
-        except Exception as e:
-            return {
-                "exit_code": 1,
-                "stdout": "\n".join(output) if output else "",
-                "stderr": str(e),
-                "execution_time_ms": 0,
-            }
-        finally:
-            conn.close()
+        # 使用 asyncio.to_thread() 将同步操作包装在独立线程中，避免阻塞事件循环
+        return await asyncio.to_thread(_sync_execute)
 
     async def _execute_shell(self, code: str, timeout: int = None) -> dict:
         if timeout is None:
             timeout = self.LANGUAGE_CONFIG["shell"]["timeout"]
 
-        shell_cmd = "bash"
-        if platform.system() == "Windows":
-            shell_cmd = "powershell.exe"
+        # 使用信号量限制并发
+        async with self._concurrency_semaphore:
+            shell_cmd = "bash"
+            if platform.system() == "Windows":
+                shell_cmd = "powershell.exe"
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False, encoding="utf-8") as f:
-            f.write(code)
-            temp_file = f.name
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False, encoding="utf-8") as f:
+                f.write(code)
+                temp_file = f.name
 
-        try:
-            process = await asyncio.create_subprocess_exec(
-                shell_cmd,
-                temp_file,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                stdin=asyncio.subprocess.DEVNULL,
-                cwd=tempfile.gettempdir(),
-            )
             try:
-                stdout_bytes, stderr_bytes = await asyncio.wait_for(process.communicate(), timeout=timeout)
-            except asyncio.TimeoutExpired:
-                process.kill()
-                await process.communicate()
-                return {
-                    "exit_code": -1,
-                    "stdout": "",
-                    "stderr": f"Shell执行超时（超过{timeout}秒）",
-                    "execution_time_ms": 0,
+                # 设置安全的环境变量
+                safe_env = {
+                    "PATH": os.environ.get("PATH", ""),
+                    "HOME": os.environ.get("HOME", ""),
+                    "USER": os.environ.get("USER", ""),
+                    "TMPDIR": tempfile.gettempdir(),
                 }
 
-            stdout = stdout_bytes.decode("utf-8", errors="replace")
-            stderr = stderr_bytes.decode("utf-8", errors="replace")
+                process = await asyncio.create_subprocess_exec(
+                    shell_cmd,
+                    temp_file,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    stdin=asyncio.subprocess.DEVNULL,
+                    cwd=tempfile.gettempdir(),
+                    env=safe_env,
+                )
+                try:
+                    stdout_bytes, stderr_bytes = await asyncio.wait_for(process.communicate(), timeout=timeout)
+                except asyncio.TimeoutError:
+                    process.kill()
+                    await process.communicate()
+                    return {
+                        "exit_code": -1,
+                        "stdout": "",
+                        "stderr": f"Shell执行超时（超过{timeout}秒）",
+                        "execution_time_ms": 0,
+                    }
 
-            return {
-                "exit_code": process.returncode if process.returncode is not None else -1,
-                "stdout": stdout,
-                "stderr": stderr,
-                "execution_time_ms": 0,
-            }
-        finally:
-            os.unlink(temp_file)
+                stdout = stdout_bytes.decode("utf-8", errors="replace")
+                stderr = stderr_bytes.decode("utf-8", errors="replace")
+
+                return {
+                    "exit_code": process.returncode if process.returncode is not None else -1,
+                    "stdout": stdout,
+                    "stderr": stderr,
+                    "execution_time_ms": 0,
+                }
+            finally:
+                os.unlink(temp_file)

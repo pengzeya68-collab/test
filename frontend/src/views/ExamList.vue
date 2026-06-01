@@ -265,7 +265,7 @@ onMounted(() => {
 
 const fetchLearningPaths = async () => {
   try {
-    const res = await request.get('/learning-paths', { _t: Date.now() })
+    const res = await request.get('/learning-paths', { params: { _t: Date.now() } })
     learningPaths.value = Array.isArray(res) ? res : (res.data || res.list || [])
   } catch {}
 }

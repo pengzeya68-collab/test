@@ -123,6 +123,9 @@ if not settings.ADMIN_PASSWORD:
         settings.ADMIN_PASSWORD = secrets.token_urlsafe(16)
         _logger.warning("开发环境使用随机生成的 ADMIN_PASSWORD，生产环境请务必在 .env 中设置固定密码")
 
+if settings.ENVIRONMENT == "production" and settings.ADMIN_PASSWORD in ("admin123", "123456", "password"):
+    raise RuntimeError("生产环境 ADMIN_PASSWORD 不能使用弱密码（admin123/123456/password），请在 .env 中设置强密码")
+
 if not settings.ADMIN_SECRET_KEY:
     if settings.ENVIRONMENT == "production":
         raise RuntimeError("生产环境必须在 .env 中设置 ADMIN_SECRET_KEY")

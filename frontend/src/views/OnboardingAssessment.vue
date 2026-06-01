@@ -188,6 +188,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowRight } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
 
@@ -252,6 +253,7 @@ const startAssessment = async () => {
     step.value = 'quiz'
   } catch (error) {
     console.error('获取测评题目失败:', error)
+    ElMessage.error('获取测评题目失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -293,6 +295,7 @@ const submitAssessment = async () => {
     userStore.checkNewAchievements()
   } catch (error) {
     console.error('提交测评失败:', error)
+    ElMessage.error('提交测评失败，请稍后重试')
   } finally {
     submitting.value = false
   }

@@ -68,7 +68,7 @@ async def get_unread_count(
     result = await db.execute(
         select(func.count(Notification.id)).where(
             Notification.user_id == current_user.id,
-            not Notification.is_read,
+            ~Notification.is_read,
         )
     )
     count = result.scalar() or 0
@@ -106,7 +106,7 @@ async def mark_all_as_read(
         update(Notification)
         .where(
             Notification.user_id == current_user.id,
-            not Notification.is_read,
+            ~Notification.is_read,
         )
         .values(is_read=True)
     )
@@ -114,7 +114,6 @@ async def mark_all_as_read(
     return {"message": "已全部标记为已读"}
 
 
-@router.post("/send")
 @router.post("/send/{user_id}")
 async def send_notification(
     user_id: int,
@@ -125,6 +124,26 @@ async def send_notification(
     notif = _notify_create(
         db,
         user_id=user_id,
+        title=body.get("title", ""),
+        content=body.get("content", ""),
+        ntype=body.get("type", "system"),
+        link=body.get("link"),
+    )
+    await db.commit()
+    await db.refresh(notif)
+    return {"message": "发送成功", "notification": notif.to_dict()}
+
+
+@router.post("/send")
+async def send_notification_to_self(
+    body: Dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """发送通知给当前用户"""
+    notif = _notify_create(
+        db,
+        user_id=current_user.id,
         title=body.get("title", ""),
         content=body.get("content", ""),
         ntype=body.get("type", "system"),

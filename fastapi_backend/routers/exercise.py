@@ -483,8 +483,9 @@ async def submit_exercise(
 
         await db.commit()
     except Exception as e:
-        logger.warning(f"保存提交记录失败: {e}")
+        logger.error(f"保存提交记录失败: {e}", exc_info=True)
         await db.rollback()
+        raise HTTPException(status_code=500, detail="提交记录保存失败，请重试")
 
     skill_change = None
     if is_correct and before_scores:
@@ -523,11 +524,22 @@ async def submit_exercise(
 
 @router.get("/progress")
 async def get_exercise_progress(
+    page: int = 1,
+    page_size: int = 50,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取当前用户所有习题的完成进度"""
+    """获取当前用户所有习题的完成进度（支持分页）"""
+    from sqlalchemy import func
+
+    # 获取总数
+    count_stmt = select(func.count()).select_from(Progress).where(Progress.user_id == current_user.id)
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar()
+
+    # 分页查询
     stmt = select(Progress).where(Progress.user_id == current_user.id)
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
     progresses = result.scalars().all()
 
@@ -539,7 +551,12 @@ async def get_exercise_progress(
             "attempts": p.attempts or 0,
         }
 
-    return {"progress": progress_map}
+    return {
+        "progress": progress_map,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @router.get("/recent-activity")
@@ -584,33 +601,49 @@ async def get_recent_activity(
 
 @router.get("/wrong-answers")
 async def get_wrong_answers(
+    page: int = 1,
+    page_size: int = 20,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取当前用户的错题本"""
-    wrong_stmt = (
-        select(ExerciseSubmissionRecord)
+    """获取当前用户的错题本（使用 SQL 子查询优化，支持分页）"""
+    from sqlalchemy import func, distinct
+
+    # 使用子查询找出所有有失败记录的习题ID
+    wrong_exercises_stmt = (
+        select(ExerciseSubmissionRecord.exercise_id)
         .where(
             ExerciseSubmissionRecord.user_id == current_user.id,
             ExerciseSubmissionRecord.result == "fail",
         )
-        .order_by(ExerciseSubmissionRecord.created_at.desc())
+        .group_by(ExerciseSubmissionRecord.exercise_id)
     )
-    wrong_result = await db.execute(wrong_stmt)
-    wrong_submissions = wrong_result.scalars().all()
+    wrong_result = await db.execute(wrong_exercises_stmt)
+    wrong_exercise_ids = [row[0] for row in wrong_result.all()]
 
-    wrong_exercise_ids = list({s.exercise_id for s in wrong_submissions})
+    if not wrong_exercise_ids:
+        return {
+            "wrong_answers": [],
+            "mastered": [],
+            "wrong_count": 0,
+            "mastered_count": 0,
+        }
 
-    later_correct_stmt = select(ExerciseSubmissionRecord).where(
-        ExerciseSubmissionRecord.user_id == current_user.id,
-        ExerciseSubmissionRecord.result == "pass",
+    # 使用子查询找出已经有成功记录的习题ID
+    correct_exercises_stmt = (
+        select(distinct(ExerciseSubmissionRecord.exercise_id))
+        .where(
+            ExerciseSubmissionRecord.user_id == current_user.id,
+            ExerciseSubmissionRecord.result == "pass",
+            ExerciseSubmissionRecord.exercise_id.in_(wrong_exercise_ids),
+        )
     )
-    later_correct_result = await db.execute(later_correct_stmt)
-    later_correct_ids = {s.exercise_id for s in later_correct_result.scalars().all()}
+    correct_result = await db.execute(correct_exercises_stmt)
+    mastered_ids = {row[0] for row in correct_result.all()}
 
-    still_wrong_ids = [eid for eid in wrong_exercise_ids if eid not in later_correct_ids]
-    mastered_ids = [eid for eid in wrong_exercise_ids if eid in later_correct_ids]
+    still_wrong_ids = [eid for eid in wrong_exercise_ids if eid not in mastered_ids]
 
+    # 获取习题信息
     all_ids = wrong_exercise_ids
     exercise_map = {}
     if all_ids:
@@ -626,35 +659,57 @@ async def get_wrong_answers(
                 "stage": ex.stage,
             }
 
+    # 单次聚合查询获取所有错题的失败次数和最新失败时间
+    wrong_stats_map = {}
+    if still_wrong_ids:
+        stats_stmt = (
+            select(
+                ExerciseSubmissionRecord.exercise_id,
+                func.count().label("wrong_count"),
+                func.max(ExerciseSubmissionRecord.created_at).label("last_wrong_at"),
+            )
+            .where(
+                ExerciseSubmissionRecord.user_id == current_user.id,
+                ExerciseSubmissionRecord.exercise_id.in_(still_wrong_ids),
+                ExerciseSubmissionRecord.result == "fail",
+            )
+            .group_by(ExerciseSubmissionRecord.exercise_id)
+        )
+        stats_result = await db.execute(stats_stmt)
+        for row in stats_result.all():
+            wrong_stats_map[row.exercise_id] = row
+
     wrong_list = []
     for eid in still_wrong_ids:
         info = exercise_map.get(eid, {})
-        subs = [s for s in wrong_submissions if s.exercise_id == eid]
-        latest = subs[0] if subs else None
+        row = wrong_stats_map.get(eid)
         wrong_list.append(
             {
                 **info,
                 "status": "wrong",
-                "wrong_count": len(subs),
-                "last_wrong_at": latest.created_at.strftime("%Y-%m-%d %H:%M") if latest and latest.created_at else "",
+                "wrong_count": row.wrong_count if row else 0,
+                "last_wrong_at": row.last_wrong_at.strftime("%Y-%m-%d %H:%M") if row and row.last_wrong_at else "",
             }
         )
 
-    mastered_list = []
-    for eid in mastered_ids:
-        info = exercise_map.get(eid, {})
-        mastered_list.append(
-            {
-                **info,
-                "status": "mastered",
-            }
-        )
+    # 分页
+    total_wrong = len(wrong_list)
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated_wrong = wrong_list[start:end]
+
+    mastered_list = [
+        {**exercise_map.get(eid, {}), "status": "mastered"}
+        for eid in mastered_ids
+    ]
 
     return {
-        "wrong_answers": wrong_list,
+        "wrong_answers": paginated_wrong,
         "mastered": mastered_list,
-        "wrong_count": len(still_wrong_ids),
+        "wrong_count": total_wrong,
         "mastered_count": len(mastered_ids),
+        "page": page,
+        "page_size": page_size,
     }
 
 
@@ -663,28 +718,40 @@ async def get_daily_tasks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取今日任务和完成情况"""
+    """获取今日任务和完成情况（使用数据库聚合优化）"""
     from datetime import datetime, timezone
+    from sqlalchemy import func, Integer
 
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    today_submissions_stmt = select(ExerciseSubmissionRecord).where(
-        ExerciseSubmissionRecord.user_id == current_user.id,
-        ExerciseSubmissionRecord.created_at >= today_start,
+    # 使用数据库聚合查询今日提交统计
+    today_stats_stmt = (
+        select(
+            func.count().label("total"),
+            func.sum(func.cast(ExerciseSubmissionRecord.result == "pass", Integer)).label("correct"),
+        )
+        .where(
+            ExerciseSubmissionRecord.user_id == current_user.id,
+            ExerciseSubmissionRecord.created_at >= today_start,
+        )
     )
-    today_result = await db.execute(today_submissions_stmt)
-    today_submissions = today_result.scalars().all()
+    today_result = await db.execute(today_stats_stmt)
+    today_stats = today_result.one()
+    today_total = today_stats.total or 0
+    today_correct = today_stats.correct or 0
 
-    today_correct = sum(1 for s in today_submissions if s.result == "pass")
-    today_total = len(today_submissions)
-
-    progress_stmt = select(Progress).where(
-        Progress.user_id == current_user.id,
-        Progress.completed,
+    # 使用 COUNT 查询总完成数
+    total_completed_stmt = (
+        select(func.count())
+        .select_from(Progress)
+        .where(
+            Progress.user_id == current_user.id,
+            Progress.completed,
+        )
     )
-    progress_result = await db.execute(progress_stmt)
-    total_completed = len(progress_result.scalars().all())
+    total_result = await db.execute(total_completed_stmt)
+    total_completed = total_result.scalar()
 
     checkin_today = False
     try:

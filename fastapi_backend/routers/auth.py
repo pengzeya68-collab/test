@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy import select, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +26,28 @@ from fastapi_backend.schemas.common import MessageResponse
 from fastapi_backend.services.auth_service import AuthError, AuthService
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
+
+# 简单的登录速率限制（IP级别）
+_login_attempts: dict[str, list[float]] = {}
+_LOGIN_RATE_LIMIT = 5  # 最多尝试次数
+_LOGIN_RATE_WINDOW = 300  # 时间窗口（秒）
+
+
+def _check_login_rate_limit(client_ip: str) -> None:
+    """检查登录频率限制，超限则抛出异常"""
+    import time
+
+    now = time.time()
+    attempts = _login_attempts.get(client_ip, [])
+    # 清除过期记录
+    attempts = [t for t in attempts if now - t < _LOGIN_RATE_WINDOW]
+    if len(attempts) >= _LOGIN_RATE_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"登录尝试过于频繁，请 {_LOGIN_RATE_WINDOW // 60} 分钟后再试",
+        )
+    attempts.append(now)
+    _login_attempts[client_ip] = attempts
 
 
 @router.post("/register", response_model=TokenResponse)
@@ -70,10 +93,14 @@ async def register(
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
+    request: Request,
     payload: LoginRequest,
     db: AsyncSession = Depends(get_db),
     auth_service: AuthService = Depends(get_auth_service),
 ):
+    client_ip = request.client.host if request.client else "unknown"
+    _check_login_rate_limit(client_ip)
+
     user = await auth_service.authenticate_user(db, payload.username, payload.password)
     if not user:
         raise AuthenticationException("用户名/邮箱或密码无效")
@@ -87,9 +114,13 @@ async def get_me(current_user: User = Depends(get_current_active_user)):
     return AuthService.to_user_response(current_user)
 
 
+class LogoutRequest(BaseModel):
+    refresh_token: str = ""
+
+
 @router.post("/logout")
 async def logout(
-    body: dict,
+    body: LogoutRequest,
     current_user: User = Depends(get_current_active_user),
     auth_service: AuthService = Depends(get_auth_service),
     authorization: str | None = Header(default=None),
@@ -101,12 +132,13 @@ async def logout(
         if scheme.lower() == "bearer" and access_token:
             await auth_service.add_to_blacklist(access_token, token_type="access", user_id=current_user.id)
 
-    refresh_token = body.get("refresh_token", "")
-    if refresh_token:
+    if body.refresh_token:
         try:
-            await auth_service.add_to_blacklist(refresh_token, token_type="refresh", user_id=current_user.id)
-        except Exception:
-            pass
+            await auth_service.add_to_blacklist(body.refresh_token, token_type="refresh", user_id=current_user.id)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"吊销 refresh token 失败: {e}", exc_info=True)
 
     return {"message": "登出成功"}
 
@@ -178,11 +210,13 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
 ):
     from fastapi_backend.core.config import settings
+    import secrets
 
     if settings.ENVIRONMENT == "production":
         raise HTTPException(status_code=503, detail="服务暂不可用，请稍后再试")
 
-    dev_code = "123456"
+    # 开发环境使用随机验证码，避免硬编码安全风险
+    dev_code = secrets.token_hex(3)  # 6位随机验证码
     print(f"[DEV] 开发环境重置密码验证码: {dev_code} (phone={body.phone})")
 
     if body.code.upper() != dev_code:
@@ -213,21 +247,22 @@ async def wechat_login(
     if not settings.WECHAT_MINI_APP_ID or not settings.WECHAT_MINI_APP_SECRET:
         raise HTTPException(status_code=503, detail="微信小程序登录未配置")
 
-    url = (
-        f"https://api.weixin.qq.com/sns/jscode2session"
-        f"?appid={settings.WECHAT_MINI_APP_ID}"
-        f"&secret={settings.WECHAT_MINI_APP_SECRET}"
-        f"&js_code={body.code}"
-        f"&grant_type=authorization_code"
-    )
+    # 使用 POST 请求传递敏感参数，避免 AppSecret 暴露在 URL 中
+    url = "https://api.weixin.qq.com/sns/jscode2session"
+    post_data = {
+        "appid": settings.WECHAT_MINI_APP_ID,
+        "secret": settings.WECHAT_MINI_APP_SECRET,
+        "js_code": body.code,
+        "grant_type": "authorization_code",
+    }
 
     async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(url)
+        resp = await client.post(url, data=post_data)
         data = resp.json()
 
     openid = data.get("openid")
     if not openid:
-        raise AuthenticationException(f"微信登录失败: {data.get('errmsg', '未知错误')}")
+        raise AuthenticationException("微信登录失败，请稍后重试")
 
     stmt = select(User).where(User.phone == f"wx_{openid}")
     result = await db.execute(stmt)

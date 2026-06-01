@@ -133,3 +133,23 @@ _simple*.py
 _server_*.py
 _sftp_*.py
 _migrate_data.py
+
+# Root-level temporary/one-shot scripts
+fix_*.py
+check_*.py
+audit_*.py
+batch_*.py
+build_*.py
+clean*.py
+cleanup*.py
+del_*.py
+force_*.py
+insert_*.py
+generate_*.py
+seed_lessons*.py
+paramiko_deploy.log
+testmaster_migration.sql.gz
+
+# IDE/tool directories
+.workbuddy/
+.codebuddy/

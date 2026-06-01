@@ -64,7 +64,12 @@ async def _call_ai_with_config(messages: list[dict], config: AIConfig) -> str:
 
     client = None
     try:
-        client_kwargs = {"api_key": config.api_key, "http_client": http_client}
+        from fastapi_backend.utils.encryption import decrypt, DecryptionError
+        try:
+            api_key = decrypt(config.api_key)
+        except (DecryptionError, Exception):
+            api_key = config.api_key
+        client_kwargs = {"api_key": api_key, "http_client": http_client}
         base_url = config.base_url
         if base_url:
             if not base_url.endswith("/v1"):

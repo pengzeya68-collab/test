@@ -156,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
@@ -171,7 +171,7 @@ const isLoggedIn = computed(() => userStore.isLoggedIn)
 
 const path = ref(null)
 const loading = ref(false)
-const pathId = route.params.id
+const pathId = computed(() => route.params.id)
 const isCollected = ref(false)
 const activeTab = ref('lessons')
 const lessons = ref([])
@@ -189,10 +189,16 @@ onMounted(() => {
   if (isLoggedIn.value) fetchProgress()
 })
 
+watch(pathId, () => {
+  fetchPathDetail()
+  fetchLessons()
+  if (isLoggedIn.value) fetchProgress()
+})
+
 const fetchPathDetail = async () => {
   loading.value = true
   try {
-    const res = await request.get(`/learning-paths/${pathId}`)
+    const res = await request.get(`/learning-paths/${pathId.value}`)
     path.value = res
   } catch (error) {
     ElMessage.error('获取学习路径详情失败')
@@ -203,7 +209,7 @@ const fetchPathDetail = async () => {
 
 const fetchProgress = async () => {
   try {
-    const res = await request.get(`/learning-paths/${pathId}/progress`)
+    const res = await request.get(`/learning-paths/${pathId.value}/progress`)
     progressData.value = res
   } catch {}
 }
@@ -231,7 +237,7 @@ const goBack = () => router.back()
 const startLearning = () => {
   if (lessons.value.length > 0) {
     const nextLesson = lessons.value[0]
-    router.push(`/learning-paths/${pathId}/lessons/${nextLesson.id}`)
+    router.push(`/learning-paths/${pathId.value}/lessons/${nextLesson.id}`)
   } else if (path.value?.exercises?.length > 0) {
     const nextEx = progressData.value.exercises?.find(e => !e.completed)
     const targetId = nextEx?.id || path.value.exercises[0]?.id
@@ -253,9 +259,9 @@ const goToNextStage = () => {
 const toggleCollect = async () => {
   try {
     if (isCollected.value) {
-      await request.delete(`/learning-paths/${pathId}/collect`)
+      await request.delete(`/learning-paths/${pathId.value}/collect`)
     } else {
-      await request.post(`/learning-paths/${pathId}/collect`)
+      await request.post(`/learning-paths/${pathId.value}/collect`)
     }
     isCollected.value = !isCollected.value
     ElMessage.success(isCollected.value ? '收藏成功' : '取消收藏成功')
@@ -267,12 +273,12 @@ const toggleCollect = async () => {
 const fetchLessons = async () => {
   lessonsLoading.value = true
   try {
-    const res = await request.get(`/learning-paths/${pathId}/lessons`)
+    const res = await request.get(`/learning-paths/${pathId.value}/lessons`)
     lessons.value = res.lessons || []
   } catch {} finally { lessonsLoading.value = false }
 }
 
-const goToLesson = (lid) => router.push(`/learning-paths/${pathId}/lessons/${lid}`)
+const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons/${lid}`)
 </script>
 
 <style scoped>

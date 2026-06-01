@@ -241,7 +241,7 @@ const getAIEvaluation = async () => {
       expected_output: selectedExercise.value.expected_output
     })
 
-    aiEvaluationResult.value = res.data || res
+    aiEvaluationResult.value = res
     ElMessage.success('AI评估完成')
   } catch (error) {
     console.error('AI评估失败:', error)

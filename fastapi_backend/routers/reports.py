@@ -20,7 +20,7 @@ from fastapi_backend.models.models import (
     Note,
 )
 
-router = APIRouter(prefix="/api/v1/report", tags=["学习报告"])
+router = APIRouter(prefix="/api/v1/reports", tags=["学习报告导出"])
 
 
 @router.get("/summary")

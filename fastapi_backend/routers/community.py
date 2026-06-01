@@ -380,7 +380,7 @@ async def get_comments(
     q = (
         select(Comment)
         .options(selectinload(Comment.user), selectinload(Comment.replies))
-        .filter(Comment.post_id == post_id, Comment.parent_id is None)
+        .filter(Comment.post_id == post_id, Comment.parent_id.is_(None))
         .order_by(Comment.created_at.desc())
     )
     result = await db.execute(q)

@@ -207,7 +207,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
@@ -218,7 +218,7 @@ import { renderMarkdown } from '@/utils/markdown'
 
 const router = useRouter()
 const route = useRoute()
-const postId = route.params.id
+const postId = computed(() => route.params.id)
 
 const post = ref(null)
 const comments = ref([])
@@ -236,10 +236,15 @@ onMounted(() => {
   fetchComments()
 })
 
+watch(postId, () => {
+  fetchPostDetail()
+  fetchComments()
+})
+
 const fetchPostDetail = async () => {
   loading.value = true
   try {
-    const res = await request.get(`/community/posts/${postId}`)
+    const res = await request.get(`/community/posts/${postId.value}`)
     post.value = res
   } catch (error) {
     console.error('获取帖子详情失败:', error)
@@ -252,7 +257,7 @@ const fetchPostDetail = async () => {
 const fetchComments = async () => {
   loadingComments.value = true
   try {
-    const res = await request.get(`/community/posts/${postId}/comments`)
+    const res = await request.get(`/community/posts/${postId.value}/comments`)
     comments.value = res
   } catch (error) {
     console.error('获取评论失败:', error)
@@ -304,7 +309,7 @@ const submitComment = async () => {
   
   submittingComment.value = true
   try {
-    await request.post(`/community/posts/${postId}/comments`, {
+    await request.post(`/community/posts/${postId.value}/comments`, {
       content: commentContent.value.trim()
     })
     ElMessage.success('评论发表成功')
@@ -333,7 +338,7 @@ const submitReply = async (comment) => {
   
   submittingReply.value = true
   try {
-    await request.post(`/community/posts/${postId}/comments`, {
+    await request.post(`/community/posts/${postId.value}/comments`, {
       content: replyContent.value.trim(),
       parent_id: comment.id
     })

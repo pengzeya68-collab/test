@@ -2,15 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import request from '@/utils/request'
 import { ElNotification } from 'element-plus'
-import { setToken, setUserInfo, clearUserAuth, TOKEN_KEY, USER_KEY, ASSESSMENT_KEY, SKILL_PROFILE_KEY } from '@/utils/auth'
-
-function safeJsonParse(str, fallback = null) {
-  try {
-    return JSON.parse(str)
-  } catch {
-    return fallback
-  }
-}
+import { setToken, setUserInfo, clearUserAuth, TOKEN_KEY, USER_KEY, ASSESSMENT_KEY, SKILL_PROFILE_KEY, safeJsonParse } from '@/utils/auth'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem(TOKEN_KEY) || '')
@@ -20,6 +12,7 @@ export const useUserStore = defineStore('user', () => {
   const isLoading = ref(false)
 
   const isLoggedIn = computed(() => !!token.value)
+  const getToken = () => token.value
   const username = computed(() => userInfo.value?.username || '')
   const userId = computed(() => userInfo.value?.id || null)
   const userScore = computed(() => userInfo.value?.score || 0)
@@ -81,16 +74,16 @@ export const useUserStore = defineStore('user', () => {
           })
         }
       }
-    } catch {
-      // silently ignore
+    } catch (error) {
+      console.warn('检查成就失败:', error)
     }
   }
 
   const logout = async () => {
     try {
       await request.post('/auth/logout', {})
-    } catch {
-      // ignore - token may already be expired
+    } catch (error) {
+      console.warn('退出登录请求失败（token可能已过期）:', error)
     }
     token.value = ''
     userInfo.value = null
@@ -108,11 +101,11 @@ export const useUserStore = defineStore('user', () => {
   }
 
   return {
-    token,
     userInfo,
     assessmentCompleted,
     skillProfile,
     isLoggedIn,
+    getToken,
     username,
     userId,
     userScore,

@@ -85,13 +85,13 @@
         </div>
       </aside>
       <main class="main-content-with-sidebar">
-        <router-view :key="$route.path" />
+        <router-view />
       </main>
     </div>
 
     <!-- 未登录主内容 -->
     <main class="main-content" v-if="!isLoggedIn || isAuthPage">
-      <router-view :key="$route.path" />
+      <router-view />
     </main>
 
     <!-- 页脚 -->
@@ -262,11 +262,17 @@ const checkinStatus = ref({
   last_7_days: [],
 })
 
-onMounted(() => {
+onMounted(async () => {
   const savedThemeId = loadSavedTheme()
   applyTheme(savedThemeId)
   if (userStore.isLoggedIn && !isAuthPage.value) {
     fetchCheckinStatus()
+    // 启动时同步测评状态，避免 localStorage 缓存过期
+    try {
+      await userStore.checkAssessmentStatus()
+    } catch {
+      // 路由守卫会处理失败情况
+    }
   }
 })
 
@@ -355,10 +361,6 @@ const goToLogin = () => {
 
 const goToRegister = () => {
   router.push('/register')
-}
-
-const handleMenuSelect = (index) => {
-  router.push(index)
 }
 </script>
 

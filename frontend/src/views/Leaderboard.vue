@@ -124,6 +124,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -153,6 +154,7 @@ const fetchScoreLeaderboard = async () => {
     myScore.value = res.my_score
   } catch (error) {
     console.error('获取积分排行失败:', error)
+    ElMessage.error('获取积分排行失败，请稍后重试')
   }
 }
 
@@ -164,6 +166,7 @@ const fetchWeeklyLeaderboard = async () => {
     myScore.value = res.my_weekly_correct
   } catch (error) {
     console.error('获取周排行失败:', error)
+    ElMessage.error('获取周排行失败，请稍后重试')
   }
 }
 
@@ -175,6 +178,7 @@ const fetchStreakLeaderboard = async () => {
     myScore.value = res.my_streak
   } catch (error) {
     console.error('获取签到排行失败:', error)
+    ElMessage.error('获取签到排行失败，请稍后重试')
   }
 }
 

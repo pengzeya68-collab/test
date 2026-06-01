@@ -82,6 +82,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
 const certData = ref({
@@ -102,6 +103,7 @@ const fetchCertificates = async () => {
     certData.value = res
   } catch (error) {
     console.error('获取证书失败:', error)
+    ElMessage.error('获取证书失败，请稍后重试')
   }
 }
 

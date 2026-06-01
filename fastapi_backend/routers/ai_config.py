@@ -12,6 +12,7 @@ from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
 from fastapi_backend.models.models import AIConfig, User
 from fastapi_backend.schemas.common import SuccessResponse, MessageResponse
+from fastapi_backend.utils.encryption import encrypt, decrypt, DecryptionError
 
 router = APIRouter(prefix="/api/v1/admin/ai-configs", tags=["AI Config"])
 
@@ -262,6 +263,14 @@ class AIConfigOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+def _decrypt_api_key(cfg: AIConfig) -> str:
+    """解密 API Key，兼容旧的明文数据"""
+    try:
+        return decrypt(cfg.api_key)
+    except (DecryptionError, Exception):
+        return cfg.api_key
+
+
 def _mask_api_key(key: str) -> str:
     if len(key) <= 8:
         return "****"
@@ -273,7 +282,7 @@ def _config_to_out(cfg: AIConfig) -> AIConfigOut:
         id=cfg.id,
         name=cfg.name,
         provider=cfg.provider,
-        api_key_preview=_mask_api_key(cfg.api_key),
+        api_key_preview=_mask_api_key(_decrypt_api_key(cfg)),
         base_url=cfg.base_url,
         model=cfg.model,
         is_active=cfg.is_active,
@@ -311,7 +320,7 @@ async def create_ai_config(
     cfg = AIConfig(
         name=body.name,
         provider=body.provider,
-        api_key=body.api_key,
+        api_key=encrypt(body.api_key),
         base_url=body.base_url,
         model=body.model,
         max_tokens=body.max_tokens,
@@ -339,7 +348,7 @@ async def update_ai_config(
 
     for field, value in body.model_dump(exclude_unset=True).items():
         if field == "api_key" and value is not None:
-            setattr(cfg, field, value)
+            setattr(cfg, field, encrypt(value))
         elif field != "api_key":
             setattr(cfg, field, value)
 
@@ -403,7 +412,7 @@ async def test_ai_config(
         from openai import AsyncOpenAI
 
         client_kwargs = {
-            "api_key": cfg.api_key,
+            "api_key": _decrypt_api_key(cfg),
             "http_client": http_client,
         }
         base_url = cfg.base_url
@@ -490,7 +499,7 @@ async def get_ai_quota(
                 resp = await client.get(
                     f"{base_url}/user/balance",
                     headers={
-                        "Authorization": f"Bearer {cfg.api_key}",
+                        "Authorization": f"Bearer {_decrypt_api_key(cfg)}",
                         "Content-Type": "application/json",
                     },
                 )
@@ -536,7 +545,7 @@ async def get_ai_quota(
                 resp = await client.get(
                     f"{base_url}/user/remaining",
                     headers={
-                        "Authorization": f"Bearer {cfg.api_key}",
+                        "Authorization": f"Bearer {_decrypt_api_key(cfg)}",
                         "Content-Type": "application/json",
                     },
                 )

@@ -42,3 +42,19 @@ deploy.bat
 deploy-backend-only.bat
 *.ps1
 ssl/
+
+# Root-level temporary scripts
+fix_*.py
+check_*.py
+audit_*.py
+batch_*.py
+build_*.py
+clean*.py
+cleanup*.py
+del_*.py
+force_*.py
+insert_*.py
+generate_*.py
+seed_lessons*.py
+paramiko_deploy.log
+testmaster_migration.sql.gz

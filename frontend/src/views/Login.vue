@@ -68,8 +68,9 @@
         <span class="footer-divider">|</span>
         <router-link to="/forgot-password" class="footer-link">忘记密码？</router-link>
       </div>
-      
-      <div class="demo-account">
+
+      <!-- 测试账号提示仅在开发环境显示 -->
+      <div v-if="isDev" class="demo-account">
         <el-divider content-position="center">测试账号</el-divider>
         <div class="account-item">
           <span>普通用户：testuser / password123</span>
@@ -94,6 +95,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const loginFormRef = ref(null)
 const loading = ref(false)
+const isDev = import.meta.env.DEV
 
 const loginForm = ref({
   username: '',

@@ -135,14 +135,14 @@
                   v-for="(option, optIndex) in item.question.options" 
                   :key="optIndex"
                   :class="{
-                    'correct': item.question.correct_answer.includes(String.fromCharCode(65 + optIndex)),
-                    'wrong': item.user_answer.includes(String.fromCharCode(65 + optIndex)) && !item.question.correct_answer.includes(String.fromCharCode(65 + optIndex))
+                    'correct': (item.question.correct_answer || '').includes(String.fromCharCode(65 + optIndex)),
+                    'wrong': (item.user_answer || '').includes(String.fromCharCode(65 + optIndex)) && !(item.question.correct_answer || '').includes(String.fromCharCode(65 + optIndex))
                   }"
                 >
                   <span class="option-letter">{{ String.fromCharCode(65 + optIndex) }}.</span>
                   <span class="option-text">{{ option }}</span>
-                  <el-icon v-if="item.question.correct_answer.includes(String.fromCharCode(65 + optIndex))" class="correct-icon" color="#67c23a"><Check /></el-icon>
-                  <el-icon v-if="item.user_answer.includes(String.fromCharCode(65 + optIndex)) && !item.question.correct_answer.includes(String.fromCharCode(65 + optIndex))" class="wrong-icon" color="#f56c6c"><Close /></el-icon>
+                  <el-icon v-if="(item.question.correct_answer || '').includes(String.fromCharCode(65 + optIndex))" class="correct-icon" color="#67c23a"><Check /></el-icon>
+                  <el-icon v-if="(item.user_answer || '').includes(String.fromCharCode(65 + optIndex)) && !(item.question.correct_answer || '').includes(String.fromCharCode(65 + optIndex))" class="wrong-icon" color="#f56c6c"><Close /></el-icon>
                 </div>
               </div>
               

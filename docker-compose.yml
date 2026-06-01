@@ -21,6 +21,7 @@ services:
       POSTGRES_DB: testmaster
       POSTGRES_USER: testmaster
       POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
+    # 生产环境建议移除端口映射，仅通过 Docker 内部网络访问
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -98,7 +99,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "celery -A fastapi_backend.tasks inspect ping --timeout 10 2>/dev/null || exit 0"]
+      test: ["CMD-SHELL", "celery -A fastapi_backend.tasks inspect ping --timeout 10 2>/dev/null"]
       interval: 30s
       timeout: 15s
       retries: 3
@@ -119,8 +120,12 @@ services:
     image: redis:7-alpine
     container_name: testmaster-redis
     restart: unless-stopped
+    # 生产环境建议移除端口映射，仅通过 Docker 内部网络访问
+    # 如需密码保护，取消下面 command 的注释，并在 .env 中设置 REDIS_PASSWORD
+    # 同时更新 backend/celery 的 REDIS_URL 为 redis://:password@redis:6379/0
     ports:
       - "127.0.0.1:6379:6379"
+    # command: redis-server --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     networks:
@@ -155,7 +160,7 @@ services:
     depends_on:
       - backend
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "--no-check-certificate", "https://localhost:443/"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/health"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -4,11 +4,13 @@ POST /api/auto-test/report/generate → 生成 Word 性能测试报告
 """
 
 import io
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends
 from fastapi.responses import StreamingResponse
 from typing import Dict, Any
 from urllib.parse import quote
 
+from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.models.models import User
 from fastapi_backend.services.performance_report_service import (
     generate_performance_report,
     _call_ai_analysis,
@@ -18,7 +20,10 @@ router = APIRouter(prefix="/api/auto-test/report", tags=["性能测试报告"])
 
 
 @router.post("/generate")
-async def generate_report(body: Dict[str, Any] = Body(...)):
+async def generate_report(
+    body: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user),
+):
     """
     生成性能测试报告 (docx)
 

@@ -206,7 +206,6 @@ const handleRegister = async () => {
 
         userStore.setLogin(res.access_token, res.user)
         setToken(res.access_token)
-        localStorage.setItem('refresh_token', res.refresh_token)
 
         ElMessage.success('注册成功！')
         

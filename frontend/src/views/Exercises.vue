@@ -62,7 +62,7 @@
           >代码题</span>
           <span
             class="pill"
-            :class="{ 'pill--active': currentType === 'sql' }"
+            :class="{ 'pill--active': currentType === 'code' && currentLanguage === 'sql' }"
             @click="currentType = 'code'; currentLanguage = 'sql'"
           >SQL题</span>
         </div>

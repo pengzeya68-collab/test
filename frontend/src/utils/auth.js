@@ -1,3 +1,18 @@
+export function safeJsonParse(str, fallback = null) {
+  try {
+    return JSON.parse(str)
+  } catch {
+    return fallback
+  }
+}
+
+// JWT 格式校验：三个 base64url 段用 . 连接
+const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/
+
+export function isValidTokenFormat(token) {
+  return typeof token === 'string' && JWT_PATTERN.test(token)
+}
+
 export const TOKEN_KEY = 'token'
 export const USER_KEY = 'user'
 export const ADMIN_TOKEN_KEY = 'admin_token'
@@ -11,17 +26,17 @@ export function isAdminRoute() {
 }
 
 export function getToken() {
-  return getUserToken() || getAdminToken()
+  return getUserToken()
 }
 
 export function getAuthToken() {
-  return getAdminToken() || getUserToken()
+  return getAdminToken()
 }
 
 export function getUserToken() {
   try {
     const token = localStorage.getItem(TOKEN_KEY)
-    if (!token || token === 'undefined' || token === 'null' || token === '[object Object]') {
+    if (!token || !isValidTokenFormat(token)) {
       return null
     }
     return token
@@ -33,7 +48,7 @@ export function getUserToken() {
 export function getAdminToken() {
   try {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY)
-    if (!token || token === 'undefined' || token === 'null' || token === '[object Object]') {
+    if (!token || !isValidTokenFormat(token)) {
       return null
     }
     return token
@@ -49,7 +64,16 @@ export function setToken(newToken) {
 
 export function setUserInfo(user) {
   if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user))
+    // 仅缓存非敏感字段，敏感数据通过 API 获取
+    const safeUser = {
+      id: user.id,
+      username: user.username,
+      avatar: user.avatar,
+      level: user.level,
+      score: user.score,
+      is_admin: user.is_admin,
+    }
+    localStorage.setItem(USER_KEY, JSON.stringify(safeUser))
   }
 }
 
@@ -60,7 +84,15 @@ export function setAdminToken(token) {
 
 export function setAdminInfo(info) {
   if (info) {
-    localStorage.setItem(ADMIN_INFO_KEY, JSON.stringify(info))
+    // 仅缓存非敏感字段
+    const safeInfo = {
+      id: info.id,
+      username: info.username,
+      avatar: info.avatar,
+      is_admin: info.is_admin,
+      is_super_admin: info.is_super_admin,
+    }
+    localStorage.setItem(ADMIN_INFO_KEY, JSON.stringify(safeInfo))
   }
 }
 
@@ -98,6 +130,7 @@ const authUtil = {
   clearAllAuth,
   clearUserAuth,
   clearAdminAuth,
+  safeJsonParse,
   TOKEN_KEY,
   USER_KEY,
   ADMIN_TOKEN_KEY,
@@ -105,5 +138,3 @@ const authUtil = {
   ASSESSMENT_KEY,
   SKILL_PROFILE_KEY,
 }
-
-export default authUtil

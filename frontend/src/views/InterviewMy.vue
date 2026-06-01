@@ -12,17 +12,17 @@
       <div
         class="tab-item"
         :class="{ active: activeTab === 'all' }"
-        @click="activeTab = 'all'; fetchSessions()"
+        @click="activeTab = 'all'; fetchSessions(true)"
       >全部记录</div>
       <div
         class="tab-item"
         :class="{ active: activeTab === 'in_progress' }"
-        @click="activeTab = 'in_progress'; fetchSessions()"
+        @click="activeTab = 'in_progress'; fetchSessions(true)"
       >进行中</div>
       <div
         class="tab-item"
         :class="{ active: activeTab === 'completed' }"
-        @click="activeTab = 'completed'; fetchSessions()"
+        @click="activeTab = 'completed'; fetchSessions(true)"
       >已完成</div>
     </div>
 
@@ -127,11 +127,11 @@ const total = ref(0)
 const loading = ref(false)
 
 onMounted(() => {
-  fetchSessions()
+  fetchSessions(true)
 })
 
-const fetchSessions = async () => {
-  currentPage.value = 1
+const fetchSessions = async (resetPage = false) => {
+  if (resetPage) currentPage.value = 1
   loading.value = true
   try {
     const params = {

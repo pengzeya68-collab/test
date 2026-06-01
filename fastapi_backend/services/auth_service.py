@@ -27,9 +27,7 @@ _DUMMY_HASH = bcrypt.hashpw(b"dummy", bcrypt.gensalt()).decode("utf-8")
 
 
 class AuthService:
-    _token_blacklist: Dict[str, float] = {}
     _blacklist_max_age_seconds = 86400
-    _blacklist_max_size = 10000
     _db_session: Optional[AsyncSession] = None
 
     def __init__(self, db: Optional[AsyncSession] = None):
@@ -38,65 +36,46 @@ class AuthService:
         self.refresh_ttl_seconds = settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60
         self._db_session = db
 
-    @classmethod
-    def _cleanup_blacklist(cls):
-        now = time.time()
-        expired_keys = [k for k, v in cls._token_blacklist.items() if v < now]
-        for key in expired_keys:
-            del cls._token_blacklist[key]
-        if len(cls._token_blacklist) > cls._blacklist_max_size:
-            sorted_items = sorted(cls._token_blacklist.items(), key=lambda x: x[1])
-            for key, _ in sorted_items[: len(sorted_items) - cls._blacklist_max_size]:
-                del cls._token_blacklist[key]
-
     async def add_to_blacklist(self, token: str, token_type: str = "access", user_id: int = None) -> None:
-        AuthService._cleanup_blacklist()
-        token_hash = hashlib.sha256(token.encode()).hexdigest()
-        expires_at_ts = time.time() + self._blacklist_max_age_seconds
-        AuthService._token_blacklist[token_hash] = expires_at_ts
+        if not self._db_session:
+            _logger.warning("No database session available for token blacklist")
+            return
 
-        if self._db_session:
+        try:
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            expiry_dt = datetime.now(timezone.utc) + timedelta(seconds=self._blacklist_max_age_seconds)
+
+            existing = await self._db_session.execute(
+                select(TokenBlacklist).where(TokenBlacklist.token_hash == token_hash)
+            )
+            if not existing.scalar_one_or_none():
+                record = TokenBlacklist(
+                    token_hash=token_hash,
+                    token_type=token_type,
+                    user_id=user_id,
+                    expires_at=expiry_dt,
+                )
+                self._db_session.add(record)
+                await self._db_session.commit()
+        except Exception as exc:
+            _logger.error("token_blacklist DB write failed: %s", exc)
             try:
-                expiry_dt = datetime.now(timezone.utc) + timedelta(seconds=self._blacklist_max_age_seconds)
-                existing = await self._db_session.execute(
-                    select(TokenBlacklist).where(TokenBlacklist.token_hash == token_hash)
-                )
-                if not existing.scalar_one_or_none():
-                    record = TokenBlacklist(
-                        token_hash=token_hash,
-                        token_type=token_type,
-                        user_id=user_id,
-                        expires_at=expiry_dt,
-                    )
-                    self._db_session.add(record)
-                    await self._db_session.commit()
-            except Exception as exc:
-                _logger.warning(
-                    "token_blacklist DB write failed (memory blacklist still active): %s",
-                    exc,
-                )
-                try:
-                    await self._db_session.rollback()
-                except Exception:
-                    pass
+                await self._db_session.rollback()
+            except Exception:
+                pass
 
     async def is_blacklisted(self, token: str) -> bool:
-        AuthService._cleanup_blacklist()
-        token_hash = hashlib.sha256(token.encode()).hexdigest()
-        if token_hash in AuthService._token_blacklist:
-            return True
-        return await self._is_blacklisted_in_db(token)
-
-    async def _is_blacklisted_in_db(self, token: str) -> bool:
         if not self._db_session:
             return False
+
         try:
             token_hash = hashlib.sha256(token.encode()).hexdigest()
             result = await self._db_session.execute(
                 select(TokenBlacklist).where(TokenBlacklist.token_hash == token_hash)
             )
             return result.scalar_one_or_none() is not None
-        except Exception:
+        except Exception as exc:
+            _logger.error("token_blacklist DB read failed: %s", exc)
             return False
 
     @staticmethod

@@ -388,8 +388,13 @@ class InterviewExecutionService:
             http_client = httpx.AsyncClient(timeout=ai_config.timeout_seconds, trust_env=False)
 
             try:
+                from fastapi_backend.utils.encryption import decrypt, DecryptionError
+                try:
+                    _api_key = decrypt(ai_config.api_key)
+                except (DecryptionError, Exception):
+                    _api_key = ai_config.api_key
                 client_kwargs = {
-                    "api_key": ai_config.api_key,
+                    "api_key": _api_key,
                     "http_client": http_client,
                 }
                 base_url = ai_config.base_url
@@ -533,8 +538,7 @@ class InterviewExecutionService:
     async def _update_submission(self, db: AsyncSession, submission: Submission, update_data: SubmissionUpdate) -> None:
         """更新提交记录"""
         for field, value in update_data.model_dump(exclude_unset=True).items():
-            if value is not None:
-                setattr(submission, field, value)
+            setattr(submission, field, value)
 
         await db.commit()
         await db.refresh(submission)

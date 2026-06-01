@@ -151,6 +151,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
 const report = ref({
@@ -172,6 +173,7 @@ const fetchReport = async () => {
     report.value = res
   } catch (error) {
     console.error('获取周报失败:', error)
+    ElMessage.error('获取周报失败，请稍后重试')
   }
 }
 

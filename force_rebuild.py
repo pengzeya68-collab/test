@@ -1,11 +1,15 @@
 import paramiko
+import os
 import sys
 import time
 sys.stdout.reconfigure(encoding='utf-8')
 
-HOST = '34.150.26.84'
+HOST = os.environ.get("SERVER_HOST", "")
 USER = 'root'
-PASSWORD = 'PENGZEYA19940821'
+PASSWORD = os.environ.get("SERVER_PASS", "")
+if not HOST or not PASSWORD:
+    print("错误: 请设置环境变量 SERVER_HOST 和 SERVER_PASS")
+    sys.exit(1)
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())

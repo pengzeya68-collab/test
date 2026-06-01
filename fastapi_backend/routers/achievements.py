@@ -205,7 +205,7 @@ async def check_and_unlock_achievements(user_id: int, db: AsyncSession):
         should_unlock = False
 
         if ach.key == "first_login":
-            should_unlock = not unlocked_ids
+            should_unlock = ach.id not in unlocked_ids
         elif ach.key in ("first_exercise", "exercises_10", "exercises_50"):
             if ach.key == "first_exercise" and total_completed_exercises >= 1:
                 should_unlock = True

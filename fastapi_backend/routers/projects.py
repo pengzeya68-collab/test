@@ -369,18 +369,19 @@ async def submit_task(
         )
     )
     existing_sub = existing.scalar_one_or_none()
+    new_sub = None
 
     if existing_sub:
         existing_sub.content = content
         existing_sub.submitted_at = datetime.now(timezone.utc)
     else:
-        sub = ProjectSubmission(
+        new_sub = ProjectSubmission(
             project_id=project_id,
             task_id=task_id,
             user_id=current_user.id,
             content=content,
         )
-        db.add(sub)
+        db.add(new_sub)
 
     await db.commit()
 
@@ -405,19 +406,20 @@ async def submit_task(
     if all_submitted:
         await _update_user_growth(project, current_user, db)
 
+    active_sub = existing_sub or new_sub
     return {
         "message": "任务提交成功",
         "task_id": task_id,
         "all_submitted": all_submitted,
         "submission": {
-            "id": (existing_sub.id if existing_sub else sub.id) if "sub" in dir() or existing_sub else None,
+            "id": active_sub.id,
             "content": content,
-            "status": existing_sub.status if existing_sub else "pending",
-            "submitted_at": (existing_sub.submitted_at.isoformat() if existing_sub.submitted_at else None)
-            if existing_sub
+            "status": active_sub.status if hasattr(active_sub, "status") else "pending",
+            "submitted_at": (active_sub.submitted_at.isoformat() if active_sub.submitted_at else None)
+            if active_sub.submitted_at
             else datetime.now(timezone.utc).isoformat(),
         }
-        if (existing_sub or "sub" in dir())
+        if active_sub
         else None,
     }
 

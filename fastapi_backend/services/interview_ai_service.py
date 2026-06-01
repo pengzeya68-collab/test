@@ -32,7 +32,12 @@ async def _call_openai_chat(
 
     http_client = httpx.AsyncClient(timeout=ai_config.timeout_seconds, trust_env=False)
     try:
-        client_kwargs = {"api_key": ai_config.api_key, "http_client": http_client}
+        from fastapi_backend.utils.encryption import decrypt, DecryptionError
+        try:
+            api_key = decrypt(ai_config.api_key)
+        except (DecryptionError, Exception):
+            api_key = ai_config.api_key
+        client_kwargs = {"api_key": api_key, "http_client": http_client}
         base_url = ai_config.base_url
         if base_url:
             if not base_url.endswith("/v1"):

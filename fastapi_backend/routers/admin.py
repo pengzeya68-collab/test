@@ -534,88 +534,98 @@ async def get_question_statistics(
     result = await db.execute(base_query)
     questions = result.scalars().all()
 
-    statistics_items = []
+    # 构建日期过滤条件（全局统一应用）
+    date_filters = []
+    if start_date:
+        try:
+            date_filters.append(Submission.created_at >= datetime.strptime(start_date, "%Y-%m-%d"))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="开始日期格式无效")
+    if end_date:
+        try:
+            end_datetime = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+            date_filters.append(Submission.created_at < end_datetime)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="结束日期格式无效")
 
-    for question in questions:
-        submission_filters = [Submission.question_id == question.id]
+    # 单次聚合查询：获取本页所有题目的统计数据
+    question_ids = [q.id for q in questions]
+    stats_map = {}
 
-        if start_date:
-            try:
-                submission_filters.append(Submission.created_at >= datetime.strptime(start_date, "%Y-%m-%d"))
-            except ValueError:
-                raise HTTPException(status_code=400, detail="开始日期格式无效")
-        if end_date:
-            try:
-                end_datetime = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-                submission_filters.append(Submission.created_at < end_datetime)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="结束日期格式无效")
-
-        total_submissions = await db.scalar(select(func.count(Submission.id)).where(*submission_filters)) or 0
-        completed_submissions = (
-            await db.scalar(select(func.count(Submission.id)).where(*submission_filters, Submission.score.is_not(None)))
-            or 0
-        )
-
-        score_stats = await db.execute(
+    if question_ids:
+        stats_stmt = (
             select(
-                func.avg(Submission.score).label("avg_score"),
+                Submission.question_id,
+                func.count(Submission.id).label("total_submissions"),
+                func.count(Submission.id).filter(Submission.score.is_not(None)).label("completed_submissions"),
+                func.avg(Submission.score).filter(Submission.score.is_not(None)).label("avg_score"),
                 func.max(Submission.score).label("max_score"),
                 func.min(Submission.score).label("min_score"),
-            ).where(*submission_filters, Submission.score.is_not(None))
-        )
-        score_row = score_stats.first()
-        average_score = float(score_row.avg_score) if score_row.avg_score else None
-
-        pass_row = await db.execute(
-            select(
-                func.count(Submission.id).label("total"),
-                func.sum(case((Submission.score >= 80, 1), else_=0)).label("passed"),
-            ).where(*submission_filters, Submission.score.is_not(None))
-        )
-        pass_data = pass_row.first()
-        total_with_score = pass_data.total or 0
-        passed_count = pass_data.passed or 0 if pass_data.passed else 0
-        pass_rate = (passed_count / total_with_score * 100) if total_with_score > 0 else 0.0
-
-        recent_7d = (
-            await db.scalar(
-                select(func.count(Submission.id)).where(*submission_filters, Submission.created_at >= seven_days_ago)
+                func.count(Submission.id).filter(
+                    Submission.score.is_not(None), Submission.score >= 80
+                ).label("passed_count"),
+                func.count(Submission.id).filter(Submission.score.is_not(None)).label("total_with_score"),
+                func.count(Submission.id).filter(Submission.created_at >= seven_days_ago).label("recent_7d"),
+                func.count(Submission.id).filter(Submission.created_at >= thirty_days_ago).label("recent_30d"),
+                func.max(Submission.created_at).label("last_submission"),
             )
-            or 0
+            .where(Submission.question_id.in_(question_ids), *date_filters)
+            .group_by(Submission.question_id)
         )
-        recent_30d = (
-            await db.scalar(
-                select(func.count(Submission.id)).where(*submission_filters, Submission.created_at >= thirty_days_ago)
-            )
-            or 0
-        )
+        stats_result = await db.execute(stats_stmt)
+        for row in stats_result.all():
+            stats_map[row.question_id] = row
 
-        last_submission = await db.scalar(
-            select(Submission.created_at).where(*submission_filters).order_by(Submission.created_at.desc()).limit(1)
-        )
-
-        statistics_items.append(
-            QuestionStatistics(
-                question_id=question.id,
-                title=question.title,
-                slug=question.slug,
-                difficulty=question.difficulty,
-                is_published=question.is_published,
-                total_submissions=total_submissions,
-                completed_submissions=completed_submissions,
-                average_score=average_score,
-                highest_score=score_row.max_score,
-                lowest_score=score_row.min_score,
-                pass_rate=pass_rate,
-                passed_count=passed_count,
-                failed_count=total_with_score - passed_count,
-                recent_7_days_submissions=recent_7d,
-                recent_30_days_submissions=recent_30d,
-                last_submission_time=last_submission,
-                created_at=question.created_at,
+    statistics_items = []
+    for question in questions:
+        row = stats_map.get(question.id)
+        if row:
+            total_with_score = row.total_with_score or 0
+            passed_count = row.passed_count or 0
+            pass_rate = (passed_count / total_with_score * 100) if total_with_score > 0 else 0.0
+            statistics_items.append(
+                QuestionStatistics(
+                    question_id=question.id,
+                    title=question.title,
+                    slug=question.slug,
+                    difficulty=question.difficulty,
+                    is_published=question.is_published,
+                    total_submissions=row.total_submissions or 0,
+                    completed_submissions=row.completed_submissions or 0,
+                    average_score=float(row.avg_score) if row.avg_score else None,
+                    highest_score=row.max_score,
+                    lowest_score=row.min_score,
+                    pass_rate=pass_rate,
+                    passed_count=passed_count,
+                    failed_count=total_with_score - passed_count,
+                    recent_7_days_submissions=row.recent_7d or 0,
+                    recent_30_days_submissions=row.recent_30d or 0,
+                    last_submission_time=row.last_submission,
+                    created_at=question.created_at,
+                )
             )
-        )
+        else:
+            statistics_items.append(
+                QuestionStatistics(
+                    question_id=question.id,
+                    title=question.title,
+                    slug=question.slug,
+                    difficulty=question.difficulty,
+                    is_published=question.is_published,
+                    total_submissions=0,
+                    completed_submissions=0,
+                    average_score=None,
+                    highest_score=None,
+                    lowest_score=None,
+                    pass_rate=0.0,
+                    passed_count=0,
+                    failed_count=0,
+                    recent_7_days_submissions=0,
+                    recent_30_days_submissions=0,
+                    last_submission_time=None,
+                    created_at=question.created_at,
+                )
+            )
 
     list_response = QuestionStatisticsListResponse(
         items=statistics_items, total=total, page=page, size=size, pages=pages

@@ -42,13 +42,14 @@ async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False
 
 # ================================================================
 # 数据定义
+# 注意: 以下为开发/测试用种子数据，生产环境部署后请立即修改默认密码！
 # ================================================================
 
 USERS = [
     {
         "username": "admin",
         "email": "admin@testmaster.com",
-        "password": "admin123",
+        "password": "admin123",  # 生产环境请在首次登录后立即修改！
         "is_admin": True,
         "is_super_admin": True,
         "avatar": None,

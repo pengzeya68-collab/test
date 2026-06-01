@@ -56,14 +56,52 @@ jobs:
         run: npm ci
 
       - name: ESLint
-        run: npx eslint src/ --max-warnings 0 || true
+        run: npx eslint src/ --max-warnings 0
 
       - name: Build check
         run: npm run build
 
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo ">>> Scanning for potential hardcoded secrets..."
+          # Check for common patterns (excluding .env.example and this workflow)
+          if grep -rn --include="*.py" --include="*.sh" --include="*.bat" \
+            -E "(password|passwd|secret|api_key|token)\s*=\s*['\"][^'\"]{8,}['\"]" \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=venv \
+            --exclude="*.md" --exclude=".env.example" --exclude="deploy.yml" \
+            . 2>/dev/null | grep -v "CHANGE_ME" | grep -v "your-" | grep -v "example" | grep -v "test"; then
+            echo "⚠️  Potential hardcoded secrets found. Please review."
+            exit 1
+          else
+            echo "✅ No obvious hardcoded secrets found"
+          fi
+
+      - name: Audit Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+          pip-audit -r requirements.txt --ignore-vuln PYSEC-2024-* || true
+
+      - name: Audit frontend dependencies
+        working-directory: frontend
+        run: |
+          npm audit --audit-level=high || true
+
   deploy:
     name: Deploy to Server
-    needs: [lint-backend, lint-frontend]
+    needs: [lint-backend, lint-frontend, security-scan]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:

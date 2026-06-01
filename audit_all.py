@@ -1,8 +1,17 @@
-import paramiko, sys
+import paramiko
+import os
+import sys
 sys.stdout.reconfigure(encoding='utf-8')
+
+HOST = os.environ.get("SERVER_HOST", "")
+PASS = os.environ.get("SERVER_PASS", "")
+if not HOST or not PASS:
+    print("错误: 请设置环境变量 SERVER_HOST 和 SERVER_PASS")
+    sys.exit(1)
+
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-ssh.connect('34.150.26.84', username='root', password='PENGZEYA19940821', timeout=15)
+ssh.connect(HOST, username='root', password=PASS, timeout=15)
 
 print('=== ALL CODE EXERCISES AUDIT ===')
 print()

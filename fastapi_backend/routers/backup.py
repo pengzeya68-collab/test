@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -60,7 +60,7 @@ def _list_backups() -> list[dict]:
     return backups
 
 
-def _create_backup() -> tuple[str | None, str | None]:
+async def _create_backup() -> tuple[str | None, str | None]:
     params = _pg_connection_params()
     if not params:
         return None, "数据库不是 PostgreSQL，无法使用 pg_dump"
@@ -88,18 +88,18 @@ def _create_backup() -> tuple[str | None, str | None]:
     ]
 
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
             env=env,
-            timeout=120,
         )
-        if result.returncode != 0:
-            return None, f"pg_dump 失败: {result.stderr[:200]}"
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+        if proc.returncode != 0:
+            return None, f"pg_dump 失败: {stderr.decode(errors='replace')[:200]}"
 
         with open(dst, "w", encoding="utf-8") as f:
-            f.write(result.stdout)
+            f.write(stdout.decode(errors="replace"))
 
         return name, None
     except FileNotFoundError:
@@ -151,7 +151,7 @@ async def create_new_backup(
     current_user: User = Depends(require_admin),
 ):
     """创建新备份"""
-    name, error = _create_backup()
+    name, error = await _create_backup()
     if error:
         raise HTTPException(status_code=500, detail=f"创建备份失败: {error}")
     _clean_old()
@@ -183,7 +183,7 @@ async def restore_backup(
     if not params:
         raise HTTPException(status_code=500, detail="数据库不是 PostgreSQL，无法恢复")
 
-    _create_backup()
+    await _create_backup()
 
     env = os.environ.copy()
     env["PGPASSWORD"] = params["password"]

@@ -2,6 +2,9 @@
 AI API 速率限制中间件
 
 使用滑动窗口算法限制 AI 接口调用频率，防止 API Key 被刷爆
+
+注意：当前实现使用内存存储，仅适用于单实例部署。
+生产环境多实例部署时，应使用 Redis + 滑动窗口算法实现分布式速率限制。
 """
 
 import time
@@ -14,6 +17,7 @@ from fastapi.responses import JSONResponse
 
 _logger = logging.getLogger(__name__)
 
+# 注意：内存存储仅适用于单实例部署，多实例时每个 worker 独立计数
 _user_request_timestamps: Dict[str, List[float]] = defaultdict(list)
 _lock = __import__("threading").Lock()
 
@@ -62,6 +66,8 @@ async def ai_rate_limit_middleware(request: Request, call_next):
     限制的接口路径：
     - /api/v1/ai/* (AI Tutor)
     - /api/v1/interview/* (面试 AI 评估)
+
+    优化：解析 JWT 后将 payload 存入 request.state，后续路由可复用，避免重复解码
     """
     path = request.url.path
 
@@ -72,6 +78,7 @@ async def ai_rate_limit_middleware(request: Request, call_next):
     from fastapi_backend.core.config import settings
 
     user_id = "anonymous"
+    jwt_payload = None
     try:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
@@ -79,8 +86,10 @@ async def ai_rate_limit_middleware(request: Request, call_next):
 
             token = auth_header[7:]
             auth_service = AuthService()
-            payload = await auth_service.decode_token(token, expected_type="access")
-            user_id = payload.get("sub", "anonymous")
+            jwt_payload = await auth_service.decode_token(token, expected_type="access")
+            user_id = jwt_payload.get("sub", "anonymous")
+            # 将解析后的 payload 存入 request.state，供后续路由复用
+            request.state.jwt_payload = jwt_payload
     except Exception:
         pass
 

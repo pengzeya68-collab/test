@@ -834,7 +834,7 @@ async def _run_bench(task_id: str, config: dict):
             t = sorted(s["times"])
             per_url.append(
                 {
-                    "url": u,
+                    "url": key,
                     "name": s.get("name", u),
                     "method": s.get("method", "GET"),
                     "count": s["count"],
@@ -1002,7 +1002,11 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, db: AsyncSession = Depe
     model = None
 
     if config:
-        api_key = config.api_key
+        from fastapi_backend.utils.encryption import decrypt, DecryptionError
+        try:
+            api_key = decrypt(config.api_key)
+        except (DecryptionError, Exception):
+            api_key = config.api_key
         base_url = config.base_url
         model = config.model
         config.provider.lower() if config.provider else "openai"

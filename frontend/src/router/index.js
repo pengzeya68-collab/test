@@ -30,22 +30,26 @@ const routes = [
   {
     path: '/learning-paths',
     name: 'LearningPaths',
-    component: () => import(/* webpackChunkName: "learning" */ '@/views/LearningPaths.vue')
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/LearningPaths.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/learning-paths/:id',
     name: 'LearningPathDetail',
-    component: () => import(/* webpackChunkName: "learning" */ '@/views/LearningPathDetail.vue')
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/LearningPathDetail.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/learning-paths/:pathId/lessons/:lessonId',
     name: 'LearningPathLesson',
-    component: () => import(/* webpackChunkName: "learning" */ '@/views/LearningPathLesson.vue')
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/LearningPathLesson.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/exercises',
     name: 'Exercises',
-    component: () => import(/* webpackChunkName: "learning" */ '@/views/Exercises.vue')
+    component: () => import(/* webpackChunkName: "learning" */ '@/views/Exercises.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/exercises/:id',
@@ -183,11 +187,13 @@ const routes = [
     path: '/search',
     name: 'SearchResults',
     component: () => import('@/views/SearchResults.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/tools',
     name: 'TestingTools',
     component: () => import('@/views/TestingTools.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/favorites',
@@ -219,9 +225,10 @@ router.beforeEach(async (to, from, next) => {
   const adminStore = useAdminStore()
   const userStore = useUserStore()
 
-  // 1. 检查管理员路由权限
+  // 1. 检查管理员路由权限（使用 matched 确保子路由继承父路由 meta）
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   if (to.path.startsWith('/admin')) {
-    if (to.meta.requiresAuth) {
+    if (requiresAuth) {
       if (!adminStore.isLoggedIn) {
         ElMessage.warning('请先登录管理员账号')
         next({
@@ -241,7 +248,7 @@ router.beforeEach(async (to, from, next) => {
   }
   
   // 2. 检查普通用户路由权限
-  if (to.meta.requiresAuth) {
+  if (requiresAuth) {
     if (!userStore.isLoggedIn) {
       ElMessage.warning('你当前未登录，请登录后操作')
       next({
@@ -263,7 +270,10 @@ router.beforeEach(async (to, from, next) => {
           }
         }
       } catch (error) {
-        console.warn('路由守卫: 检查测评状态失败，放行导航', error)
+        console.error('路由守卫: 检查测评状态失败', error)
+        ElMessage.warning('无法验证测评状态，请稍后重试')
+        next({ path: '/assessment' })
+        return
       }
     }
   }
@@ -271,8 +281,9 @@ router.beforeEach(async (to, from, next) => {
   next()
 })
 
-router.afterEach((to, from) => {
-  // 路由跳转后处理
+router.afterEach((to) => {
+  const title = to.meta.title || 'TestMaster'
+  document.title = title
 })
 
 export default router

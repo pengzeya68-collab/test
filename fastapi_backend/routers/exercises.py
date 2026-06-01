@@ -51,20 +51,32 @@ async def get_exercises(
     stage: Optional[int] = Query(None),
     category: str = Query(""),
     knowledge_point: str = Query(""),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取公开习题列表"""
-    stmt = select(Exercise).where(Exercise.is_public == True)  # noqa: E712
+    """获取公开习题列表（支持分页）"""
+    from sqlalchemy import func
 
+    # 构建查询条件
+    conditions = [Exercise.is_public == True]  # noqa: E712
     if module:
-        stmt = stmt.where(Exercise.module == module)
+        conditions.append(Exercise.module == module)
     if stage is not None:
-        stmt = stmt.where(Exercise.stage == stage)
+        conditions.append(Exercise.stage == stage)
     if category:
-        stmt = stmt.where(Exercise.category == category)
+        conditions.append(Exercise.category == category)
     if knowledge_point:
-        stmt = stmt.where(Exercise.knowledge_point.contains(knowledge_point))
+        conditions.append(Exercise.knowledge_point.contains(knowledge_point))
 
+    # 获取总数
+    count_stmt = select(func.count()).select_from(Exercise).where(*conditions)
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar()
+
+    # 分页查询
+    stmt = select(Exercise).where(*conditions)
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
     exercises = result.scalars().all()
 
@@ -88,7 +100,13 @@ async def get_exercises(
                 "created_at": ex.created_at.isoformat() if ex.created_at else None,
             }
         )
-    return items
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -102,29 +120,30 @@ async def get_categories(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取习题分类"""
-    stmt = select(Exercise).where(
-        or_(Exercise.user_id == current_user.id, Exercise.is_public == True)  # noqa: E712
+    """获取习题分类（使用数据库分组，避免加载所有数据）"""
+    from sqlalchemy import func
+
+    # 使用数据库 GROUP BY 直接获取分类统计
+    stmt = (
+        select(
+            Exercise.category,
+            func.count(Exercise.id).label("count"),
+        )
+        .where(
+            or_(Exercise.user_id == current_user.id, Exercise.is_public == True)  # noqa: E712
+        )
+        .group_by(Exercise.category)
     )
     if language:
         stmt = stmt.where(Exercise.language == language)
 
     result = await db.execute(stmt)
-    exercises = result.scalars().all()
+    categories = {}
+    for row in result.all():
+        cat = row.category or "Uncategorized"
+        categories[cat] = {"count": row.count}
 
-    categories: dict = {}
-    for ex in exercises:
-        cat = ex.category or "Uncategorized"
-        if cat not in categories:
-            categories[cat] = []
-        categories[cat].append(
-            {
-                "id": ex.id,
-                "title": ex.title,
-                "difficulty": ex.difficulty,
-                "time_estimate": ex.time_estimate,
-            }
-        )
+    # 如果需要每个分类下的详细习题列表，可以单独请求
     return categories
 
 
@@ -135,26 +154,42 @@ async def get_categories(
 
 @router.get("/exercises/user")
 async def get_user_exercises(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取当前用户的习题"""
+    """获取当前用户的习题（支持分页）"""
+    from sqlalchemy import func
+
+    # 获取总数
+    count_stmt = select(func.count()).select_from(Exercise).where(Exercise.user_id == current_user.id)
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar()
+
+    # 分页查询
     stmt = select(Exercise).where(Exercise.user_id == current_user.id)
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
     exercises = result.scalars().all()
 
-    return [
-        {
-            "id": ex.id,
-            "title": ex.title,
-            "difficulty": ex.difficulty,
-            "language": ex.language,
-            "module": ex.module,
-            "category": ex.category,
-            "is_public": ex.is_public,
-        }
-        for ex in exercises
-    ]
+    return {
+        "items": [
+            {
+                "id": ex.id,
+                "title": ex.title,
+                "difficulty": ex.difficulty,
+                "language": ex.language,
+                "module": ex.module,
+                "category": ex.category,
+                "is_public": ex.is_public,
+            }
+            for ex in exercises
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -164,73 +199,41 @@ async def get_user_exercises(
 
 @router.get("/exercises/public")
 async def get_public_exercises(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取公开习题"""
+    """获取公开习题（支持分页）"""
+    from sqlalchemy import func
+
+    # 获取总数
+    count_stmt = select(func.count()).select_from(Exercise).where(Exercise.is_public == True)  # noqa: E712
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar()
+
+    # 分页查询
     stmt = select(Exercise).where(Exercise.is_public == True)  # noqa: E712
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
     exercises = result.scalars().all()
 
-    return [
-        {
-            "id": ex.id,
-            "title": ex.title,
-            "difficulty": ex.difficulty,
-            "language": ex.language,
-            "module": ex.module,
-            "category": ex.category,
-            "created_by": ex.user_id,
-        }
-        for ex in exercises
-    ]
-
-
-# ---------------------------------------------------------------------------
-# Submit solution (MUST be before /exercises/{exercise_id})
-# ---------------------------------------------------------------------------
-
-
-@router.post("/exercises/submit")
-async def submit_solution(
-    body: dict,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """提交习题答案"""
-    if not body or "exercise_id" not in body or "solution" not in body:
-        raise HTTPException(status_code=400, detail="Exercise ID and solution are required")
-
-    stmt = select(Exercise).where(Exercise.id == body["exercise_id"])
-    result = await db.execute(stmt)
-    ex = result.scalar_one_or_none()
-    if not ex:
-        raise HTTPException(status_code=404, detail="Exercise not found")
-
-    is_correct = False
-    message = ""
-    exercise_type_val = (ex.exercise_type or "").lower()
-    user_solution = body["solution"].strip()
-    expected_solution = (ex.solution or "").strip()
-
-    if exercise_type_val in ("single_choice", "multiple_choice", "true_false"):
-        normalized_user = user_solution.replace(" ", "").upper()
-        normalized_expected = expected_solution.replace(" ", "").upper()
-        if exercise_type_val == "multiple_choice":
-            user_keys = sorted(normalized_user.split(","))
-            expected_keys = sorted(normalized_expected.split(","))
-            is_correct = user_keys == expected_keys
-        else:
-            is_correct = normalized_user == normalized_expected
-        message = "答案正确！" if is_correct else "答案不正确，请再试试"
-    else:
-        is_correct = user_solution == expected_solution
-        message = "答案正确！" if is_correct else "答案不正确，请再试试"
-
     return {
-        "correct": is_correct,
-        "message": message,
-        "expected_solution": ex.solution if is_correct else None,
+        "items": [
+            {
+                "id": ex.id,
+                "title": ex.title,
+                "difficulty": ex.difficulty,
+                "language": ex.language,
+                "module": ex.module,
+                "category": ex.category,
+                "created_by": ex.user_id,
+            }
+            for ex in exercises
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
     }
 
 
@@ -244,7 +247,7 @@ async def execute_sql(
     body: dict,
     current_user: User = Depends(get_current_user),
 ):
-    """在内存 SQLite 中执行 SQL"""
+    """在内存 SQLite 中执行 SQL（白名单策略：只允许只读查询）"""
     if not body or "setup_sql" not in body or "user_sql" not in body:
         raise HTTPException(status_code=400, detail="缺少必要参数：setup_sql 和 user_sql 都是必填项")
 
@@ -254,21 +257,31 @@ async def execute_sql(
     if not user_sql:
         raise HTTPException(status_code=400, detail="请输入SQL语句")
 
-    dangerous_patterns = [
-        r"\bdrop\b", r"\btruncate\b", r"\balter\b", r"\bpragma\b",
-        r"\battach\b", r"\bdetach\b", r"\bexec\b", r"\bexecute\b",
-    ]
+    # 白名单策略：只允许安全的只读语句
+    def _check_sql_safe(sql: str, label: str, allow_ddl: bool = False) -> None:
+        sql_upper = sql.strip().upper()
+        # 允许的语句类型
+        allowed_prefixes = ("SELECT", "SHOW", "DESCRIBE", "EXPLAIN", "PRAGMA")
+        if allow_ddl:
+            allowed_prefixes = allowed_prefixes + ("CREATE", "INSERT", "UPDATE", "DELETE", "ALTER", "DROP")
 
-    def _check_sql(sql: str, label: str) -> None:
-        lower_sql = sql.lower()
-        for pattern in dangerous_patterns:
-            if re.search(pattern, lower_sql):
-                kw = pattern.replace(r"\b", "")
-                raise HTTPException(status_code=400, detail=f"禁止在{label}中包含 {kw} 关键字的SQL语句")
+        if not any(sql_upper.startswith(prefix) for prefix in allowed_prefixes):
+            raise HTTPException(status_code=400, detail=f"{label}只允许 SELECT/SHOW/DESCRIBE/EXPLAIN/PRAGMA 语句")
 
-    _check_sql(user_sql, "user_sql")
+        # 检测危险关键字（即使是查询也可能包含危险操作）
+        dangerous_keywords = [
+            r"\bATTACH\b", r"\bDETACH\b", r"\bVACUUM\b", r"\bLOAD_EXTENSION\b",
+            r"\bEXEC\b", r"\bEXECUTE\b",
+        ]
+        for pattern in dangerous_keywords:
+            if re.search(pattern, sql_upper):
+                raise HTTPException(status_code=400, detail=f"{label}包含禁止的关键字")
+
+    # user_sql 只允许只读查询
+    _check_sql_safe(user_sql, "user_sql", allow_ddl=False)
+    # setup_sql 允许 DDL（用于建表和初始数据）
     if setup_sql and setup_sql.strip():
-        _check_sql(setup_sql, "setup_sql")
+        _check_sql_safe(setup_sql, "setup_sql", allow_ddl=True)
 
     start_time = time.time()
     conn = await aiosqlite.connect(":memory:")
@@ -280,28 +293,18 @@ async def execute_sql(
 
         await cursor.execute(user_sql)
 
-        if user_sql.lower().lstrip().startswith(("select", "show", "describe", "explain")):
-            columns = [d[0] for d in cursor.description] if cursor.description else []
-            rows = await cursor.fetchall()
-            await conn.commit()
-            elapsed_ms = int((time.time() - start_time) * 1000)
-            return {
-                "success": True,
-                "columns": columns,
-                "rows": [list(row) for row in rows],
-                "row_count": len(rows),
-                "elapsed_ms": elapsed_ms,
-            }
-        else:
-            await conn.commit()
-            row_count = cursor.rowcount
-            elapsed_ms = int((time.time() - start_time) * 1000)
-            return {
-                "success": True,
-                "message": f"执行成功，影响 {row_count} 行",
-                "row_count": row_count,
-                "elapsed_ms": elapsed_ms,
-            }
+        # user_sql 已经验证过是只读查询
+        columns = [d[0] for d in cursor.description] if cursor.description else []
+        rows = await cursor.fetchall()
+        await conn.commit()
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        return {
+            "success": True,
+            "columns": columns,
+            "rows": [list(row) for row in rows],
+            "row_count": len(rows),
+            "elapsed_ms": elapsed_ms,
+        }
     except aiosqlite.Error as e:
         elapsed_ms = int((time.time() - start_time) * 1000)
         return {"success": False, "error": str(e), "elapsed_ms": elapsed_ms}
@@ -354,7 +357,8 @@ async def get_exercise(
         "created_at": ex.created_at.isoformat() if ex.created_at else None,
         "updated_at": ex.updated_at.isoformat() if ex.updated_at else None,
     }
-    if is_admin or ex.exercise_type == "code":
+    # 只有管理员才能查看 solution，普通用户不能查看（防止作弊）
+    if is_admin:
         resp["solution"] = ex.solution
     return resp
 
@@ -422,7 +426,8 @@ async def update_exercise(
     ex = result.scalar_one_or_none()
     if not ex:
         raise HTTPException(status_code=404, detail="Exercise not found")
-    if ex.user_id != current_user.id:
+    is_admin = current_user.is_admin or current_user.is_super_admin
+    if ex.user_id != current_user.id and not is_admin:
         raise HTTPException(status_code=403, detail="Access denied")
 
     updatable = [
@@ -466,7 +471,8 @@ async def delete_exercise(
     ex = result.scalar_one_or_none()
     if not ex:
         raise HTTPException(status_code=404, detail="Exercise not found")
-    if ex.user_id != current_user.id:
+    is_admin = current_user.is_admin or current_user.is_super_admin
+    if ex.user_id != current_user.id and not is_admin:
         raise HTTPException(status_code=403, detail="Access denied")
 
     await db.delete(ex)

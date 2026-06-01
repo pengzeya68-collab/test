@@ -97,7 +97,7 @@ async def list_users(
     if status == "active":
         query = query.where(User.is_active)
     elif status == "disabled":
-        query = query.where(not User.is_active)
+        query = query.where(~User.is_active)
 
     total = await db.scalar(select(func.count()).select_from(query.subquery()))
     offset = (page - 1) * size
