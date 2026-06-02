@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.autotest import AutoTestGroup, AutoTestCase
+from fastapi_backend.models.autotest import AutoTestGroup, AutoTestCase, AutoTestScenarioStep
 from fastapi_backend.schemas.autotest import (
     AutoTestGroupCreate,
     AutoTestGroupUpdate,
