@@ -131,7 +131,7 @@ async def update_group(
 
 @router.delete("/{group_id}")
 async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
-    """删除分组"""
+    """删除分组（级联删除分组下的用例，并解除场景步骤引用）"""
     result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.id == group_id))
     group = result.scalar_one_or_none()
     if not group:
@@ -143,6 +143,23 @@ async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
     if children:
         raise HTTPException(status_code=400, detail="请先删除子分组")
 
+    # 查找分组下所有用例
+    cases_result = await db.execute(select(AutoTestCase).filter(AutoTestCase.group_id == group_id))
+    cases = cases_result.scalars().all()
+
+    if cases:
+        case_ids = [case.id for case in cases]
+        # 先解除场景步骤对这些用例的引用（设为 NULL）
+        from sqlalchemy import update
+        await db.execute(
+            update(AutoTestScenarioStep)
+            .where(AutoTestScenarioStep.api_case_id.in_(case_ids))
+            .values(api_case_id=None)
+        )
+        # 删除用例
+        for case in cases:
+            await db.delete(case)
+
     await db.delete(group)
     await db.commit()
-    return {"success": True, "message": "删除成功"}
+    return {"success": True, "message": f"删除成功，同时删除了 {len(cases)} 个用例"}
