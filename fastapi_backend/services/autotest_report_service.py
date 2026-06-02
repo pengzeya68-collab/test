@@ -223,7 +223,7 @@ def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dic
                         if success and (status_code == 0 or not url):
                             error_msg = f"请求未成功发出 (status_code={status_code}, url为空)"
                         else:
-                            error_msg = f"期望 2xx/3xx, 实际返回 {status_code}"
+                            error_msg = f"请求失败, 状态码 {status_code}"
                 status_details = {"message": error_msg}
 
         api_case_name = step.get("api_case_name", f"步骤 {i_plus_1}")

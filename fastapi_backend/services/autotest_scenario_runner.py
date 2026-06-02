@@ -337,7 +337,7 @@ class ScenarioExecutionEngine:
                 if success and (status_code == 0 or not url):
                     step_error = f"请求未成功发出 (status_code={status_code}, url为空)"
                 else:
-                    step_error = error or "; ".join(assert_messages) or f"期望 2xx/3xx, 实际返回 {status_code}"
+                    step_error = error or "; ".join(assert_messages) or f"请求失败, 状态码 {status_code}"
 
             step_error_escaped = step_error.replace('\\', '\\\\').replace('"', '\\"').replace('\n', ' ').replace("'", "\\'")
             step_name_escaped = step_name.replace('\\', '\\\\').replace('"', '\\"').replace("'", "\\'")
@@ -697,21 +697,8 @@ class TestScenario{scenario_id}:
 
             step_duration = int((time.time() - step_start_time) * 1000)
 
-            # 默认断言：状态码 >= 400 视为失败
+            # 解析断言规则（由断言引擎统一判断，不再提前拦截）
             assertions = api_case.assert_rules
-            has_status_code_assertion = False
-            if assertions:
-                if isinstance(assertions, list):
-                    for rule in assertions:
-                        field = rule.get("field") or rule.get("target", "")
-                        if field == "status_code":
-                            # has_status_code_assertion = True
-                            break
-                elif isinstance(assertions, dict):
-                    if "status_code" in assertions:
-                        has_status_code_assertion = True
-
-            # 不再提前拦截 status_code >= 400，让断言引擎根据用户配置判断
 
             # 解析响应
             response_data = {

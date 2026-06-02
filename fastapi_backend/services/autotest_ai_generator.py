@@ -407,13 +407,17 @@ class AITestCaseGenerator:
 
         parts.append("")
         parts.append("要求:")
-        parts.append("1.每个用例必须包含status_code断言(正向用例用range 2xx/3xx,鉴权用例用range 4xx,异常用例用对应状态码)")
+        parts.append("1.每个用例必须包含status_code断言:")
+        parts.append("  - 正向用例: {\"field\":\"status_code\",\"operator\":\"range\",\"expected\":\"2xx/3xx\"}")
+        parts.append("  - 鉴权用例(无Token/无效Token): {\"field\":\"status_code\",\"operator\":\"range\",\"expected\":\"4xx\"}")
+        parts.append("  - 异常用例(参数错误/权限不足): {\"field\":\"status_code\",\"operator\":\"equals\",\"expected\":\"具体状态码如400/403/404/422\"}")
         parts.append("2.禁止json_exists模糊断言,必须用equals/contains/regex/range具体断言")
-        parts.append("3.每个用例至少2个断言:状态码+业务字段")
+        parts.append("3.每个用例至少2个断言:status_code+业务字段")
         parts.append("4.创建类接口必须提取ID,登录类提取token")
+        parts.append("5.鉴权用例必须去掉Authorization头,断言status_code为4xx,同时断言响应体包含错误信息")
         parts.append("")
         parts.append("输出JSON:")
-        parts.append('{"cases":[{"name":"[正向]创建用户","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json","Authorization":"Bearer {{auth_token}}"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"2xx/3xx","description":"成功状态码"},{"field":"$.code","operator":"equals","expected":"0","description":"返回码0"},{"field":"$.data.id","operator":"regex","expected":"^\\\\d+$","description":"数字ID"}],"extractors":[{"type":"jsonpath","expression":"$.data.id","variable":"user_id"}],"description":"正常注册","api_index":0}]}')
+        parts.append('{"cases":[{"name":"[正向]创建用户","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json","Authorization":"Bearer {{auth_token}}"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"2xx/3xx","description":"成功状态码"},{"field":"$.code","operator":"equals","expected":"0","description":"返回码0"},{"field":"$.data.id","operator":"regex","expected":"^\\\\d+$","description":"数字ID"}],"extractors":[{"type":"jsonpath","expression":"$.data.id","variable":"user_id"}],"description":"正常注册","api_index":0},{"name":"[鉴权]创建用户-无Token","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"4xx","description":"应返回401/403"},{"field":"$.detail","operator":"not_empty","expected":"","description":"应包含错误信息"}],"extractors":[],"description":"无Token请求应被拒绝","api_index":0}]}')
 
         if not include_boundary:
             parts.append("不生成边界用例。")
@@ -454,7 +458,7 @@ class AITestCaseGenerator:
             messages = [
                 {
                     "role": "system",
-                    "content": "你是API测试工程师。只返回JSON，不要其他文字。每个用例必须有status_code断言。",
+                    "content": "你是API测试工程师。只返回JSON，不要其他文字。关键规则：每个用例必须有status_code断言（正向用例range 2xx/3xx，鉴权用例range 4xx，异常用例equals具体状态码）。鉴权用例不要带Authorization头。",
                 },
                 {"role": "user", "content": prompt},
             ]

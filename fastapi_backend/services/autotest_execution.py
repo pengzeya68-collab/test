@@ -483,17 +483,8 @@ def execute_assertions(assert_rules: Any, status_code: int, response: Any) -> Di
                         "passed": passed
                     })
 
-    # 如果没有配置 status_code 断言，添加默认兜底校验
-    if not has_status_code_assertion:
-        if not (200 <= status_code < 400):
-            all_passed = False
-            error_messages.append(f"默认断言失败: 期望 2xx/3xx, 实际返回 {status_code}")
-            details.append({
-                "type": "default_status_code",
-                "expected": "2xx/3xx",
-                "actual": status_code,
-                "passed": False
-            })
+    # 不再追加默认 status_code 兜底断言
+    # 原因：用户可能有意只断言业务字段（如鉴权用例期望 401），强制 2xx/3xx 会导致误判
 
     if all_passed:
         return {"passed": True, "message": "所有断言通过", "details": details}

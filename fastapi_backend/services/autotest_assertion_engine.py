@@ -336,17 +336,10 @@ def execute_assertions(
                         "expected": rule, "actual": value, "passed": passed,
                     })
 
-    # 默认状态码兜底（仅当没有显式 status_code 断言时）
-    if not has_status_code_assertion:
-        if not (200 <= status_code < 400):
-            all_passed = False
-            error_messages.append(f"默认断言失败: 期望 2xx/3xx, 实际返回 {status_code}")
-            details.append({
-                "type": "default_status_code",
-                "expected": "2xx/3xx",
-                "actual": status_code,
-                "passed": False,
-            })
+    # 注意：无断言规则的情况已在上方提前返回（默认 2xx/3xx 检查）
+    # 这里不再追加默认 status_code 兜底断言
+    # 原因：用户可能有意只断言 $.code/$.detail 等业务字段（如鉴权用例期望 401），
+    # 强制 2xx/3xx 兜底会导致这类用例误判失败
 
     return {
         "passed": all_passed,
