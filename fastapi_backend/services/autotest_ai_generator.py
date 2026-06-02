@@ -335,37 +335,55 @@ class AITestCaseGenerator:
     # Phase 1 - 分析 API 文档结构
     # ------------------------------------------------------------------
 
-    def _build_analyze_prompt(self, parsed: dict) -> str:
-        """构建 Phase 1 分析提示词（精简版，减少 token 消耗）"""
+    def _build_analyze_prompt(self, batch_apis: list, parsed: dict, previous_analysis: dict = None) -> str:
+        """构建 Phase 1 分析提示词（分批版，每批只分析 BATCH_SIZE 个 API）
+
+        Args:
+            batch_apis: 当前批次的 API 列表（已含 _global_index）
+            parsed: 完整解析结果
+            previous_analysis: 之前批次累积的分析结果，供 AI 参考已有关系
+        """
         parts = []
-        parts.append(f"分析以下API文档，识别CRUD关系和数据依赖。标题:{parsed['title']} 接口数:{len(parsed['apis'])}")
+        parts.append(f"分析以下API文档片段，识别CRUD关系和数据依赖。标题:{parsed['title']} 本批接口数:{len(batch_apis)}")
         parts.append("")
 
-        # 接口列表 - 精简格式，只保留关键信息
-        apis_to_list = parsed["apis"]
-        if len(apis_to_list) > 80:
-            sampled = apis_to_list[:40] + apis_to_list[-40:]
-            for idx, api in enumerate(apis_to_list[:40]):
-                parts.append(f"[{idx}] {api['method']} {api['path']} {api.get('summary', '')}")
-            parts.append(f"... 省略 {len(apis_to_list) - 80} 个 ...")
-            for idx in range(len(apis_to_list) - 40, len(apis_to_list)):
-                api = apis_to_list[idx]
-                parts.append(f"[{idx}] {api['method']} {api['path']} {api.get('summary', '')}")
-        else:
-            for idx, api in enumerate(apis_to_list):
-                line = f"[{idx}] {api['method']} {api['path']} {api.get('summary', '')}"
-                if api.get("tags"):
-                    line += f" [{','.join(api['tags'])}]"
-                parts.append(line)
+        # 当前批次接口列表
+        for api in batch_apis:
+            idx = api.get("_global_index", 0)
+            line = f"[{idx}] {api['method']} {api['path']} {api.get('summary', '')}"
+            if api.get("tags"):
+                line += f" [{','.join(api['tags'])}]"
+            parts.append(line)
+
+        # 如果有之前批次的分析结果，提供参考
+        if previous_analysis:
+            prev_groups = previous_analysis.get("resource_groups", [])
+            prev_rels = previous_analysis.get("relationships", [])
+            prev_flow = previous_analysis.get("data_flow", [])
+            if prev_groups:
+                parts.append("")
+                parts.append("已识别的资源分组（请在此基础上补充，不要重复）:")
+                for g in prev_groups[:15]:
+                    parts.append(f"  - {g.get('resource_name', '')}({g.get('resource_name_en', '')}) 接口{g.get('api_indices', [])}")
+            if prev_rels:
+                parts.append("")
+                parts.append("已识别的接口关系（请在此基础上补充，不要重复）:")
+                for r in prev_rels[:10]:
+                    parts.append(f"  - [{r.get('from_api')}]->[{r.get('to_api')}]: {r.get('description', '')}")
+            if prev_flow:
+                parts.append("")
+                parts.append("已识别的数据流（请在此基础上补充，不要重复）:")
+                for f in prev_flow[:10]:
+                    parts.append(f"  - [{f.get('source_api')}].{f.get('source_field')})->[{f.get('target_api')}].{f.get('target_param')} var:{f.get('variable_name', '')}")
 
         parts.append("")
-        parts.append("输出JSON格式:")
+        parts.append("输出JSON格式（只包含本批新增的分析结果，与之前不重复）:")
         parts.append('{"resource_groups":[{"resource_name":"用户","resource_name_en":"user","api_indices":[0,1,2,3],"crud_mapping":{"create":0,"read":1,"update":2,"delete":3}}],"relationships":[{"from_api":0,"to_api":1,"type":"id_dependency","description":"创建返回ID用于查询"}],"auth_pattern":{"type":"Bearer Token","login_api_index":null,"token_field":"$.data.token"},"data_flow":[{"source_api":0,"source_field":"$.data.id","target_api":1,"target_param":"id","variable_name":"user_id"}]}')
         return "\n".join(parts)
 
     async def _phase_analyze(self, parsed: dict, params: AIParams) -> dict:
-        """Phase 1: 分析 API 文档结构"""
-        prompt = self._build_analyze_prompt(parsed)
+        """Phase 1: 分析全部 API 文档结构（兼容旧调用方式，内部一次性分析）"""
+        prompt = self._build_analyze_prompt(parsed["apis"], parsed)
         messages = [
             {
                 "role": "system",
@@ -380,6 +398,54 @@ class AITestCaseGenerator:
         result.setdefault("auth_pattern", {"type": "unknown"})
         result.setdefault("data_flow", [])
         return result
+
+    async def _phase_analyze_batch(
+        self, batch_apis: list, parsed: dict, params: AIParams, previous_analysis: dict = None
+    ) -> dict:
+        """Phase 1 分批版: 分析当前批次的 API，返回本批分析结果
+
+        Args:
+            batch_apis: 当前批次的 API 列表（已含 _global_index）
+            parsed: 完整解析结果
+            params: AI 参数
+            previous_analysis: 之前批次累积的分析结果
+        """
+        prompt = self._build_analyze_prompt(batch_apis, parsed, previous_analysis)
+        messages = [
+            {
+                "role": "system",
+                "content": "你是API架构分析师。只返回JSON，不要其他文字。只输出本批新增的分析结果。",
+            },
+            {"role": "user", "content": prompt},
+        ]
+        result = await _call_llm_with_retry(params, messages)
+        result.setdefault("resource_groups", [])
+        result.setdefault("relationships", [])
+        result.setdefault("auth_pattern", {"type": "unknown"})
+        result.setdefault("data_flow", [])
+        return result
+
+    @staticmethod
+    def _merge_analysis(accumulated: dict, new_batch: dict) -> dict:
+        """合并两批分析结果，去重并累积"""
+        # 合并 resource_groups
+        existing_names = {g.get("resource_name_en") for g in accumulated.get("resource_groups", [])}
+        for g in new_batch.get("resource_groups", []):
+            if g.get("resource_name_en") not in existing_names:
+                accumulated.setdefault("resource_groups", []).append(g)
+                existing_names.add(g.get("resource_name_en"))
+
+        # 合并 relationships（简单追加，不去重）
+        accumulated.setdefault("relationships", []).extend(new_batch.get("relationships", []))
+
+        # 合并 data_flow
+        accumulated.setdefault("data_flow", []).extend(new_batch.get("data_flow", []))
+
+        # auth_pattern: 后来的覆盖之前的（通常所有批次一致）
+        if new_batch.get("auth_pattern"):
+            accumulated["auth_pattern"] = new_batch["auth_pattern"]
+
+        return accumulated
 
     # ------------------------------------------------------------------
     # Phase 2 - 分批生成测试用例
@@ -737,7 +803,11 @@ async def _update_progress(task_id: str, **kwargs) -> None:
 
 
 async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> None:
-    """三阶段异步生成主流程（在 Celery worker 或本地 asyncio 中运行）"""
+    """流水线式异步生成主流程：分析一批→生成一批，实时保存用例
+
+    核心改进：将原来的 "先全部分析再分批生成" 改为 "每批先分析再生成"，
+    这样中断时已分析和生成的用例都能保留，不会浪费 token。
+    """
     generator = AITestCaseGenerator()
     parsed = generator._parse_swagger(swagger_data)
 
@@ -793,50 +863,41 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
     total_batches = (total_apis + BATCH_SIZE - 1) // BATCH_SIZE
 
     # 根据任务规模自动调整 max_tokens 和 timeout
-    # 数据库配置的 max_tokens 可能太小（如 2000），无法容纳大量接口的分析结果
-    # 批次大小已从10减到5，每批输出token需求降低
     effective_params = AIParams(
         api_key=params.api_key,
         base_url=params.base_url,
         model=params.model,
         provider=params.provider,
-        timeout=max(params.timeout, 120),  # 至少 120 秒
-        max_tokens=max(params.max_tokens, 4096),  # 批次小了，4096够用
+        timeout=max(params.timeout, 120),
+        max_tokens=max(params.max_tokens, 4096),
         temperature=params.temperature,
         group_id=params.group_id,
     )
     _logger.info(
-        "AI 生成参数: provider=%s model=%s max_tokens=%d->%d timeout=%d->%d total_apis=%d batches=%d",
+        "AI 生成参数(流水线模式): provider=%s model=%s max_tokens=%d->%d timeout=%d->%d total_apis=%d batches=%d",
         params.provider, params.model,
         params.max_tokens, effective_params.max_tokens,
         params.timeout, effective_params.timeout,
         total_apis, total_batches,
     )
 
-    # 记录开始时间，用于前端计时器
     start_time = time.time()
+    all_cases = []
+    accumulated_analysis = {
+        "resource_groups": [],
+        "relationships": [],
+        "auth_pattern": {"type": "unknown"},
+        "data_flow": [],
+    }
 
     try:
-        # ---- Phase 1: 分析 ----
+        # ---- 流水线：每批先分析再生成用例 ----
         await _update_progress(
             task_id,
             status="PROGRESS",
-            progress=0.05,
+            progress=0.02,
             phase="analyzing",
-            phase_label="正在分析 API 文档结构...",
-            total_apis=total_apis,
-            processed_apis=0,
-            total_batches=total_batches,
-            current_batch=0,
-            start_time=start_time,
-        )
-        analysis = await generator._phase_analyze(parsed, effective_params)
-        await _update_progress(
-            task_id,
-            status="PROGRESS",
-            progress=0.10,
-            phase="analyzing",
-            phase_label="API 文档分析完成",
+            phase_label=f"正在分析并生成用例 (0/{total_batches} 批次)...",
             total_apis=total_apis,
             processed_apis=0,
             total_batches=total_batches,
@@ -844,50 +905,148 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
             start_time=start_time,
         )
 
-        # ---- Phase 2: 分批生成用例（逐接口增量保存） ----
-        all_cases = []
+        for batch_idx in range(total_batches):
+            # 每批次前检查取消标志
+            if task_id:
+                if await _check_cancelled(task_id):
+                    _logger.info("任务 %s 被用户取消，停止生成，已生成 %d 个用例", task_id, len(all_cases))
+                    raise asyncio.CancelledError("任务被用户取消")
 
-        async def on_batch_progress(batch_idx, total_batches, case_count):
-            progress = 0.10 + 0.80 * (batch_idx + 1) / total_batches
+                # 每批次重新加载 AI 配置
+                reloaded = await _reload_ai_params(task_id)
+                if reloaded and reloaded.api_key:
+                    effective_params = AIParams(
+                        api_key=reloaded.api_key,
+                        base_url=reloaded.base_url,
+                        model=reloaded.model,
+                        provider=reloaded.provider,
+                        timeout=max(reloaded.timeout, 120),
+                        max_tokens=max(reloaded.max_tokens, 4096),
+                        temperature=reloaded.temperature,
+                        group_id=reloaded.group_id,
+                    )
+                    _logger.info("任务 %s 批次 %d 重载 AI 配置: provider=%s model=%s",
+                                 task_id, batch_idx + 1, effective_params.provider, effective_params.model)
+
+            start = batch_idx * BATCH_SIZE
+            end = min(start + BATCH_SIZE, total_apis)
+            batch_apis = parsed["apis"][start:end]
+
+            # 给每个 API 加上全局索引
+            batch_with_index = []
+            for i, api in enumerate(batch_apis):
+                api_copy = dict(api)
+                api_copy["_global_index"] = start + i
+                batch_with_index.append(api_copy)
+
+            # ---- Step A: 分析当前批次 ----
             await _update_progress(
                 task_id,
                 status="PROGRESS",
-                progress=round(progress, 3),
-                phase="generating_cases",
-                phase_label=f"正在生成测试用例 ({batch_idx + 1}/{total_batches} 批次)...",
+                progress=round(0.02 + 0.88 * batch_idx / total_batches, 3),
+                phase="analyzing",
+                phase_label=f"正在分析第 {batch_idx + 1}/{total_batches} 批次接口...",
                 total_apis=total_apis,
-                processed_apis=min((batch_idx + 1) * BATCH_SIZE, total_apis),
+                processed_apis=start,
                 total_batches=total_batches,
                 current_batch=batch_idx + 1,
-                cases=list(all_cases),  # 保存所有已生成用例
+                cases=list(all_cases),
                 start_time=start_time,
             )
 
-        all_cases = await generator._phase_generate_cases(
-            parsed, analysis, options, effective_params, progress_callback=on_batch_progress,
-            task_id=task_id,
-            task_context={
-                "start_time": start_time,
-                "total_apis": total_apis,
-                "total_batches": total_batches,
-            },
-        )
+            try:
+                batch_analysis = await generator._phase_analyze_batch(
+                    batch_with_index, parsed, effective_params, accumulated_analysis
+                )
+                # 合并到累积分析结果
+                accumulated_analysis = generator._merge_analysis(accumulated_analysis, batch_analysis)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                _logger.error("批次 %d 分析失败: %s，跳过分析直接生成", batch_idx + 1, e, exc_info=True)
+                # 分析失败不阻断，用已有的累积分析继续生成
 
-        # ---- Phase 3: 生成场景链 ----
-        await _update_progress(
-            task_id,
-            status="PROGRESS",
-            progress=0.95,
-            phase="generating_scenarios",
-            phase_label="正在生成测试场景链...",
-            total_apis=total_apis,
-            processed_apis=total_apis,
-            total_batches=total_batches,
-            current_batch=total_batches,
-            cases=all_cases,  # 增量保存
-            start_time=start_time,
-        )
-        scenarios = await generator._phase_generate_scenarios(parsed, analysis, all_cases, effective_params)
+            # ---- Step B: 为当前批次生成用例 ----
+            await _update_progress(
+                task_id,
+                status="PROGRESS",
+                progress=round(0.02 + 0.88 * (batch_idx + 0.5) / total_batches, 3),
+                phase="generating_cases",
+                phase_label=f"正在生成第 {batch_idx + 1}/{total_batches} 批次用例...",
+                total_apis=total_apis,
+                processed_apis=start,
+                total_batches=total_batches,
+                current_batch=batch_idx + 1,
+                cases=list(all_cases),
+                start_time=start_time,
+            )
+
+            prompt = generator._build_case_generation_prompt(
+                batch_with_index, parsed, accumulated_analysis, options
+            )
+            messages = [
+                {
+                    "role": "system",
+                    "content": "你是API测试工程师。只返回JSON，不要其他文字。严格规则：1)每个用例必须有status_code断言(正向range 2xx/3xx,鉴权range 4xx,异常equals具体码) 2)断言field用status_code或$.xxx(JSONPath) 3)提取器用extractorType和variableName(不是type/variable) 4)鉴权用例不带Authorization头",
+                },
+                {"role": "user", "content": prompt},
+            ]
+
+            try:
+                result = await _call_llm_with_retry(effective_params, messages, timeout=BATCH_TIMEOUT)
+                batch_cases = result.get("cases", [])
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                _logger.error("批次 %d AI 生成失败: %s", batch_idx + 1, e, exc_info=True)
+                batch_cases = []
+
+            # 补充 base_url 到 url 中
+            for case in batch_cases:
+                url = case.get("url", "")
+                if url and not url.startswith("http"):
+                    case["url"] = parsed["base_url"].rstrip("/") + "/" + url.lstrip("/")
+
+            # 累积用例并立即保存到 task_store
+            all_cases.extend(batch_cases)
+
+            await _update_progress(
+                task_id,
+                status="PROGRESS",
+                progress=round(0.02 + 0.88 * (batch_idx + 1) / total_batches, 3),
+                phase="generating_cases",
+                phase_label=f"已生成 {len(all_cases)} 个用例 ({batch_idx + 1}/{total_batches} 批次)",
+                total_apis=total_apis,
+                processed_apis=end,
+                total_batches=total_batches,
+                current_batch=batch_idx + 1,
+                cases=list(all_cases),
+                start_time=start_time,
+            )
+
+            _logger.info(
+                "流水线批次 %d/%d 完成: 分析+生成，本批 %d 个用例，累计 %d 个",
+                batch_idx + 1, total_batches, len(batch_cases), len(all_cases),
+            )
+
+        # ---- Phase 3: 生成场景链（所有批次完成后） ----
+        include_chain = options.get("include_chain", True)
+        scenarios = []
+        if include_chain and all_cases:
+            await _update_progress(
+                task_id,
+                status="PROGRESS",
+                progress=0.95,
+                phase="generating_scenarios",
+                phase_label="正在生成测试场景链...",
+                total_apis=total_apis,
+                processed_apis=total_apis,
+                total_batches=total_batches,
+                current_batch=total_batches,
+                cases=all_cases,
+                start_time=start_time,
+            )
+            scenarios = await generator._phase_generate_scenarios(parsed, accumulated_analysis, all_cases, effective_params)
 
         # ---- 完成 ----
         elapsed = time.time() - start_time
@@ -908,21 +1067,14 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
         )
 
     except asyncio.CancelledError:
-        # 用户主动取消 - 保留已生成的用例
-        existing_cases = []
-        try:
-            stored = get_task(task_id) or {}
-            existing_cases = stored.get("cases", [])
-        except Exception:
-            pass
-
+        # 用户主动取消 - 保留已生成的用例（已通过每批保存到 task_store）
+        existing_cases = list(all_cases)
         elapsed = time.time() - start_time
         case_count = len(existing_cases)
-        progress_val = round(0.10 + 0.80 * case_count / (total_apis * 3), 3) if total_apis else 0.0
         await _update_progress(
             task_id,
             status="cancelled",
-            progress=progress_val,
+            progress=round(0.02 + 0.88 * case_count / max(total_apis * 3, 1), 3),
             phase="cancelled",
             phase_label=f"用户已中止，已保留 {case_count} 个用例",
             cases=existing_cases,
@@ -933,16 +1085,8 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
         )
     except RateLimitExceededError as e:
         _logger.error("AI 窗口限额耗尽 task_id=%s: %s", task_id, e)
-        # 窗口限额耗尽 - 如果已有部分用例，保留它们
-        existing_cases = []
-        try:
-            stored = get_task(task_id) or {}
-            existing_cases = stored.get("cases", [])
-        except Exception:
-            pass
-
+        existing_cases = list(all_cases)
         if existing_cases:
-            # 已有部分用例，保留并标记为部分完成
             elapsed = time.time() - start_time
             await _update_progress(
                 task_id,
@@ -957,7 +1101,6 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
                 start_time=start_time,
             )
         else:
-            # 没有已生成用例，用规则回退
             fallback_result = generator._generate_fallback(parsed)
             fallback_msg = (
                 f"AI API 窗口限额已耗尽（{e.provider}），已自动切换为规则生成模式。"
@@ -978,14 +1121,7 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
             )
     except Exception as e:
         _logger.error("AI 生成任务失败 task_id=%s: %s", task_id, e, exc_info=True)
-        # 异常时也尝试保留已生成的用例
-        existing_cases = []
-        try:
-            stored = get_task(task_id) or {}
-            existing_cases = stored.get("cases", [])
-        except Exception:
-            pass
-
+        existing_cases = list(all_cases)
         if existing_cases:
             elapsed = time.time() - start_time
             await _update_progress(
@@ -1001,7 +1137,6 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
                 start_time=start_time,
             )
         else:
-            # 没有已生成用例，用规则回退
             try:
                 fallback_result = generator._generate_fallback(parsed)
                 await _update_progress(
