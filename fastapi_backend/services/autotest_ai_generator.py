@@ -485,16 +485,39 @@ class AITestCaseGenerator:
         params: AIParams,
         progress_callback=None,
         task_id: str = None,
+        task_context: dict = None,
     ) -> list:
         """Phase 2: 分批生成测试用例
 
         Args:
             task_id: 任务ID，用于取消检查和AI配置重载。如果为None则不检查。
+            task_context: {"start_time", "total_apis", "total_batches"} 用于实时保存用例到task_store
         """
         apis = parsed["apis"]
         total_apis = len(apis)
         total_batches = (total_apis + BATCH_SIZE - 1) // BATCH_SIZE
         all_cases = []
+
+        async def save_cases_now(api_idx: int):
+            """每生成完一个接口的用例就立即保存到 task_store"""
+            if not task_context or not task_id:
+                return
+            start_time = task_context["start_time"]
+            t_apis = task_context["total_apis"]
+            t_batches = task_context["total_batches"]
+            await _update_progress(
+                task_id,
+                status="PROGRESS",
+                progress=0.10 + 0.80 * len(all_cases) / max(t_apis * 3, 1),
+                phase="generating_cases",
+                phase_label=f"正在生成测试用例 ({len(all_cases)} 个用例)...",
+                total_apis=t_apis,
+                processed_apis=min(api_idx + 1, t_apis),
+                total_batches=t_batches,
+                current_batch=(api_idx // BATCH_SIZE) + 1,
+                cases=list(all_cases),
+                start_time=start_time,
+            )
 
         for batch_idx in range(total_batches):
             # 每批次前检查取消标志
@@ -556,7 +579,18 @@ class AITestCaseGenerator:
                 if url and not url.startswith("http"):
                     case["url"] = parsed["base_url"].rstrip("/") + "/" + url.lstrip("/")
 
-            all_cases.extend(batch_cases)
+            # 按 api_index 分组，逐个接口保存
+            api_cases = {}
+            for case in batch_cases:
+                api_idx = case.get("api_index", 0)
+                if api_idx not in api_cases:
+                    api_cases[api_idx] = []
+                api_cases[api_idx].append(case)
+
+            # 逐个接口 extend 并立即保存到 task_store
+            for api_idx, cases_for_api in api_cases.items():
+                all_cases.extend(cases_for_api)
+                await save_cases_now(api_idx)
 
             # 进度回调
             if progress_callback:
@@ -810,7 +844,7 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
             start_time=start_time,
         )
 
-        # ---- Phase 2: 分批生成用例（增量保存） ----
+        # ---- Phase 2: 分批生成用例（逐接口增量保存） ----
         all_cases = []
 
         async def on_batch_progress(batch_idx, total_batches, case_count):
@@ -825,12 +859,18 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
                 processed_apis=min((batch_idx + 1) * BATCH_SIZE, total_apis),
                 total_batches=total_batches,
                 current_batch=batch_idx + 1,
-                cases=all_cases,  # 增量保存：每批次更新已生成的用例
+                cases=list(all_cases),  # 保存所有已生成用例
                 start_time=start_time,
             )
 
         all_cases = await generator._phase_generate_cases(
-            parsed, analysis, options, effective_params, progress_callback=on_batch_progress, task_id=task_id
+            parsed, analysis, options, effective_params, progress_callback=on_batch_progress,
+            task_id=task_id,
+            task_context={
+                "start_time": start_time,
+                "total_apis": total_apis,
+                "total_batches": total_batches,
+            },
         )
 
         # ---- Phase 3: 生成场景链 ----
