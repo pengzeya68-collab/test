@@ -104,7 +104,7 @@ class AITestCaseGenerator:
     # ------------------------------------------------------------------
 
     def _parse_swagger(self, swagger_data: dict) -> dict:
-        """解析 Swagger 文档，提取接口信息"""
+        """解析 Swagger 文档，提取接口信息（含安全约束、枚举、范围等）"""
         info = swagger_data.get("info", {})
         paths = swagger_data.get("paths", {})
         base_url = ""
@@ -116,6 +116,10 @@ class AITestCaseGenerator:
         schemas = swagger_data.get("components", {}).get("schemas", {})
         if not schemas:
             schemas = swagger_data.get("definitions", {})
+
+        # 提取全局安全定义
+        security_schemes = swagger_data.get("components", {}).get("securitySchemes", {})
+        global_security = swagger_data.get("security", [])
 
         apis = []
         for path, methods in paths.items():
@@ -131,20 +135,37 @@ class AITestCaseGenerator:
                 }:
                     continue
 
-                # 提取参数
+                # 提取参数（含枚举、范围、默认值等约束）
                 params = []
                 for p in details.get("parameters", []):
-                    params.append(
-                        {
-                            "name": p.get("name", ""),
-                            "in": p.get("in", ""),
-                            "required": p.get("required", False),
-                            "type": (p.get("schema") or {}).get("type", p.get("type", "string")),
-                            "description": p.get("description", ""),
-                        }
-                    )
+                    schema = p.get("schema") or {}
+                    param_info = {
+                        "name": p.get("name", ""),
+                        "in": p.get("in", ""),
+                        "required": p.get("required", False),
+                        "type": schema.get("type", p.get("type", "string")),
+                        "description": p.get("description", ""),
+                    }
+                    # 提取约束信息
+                    if schema.get("enum"):
+                        param_info["enum"] = schema["enum"]
+                    if schema.get("minimum") is not None:
+                        param_info["minimum"] = schema["minimum"]
+                    if schema.get("maximum") is not None:
+                        param_info["maximum"] = schema["maximum"]
+                    if schema.get("minLength") is not None:
+                        param_info["minLength"] = schema["minLength"]
+                    if schema.get("maxLength") is not None:
+                        param_info["maxLength"] = schema["maxLength"]
+                    if schema.get("pattern"):
+                        param_info["pattern"] = schema["pattern"]
+                    if schema.get("default") is not None:
+                        param_info["default"] = schema["default"]
+                    if p.get("deprecated"):
+                        param_info["deprecated"] = True
+                    params.append(param_info)
 
-                # 提取请求体 schema
+                # 提取请求体 schema（含约束）
                 request_body = None
                 rb = details.get("requestBody", {})
                 if rb:
@@ -167,6 +188,10 @@ class AITestCaseGenerator:
                     if status not in responses:
                         responses[status] = {"description": resp.get("description", "")}
 
+                # 提取接口级别的安全要求
+                api_security = details.get("security", global_security)
+                requires_auth = bool(api_security) if api_security is not None else bool(global_security)
+
                 apis.append(
                     {
                         "path": path,
@@ -176,6 +201,8 @@ class AITestCaseGenerator:
                         "params": params,
                         "request_body": request_body,
                         "responses": responses,
+                        "requires_auth": requires_auth,
+                        "deprecated": details.get("deprecated", False),
                     }
                 )
 
@@ -185,6 +212,7 @@ class AITestCaseGenerator:
             "base_url": base_url,
             "schemas": schemas,
             "apis": apis,
+            "security_schemes": security_schemes,
         }
 
     # ------------------------------------------------------------------
@@ -250,9 +278,9 @@ class AITestCaseGenerator:
             if api["request_body"]:
                 payload = self._generate_example_from_schema(api["request_body"]["schema"], parsed.get("schemas", {}))
 
-            # 正向用例 - 使用具体的 status_code 断言
+            # 正向用例
             assert_rules = [
-                {"field": "status_code", "operator": "range", "expected": "2xx/3xx", "description": "应返回成功状态码"},
+                {"field": "status_code", "operator": "range", "expected": "2xx/3xx"},
             ]
             # 如果有响应定义，添加响应体断言
             for status, resp in api.get("responses", {}).items():
@@ -260,7 +288,7 @@ class AITestCaseGenerator:
                     resp_schema = resp.get("schema", {})
                     if resp_schema.get("type") == "object" or resp_schema.get("properties"):
                         assert_rules.append(
-                            {"field": "$", "operator": "not_empty", "expected": "", "description": "响应体不应为空"}
+                            {"field": "$", "operator": "not_empty", "expected": ""}
                         )
                     break
 
@@ -278,22 +306,24 @@ class AITestCaseGenerator:
                 }
             )
 
-            # 无鉴权用例 - 断言 401/403
-            cases.append(
-                {
-                    "name": f"[鉴权] {api['summary']} - 无Token",
-                    "method": api["method"],
-                    "url": url,
-                    "headers": {"Content-Type": "application/json"},
-                    "payload": payload,
-                    "assert_rules": [
-                        {"field": "status_code", "operator": "range", "expected": "4xx", "description": "应返回 401/403 错误"},
-                    ],
-                    "extractors": [],
-                    "description": f"无 Token 请求 {api['method']} {api['path']}，预期被拒绝",
-                    "api_index": idx,
-                }
-            )
+            # 鉴权用例 - 仅对需鉴权接口生成
+            if api.get("requires_auth"):
+                cases.append(
+                    {
+                        "name": f"[鉴权] {api['summary']} - 无Token",
+                        "method": api["method"],
+                        "url": url,
+                        "headers": {"Content-Type": "application/json"},
+                        "payload": payload,
+                        "assert_rules": [
+                            {"field": "status_code", "operator": "range", "expected": "4xx"},
+                            {"field": "$.detail", "operator": "not_empty", "expected": ""},
+                        ],
+                        "extractors": [],
+                        "description": f"无 Token 请求 {api['method']} {api['path']}，预期被拒绝",
+                        "api_index": idx,
+                    }
+                )
 
         return {
             "cases": cases,
@@ -362,12 +392,12 @@ class AITestCaseGenerator:
         analysis: dict,
         options: dict,
     ) -> str:
-        """构建 Phase 2 用例生成提示词（精简版，减少 token 消耗）"""
+        """构建 Phase 2 用例生成提示词 - 精确匹配系统格式"""
         max_cases = options.get("max_cases_per_api", 4)
         include_boundary = options.get("include_boundary", True)
         include_auth = options.get("include_auth", True)
 
-        # 接口关系摘要 - 精简
+        # 接口关系摘要
         relationships_text = ""
         for rel in analysis.get("relationships", [])[:10]:
             relationships_text += f"[{rel.get('from_api')}]->[{rel.get('to_api')}]: {rel.get('description', '')}\n"
@@ -375,17 +405,19 @@ class AITestCaseGenerator:
             relationships_text += f"[{flow.get('source_api')}].{flow.get('source_field')})->[{flow.get('target_api')}].{flow.get('target_param')} var:{flow.get('variable_name', '')}\n"
 
         parts = []
-        parts.append(f"为以下接口生成测试用例，每接口最多{max_cases}个。")
+        parts.append(f"为以下{len(batch_apis)}个接口生成测试用例，每接口最多{max_cases}个。")
         parts.append("")
 
-        # 接口信息 - 精简格式
+        # 接口信息 - 含约束信息
         for idx, api in enumerate(batch_apis):
             global_idx = api.get("_global_index", idx)
-            line = f"[{global_idx}] {api['method']} {api['path']} {api.get('summary', '')}"
+            auth_mark = " [需鉴权]" if api.get("requires_auth") else ""
+            deprec_mark = " [已废弃]" if api.get("deprecated") else ""
+            line = f"[{global_idx}] {api['method']} {api['path']} {api.get('summary', '')}{auth_mark}{deprec_mark}"
             parts.append(line)
             if api.get("params"):
                 try:
-                    parts.append(f"  参数:{json.dumps(api['params'], ensure_ascii=False, default=str)[:300]}")
+                    parts.append(f"  参数:{json.dumps(api['params'], ensure_ascii=False, default=str)[:400]}")
                 except Exception:
                     pass
             if api.get("request_body"):
@@ -405,19 +437,38 @@ class AITestCaseGenerator:
         if relationships_text:
             parts.append(f"\n接口关系:\n{relationships_text}")
 
+        # 严格格式要求
         parts.append("")
-        parts.append("要求:")
-        parts.append("1.每个用例必须包含status_code断言:")
-        parts.append("  - 正向用例: {\"field\":\"status_code\",\"operator\":\"range\",\"expected\":\"2xx/3xx\"}")
-        parts.append("  - 鉴权用例(无Token/无效Token): {\"field\":\"status_code\",\"operator\":\"range\",\"expected\":\"4xx\"}")
-        parts.append("  - 异常用例(参数错误/权限不足): {\"field\":\"status_code\",\"operator\":\"equals\",\"expected\":\"具体状态码如400/403/404/422\"}")
-        parts.append("2.禁止json_exists模糊断言,必须用equals/contains/regex/range具体断言")
-        parts.append("3.每个用例至少2个断言:status_code+业务字段")
-        parts.append("4.创建类接口必须提取ID,登录类提取token")
-        parts.append("5.鉴权用例必须去掉Authorization头,断言status_code为4xx,同时断言响应体包含错误信息")
+        parts.append("=== 严格输出格式要求 ===")
+        parts.append("")
+        parts.append("1.断言格式(必须严格遵守):")
+        parts.append('  {"field":"status_code","operator":"range","expected":"2xx/3xx"}')
+        parts.append('  {"field":"$.data.id","operator":"regex","expected":"^\\\\d+$"}')
+        parts.append('  {"field":"$.detail","operator":"not_empty","expected":""}')
+        parts.append("  field支持: status_code, $.xxx(JSONPath), response_time")
+        parts.append("  operator支持: range, equals, not_equals, contains, not_contains, regex, not_empty, empty, exists, not_exists, gt, lt, gte, lte")
+        parts.append("  range值: 2xx/3xx(成功), 4xx(客户端错误), 5xx(服务端错误), 2xx, 3xx")
+        parts.append("")
+        parts.append("2.提取器格式(必须严格遵守):")
+        parts.append('  {"extractorType":"jsonpath","expression":"$.data.id","variableName":"user_id","defaultValue":""}')
+        parts.append("  extractorType支持: jsonpath, regex, header")
+        parts.append("  变量名用variableName(不是variable/var_name)")
+        parts.append("")
+        parts.append("3.用例类型与断言规则:")
+        parts.append("  正向用例: status_code range 2xx/3xx + 业务字段断言")
+        parts.append("  鉴权用例: 不带Authorization头, status_code range 4xx + $.detail not_empty")
+        parts.append("  异常用例: 缺少必填参数/超出范围/格式错误, status_code equals 400/422 + 错误字段断言")
+        parts.append("  边界用例: 参数取边界值(minimum/maxLength等), status_code range 2xx/3xx 或 equals 422")
+        parts.append("")
+        parts.append("4.其他规则:")
+        parts.append("  - 创建类接口必须提取ID到变量, 登录类提取token")
+        parts.append("  - URL中的路径参数用{{变量名}}替换, 如 /api/users/{{user_id}}")
+        parts.append("  - 鉴权接口的headers必须包含 Authorization: Bearer {{auth_token}}")
+        parts.append("  - 有enum约束的参数,正向用合法值,异常用非法值")
+        parts.append("  - 有minimum/maximum的参数,边界用边界值±1")
         parts.append("")
         parts.append("输出JSON:")
-        parts.append('{"cases":[{"name":"[正向]创建用户","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json","Authorization":"Bearer {{auth_token}}"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"2xx/3xx","description":"成功状态码"},{"field":"$.code","operator":"equals","expected":"0","description":"返回码0"},{"field":"$.data.id","operator":"regex","expected":"^\\\\d+$","description":"数字ID"}],"extractors":[{"type":"jsonpath","expression":"$.data.id","variable":"user_id"}],"description":"正常注册","api_index":0},{"name":"[鉴权]创建用户-无Token","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"4xx","description":"应返回401/403"},{"field":"$.detail","operator":"not_empty","expected":"","description":"应包含错误信息"}],"extractors":[],"description":"无Token请求应被拒绝","api_index":0}]}')
+        parts.append('{"cases":[{"name":"[正向]创建用户","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json","Authorization":"Bearer {{auth_token}}"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"2xx/3xx"},{"field":"$.code","operator":"equals","expected":"0"},{"field":"$.data.id","operator":"regex","expected":"^\\\\d+$"}],"extractors":[{"extractorType":"jsonpath","expression":"$.data.id","variableName":"user_id","defaultValue":""}],"description":"正常注册","api_index":0},{"name":"[鉴权]创建用户-无Token","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"4xx"},{"field":"$.detail","operator":"not_empty","expected":""}],"extractors":[],"description":"无Token请求应被拒绝","api_index":0},{"name":"[异常]创建用户-缺少必填","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json","Authorization":"Bearer {{auth_token}}"},"payload":{},"assert_rules":[{"field":"status_code","operator":"equals","expected":"422"},{"field":"$.detail","operator":"not_empty","expected":""}],"extractors":[],"description":"缺少必填字段","api_index":0}]}')
 
         if not include_boundary:
             parts.append("不生成边界用例。")
@@ -458,7 +509,7 @@ class AITestCaseGenerator:
             messages = [
                 {
                     "role": "system",
-                    "content": "你是API测试工程师。只返回JSON，不要其他文字。关键规则：每个用例必须有status_code断言（正向用例range 2xx/3xx，鉴权用例range 4xx，异常用例equals具体状态码）。鉴权用例不要带Authorization头。",
+                    "content": "你是API测试工程师。只返回JSON，不要其他文字。严格规则：1)每个用例必须有status_code断言(正向range 2xx/3xx,鉴权range 4xx,异常equals具体码) 2)断言field用status_code或$.xxx(JSONPath) 3)提取器用extractorType和variableName(不是type/variable) 4)鉴权用例不带Authorization头",
                 },
                 {"role": "user", "content": prompt},
             ]

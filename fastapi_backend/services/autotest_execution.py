@@ -19,6 +19,13 @@ from datetime import datetime, timezone
 import requests
 
 from fastapi_backend.utils.autotest_helpers import extract_jsonpath_value
+from fastapi_backend.services.autotest_assertion_engine import (
+    execute_assertions as _engine_execute,
+    get_field_value as _engine_get_field_value,
+    compare_values as _engine_compare_values,
+    get_operator_text as _engine_get_operator_text,
+    extract_variables_from_response as _engine_extract_variables,
+)
 # from fastapi_backend.services.autotest_variable_service import save_variables_to_db
 from fastapi_backend.utils.parser import replace_variables
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment, AutoTestGlobalVariable
@@ -343,292 +350,42 @@ async def quick_run_case(
 
 def execute_assertions(assert_rules: Any, status_code: int, response: Any) -> Dict[str, Any]:
     """
-    执行断言，支持对象格式和数组格式
+    执行断言，委托给统一断言引擎
     """
-    details = []
-    all_passed = True
-    error_messages = []
-    has_status_code_assertion = False
-
-    if not assert_rules:
-        if not (200 <= status_code < 400):
-            all_passed = False
-            error_messages.append(f"默认断言失败: 期望 2xx/3xx, 实际返回 {status_code}")
-            details.append({
-                "type": "default_status_code",
-                "expected": "2xx/3xx",
-                "actual": status_code,
-                "passed": False
-            })
-        else:
-            details.append({
-                "type": "default_status_code",
-                "expected": "2xx/3xx",
-                "actual": status_code,
-                "passed": True
-            })
-        return {
-            "passed": all_passed,
-            "message": "; ".join(error_messages) if error_messages else "默认状态码检查通过",
-            "details": details
-        }
-
-    # 格式2: 数组格式
-    if isinstance(assert_rules, list):
-        for rule in assert_rules:
-            if not isinstance(rule, dict):
-                continue
-
-            field = rule.get("field", "") or rule.get("target", "")
-            if field == "status_code":
-                has_status_code_assertion = True
-
-            operator = rule.get("operator", "") or rule.get("condition", "equals")
-            expected = rule.get("expectedValue")
-            if expected is None:
-                expected = rule.get("expected")
-            if expected is None:
-                expected = rule.get("value", "")
-
-            actual = get_field_value(field, status_code, response)
-            passed = compare_values(actual, operator, expected)
-
-            if not passed:
-                all_passed = False
-                error_messages.append(f"字段 {field} {get_operator_text(operator)} {expected}，实际: {actual}")
-
-            details.append({
-                "type": "assertion",
-                "field": field,
-                "operator": operator,
-                "expected": expected,
-                "actual": actual,
-                "passed": passed
-            })
-
-    # 格式1: 对象格式
-    elif isinstance(assert_rules, dict):
-        if "status_code" in assert_rules:
-            has_status_code_assertion = True
-            expected = assert_rules["status_code"]
-
-            if isinstance(expected, dict):
-                operator = expected.get("operator", "equals")
-                expected_value = expected.get("expectedValue")
-                if expected_value is None:
-                    expected_value = expected.get("expected")
-                if expected_value is None:
-                    expected_value = expected.get("eq")
-
-                if operator == "range":
-                    range_text = str(expected_value).lower()
-                    if "2xx" in range_text or "2xx/3xx" == range_text:
-                        passed = (200 <= status_code < 400)
-                    elif "3xx" in range_text:
-                        passed = (300 <= status_code < 400)
-                    elif "2xx" == range_text:
-                        passed = (200 <= status_code < 300)
-                    else:
-                        passed = (200 <= status_code < 400)
-                else:
-                    passed = compare_values(status_code, operator, expected_value)
-            else:
-                passed = (status_code == expected)
-
-            if not passed:
-                all_passed = False
-                error_messages.append(f"状态码断言失败: 期望 {expected}, 实际 {status_code}")
-            details.append({
-                "type": "status_code",
-                "expected": expected,
-                "actual": status_code,
-                "passed": passed
-            })
-
-        if "json_path" in assert_rules and isinstance(response, dict):
-            for path, rule in assert_rules["json_path"].items():
-                keys = path.replace("$.", "").split(".")
-                value = response
-                for key in keys:
-                    if isinstance(value, dict) and key in value:
-                        value = value[key]
-                    else:
-                        value = None
-                        break
-
-                if "eq" in rule:
-                    passed = (value == rule["eq"])
-                    if not passed:
-                        all_passed = False
-                        error_messages.append(f"JSON路径 {path} 断言失败: 期望 {rule['eq']}, 实际 {value}")
-                    details.append({
-                        "type": "json_path",
-                        "path": path,
-                        "assertion": "eq",
-                        "expected": rule["eq"],
-                        "actual": value,
-                        "passed": passed
-                    })
-                elif "contains" in rule:
-                    passed = (value is not None and rule["contains"] in str(value))
-                    if not passed:
-                        all_passed = False
-                        error_messages.append(f"JSON路径 {path} 不包含: {rule['contains']}")
-                    details.append({
-                        "type": "json_path",
-                        "path": path,
-                        "assertion": "contains",
-                        "expected": rule["contains"],
-                        "actual": value,
-                        "passed": passed
-                    })
-
-    # 不再追加默认 status_code 兜底断言
-    # 原因：用户可能有意只断言业务字段（如鉴权用例期望 401），强制 2xx/3xx 会导致误判
-
-    if all_passed:
-        return {"passed": True, "message": "所有断言通过", "details": details}
-    else:
-        return {"passed": False, "message": "; ".join(error_messages), "details": details}
+    return _engine_execute(
+        assert_rules=assert_rules,
+        status_code=status_code,
+        response_body=response,
+        response_time_ms=0,
+        response_headers=None,
+    )
 
 
 def get_field_value(field: str, status_code: int, response: Any) -> Any:
-    """根据字段名获取实际值"""
-    if field == "status_code":
-        return status_code
-    elif field == "response_time":
-        return None
-    elif field in ("body", "response_body", "json_body"):
-        return response
-    elif field == "headers":
-        return None
-    elif field.startswith("body.") or field.startswith("response.") or field.startswith("json_body."):
-        if field.startswith("json_body."):
-            keys = field[len("json_body."):].split(".")
-        elif field.startswith("response."):
-            keys = field[len("response."):].split(".")
-        else:
-            keys = field[len("body."):].split(".")
-        value = response
-        for key in keys:
-            if isinstance(value, dict) and key in value:
-                value = value[key]
-            else:
-                return None
-        return value
-    return None
+    """根据字段名获取实际值，委托给统一断言引擎"""
+    return _engine_get_field_value(field, status_code, response)
 
 
 def compare_values(actual: Any, operator: str, expected: Any) -> bool:
-    """比较值"""
-    if actual is None:
-        return False
-
-    if operator in ("equals", "eq", "=="):
-        return str(actual) == str(expected)
-    elif operator in ("not_equals", "ne", "!="):
-        return str(actual) != str(expected)
-    elif operator == "contains":
-        return str(expected) in str(actual)
-    elif operator == "not_contains":
-        return str(expected) not in str(actual)
-    elif operator in ("gt", ">"):
-        try:
-            return float(actual) > float(expected)
-        except Exception:
-            return False
-    elif operator in ("lt", "<"):
-        try:
-            return float(actual) < float(expected)
-        except Exception:
-            return False
-    elif operator in ("gte", ">="):
-        try:
-            return float(actual) >= float(expected)
-        except Exception:
-            return False
-    elif operator in ("lte", "<="):
-        try:
-            return float(actual) <= float(expected)
-        except Exception:
-            return False
-    elif operator == "regex":
-        import re
-        try:
-            return bool(re.search(str(expected), str(actual)))
-        except Exception:
-            return False
-    elif operator == "json_exists":
-        return actual is not None
-    return True
+    """比较值，委托给统一断言引擎"""
+    return _engine_compare_values(actual, operator, expected)
 
 
 def get_operator_text(operator: str) -> str:
-    """获取操作符的中文描述"""
-    mapping = {
-        "equals": "等于", "eq": "等于", "==": "等于",
-        "not_equals": "不等于", "ne": "不等于", "!=": "不等于",
-        "contains": "包含", "not_contains": "不包含",
-        "gt": "大于", ">": "大于", "lt": "小于", "<": "小于",
-        "gte": "大于等于", ">=": "大于等于", "lte": "小于等于", "<=": "小于等于",
-        "regex": "正则匹配", "json_exists": "存在",
-    }
-    return mapping.get(operator, operator)
+    """获取操作符的中文描述，委托给统一断言引擎"""
+    return _engine_get_operator_text(operator)
 
 
 async def extract_variables_from_response(extractors: Any, response_data: Any, response_text: str, response_headers: Optional[Dict] = None) -> Dict[str, str]:
     """
-    从响应中提取变量
-    Args:
-        extractors: 提取规则列表
-        response_data: 解析后的响应数据（dict/list）
-        response_text: 原始响应文本
-    Returns:
-        提取的变量字典 {变量名: 变量值}
+    从响应中提取变量，委托给统一断言引擎
     """
-    if not extractors:
-        return {}
-
-    extracted = {}
-
-    for extractor in extractors:
-        if not isinstance(extractor, dict):
-            continue
-
-        var_name = extractor.get("variableName") or extractor.get("var_name")
-        extractor_type = extractor.get("extractorType") or extractor.get("type", "jsonpath")
-        expression = extractor.get("expression") or extractor.get("path", "")
-        default_value = extractor.get("defaultValue") or extractor.get("default", "")
-
-        if not var_name or not expression:
-            continue
-
-        value = default_value
-
-        try:
-            if extractor_type == "jsonpath":
-                value = extract_jsonpath_value(response_data, expression, default_value)
-            elif extractor_type == "regex":
-                import re
-                match = re.search(expression, response_text)
-                if match:
-                    value = match.group(1) if match.groups() else match.group(0)
-                else:
-                    value = default_value
-            elif extractor_type == "header":
-                header_name = extractor.get("name", "").lower()
-                for h_key, h_val in (response_headers or {}).items():
-                    if h_key.lower() == header_name:
-                        extracted_value = str(h_val)
-                        value = extracted_value
-                        break
-        except Exception as e:
-            _logger.info(f"变量提取失败 {var_name}: {str(e)}")
-            value = default_value
-
-        extracted[var_name] = value
-
-    return extracted
+    return _engine_extract_variables(
+        extractors=extractors,
+        response_body=response_data,
+        response_text=response_text,
+        response_headers=response_headers,
+    )
 
 
 

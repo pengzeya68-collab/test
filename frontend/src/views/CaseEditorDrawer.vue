@@ -332,8 +332,17 @@
                         <el-option label="等于" value="==" />
                         <el-option label="不等于" value="!=" />
                         <el-option label="包含" value="contains" />
+                        <el-option label="不包含" value="not_contains" />
                         <el-option label="小于" value="<" />
                         <el-option label="大于" value=">" />
+                        <el-option label="小于等于" value="<=" />
+                        <el-option label="大于等于" value=">=" />
+                        <el-option label="范围匹配" value="range" />
+                        <el-option label="正则匹配" value="regex" />
+                        <el-option label="不为空" value="not_empty" />
+                        <el-option label="为空" value="empty" />
+                        <el-option label="存在" value="exists" />
+                        <el-option label="不存在" value="not_exists" />
                       </el-select>
                     </div>
                     <div class="assertion-cell">
@@ -749,7 +758,7 @@ const initFormData = (data) => {
     if (Array.isArray(rawExtractors)) {
       parsedExtractors = JSON.parse(JSON.stringify(rawExtractors)).map((item, index) => ({
         id: item.id || `ext_${Date.now()}_${index}`,
-        variableName: item.variableName || item.var_name || '',
+        variableName: item.variableName || item.var_name || item.variable || '',
         extractorType: item.extractorType || item.type || 'jsonpath',
         expression: item.expression || item.path || '',
         defaultValue: item.defaultValue || item.default || ''
@@ -965,9 +974,22 @@ const mapOldOperator = (oldOp) => {
   const mapping = {
     'equals': '==',
     'not_equals': '!=',
+    'eq': '==',
+    'ne': '!=',
     'contains': 'contains',
+    'not_contains': 'not_contains',
     'gt': '>',
-    'lt': '<'
+    'lt': '<',
+    'gte': '<=',
+    'lte': '<=',
+    'range': 'range',
+    'regex': 'regex',
+    'match': 'regex',
+    'not_empty': 'not_empty',
+    'empty': 'empty',
+    'exists': 'exists',
+    'not_exists': 'not_exists',
+    'json_exists': 'exists',
   }
   return mapping[oldOp] || oldOp || '=='
 }
