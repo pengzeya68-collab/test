@@ -115,13 +115,10 @@ const handleLogin = async () => {
         
         ElMessage.success('登录成功！')
         
-        const completed = await userStore.checkAssessmentStatus()
         const redirect = router.currentRoute.value?.query?.redirect
         
         if (redirect) {
           router.push(decodeURIComponent(redirect)).catch(() => router.push('/'))
-        } else if (!completed) {
-          router.push('/assessment')
         } else {
           router.push('/')
         }

@@ -2,7 +2,6 @@
 AutoTest settings - 持久化内存单例，支持运行时读写配置
 从 system_config.json 读取邮件配置，支持持久化
 """
-
 import logging
 import threading
 
@@ -39,10 +38,10 @@ class _AutoTestSettings:
         """加载配置：优先从 system_config.json 读取，否则从环境配置读取"""
         from fastapi_backend.core.config import settings as env_settings
         from fastapi_backend.services.system_config import system_config
-
+        
         # 尝试从持久化配置读取邮件配置
         email_config = system_config.get_section("email")
-
+        
         if email_config:
             # 从持久化配置读取
             self.EMAIL_ENABLED = email_config.get("EMAIL_ENABLED", env_settings.EMAIL_ENABLED)
@@ -69,17 +68,17 @@ class _AutoTestSettings:
             self.EMAIL_TEST_TO = env_settings.EMAIL_TEST_TO
             self.AUTO_TEST_BASE_URL = env_settings.AUTO_TEST_BASE_URL
             _logger.info("邮件配置已从环境变量加载")
-
+        
         self.CELERY_BROKER_URL = env_settings.CELERY_BROKER_URL
         self.CELERY_RESULT_BACKEND = env_settings.CELERY_RESULT_BACKEND
 
     def reload(self):
         self._load_from_config()
-
+    
     def save_to_persistent(self):
         """将当前配置保存到 system_config.json"""
         from fastapi_backend.services.system_config import system_config
-
+        
         email_config = {
             "EMAIL_ENABLED": self.EMAIL_ENABLED,
             "EMAIL_SMTP_HOST": self.EMAIL_SMTP_HOST,

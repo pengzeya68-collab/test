@@ -11,24 +11,28 @@ from sqlalchemy import select, func
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.models import TestReport, TestReportResult
-
-router = APIRouter(
-    prefix="/api/auto-test/diagnose",
-    tags=["AutoTest-诊断"],
-    dependencies=[Depends(get_current_user)],
+from fastapi_backend.models.models import (
+    TestReport,
+    TestReportResult
 )
+
+router = APIRouter(prefix="/api/auto-test/diagnose", tags=["AutoTest-诊断"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/report/{report_id}")
-async def diagnose_report(report_id: int, db: AsyncSession = Depends(get_db)):
+async def diagnose_report(
+    report_id: int,
+    db: AsyncSession = Depends(get_db)
+):
     """
     诊断报告数据完整性：检测同一 report_id 下是否有累积的孤儿步骤数据
 
     返回：{has_orphans: bool, orphan_count: int, total_count: int, latest_step_id: int}
     """
     # 获取报告
-    result = await db.execute(select(TestReport).where(TestReport.id == report_id))
+    result = await db.execute(
+        select(TestReport).where(TestReport.id == report_id)
+    )
     report = result.scalar_one_or_none()
 
     if not report:
@@ -36,7 +40,9 @@ async def diagnose_report(report_id: int, db: AsyncSession = Depends(get_db)):
 
     # 获取所有步骤
     result = await db.execute(
-        select(TestReportResult).where(TestReportResult.report_id == report_id).order_by(TestReportResult.id)
+        select(TestReportResult)
+        .where(TestReportResult.report_id == report_id)
+        .order_by(TestReportResult.id)
     )
     all_steps = result.scalars().all()
     total_count = len(all_steps)
@@ -47,7 +53,7 @@ async def diagnose_report(report_id: int, db: AsyncSession = Depends(get_db)):
             "orphan_count": 0,
             "total_count": 0,
             "latest_step_id": None,
-            "step_ids": [],
+            "step_ids": []
         }
 
     latest_steps_count = report.total_count or 0
@@ -61,18 +67,23 @@ async def diagnose_report(report_id: int, db: AsyncSession = Depends(get_db)):
         "total_count": total_count,
         "expected_count": latest_steps_count,
         "latest_step_id": all_steps[-1].id if all_steps else None,
-        "step_ids": [s.id for s in all_steps],
+        "step_ids": [s.id for s in all_steps]
     }
 
 
 @router.get("/scenario/{scenario_id}")
-async def diagnose_scenario(scenario_id: int, db: AsyncSession = Depends(get_db)):
+async def diagnose_scenario(
+    scenario_id: int,
+    db: AsyncSession = Depends(get_db)
+):
     """
     诊断场景数据完整性：检查该场景下所有报告的数据一致性
     """
     # 获取该场景下的所有报告
     result = await db.execute(
-        select(TestReport).where(TestReport.plan_id == scenario_id).order_by(TestReport.id.desc())
+        select(TestReport)
+        .where(TestReport.plan_id == scenario_id)
+        .order_by(TestReport.id.desc())
     )
     reports = result.scalars().all()
 
@@ -80,29 +91,30 @@ async def diagnose_scenario(scenario_id: int, db: AsyncSession = Depends(get_db)
     for report in reports:
         # 计算实际步骤数
         result = await db.execute(
-            select(func.count(TestReportResult.id)).where(TestReportResult.report_id == report.id)
+            select(func.count(TestReportResult.id))
+            .where(TestReportResult.report_id == report.id)
         )
         actual_steps = result.scalar()
 
-        report_diagnostics.append(
-            {
-                "report_id": report.id,
-                "status": report.status,
-                "total_count_db": report.total_count,
-                "actual_steps": actual_steps,
-                "executed_at": report.executed_at.isoformat() if report.executed_at else None,
-            }
-        )
+        report_diagnostics.append({
+            "report_id": report.id,
+            "status": report.status,
+            "total_count_db": report.total_count,
+            "actual_steps": actual_steps,
+            "executed_at": report.executed_at.isoformat() if report.executed_at else None
+        })
 
     return {
         "scenario_id": scenario_id,
         "total_reports": len(reports),
-        "reports": report_diagnostics,
+        "reports": report_diagnostics
     }
 
 
 @router.get("/data-consistency")
-async def check_data_consistency(db: AsyncSession = Depends(get_db)):
+async def check_data_consistency(
+    db: AsyncSession = Depends(get_db)
+):
     """
     检查自动化测试数据一致性
     返回各种数据完整性统计
@@ -112,7 +124,7 @@ async def check_data_consistency(db: AsyncSession = Depends(get_db)):
         select(
             func.count(TestReport.id).label("total_reports"),
             func.count(TestReportResult.id).label("total_steps"),
-            func.count(func.distinct(TestReportResult.report_id)).label("reports_with_steps"),
+            func.count(func.distinct(TestReportResult.report_id)).label("reports_with_steps")
         )
     )
     stats = result.first()
@@ -133,5 +145,9 @@ async def check_data_consistency(db: AsyncSession = Depends(get_db)):
             "reports_with_steps": stats.reports_with_steps,
             "reports_without_steps": len(reports_without_steps),
         },
-        "issues": {"reports_without_steps": [{"id": r.id, "title": r.plan_name} for r in reports_without_steps]},
+        "issues": {
+            "reports_without_steps": [
+                {"id": r.id, "title": r.plan_name} for r in reports_without_steps
+            ]
+        }
     }

@@ -179,7 +179,7 @@ const isLoggedIn = computed(() => userStore.isLoggedIn)
 const userInfo = computed(() => userStore.userInfo)
 
 const isAuthPage = computed(() => {
-  return route.path === '/login' || route.path === '/register' || route.path.startsWith('/admin') || route.path === '/assessment'
+  return route.path === '/login' || route.path === '/register' || route.path.startsWith('/admin')
 })
 
 const activeMenu = computed(() => route.path)

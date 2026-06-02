@@ -8,7 +8,7 @@
     @hide="visible = false"
   >
     <template #reference>
-      <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" class="notification-bell">
+      <el-badge :value="displayUnreadCount" :hidden="displayUnreadCount === 0" :max="99" class="notification-bell">
         <el-button link @click="visible = !visible" class="bell-btn">
           <el-icon :size="20"><Bell /></el-icon>
         </el-button>
@@ -28,6 +28,16 @@
       </div>
 
       <div class="panel-body" v-loading="loading">
+        <!-- 未测评提示 -->
+        <div v-if="!assessmentCompleted" class="assessment-tip" @click="goAssessment">
+          <div class="assessment-tip-icon">🎯</div>
+          <div class="assessment-tip-content">
+            <div class="assessment-tip-title">完成入学测评</div>
+            <div class="assessment-tip-desc">完成测评后将为你定制个性化学习计划</div>
+          </div>
+          <el-icon class="assessment-tip-arrow"><ArrowRight /></el-icon>
+        </div>
+
         <template v-if="notifications.length > 0">
           <div
             v-for="item in notifications"
@@ -62,18 +72,33 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { Bell } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { Bell, ArrowRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import autoTestRequest from '@/utils/autoTestRequest'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const visible = ref(false)
 const loading = ref(false)
 const notifications = ref([])
 const unreadCount = ref(0)
 const total = ref(0)
+
+const assessmentCompleted = computed(() => userStore.assessmentCompleted)
+
+// 未测评时角标数+1
+const displayUnreadCount = computed(() => {
+  const base = unreadCount.value || 0
+  return assessmentCompleted.value ? base : base + 1
+})
+
+const goAssessment = () => {
+  visible.value = false
+  router.push('/assessment')
+}
 
 const fetchNotifications = async () => {
   loading.value = true
@@ -183,4 +208,18 @@ onBeforeUnmount(() => {
 .unread-dot { width: 8px; height: 8px; border-radius: 50%; background: #f56c6c; flex-shrink: 0; margin-top: 6px; }
 
 .panel-footer { text-align: center; padding-top: 10px; border-top: 1px solid #ebeef5; margin-top: 8px; }
+
+/* 测评提示 */
+.assessment-tip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 8px; border-radius: 8px; cursor: pointer;
+  background: linear-gradient(135deg, #ecf5ff 0%, #f0f9eb 100%);
+  margin-bottom: 8px; transition: all .2s;
+}
+.assessment-tip:hover { background: linear-gradient(135deg, #d9ecff 0%, #e1f3d8 100%); }
+.assessment-tip-icon { font-size: 24px; flex-shrink: 0; }
+.assessment-tip-content { flex: 1; min-width: 0; }
+.assessment-tip-title { font-size: 13px; font-weight: 600; color: #303133; }
+.assessment-tip-desc { font-size: 12px; color: #909399; margin-top: 2px; }
+.assessment-tip-arrow { color: #c0c4cc; flex-shrink: 0; }
 </style>

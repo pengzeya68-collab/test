@@ -2,7 +2,6 @@
 AutoTest 全局变量持久化服务
 从 utils/autotest_helpers.py 迁移
 """
-
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
@@ -35,7 +34,7 @@ async def save_variables_to_db(variables: Dict[str, Any], source: str = "测试"
                         name=var_name,
                         value=str(var_value),
                         description=f"从{source}提取",
-                        is_encrypted=False,
+                        is_encrypted=False
                     )
                     session.add(new_var)
 

@@ -2,16 +2,7 @@
 AutoTest Pydantic Schema 模型
 用于请求校验和响应序列化
 """
-
-from pydantic import (
-    BaseModel,
-    Field,
-    BeforeValidator,
-    ConfigDict,
-    computed_field,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, Field, BeforeValidator, ConfigDict, field_validator, model_validator
 from typing import Optional, List, Dict, Any, Annotated
 from datetime import datetime
 
@@ -22,12 +13,10 @@ def empty_str_to_none(v):
         return None
     return v
 
-
 OptionalInt = Annotated[Optional[int], BeforeValidator(empty_str_to_none)]
 
 
 # ========== AutoTestGroup Schema ==========
-
 
 class AutoTestGroupBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="分组名称")
@@ -58,7 +47,6 @@ class AutoTestGroupTree(AutoTestGroupResponse):
 
 
 # ========== AutoTestCase Schema ==========
-
 
 class AutoTestCaseBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="用例名称")
@@ -117,14 +105,18 @@ class AutoTestCaseResponse(AutoTestCaseBase):
 
 # ========== AutoTestEnvironment Schema ==========
 
-
 class AutoTestEnvironmentBase(BaseModel):
-    name: str = Field(..., alias="env_name", min_length=1, max_length=100, description="环境名称")
+    name: str = Field(..., min_length=1, max_length=100, description="环境名称")
     base_url: Optional[str] = Field(None, description="基础路径")
     variables: Dict[str, Any] = Field(default_factory=dict, description="全局变量")
     is_default: bool = Field(False, description="是否为默认环境")
 
-    model_config = ConfigDict(populate_by_name=True)
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_env_name(cls, data):
+        if isinstance(data, dict) and "name" not in data and data.get("env_name"):
+            data = {**data, "name": data["env_name"]}
+        return data
 
 
 class AutoTestEnvironmentCreate(AutoTestEnvironmentBase):
@@ -132,28 +124,27 @@ class AutoTestEnvironmentCreate(AutoTestEnvironmentBase):
 
 
 class AutoTestEnvironmentUpdate(BaseModel):
-    name: Optional[str] = Field(None, alias="env_name", min_length=1, max_length=100)
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
     base_url: Optional[str] = None
     variables: Optional[Dict[str, Any]] = None
     is_default: Optional[bool] = None
 
-    model_config = ConfigDict(populate_by_name=True)
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_env_name(cls, data):
+        if isinstance(data, dict) and "name" not in data and data.get("env_name"):
+            data = {**data, "name": data["env_name"]}
+        return data
 
 
 class AutoTestEnvironmentResponse(AutoTestEnvironmentBase):
     id: int
     created_at: datetime
 
-    @computed_field
-    @property
-    def env_name(self) -> str:
-        return self.name
-
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ========== AutoTestHistory Schema ==========
-
 
 class AutoTestHistoryResponse(BaseModel):
     id: int
@@ -170,10 +161,8 @@ class AutoTestHistoryResponse(BaseModel):
 
 # ========== 执行结果 Schema ==========
 
-
 class CaseRunRequest(BaseModel):
     env_id: Optional[Any] = Field(None, description="环境ID")
-
 
 class CaseExecutionResult(BaseModel):
     success: bool
@@ -191,7 +180,6 @@ class CaseExecutionResult(BaseModel):
 
 
 # ========== 场景 Schema ==========
-
 
 class ScenarioStepBase(BaseModel):
     api_case_id: Any = Field(..., description="引用的接口ID")
@@ -234,7 +222,6 @@ class AutoTestScenarioUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
     is_active: Optional[bool] = None
-    steps: Optional[List[ScenarioStepCreate]] = None
 
 
 class AutoTestScenarioResponse(AutoTestScenarioBase):
@@ -259,7 +246,6 @@ class ScenarioExecutionResult(BaseModel):
 
 
 # ========== 数据集 Schema ==========
-
 
 class DataMatrix(BaseModel):
     columns: List[str] = Field(default_factory=list, description="变量名列表")
@@ -305,7 +291,6 @@ class DataDrivenExecutionResult(BaseModel):
 
 # ========== 调度任务 Schema ==========
 
-
 class ScheduleTaskCreate(BaseModel):
     scenario_id: Any
     cron_expression: str
@@ -335,7 +320,6 @@ class ScheduleTaskResponse(BaseModel):
 
 # ========== 邮件配置 Schema ==========
 
-
 class EmailConfig(BaseModel):
     enabled: bool
     smtpHost: str
@@ -353,25 +337,7 @@ class TestEmailRequest(BaseModel):
     to_email: str
 
 
-# ========== 全局变量 Schema ==========
-
-
-class GlobalVariableCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=200, description="变量名")
-    value: str = Field(default="", description="变量值")
-    description: Optional[str] = Field(None, description="变量描述")
-    is_encrypted: bool = Field(False, description="是否加密存储")
-
-
-class GlobalVariableUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=200, description="变量名")
-    value: Optional[str] = Field(None, description="变量值")
-    description: Optional[str] = Field(None, description="变量描述")
-    is_encrypted: Optional[bool] = Field(None, description="是否加密存储")
-
-
 # ========== 变量预览 Schema ==========
-
 
 class VariablePreviewRequest(BaseModel):
     text: str
@@ -386,7 +352,6 @@ class VariablePreviewResponse(BaseModel):
 
 # ========== 内联场景执行请求 Schema ==========
 
-
 class InlineScenarioExecutionRequest(BaseModel):
     steps: List[dict] = Field(..., description="步骤列表")
     data_matrix: DataMatrix = Field(..., description="数据矩阵")
@@ -396,18 +361,9 @@ class InlineScenarioExecutionRequest(BaseModel):
 # ========== 测试数据工厂 Schema ==========
 
 VALID_RULE_TYPES = {
-    "fixed",
-    "enum",
-    "increment",
-    "uuid",
-    "timestamp",
-    "date_offset",
-    "phone",
-    "email",
-    "username",
-    "env_ref",
+    "fixed", "enum", "increment", "uuid", "timestamp",
+    "date_offset", "phone", "email", "username", "env_ref",
 }
-
 
 class TemplateFieldRuleCreate(BaseModel):
     field_name: str = Field(..., min_length=1, max_length=100, description="字段名")
@@ -441,10 +397,7 @@ class TestDataTemplateCreate(BaseModel):
     scenario_id: Optional[int] = Field(None, gt=0, description="关联场景ID")
     row_count: int = Field(default=10, ge=1, le=100, description="生成行数(1-100)")
     fields: List[TemplateFieldRuleCreate] = Field(
-        default_factory=list,
-        min_length=1,
-        max_length=20,
-        description="字段规则列表(1-20个)",
+        default_factory=list, min_length=1, max_length=20, description="字段规则列表(1-20个)"
     )
 
     @field_validator("fields")

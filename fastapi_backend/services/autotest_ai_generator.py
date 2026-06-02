@@ -1,13 +1,20 @@
 """
-AI 智能生成测试用例服务
+AI 智能生成测试用例服务 - 三阶段批处理架构
 
-从 Swagger/OpenAPI 文档自动分析接口，利用 LLM 生成带断言、变量提取、场景链的完整测试用例。
+Phase 1 - Analyze: 分析 API 文档结构，识别 CRUD 关系和数据依赖
+Phase 2 - Generate Cases: 分批调用 AI 生成高质量测试用例（每批 5 个 API）
+Phase 3 - Generate Scenarios: 基于分析结果和用例生成场景链
+
+通过 Celery 异步执行，支持进度轮询。
 """
 
+import asyncio
 import json
 import logging
 import re
-from typing import Any
+import time
+import uuid
+from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,16 +22,86 @@ from fastapi_backend.utils.ai_config import (
     load_ai_config,
     resolve_ai_params,
     call_llm_json,
+    AIParams,
 )
 
 _logger = logging.getLogger(__name__)
+
+BATCH_SIZE = 5
+BATCH_TIMEOUT = 120
+MAX_RETRIES = 2
+RETRY_BASE_DELAY = 5  # 秒
+
+
+class RateLimitExceededError(Exception):
+    """AI API 5小时窗口限额耗尽，无法继续"""
+    def __init__(self, message: str, provider: str = ""):
+        super().__init__(message)
+        self.provider = provider
+
+
+async def _call_llm_with_retry(params: AIParams, messages: list, timeout: int = None, progress_callback=None) -> dict:
+    """带 429 限流重试的 LLM JSON 调用
+
+    区分两种 429:
+    - RPM 限流（每分钟请求数超限）: 短暂等待后重试
+    - 窗口限额耗尽（如 MiniMax 5小时窗口）: 抛出 RateLimitExceededError，不无意义重试
+    """
+    import asyncio
+
+    effective_timeout = timeout or params.timeout
+    last_error = None
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            retry_params = AIParams(
+                api_key=params.api_key,
+                base_url=params.base_url,
+                model=params.model,
+                provider=params.provider,
+                timeout=effective_timeout,
+                max_tokens=params.max_tokens,
+                temperature=params.temperature,
+                group_id=params.group_id,
+            )
+            return await call_llm_json(retry_params, messages)
+        except Exception as e:
+            last_error = e
+            error_str = str(e)
+
+            if "429" in error_str or "rate_limit" in error_str.lower():
+                # MiniMax 2056 = 5小时窗口限额耗尽，重试无意义
+                if "usage limit exceeded" in error_str.lower() or "2056" in error_str:
+                    _logger.error("AI API 窗口限额耗尽 (429/2056)，需要等待窗口重置: %s", error_str[:300])
+                    raise RateLimitExceededError(
+                        f"AI API 窗口限额已耗尽（{params.provider} 返回 usage limit exceeded），"
+                        f"需要等待 5 小时窗口重置后重试。建议：1) 等待窗口重置 2) 换用其他 AI 服务 3) 减少接口数量",
+                        provider=params.provider,
+                    )
+
+                # 普通 RPM 限流 - 指数退避重试
+                delay = RETRY_BASE_DELAY * (2 ** attempt)
+                _logger.warning("AI API RPM 限流 (429)，第 %d/%d 次重试，等待 %ds: %s",
+                                attempt + 1, MAX_RETRIES, delay, error_str[:200])
+                if progress_callback:
+                    await progress_callback(f"AI 限流，等待 {delay}s 后重试 ({attempt+1}/{MAX_RETRIES})...")
+                await asyncio.sleep(delay)
+                continue
+            # 其他错误不重试
+            raise
+
+    raise last_error
 
 
 class AITestCaseGenerator:
     """AI 测试用例生成器"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession = None):
         self.db = db
+
+    # ------------------------------------------------------------------
+    # Swagger 解析（保留原有逻辑）
+    # ------------------------------------------------------------------
 
     def _parse_swagger(self, swagger_data: dict) -> dict:
         """解析 Swagger 文档，提取接口信息"""
@@ -110,213 +187,9 @@ class AITestCaseGenerator:
             "apis": apis,
         }
 
-    def _build_prompt(self, parsed: dict, options: dict) -> str:
-        """构建 AI 提示词"""
-        max_cases = options.get("max_cases_per_api", 3)
-        include_boundary = options.get("include_boundary", True)
-        include_auth = options.get("include_auth", True)
-        include_chain = options.get("include_chain", True)
-
-        parts = []
-        parts.append("你是一个专业的 API 测试用例生成器。根据以下 Swagger/OpenAPI 接口信息，生成高质量的测试用例。")
-        parts.append("")
-        parts.append("=== API 文档信息 ===")
-        parts.append(f"标题: {parsed['title']}")
-        parts.append(f"版本: {parsed['version']}")
-        parts.append(f"Base URL: {parsed['base_url']}")
-        parts.append("")
-
-        if parsed.get("schemas"):
-            parts.append("=== 数据模型定义 ===")
-            for name, schema in list(parsed["schemas"].items())[:20]:  # 限制模型数量
-                try:
-                    parts.append(f"【{name}】: {json.dumps(schema, ensure_ascii=False, default=str)[:500]}")
-                except Exception:
-                    parts.append(f"【{name}】: {str(schema)[:500]}")
-            parts.append("")
-
-        parts.append("=== 接口列表 ===")
-        for api in parsed["apis"]:
-            parts.append(f"\n【{api['method']} {api['path']}】{api.get('summary', '')}")
-            if api.get("tags"):
-                parts.append(f"  标签: {', '.join(api['tags'])}")
-            if api.get("params"):
-                try:
-                    parts.append(f"  参数: {json.dumps(api['params'], ensure_ascii=False, default=str)}")
-                except Exception:
-                    parts.append(f"  参数: {str(api['params'])[:500]}")
-            if api.get("request_body"):
-                rb = api["request_body"]
-                try:
-                    parts.append(f"  请求体({rb.get('content_type', '')}): {json.dumps(rb.get('schema', {}), ensure_ascii=False, default=str)[:800]}")
-                except Exception:
-                    parts.append(f"  请求体: {str(rb)[:500]}")
-            if api.get("responses"):
-                for status, resp in api["responses"].items():
-                    try:
-                        resp_str = json.dumps(resp, ensure_ascii=False, default=str)[:300]
-                    except Exception:
-                        resp_str = str(resp)[:300]
-                    parts.append(f"  响应 [{status}]: {resp_str}")
-
-        parts.append("")
-        parts.append("=== 生成要求 ===")
-        parts.append(f"1. 每个接口最多生成 {max_cases} 个测试用例")
-        parts.append(
-            "2. 每个用例必须包含: name(名称), method, url, headers, payload(请求体), assert_rules(断言规则), extractors(变量提取), description(描述)"
-        )
-        parts.append(
-            '3. 断言规则格式: [{"field": "响应字段路径", "operator": "equals|contains|gt|lt|gte|lte|regex|json_exists", "expected": "期望值", "description": "描述"}]'
-        )
-        parts.append(
-            '4. 变量提取格式: [{"type": "jsonpath|regex|header", "expression": "表达式", "variable": "变量名"}]'
-        )
-        if include_boundary:
-            parts.append("5. 必须包含边界测试用例：空值、超长字符串、类型错误")
-        if include_auth:
-            parts.append("6. 必须包含鉴权测试用例：无token请求")
-        if include_chain:
-            parts.append(
-                '7. 如果接口之间有 CRUD 关系，生成场景链(scenarios): [{"name": "场景名", "description": "描述", "steps": [{"api_index": 接口序号从0开始, "description": "步骤描述"}]}]'
-            )
-        parts.append("")
-        parts.append("=== 输出格式 ===")
-        parts.append("直接返回以下 JSON 格式，不要有其他文字：")
-        parts.append("""{
-  "cases": [
-    {
-      "name": "用例名称",
-      "method": "GET/POST/PUT/DELETE",
-      "url": "完整URL",
-      "headers": {"Content-Type": "application/json"},
-      "payload": {"key": "value"},
-      "assert_rules": [
-        {"field": "$.code", "operator": "equals", "expected": "200", "description": "状态码应为200"}
-      ],
-      "extractors": [
-        {"type": "jsonpath", "expression": "$.data.id", "variable": "created_id"}
-      ],
-      "description": "用例描述",
-      "api_index": 0
-    }
-  ],
-  "scenarios": [
-    {
-      "name": "CRUD完整流程",
-      "description": "创建→查询→修改→删除",
-      "steps": [
-        {"api_index": 0, "description": "创建资源"},
-        {"api_index": 1, "description": "查询详情", "use_variables": {"id": "{{created_id}}"}}
-      ]
-    }
-  ]
-}""")
-        return "\n".join(parts)
-
-    async def generate(self, swagger_data: dict, options: dict = None) -> dict:
-        """从 Swagger 数据生成测试用例"""
-        options = options or {}
-        parsed = self._parse_swagger(swagger_data)
-
-        if not parsed["apis"]:
-            return {"cases": [], "scenarios": [], "message": "未发现可测试的接口"}
-
-        try:
-            config = await load_ai_config(self.db)
-            params = resolve_ai_params(config)
-        except Exception as e:
-            _logger.warning("加载 AI 配置失败，使用规则回退: %s", e)
-            return self._generate_fallback(parsed)
-
-        if not params.api_key:
-            return self._generate_fallback(parsed)
-
-        prompt = self._build_prompt(parsed, options)
-
-        try:
-            messages = [
-                {
-                    "role": "system",
-                    "content": "你是一个专业的 API 测试工程师，擅长编写全面的测试用例。只返回 JSON，不要有其他文字。",
-                },
-                {"role": "user", "content": prompt},
-            ]
-            result = await call_llm_json(params, messages)
-            # 确保返回结构正确
-            if "cases" not in result:
-                result = {"cases": [], "scenarios": []}
-            # 补充 base_url 到 url 中
-            for case in result.get("cases", []):
-                url = case.get("url", "")
-                if url and not url.startswith("http"):
-                    case["url"] = parsed["base_url"].rstrip("/") + "/" + url.lstrip("/")
-            return result
-        except Exception as e:
-            _logger.error(f"AI 生成测试用例失败: {e}", exc_info=True)
-            return self._generate_fallback(parsed)
-
-    def _generate_fallback(self, parsed: dict) -> dict:
-        """无 AI 配置时的规则回退生成"""
-        cases = []
-        for idx, api in enumerate(parsed["apis"]):
-            url = parsed["base_url"].rstrip("/") + api["path"]
-            url = re.sub(r"\{(\w+)\}", r"{{\1}}", url)
-
-            headers = {"Content-Type": "application/json"}
-            payload = None
-            if api["request_body"]:
-                payload = self._generate_example_from_schema(api["request_body"]["schema"], parsed.get("schemas", {}))
-
-            # 正向用例
-            assert_rules = []
-            for status in api.get("responses", {}):
-                if str(status).isdigit() and int(status) < 400:
-                    assert_rules.append(
-                        {
-                            "field": "$",
-                            "operator": "json_exists",
-                            "expected": "",
-                            "description": f"响应应符合 {status} 结构",
-                        }
-                    )
-                    break
-
-            cases.append(
-                {
-                    "name": f"[正向] {api['summary']}",
-                    "method": api["method"],
-                    "url": url,
-                    "headers": headers,
-                    "payload": payload,
-                    "assert_rules": assert_rules,
-                    "extractors": [],
-                    "description": f"正向测试: {api['method']} {api['path']}",
-                    "api_index": idx,
-                }
-            )
-
-            # 无鉴权用例
-            cases.append(
-                {
-                    "name": f"[鉴权] {api['summary']} - 无Token",
-                    "method": api["method"],
-                    "url": url,
-                    "headers": {"Content-Type": "application/json"},
-                    "payload": payload,
-                    "assert_rules": [
-                        {"field": "$", "operator": "json_exists", "expected": "", "description": "应返回 401/403 错误"},
-                    ],
-                    "extractors": [],
-                    "description": f"无 Token 请求 {api['method']} {api['path']}，预期被拒绝",
-                    "api_index": idx,
-                }
-            )
-
-        return {
-            "cases": cases,
-            "scenarios": [],
-            "message": f"规则生成完成（未配置 AI），共 {len(cases)} 个用例。配置 AI 后可生成更智能的用例。",
-        }
+    # ------------------------------------------------------------------
+    # Schema 示例数据生成（保留原有逻辑）
+    # ------------------------------------------------------------------
 
     def _generate_example_from_schema(self, schema: dict, schemas: dict, _visited: set = None) -> Any:
         """从 OpenAPI schema 生成示例数据"""
@@ -328,7 +201,7 @@ class AITestCaseGenerator:
             ref_path = schema["$ref"]
             ref_name = ref_path.split("/")[-1]
             if ref_name in _visited:
-                return {}  # 循环引用，返回空对象
+                return {}
             _visited.add(ref_name)
             if ref_name in schemas:
                 return self._generate_example_from_schema(schemas[ref_name], schemas, _visited)
@@ -360,3 +233,660 @@ class AITestCaseGenerator:
         elif schema_type == "boolean":
             return True
         return None
+
+    # ------------------------------------------------------------------
+    # 规则回退生成（保留原有逻辑）
+    # ------------------------------------------------------------------
+
+    def _generate_fallback(self, parsed: dict) -> dict:
+        """无 AI 配置时的规则回退生成"""
+        cases = []
+        for idx, api in enumerate(parsed["apis"]):
+            url = parsed["base_url"].rstrip("/") + api["path"]
+            url = re.sub(r"\{(\w+)\}", r"{{\1}}", url)
+
+            headers = {"Content-Type": "application/json"}
+            payload = None
+            if api["request_body"]:
+                payload = self._generate_example_from_schema(api["request_body"]["schema"], parsed.get("schemas", {}))
+
+            # 正向用例 - 使用具体的 status_code 断言
+            assert_rules = [
+                {"field": "status_code", "operator": "range", "expected": "2xx/3xx", "description": "应返回成功状态码"},
+            ]
+            # 如果有响应定义，添加响应体断言
+            for status, resp in api.get("responses", {}).items():
+                if str(status).isdigit() and int(status) < 400:
+                    resp_schema = resp.get("schema", {})
+                    if resp_schema.get("type") == "object" or resp_schema.get("properties"):
+                        assert_rules.append(
+                            {"field": "$", "operator": "not_empty", "expected": "", "description": "响应体不应为空"}
+                        )
+                    break
+
+            cases.append(
+                {
+                    "name": f"[正向] {api['summary']}",
+                    "method": api["method"],
+                    "url": url,
+                    "headers": headers,
+                    "payload": payload,
+                    "assert_rules": assert_rules,
+                    "extractors": [],
+                    "description": f"正向测试: {api['method']} {api['path']}",
+                    "api_index": idx,
+                }
+            )
+
+            # 无鉴权用例 - 断言 401/403
+            cases.append(
+                {
+                    "name": f"[鉴权] {api['summary']} - 无Token",
+                    "method": api["method"],
+                    "url": url,
+                    "headers": {"Content-Type": "application/json"},
+                    "payload": payload,
+                    "assert_rules": [
+                        {"field": "status_code", "operator": "range", "expected": "4xx", "description": "应返回 401/403 错误"},
+                    ],
+                    "extractors": [],
+                    "description": f"无 Token 请求 {api['method']} {api['path']}，预期被拒绝",
+                    "api_index": idx,
+                }
+            )
+
+        return {
+            "cases": cases,
+            "scenarios": [],
+            "message": f"规则生成完成（未配置 AI），共 {len(cases)} 个用例。配置 AI 后可生成更智能的用例。",
+        }
+
+    # ------------------------------------------------------------------
+    # Phase 1 - 分析 API 文档结构
+    # ------------------------------------------------------------------
+
+    def _build_analyze_prompt(self, parsed: dict) -> str:
+        """构建 Phase 1 分析提示词（精简版，减少 token 消耗）"""
+        parts = []
+        parts.append(f"分析以下API文档，识别CRUD关系和数据依赖。标题:{parsed['title']} 接口数:{len(parsed['apis'])}")
+        parts.append("")
+
+        # 接口列表 - 精简格式，只保留关键信息
+        apis_to_list = parsed["apis"]
+        if len(apis_to_list) > 80:
+            sampled = apis_to_list[:40] + apis_to_list[-40:]
+            for idx, api in enumerate(apis_to_list[:40]):
+                parts.append(f"[{idx}] {api['method']} {api['path']} {api.get('summary', '')}")
+            parts.append(f"... 省略 {len(apis_to_list) - 80} 个 ...")
+            for idx in range(len(apis_to_list) - 40, len(apis_to_list)):
+                api = apis_to_list[idx]
+                parts.append(f"[{idx}] {api['method']} {api['path']} {api.get('summary', '')}")
+        else:
+            for idx, api in enumerate(apis_to_list):
+                line = f"[{idx}] {api['method']} {api['path']} {api.get('summary', '')}"
+                if api.get("tags"):
+                    line += f" [{','.join(api['tags'])}]"
+                parts.append(line)
+
+        parts.append("")
+        parts.append("输出JSON格式:")
+        parts.append('{"resource_groups":[{"resource_name":"用户","resource_name_en":"user","api_indices":[0,1,2,3],"crud_mapping":{"create":0,"read":1,"update":2,"delete":3}}],"relationships":[{"from_api":0,"to_api":1,"type":"id_dependency","description":"创建返回ID用于查询"}],"auth_pattern":{"type":"Bearer Token","login_api_index":null,"token_field":"$.data.token"},"data_flow":[{"source_api":0,"source_field":"$.data.id","target_api":1,"target_param":"id","variable_name":"user_id"}]}')
+        return "\n".join(parts)
+
+    async def _phase_analyze(self, parsed: dict, params: AIParams) -> dict:
+        """Phase 1: 分析 API 文档结构"""
+        prompt = self._build_analyze_prompt(parsed)
+        messages = [
+            {
+                "role": "system",
+                "content": "你是API架构分析师。只返回JSON，不要其他文字。",
+            },
+            {"role": "user", "content": prompt},
+        ]
+        result = await _call_llm_with_retry(params, messages)
+        # 确保关键字段存在
+        result.setdefault("resource_groups", [])
+        result.setdefault("relationships", [])
+        result.setdefault("auth_pattern", {"type": "unknown"})
+        result.setdefault("data_flow", [])
+        return result
+
+    # ------------------------------------------------------------------
+    # Phase 2 - 分批生成测试用例
+    # ------------------------------------------------------------------
+
+    def _build_case_generation_prompt(
+        self,
+        batch_apis: list,
+        parsed: dict,
+        analysis: dict,
+        options: dict,
+    ) -> str:
+        """构建 Phase 2 用例生成提示词（精简版，减少 token 消耗）"""
+        max_cases = options.get("max_cases_per_api", 4)
+        include_boundary = options.get("include_boundary", True)
+        include_auth = options.get("include_auth", True)
+
+        # 接口关系摘要 - 精简
+        relationships_text = ""
+        for rel in analysis.get("relationships", [])[:10]:
+            relationships_text += f"[{rel.get('from_api')}]->[{rel.get('to_api')}]: {rel.get('description', '')}\n"
+        for flow in analysis.get("data_flow", [])[:10]:
+            relationships_text += f"[{flow.get('source_api')}].{flow.get('source_field')})->[{flow.get('target_api')}].{flow.get('target_param')} var:{flow.get('variable_name', '')}\n"
+
+        parts = []
+        parts.append(f"为以下接口生成测试用例，每接口最多{max_cases}个。")
+        parts.append("")
+
+        # 接口信息 - 精简格式
+        for idx, api in enumerate(batch_apis):
+            global_idx = api.get("_global_index", idx)
+            line = f"[{global_idx}] {api['method']} {api['path']} {api.get('summary', '')}"
+            parts.append(line)
+            if api.get("params"):
+                try:
+                    parts.append(f"  参数:{json.dumps(api['params'], ensure_ascii=False, default=str)[:300]}")
+                except Exception:
+                    pass
+            if api.get("request_body"):
+                rb = api["request_body"]
+                try:
+                    parts.append(f"  请求体:{json.dumps(rb.get('schema', {}), ensure_ascii=False, default=str)[:500]}")
+                except Exception:
+                    pass
+            if api.get("responses"):
+                for status, resp in api["responses"].items():
+                    try:
+                        resp_str = json.dumps(resp, ensure_ascii=False, default=str)[:200]
+                    except Exception:
+                        resp_str = str(resp)[:200]
+                    parts.append(f"  响应[{status}]:{resp_str}")
+
+        if relationships_text:
+            parts.append(f"\n接口关系:\n{relationships_text}")
+
+        parts.append("")
+        parts.append("要求:")
+        parts.append("1.每个用例必须包含status_code断言(正向用例用range 2xx/3xx,鉴权用例用range 4xx,异常用例用对应状态码)")
+        parts.append("2.禁止json_exists模糊断言,必须用equals/contains/regex/range具体断言")
+        parts.append("3.每个用例至少2个断言:状态码+业务字段")
+        parts.append("4.创建类接口必须提取ID,登录类提取token")
+        parts.append("")
+        parts.append("输出JSON:")
+        parts.append('{"cases":[{"name":"[正向]创建用户","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json","Authorization":"Bearer {{auth_token}}"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"2xx/3xx","description":"成功状态码"},{"field":"$.code","operator":"equals","expected":"0","description":"返回码0"},{"field":"$.data.id","operator":"regex","expected":"^\\\\d+$","description":"数字ID"}],"extractors":[{"type":"jsonpath","expression":"$.data.id","variable":"user_id"}],"description":"正常注册","api_index":0}]}')
+
+        if not include_boundary:
+            parts.append("不生成边界用例。")
+        if not include_auth:
+            parts.append("不生成鉴权用例。")
+
+        return "\n".join(parts)
+
+    async def _phase_generate_cases(
+        self,
+        parsed: dict,
+        analysis: dict,
+        options: dict,
+        params: AIParams,
+        progress_callback=None,
+    ) -> list:
+        """Phase 2: 分批生成测试用例"""
+        apis = parsed["apis"]
+        total_apis = len(apis)
+        total_batches = (total_apis + BATCH_SIZE - 1) // BATCH_SIZE
+        all_cases = []
+
+        for batch_idx in range(total_batches):
+            start = batch_idx * BATCH_SIZE
+            end = min(start + BATCH_SIZE, total_apis)
+            batch = apis[start:end]
+
+            # 给每个 API 加上全局索引
+            batch_with_index = []
+            for i, api in enumerate(batch):
+                api_copy = dict(api)
+                api_copy["_global_index"] = start + i
+                batch_with_index.append(api_copy)
+
+            prompt = self._build_case_generation_prompt(
+                batch_with_index, parsed, analysis, options
+            )
+            messages = [
+                {
+                    "role": "system",
+                    "content": "你是API测试工程师。只返回JSON，不要其他文字。每个用例必须有status_code断言。",
+                },
+                {"role": "user", "content": prompt},
+            ]
+
+            try:
+                result = await _call_llm_with_retry(params, messages, timeout=BATCH_TIMEOUT)
+                batch_cases = result.get("cases", [])
+            except Exception as e:
+                _logger.error("批次 %d AI 生成失败: %s", batch_idx + 1, e, exc_info=True)
+                batch_cases = []
+
+            # 补充 base_url 到 url 中
+            for case in batch_cases:
+                url = case.get("url", "")
+                if url and not url.startswith("http"):
+                    case["url"] = parsed["base_url"].rstrip("/") + "/" + url.lstrip("/")
+
+            all_cases.extend(batch_cases)
+
+            # 进度回调
+            if progress_callback:
+                await progress_callback(batch_idx, total_batches, len(all_cases))
+
+            _logger.info(
+                "Phase 2 批次 %d/%d 完成，本批 %d 个用例，累计 %d 个",
+                batch_idx + 1,
+                total_batches,
+                len(batch_cases),
+                len(all_cases),
+            )
+
+        return all_cases
+
+    # ------------------------------------------------------------------
+    # Phase 3 - 生成场景链
+    # ------------------------------------------------------------------
+
+    def _build_scenario_prompt(self, parsed: dict, analysis: dict, all_cases: list) -> str:
+        """构建 Phase 3 场景链生成提示词（精简版）"""
+        parts = []
+        parts.append("根据以下分析结果和用例，设计测试场景链。")
+
+        # 接口关系 - 精简
+        for rel in analysis.get("relationships", [])[:10]:
+            parts.append(f"关系:[{rel.get('from_api')}]->[{rel.get('to_api')}]: {rel.get('description', '')}")
+        for flow in analysis.get("data_flow", [])[:10]:
+            parts.append(f"数据流:[{flow.get('source_api')}].{flow.get('source_field')})->[{flow.get('target_api')}].{flow.get('target_param')} var:{flow.get('variable_name', '')}")
+
+        # 资源分组 - 精简
+        for group in analysis.get("resource_groups", [])[:10]:
+            parts.append(f"资源:{group.get('resource_name', '')}({group.get('resource_name_en', '')}) 接口{group.get('api_indices', [])}")
+
+        # 已有用例摘要 - 限制数量
+        parts.append(f"\n已有{len(all_cases)}个用例:")
+        for case in all_cases[:30]:
+            parts.append(f"- [{case.get('api_index', '?')}] {case.get('name', '')}")
+        if len(all_cases) > 30:
+            parts.append(f"... 共{len(all_cases)}个")
+
+        parts.append("")
+        parts.append("为每个资源生成CRUD场景链，步骤引用api_index，用use_variables传变量。")
+        parts.append("输出JSON:")
+        parts.append('{"scenarios":[{"name":"用户CRUD流程","description":"创建→查询→更新→删除","steps":[{"api_index":0,"description":"创建用户","use_variables":{}},{"api_index":1,"description":"查询用户","use_variables":{"id":"{{user_id}}"}}]}]}')
+        return "\n".join(parts)
+
+    async def _phase_generate_scenarios(
+        self, parsed: dict, analysis: dict, all_cases: list, params: AIParams
+    ) -> list:
+        """Phase 3: 生成场景链"""
+        prompt = self._build_scenario_prompt(parsed, analysis, all_cases)
+        messages = [
+            {
+                "role": "system",
+                "content": "你是API测试工程师。只返回JSON，不要其他文字。",
+            },
+            {"role": "user", "content": prompt},
+        ]
+        try:
+            result = await _call_llm_with_retry(params, messages)
+            return result.get("scenarios", [])
+        except Exception as e:
+            _logger.error("Phase 3 场景生成失败: %s", e, exc_info=True)
+            return []
+
+    # ------------------------------------------------------------------
+    # 同步入口（兼容旧调用方式，不走 Celery）
+    # ------------------------------------------------------------------
+
+    async def generate(self, swagger_data: dict, options: dict = None) -> dict:
+        """从 Swagger 数据生成测试用例（同步模式，不走 Celery）"""
+        options = options or {}
+        parsed = self._parse_swagger(swagger_data)
+
+        if not parsed["apis"]:
+            return {"cases": [], "scenarios": [], "message": "未发现可测试的接口"}
+
+        try:
+            from fastapi_backend.core.database import AsyncSessionLocal as MainDBSession
+            async with MainDBSession() as main_db:
+                config = await load_ai_config(main_db)
+            params = resolve_ai_params(config)
+        except Exception as e:
+            _logger.warning("加载 AI 配置失败，使用规则回退: %s", e)
+            return self._generate_fallback(parsed)
+
+        if not params.api_key:
+            return self._generate_fallback(parsed)
+
+        try:
+            # Phase 1
+            analysis = await self._phase_analyze(parsed, params)
+            # Phase 2
+            all_cases = await self._phase_generate_cases(parsed, analysis, options, params)
+            # Phase 3
+            scenarios = await self._phase_generate_scenarios(parsed, analysis, all_cases, params)
+
+            return {
+                "cases": all_cases,
+                "scenarios": scenarios,
+                "message": f"AI 生成完成，共 {len(all_cases)} 个用例，{len(scenarios)} 个场景",
+            }
+        except Exception as e:
+            _logger.error("AI 生成测试用例失败: %s", e, exc_info=True)
+            return self._generate_fallback(parsed)
+
+
+# ======================================================================
+# Celery 异步任务 & 进度管理
+# ======================================================================
+
+
+def create_task_id() -> str:
+    """创建 AI 生成任务 ID"""
+    return f"ai-gen-{uuid.uuid4().hex[:12]}"
+
+
+async def _update_progress(task_id: str, **kwargs) -> None:
+    """更新任务进度到 task_store"""
+    from fastapi_backend.services.autotest_task_store import update_task, get_task
+
+    stored = get_task(task_id) or {"task_id": task_id}
+    stored.update(kwargs)
+    await update_task(task_id, stored)
+
+
+async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> None:
+    """三阶段异步生成主流程（在 Celery worker 或本地 asyncio 中运行）"""
+    generator = AITestCaseGenerator()
+    parsed = generator._parse_swagger(swagger_data)
+
+    if not parsed["apis"]:
+        await _update_progress(
+            task_id,
+            status="completed",
+            progress=1.0,
+            phase="completed",
+            phase_label="完成（无接口）",
+            cases=[],
+            scenarios=[],
+            message="未发现可测试的接口",
+        )
+        return
+
+    # 加载 AI 配置
+    try:
+        from fastapi_backend.core.database import AsyncSessionLocal as MainDBSession
+        async with MainDBSession() as main_db:
+            config = await load_ai_config(main_db)
+        params = resolve_ai_params(config)
+    except Exception as e:
+        _logger.warning("加载 AI 配置失败，使用规则回退: %s", e)
+        fallback_result = generator._generate_fallback(parsed)
+        await _update_progress(
+            task_id,
+            status="completed",
+            progress=1.0,
+            phase="completed",
+            phase_label="完成（规则回退）",
+            cases=fallback_result["cases"],
+            scenarios=fallback_result.get("scenarios", []),
+            message=fallback_result.get("message", "规则回退生成完成"),
+        )
+        return
+
+    if not params.api_key:
+        fallback_result = generator._generate_fallback(parsed)
+        await _update_progress(
+            task_id,
+            status="completed",
+            progress=1.0,
+            phase="completed",
+            phase_label="完成（规则回退）",
+            cases=fallback_result["cases"],
+            scenarios=fallback_result.get("scenarios", []),
+            message=fallback_result.get("message", "规则回退生成完成"),
+        )
+        return
+
+    total_apis = len(parsed["apis"])
+    total_batches = (total_apis + BATCH_SIZE - 1) // BATCH_SIZE
+
+    # 根据任务规模自动调整 max_tokens 和 timeout
+    # 数据库配置的 max_tokens 可能太小（如 2000），无法容纳大量接口的分析结果
+    # 批次大小已从10减到5，每批输出token需求降低
+    effective_params = AIParams(
+        api_key=params.api_key,
+        base_url=params.base_url,
+        model=params.model,
+        provider=params.provider,
+        timeout=max(params.timeout, 120),  # 至少 120 秒
+        max_tokens=max(params.max_tokens, 4096),  # 批次小了，4096够用
+        temperature=params.temperature,
+        group_id=params.group_id,
+    )
+    _logger.info(
+        "AI 生成参数: provider=%s model=%s max_tokens=%d->%d timeout=%d->%d total_apis=%d batches=%d",
+        params.provider, params.model,
+        params.max_tokens, effective_params.max_tokens,
+        params.timeout, effective_params.timeout,
+        total_apis, total_batches,
+    )
+
+    # 记录开始时间，用于前端计时器
+    start_time = time.time()
+
+    try:
+        # ---- Phase 1: 分析 ----
+        await _update_progress(
+            task_id,
+            status="PROGRESS",
+            progress=0.05,
+            phase="analyzing",
+            phase_label="正在分析 API 文档结构...",
+            total_apis=total_apis,
+            processed_apis=0,
+            total_batches=total_batches,
+            current_batch=0,
+            start_time=start_time,
+        )
+        analysis = await generator._phase_analyze(parsed, effective_params)
+        await _update_progress(
+            task_id,
+            status="PROGRESS",
+            progress=0.10,
+            phase="analyzing",
+            phase_label="API 文档分析完成",
+            total_apis=total_apis,
+            processed_apis=0,
+            total_batches=total_batches,
+            current_batch=0,
+            start_time=start_time,
+        )
+
+        # ---- Phase 2: 分批生成用例（增量保存） ----
+        all_cases = []
+
+        async def on_batch_progress(batch_idx, total_batches, case_count):
+            progress = 0.10 + 0.80 * (batch_idx + 1) / total_batches
+            await _update_progress(
+                task_id,
+                status="PROGRESS",
+                progress=round(progress, 3),
+                phase="generating_cases",
+                phase_label=f"正在生成测试用例 ({batch_idx + 1}/{total_batches} 批次)...",
+                total_apis=total_apis,
+                processed_apis=min((batch_idx + 1) * BATCH_SIZE, total_apis),
+                total_batches=total_batches,
+                current_batch=batch_idx + 1,
+                cases=all_cases,  # 增量保存：每批次更新已生成的用例
+                start_time=start_time,
+            )
+
+        all_cases = await generator._phase_generate_cases(
+            parsed, analysis, options, effective_params, progress_callback=on_batch_progress
+        )
+
+        # ---- Phase 3: 生成场景链 ----
+        await _update_progress(
+            task_id,
+            status="PROGRESS",
+            progress=0.95,
+            phase="generating_scenarios",
+            phase_label="正在生成测试场景链...",
+            total_apis=total_apis,
+            processed_apis=total_apis,
+            total_batches=total_batches,
+            current_batch=total_batches,
+            cases=all_cases,  # 增量保存
+            start_time=start_time,
+        )
+        scenarios = await generator._phase_generate_scenarios(parsed, analysis, all_cases, effective_params)
+
+        # ---- 完成 ----
+        elapsed = time.time() - start_time
+        await _update_progress(
+            task_id,
+            status="completed",
+            progress=1.0,
+            phase="completed",
+            phase_label=f"生成完成：{len(all_cases)} 个用例，{len(scenarios)} 个场景",
+            total_apis=total_apis,
+            processed_apis=total_apis,
+            total_batches=total_batches,
+            current_batch=total_batches,
+            cases=all_cases,
+            scenarios=scenarios,
+            message=f"AI 生成完成，共 {len(all_cases)} 个用例，{len(scenarios)} 个场景，耗时 {elapsed:.1f}s",
+            start_time=start_time,
+        )
+
+    except RateLimitExceededError as e:
+        _logger.error("AI 窗口限额耗尽 task_id=%s: %s", task_id, e)
+        # 窗口限额耗尽 - 如果已有部分用例，保留它们
+        existing_cases = []
+        try:
+            stored = get_task(task_id) or {}
+            existing_cases = stored.get("cases", [])
+        except Exception:
+            pass
+
+        if existing_cases:
+            # 已有部分用例，保留并标记为部分完成
+            elapsed = time.time() - start_time
+            await _update_progress(
+                task_id,
+                status="completed",
+                progress=1.0,
+                phase="completed",
+                phase_label=f"AI 限额耗尽，已保留 {len(existing_cases)} 个用例",
+                cases=existing_cases,
+                scenarios=[],
+                message=f"AI 限额耗尽（{e.provider}），已保留已生成的 {len(existing_cases)} 个用例。可先导入这些用例，等待限额重置后再生成剩余部分。",
+                error=None,
+                start_time=start_time,
+            )
+        else:
+            # 没有已生成用例，用规则回退
+            fallback_result = generator._generate_fallback(parsed)
+            fallback_msg = (
+                f"AI API 窗口限额已耗尽（{e.provider}），已自动切换为规则生成模式。"
+                f"共生成 {len(fallback_result['cases'])} 个基础用例。"
+                f"如需 AI 智能生成，请等待限额重置后重试。"
+            )
+            await _update_progress(
+                task_id,
+                status="completed",
+                progress=1.0,
+                phase="completed",
+                phase_label="完成（AI 限额耗尽，已回退规则生成）",
+                cases=fallback_result["cases"],
+                scenarios=fallback_result.get("scenarios", []),
+                message=fallback_msg,
+                error=None,
+                start_time=start_time,
+            )
+    except Exception as e:
+        _logger.error("AI 生成任务失败 task_id=%s: %s", task_id, e, exc_info=True)
+        # 异常时也尝试保留已生成的用例
+        existing_cases = []
+        try:
+            stored = get_task(task_id) or {}
+            existing_cases = stored.get("cases", [])
+        except Exception:
+            pass
+
+        if existing_cases:
+            elapsed = time.time() - start_time
+            await _update_progress(
+                task_id,
+                status="completed",
+                progress=1.0,
+                phase="completed",
+                phase_label=f"生成中断，已保留 {len(existing_cases)} 个用例",
+                cases=existing_cases,
+                scenarios=[],
+                message=f"AI 生成中断，已保留已生成的 {len(existing_cases)} 个用例。错误: {str(e)[:100]}",
+                error=None,
+                start_time=start_time,
+            )
+        else:
+            # 没有已生成用例，用规则回退
+            try:
+                fallback_result = generator._generate_fallback(parsed)
+                await _update_progress(
+                    task_id,
+                    status="completed",
+                    progress=1.0,
+                    phase="completed",
+                    phase_label="完成（AI 失败，已回退规则生成）",
+                    cases=fallback_result["cases"],
+                    scenarios=fallback_result.get("scenarios", []),
+                    message=f"AI 生成失败，已自动切换规则生成。共 {len(fallback_result['cases'])} 个用例。错误: {str(e)[:100]}",
+                    error=None,
+                    start_time=start_time,
+                )
+            except Exception:
+                await _update_progress(
+                    task_id,
+                    status="failed",
+                    progress=0,
+                    phase="failed",
+                    phase_label="生成失败",
+                    error=str(e),
+                    message=f"生成失败: {str(e)[:200]}",
+                    start_time=start_time,
+                )
+
+
+# ======================================================================
+# Celery 任务定义
+# ======================================================================
+
+from fastapi_backend.celery_config import app as _celery_app
+
+
+@_celery_app.task(bind=True, name="fastapi_backend.services.autotest_ai_generator.ai_generate_task", time_limit=600)
+def ai_generate_task(self, task_id: str, swagger_data: dict, options: dict):
+    """Celery 任务：AI 生成测试用例"""
+    try:
+        asyncio.run(_run_generation(task_id, swagger_data, options))
+    except Exception as e:
+        _logger.error("Celery AI 生成任务异常 task_id=%s: %s", task_id, e, exc_info=True)
+        # 确保任务状态更新为失败
+        try:
+            from fastapi_backend.services.autotest_task_store import update_task, get_task
+            stored = get_task(task_id) or {"task_id": task_id}
+            stored.update({
+                "status": "failed",
+                "error": str(e),
+                "message": f"生成失败: {str(e)[:200]}",
+            })
+            import asyncio as _aio
+            _aio.run(update_task(task_id, stored))
+        except Exception:
+            pass

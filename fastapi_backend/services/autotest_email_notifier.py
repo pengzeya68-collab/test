@@ -3,7 +3,6 @@
 企业级测试结果邮件通知，使用 Python 原生 smtplib 和 email 模块
 支持 HTML 格式邮件，包含测试结果和 Allure 报告链接
 """
-
 import asyncio
 import smtplib
 import logging
@@ -84,7 +83,7 @@ class EmailNotifier:
         if not self.smtp_host or not self.smtp_user or not self.smtp_password:
             _logger.warning("[EmailNotifier] 邮件配置不完整，无法发送测试邮件")
             return False
-
+        
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -100,15 +99,15 @@ class EmailNotifier:
         </body>
         </html>
         """
-
+        
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"] = self.from_email
         msg["To"] = to_email
-
+        
         part = MIMEText(html_content, "html", "utf-8")
         msg.attach(part)
-
+        
         return await asyncio.to_thread(self._send_smtp, to_email, msg)
 
     async def send_scenario_result(

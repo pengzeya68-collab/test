@@ -1,5 +1,4 @@
 """Persist AutoTest scheduler settings on test_scenarios so reload/restart keeps cron + webhook."""
-
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -13,30 +12,17 @@ _logger = logging.getLogger(__name__)
 
 
 async def ensure_schedule_columns_on_db() -> None:
-    """Ensure schedule columns exist on test_scenarios (SQLite + PostgreSQL compatible)."""
+    """Ensure schedule columns exist on test_scenarios (PostgreSQL compatible)."""
     async with async_session() as session:
-
         def _migrate(sync_conn: Any) -> None:
-            # Detect database type
-            bind = sync_conn.get_bind()
-            dialect = bind.dialect.name
-            if dialect == "sqlite":
-                r = sync_conn.execute(text("PRAGMA table_info(test_scenarios)"))
-                existing = {row[1] for row in r.fetchall()}
-            else:
-                r = sync_conn.execute(
-                    text(
-                        "SELECT column_name FROM information_schema.columns "
-                        "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
-                    )
-                )
-                existing = {row[0] for row in r.fetchall()}
+            r = sync_conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
+            ))
+            existing = {row[0] for row in r.fetchall()}
             for col, ddl in _schedule_column_ddl():
                 if col not in existing:
-                    try:
-                        sync_conn.execute(text(ddl))
-                    except Exception:
-                        pass  # Column may already exist
+                    sync_conn.execute(text(ddl))
 
         await session.run_sync(_migrate)
         await session.commit()
@@ -44,26 +30,11 @@ async def ensure_schedule_columns_on_db() -> None:
 
 def _schedule_column_ddl() -> list[tuple[str, str]]:
     return [
-        (
-            "schedule_cron_expression",
-            "ALTER TABLE test_scenarios ADD COLUMN schedule_cron_expression VARCHAR(200)",
-        ),
-        (
-            "schedule_env_id",
-            "ALTER TABLE test_scenarios ADD COLUMN schedule_env_id INTEGER",
-        ),
-        (
-            "schedule_webhook_url",
-            "ALTER TABLE test_scenarios ADD COLUMN schedule_webhook_url TEXT",
-        ),
-        (
-            "schedule_task_name",
-            "ALTER TABLE test_scenarios ADD COLUMN schedule_task_name VARCHAR(200)",
-        ),
-        (
-            "schedule_is_active",
-            "ALTER TABLE test_scenarios ADD COLUMN schedule_is_active BOOLEAN DEFAULT TRUE",
-        ),
+        ("schedule_cron_expression", "ALTER TABLE test_scenarios ADD COLUMN schedule_cron_expression VARCHAR(200)"),
+        ("schedule_env_id", "ALTER TABLE test_scenarios ADD COLUMN schedule_env_id INTEGER"),
+        ("schedule_webhook_url", "ALTER TABLE test_scenarios ADD COLUMN schedule_webhook_url TEXT"),
+        ("schedule_task_name", "ALTER TABLE test_scenarios ADD COLUMN schedule_task_name VARCHAR(200)"),
+        ("schedule_is_active", "ALTER TABLE test_scenarios ADD COLUMN schedule_is_active BOOLEAN DEFAULT TRUE"),
     ]
 
 
@@ -150,7 +121,6 @@ async def restore_scheduler_jobs_from_db() -> None:
 def read_schedule_webhook_sync(scenario_id: int) -> Optional[str]:
     """同步读取场景的定时 Webhook（供 Celery worker 等非 async 上下文使用）。"""
     import asyncio
-    import concurrent.futures
 
     async def _read() -> Optional[str]:
         async with async_session() as session:
@@ -163,13 +133,11 @@ def read_schedule_webhook_sync(scenario_id: int) -> Optional[str]:
             s = str(row).strip()
             return s or None
 
-    def _run_in_new_loop():
-        return asyncio.run(_read())
-
     try:
-        asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
+        import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(_run_in_new_loop)
+            future = pool.submit(asyncio.run, _read())
             return future.result(timeout=5)
     except RuntimeError:
         return asyncio.run(_read())

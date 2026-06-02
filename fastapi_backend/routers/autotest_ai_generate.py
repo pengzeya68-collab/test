@@ -3,10 +3,13 @@ AutoTest 路由 - AI 智能生成测试用例
 
 路径前缀: /api/auto-test/ai-generate
 功能: 从 Swagger/OpenAPI 文档自动分析接口，利用 AI 生成完整测试用例
+架构: 异步任务 + 进度轮询，避免大量接口时 504 超时
 """
 
+import asyncio
 import json
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy import select
@@ -15,7 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestGroup, AutoTestScenario, AutoTestScenarioStep
-from fastapi_backend.services.autotest_ai_generator import AITestCaseGenerator
+from fastapi_backend.services.autotest_ai_generator import (
+    AITestCaseGenerator,
+    create_task_id,
+    _run_generation,
+)
+from fastapi_backend.services.autotest_task_store import get_task, update_task
 
 _logger = logging.getLogger(__name__)
 
@@ -45,6 +53,30 @@ def _parse_swagger_content(content: bytes) -> dict:
         raise ValueError(f"YAML 解析失败: {str(e)}")
     raise ValueError("无法解析文件，请确保是有效的 JSON 或 YAML 格式")
 
+
+def _should_run_locally() -> bool:
+    """开发环境兜底：没有可用 Celery worker 或任务未注册时，回退到当前 FastAPI 进程异步执行。"""
+    try:
+        from fastapi_backend.tasks import celery_app
+
+        broker_url = str(celery_app.conf.broker_url or "")
+        if broker_url.startswith("memory://"):
+            return True
+
+        # 检查目标任务是否已注册
+        task_name = "fastapi_backend.services.autotest_ai_generator.ai_generate_task"
+        if task_name not in celery_app._tasks:
+            _logger.warning("Celery 任务 %s 未注册，回退到本地异步执行", task_name)
+            return True
+
+        inspect = celery_app.control.inspect(timeout=0.5)
+        active_workers = inspect.ping() or {}
+        return not bool(active_workers)
+    except Exception as e:
+        _logger.warning("检查 Celery 可用性失败，回退到本地异步执行: %s", e)
+        return True
+
+
 router = APIRouter(
     prefix="/api/auto-test/ai-generate",
     tags=["AutoTest-AI生成用例"],
@@ -52,19 +84,21 @@ router = APIRouter(
 )
 
 
+# ========== 启动生成任务 ==========
+
+
 @router.post("/from-swagger")
 async def generate_from_swagger(
     file: UploadFile = File(...),
-    max_cases_per_api: int = Form(3),
+    max_cases_per_api: int = Form(4),
     include_boundary: bool = Form(True),
     include_auth: bool = Form(True),
     include_chain: bool = Form(True),
-    db: AsyncSession = Depends(get_db),
 ):
     """
-    从 Swagger/OpenAPI 文件 AI 生成测试用例（预览模式）
+    从 Swagger/OpenAPI 文件启动 AI 生成测试用例任务
 
-    返回生成的用例列表和场景链，不写入数据库。用户确认后调用 /confirm 导入。
+    立即返回 task_id，前端通过 GET /tasks/{task_id} 轮询进度。
     """
     try:
         content = await file.read()
@@ -82,51 +116,36 @@ async def generate_from_swagger(
 
         _logger.info("Swagger 解析成功, paths 数量: %d", len(swagger_data.get("paths", {})))
 
-        # 2. 生成测试用例
-        generator = AITestCaseGenerator(db)
-        result = await generator.generate(
-            swagger_data,
-            {
-                "max_cases_per_api": max_cases_per_api,
-                "include_boundary": include_boundary,
-                "include_auth": include_auth,
-                "include_chain": include_chain,
-            },
-        )
-
-        cases = result.get("cases", []) or []
-        scenarios = result.get("scenarios", []) or []
-        message = result.get("message", f"生成完成，共 {len(cases)} 个用例")
-
-        _logger.info("测试用例生成完成: %d 个用例, %d 个场景", len(cases), len(scenarios))
-
-        return {
-            "cases": cases,
-            "scenarios": scenarios,
-            "message": message,
-            "total": len(cases),
+        # 2. 构建选项
+        options = {
+            "max_cases_per_api": max_cases_per_api,
+            "include_boundary": include_boundary,
+            "include_auth": include_auth,
+            "include_chain": include_chain,
         }
+
+        # 3. 创建任务并分发
+        return await _dispatch_generation_task(swagger_data, options)
 
     except HTTPException:
         raise
     except Exception as e:
-        _logger.exception("AI 生成测试用例异常: %s", e)
-        raise HTTPException(status_code=500, detail=f"生成失败: {type(e).__name__}: {str(e)}")
+        _logger.exception("启动 AI 生成任务异常: %s", e)
+        raise HTTPException(status_code=500, detail=f"启动失败: {type(e).__name__}: {str(e)}")
 
 
 @router.post("/from-swagger-url")
 async def generate_from_swagger_url(
     url: str = Form(...),
-    max_cases_per_api: int = Form(3),
+    max_cases_per_api: int = Form(4),
     include_boundary: bool = Form(True),
     include_auth: bool = Form(True),
     include_chain: bool = Form(True),
-    db: AsyncSession = Depends(get_db),
 ):
     """
-    从 Swagger URL AI 生成测试用例（预览模式）
+    从 Swagger URL 启动 AI 生成测试用例任务
 
-    自动拉取远程 Swagger 文档并生成用例。
+    自动拉取远程 Swagger 文档并启动生成任务。立即返回 task_id。
     """
     try:
         import httpx
@@ -139,34 +158,105 @@ async def generate_from_swagger_url(
         if not isinstance(swagger_data, dict):
             raise HTTPException(status_code=400, detail=f"URL 内容解析结果不是字典，类型: {type(swagger_data).__name__}")
 
-        generator = AITestCaseGenerator(db)
-        result = await generator.generate(
-            swagger_data,
-            {
-                "max_cases_per_api": max_cases_per_api,
-                "include_boundary": include_boundary,
-                "include_auth": include_auth,
-                "include_chain": include_chain,
-            },
-        )
-
-        cases = result.get("cases", []) or []
-        scenarios = result.get("scenarios", []) or []
-
-        return {
-            "cases": cases,
-            "scenarios": scenarios,
-            "message": result.get("message", f"生成完成，共 {len(cases)} 个用例"),
-            "total": len(cases),
+        options = {
+            "max_cases_per_api": max_cases_per_api,
+            "include_boundary": include_boundary,
+            "include_auth": include_auth,
+            "include_chain": include_chain,
         }
+
+        return await _dispatch_generation_task(swagger_data, options)
 
     except HTTPException:
         raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        _logger.exception("AI 从 URL 生成测试用例异常: %s", e)
-        raise HTTPException(status_code=500, detail=f"生成失败: {type(e).__name__}: {str(e)}")
+        _logger.exception("启动 AI 从 URL 生成任务异常: %s", e)
+        raise HTTPException(status_code=500, detail=f"启动失败: {type(e).__name__}: {str(e)}")
+
+
+async def _dispatch_generation_task(swagger_data: dict, options: dict) -> dict:
+    """创建任务记录并分发到 Celery 或本地异步执行"""
+    task_id = create_task_id()
+
+    # 解析 swagger 获取接口数量，用于初始进度
+    generator = AITestCaseGenerator()
+    parsed = generator._parse_swagger(swagger_data)
+    total_apis = len(parsed["apis"])
+    total_batches = (total_apis + 4) // 5  # BATCH_SIZE = 5
+
+    # 初始化任务记录
+    await update_task(task_id, {
+        "task_id": task_id,
+        "status": "PENDING",
+        "progress": 0.0,
+        "phase": "pending",
+        "phase_label": "任务已提交，等待处理...",
+        "total_apis": total_apis,
+        "processed_apis": 0,
+        "total_batches": total_batches,
+        "current_batch": 0,
+        "cases": [],
+        "scenarios": [],
+        "message": "",
+        "error": None,
+        "created_at": time.time(),
+    })
+
+    use_local = _should_run_locally()
+
+    if use_local:
+        _logger.info("未检测到可用 Celery worker，AI 生成切换为本地异步模式: task_id=%s", task_id)
+        asyncio.create_task(_run_generation(task_id, swagger_data, options))
+    else:
+        try:
+            from fastapi_backend.tasks import celery_app
+            celery_app.send_task(
+                "fastapi_backend.services.autotest_ai_generator.ai_generate_task",
+                args=[task_id, swagger_data, options],
+            )
+            _logger.info("发送 Celery AI 生成任务: task_id=%s", task_id)
+        except Exception as e:
+            _logger.warning("Celery dispatch 失败，回退到本地异步: %s", e)
+            asyncio.create_task(_run_generation(task_id, swagger_data, options))
+
+    return {"task_id": task_id, "status": "PENDING"}
+
+
+# ========== 轮询进度 ==========
+
+
+@router.get("/tasks/{task_id}")
+async def get_generation_task_status(task_id: str):
+    """
+    轮询 AI 生成任务进度
+
+    返回任务状态、进度百分比、当前阶段、已生成的用例和场景等。
+    """
+    stored = get_task(task_id)
+    if not stored:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+
+    return {
+        "task_id": stored.get("task_id", task_id),
+        "status": stored.get("status", "UNKNOWN"),
+        "progress": stored.get("progress", 0.0),
+        "phase": stored.get("phase", ""),
+        "phase_label": stored.get("phase_label", ""),
+        "total_apis": stored.get("total_apis", 0),
+        "processed_apis": stored.get("processed_apis", 0),
+        "total_batches": stored.get("total_batches", 0),
+        "current_batch": stored.get("current_batch", 0),
+        "cases": stored.get("cases", []),
+        "scenarios": stored.get("scenarios", []),
+        "message": stored.get("message", ""),
+        "error": stored.get("error"),
+        "start_time": stored.get("start_time"),
+    }
+
+
+# ========== 确认导入 ==========
 
 
 @router.post("/confirm")

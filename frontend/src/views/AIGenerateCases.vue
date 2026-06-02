@@ -86,19 +86,81 @@
 
         <div class="config-actions">
           <el-button @click="currentStep = 0">上一步</el-button>
-          <el-button type="primary" @click="startGenerate" :loading="generating">
-            {{ generating ? 'AI 生成中...' : '开始生成' }}
+          <el-button type="primary" @click="startGenerate" :loading="submitting">
+            {{ submitting ? '提交中...' : '开始生成' }}
           </el-button>
         </div>
       </el-card>
     </div>
 
-    <!-- 步骤3: 生成中 -->
+    <!-- 步骤3: 生成中 - 轮询进度 -->
     <div v-if="currentStep === 2" class="step-content generating-content">
-      <div class="generating-animation">
-        <el-icon class="spin-icon" :size="48"><Loading /></el-icon>
-        <h3>AI 正在分析接口文档...</h3>
-        <p>正在为每个接口生成正向用例、边界用例、鉴权用例和场景链</p>
+      <div class="progress-panel">
+        <!-- 总进度条 -->
+        <div class="progress-bar-section">
+          <el-progress
+            :percentage="progressPercent"
+            :stroke-width="20"
+            :text-inside="true"
+            :format="() => `${progressPercent}%`"
+          />
+        </div>
+
+        <!-- 阶段指示器 + 计时器 -->
+        <div class="phase-indicator">
+          <div class="phase-icon">{{ phaseIcon }}</div>
+          <div class="phase-text">
+            <span class="phase-label">{{ phaseLabel }}</span>
+            <span v-if="taskProgress.phase === 'generating_cases' && taskProgress.total_batches" class="phase-batch">
+              批次 {{ taskProgress.current_batch || 0 }}/{{ taskProgress.total_batches }}
+            </span>
+          </div>
+          <div class="elapsed-timer">
+            <el-icon><Timer /></el-icon>
+            <span>{{ elapsedDisplay }}</span>
+          </div>
+        </div>
+
+        <!-- 实时统计 -->
+        <div class="live-stats">
+          <div class="stat-item">
+            <span class="stat-label">已分析接口</span>
+            <span class="stat-value">{{ taskProgress.processed_apis || 0 }}/{{ taskProgress.total_apis || '-' }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">已生成用例</span>
+            <span class="stat-value">{{ generateResult.cases?.length || 0 }} 个</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">已生成场景</span>
+            <span class="stat-value">{{ generateResult.scenarios?.length || 0 }} 个</span>
+          </div>
+        </div>
+
+        <!-- 安全提示 -->
+        <el-alert
+          type="info"
+          :closable="false"
+          class="safety-tip"
+        >
+          <template #title>
+            已生成的用例会实时保存，切换页面或中断不会丢失已生成的用例
+          </template>
+        </el-alert>
+
+        <!-- 实时用例预览 -->
+        <div v-if="generateResult.cases?.length" class="live-preview">
+          <div class="live-preview-header">
+            <span>实时用例预览</span>
+            <el-tag size="small" type="info">{{ generateResult.cases.length }} 个</el-tag>
+          </div>
+          <div class="live-case-list">
+            <div v-for="(c, idx) in generateResult.cases" :key="idx" class="live-case-card">
+              <el-tag :type="methodTagType(c.method)" size="small">{{ c.method }}</el-tag>
+              <span class="live-case-name">{{ c.name }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -106,7 +168,7 @@
     <div v-if="currentStep === 3" class="step-content">
       <div class="result-header">
         <el-alert
-          :title="generateResult.message"
+          :title="generateResult.message || 'AI 生成完成'"
           type="success"
           show-icon
           :closable="false"
@@ -114,13 +176,17 @@
         <div class="result-stats">
           <el-tag type="primary" size="large">用例: {{ generateResult.cases?.length || 0 }}</el-tag>
           <el-tag type="warning" size="large">场景: {{ generateResult.scenarios?.length || 0 }}</el-tag>
+          <el-tag v-if="elapsedDisplay" type="info" size="large">耗时: {{ elapsedDisplay }}</el-tag>
         </div>
       </div>
 
       <!-- 用例列表 -->
       <el-tabs v-model="previewTab" class="preview-tabs">
         <el-tab-pane label="测试用例" name="cases">
-          <div class="case-list">
+          <div v-if="!generateResult.cases?.length" class="empty-tip">
+            <el-empty description="未生成测试用例" />
+          </div>
+          <div v-else class="case-list">
             <el-collapse v-model="expandedCases">
               <el-collapse-item
                 v-for="(c, idx) in generateResult.cases"
@@ -213,10 +279,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, UploadFilled, Loading } from '@element-plus/icons-vue'
+import { ArrowLeft, UploadFilled, Timer } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
@@ -229,11 +295,14 @@ const helpData = helpContent.aiGenerateCases
 const currentStep = ref(0)
 const swaggerFile = ref(null)
 const swaggerUrl = ref('')
-const generating = ref(false)
+const submitting = ref(false)
 const importing = ref(false)
 const previewTab = ref('cases')
 const expandedCases = ref([0])
 const groupName = ref('AI生成用例')
+
+let pollTimer = null
+let clockTimer = null
 
 const options = reactive({
   max_cases_per_api: 3,
@@ -249,13 +318,258 @@ const generateResult = reactive({
   total: 0,
 })
 
+const taskProgress = reactive({
+  task_id: '',
+  status: '',
+  progress: 0,
+  phase: '',
+  phase_label: '',
+  total_apis: 0,
+  processed_apis: 0,
+  total_batches: 0,
+  current_batch: 0,
+  message: '',
+  error: null,
+  start_time: null,
+})
+
+// 计时器相关
+const elapsedSeconds = ref(0)
+
+const elapsedDisplay = computed(() => {
+  const s = elapsedSeconds.value
+  if (s <= 0) return ''
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  if (m > 0) return `${m}分${sec}秒`
+  return `${sec}秒`
+})
+
+function startClock(startTime) {
+  stopClock()
+  const base = startTime ? startTime * 1000 : Date.now()
+  const updateElapsed = () => {
+    elapsedSeconds.value = Math.floor((Date.now() - base) / 1000)
+  }
+  updateElapsed()
+  clockTimer = setInterval(updateElapsed, 1000)
+}
+
+function stopClock() {
+  if (clockTimer) {
+    clearInterval(clockTimer)
+    clockTimer = null
+  }
+}
+
+const progressPercent = computed(() => {
+  return Math.round((taskProgress.progress || 0) * 100)
+})
+
+const phaseIcon = computed(() => {
+  const map = {
+    analyzing: '🔍',
+    generating_cases: '🧪',
+    generating_scenarios: '🔗',
+  }
+  return map[taskProgress.phase] || '⏳'
+})
+
+const phaseLabel = computed(() => {
+  if (taskProgress.phase_label) return taskProgress.phase_label
+  const map = {
+    analyzing: '分析接口文档...',
+    generating_cases: '生成测试用例...',
+    generating_scenarios: '生成场景链...',
+  }
+  return map[taskProgress.phase] || '准备中...'
+})
+
 const handleFileChange = (file) => {
   swaggerFile.value = file.raw
 }
 
+// 保存当前任务到 localStorage，页面切换后可恢复
+function saveTaskToStorage(taskId) {
+  try {
+    localStorage.setItem('ai_generate_task_id', taskId)
+    localStorage.setItem('ai_generate_task_time', Date.now().toString())
+  } catch (e) { /* ignore */ }
+}
+
+function clearTaskStorage() {
+  try {
+    localStorage.removeItem('ai_generate_task_id')
+    localStorage.removeItem('ai_generate_task_time')
+  } catch (e) { /* ignore */ }
+}
+
+function getStoredTaskId() {
+  try {
+    const taskId = localStorage.getItem('ai_generate_task_id')
+    const taskTime = parseInt(localStorage.getItem('ai_generate_task_time') || '0')
+    // 任务超过 2 小时视为过期
+    if (taskId && taskTime && (Date.now() - taskTime) < 2 * 60 * 60 * 1000) {
+      return taskId
+    }
+    clearTaskStorage()
+    return null
+  } catch (e) {
+    return null
+  }
+}
+
+// 恢复之前的任务
+async function resumeTask(taskId) {
+  try {
+    const task = await autoTestRequest.get(`/auto-test/ai-generate/tasks/${taskId}`)
+    if (!task) {
+      clearTaskStorage()
+      return
+    }
+
+    // 任务已完成或失败，直接显示结果
+    if (task.status === 'completed') {
+      Object.assign(taskProgress, {
+        task_id: taskId,
+        status: task.status,
+        progress: task.progress || 0,
+        phase: task.phase || '',
+        phase_label: task.phase_label || '',
+        total_apis: task.total_apis || 0,
+        processed_apis: task.processed_apis || 0,
+        total_batches: task.total_batches || 0,
+        current_batch: task.current_batch || 0,
+        message: task.message || '',
+        error: task.error || null,
+        start_time: task.start_time || null,
+      })
+      if (task.cases) generateResult.cases = task.cases
+      if (task.scenarios) generateResult.scenarios = task.scenarios
+      generateResult.message = task.message || '生成完成'
+      generateResult.total = task.cases?.length || 0
+
+      if (task.start_time) {
+        startClock(task.start_time)
+        // 已完成任务，停止计时
+        setTimeout(() => stopClock(), 100)
+      }
+      currentStep.value = 3
+      clearTaskStorage()
+      return
+    }
+
+    if (task.status === 'failed') {
+      ElMessage.error(task.error || '之前的生成任务失败')
+      clearTaskStorage()
+      return
+    }
+
+    // 任务仍在进行中，恢复轮询
+    Object.assign(taskProgress, {
+      task_id: taskId,
+      status: task.status,
+      progress: task.progress || 0,
+      phase: task.phase || '',
+      phase_label: task.phase_label || '',
+      total_apis: task.total_apis || 0,
+      processed_apis: task.processed_apis || 0,
+      total_batches: task.total_batches || 0,
+      current_batch: task.current_batch || 0,
+      message: task.message || '',
+      error: task.error || null,
+      start_time: task.start_time || null,
+    })
+    if (task.cases) generateResult.cases = task.cases
+    if (task.scenarios) generateResult.scenarios = task.scenarios
+
+    // 恢复计时器
+    if (task.start_time) {
+      startClock(task.start_time)
+    }
+
+    currentStep.value = 2
+    startPolling(taskId)
+  } catch (e) {
+    console.error('恢复任务失败:', e)
+    clearTaskStorage()
+  }
+}
+
+// 开始轮询
+function startPolling(taskId) {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+
+  let lastProgress = taskProgress.progress || 0
+  const pollStartTime = Date.now()
+
+  pollTimer = setInterval(async () => {
+    try {
+      const task = await autoTestRequest.get(`/auto-test/ai-generate/tasks/${taskId}`)
+
+      // 更新进度状态
+      Object.assign(taskProgress, {
+        status: task.status,
+        progress: task.progress || 0,
+        phase: task.phase || '',
+        phase_label: task.phase_label || '',
+        total_apis: task.total_apis || 0,
+        processed_apis: task.processed_apis || 0,
+        total_batches: task.total_batches || 0,
+        current_batch: task.current_batch || 0,
+        message: task.message || '',
+        error: task.error || null,
+        start_time: task.start_time || null,
+      })
+
+      // 累积用例和场景
+      if (task.cases) generateResult.cases = task.cases
+      if (task.scenarios) generateResult.scenarios = task.scenarios
+
+      // 超时检测
+      if (task.progress > lastProgress) lastProgress = task.progress
+      const elapsed = (Date.now() - pollStartTime) / 1000
+      if (elapsed > 30 && lastProgress === 0 && task.status === 'PENDING') {
+        taskProgress.phase_label = '任务启动较慢，请耐心等待...'
+      }
+      if (elapsed > 300 && lastProgress === 0) {
+        clearInterval(pollTimer)
+        pollTimer = null
+        stopClock()
+        clearTaskStorage()
+        ElMessage.error('任务超时，后端可能未正确处理。请检查后端日志。')
+        currentStep.value = 1
+        return
+      }
+
+      if (task.status === 'completed') {
+        clearInterval(pollTimer)
+        pollTimer = null
+        stopClock()
+        clearTaskStorage()
+        generateResult.message = task.message || '生成完成'
+        generateResult.total = task.cases?.length || 0
+        currentStep.value = 3
+      } else if (task.status === 'failed') {
+        clearInterval(pollTimer)
+        pollTimer = null
+        stopClock()
+        clearTaskStorage()
+        ElMessage.error(task.error || '生成失败')
+        currentStep.value = 1
+      }
+    } catch (e) {
+      // 轮询请求失败不立即中断，继续尝试
+      console.error('轮询进度失败:', e)
+    }
+  }, 2000)
+}
+
 const startGenerate = async () => {
-  generating.value = true
-  currentStep.value = 2
+  submitting.value = true
 
   try {
     const formData = new FormData()
@@ -269,25 +583,53 @@ const startGenerate = async () => {
       formData.append('file', swaggerFile.value)
       resp = await autoTestRequest.post('/auto-test/ai-generate/from-swagger', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 120000,
       })
     } else if (swaggerUrl.value) {
       formData.append('url', swaggerUrl.value)
-      resp = await autoTestRequest.post('/auto-test/ai-generate/from-swagger-url', formData, {
-        timeout: 120000,
-      })
+      resp = await autoTestRequest.post('/auto-test/ai-generate/from-swagger-url', formData)
     }
 
-    generateResult.cases = resp?.cases || []
-    generateResult.scenarios = resp?.scenarios || []
-    generateResult.message = resp?.message || '生成完成'
-    generateResult.total = resp?.total || 0
-    currentStep.value = 3
+    const taskId = resp?.task_id
+    if (!taskId) {
+      ElMessage.error('未获取到任务 ID')
+      return
+    }
+
+    // 重置进度状态
+    Object.assign(taskProgress, {
+      task_id: taskId,
+      status: resp?.status || 'PENDING',
+      progress: 0,
+      phase: '',
+      phase_label: '',
+      total_apis: 0,
+      processed_apis: 0,
+      total_batches: 0,
+      current_batch: 0,
+      message: '',
+      error: null,
+      start_time: null,
+    })
+    generateResult.cases = []
+    generateResult.scenarios = []
+    generateResult.message = ''
+    generateResult.total = 0
+
+    // 保存任务到 localStorage，支持页面切换后恢复
+    saveTaskToStorage(taskId)
+
+    currentStep.value = 2
+
+    // 启动计时器
+    startClock()
+
+    // 开始轮询
+    startPolling(taskId)
   } catch (e) {
-    ElMessage.error('生成失败: ' + (e.response?.data?.detail || e.message))
+    ElMessage.error('提交失败: ' + (e.response?.data?.detail || e.message))
     currentStep.value = 1
   } finally {
-    generating.value = false
+    submitting.value = false
   }
 }
 
@@ -320,6 +662,23 @@ const methodTagType = (method) => {
 const getCaseName = (idx) => {
   return generateResult.cases?.[idx]?.name || `用例 ${idx + 1}`
 }
+
+// 组件挂载时检查是否有未完成的任务
+onMounted(async () => {
+  const storedTaskId = getStoredTaskId()
+  if (storedTaskId) {
+    await resumeTask(storedTaskId)
+  }
+})
+
+// 组件卸载时清理定时器（但不清除 localStorage，以便恢复）
+onUnmounted(() => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+  stopClock()
+})
 </script>
 
 <style scoped>
@@ -381,24 +740,133 @@ const getCaseName = (idx) => {
   text-align: center;
   margin-top: 24px;
 }
+
+/* 生成进度面板 */
 .generating-content {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  min-height: 400px;
+  padding-top: 20px;
 }
-.generating-animation {
-  text-align: center;
+.progress-panel {
+  max-width: 700px;
+  width: 100%;
 }
-.spin-icon {
-  animation: spin 1.5s linear infinite;
+.progress-bar-section {
+  margin-bottom: 24px;
+}
+.phase-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: var(--el-fill-color-lighter);
+  border-radius: 10px;
+}
+.phase-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+.phase-text {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+}
+.phase-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+.phase-batch {
+  font-size: 14px;
   color: var(--el-color-primary);
+  font-weight: 500;
+}
+.elapsed-timer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  padding: 4px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.live-stats {
+  display: flex;
+  gap: 24px;
   margin-bottom: 16px;
 }
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  padding: 12px 0;
+  background: var(--el-fill-color-lighter);
+  border-radius: 8px;
 }
+.stat-label {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--el-color-primary);
+}
+.safety-tip {
+  margin-bottom: 16px;
+}
+
+/* 实时用例预览 */
+.live-preview {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.live-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--el-fill-color-lighter);
+  font-weight: 600;
+  font-size: 14px;
+}
+.live-case-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+.live-case-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-extra-light);
+  transition: background 0.2s;
+}
+.live-case-card:hover {
+  background: var(--el-fill-color-lighter);
+}
+.live-case-name {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 结果预览 */
 .result-header {
   margin-bottom: 20px;
 }

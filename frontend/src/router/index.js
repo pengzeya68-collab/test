@@ -270,24 +270,7 @@ router.beforeEach(async (to, from, next) => {
       return
     }
     
-    // 3. 检查测评状态
-    if (!to.meta.isAssessment) {
-      try {
-        if (!userStore.assessmentCompleted) {
-          const completed = await userStore.checkAssessmentStatus()
-          if (!completed) {
-            ElMessage.info('请先完成入学测评，我们将为你定制学习计划')
-            next({ path: '/assessment' })
-            return
-          }
-        }
-      } catch (error) {
-        console.error('路由守卫: 检查测评状态失败', error)
-        ElMessage.warning('无法验证测评状态，请稍后重试')
-        next({ path: '/assessment' })
-        return
-      }
-    }
+    // 3. 测评状态不再强制拦截，改为通知栏提示
   }
   
   next()

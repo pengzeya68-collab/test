@@ -4,7 +4,6 @@ AutoTest 统一路由 - 分组管理
 路径前缀: /api/auto-test/groups
 映射原 auto_test_platform 的 /api/groups
 """
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -16,11 +15,7 @@ from fastapi_backend.schemas.autotest import (
     AutoTestGroupUpdate,
 )
 
-router = APIRouter(
-    prefix="/api/auto-test/groups",
-    tags=["AutoTest-分组"],
-    dependencies=[Depends(get_current_user)],
-)
+router = APIRouter(prefix="/api/auto-test/groups", tags=["AutoTest-分组"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/tree")
@@ -147,12 +142,6 @@ async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
     children = child_result.scalars().all()
     if children:
         raise HTTPException(status_code=400, detail="请先删除子分组")
-
-    # 检查关联用例数量
-    from fastapi_backend.models.autotest import AutoTestCase
-    case_count = await db.scalar(select(func.count()).where(AutoTestCase.group_id == group_id))
-    if case_count and case_count > 0:
-        raise HTTPException(status_code=400, detail=f"该分组下有 {case_count} 个用例，请先删除用例")
 
     await db.delete(group)
     await db.commit()

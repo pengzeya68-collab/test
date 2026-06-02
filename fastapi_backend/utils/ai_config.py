@@ -149,8 +149,21 @@ async def call_openai_llm(
         if not response.choices:
             raise ValueError("AI 返回空响应")
         content = response.choices[0].message.content
+        finish_reason = response.choices[0].finish_reason
         if not content:
-            raise ValueError("AI 返回内容为空（可能被拒绝）")
+            # finish_reason='length' 表示输出被 max_tokens 截断
+            if finish_reason == "length":
+                raise ValueError(
+                    f"AI 输出被截断（finish_reason=length, max_tokens={params.max_tokens}），"
+                    f"请增大 max_tokens 配置"
+                )
+            raise ValueError(f"AI 返回内容为空（finish_reason={finish_reason}，可能被安全过滤器拒绝）")
+        # 如果输出被截断，记录警告但仍然返回
+        if finish_reason == "length":
+            _ai_logger.warning(
+                "AI 输出可能被截断: finish_reason=length, max_tokens=%d, content_len=%d",
+                params.max_tokens, len(content),
+            )
         return content
     finally:
         try:
@@ -171,4 +184,39 @@ async def call_llm_json(params: AIParams, messages: list) -> dict:
         解析后的 JSON 字典
     """
     content = await call_openai_llm(params, messages, response_format={"type": "json_object"})
-    return json.loads(content)
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        # 尝试修复被截断的 JSON
+        _ai_logger.warning("JSON 解析失败，尝试修复截断内容 (len=%d)", len(content))
+        repaired = _repair_truncated_json(content)
+        if repaired is not None:
+            return repaired
+        raise ValueError(f"AI 返回的 JSON 无法解析: {content[:200]}...")
+
+
+def _repair_truncated_json(content: str) -> Optional[dict]:
+    """尝试修复被截断的 JSON（补全缺失的括号）"""
+    # 去除尾部不完整的键值对
+    cleaned = content.rstrip()
+    # 移除最后一个不完整的键值对（如 "key": "val）→ 回退到上一个逗号
+    for _ in range(5):
+        try:
+            # 尝试补全括号
+            open_braces = cleaned.count('{') - cleaned.count('}')
+            open_brackets = cleaned.count('[') - cleaned.count(']')
+            if open_braces > 0 or open_brackets > 0:
+                # 移除最后一个不完整的值
+                last_comma = cleaned.rfind(',')
+                if last_comma > 0:
+                    cleaned = cleaned[:last_comma]
+                cleaned += ']' * open_brackets + '}' * open_braces
+            return json.loads(cleaned)
+        except (json.JSONDecodeError, ValueError):
+            # 继续尝试移除更多内容
+            last_comma = cleaned.rfind(',')
+            if last_comma > 0:
+                cleaned = cleaned[:last_comma]
+            else:
+                break
+    return None

@@ -2,7 +2,6 @@
 AutoTest 任务状态持久化服务
 从 routers/autotest_execution.py 的任务存储函数下沉
 """
-
 import asyncio
 import json
 import logging
@@ -16,11 +15,9 @@ _logger = logging.getLogger(__name__)
 _task_store: Dict[str, dict] = {}
 _lock = threading.Lock()
 
-
 def _get_store_lock():
     """Always return threading.Lock for cross-environment safety"""
     return _lock
-
 
 TASK_TTL_SECONDS = 24 * 60 * 60
 CLEANUP_INTERVAL_SECONDS = 60 * 60
@@ -29,7 +26,6 @@ _cleanup_task: Optional[asyncio.Task] = None
 
 def _get_tasks_dir() -> Path:
     from fastapi_backend.core.config import PROJECT_ROOT
-
     tasks_dir = PROJECT_ROOT / "instance" / "tasks"
     tasks_dir.mkdir(parents=True, exist_ok=True)
     return tasks_dir

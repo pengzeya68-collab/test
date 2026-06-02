@@ -3,8 +3,7 @@
 
 路径前缀: /api/auto-test/data-factory
 """
-
-from typing import List, Dict, Any
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -73,7 +72,9 @@ async def create_template(
     db: AsyncSession = Depends(get_db),
 ):
     if data.scenario_id:
-        scenario_check = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == data.scenario_id))
+        scenario_check = await db.execute(
+            select(AutoTestScenario).where(AutoTestScenario.id == data.scenario_id)
+        )
         if not scenario_check.scalar_one_or_none():
             raise HTTPException(status_code=400, detail=f"关联的场景(ID={data.scenario_id})不存在")
 
@@ -133,7 +134,9 @@ async def update_template(
         template.description = data.description
     if data.scenario_id is not None:
         if data.scenario_id:
-            scenario_check = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == data.scenario_id))
+            scenario_check = await db.execute(
+                select(AutoTestScenario).where(AutoTestScenario.id == data.scenario_id)
+            )
             if not scenario_check.scalar_one_or_none():
                 raise HTTPException(status_code=400, detail=f"关联的场景(ID={data.scenario_id})不存在")
         template.scenario_id = data.scenario_id
@@ -210,7 +213,6 @@ async def preview_template(
     ]
 
     from fastapi_backend.services.autotest_data_factory_service import DataFactoryEngine
-
     engine = DataFactoryEngine()
     result_data = engine.generate_preview(fields_data, row_count=template.row_count)
     return {
@@ -249,34 +251,28 @@ async def generate_dataset(
     ]
 
     from fastapi_backend.services.autotest_data_factory_service import DataFactoryEngine
-
     engine = DataFactoryEngine()
     generated = engine.generate_dataset(fields_data, row_count=template.row_count)
 
     if template.scenario_id:
-        result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == template.scenario_id))
+        result = await db.execute(
+            select(AutoTestScenario).where(AutoTestScenario.id == template.scenario_id)
+        )
         if not result.scalar_one_or_none():
-            raise HTTPException(
-                status_code=400,
-                detail=f"关联的场景(ID={template.scenario_id})不存在，请先绑定有效场景",
-            )
+            raise HTTPException(status_code=400, detail=f"关联的场景(ID={template.scenario_id})不存在，请先绑定有效场景")
 
-        result = await db.execute(select(AutoTestDataset).where(AutoTestDataset.scenario_id == template.scenario_id))
+        result = await db.execute(
+            select(AutoTestDataset).where(AutoTestDataset.scenario_id == template.scenario_id)
+        )
         existing = result.scalar_one_or_none()
         if existing:
             existing.name = f"{template.name}_数据集"
-            existing.data_matrix = {
-                "columns": generated["columns"],
-                "rows": generated["rows"],
-            }
+            existing.data_matrix = {"columns": generated["columns"], "rows": generated["rows"]}
         else:
             dataset = AutoTestDataset(
                 scenario_id=template.scenario_id,
                 name=f"{template.name}_数据集",
-                data_matrix={
-                    "columns": generated["columns"],
-                    "rows": generated["rows"],
-                },
+                data_matrix={"columns": generated["columns"], "rows": generated["rows"]},
             )
             db.add(dataset)
         await db.commit()
@@ -307,11 +303,7 @@ async def bind_dataset_to_scenario(dataset_id: int, scenario_id: int, db: AsyncS
 
     dataset.scenario_id = scenario_id
     await db.commit()
-    return {
-        "message": "数据集已绑定到场景",
-        "dataset_id": dataset_id,
-        "scenario_id": scenario_id,
-    }
+    return {"message": "数据集已绑定到场景", "dataset_id": dataset_id, "scenario_id": scenario_id}
 
 
 @router.post("/datasets/{dataset_id}/run")
@@ -329,10 +321,7 @@ async def run_dataset_driven(dataset_id: int, payload: Dict[str, Any] = None, db
 
     env_id = payload.get("env_id") if payload else None
 
-    from fastapi_backend.services.autotest_scenario_runner import (
-        run_scenario_data_driven,
-    )
-
+    from fastapi_backend.services.autotest_scenario_runner import run_scenario_data_driven
     exec_result = await run_scenario_data_driven(
         scenario_id=dataset.scenario_id,
         env_id=env_id,
@@ -348,7 +337,9 @@ async def run_dataset_driven(dataset_id: int, payload: Dict[str, Any] = None, db
 
 @router.get("/scenarios")
 async def list_scenarios_for_factory(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(AutoTestScenario).order_by(AutoTestScenario.created_at.desc()))
+    result = await db.execute(
+        select(AutoTestScenario).order_by(AutoTestScenario.created_at.desc())
+    )
     scenarios = result.scalars().all()
     return [{"id": s.id, "name": s.name, "description": s.description} for s in scenarios]
 
@@ -359,37 +350,13 @@ async def get_rule_types():
         "rule_types": [
             {"type": "fixed", "label": "固定值", "config_fields": ["value"]},
             {"type": "enum", "label": "枚举值", "config_fields": ["options"]},
-            {
-                "type": "increment",
-                "label": "递增数字",
-                "config_fields": ["prefix", "start", "step"],
-            },
+            {"type": "increment", "label": "递增数字", "config_fields": ["prefix", "start", "step"]},
             {"type": "uuid", "label": "UUID", "config_fields": ["version"]},
-            {
-                "type": "timestamp",
-                "label": "时间戳",
-                "config_fields": ["format", "offset_seconds"],
-            },
-            {
-                "type": "date_offset",
-                "label": "日期偏移",
-                "config_fields": ["format", "offset_days"],
-            },
+            {"type": "timestamp", "label": "时间戳", "config_fields": ["format", "offset_seconds"]},
+            {"type": "date_offset", "label": "日期偏移", "config_fields": ["format", "offset_days"]},
             {"type": "phone", "label": "随机手机号", "config_fields": ["prefix"]},
-            {
-                "type": "email",
-                "label": "随机邮箱",
-                "config_fields": ["domains", "username_prefix"],
-            },
-            {
-                "type": "username",
-                "label": "随机用户名",
-                "config_fields": ["prefixes", "suffix_length"],
-            },
-            {
-                "type": "env_ref",
-                "label": "引用环境变量",
-                "config_fields": ["variable_name", "default"],
-            },
+            {"type": "email", "label": "随机邮箱", "config_fields": ["domains", "username_prefix"]},
+            {"type": "username", "label": "随机用户名", "config_fields": ["prefixes", "suffix_length"]},
+            {"type": "env_ref", "label": "引用环境变量", "config_fields": ["variable_name", "default"]},
         ]
     }

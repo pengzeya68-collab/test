@@ -8,7 +8,6 @@
 - 调用 Pytest 执行测试
 - 返回执行结果
 """
-
 import json
 import time
 import subprocess
@@ -16,20 +15,13 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
+from datetime import datetime, timezone
 import requests
 
 from fastapi_backend.utils.autotest_helpers import extract_jsonpath_value
-from fastapi_backend.services.autotest_assertion_engine import (
-    execute_assertions,
-    extract_variables_from_response,
-)
-
+# from fastapi_backend.services.autotest_variable_service import save_variables_to_db
 from fastapi_backend.utils.parser import replace_variables
-from fastapi_backend.models.autotest import (
-    AutoTestCase,
-    AutoTestEnvironment,
-    AutoTestGlobalVariable,
-)
+from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment, AutoTestGlobalVariable
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
 from sqlalchemy import select
 from fastapi_backend.utils.encryption import decrypt
@@ -37,7 +29,7 @@ from fastapi_backend.utils.encryption import decrypt
 _logger = logging.getLogger(__name__)
 
 # 项目根目录
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 BASE_DIR = AUTOTEST_DATA_DIR
 
@@ -51,7 +43,7 @@ async def _get_global_variables_cached() -> Dict[str, Any]:
     now = time.time()
     if now - _global_vars_cache["timestamp"] < _GLOBAL_VARS_CACHE_TTL:
         return _global_vars_cache["vars"]
-
+    
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(AutoTestGlobalVariable))
         global_vars = {}
@@ -60,7 +52,7 @@ async def _get_global_variables_cached() -> Dict[str, Any]:
             if var.is_encrypted:
                 value = decrypt(value)
             global_vars[var.name] = value
-
+    
     _global_vars_cache["vars"] = global_vars
     _global_vars_cache["timestamp"] = now
     return global_vars
@@ -76,10 +68,7 @@ async def _save_variables_to_db_safe(extracted_vars: Dict[str, Any]):
     if not extracted_vars:
         return
     try:
-        from fastapi_backend.services.autotest_variable_service import (
-            save_variables_to_db,
-        )
-
+        from fastapi_backend.services.autotest_variable_service import save_variables_to_db
         await save_variables_to_db(extracted_vars)
         _invalidate_global_vars_cache()  # 使缓存失效，下次重新加载
     except Exception as e:
@@ -98,22 +87,26 @@ def _validate_url(url: str) -> bool:
 
 
 def _smart_type_convert(obj: Any) -> Any:
+    """递归地将 dict/list 中看起来像数字的字符串值转换为数字类型"""
     if isinstance(obj, dict):
         return {k: _smart_type_convert(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [_smart_type_convert(item) for item in obj]
     elif isinstance(obj, str):
-        if obj and obj.lstrip("-").isdigit() and len(obj) > 1:
-            try:
-                return int(obj)
-            except ValueError:
-                pass
+        if obj.isdigit():
+            return int(obj)
         try:
             float_val = float(obj)
-            if obj.count(".") == 1 and obj.replace(".", "", 1).replace("-", "", 1).isdigit():
+            if str(float_val) == obj or obj.count('.') == 1:
                 return float_val
         except (ValueError, OverflowError):
             pass
+        if obj.lower() == 'true':
+            return True
+        if obj.lower() == 'false':
+            return False
+        if obj.lower() == 'null' or obj.lower() == 'none':
+            return None
     return obj
 
 
@@ -146,10 +139,7 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
         if isinstance(headers, dict):
             headers_str = json.dumps(headers, ensure_ascii=False)
             headers_str = replace_variables(headers_str, variables)
-            try:
-                headers = json.loads(headers_str)
-            except json.JSONDecodeError:
-                headers = replace_variables(headers, variables)
+            headers = json.loads(headers_str)
             headers = _smart_type_convert(headers)
         else:
             headers = replace_variables(headers, variables)
@@ -159,15 +149,12 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
         if isinstance(payload, dict):
             payload_str = json.dumps(payload, ensure_ascii=False)
             payload_str = replace_variables(payload_str, variables)
-            try:
-                payload = json.loads(payload_str)
-            except json.JSONDecodeError:
-                payload = replace_variables(payload, variables)
+            payload = json.loads(payload_str)
             payload = _smart_type_convert(payload)
         else:
             payload = replace_variables(payload, variables)
 
-    params = getattr(case, "params", None)
+    params = getattr(case, 'params', None)
     if params:
         if isinstance(params, dict):
             params_str = json.dumps(params, ensure_ascii=False)
@@ -185,8 +172,8 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
         params = {}
 
     # 处理 body_type 和 content_type
-    body_type = getattr(case, "body_type", "none") or "none"
-    content_type = getattr(case, "content_type", "application/json") or "application/json"
+    body_type = getattr(case, 'body_type', 'none') or 'none'
+    content_type = getattr(case, 'content_type', 'application/json') or 'application/json'
 
     return {
         "name": case.name,
@@ -197,14 +184,14 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
         "body_type": body_type,
         "content_type": content_type,
         "payload": payload,
-        "assert_rules": case.assert_rules or {},
+        "assert_rules": case.assert_rules or {}
     }
 
 
 async def quick_run_case(
     case: AutoTestCase,
     env: Optional[AutoTestEnvironment],
-    override_params: Optional[Dict[str, Any]] = None,
+    override_params: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     快速执行用例（不保存历史记录）
@@ -227,14 +214,16 @@ async def quick_run_case(
         # 处理 payload 为字符串的情况
         if isinstance(payload, str) and payload:
             import json
-
             try:
                 payload = json.loads(payload)
             except json.JSONDecodeError:
                 pass
 
         # 构建请求 kwargs
-        req_kwargs = {"headers": headers, "timeout": 30}
+        req_kwargs = {
+            "headers": headers,
+            "timeout": 30
+        }
 
         if params:
             req_kwargs["params"] = params
@@ -250,53 +239,9 @@ async def quick_run_case(
                     if headers and isinstance(headers, dict):
                         headers["Content-Type"] = content_type
                     else:
-                        req_kwargs["headers"] = {
-                            **(headers or {}),
-                            "Content-Type": content_type,
-                        }
+                        req_kwargs["headers"] = {**(headers or {}), "Content-Type": content_type}
             elif body_type == "form-data":
                 req_kwargs["data"] = payload
-            elif body_type == "multipart":
-                # multipart/form-data: payload 中 files 键为文件字段，其余为普通字段
-                if isinstance(payload, dict):
-                    files = {}
-                    data = {}
-                    for k, v in payload.items():
-                        if isinstance(v, dict) and v.get("__file__"):
-                            # 文件字段: {"__file__": true, "filename": "x.txt", "content": "base64..."}
-                            import base64
-                            file_content = base64.b64decode(v.get("content", ""))
-                            files[k] = (v.get("filename", "file"), file_content, v.get("content_type", "application/octet-stream"))
-                        else:
-                            data[k] = v
-                    if files:
-                        req_kwargs["files"] = files
-                    if data:
-                        req_kwargs["data"] = data
-                else:
-                    req_kwargs["data"] = payload
-            elif body_type == "graphql":
-                # GraphQL: payload 应为 {"query": "...", "variables": {...}}
-                graphql_body = {}
-                if isinstance(payload, dict):
-                    graphql_body["query"] = payload.get("query", str(payload))
-                    if "variables" in payload:
-                        graphql_body["variables"] = payload["variables"]
-                else:
-                    graphql_body["query"] = str(payload)
-                req_kwargs["json"] = graphql_body
-                if headers and isinstance(headers, dict):
-                    headers["Content-Type"] = "application/json"
-            elif body_type in ("xml", "raw_xml"):
-                req_kwargs["data"] = str(payload) if payload else ""
-                ct = content_type if content_type != "application/json" else "application/xml"
-                if headers and isinstance(headers, dict):
-                    headers["Content-Type"] = ct
-                else:
-                    req_kwargs["headers"] = {
-                        **(headers or {}),
-                        "Content-Type": ct,
-                    }
 
         if method == "GET":
             response = await asyncio.to_thread(requests.get, url, **req_kwargs)
@@ -316,7 +261,7 @@ async def quick_run_case(
                 "execution_time": 0,
                 "error": f"不支持的请求方法: {method}",
                 "assert_result": None,
-                "request_body": payload,
+                "request_body": payload
             }
 
         execution_time = int((time.time() - start_time) * 1000)
@@ -326,18 +271,16 @@ async def quick_run_case(
         except Exception:
             response_data = {"raw": response.text}
 
-        # 无论状态码如何，都执行变量提取
+        # 🔥 修复：无论状态码如何，都执行变量提取
         extractors = None
-        if hasattr(case, "extractors"):
+        if hasattr(case, 'extractors'):
             extractors = case.extractors
-        extracted_vars = extract_variables_from_response(
-            extractors, response_data, response.text, dict(response.headers)
-        )
+        extracted_vars = await extract_variables_from_response(extractors, response_data, response.text, dict(response.headers))
         if extracted_vars:
             await _save_variables_to_db_safe(extracted_vars)
 
-        # 执行断言（统一引擎会处理默认状态码检查和显式断言）
-        assert_result = execute_assertions(case_data["assert_rules"], response.status_code, response_data, execution_time, dict(response.headers))
+        # 执行断言（不再提前拦截 status_code >= 400，让断言引擎根据用户配置判断）
+        assert_result = execute_assertions(case_data["assert_rules"], response.status_code, response_data)
 
         return {
             "success": assert_result["passed"],
@@ -351,7 +294,7 @@ async def quick_run_case(
             "request_method": method,
             "request_headers": headers,
             "request_params": params,
-            "extracted_variables": extracted_vars,
+            "extracted_variables": extracted_vars
         }
 
     except requests.exceptions.Timeout:
@@ -363,11 +306,10 @@ async def quick_run_case(
             "error": "请求超时",
             "assert_result": None,
             "request_body": case.payload,
-            "request_url": case.url if hasattr(case, "url") else None,
-            "request_method": case.method if hasattr(case, "method") else None,
+            "request_url": case.url if hasattr(case, 'url') else None,
+            "request_method": case.method if hasattr(case, 'method') else None,
             "request_headers": None,
-            "request_params": None,
-            "extracted_variables": {},
+            "request_params": None
         }
     except requests.exceptions.ConnectionError:
         return {
@@ -378,11 +320,10 @@ async def quick_run_case(
             "error": "连接失败，请检查网络或服务地址",
             "assert_result": None,
             "request_body": case.payload,
-            "request_url": case.url if hasattr(case, "url") else None,
-            "request_method": case.method if hasattr(case, "method") else None,
+            "request_url": case.url if hasattr(case, 'url') else None,
+            "request_method": case.method if hasattr(case, 'method') else None,
             "request_headers": None,
-            "request_params": None,
-            "extracted_variables": {},
+            "request_params": None
         }
     except Exception as e:
         return {
@@ -393,14 +334,352 @@ async def quick_run_case(
             "error": str(e),
             "assert_result": None,
             "request_body": case.payload,
-            "request_url": case.url if hasattr(case, "url") else None,
-            "request_method": case.method if hasattr(case, "method") else None,
+            "request_url": case.url if hasattr(case, 'url') else None,
+            "request_method": case.method if hasattr(case, 'method') else None,
             "request_headers": None,
-            "request_params": None,
-            "extracted_variables": {},
+            "request_params": None
         }
 
 
+def execute_assertions(assert_rules: Any, status_code: int, response: Any) -> Dict[str, Any]:
+    """
+    执行断言，支持对象格式和数组格式
+    """
+    details = []
+    all_passed = True
+    error_messages = []
+    has_status_code_assertion = False
+
+    if not assert_rules:
+        if not (200 <= status_code < 400):
+            all_passed = False
+            error_messages.append(f"默认断言失败: 期望 2xx/3xx, 实际返回 {status_code}")
+            details.append({
+                "type": "default_status_code",
+                "expected": "2xx/3xx",
+                "actual": status_code,
+                "passed": False
+            })
+        else:
+            details.append({
+                "type": "default_status_code",
+                "expected": "2xx/3xx",
+                "actual": status_code,
+                "passed": True
+            })
+        return {
+            "passed": all_passed,
+            "message": "; ".join(error_messages) if error_messages else "默认状态码检查通过",
+            "details": details
+        }
+
+    # 格式2: 数组格式
+    if isinstance(assert_rules, list):
+        for rule in assert_rules:
+            if not isinstance(rule, dict):
+                continue
+
+            field = rule.get("field", "") or rule.get("target", "")
+            if field == "status_code":
+                has_status_code_assertion = True
+
+            operator = rule.get("operator", "") or rule.get("condition", "equals")
+            expected = rule.get("expectedValue")
+            if expected is None:
+                expected = rule.get("expected")
+            if expected is None:
+                expected = rule.get("value", "")
+
+            actual = get_field_value(field, status_code, response)
+            passed = compare_values(actual, operator, expected)
+
+            if not passed:
+                all_passed = False
+                error_messages.append(f"字段 {field} {get_operator_text(operator)} {expected}，实际: {actual}")
+
+            details.append({
+                "type": "assertion",
+                "field": field,
+                "operator": operator,
+                "expected": expected,
+                "actual": actual,
+                "passed": passed
+            })
+
+    # 格式1: 对象格式
+    elif isinstance(assert_rules, dict):
+        if "status_code" in assert_rules:
+            has_status_code_assertion = True
+            expected = assert_rules["status_code"]
+
+            if isinstance(expected, dict):
+                operator = expected.get("operator", "equals")
+                expected_value = expected.get("expectedValue")
+                if expected_value is None:
+                    expected_value = expected.get("expected")
+                if expected_value is None:
+                    expected_value = expected.get("eq")
+
+                if operator == "range":
+                    range_text = str(expected_value).lower()
+                    if "2xx" in range_text or "2xx/3xx" == range_text:
+                        passed = (200 <= status_code < 400)
+                    elif "3xx" in range_text:
+                        passed = (300 <= status_code < 400)
+                    elif "2xx" == range_text:
+                        passed = (200 <= status_code < 300)
+                    else:
+                        passed = (200 <= status_code < 400)
+                else:
+                    passed = compare_values(status_code, operator, expected_value)
+            else:
+                passed = (status_code == expected)
+
+            if not passed:
+                all_passed = False
+                error_messages.append(f"状态码断言失败: 期望 {expected}, 实际 {status_code}")
+            details.append({
+                "type": "status_code",
+                "expected": expected,
+                "actual": status_code,
+                "passed": passed
+            })
+
+        if "json_path" in assert_rules and isinstance(response, dict):
+            for path, rule in assert_rules["json_path"].items():
+                keys = path.replace("$.", "").split(".")
+                value = response
+                for key in keys:
+                    if isinstance(value, dict) and key in value:
+                        value = value[key]
+                    else:
+                        value = None
+                        break
+
+                if "eq" in rule:
+                    passed = (value == rule["eq"])
+                    if not passed:
+                        all_passed = False
+                        error_messages.append(f"JSON路径 {path} 断言失败: 期望 {rule['eq']}, 实际 {value}")
+                    details.append({
+                        "type": "json_path",
+                        "path": path,
+                        "assertion": "eq",
+                        "expected": rule["eq"],
+                        "actual": value,
+                        "passed": passed
+                    })
+                elif "contains" in rule:
+                    passed = (value is not None and rule["contains"] in str(value))
+                    if not passed:
+                        all_passed = False
+                        error_messages.append(f"JSON路径 {path} 不包含: {rule['contains']}")
+                    details.append({
+                        "type": "json_path",
+                        "path": path,
+                        "assertion": "contains",
+                        "expected": rule["contains"],
+                        "actual": value,
+                        "passed": passed
+                    })
+
+    # 如果没有配置 status_code 断言，添加默认兜底校验
+    if not has_status_code_assertion:
+        if not (200 <= status_code < 400):
+            all_passed = False
+            error_messages.append(f"默认断言失败: 期望 2xx/3xx, 实际返回 {status_code}")
+            details.append({
+                "type": "default_status_code",
+                "expected": "2xx/3xx",
+                "actual": status_code,
+                "passed": False
+            })
+
+    if all_passed:
+        return {"passed": True, "message": "所有断言通过", "details": details}
+    else:
+        return {"passed": False, "message": "; ".join(error_messages), "details": details}
+
+
+def get_field_value(field: str, status_code: int, response: Any) -> Any:
+    """根据字段名获取实际值"""
+    if field == "status_code":
+        return status_code
+    elif field == "response_time":
+        return None
+    elif field in ("body", "response_body", "json_body"):
+        return response
+    elif field == "headers":
+        return None
+    elif field.startswith("body.") or field.startswith("response.") or field.startswith("json_body."):
+        if field.startswith("json_body."):
+            keys = field[len("json_body."):].split(".")
+        elif field.startswith("response."):
+            keys = field[len("response."):].split(".")
+        else:
+            keys = field[len("body."):].split(".")
+        value = response
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+        return value
+    return None
+
+
+def compare_values(actual: Any, operator: str, expected: Any) -> bool:
+    """比较值"""
+    if actual is None:
+        return False
+
+    if operator in ("equals", "eq", "=="):
+        return str(actual) == str(expected)
+    elif operator in ("not_equals", "ne", "!="):
+        return str(actual) != str(expected)
+    elif operator == "contains":
+        return str(expected) in str(actual)
+    elif operator == "not_contains":
+        return str(expected) not in str(actual)
+    elif operator in ("gt", ">"):
+        try:
+            return float(actual) > float(expected)
+        except Exception:
+            return False
+    elif operator in ("lt", "<"):
+        try:
+            return float(actual) < float(expected)
+        except Exception:
+            return False
+    elif operator in ("gte", ">="):
+        try:
+            return float(actual) >= float(expected)
+        except Exception:
+            return False
+    elif operator in ("lte", "<="):
+        try:
+            return float(actual) <= float(expected)
+        except Exception:
+            return False
+    elif operator == "regex":
+        import re
+        try:
+            return bool(re.search(str(expected), str(actual)))
+        except Exception:
+            return False
+    elif operator == "json_exists":
+        return actual is not None
+    return True
+
+
+def get_operator_text(operator: str) -> str:
+    """获取操作符的中文描述"""
+    mapping = {
+        "equals": "等于", "eq": "等于", "==": "等于",
+        "not_equals": "不等于", "ne": "不等于", "!=": "不等于",
+        "contains": "包含", "not_contains": "不包含",
+        "gt": "大于", ">": "大于", "lt": "小于", "<": "小于",
+        "gte": "大于等于", ">=": "大于等于", "lte": "小于等于", "<=": "小于等于",
+        "regex": "正则匹配", "json_exists": "存在",
+    }
+    return mapping.get(operator, operator)
+
+
+async def extract_variables_from_response(extractors: Any, response_data: Any, response_text: str, response_headers: Optional[Dict] = None) -> Dict[str, str]:
+    """
+    从响应中提取变量
+    Args:
+        extractors: 提取规则列表
+        response_data: 解析后的响应数据（dict/list）
+        response_text: 原始响应文本
+    Returns:
+        提取的变量字典 {变量名: 变量值}
+    """
+    if not extractors:
+        return {}
+
+    extracted = {}
+
+    for extractor in extractors:
+        if not isinstance(extractor, dict):
+            continue
+
+        var_name = extractor.get("variableName") or extractor.get("var_name")
+        extractor_type = extractor.get("extractorType") or extractor.get("type", "jsonpath")
+        expression = extractor.get("expression") or extractor.get("path", "")
+        default_value = extractor.get("defaultValue") or extractor.get("default", "")
+
+        if not var_name or not expression:
+            continue
+
+        value = default_value
+
+        try:
+            if extractor_type == "jsonpath":
+                value = extract_jsonpath_value(response_data, expression, default_value)
+            elif extractor_type == "regex":
+                import re
+                match = re.search(expression, response_text)
+                if match:
+                    value = match.group(1) if match.groups() else match.group(0)
+                else:
+                    value = default_value
+            elif extractor_type == "header":
+                header_name = extractor.get("name", "").lower()
+                for h_key, h_val in (response_headers or {}).items():
+                    if h_key.lower() == header_name:
+                        extracted_value = str(h_val)
+                        value = extracted_value
+                        break
+        except Exception as e:
+            _logger.info(f"变量提取失败 {var_name}: {str(e)}")
+            value = default_value
+
+        extracted[var_name] = value
+
+    return extracted
+
+
+
+async def save_variables_to_db(variables: Dict[str, str]) -> bool:
+    """
+    将提取的变量保存到全局变量表
+    Args:
+        variables: 变量字典 {变量名: 变量值}
+    Returns:
+        是否保存成功
+    """
+    if not variables:
+        return False
+
+    from fastapi_backend.core.autotest_database import AsyncSessionLocal
+    from sqlalchemy import select
+
+    try:
+        async with AsyncSessionLocal() as session:
+            for var_name, var_value in variables.items():
+                result = await session.execute(
+                    select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == var_name)
+                )
+                existing_var = result.scalar_one_or_none()
+
+                if existing_var:
+                    existing_var.value = str(var_value)
+                    existing_var.updated_at = datetime.now(timezone.utc)
+                else:
+                    new_var = AutoTestGlobalVariable(
+                        name=var_name,
+                        value=str(var_value),
+                        description="从测试用例提取",
+                        is_encrypted=False
+                    )
+                    session.add(new_var)
+
+            await session.commit()
+            return True
+    except Exception as e:
+        _logger.info(f"保存变量失败: {str(e)}")
+        return False
 
 
 def generate_test_yaml(case_data: Dict[str, Any], output_path: Path) -> None:
@@ -413,9 +692,7 @@ def generate_test_yaml(case_data: Dict[str, Any], output_path: Path) -> None:
         yaml.dump(yaml_content, f, allow_unicode=True, default_flow_style=False)
 
 
-async def run_case_with_pytest(
-    case: AutoTestCase, env: Optional[AutoTestEnvironment], history_id: int
-) -> Dict[str, Any]:
+async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnvironment], history_id: int) -> Dict[str, Any]:
     """使用 Pytest 执行用例（生成 Allure 报告）"""
     from fastapi_backend.models.autotest import AutoTestHistory
 
@@ -434,28 +711,18 @@ async def run_case_with_pytest(
         allure_results_dir.mkdir(parents=True, exist_ok=True)
 
         import sys
-
         runner_script = BASE_DIR / "runner" / "test_core.py"
         allure_results_dir_abs = str(allure_results_dir.absolute())
 
         python_executable = sys.executable
         cmd1 = [
-            python_executable,
-            "-m",
-            "pytest",
-            str(runner_script),
-            f"--data_path={yaml_file}",
-            f"--alluredir={allure_results_dir_abs}",
-            "-v",
+            python_executable, "-m", "pytest", str(runner_script),
+            f"--data_path={yaml_file}", f"--alluredir={allure_results_dir_abs}", "-v"
         ]
 
         _logger.info(f"[Execution] 尝试方式1: {' '.join(cmd1)}")
         result = await asyncio.to_thread(
-            subprocess.run,
-            cmd1,
-            capture_output=True,
-            text=True,
-            timeout=60,
+            subprocess.run, cmd1, capture_output=True, text=True, timeout=60, 
         )
 
         result_files = list(allure_results_dir.glob("*.json"))
@@ -468,38 +735,18 @@ async def run_case_with_pytest(
             pytest_exe = python_dir / "Scripts" / "pytest.exe"
 
             if pytest_exe.exists():
-                cmd2 = [
-                    str(pytest_exe),
-                    str(runner_script),
-                    f"--data_path={yaml_file}",
-                    f"--alluredir={allure_results_dir_abs}",
-                    "-v",
-                ]
+                cmd2 = [str(pytest_exe), str(runner_script), f"--data_path={yaml_file}", f"--alluredir={allure_results_dir_abs}", "-v"]
                 _logger.info(f"[Execution] 尝试方式2 (Python Scripts): {' '.join(cmd2)}")
                 result = await asyncio.to_thread(
-                    subprocess.run,
-                    cmd2,
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
+                    subprocess.run, cmd2, capture_output=True, text=True, timeout=60, 
                 )
                 result_files = list(allure_results_dir.glob("*.json"))
 
             if len(result_files) == 0:
-                cmd3 = [
-                    "pytest",
-                    str(runner_script),
-                    f"--data_path={yaml_file}",
-                    f"--alluredir={allure_results_dir_abs}",
-                    "-v",
-                ]
+                cmd3 = ["pytest", str(runner_script), f"--data_path={yaml_file}", f"--alluredir={allure_results_dir_abs}", "-v"]
                 _logger.info(f"[Execution] 尝试方式3: {' '.join(cmd3)}")
                 result = await asyncio.to_thread(
-                    subprocess.run,
-                    cmd3,
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
+                    subprocess.run, cmd3, capture_output=True, text=True, timeout=60, 
                 )
                 result_files = list(allure_results_dir.glob("*.json"))
 
@@ -510,7 +757,6 @@ async def run_case_with_pytest(
 
         try:
             import shutil
-
             old_report_history = report_dir / "history"
             new_results_history = allure_results_dir / "history"
             if old_report_history.exists() and old_report_history.is_dir():
@@ -520,15 +766,8 @@ async def run_case_with_pytest(
 
             cmd_result = await asyncio.to_thread(
                 subprocess.run,
-                [
-                    "allure",
-                    "generate",
-                    str(allure_results_dir),
-                    "-o",
-                    str(report_dir),
-                    "--clean",
-                ],
-                capture_output=True,
+                ["allure", "generate", str(allure_results_dir), "-o", str(report_dir), "--clean"],
+                capture_output=True, 
             )
             report_url = f"/reports/report_{history_id}/index.html" if cmd_result.returncode == 0 else None
         except (FileNotFoundError, Exception):
@@ -539,15 +778,10 @@ async def run_case_with_pytest(
         # 更新历史记录
         async with AsyncSessionLocal() as session:
             from sqlalchemy import update
-
             await session.execute(
                 update(AutoTestHistory)
                 .where(AutoTestHistory.id == history_id)
-                .values(
-                    status="success" if success else "failed",
-                    execution_time=execution_time,
-                    report_url=report_url,
-                )
+                .values(status="success" if success else "failed", execution_time=execution_time, report_url=report_url)
             )
             await session.commit()
 
@@ -556,45 +790,27 @@ async def run_case_with_pytest(
             "execution_time": execution_time,
             "report_url": report_url,
             "output": result.stdout,
-            "error": result.stderr if not success else None,
+            "error": result.stderr if not success else None
         }
 
     except subprocess.TimeoutExpired:
         execution_time = int((time.time() - start_time) * 1000)
         async with AsyncSessionLocal() as session:
             from sqlalchemy import update
-
             await session.execute(
-                update(AutoTestHistory)
-                .where(AutoTestHistory.id == history_id)
-                .values(
-                    status="error",
-                    execution_time=execution_time,
-                    error_message="执行超时",
-                )
+                update(AutoTestHistory).where(AutoTestHistory.id == history_id)
+                .values(status="error", execution_time=execution_time, error_message="执行超时")
             )
             await session.commit()
-        return {
-            "success": False,
-            "execution_time": execution_time,
-            "error": "执行超时（60秒）",
-            "report_url": None,
-        }
+        return {"success": False, "execution_time": execution_time, "error": "执行超时（60秒）", "report_url": None}
 
     except Exception as e:
         execution_time = int((time.time() - start_time) * 1000)
         async with AsyncSessionLocal() as session:
             from sqlalchemy import update
-
             await session.execute(
-                update(AutoTestHistory)
-                .where(AutoTestHistory.id == history_id)
+                update(AutoTestHistory).where(AutoTestHistory.id == history_id)
                 .values(status="error", execution_time=execution_time, error_message=str(e))
             )
             await session.commit()
-        return {
-            "success": False,
-            "execution_time": execution_time,
-            "error": str(e),
-            "report_url": None,
-        }
+        return {"success": False, "execution_time": execution_time, "error": str(e), "report_url": None}

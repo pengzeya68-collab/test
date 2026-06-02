@@ -3,23 +3,20 @@
 
 一键 Ping 所有配置的环境，快速定位环境问题
 """
-
 import time
 import asyncio
-from typing import Dict, List
+from urllib.parse import urlparse
+from typing import Dict, Any, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestEnvironment
 
-router = APIRouter(
-    prefix="/api/auto-test/health-check",
-    tags=["环境健康检查"],
-    dependencies=[Depends(get_current_user)],
-)
+router = APIRouter(prefix="/api/auto-test/health-check", tags=["环境健康检查"], dependencies=[Depends(get_current_user)])
 
 
 def _parse_env_url(env: AutoTestEnvironment) -> str:
@@ -27,7 +24,6 @@ def _parse_env_url(env: AutoTestEnvironment) -> str:
     config = env.config or {}
     if isinstance(config, str):
         import json
-
         try:
             config = json.loads(config)
         except:
@@ -61,22 +57,10 @@ async def _check_single(url: str, timeout: float = 5.0) -> Dict:
                 }
     except asyncio.TimeoutError:
         elapsed = round((time.time() - start) * 1000)
-        return {
-            "url": url,
-            "status": "unhealthy",
-            "status_code": None,
-            "response_time_ms": elapsed,
-            "error": "连接超时",
-        }
+        return {"url": url, "status": "unhealthy", "status_code": None, "response_time_ms": elapsed, "error": "连接超时"}
     except Exception as e:
         elapsed = round((time.time() - start) * 1000)
-        return {
-            "url": url,
-            "status": "unhealthy",
-            "status_code": None,
-            "response_time_ms": elapsed,
-            "error": str(e),
-        }
+        return {"url": url, "status": "unhealthy", "status_code": None, "response_time_ms": elapsed, "error": str(e)}
 
 
 @router.get("")
@@ -91,17 +75,15 @@ async def health_check_all(db=Depends(get_autotest_db)):
         for env in envs:
             url = _parse_env_url(env)
             if not url:
-                results.append(
-                    {
-                        "env_id": env.id,
-                        "env_name": env.name,
-                        "status": "unknown",
-                        "url": "未配置",
-                        "status_code": None,
-                        "response_time_ms": 0,
-                        "error": "该环境未配置 base_url",
-                    }
-                )
+                results.append({
+                    "env_id": env.id,
+                    "env_name": env.name,
+                    "status": "unknown",
+                    "url": "未配置",
+                    "status_code": None,
+                    "response_time_ms": 0,
+                    "error": "该环境未配置 base_url",
+                })
             else:
                 check = await _check_single(url)
                 check["env_id"] = env.id
@@ -132,16 +114,11 @@ async def health_check_single(env_id: int, db=Depends(get_autotest_db)):
         result = await session.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id))
         env = result.scalar_one_or_none()
         if not env:
-            raise HTTPException(status_code=404, detail="环境不存在")
+            return {"error": "环境不存在"}
 
         url = _parse_env_url(env)
         if not url:
-            return {
-                "env_id": env.id,
-                "env_name": env.name,
-                "status": "unknown",
-                "error": "未配置 base_url",
-            }
+            return {"env_id": env.id, "env_name": env.name, "status": "unknown", "error": "未配置 base_url"}
 
         check = await _check_single(url)
         check["env_id"] = env.id

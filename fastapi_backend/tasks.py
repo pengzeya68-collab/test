@@ -7,6 +7,9 @@ import time
 
 from fastapi_backend.celery_config import app
 
+# 确保 AI 生成任务被 Celery worker 发现和注册
+import fastapi_backend.services.autotest_ai_generator  # noqa: F401
+
 _logger = logging.getLogger(__name__)
 
 

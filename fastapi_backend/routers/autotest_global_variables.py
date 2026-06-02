@@ -3,22 +3,16 @@ AutoTest 统一路由 - 全局变量管理
 
 路径前缀: /api/auto-test/global-variables
 """
-
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, func
+from sqlalchemy import select, delete
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.autotest import AutoTestGlobalVariable
-from fastapi_backend.schemas.autotest import GlobalVariableCreate, GlobalVariableUpdate
 from fastapi_backend.utils.encryption import encrypt, decrypt
 
-router = APIRouter(
-    prefix="/api/auto-test/global-variables",
-    tags=["AutoTest-全局变量"],
-    dependencies=[Depends(get_current_user)],
-)
+router = APIRouter(prefix="/api/auto-test/global-variables", tags=["AutoTest-全局变量"], dependencies=[Depends(get_current_user)])
 
 
 def _variable_to_dict(variable):
@@ -27,7 +21,7 @@ def _variable_to_dict(variable):
     value = variable.value
     if variable.is_encrypted:
         value = decrypt(value)
-
+    
     return {
         "id": variable.id,
         "name": variable.name,
@@ -40,27 +34,11 @@ def _variable_to_dict(variable):
 
 
 @router.get("")
-async def get_all_global_variables(
-    page: int = Query(1, ge=1),
-    size: int = Query(50, ge=1, le=200),
-    keyword: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
-):
-    """获取全局变量列表（分页）"""
-    query = select(AutoTestGlobalVariable)
-    if keyword:
-        query = query.where(AutoTestGlobalVariable.name.contains(keyword))
-    total = await db.scalar(select(func.count()).select_from(query.subquery()))
-    offset = (page - 1) * size
-    query = query.order_by(AutoTestGlobalVariable.name).offset(offset).limit(size)
-    result = await db.execute(query)
+async def get_all_global_variables(db: AsyncSession = Depends(get_db)):
+    """获取所有全局变量"""
+    result = await db.execute(select(AutoTestGlobalVariable).order_by(AutoTestGlobalVariable.name))
     variables = result.scalars().all()
-    return {
-        "list": [_variable_to_dict(v) for v in variables],
-        "total": total or 0,
-        "page": page,
-        "size": size,
-    }
+    return [_variable_to_dict(v) for v in variables]
 
 
 @router.get("/{variable_id}")
@@ -75,22 +53,21 @@ async def get_global_variable(variable_id: int, db: AsyncSession = Depends(get_d
 
 @router.post("", status_code=201)
 async def create_global_variable(
-    variable_in: GlobalVariableCreate,
+    variable_in: dict,
     db: AsyncSession = Depends(get_db),
 ):
     """创建全局变量"""
     # 检查变量名是否已存在
-    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_in.name))
+    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_in["name"]))
     existing_variable = result.scalar_one_or_none()
     if existing_variable:
         raise HTTPException(status_code=400, detail="变量名已存在")
 
-    data = variable_in.model_dump()
     # 对加密的变量值进行加密
-    if data.get("is_encrypted"):
-        data["value"] = encrypt(data["value"])
+    if variable_in.get("is_encrypted"):
+        variable_in["value"] = encrypt(variable_in["value"])
 
-    variable = AutoTestGlobalVariable(**data)
+    variable = AutoTestGlobalVariable(**variable_in)
     db.add(variable)
     await db.commit()
     await db.refresh(variable)
@@ -100,7 +77,7 @@ async def create_global_variable(
 @router.put("/{variable_id}")
 async def update_global_variable(
     variable_id: int,
-    variable_in: GlobalVariableUpdate,
+    variable_in: dict,
     db: AsyncSession = Depends(get_db),
 ):
     """更新全局变量"""
@@ -109,35 +86,24 @@ async def update_global_variable(
     if not variable:
         raise HTTPException(status_code=404, detail="全局变量不存在")
 
-    update_data = variable_in.model_dump(exclude_unset=True)
-
     # 检查变量名是否已被其他变量使用
-    if "name" in update_data and update_data["name"] != variable.name:
-        result = await db.execute(
-            select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == update_data["name"])
-        )
+    if "name" in variable_in and variable_in["name"] != variable.name:
+        result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_in["name"]))
         existing_variable = result.scalar_one_or_none()
         if existing_variable:
             raise HTTPException(status_code=400, detail="变量名已存在")
 
     # 对加密的变量值进行加密
-    if "is_encrypted" in update_data or "value" in update_data:
-        is_encrypted = update_data.get("is_encrypted", variable.is_encrypted)
-        new_value = update_data.get("value")
+    if "is_encrypted" in variable_in or "value" in variable_in:
+        is_encrypted = variable_in.get("is_encrypted", variable.is_encrypted)
         if is_encrypted:
-            if new_value is not None:
-                # 有新值：加密新值
-                update_data["value"] = encrypt(new_value)
-            elif not variable.is_encrypted:
-                # 无新值但原来没加密：加密当前值
-                update_data["value"] = encrypt(variable.value)
-            # 无新值且原来已加密：不需要重新加密，跳过
+            variable_in["value"] = encrypt(variable_in.get("value", variable.value))
         else:
             # 如果从加密改为非加密，需要先解密当前值
-            if variable.is_encrypted and new_value is None:
-                update_data["value"] = decrypt(variable.value)
+            if variable.is_encrypted and "value" not in variable_in:
+                variable_in["value"] = decrypt(variable.value)
 
-    for field, value in update_data.items():
+    for field, value in variable_in.items():
         setattr(variable, field, value)
 
     await db.commit()
@@ -165,37 +131,24 @@ async def batch_create_global_variables(
 ):
     """批量创建全局变量"""
     created_variables = []
-    skipped_names = []
     for variable_data in variables_in:
-        # 验证必填字段
-        if not variable_data.get("name") or "value" not in variable_data:
-            continue
         # 检查变量名是否已存在
-        result = await db.execute(
-            select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_data["name"])
-        )
+        result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_data["name"]))
         existing_variable = result.scalar_one_or_none()
-        if existing_variable:
-            skipped_names.append(variable_data["name"])
-            continue
-        # 对加密的变量值进行加密
-        if variable_data.get("is_encrypted"):
-            variable_data["value"] = encrypt(variable_data["value"])
-        variable = AutoTestGlobalVariable(**variable_data)
-        db.add(variable)
-        created_variables.append(variable)
+        if not existing_variable:
+            # 对加密的变量值进行加密
+            if variable_data.get("is_encrypted"):
+                variable_data["value"] = encrypt(variable_data["value"])
+            variable = AutoTestGlobalVariable(**variable_data)
+            db.add(variable)
+            created_variables.append(variable)
 
     if created_variables:
         await db.commit()
         for variable in created_variables:
             await db.refresh(variable)
 
-    return {
-        "created": [_variable_to_dict(v) for v in created_variables],
-        "skipped": skipped_names,
-        "created_count": len(created_variables),
-        "skipped_count": len(skipped_names),
-    }
+    return [_variable_to_dict(v) for v in created_variables]
 
 
 @router.delete("/batch")
@@ -204,7 +157,6 @@ async def batch_delete_global_variables(
     db: AsyncSession = Depends(get_db),
 ):
     """批量删除全局变量"""
-    result = await db.execute(delete(AutoTestGlobalVariable).where(AutoTestGlobalVariable.id.in_(variable_ids)))
+    await db.execute(delete(AutoTestGlobalVariable).where(AutoTestGlobalVariable.id.in_(variable_ids)))
     await db.commit()
-    deleted_count = result.rowcount
-    return {"message": f"成功删除 {deleted_count} 个全局变量", "deleted_count": deleted_count}
+    return {"message": f"成功删除 {len(variable_ids)} 个全局变量"}
