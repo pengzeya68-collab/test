@@ -234,13 +234,12 @@ async def delete_case(case_id: int, db: AsyncSession = Depends(get_db)):
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
 
-    # 解除场景步骤对该用例的引用
-    from sqlalchemy import update
-    await db.execute(
-        update(AutoTestScenarioStep)
-        .where(AutoTestScenarioStep.api_case_id == case_id)
-        .values(api_case_id=None)
+    # 删除引用该用例的场景步骤
+    steps_result = await db.execute(
+        select(AutoTestScenarioStep).where(AutoTestScenarioStep.api_case_id == case_id)
     )
+    for step in steps_result.scalars().all():
+        await db.delete(step)
 
     await db.delete(case)
     await db.commit()

@@ -149,13 +149,12 @@ async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
 
     if cases:
         case_ids = [case.id for case in cases]
-        # 先解除场景步骤对这些用例的引用（设为 NULL）
-        from sqlalchemy import update
-        await db.execute(
-            update(AutoTestScenarioStep)
-            .where(AutoTestScenarioStep.api_case_id.in_(case_ids))
-            .values(api_case_id=None)
+        # 删除引用这些用例的场景步骤（不是设为NULL，而是直接删除）
+        steps_result = await db.execute(
+            select(AutoTestScenarioStep).where(AutoTestScenarioStep.api_case_id.in_(case_ids))
         )
+        for step in steps_result.scalars().all():
+            await db.delete(step)
         # 删除用例
         for case in cases:
             await db.delete(case)
