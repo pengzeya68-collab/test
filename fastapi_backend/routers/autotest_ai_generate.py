@@ -23,7 +23,7 @@ from fastapi_backend.services.autotest_ai_generator import (
     create_task_id,
     _run_generation,
 )
-from fastapi_backend.services.autotest_task_store import get_task, update_task
+from fastapi_backend.services.autotest_task_store import get_task, update_task, cancel_task
 
 _logger = logging.getLogger(__name__)
 
@@ -253,6 +253,40 @@ async def get_generation_task_status(task_id: str):
         "message": stored.get("message", ""),
         "error": stored.get("error"),
         "start_time": stored.get("start_time"),
+    }
+
+
+@router.post("/tasks/{task_id}/cancel")
+async def cancel_generation_task(task_id: str):
+    """
+    取消 AI 生成任务
+
+    立即标记任务为取消状态，后台任务会在下一批次前检查到取消标志并停止。
+    已生成的用例会被保留，可在预览页查看并导入。
+    """
+    stored = get_task(task_id)
+    if not stored:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+
+    # 只有进行中的任务才能取消
+    if stored.get("status") not in ("PENDING", "PROGRESS"):
+        return {
+            "message": f"任务状态为 {stored.get('status')}，无法取消",
+            "existing_cases": len(stored.get("cases", [])),
+        }
+
+    await update_task(task_id, {
+        **stored,
+        "status": "cancelling",
+        "cancelled": True,
+        "phase_label": "正在中止生成任务...",
+    })
+
+    await cancel_task(task_id)
+
+    return {
+        "message": "任务已标记为取消，后台将在下一批次前停止。已生成的用例会保留。",
+        "existing_cases": len(stored.get("cases", [])),
     }
 
 

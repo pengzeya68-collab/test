@@ -98,6 +98,47 @@ async def delete_task(task_id: str) -> None:
         _delete_task_file(task_id)
 
 
+async def cancel_task(task_id: str) -> None:
+    """标记任务为取消状态，保留已生成的用例"""
+    with _lock:
+        if task_id in _task_store:
+            stored = _task_store[task_id]
+            stored["status"] = "cancelled"
+            stored["cancelled"] = True
+            _save_task_to_file(task_id, stored)
+            return
+    # 如果内存中没有，尝试从文件加载
+    tasks_dir = _get_tasks_dir()
+    task_file = tasks_dir / f"{task_id}.json"
+    if task_file.exists():
+        try:
+            with open(task_file, "r", encoding="utf-8") as f:
+                task_data = json.load(f)
+            task_data["status"] = "cancelled"
+            task_data["cancelled"] = True
+            _task_store[task_id] = task_data
+            _save_task_to_file(task_id, task_data)
+        except Exception:
+            pass
+
+
+def is_task_cancelled(task_id: str) -> bool:
+    """检查任务是否被取消"""
+    if task_id in _task_store:
+        return _task_store[task_id].get("cancelled", False)
+    # 从文件检查
+    tasks_dir = _get_tasks_dir()
+    task_file = tasks_dir / f"{task_id}.json"
+    if task_file.exists():
+        try:
+            with open(task_file, "r", encoding="utf-8") as f:
+                task_data = json.load(f)
+                return task_data.get("cancelled", False)
+        except Exception:
+            pass
+    return False
+
+
 def get_all_tasks() -> Dict[str, dict]:
     return dict(_task_store)
 

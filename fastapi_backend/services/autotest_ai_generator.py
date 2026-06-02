@@ -484,14 +484,41 @@ class AITestCaseGenerator:
         options: dict,
         params: AIParams,
         progress_callback=None,
+        task_id: str = None,
     ) -> list:
-        """Phase 2: 分批生成测试用例"""
+        """Phase 2: 分批生成测试用例
+
+        Args:
+            task_id: 任务ID，用于取消检查和AI配置重载。如果为None则不检查。
+        """
         apis = parsed["apis"]
         total_apis = len(apis)
         total_batches = (total_apis + BATCH_SIZE - 1) // BATCH_SIZE
         all_cases = []
 
         for batch_idx in range(total_batches):
+            # 每批次前检查取消标志
+            if task_id:
+                if await _check_cancelled(task_id):
+                    _logger.info("任务 %s 被用户取消，停止生成，已生成 %d 个用例", task_id, len(all_cases))
+                    raise asyncio.CancelledError("任务被用户取消")
+
+                # 每批次重新加载 AI 配置，让后管模型切换实时生效
+                reloaded = await _reload_ai_params(task_id)
+                if reloaded and reloaded.api_key:
+                    params = AIParams(
+                        api_key=reloaded.api_key,
+                        base_url=reloaded.base_url,
+                        model=reloaded.model,
+                        provider=reloaded.provider,
+                        timeout=max(reloaded.timeout, 120),
+                        max_tokens=max(reloaded.max_tokens, 4096),
+                        temperature=reloaded.temperature,
+                        group_id=reloaded.group_id,
+                    )
+                    _logger.info("任务 %s 批次 %d 重载 AI 配置: provider=%s model=%s",
+                                 task_id, batch_idx + 1, params.provider, params.model)
+
             start = batch_idx * BATCH_SIZE
             end = min(start + BATCH_SIZE, total_apis)
             batch = apis[start:end]
@@ -517,6 +544,8 @@ class AITestCaseGenerator:
             try:
                 result = await _call_llm_with_retry(params, messages, timeout=BATCH_TIMEOUT)
                 batch_cases = result.get("cases", [])
+            except asyncio.CancelledError:
+                raise
             except Exception as e:
                 _logger.error("批次 %d AI 生成失败: %s", batch_idx + 1, e, exc_info=True)
                 batch_cases = []
@@ -644,6 +673,24 @@ class AITestCaseGenerator:
 def create_task_id() -> str:
     """创建 AI 生成任务 ID"""
     return f"ai-gen-{uuid.uuid4().hex[:12]}"
+
+
+async def _reload_ai_params(task_id: str) -> Optional[AIParams]:
+    """每次批次调用前重新加载 AI 配置，让后管模型切换实时生效"""
+    try:
+        from fastapi_backend.core.database import AsyncSessionLocal as MainDBSession
+        async with MainDBSession() as main_db:
+            config = await load_ai_config(main_db)
+        return resolve_ai_params(config)
+    except Exception as e:
+        _logger.warning("重载 AI 配置失败 task_id=%s: %s", task_id, e)
+        return None
+
+
+async def _check_cancelled(task_id: str) -> bool:
+    """检查任务是否被取消"""
+    from fastapi_backend.services.autotest_task_store import is_task_cancelled
+    return is_task_cancelled(task_id)
 
 
 async def _update_progress(task_id: str, **kwargs) -> None:
@@ -783,7 +830,7 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
             )
 
         all_cases = await generator._phase_generate_cases(
-            parsed, analysis, options, effective_params, progress_callback=on_batch_progress
+            parsed, analysis, options, effective_params, progress_callback=on_batch_progress, task_id=task_id
         )
 
         # ---- Phase 3: 生成场景链 ----
@@ -820,6 +867,30 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
             start_time=start_time,
         )
 
+    except asyncio.CancelledError:
+        # 用户主动取消 - 保留已生成的用例
+        existing_cases = []
+        try:
+            stored = get_task(task_id) or {}
+            existing_cases = stored.get("cases", [])
+        except Exception:
+            pass
+
+        elapsed = time.time() - start_time
+        case_count = len(existing_cases)
+        progress_val = round(0.10 + 0.80 * case_count / (total_apis * 3), 3) if total_apis else 0.0
+        await _update_progress(
+            task_id,
+            status="cancelled",
+            progress=progress_val,
+            phase="cancelled",
+            phase_label=f"用户已中止，已保留 {case_count} 个用例",
+            cases=existing_cases,
+            scenarios=[],
+            message=f"AI 生成已被用户中止。已保留已生成的 {case_count} 个用例，可在预览页查看并导入。",
+            error=None,
+            start_time=start_time,
+        )
     except RateLimitExceededError as e:
         _logger.error("AI 窗口限额耗尽 task_id=%s: %s", task_id, e)
         # 窗口限额耗尽 - 如果已有部分用例，保留它们

@@ -161,6 +161,15 @@
             </div>
           </div>
         </div>
+
+        <!-- 操作按钮 -->
+        <div class="generation-actions">
+          <el-button type="danger" :loading="cancelling" @click="handleCancel">
+            <el-icon><Close /></el-icon>
+            {{ cancelling ? '中止中...' : '中止生成' }}
+          </el-button>
+          <span class="cancel-hint">中止后已生成的用例会保留，可在预览页查看并导入</span>
+        </div>
       </div>
     </div>
 
@@ -281,8 +290,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { ArrowLeft, UploadFilled, Timer } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowLeft, UploadFilled, Timer, Close } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
@@ -300,6 +309,7 @@ const importing = ref(false)
 const previewTab = ref('cases')
 const expandedCases = ref([0])
 const groupName = ref('AI生成用例')
+const cancelling = ref(false)
 
 let pollTimer = null
 let clockTimer = null
@@ -465,6 +475,36 @@ async function resumeTask(taskId) {
       return
     }
 
+    if (task.status === 'cancelled') {
+      // 之前的任务被取消
+      Object.assign(taskProgress, {
+        task_id: taskId,
+        status: task.status,
+        progress: task.progress || 0,
+        phase: task.phase || '',
+        phase_label: task.phase_label || '',
+        total_apis: task.total_apis || 0,
+        processed_apis: task.processed_apis || 0,
+        total_batches: task.total_batches || 0,
+        current_batch: task.current_batch || 0,
+        message: task.message || '',
+        error: task.error || null,
+        start_time: task.start_time || null,
+      })
+      if (task.cases) generateResult.cases = task.cases
+      if (task.scenarios) generateResult.scenarios = task.scenarios
+      generateResult.message = task.message || '生成已中止'
+      generateResult.total = task.cases?.length || 0
+      ElMessage.warning(task.phase_label || '之前的生成任务已被中止')
+      if (task.start_time) {
+        startClock(task.start_time)
+        setTimeout(() => stopClock(), 100)
+      }
+      currentStep.value = 3
+      clearTaskStorage()
+      return
+    }
+
     // 任务仍在进行中，恢复轮询
     Object.assign(taskProgress, {
       task_id: taskId,
@@ -552,6 +592,16 @@ function startPolling(taskId) {
         clearTaskStorage()
         generateResult.message = task.message || '生成完成'
         generateResult.total = task.cases?.length || 0
+        currentStep.value = 3
+      } else if (task.status === 'cancelled') {
+        // 任务被取消，保留已生成用例
+        clearInterval(pollTimer)
+        pollTimer = null
+        stopClock()
+        clearTaskStorage()
+        generateResult.message = task.message || '生成已中止'
+        generateResult.total = task.cases?.length || 0
+        ElMessage.warning(task.phase_label || 'AI 生成已被中止，已保留已生成的用例')
         currentStep.value = 3
       } else if (task.status === 'failed') {
         clearInterval(pollTimer)
@@ -651,6 +701,29 @@ const confirmImport = async () => {
     ElMessage.error('导入失败: ' + (e.response?.data?.detail || e.message))
   } finally {
     importing.value = false
+  }
+}
+
+const handleCancel = async () => {
+  if (!taskProgress.task_id) return
+  try {
+    await ElMessageBox.confirm('确定要中止生成吗？已生成的用例会保留，可在预览页查看并导入。', '中止生成', {
+      confirmButtonText: '确定中止',
+      cancelButtonText: '继续生成',
+      type: 'warning',
+    })
+  } catch {
+    return // 用户取消操作
+  }
+
+  cancelling.value = true
+  try {
+    await autoTestRequest.post(`/auto-test/ai-generate/tasks/${taskProgress.task_id}/cancel`)
+    ElMessage.success('任务已标记为中止，后台将在当前批次完成后停止')
+  } catch (e) {
+    ElMessage.error('中止失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    cancelling.value = false
   }
 }
 
@@ -822,6 +895,22 @@ onUnmounted(() => {
 }
 .safety-tip {
   margin-bottom: 16px;
+}
+
+/* 中止按钮区域 */
+.generation-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.cancel-hint {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 
 /* 实时用例预览 */
