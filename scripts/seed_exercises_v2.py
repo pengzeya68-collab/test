@@ -231,16 +231,6 @@ async def seed_all():
                 if is_sql_path and etype == "code":
                     lang = "sql"
 
-                # Handle options field
-                opts = ex.get("options", [])
-                if opts and isinstance(opts, list):
-                    import json
-                    opts_str = json.dumps(opts, ensure_ascii=False)
-                elif opts and isinstance(opts, str):
-                    opts_str = opts
-                else:
-                    opts_str = None
-
                 exercise = Exercise(
                     title=ex["title"],
                     description=desc,
@@ -256,7 +246,6 @@ async def seed_all():
                     exercise_type=etype,
                     is_public=True,
                     learning_path_id=path_id,
-                    options=opts_str,
                     test_cases=ex.get("test_cases"),
                     code_template=ex.get("code_template"),
                     expected_output=ex.get("expected_output"),
