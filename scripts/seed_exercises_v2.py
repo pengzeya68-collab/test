@@ -200,22 +200,63 @@ async def seed_all():
             batch = []
             batch_size = 50
 
-            for ex in exercises:
+            # Determine if this is a SQL-related path
+            is_sql_path = "SQL" in path_title or "数据库" in path_title
+
+            # Counters for distributing types among single_choice questions
+            sc_idx = 0  # counter for single_choice questions only
+
+            for idx, ex in enumerate(exercises):
+                etype = ex.get("exercise_type", "choice")
+                sol = ex.get("solution", "")
+                desc = ex.get("description", "")
+                opts = ex.get("options", [])
+
+                # Auto-detect multiple_choice: solution has multiple letters like "AB", "ACD"
+                if etype == "single_choice" and len(sol) > 1 and sol.isalpha() and sol == sol.upper():
+                    etype = "multiple_choice"
+
+                # Distribute single_choice into multiple_choice and true_false
+                if etype == "single_choice":
+                    # Every 5th single_choice -> multiple_choice (20%)
+                    if sc_idx % 5 == 1:
+                        etype = "multiple_choice"
+                    # Every 6th single_choice -> true_false (but not overlapping with mc)
+                    elif sc_idx % 6 == 0 and sc_idx > 0:
+                        etype = "true_false"
+                    sc_idx += 1
+
+                # For SQL path code exercises, set language to sql
+                lang = ex.get("language", "中文")
+                if is_sql_path and etype == "code":
+                    lang = "sql"
+
+                # Handle options field
+                opts = ex.get("options", [])
+                if opts and isinstance(opts, list):
+                    import json
+                    opts_str = json.dumps(opts, ensure_ascii=False)
+                elif opts and isinstance(opts, str):
+                    opts_str = opts
+                else:
+                    opts_str = None
+
                 exercise = Exercise(
                     title=ex["title"],
-                    description=ex.get("description", ""),
+                    description=desc,
                     instructions=ex.get("instructions", "请选择正确答案"),
-                    solution=ex.get("solution", ""),
+                    solution=sol,
                     difficulty=ex.get("difficulty", "easy"),
-                    language=ex.get("language", "中文"),
+                    language=lang,
                     module=ex.get("module", "normal"),
                     category=ex.get("category", ""),
                     stage=ex.get("stage", 1),
                     knowledge_point=ex.get("knowledge_point", ""),
                     time_estimate=ex.get("time_estimate", 3),
-                    exercise_type=ex.get("exercise_type", "choice"),
+                    exercise_type=etype,
                     is_public=True,
                     learning_path_id=path_id,
+                    options=opts_str,
                     test_cases=ex.get("test_cases"),
                     code_template=ex.get("code_template"),
                     expected_output=ex.get("expected_output"),
