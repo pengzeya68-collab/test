@@ -76,40 +76,221 @@ def _normalize_language(language: str, exercise_type: str = "") -> str:
     return "python"
 
 
+async def _smart_judge_python_function(
+    sandbox: CodeSandbox,
+    user_code: str,
+    reference_code: str,
+) -> dict:
+    """
+    智能判题：对 Python 函数题，从参考答案提取函数签名，
+    用通用测试输入同时调用用户函数和参考函数，比较返回值。
+    """
+    import re
+
+    # 从参考答案中提取函数名和参数
+    func_match = re.search(r'def\s+(\w+)\s*\(([^)]*)\)', reference_code)
+    if not func_match:
+        # 无法提取函数名，回退到执行比较
+        ref_result = await sandbox.execute_code(code=reference_code, language="python", timeout=5)
+        user_result = await sandbox.execute_code(code=user_code, language="python", timeout=5)
+        ref_out = ref_result.get("stdout", "").strip()
+        user_out = user_result.get("stdout", "").strip()
+        passed = ref_out == user_out and ref_out != ""
+        return {
+            "total_cases": 1,
+            "passed_count": 1 if passed else 0,
+            "failed_count": 0 if passed else 1,
+            "pass_rate": 100.0 if passed else 0.0,
+            "all_passed": passed,
+            "details": [{"case_index": 1, "passed": passed,
+                          "expected": ref_out[:500] or "(无输出)",
+                          "actual": user_out[:500] or "(无输出)"}],
+            "summary": "输出匹配" if passed else "输出不匹配",
+        }
+
+    func_name = func_match.group(1)
+    params_str = func_match.group(2).strip()
+
+    # 根据参数名生成通用测试输入
+    test_inputs = _generate_test_inputs(func_name, params_str)
+
+    if not test_inputs:
+        # 无法生成测试输入，回退
+        ref_result = await sandbox.execute_code(code=reference_code, language="python", timeout=5)
+        user_result = await sandbox.execute_code(code=user_code, language="python", timeout=5)
+        ref_out = ref_result.get("stdout", "").strip()
+        user_out = user_result.get("stdout", "").strip()
+        passed = ref_out == user_out and ref_out != ""
+        return {
+            "total_cases": 1,
+            "passed_count": 1 if passed else 0,
+            "failed_count": 0 if passed else 1,
+            "pass_rate": 100.0 if passed else 0.0,
+            "all_passed": passed,
+            "details": [{"case_index": 1, "passed": passed,
+                          "expected": ref_out[:500] or "(无输出)",
+                          "actual": user_out[:500] or "(无输出)"}],
+            "summary": "输出匹配" if passed else "输出不匹配",
+        }
+
+    # 用参考答案生成 expected，用用户代码生成 actual
+    results = []
+    for i, args in enumerate(test_inputs):
+        args_str = ", ".join(repr(a) for a in args)
+        call_line = f"print({func_name}({args_str}))"
+
+        # 执行参考答案
+        ref_code = f"{reference_code}\n{call_line}"
+        ref_result = await sandbox.execute_code(code=ref_code, language="python", timeout=5)
+        expected = ref_result.get("stdout", "").strip()
+
+        # 执行用户代码
+        user_exec_code = f"{user_code}\n{call_line}"
+        user_result = await sandbox.execute_code(code=user_exec_code, language="python", timeout=5)
+        actual = user_result.get("stdout", "").strip()
+
+        passed = actual == expected
+        results.append({
+            "case_index": i + 1,
+            "passed": passed,
+            "expected": expected[:500] or "(无输出)",
+            "actual": actual[:500] or "(无输出)",
+            "error": user_result.get("stderr", "")[:200] if user_result.get("stderr") else None,
+        })
+
+    total = len(results)
+    passed_count = sum(1 for r in results if r["passed"])
+    return {
+        "total_cases": total,
+        "passed_count": passed_count,
+        "failed_count": total - passed_count,
+        "pass_rate": round(passed_count / total * 100, 1) if total > 0 else 0.0,
+        "all_passed": passed_count == total and total > 0,
+        "details": results,
+        "summary": f"通过 {passed_count}/{total} 个测试用例",
+    }
+
+
+def _generate_test_inputs(func_name: str, params_str: str) -> list[list]:
+    """
+    根据函数名和参数名生成通用测试输入。
+    返回 list of args lists，如 [[1, 10], [0, 5], [-1, 1]]
+    """
+    params = [p.strip().split("=")[0].strip() for p in params_str.split(",") if p.strip()]
+    if not params:
+        return []
+
+    # 根据函数名和参数名推断测试输入
+    fn = func_name.lower()
+    n_params = len(params)
+
+    # 密码强度检查类
+    if "password" in fn or "passwd" in fn:
+        return [
+            ["Abc123!"],        # 长度7 → weak
+            ["Abcd123!"],       # 全满足 → strong
+            ["Abcd1234"],       # 缺特殊字符 → medium
+            ["abcd1234"],       # 缺大写+特殊 → weak
+            ["ABCDEFGH"],       # 只有大写 → weak
+            ["Abcdefg!"],       # 缺数字 → medium
+        ]
+
+    # 边界值类
+    if "boundary" in fn or "bound" in fn:
+        if n_params == 2:
+            return [[1, 10], [0, 100], [-5, 5], [1, 1]]
+        return [[1, 10]]
+
+    # 排序类
+    if "sort" in fn:
+        return [
+            [[3, 1, 2]],
+            [[5, 5, 5]],
+            [[]],
+            [[1]],
+            [[9, 3, 7, 1, 5]],
+        ]
+
+    # 查找类
+    if "find" in fn or "search" in fn or "index" in fn:
+        if n_params == 2:
+            return [[1, [1, 2, 3]], [5, [1, 2, 3]], [3, [3]]]
+        return [[1, 2, 3]]
+
+    # 判断/检查类
+    if "check" in fn or "is_" in fn or "valid" in fn or "verify" in fn:
+        if n_params == 1:
+            return [["test"], [""], ["123"], ["ABC"]]
+        if n_params == 2:
+            return [[1, 10], [0, 0], [10, 1]]
+        return [[1]]
+
+    # 计算/生成类
+    if "calc" in fn or "compute" in fn or "generat" in fn or "fib" in fn or "factorial" in fn:
+        if n_params == 1:
+            return [[1], [5], [10], [0]]
+        if n_params == 2:
+            return [[1, 10], [0, 5], [3, 3]]
+        return [[1]]
+
+    # 反转类
+    if "revers" in fn:
+        return [["hello"], [""], ["a"], ["12345"]]
+
+    # 通用：根据参数数量生成基础测试
+    if n_params == 1:
+        return [[1], [0], [-1], [10], [100]]
+    if n_params == 2:
+        return [[1, 10], [0, 5], [5, 1], [0, 0], [-1, 1]]
+    if n_params == 3:
+        return [[1, 2, 3], [0, 0, 0], [-1, 0, 1]]
+
+    return []
+
+
 async def _execute_and_judge(
     sandbox: CodeSandbox,
     language: str,
     source_code: str,
     test_cases: list[dict],
     setup_code: str = "",
+    function_name: str = "",
 ) -> dict:
     """
-    在沙箱中执行用户代码，逐个测试用例比对输出。
+    在沙箱中执行用户代码，逐个测试用例比对结果。
+    支持两种测试用例格式：
+    1. 函数调用型: {"function": "check_password_strength", "args": ["Abc123!"], "expected": "weak"}
+       → 自动生成调用代码，比较返回值
+    2. 输入输出型: {"input": "...", "expected_output": "..."}
+       → 通过 stdin 提供输入，比较 stdout
     返回 { total_cases, passed_count, failed_count, pass_rate, all_passed, details }
     """
     results = []
-    full_code = ""
 
     if language == "python":
-        if setup_code:
-            full_code = setup_code + "\n"
-        full_code += source_code
-
         for i, tc in enumerate(test_cases):
-            case_input = tc.get("input", "")
-            expected = str(tc.get("expected_output", tc.get("expected", ""))).strip()
+            # 函数调用型测试用例
+            func_call = tc.get("function", "")
+            func_args = tc.get("args", [])
+            expected = str(tc.get("expected", tc.get("expected_output", ""))).strip()
 
-            if case_input:
+            if func_call:
+                # 生成调用代码：先执行用户代码定义函数，再调用并 print 结果
+                args_str = ", ".join(repr(a) for a in func_args)
+                call_code = f'{source_code}\nprint({func_call}({args_str}))'
                 exec_result = await sandbox.execute_code(
-                    code=full_code,
+                    code=call_code,
                     language="python",
-                    input_data=case_input,
                     timeout=5,
                 )
             else:
+                # 输入输出型测试用例
+                case_input = tc.get("input", "")
+                full_code = (setup_code + "\n" if setup_code else "") + source_code
                 exec_result = await sandbox.execute_code(
                     code=full_code,
                     language="python",
+                    input_data=case_input or None,
                     timeout=5,
                 )
 
@@ -120,7 +301,7 @@ async def _execute_and_judge(
                     "case_index": i + 1,
                     "passed": passed,
                     "expected": expected,
-                    "actual": actual[:500],
+                    "actual": actual[:500] if actual else "(无输出)",
                     "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
                 }
             )
@@ -145,17 +326,26 @@ async def _execute_and_judge(
                     "case_index": i + 1,
                     "passed": passed,
                     "expected": expected,
-                    "actual": actual[:500],
+                    "actual": actual[:500] if actual else "(无输出)",
                     "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
                 }
             )
     else:
+        # shell 等其他语言
         for i, tc in enumerate(test_cases):
-            case_input = tc.get("input", "")
+            func_call = tc.get("function", "")
+            func_args = tc.get("args", [])
             expected = str(tc.get("expected_output", tc.get("expected", ""))).strip()
 
+            if func_call and language == "python":
+                args_str = ", ".join(repr(a) for a in func_args)
+                call_code = f'{source_code}\nprint({func_call}({args_str}))'
+            else:
+                call_code = source_code
+
+            case_input = tc.get("input", "")
             exec_result = await sandbox.execute_code(
-                code=source_code,
+                code=call_code,
                 language=language,
                 input_data=case_input or None,
                 timeout=5,
@@ -168,7 +358,7 @@ async def _execute_and_judge(
                     "case_index": i + 1,
                     "passed": passed,
                     "expected": expected,
-                    "actual": actual[:500],
+                    "actual": actual[:500] if actual else "(无输出)",
                     "error": exec_result.get("stderr", "")[:200] if exec_result.get("stderr") else None,
                 }
             )
@@ -417,56 +607,67 @@ async def submit_exercise(
             )
             is_correct = judge_result["all_passed"]
         elif ex.solution:
-            exec_result = await sandbox.execute_code(
-                code=solution,
-                language=language,
-                timeout=5,
-            )
-            actual = exec_result.get("stdout", "").strip()
-
-            if exec_result.get("exit_code", -1) != 0 or exec_result.get("stderr", ""):
-                is_correct = False
-                judge_result = {
-                    "total_cases": 1,
-                    "passed_count": 0,
-                    "failed_count": 1,
-                    "pass_rate": 0.0,
-                    "all_passed": False,
-                    "details": [
-                        {
-                            "case_index": 1,
-                            "passed": False,
-                            "expected": "代码运行无错误",
-                            "actual": exec_result.get("stderr", "")[:500],
-                        }
-                    ],
-                    "summary": "代码运行出错",
-                }
+            # 有参考答案但没有 test_cases：智能判题
+            # 对于 Python 函数题，用参考答案生成测试用例
+            if language == "python" and "def " in ex.solution:
+                judge_result = await _smart_judge_python_function(
+                    sandbox=sandbox,
+                    user_code=solution,
+                    reference_code=ex.solution,
+                )
+                is_correct = judge_result["all_passed"]
             else:
-                ref_result = await sandbox.execute_code(
-                    code=ex.solution,
+                # 非 Python 或非函数题：执行比较 stdout
+                exec_result = await sandbox.execute_code(
+                    code=solution,
                     language=language,
                     timeout=5,
                 )
-                expected = ref_result.get("stdout", "").strip()
-                is_correct = actual == expected and actual != ""
+                actual = exec_result.get("stdout", "").strip()
 
-                judge_result = {
-                    "total_cases": 1,
-                    "passed_count": 1 if is_correct else 0,
-                    "failed_count": 0 if is_correct else 1,
-                    "pass_rate": 100.0 if is_correct else 0.0,
-                    "all_passed": is_correct,
-                    "details": [
-                        {
-                            "case_index": 1,
-                            "passed": is_correct,
-                            "expected": expected[:500] if expected else "(无输出)",
-                            "actual": actual[:500] if actual else "(无输出)",
-                        }
-                    ],
-                    "summary": "输出正确" if is_correct else "输出不匹配",
-                }
+                if exec_result.get("exit_code", -1) != 0 or exec_result.get("stderr", ""):
+                    is_correct = False
+                    judge_result = {
+                        "total_cases": 1,
+                        "passed_count": 0,
+                        "failed_count": 1,
+                        "pass_rate": 0.0,
+                        "all_passed": False,
+                        "details": [
+                            {
+                                "case_index": 1,
+                                "passed": False,
+                                "expected": "代码运行无错误",
+                                "actual": exec_result.get("stderr", "")[:500],
+                            }
+                        ],
+                        "summary": "代码运行出错",
+                    }
+                else:
+                    ref_result = await sandbox.execute_code(
+                        code=ex.solution,
+                        language=language,
+                        timeout=5,
+                    )
+                    expected = ref_result.get("stdout", "").strip()
+                    is_correct = actual == expected and actual != ""
+
+                    judge_result = {
+                        "total_cases": 1,
+                        "passed_count": 1 if is_correct else 0,
+                        "failed_count": 0 if is_correct else 1,
+                        "pass_rate": 100.0 if is_correct else 0.0,
+                        "all_passed": is_correct,
+                        "details": [
+                            {
+                                "case_index": 1,
+                                "passed": is_correct,
+                                "expected": expected[:500] if expected else "(无输出)",
+                                "actual": actual[:500] if actual else "(无输出)",
+                            }
+                        ],
+                        "summary": "输出正确" if is_correct else "输出不匹配",
+                    }
         else:
             exec_result = await sandbox.execute_code(
                 code=solution,
