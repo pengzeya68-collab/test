@@ -409,7 +409,7 @@ const getAIEvaluation = async () => {
   aiLoading.value = true
   try {
     const res = await request.post('/exercise/evaluate', {
-      exercise_id: selectedExercise.value.id.toString(),
+      exercise_id: selectedExercise.value.id,
       language: currentLanguage.value,
       source_code: userCode.value,
       exercise_description: selectedExercise.value.description,
@@ -436,7 +436,7 @@ const submitCode = async () => {
   submitLoading.value = true
   try {
     const res = await request.post('/exercise/submit', {
-      exercise_id: selectedExercise.value.id.toString(),
+      exercise_id: selectedExercise.value.id,
       solution: userCode.value,
       language: currentLanguage.value,
       exercise_type: selectedExercise.value.exercise_type || 'code'

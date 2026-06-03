@@ -42,6 +42,40 @@ def get_sandbox():
     return CodeSandbox()
 
 
+# 语言别名映射：统一各种变体到标准语言名
+_LANGUAGE_ALIASES = {
+    "python3": "python",
+    "python2": "python",
+    "py": "python",
+    "bash": "shell",
+    "sh": "shell",
+    "zsh": "shell",
+    "sqlite": "sql",
+    "mysql": "sql",
+    "postgresql": "sql",
+    "pgsql": "sql",
+    "中文": "python",  # 中文理论题中的代码题默认按python处理
+}
+
+
+def _normalize_language(language: str, exercise_type: str = "") -> str:
+    """标准化语言名称：小写 + 别名映射 + exercise_type推断"""
+    lang = (language or "").lower().strip()
+    # 别名映射
+    if lang in _LANGUAGE_ALIASES:
+        return _LANGUAGE_ALIASES[lang]
+    # 已知语言直接返回
+    if lang in ("python", "sql", "shell", "javascript"):
+        return lang
+    # 根据 exercise_type 推断
+    if exercise_type == "sql":
+        return "sql"
+    if exercise_type == "code":
+        return "python"
+    # 默认 python
+    return "python"
+
+
 async def _execute_and_judge(
     sandbox: CodeSandbox,
     language: str,
@@ -169,9 +203,12 @@ async def evaluate_exercise_code(
     """
     from fastapi_backend.schemas.interview import CodeSubmission
 
+    # 标准化语言
+    normalized_language = _normalize_language(submission.language)
+
     code_submission = CodeSubmission(
         question_id=submission.exercise_id,
-        language=submission.language,
+        language=normalized_language,
         source_code=submission.source_code,
     )
 
@@ -186,7 +223,7 @@ async def evaluate_exercise_code(
             if isinstance(test_cases, list) and len(test_cases) > 0:
                 judge_result = await _execute_and_judge(
                     sandbox=sandbox,
-                    language=submission.language,
+                    language=normalized_language,
                     source_code=submission.source_code,
                     test_cases=test_cases,
                 )
@@ -197,7 +234,7 @@ async def evaluate_exercise_code(
         expected = submission.expected_output.strip()
         exec_result = await sandbox.execute_code(
             code=submission.source_code,
-            language=submission.language,
+            language=normalized_language,
             timeout=5,
         )
         actual = exec_result.get("stdout", "").strip()
@@ -248,15 +285,33 @@ async def submit_exercise(
     if not body or "exercise_id" not in body or "solution" not in body:
         raise HTTPException(status_code=400, detail="exercise_id 和 solution 为必填项")
 
-    stmt = select(Exercise).where(Exercise.id == body["exercise_id"])
+    # 确保 exercise_id 是整数（前端可能传字符串）
+    try:
+        exercise_id = int(body["exercise_id"])
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="exercise_id 必须是有效整数")
+
+    stmt = select(Exercise).where(Exercise.id == exercise_id)
     result = await db.execute(stmt)
     ex = result.scalar_one_or_none()
     if not ex:
         raise HTTPException(status_code=404, detail="习题不存在")
 
     solution = body["solution"]
+
+    # 语言标准化：统一小写 + 别名映射
+    raw_language = body.get("language", ex.language or "python")
+    language = _normalize_language(raw_language, ex.exercise_type)
+
+    # 智能推断 exercise_type
     exercise_type = body.get("exercise_type", ex.exercise_type or "text")
-    language = body.get("language", ex.language or "python")
+    # 如果 language 是 sql 但 exercise_type 不是 sql，修正
+    if language == "sql" and exercise_type != "sql":
+        exercise_type = "sql"
+    # 如果 exercise_type 是 sql 但 language 不是 sql，修正
+    if exercise_type == "sql" and language != "sql":
+        language = "sql"
+
     judge_result = None
     is_correct = False
 
