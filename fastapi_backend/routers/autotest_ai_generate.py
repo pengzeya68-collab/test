@@ -16,8 +16,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestGroup, AutoTestScenario, AutoTestScenarioStep
+from fastapi_backend.models.models import User
 from fastapi_backend.services.autotest_ai_generator import (
     AITestCaseGenerator,
     create_task_id,
@@ -80,7 +81,6 @@ def _should_run_locally() -> bool:
 router = APIRouter(
     prefix="/api/auto-test/ai-generate",
     tags=["AutoTest-AI生成用例"],
-    dependencies=[Depends(get_current_user)],
 )
 
 
@@ -94,6 +94,7 @@ async def generate_from_swagger(
     include_boundary: bool = Form(True),
     include_auth: bool = Form(True),
     include_chain: bool = Form(True),
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     从 Swagger/OpenAPI 文件启动 AI 生成测试用例任务
@@ -125,7 +126,7 @@ async def generate_from_swagger(
         }
 
         # 3. 创建任务并分发
-        return await _dispatch_generation_task(swagger_data, options)
+        return await _dispatch_generation_task(swagger_data, options, current_user.id)
 
     except HTTPException:
         raise
@@ -141,6 +142,7 @@ async def generate_from_swagger_url(
     include_boundary: bool = Form(True),
     include_auth: bool = Form(True),
     include_chain: bool = Form(True),
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     从 Swagger URL 启动 AI 生成测试用例任务
@@ -165,7 +167,7 @@ async def generate_from_swagger_url(
             "include_chain": include_chain,
         }
 
-        return await _dispatch_generation_task(swagger_data, options)
+        return await _dispatch_generation_task(swagger_data, options, current_user.id)
 
     except HTTPException:
         raise
@@ -176,7 +178,7 @@ async def generate_from_swagger_url(
         raise HTTPException(status_code=500, detail=f"启动失败: {type(e).__name__}: {str(e)}")
 
 
-async def _dispatch_generation_task(swagger_data: dict, options: dict) -> dict:
+async def _dispatch_generation_task(swagger_data: dict, options: dict, user_id: int) -> dict:
     """创建任务记录并分发到 Celery 或本地异步执行"""
     task_id = create_task_id()
 
@@ -202,6 +204,7 @@ async def _dispatch_generation_task(swagger_data: dict, options: dict) -> dict:
         "message": "",
         "error": None,
         "created_at": time.time(),
+        "user_id": user_id,
     })
 
     use_local = _should_run_locally()
@@ -228,7 +231,10 @@ async def _dispatch_generation_task(swagger_data: dict, options: dict) -> dict:
 
 
 @router.get("/tasks/{task_id}")
-async def get_generation_task_status(task_id: str):
+async def get_generation_task_status(
+    task_id: str,
+    current_user: User = Depends(get_current_active_user),
+):
     """
     轮询 AI 生成任务进度
 
@@ -236,6 +242,8 @@ async def get_generation_task_status(task_id: str):
     """
     stored = get_task(task_id)
     if not stored:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+    if stored.get("user_id") != current_user.id:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
 
     return {
@@ -257,7 +265,10 @@ async def get_generation_task_status(task_id: str):
 
 
 @router.post("/tasks/{task_id}/cancel")
-async def cancel_generation_task(task_id: str):
+async def cancel_generation_task(
+    task_id: str,
+    current_user: User = Depends(get_current_active_user),
+):
     """
     取消 AI 生成任务
 
@@ -266,6 +277,8 @@ async def cancel_generation_task(task_id: str):
     """
     stored = get_task(task_id)
     if not stored:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+    if stored.get("user_id") != current_user.id:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
 
     # 只有进行中的任务才能取消
@@ -296,6 +309,7 @@ async def cancel_generation_task(task_id: str):
 @router.post("/confirm")
 async def confirm_import(
     data: dict,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -322,11 +336,12 @@ async def confirm_import(
         select(AutoTestGroup).where(
             AutoTestGroup.name == group_name,
             AutoTestGroup.parent_id.is_(None),
+            AutoTestGroup.user_id == current_user.id,
         )
     )
     group = result.scalar_one_or_none()
     if not group:
-        group = AutoTestGroup(name=group_name, parent_id=None)
+        group = AutoTestGroup(name=group_name, parent_id=None, user_id=current_user.id)
         db.add(group)
         await db.flush()
 
@@ -348,11 +363,12 @@ async def confirm_import(
                 select(AutoTestGroup).where(
                     AutoTestGroup.name == tag,
                     AutoTestGroup.parent_id == group.id,
+                    AutoTestGroup.user_id == current_user.id,
                 )
             )
             sub_group = sub_result.scalar_one_or_none()
             if not sub_group:
-                sub_group = AutoTestGroup(name=tag, parent_id=group.id)
+                sub_group = AutoTestGroup(name=tag, parent_id=group.id, user_id=current_user.id)
                 db.add(sub_group)
                 await db.flush()
             api_groups[tag] = sub_group
@@ -403,6 +419,7 @@ async def confirm_import(
             assert_rules=assert_rules,
             extractors=extractors,
             description=case_data.get("description", ""),
+            user_id=current_user.id,
         )
         db.add(case)
         await db.flush()
@@ -415,6 +432,7 @@ async def confirm_import(
             scenario = AutoTestScenario(
                 name=scenario_data.get("name", "AI生成场景"),
                 description=scenario_data.get("description", ""),
+                user_id=current_user.id,
             )
             db.add(scenario)
             await db.flush()

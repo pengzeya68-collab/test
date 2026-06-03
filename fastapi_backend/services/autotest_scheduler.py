@@ -27,7 +27,7 @@ scheduler: Optional[AsyncIOScheduler] = None
 scheduled_tasks: Dict[str, Dict[str, Any]] = {}
 
 
-def _schedule_meta_from_db(scenario_id: int) -> Dict[str, Any]:
+def _schedule_meta_from_db(scenario_id: int, user_id: int = None) -> Dict[str, Any]:
     """从 PostgreSQL 读取定时配置（内存丢失或从 Job 重建时补全 Webhook 等）。"""
     import asyncio
     from fastapi_backend.core.database import async_session
@@ -36,15 +36,16 @@ def _schedule_meta_from_db(scenario_id: int) -> Dict[str, Any]:
 
     async def _read() -> Dict[str, Any]:
         async with async_session() as session:
-            res = await session.execute(
-                select(
-                    AutoTestScenario.schedule_webhook_url,
-                    AutoTestScenario.schedule_cron_expression,
-                    AutoTestScenario.schedule_env_id,
-                    AutoTestScenario.schedule_task_name,
-                    AutoTestScenario.schedule_is_active,
-                ).where(AutoTestScenario.id == scenario_id)
-            )
+            query = select(
+                AutoTestScenario.schedule_webhook_url,
+                AutoTestScenario.schedule_cron_expression,
+                AutoTestScenario.schedule_env_id,
+                AutoTestScenario.schedule_task_name,
+                AutoTestScenario.schedule_is_active,
+            ).where(AutoTestScenario.id == scenario_id)
+            if user_id is not None:
+                query = query.where(AutoTestScenario.user_id == user_id)
+            res = await session.execute(query)
             row = res.first()
             if not row:
                 return {}
@@ -103,7 +104,7 @@ def get_scheduler() -> AsyncIOScheduler:
     return scheduler
 
 
-async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id: str):
+async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id: str, user_id: int = None):
     """执行场景任务的异步函数 - 通过Celery发送任务"""
     import subprocess
 
@@ -115,7 +116,10 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
         from sqlalchemy import select
 
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+            query = select(AutoTestScenario).where(AutoTestScenario.id == scenario_id)
+            if user_id is not None:
+                query = query.where(AutoTestScenario.user_id == user_id)
+            result = await db.execute(query)
             scenario = result.scalar_one_or_none()
             if not scenario or not scenario.is_active:
                 _logger.info(f"[Scheduler] 场景 {scenario_id} 已停用或不存在，跳过执行")
@@ -136,7 +140,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
 
         # 创建Celery任务
         _logger.info(f"[Scheduler] 发送Celery任务: scenario_id={scenario_id}, env_id={env_id}")
-        celery_task = task_run_scenario.delay(scenario_id, env_id)
+        celery_task = task_run_scenario.delay(scenario_id, env_id, user_id)
 
         if not celery_task:
             raise ValueError("Celery任务创建失败，task为None")
@@ -272,7 +276,8 @@ def add_scheduled_task(
     env_id: Optional[int] = None,
     webhook_url: Optional[str] = None,
     task_name: Optional[str] = None,
-    is_active: Optional[bool] = True
+    is_active: Optional[bool] = True,
+    user_id: int = None,
 ) -> Dict[str, Any]:
     """添加定时任务"""
     global scheduled_tasks
@@ -288,7 +293,7 @@ def add_scheduled_task(
     job = get_scheduler().add_job(
         func=execute_scenario_job,
         trigger=CronTrigger(minute=minute, hour=hour, day=day, month=month, day_of_week=day_of_week),
-        args=[scenario_id, env_id, task_id],
+        args=[scenario_id, env_id, task_id, user_id],
         id=task_id,
         name=task_name or f"场景 {scenario_id} 定时执行",
         replace_existing=True,
@@ -315,7 +320,8 @@ def add_scheduled_task(
         "report_url": None,
         "status": "idle",
         "is_active": is_active if is_active is not None else True,
-        "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None
+        "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+        "user_id": user_id,
     }
 
     scheduled_tasks[task_id] = task_info
@@ -388,6 +394,7 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
         args = job.args if job.args else []
         scenario_id = args[0] if len(args) > 0 else 0
         env_id = args[1] if len(args) > 1 else None
+        job_user_id = args[3] if len(args) > 3 else None
 
         # 解析cron表达式
         cron_expr = ""
@@ -396,7 +403,7 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
             fields = job.trigger.fields
             cron_expr = f"{fields[0]} {fields[1]} {fields[2]} {fields[3]} {fields[4]}"
 
-        meta = _schedule_meta_from_db(scenario_id)
+        meta = _schedule_meta_from_db(scenario_id, user_id=job_user_id)
         task_info = {
             "task_id": task_id,
             "job_id": job.id,
@@ -421,8 +428,8 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def get_all_scheduled_tasks() -> List[Dict[str, Any]]:
-    """获取所有定时任务"""
+def get_all_scheduled_tasks(user_id: int = None) -> List[Dict[str, Any]]:
+    """获取所有定时任务（可按用户过滤）"""
     sched = get_scheduler()
 
     # 首先确保scheduled_tasks包含所有调度器中的作业
@@ -433,6 +440,7 @@ def get_all_scheduled_tasks() -> List[Dict[str, Any]]:
             args = job.args if job.args else []
             scenario_id = args[0] if len(args) > 0 else 0
             env_id = args[1] if len(args) > 1 else None
+            job_user_id = args[3] if len(args) > 3 else None
 
             # 解析cron表达式
             cron_expr = ""
@@ -441,7 +449,7 @@ def get_all_scheduled_tasks() -> List[Dict[str, Any]]:
                 fields = job.trigger.fields
                 cron_expr = f"{fields[0]} {fields[1]} {fields[2]} {fields[3]} {fields[4]}"
 
-            meta = _schedule_meta_from_db(scenario_id)
+            meta = _schedule_meta_from_db(scenario_id, user_id=job_user_id)
             task_info = {
                 "task_id": task_id,
                 "job_id": job.id,
@@ -475,16 +483,22 @@ def get_all_scheduled_tasks() -> List[Dict[str, Any]]:
             _logger.warning(f"更新任务 next_run_time 失败 {task_id}: {e}")
         sid = task_info.get("scenario_id")
         if sid is not None and not (task_info.get("webhook_url") or "").strip():
-            m = _schedule_meta_from_db(int(sid))
+            m = _schedule_meta_from_db(int(sid), user_id=task_info.get("user_id"))
             if m.get("webhook_url"):
                 task_info["webhook_url"] = m.get("webhook_url")
 
-    return list(scheduled_tasks.values())
+    tasks = list(scheduled_tasks.values())
+    if user_id is not None:
+        tasks = [t for t in tasks if t.get("user_id") == user_id]
+    return tasks
 
 
-def get_tasks_by_scenario(scenario_id: int) -> List[Dict[str, Any]]:
+def get_tasks_by_scenario(scenario_id: int, user_id: int = None) -> List[Dict[str, Any]]:
     """获取指定场景的所有定时任务"""
-    return [task for task in scheduled_tasks.values() if task["scenario_id"] == scenario_id]
+    tasks = [task for task in scheduled_tasks.values() if task["scenario_id"] == scenario_id]
+    if user_id is not None:
+        tasks = [t for t in tasks if t.get("user_id") == user_id]
+    return tasks
 
 
 def start_scheduler():

@@ -45,9 +45,13 @@ async def persist_schedule_to_db(
     webhook_url: Optional[str],
     name: Optional[str],
     is_active: bool,
+    user_id: int = None,
 ) -> None:
     async with async_session() as session:
-        res = await session.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+        query = select(AutoTestScenario).where(AutoTestScenario.id == scenario_id)
+        if user_id is not None:
+            query = query.where(AutoTestScenario.user_id == user_id)
+        res = await session.execute(query)
         row = res.scalar_one_or_none()
         if not row:
             return
@@ -59,9 +63,12 @@ async def persist_schedule_to_db(
         await session.commit()
 
 
-async def persist_schedule_is_active_db(scenario_id: int, is_active: bool) -> None:
+async def persist_schedule_is_active_db(scenario_id: int, is_active: bool, user_id: int = None) -> None:
     async with async_session() as session:
-        res = await session.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+        query = select(AutoTestScenario).where(AutoTestScenario.id == scenario_id)
+        if user_id is not None:
+            query = query.where(AutoTestScenario.user_id == user_id)
+        res = await session.execute(query)
         row = res.scalar_one_or_none()
         if not row:
             return
@@ -69,9 +76,12 @@ async def persist_schedule_is_active_db(scenario_id: int, is_active: bool) -> No
         await session.commit()
 
 
-async def clear_schedule_from_db(scenario_id: int) -> None:
+async def clear_schedule_from_db(scenario_id: int, user_id: int = None) -> None:
     async with async_session() as session:
-        res = await session.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+        query = select(AutoTestScenario).where(AutoTestScenario.id == scenario_id)
+        if user_id is not None:
+            query = query.where(AutoTestScenario.user_id == user_id)
+        res = await session.execute(query)
         row = res.scalar_one_or_none()
         if not row:
             return
@@ -113,20 +123,22 @@ async def restore_scheduler_jobs_from_db() -> None:
                 webhook_url=s.schedule_webhook_url,
                 task_name=s.schedule_task_name,
                 is_active=s.schedule_is_active if s.schedule_is_active is not None else True,
+                user_id=s.user_id,
             )
         except Exception as e:
             _logger.error(f"[Scheduler] 从数据库恢复任务失败 scenario_id={s.id}: {e}")
 
 
-def read_schedule_webhook_sync(scenario_id: int) -> Optional[str]:
+def read_schedule_webhook_sync(scenario_id: int, user_id: int = None) -> Optional[str]:
     """同步读取场景的定时 Webhook（供 Celery worker 等非 async 上下文使用）。"""
     import asyncio
 
     async def _read() -> Optional[str]:
         async with async_session() as session:
-            res = await session.execute(
-                select(AutoTestScenario.schedule_webhook_url).where(AutoTestScenario.id == scenario_id)
-            )
+            query = select(AutoTestScenario.schedule_webhook_url).where(AutoTestScenario.id == scenario_id)
+            if user_id is not None:
+                query = query.where(AutoTestScenario.user_id == user_id)
+            res = await session.execute(query)
             row = res.scalar_one_or_none()
             if not row:
                 return None

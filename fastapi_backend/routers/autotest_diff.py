@@ -10,8 +10,9 @@ from typing import Dict, Any, List
 import json
 
 from fastapi_backend.core.autotest_database import get_autotest_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment
+from fastapi_backend.models.models import User
 
 router = APIRouter(prefix="/api/auto-test/diff", tags=["API-Diff"])
 
@@ -50,7 +51,10 @@ def _deep_diff(a: Any, b: Any, path: str = "") -> List[Dict]:
 
 
 @router.post("/compare")
-async def compare_responses(body: Dict[str, Any]):
+async def compare_responses(
+    body: Dict[str, Any],
+    current_user: User = Depends(get_current_active_user),
+):
     """
     比较两个 JSON 响应的差异
     
@@ -88,11 +92,16 @@ async def compare_responses(body: Dict[str, Any]):
 
 
 @router.get("/cases")
-async def list_diffable_cases(db=Depends(get_autotest_db)):
+async def list_diffable_cases(
+    current_user: User = Depends(get_current_active_user),
+    db=Depends(get_autotest_db),
+):
     """列出可进行 Diff 对比的接口用例"""
     async for session in db():
         result = await session.execute(
-            select(AutoTestCase).where(AutoTestCase.is_active == True).limit(50)
+            select(AutoTestCase).where(
+                AutoTestCase.user_id == current_user.id,
+            ).limit(50)
         )
         cases = result.scalars().all()
         return {"cases": [{"id": c.id, "name": c.name, "method": c.method, "url": c.url} for c in cases]}

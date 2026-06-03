@@ -23,14 +23,14 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import MockProject, MockRule, MockRequestLog
+from fastapi_backend.models.models import User
 from fastapi_backend.services.mock_service import mock_engine
 
 router = APIRouter(
     prefix="/api/mock",
     tags=["Mock服务"],
-    dependencies=[Depends(get_current_user)],
 )
 
 # 动态 Mock 端点需要独立路由，不能继承父级鉴权
@@ -92,7 +92,7 @@ class MockRuleUpdate(BaseModel):
 
 
 @router.post("/projects")
-async def create_project(body: MockProjectCreate):
+async def create_project(body: MockProjectCreate, current_user: User = Depends(get_current_active_user)):
     """创建 Mock 项目"""
     async with AsyncSessionLocal() as db:
         # 检查 slug 唯一性
@@ -107,6 +107,7 @@ async def create_project(body: MockProjectCreate):
             description=body.description,
             base_url_slug=body.base_url_slug,
             swagger_source_id=body.swagger_source_id,
+            user_id=current_user.id,
         )
         db.add(project)
         await db.commit()
@@ -121,14 +122,15 @@ async def create_project(body: MockProjectCreate):
 
 
 @router.get("/projects")
-async def list_projects(page: int = 1, size: int = 20):
+async def list_projects(page: int = 1, size: int = 20, current_user: User = Depends(get_current_active_user)):
     """列出 Mock 项目"""
     async with AsyncSessionLocal() as db:
-        total_result = await db.execute(select(func.count(MockProject.id)))
+        total_result = await db.execute(select(func.count(MockProject.id)).where(MockProject.user_id == current_user.id))
         total = total_result.scalar() or 0
 
         result = await db.execute(
             select(MockProject)
+            .where(MockProject.user_id == current_user.id)
             .order_by(MockProject.created_at.desc())
             .offset((page - 1) * size)
             .limit(size)
@@ -159,10 +161,10 @@ async def list_projects(page: int = 1, size: int = 20):
 
 
 @router.get("/projects/{project_id}")
-async def get_project(project_id: int):
+async def get_project(project_id: int, current_user: User = Depends(get_current_active_user)):
     """获取 Mock 项目详情"""
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(MockProject).where(MockProject.id == project_id))
+        result = await db.execute(select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id))
         project = result.scalar_one_or_none()
         if not project:
             raise HTTPException(status_code=404, detail="项目不存在")
@@ -178,10 +180,10 @@ async def get_project(project_id: int):
 
 
 @router.put("/projects/{project_id}")
-async def update_project(project_id: int, body: MockProjectUpdate):
+async def update_project(project_id: int, body: MockProjectUpdate, current_user: User = Depends(get_current_active_user)):
     """更新 Mock 项目"""
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(MockProject).where(MockProject.id == project_id))
+        result = await db.execute(select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id))
         project = result.scalar_one_or_none()
         if not project:
             raise HTTPException(status_code=404, detail="项目不存在")
@@ -200,10 +202,10 @@ async def update_project(project_id: int, body: MockProjectUpdate):
 
 
 @router.delete("/projects/{project_id}")
-async def delete_project(project_id: int):
+async def delete_project(project_id: int, current_user: User = Depends(get_current_active_user)):
     """删除 Mock 项目"""
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(MockProject).where(MockProject.id == project_id))
+        result = await db.execute(select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id))
         project = result.scalar_one_or_none()
         if not project:
             raise HTTPException(status_code=404, detail="项目不存在")
@@ -216,10 +218,10 @@ async def delete_project(project_id: int):
 
 
 @router.post("/projects/{project_id}/rules")
-async def create_rule(project_id: int, body: MockRuleCreate):
+async def create_rule(project_id: int, body: MockRuleCreate, current_user: User = Depends(get_current_active_user)):
     """创建 Mock 规则"""
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(MockProject).where(MockProject.id == project_id))
+        result = await db.execute(select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id))
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="项目不存在")
 
@@ -244,9 +246,21 @@ async def create_rule(project_id: int, body: MockRuleCreate):
 
 
 @router.get("/projects/{project_id}/rules")
-async def list_rules(project_id: int, page: int = 1, size: int = 50):
+async def list_rules(
+    project_id: int,
+    page: int = 1,
+    size: int = 50,
+    current_user: User = Depends(get_current_active_user),
+):
     """列出项目的 Mock 规则"""
     async with AsyncSessionLocal() as db:
+        # 校验项目归属
+        project_result = await db.execute(
+            select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id)
+        )
+        if not project_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="项目不存在")
+
         total_result = await db.execute(
             select(func.count(MockRule.id)).where(MockRule.project_id == project_id)
         )
@@ -284,9 +298,21 @@ async def list_rules(project_id: int, page: int = 1, size: int = 50):
 
 
 @router.put("/projects/{project_id}/rules/{rule_id}")
-async def update_rule(project_id: int, rule_id: int, body: MockRuleUpdate):
+async def update_rule(
+    project_id: int,
+    rule_id: int,
+    body: MockRuleUpdate,
+    current_user: User = Depends(get_current_active_user),
+):
     """更新 Mock 规则"""
     async with AsyncSessionLocal() as db:
+        # 校验项目归属
+        project_result = await db.execute(
+            select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id)
+        )
+        if not project_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="项目不存在")
+
         result = await db.execute(
             select(MockRule).where(MockRule.id == rule_id, MockRule.project_id == project_id)
         )
@@ -304,9 +330,20 @@ async def update_rule(project_id: int, rule_id: int, body: MockRuleUpdate):
 
 
 @router.delete("/projects/{project_id}/rules/{rule_id}")
-async def delete_rule(project_id: int, rule_id: int):
+async def delete_rule(
+    project_id: int,
+    rule_id: int,
+    current_user: User = Depends(get_current_active_user),
+):
     """删除 Mock 规则"""
     async with AsyncSessionLocal() as db:
+        # 校验项目归属
+        project_result = await db.execute(
+            select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id)
+        )
+        if not project_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="项目不存在")
+
         result = await db.execute(
             select(MockRule).where(MockRule.id == rule_id, MockRule.project_id == project_id)
         )
@@ -327,9 +364,17 @@ async def list_logs(
     page: int = 1,
     size: int = 50,
     method: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user),
 ):
     """查看 Mock 请求日志"""
     async with AsyncSessionLocal() as db:
+        # 校验项目归属
+        project_result = await db.execute(
+            select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id)
+        )
+        if not project_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="项目不存在")
+
         query = select(MockRequestLog).where(MockRequestLog.project_id == project_id)
         count_query = select(func.count(MockRequestLog.id)).where(MockRequestLog.project_id == project_id)
 
@@ -370,7 +415,11 @@ async def list_logs(
 
 
 @router.post("/projects/{project_id}/import-swagger")
-async def import_swagger(project_id: int, body: dict):
+async def import_swagger(
+    project_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_active_user),
+):
     """从 Swagger 文档导入 Mock 规则"""
     swagger_data = body.get("swagger_data", body)
     # 支持 YAML 字符串
@@ -384,7 +433,9 @@ async def import_swagger(project_id: int, body: dict):
         raise HTTPException(status_code=400, detail="请提供有效的 Swagger/OpenAPI 数据")
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(MockProject).where(MockProject.id == project_id))
+        result = await db.execute(
+            select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id)
+        )
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="项目不存在")
 
@@ -467,6 +518,11 @@ async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
 _mock_rules_legacy: Dict[str, dict] = {}
 
 
+def _legacy_rule_key(method: str, path: str, user_id: int) -> str:
+    """生成带用户隔离的规则 key"""
+    return f"{user_id}:{method}:{path}"
+
+
 def _generate_mock_data(schema: dict) -> Any:
     """根据 schema 生成 Mock 数据（旧版兼容）"""
     stype = schema.get("type", "string")
@@ -500,14 +556,18 @@ def _generate_mock_data(schema: dict) -> Any:
 
 
 @router.post("/rules", tags=["Mock旧版兼容"])
-async def create_mock_rule_legacy(body: Dict[str, Any]):
+async def create_mock_rule_legacy(
+    body: Dict[str, Any],
+    current_user: User = Depends(get_current_active_user),
+):
     """创建 Mock 规则（旧版兼容）"""
     path = body.get("path", "").strip()
     if not path:
         raise HTTPException(status_code=400, detail="path 不能为空")
     method = body.get("method", "GET").upper()
-    key = f"{method}:{path}"
+    key = _legacy_rule_key(method, path, current_user.id)
     _mock_rules_legacy[key] = {
+        "key": key,
         "path": path,
         "method": method,
         "status_code": body.get("status_code", 200),
@@ -515,20 +575,28 @@ async def create_mock_rule_legacy(body: Dict[str, Any]):
         "delay_ms": body.get("delay_ms", 0),
         "description": body.get("description", ""),
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "user_id": current_user.id,
     }
     return {"message": "Mock 规则已创建", "key": key}
 
 
 @router.get("/rules", tags=["Mock旧版兼容"])
-async def list_mock_rules_legacy():
-    """列出所有 Mock 规则（旧版兼容）"""
-    return {"rules": list(_mock_rules_legacy.values())}
+async def list_mock_rules_legacy(current_user: User = Depends(get_current_active_user)):
+    """列出当前用户的 Mock 规则（旧版兼容）"""
+    user_rules = [v for v in _mock_rules_legacy.values() if v.get("user_id") == current_user.id]
+    return {"rules": user_rules}
 
 
 @router.delete("/rules/{rule_key:path}", tags=["Mock旧版兼容"])
-async def delete_mock_rule_legacy(rule_key: str):
+async def delete_mock_rule_legacy(
+    rule_key: str,
+    current_user: User = Depends(get_current_active_user),
+):
     """删除 Mock 规则（旧版兼容）"""
-    if rule_key in _mock_rules_legacy:
-        del _mock_rules_legacy[rule_key]
-        return {"message": "已删除"}
-    raise HTTPException(status_code=404, detail="规则不存在")
+    rule = _mock_rules_legacy.get(rule_key)
+    if not rule:
+        raise HTTPException(status_code=404, detail="规则不存在")
+    if rule.get("user_id") != current_user.id:
+        raise HTTPException(status_code=404, detail="规则不存在")
+    del _mock_rules_legacy[rule_key]
+    return {"message": "已删除"}

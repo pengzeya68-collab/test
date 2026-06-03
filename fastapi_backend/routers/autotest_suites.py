@@ -10,10 +10,11 @@ from typing import Dict, Any, List
 from datetime import datetime, timezone
 
 from fastapi_backend.core.autotest_database import get_autotest_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestScenario
+from fastapi_backend.models.models import User
 
-router = APIRouter(prefix="/api/auto-test/suites", tags=["回归套件"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/auto-test/suites", tags=["回归套件"])
 
 # 内存存储（可后续迁移到数据库）
 _suites: Dict[int, dict] = {}
@@ -23,17 +24,18 @@ _runs: Dict[int, list] = {}
 
 
 @router.get("")
-async def list_suites():
-    """列出所有测试套件"""
+async def list_suites(current_user: User = Depends(get_current_active_user)):
+    """列出当前用户的测试套件"""
     suites_list = [
         {"id": k, "name": v["name"], "scenario_count": len(v["scenario_ids"]), "created_at": v["created_at"]}
         for k, v in _suites.items()
+        if v.get("user_id") == current_user.id
     ]
     return {"suites": suites_list, "total": len(suites_list)}
 
 
 @router.post("")
-async def create_suite(body: Dict[str, Any]):
+async def create_suite(body: Dict[str, Any], current_user: User = Depends(get_current_active_user)):
     """创建测试套件"""
     global _suite_id_seq
     sid = _suite_id_seq
@@ -44,14 +46,15 @@ async def create_suite(body: Dict[str, Any]):
         "description": body.get("description", ""),
         "scenario_ids": body.get("scenario_ids", []),
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "user_id": current_user.id,
     }
     return {"id": sid, "message": "套件创建成功"}
 
 
 @router.delete("/{suite_id}")
-async def delete_suite(suite_id: int):
+async def delete_suite(suite_id: int, current_user: User = Depends(get_current_active_user)):
     """删除测试套件"""
-    if suite_id in _suites:
+    if suite_id in _suites and _suites[suite_id].get("user_id") == current_user.id:
         del _suites[suite_id]
         # 清理关联的运行记录
         _runs.pop(suite_id, None)
@@ -60,21 +63,21 @@ async def delete_suite(suite_id: int):
 
 
 @router.get("/{suite_id}")
-async def get_suite(suite_id: int, db=Depends(get_autotest_db)):
+async def get_suite(suite_id: int, current_user: User = Depends(get_current_active_user), db=Depends(get_autotest_db)):
     """获取套件详情（含场景名称）"""
     suite = _suites.get(suite_id)
-    if not suite:
+    if not suite or suite.get("user_id") != current_user.id:
         raise HTTPException(404, "套件不存在")
 
     # 获取场景名称
     scenario_details = []
     async for session in db():
         for sid in suite["scenario_ids"]:
-            result = await session.execute(select(AutoTestScenario).where(AutoTestScenario.id == sid))
+            result = await session.execute(select(AutoTestScenario).where(AutoTestScenario.id == sid, AutoTestScenario.user_id == current_user.id))
             sc = result.scalar_one_or_none()
             scenario_details.append({
                 "id": sid,
-                "name": sc.name if sc else f"场景{sid}(已删除)",
+                "name": sc.name if sc else f"场景{sid}(已删除或无权访问)",
                 "active": sc.is_active if sc else False,
             })
         break
@@ -83,10 +86,10 @@ async def get_suite(suite_id: int, db=Depends(get_autotest_db)):
 
 
 @router.post("/{suite_id}/run")
-async def run_suite(suite_id: int, db=Depends(get_autotest_db)):
+async def run_suite(suite_id: int, current_user: User = Depends(get_current_active_user), db=Depends(get_autotest_db)):
     """执行回归测试套件"""
     suite = _suites.get(suite_id)
-    if not suite:
+    if not suite or suite.get("user_id") != current_user.id:
         raise HTTPException(404, "套件不存在")
 
     global _run_id_seq
@@ -100,7 +103,7 @@ async def run_suite(suite_id: int, db=Depends(get_autotest_db)):
 
     async for session in db():
         for sid in suite["scenario_ids"]:
-            result = await session.execute(select(AutoTestScenario).where(AutoTestScenario.id == sid))
+            result = await session.execute(select(AutoTestScenario).where(AutoTestScenario.id == sid, AutoTestScenario.user_id == current_user.id))
             sc = result.scalar_one_or_none()
             scenario_result = {
                 "scenario_id": sid,
@@ -128,7 +131,10 @@ async def run_suite(suite_id: int, db=Depends(get_autotest_db)):
 
 
 @router.get("/{suite_id}/runs")
-async def get_suite_runs(suite_id: int):
+async def get_suite_runs(suite_id: int, current_user: User = Depends(get_current_active_user)):
     """获取套件的执行历史"""
+    suite = _suites.get(suite_id)
+    if not suite or suite.get("user_id") != current_user.id:
+        raise HTTPException(404, "套件不存在")
     runs = _runs.get(suite_id, [])
     return {"runs": runs, "total": len(runs)}

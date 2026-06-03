@@ -10,28 +10,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from fastapi_backend.core.database import get_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.models import (
     TestReport,
-    TestReportResult
+    TestReportResult,
+    TestPlan,
 )
+from fastapi_backend.models.models import User
 
-router = APIRouter(prefix="/api/auto-test/diagnose", tags=["AutoTest-诊断"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/auto-test/diagnose", tags=["AutoTest-诊断"])
 
 
 @router.get("/report/{report_id}")
 async def diagnose_report(
     report_id: int,
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     诊断报告数据完整性：检测同一 report_id 下是否有累积的孤儿步骤数据
 
     返回：{has_orphans: bool, orphan_count: int, total_count: int, latest_step_id: int}
     """
-    # 获取报告
+    # 获取报告（校验归属：通过 plan_id 关联 TestPlan.user_id）
     result = await db.execute(
-        select(TestReport).where(TestReport.id == report_id)
+        select(TestReport)
+        .join(TestPlan, TestReport.plan_id == TestPlan.id, isouter=True)
+        .where(TestReport.id == report_id, TestPlan.user_id == current_user.id)
     )
     report = result.scalar_one_or_none()
 
@@ -74,15 +79,17 @@ async def diagnose_report(
 @router.get("/scenario/{scenario_id}")
 async def diagnose_scenario(
     scenario_id: int,
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     诊断场景数据完整性：检查该场景下所有报告的数据一致性
     """
-    # 获取该场景下的所有报告
+    # 获取该场景下的所有报告（校验归属）
     result = await db.execute(
         select(TestReport)
-        .where(TestReport.plan_id == scenario_id)
+        .join(TestPlan, TestReport.plan_id == TestPlan.id, isouter=True)
+        .where(TestReport.plan_id == scenario_id, TestPlan.user_id == current_user.id)
         .order_by(TestReport.id.desc())
     )
     reports = result.scalars().all()
@@ -113,26 +120,31 @@ async def diagnose_scenario(
 
 @router.get("/data-consistency")
 async def check_data_consistency(
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     检查自动化测试数据一致性
     返回各种数据完整性统计
     """
-    # 检查报告和步骤的一致性
+    # 检查报告和步骤的一致性（仅当前用户的数据）
     result = await db.execute(
         select(
             func.count(TestReport.id).label("total_reports"),
             func.count(TestReportResult.id).label("total_steps"),
             func.count(func.distinct(TestReportResult.report_id)).label("reports_with_steps")
         )
+        .join(TestPlan, TestReport.plan_id == TestPlan.id, isouter=True)
+        .where(TestPlan.user_id == current_user.id)
     )
     stats = result.first()
 
-    # 检查没有步骤的报告
+    # 检查没有步骤的报告（仅当前用户）
     result = await db.execute(
         select(TestReport.id, TestReport.plan_name)
+        .join(TestPlan, TestReport.plan_id == TestPlan.id, isouter=True)
         .outerjoin(TestReportResult, TestReport.id == TestReportResult.report_id)
+        .where(TestPlan.user_id == current_user.id)
         .group_by(TestReport.id)
         .having(func.count(TestReportResult.id) == 0)
     )

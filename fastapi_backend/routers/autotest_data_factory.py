@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import (
     TestDataTemplate,
     TestDataTemplateField,
@@ -28,13 +28,12 @@ from fastapi_backend.schemas.autotest import (
 router = APIRouter(
     prefix="/api/auto-test/data-factory",
     tags=["AutoTest-数据工厂"],
-    dependencies=[Depends(get_current_user)],
 )
 
 
 @router.get("/templates", response_model=List[TestDataTemplateResponse])
 async def list_templates(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -49,18 +48,16 @@ async def list_templates(
 @router.get("/templates/{template_id}", response_model=TestDataTemplateResponse)
 async def get_template(
     template_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
         select(TestDataTemplate)
         .options(selectinload(TestDataTemplate.fields))
-        .where(TestDataTemplate.id == template_id)
+        .where(TestDataTemplate.id == template_id, TestDataTemplate.user_id == current_user.id)
     )
     template = result.scalar_one_or_none()
     if not template:
-        raise HTTPException(status_code=404, detail="模板不存在")
-    if template.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="模板不存在")
     return template
 
@@ -68,12 +65,15 @@ async def get_template(
 @router.post("/templates", response_model=TestDataTemplateResponse)
 async def create_template(
     data: TestDataTemplateCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     if data.scenario_id:
         scenario_check = await db.execute(
-            select(AutoTestScenario).where(AutoTestScenario.id == data.scenario_id)
+            select(AutoTestScenario).where(
+                AutoTestScenario.id == data.scenario_id,
+                AutoTestScenario.user_id == current_user.id,
+            )
         )
         if not scenario_check.scalar_one_or_none():
             raise HTTPException(status_code=400, detail=f"关联的场景(ID={data.scenario_id})不存在")
@@ -114,18 +114,16 @@ async def create_template(
 async def update_template(
     template_id: int,
     data: TestDataTemplateUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
         select(TestDataTemplate)
         .options(selectinload(TestDataTemplate.fields))
-        .where(TestDataTemplate.id == template_id)
+        .where(TestDataTemplate.id == template_id, TestDataTemplate.user_id == current_user.id)
     )
     template = result.scalar_one_or_none()
     if not template:
-        raise HTTPException(status_code=404, detail="模板不存在")
-    if template.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="模板不存在")
 
     if data.name is not None:
@@ -135,7 +133,10 @@ async def update_template(
     if data.scenario_id is not None:
         if data.scenario_id:
             scenario_check = await db.execute(
-                select(AutoTestScenario).where(AutoTestScenario.id == data.scenario_id)
+                select(AutoTestScenario).where(
+                    AutoTestScenario.id == data.scenario_id,
+                    AutoTestScenario.user_id == current_user.id,
+                )
             )
             if not scenario_check.scalar_one_or_none():
                 raise HTTPException(status_code=400, detail=f"关联的场景(ID={data.scenario_id})不存在")
@@ -172,14 +173,12 @@ async def update_template(
 @router.delete("/templates/{template_id}")
 async def delete_template(
     template_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(TestDataTemplate).where(TestDataTemplate.id == template_id))
+    result = await db.execute(select(TestDataTemplate).where(TestDataTemplate.id == template_id, TestDataTemplate.user_id == current_user.id))
     template = result.scalar_one_or_none()
     if not template:
-        raise HTTPException(status_code=404, detail="模板不存在")
-    if template.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="模板不存在")
     await db.delete(template)
     await db.commit()
@@ -189,18 +188,16 @@ async def delete_template(
 @router.post("/templates/{template_id}/preview")
 async def preview_template(
     template_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
         select(TestDataTemplate)
         .options(selectinload(TestDataTemplate.fields))
-        .where(TestDataTemplate.id == template_id)
+        .where(TestDataTemplate.id == template_id, TestDataTemplate.user_id == current_user.id)
     )
     template = result.scalar_one_or_none()
     if not template:
-        raise HTTPException(status_code=404, detail="模板不存在")
-    if template.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="模板不存在")
 
     fields_data = [
@@ -227,18 +224,16 @@ async def preview_template(
 @router.post("/templates/{template_id}/generate")
 async def generate_dataset(
     template_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
         select(TestDataTemplate)
         .options(selectinload(TestDataTemplate.fields))
-        .where(TestDataTemplate.id == template_id)
+        .where(TestDataTemplate.id == template_id, TestDataTemplate.user_id == current_user.id)
     )
     template = result.scalar_one_or_none()
     if not template:
-        raise HTTPException(status_code=404, detail="模板不存在")
-    if template.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="模板不存在")
 
     fields_data = [
@@ -256,7 +251,7 @@ async def generate_dataset(
 
     if template.scenario_id:
         result = await db.execute(
-            select(AutoTestScenario).where(AutoTestScenario.id == template.scenario_id)
+            select(AutoTestScenario).where(AutoTestScenario.id == template.scenario_id, AutoTestScenario.user_id == current_user.id)
         )
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail=f"关联的场景(ID={template.scenario_id})不存在，请先绑定有效场景")
@@ -291,12 +286,21 @@ async def generate_dataset(
 
 
 @router.post("/datasets/{dataset_id}/bind-scenario/{scenario_id}")
-async def bind_dataset_to_scenario(dataset_id: int, scenario_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+async def bind_dataset_to_scenario(
+    dataset_id: int,
+    scenario_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id))
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="场景不存在")
 
-    result = await db.execute(select(AutoTestDataset).where(AutoTestDataset.id == dataset_id))
+    result = await db.execute(
+        select(AutoTestDataset)
+        .join(AutoTestScenario, AutoTestDataset.scenario_id == AutoTestScenario.id)
+        .where(AutoTestDataset.id == dataset_id, AutoTestScenario.user_id == current_user.id)
+    )
     dataset = result.scalar_one_or_none()
     if not dataset:
         raise HTTPException(status_code=404, detail="数据集不存在")
@@ -307,11 +311,17 @@ async def bind_dataset_to_scenario(dataset_id: int, scenario_id: int, db: AsyncS
 
 
 @router.post("/datasets/{dataset_id}/run")
-async def run_dataset_driven(dataset_id: int, payload: Dict[str, Any] = None, db: AsyncSession = Depends(get_db)):
+async def run_dataset_driven(
+    dataset_id: int,
+    payload: Dict[str, Any] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
         select(AutoTestDataset)
         .options(selectinload(AutoTestDataset.scenario).selectinload(AutoTestScenario.steps))
-        .where(AutoTestDataset.id == dataset_id)
+        .join(AutoTestScenario, AutoTestDataset.scenario_id == AutoTestScenario.id)
+        .where(AutoTestDataset.id == dataset_id, AutoTestScenario.user_id == current_user.id)
     )
     dataset = result.scalar_one_or_none()
     if not dataset:
@@ -325,6 +335,7 @@ async def run_dataset_driven(dataset_id: int, payload: Dict[str, Any] = None, db
     exec_result = await run_scenario_data_driven(
         scenario_id=dataset.scenario_id,
         env_id=env_id,
+        user_id=current_user.id,
     )
     return {
         "success": exec_result.get("failed_iterations", 0) == 0,
@@ -336,16 +347,21 @@ async def run_dataset_driven(dataset_id: int, payload: Dict[str, Any] = None, db
 
 
 @router.get("/scenarios")
-async def list_scenarios_for_factory(db: AsyncSession = Depends(get_db)):
+async def list_scenarios_for_factory(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(AutoTestScenario).order_by(AutoTestScenario.created_at.desc())
+        select(AutoTestScenario)
+        .where(AutoTestScenario.user_id == current_user.id)
+        .order_by(AutoTestScenario.created_at.desc())
     )
     scenarios = result.scalars().all()
     return [{"id": s.id, "name": s.name, "description": s.description} for s in scenarios]
 
 
 @router.get("/rule-types")
-async def get_rule_types():
+async def get_rule_types(current_user: User = Depends(get_current_active_user)):
     return {
         "rule_types": [
             {"type": "fixed", "label": "固定值", "config_fields": ["value"]},

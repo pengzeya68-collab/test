@@ -20,8 +20,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestGroup
+from fastapi_backend.models.models import User
 from fastapi_backend.services.autotest_export_service import (
     export_curl,
     export_openapi,
@@ -32,7 +33,6 @@ from fastapi_backend.services.curl_parser import parse_curl
 router = APIRouter(
     prefix="/api/auto-test",
     tags=["导入导出"],
-    dependencies=[Depends(get_current_user)],
 )
 
 
@@ -59,7 +59,10 @@ class ShareDocRequest(BaseModel):
 
 
 @router.post("/import/curl")
-async def import_curl(body: CurlImportRequest):
+async def import_curl(
+    body: CurlImportRequest,
+    current_user: User = Depends(get_current_active_user),
+):
     """解析 cURL 命令，返回用例数据结构"""
     try:
         result = parse_curl(body.curl_string)
@@ -73,10 +76,10 @@ async def import_curl(body: CurlImportRequest):
 # ========== 导出功能 ==========
 
 
-async def _get_cases(case_ids: List[int] = None, group_id: int = None) -> List[dict]:
+async def _get_cases(user_id: int, case_ids: List[int] = None, group_id: int = None) -> List[dict]:
     """获取用例列表"""
     async with AsyncSessionLocal() as db:
-        query = select(AutoTestCase)
+        query = select(AutoTestCase).where(AutoTestCase.user_id == user_id)
         if case_ids:
             query = query.where(AutoTestCase.id.in_(case_ids))
         elif group_id is not None:
@@ -89,7 +92,7 @@ async def _get_cases(case_ids: List[int] = None, group_id: int = None) -> List[d
         group_ids = list({c.group_id for c in cases if c.group_id is not None})
         group_map = {}
         if group_ids:
-            g_result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.id.in_(group_ids)))
+            g_result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.id.in_(group_ids), AutoTestGroup.user_id == user_id))
             group_map = {g.id: g.name for g in g_result.scalars().all()}
 
         items = []
@@ -112,9 +115,12 @@ async def _get_cases(case_ids: List[int] = None, group_id: int = None) -> List[d
 
 
 @router.post("/export")
-async def export_cases(body: ExportRequest):
+async def export_cases(
+    body: ExportRequest,
+    current_user: User = Depends(get_current_active_user),
+):
     """导出用例为指定格式"""
-    cases = await _get_cases(body.case_ids, body.group_id)
+    cases = await _get_cases(current_user.id, body.case_ids, body.group_id)
     if not cases:
         raise HTTPException(status_code=400, detail="没有找到要导出的用例")
 
@@ -135,9 +141,12 @@ async def export_cases(body: ExportRequest):
 
 
 @router.post("/api-docs/generate")
-async def generate_api_doc(body: ExportRequest):
+async def generate_api_doc(
+    body: ExportRequest,
+    current_user: User = Depends(get_current_active_user),
+):
     """从用例生成 OpenAPI 文档"""
-    cases = await _get_cases(body.case_ids, body.group_id)
+    cases = await _get_cases(current_user.id, body.case_ids, body.group_id)
     if not cases:
         raise HTTPException(status_code=400, detail="没有找到用例")
 
@@ -160,9 +169,12 @@ def _cleanup_expired_tokens():
 
 
 @router.post("/api-docs/share")
-async def create_share_link(body: ShareDocRequest):
+async def create_share_link(
+    body: ShareDocRequest,
+    current_user: User = Depends(get_current_active_user),
+):
     """创建 API 文档分享链接"""
-    cases = await _get_cases(body.case_ids, body.group_id)
+    cases = await _get_cases(current_user.id, body.case_ids, body.group_id)
     if not cases:
         raise HTTPException(status_code=400, detail="没有找到用例")
 

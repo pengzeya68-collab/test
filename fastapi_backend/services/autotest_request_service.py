@@ -25,7 +25,7 @@ def _get_http_client() -> httpx.AsyncClient:
     return _http_client
 
 
-async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any]) -> Dict[str, Any]:
+async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any], user_id: int = None) -> Dict[str, Any]:
     """
     加载全局变量和环境变量，合并到 variables 中
     """
@@ -36,7 +36,10 @@ async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any]) ->
     variables = dict(variables)
 
     async with AsyncSessionLocal() as session:
-        global_vars_result = await session.execute(select(AutoTestGlobalVariable))
+        query = select(AutoTestGlobalVariable)
+        if user_id is not None:
+            query = query.where(AutoTestGlobalVariable.user_id == user_id)
+        global_vars_result = await session.execute(query)
         global_vars = {}
         for var in global_vars_result.scalars().all():
             value = var.value
@@ -46,9 +49,10 @@ async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any]) ->
         variables.update(global_vars)
 
         if env_id:
-            result = await session.execute(
-                select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id)
-            )
+            env_query = select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id)
+            if user_id is not None:
+                env_query = env_query.where(AutoTestEnvironment.user_id == user_id)
+            result = await session.execute(env_query)
             env = result.scalar_one_or_none()
             if env and env.variables and isinstance(env.variables, dict):
                 variables.update(env.variables)
@@ -98,6 +102,7 @@ async def execute_http_request(
     body_type: str = "json",
     env_id: Optional[int] = None,
     variables: Optional[Dict[str, Any]] = None,
+    user_id: int = None,
 ) -> Dict[str, Any]:
     """
     执行 HTTP 请求的完整流程：
@@ -114,7 +119,7 @@ async def execute_http_request(
     if not safe:
         return {"success": False, "error": reason, "execution_time": 0}
 
-    variables = await resolve_variables(env_id, variables)
+    variables = await resolve_variables(env_id, variables, user_id=user_id)
 
     url, headers, params, body = apply_variable_substitution(
         url, headers, params, body, variables

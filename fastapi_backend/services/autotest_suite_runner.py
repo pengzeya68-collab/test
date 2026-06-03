@@ -34,10 +34,11 @@ _logger = logging.getLogger(__name__)
 class SuiteRunner:
     """测试套件执行引擎"""
 
-    def __init__(self, suite_id: int, env_id: Optional[int] = None, progress_callback=None):
+    def __init__(self, suite_id: int, env_id: Optional[int] = None, progress_callback=None, user_id: int = None):
         self.suite_id = suite_id
         self.env_id = env_id
         self.progress_callback = progress_callback
+        self.user_id = user_id
 
     async def execute(self) -> Dict[str, Any]:
         """执行测试套件"""
@@ -45,7 +46,10 @@ class SuiteRunner:
 
         async with AsyncSessionLocal() as db:
             # 加载套件
-            result = await db.execute(select(TestSuite).where(TestSuite.id == self.suite_id))
+            suite_query = select(TestSuite).where(TestSuite.id == self.suite_id)
+            if self.user_id is not None:
+                suite_query = suite_query.where(TestSuite.user_id == self.user_id)
+            result = await db.execute(suite_query)
             suite = result.scalar_one_or_none()
             if not suite:
                 raise ValueError(f"套件 {self.suite_id} 不存在")
@@ -65,7 +69,10 @@ class SuiteRunner:
             env = None
             env_id = self.env_id or suite.env_id
             if env_id:
-                result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id))
+                env_query = select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id)
+                if self.user_id is not None:
+                    env_query = env_query.where(AutoTestEnvironment.user_id == self.user_id)
+                result = await db.execute(env_query)
                 env = result.scalar_one_or_none()
 
             # 创建执行记录
@@ -91,7 +98,10 @@ class SuiteRunner:
 
             try:
                 async with AsyncSessionLocal() as db:
-                    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == sc.case_id))
+                    case_query = select(AutoTestCase).where(AutoTestCase.id == sc.case_id)
+                    if self.user_id is not None:
+                        case_query = case_query.where(AutoTestCase.user_id == self.user_id)
+                    result = await db.execute(case_query)
                     case = result.scalar_one_or_none()
 
                     if not case:
@@ -104,7 +114,7 @@ class SuiteRunner:
                         continue
 
                     # 执行用例
-                    run_result = await quick_run_case(case, env)
+                    run_result = await quick_run_case(case, env, user_id=self.user_id)
 
                     # 保存历史记录
                     history = AutoTestHistory(
@@ -113,6 +123,7 @@ class SuiteRunner:
                         execution_time=run_result.get("execution_time", 0),
                         response_data=run_result.get("response"),
                         error_message=run_result.get("error"),
+                        user_id=self.user_id,
                     )
                     db.add(history)
                     await db.commit()

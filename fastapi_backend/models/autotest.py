@@ -15,11 +15,13 @@ class AutoTestGroup(Base):
     __tablename__ = "api_groups"
     __table_args__ = (
         Index("idx_api_groups_parent_id", "parent_id"),
+        Index("idx_api_groups_user_id", "user_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, comment="分组名称")
     parent_id = Column(Integer, ForeignKey("api_groups.id", ondelete="SET NULL"), nullable=True, comment="父级分组ID")
+    user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
 
     parent = relationship("AutoTestGroup", remote_side=[id], backref="children")
@@ -31,6 +33,7 @@ class AutoTestCase(Base):
     __tablename__ = "api_cases"
     __table_args__ = (
         Index("idx_api_cases_group_id", "group_id"),
+        Index("idx_api_cases_user_id", "user_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -46,6 +49,7 @@ class AutoTestCase(Base):
     assert_rules = Column(JSON, nullable=True, comment="断言规则")
     extractors = Column(JSON, nullable=True, comment="变量提取规则")
     description = Column(Text, nullable=True, comment="用例描述")
+    user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
 
@@ -56,12 +60,17 @@ class AutoTestCase(Base):
 class AutoTestGlobalVariable(Base):
     """全局变量表"""
     __tablename__ = "global_variables"
+    __table_args__ = (
+        Index("idx_global_variables_user_id", "user_id"),
+        Index("idx_global_variables_name_user", "name", "user_id", unique=True),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False, unique=True, comment="变量名")
+    name = Column(String(100), nullable=False, comment="变量名")
     value = Column(Text, nullable=False, comment="变量值")
     description = Column(Text, nullable=True, comment="变量描述")
     is_encrypted = Column(Boolean, default=False, comment="是否加密")
+    user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
 
@@ -71,6 +80,7 @@ class AutoTestEnvironment(Base):
     __tablename__ = "environments"
     __table_args__ = (
         Index("idx_environments_is_default", "is_default"),
+        Index("idx_environments_user_id", "user_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -78,6 +88,7 @@ class AutoTestEnvironment(Base):
     base_url = Column(String(500), nullable=True, comment="基础路径")
     variables = Column(JSON, nullable=True, default=dict, comment="环境变量")
     is_default = Column(Boolean, default=False, comment="是否默认环境")
+    user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
 
 
@@ -96,6 +107,7 @@ class AutoTestHistory(Base):
     report_url = Column(String(500), nullable=True, comment="报告路径")
     response_data = Column(JSON, nullable=True, comment="响应数据")
     error_message = Column(Text, nullable=True, comment="错误信息")
+    user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="执行时间")
 
     case = relationship("AutoTestCase", back_populates="history")
@@ -109,6 +121,7 @@ class AutoTestScenario(Base):
     name = Column(String(200), nullable=False, comment="场景名称")
     description = Column(Text, nullable=True, comment="场景描述")
     is_active = Column(Boolean, default=True, comment="是否启用")
+    user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
     schedule_cron_expression = Column(String(200), nullable=True, comment="Cron 表达式")
@@ -216,6 +229,7 @@ class AutoTestPerformanceScenario(Base):
     test_type = Column(String(20), nullable=False, default="load", comment="测试类型: load/stress/soak")
     config = Column(JSON, nullable=True, default=dict, comment="测试配置")
     status = Column(String(20), nullable=False, default="inactive", comment="状态: active/inactive")
+    user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
 
@@ -366,6 +380,7 @@ class MockProject(Base):
     base_url_slug = Column(String(100), nullable=False, unique=True, comment="URL标识(slug)")
     swagger_source_id = Column(Integer, nullable=True, comment="关联的Swagger数据源ID")
     is_active = Column(Boolean, default=True, comment="是否启用")
+    user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -460,6 +475,7 @@ class TestSuite(Base):
     name = Column(String(200), nullable=False, comment="套件名称")
     description = Column(Text, nullable=True, comment="套件描述")
     env_id = Column(Integer, nullable=True, comment="默认执行环境ID")
+    user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

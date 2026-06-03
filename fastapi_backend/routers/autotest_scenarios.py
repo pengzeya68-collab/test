@@ -12,13 +12,14 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import (
     AutoTestScenario,
     AutoTestScenarioStep,
     AutoTestCase,
     AutoTestDataset,
 )
+from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import (
     AutoTestScenarioCreate,
     AutoTestScenarioUpdate,
@@ -32,7 +33,7 @@ from fastapi_backend.schemas.autotest import (
     InlineScenarioExecutionRequest,
 )
 
-router = APIRouter(prefix="/api/auto-test/scenarios", tags=["AutoTest-场景"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/auto-test/scenarios", tags=["AutoTest-场景"])
 
 
 # ========== 场景 CRUD ==========
@@ -43,11 +44,12 @@ async def list_scenarios(
     limit: int = 20,
     keyword: Optional[str] = None,
     is_active: Optional[bool] = None,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """获取场景列表（分页 + 搜索 + 筛选）"""
-    query = select(AutoTestScenario)
-    count_query = select(func.count(AutoTestScenario.id))
+    query = select(AutoTestScenario).where(AutoTestScenario.user_id == current_user.id)
+    count_query = select(func.count(AutoTestScenario.id)).where(AutoTestScenario.user_id == current_user.id)
 
     if keyword:
         query = query.where(AutoTestScenario.name.like(f"%{keyword}%"))
@@ -104,10 +106,11 @@ async def list_scenarios(
 async def get_available_cases(
     keyword: str = None,
     group_id: int = None,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """获取可用的接口列表（用于添加步骤时选择）"""
-    query = select(AutoTestCase)
+    query = select(AutoTestCase).where(AutoTestCase.user_id == current_user.id)
     if keyword:
         query = query.where(AutoTestCase.name.like(f"%{keyword}%"))
     if group_id:
@@ -128,12 +131,16 @@ async def get_available_cases(
 
 
 @router.get("/{scenario_id}", response_model=AutoTestScenarioResponse)
-async def get_scenario(scenario_id: int, db: AsyncSession = Depends(get_db)):
+async def get_scenario(
+    scenario_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取场景详情"""
     result = await db.execute(
         select(AutoTestScenario)
         .options(selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case))
-        .where(AutoTestScenario.id == scenario_id)
+        .where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
     )
     scenario = result.scalar_one_or_none()
     if not scenario:
@@ -142,10 +149,15 @@ async def get_scenario(scenario_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("", response_model=AutoTestScenarioResponse)
-async def create_scenario(scenario: AutoTestScenarioCreate, db: AsyncSession = Depends(get_db)):
+async def create_scenario(
+    scenario: AutoTestScenarioCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """创建场景"""
     data = scenario.model_dump()
     data["webhook_token"] = str(uuid.uuid4())
+    data["user_id"] = current_user.id
     db_scenario = AutoTestScenario(**data)
     db.add(db_scenario)
     await db.commit()
@@ -163,10 +175,11 @@ async def create_scenario(scenario: AutoTestScenarioCreate, db: AsyncSession = D
 async def update_scenario(
     scenario_id: int,
     scenario: AutoTestScenarioUpdate,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """更新场景"""
-    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id))
     db_scenario = result.scalar_one_or_none()
     if not db_scenario:
         raise HTTPException(status_code=404, detail="场景不存在")
@@ -192,10 +205,11 @@ async def update_scenario(
 async def update_scenario_status(
     scenario_id: int,
     payload: Dict[str, Any],
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """更新场景启用/停用状态"""
-    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id))
     db_scenario = result.scalar_one_or_none()
     if not db_scenario:
         raise HTTPException(status_code=404, detail="场景不存在")
@@ -222,8 +236,12 @@ async def update_scenario_status(
 
 
 @router.delete("/{scenario_id}")
-async def delete_scenario(scenario_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+async def delete_scenario(
+    scenario_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id))
     db_scenario = result.scalar_one_or_none()
     if not db_scenario:
         raise HTTPException(status_code=404, detail="场景不存在")
@@ -252,14 +270,15 @@ async def delete_scenario(scenario_id: int, db: AsyncSession = Depends(get_db)):
 async def add_step(
     scenario_id: int,
     step: ScenarioStepCreate,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """添加步骤"""
-    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id))
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="场景不存在")
 
-    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == step.api_case_id))
+    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == step.api_case_id, AutoTestCase.user_id == current_user.id))
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="指定的接口不存在")
 
@@ -287,9 +306,20 @@ async def update_step(
     scenario_id: int,
     step_id: int,
     step: ScenarioStepUpdate,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """更新步骤"""
+    # 先校验场景归属
+    scenario_result = await db.execute(
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id,
+            AutoTestScenario.user_id == current_user.id,
+        )
+    )
+    if not scenario_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="场景不存在")
+
     result = await db.execute(
         select(AutoTestScenarioStep)
         .options(selectinload(AutoTestScenarioStep.api_case))
@@ -309,8 +339,23 @@ async def update_step(
 
 
 @router.delete("/{scenario_id}/steps/{step_id}")
-async def delete_step(scenario_id: int, step_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_step(
+    scenario_id: int,
+    step_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """删除步骤"""
+    # 先校验场景归属
+    scenario_result = await db.execute(
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id,
+            AutoTestScenario.user_id == current_user.id,
+        )
+    )
+    if not scenario_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="场景不存在")
+
     result = await db.execute(
         select(AutoTestScenarioStep).where(
             AutoTestScenarioStep.id == step_id, AutoTestScenarioStep.scenario_id == scenario_id
@@ -338,9 +383,20 @@ async def delete_step(scenario_id: int, step_id: int, db: AsyncSession = Depends
 async def reorder_steps(
     scenario_id: int,
     step_orders: List[dict],
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """批量更新步骤顺序"""
+    # 先校验场景归属
+    scenario_result = await db.execute(
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id,
+            AutoTestScenario.user_id == current_user.id,
+        )
+    )
+    if not scenario_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="场景不存在")
+
     for item in step_orders:
         result = await db.execute(
             select(AutoTestScenarioStep).where(
@@ -359,8 +415,22 @@ async def reorder_steps(
 # ========== 数据集管理 ==========
 
 @router.get("/{scenario_id}/dataset", response_model=Optional[AutoTestDatasetResponse])
-async def get_scenario_dataset(scenario_id: int, db: AsyncSession = Depends(get_db)):
+async def get_scenario_dataset(
+    scenario_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取场景的数据集"""
+    # 先校验场景归属
+    scenario_result = await db.execute(
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id,
+            AutoTestScenario.user_id == current_user.id,
+        )
+    )
+    if not scenario_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="场景不存在")
+
     result = await db.execute(select(AutoTestDataset).where(AutoTestDataset.scenario_id == scenario_id))
     dataset = result.scalar_one_or_none()
     return dataset
@@ -370,10 +440,11 @@ async def get_scenario_dataset(scenario_id: int, db: AsyncSession = Depends(get_
 async def create_or_update_dataset(
     scenario_id: int,
     dataset_data: AutoTestDatasetBase,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """创建或更新场景的数据集（Upsert）"""
-    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id))
     scenario = result.scalar_one_or_none()
     if not scenario:
         raise HTTPException(status_code=404, detail="场景不存在")
@@ -402,8 +473,22 @@ async def create_or_update_dataset(
 
 
 @router.delete("/{scenario_id}/dataset")
-async def delete_dataset(scenario_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_dataset(
+    scenario_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """删除场景的数据集"""
+    # 先校验场景归属
+    scenario_result = await db.execute(
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id,
+            AutoTestScenario.user_id == current_user.id,
+        )
+    )
+    if not scenario_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="场景不存在")
+
     result = await db.execute(select(AutoTestDataset).where(AutoTestDataset.scenario_id == scenario_id))
     dataset = result.scalar_one_or_none()
     if not dataset:
@@ -418,6 +503,7 @@ async def delete_dataset(scenario_id: int, db: AsyncSession = Depends(get_db)):
 async def parse_dataset_file(
     scenario_id: int,
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """解析上传的 CSV/Excel 文件，返回数据矩阵"""
@@ -458,11 +544,12 @@ async def parse_dataset_file(
 async def run_scenario_with_pytest(
     scenario_id: int,
     request: InlineScenarioExecutionRequest,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """使用 Pytest 引擎执行数据驱动测试"""
     # 检查场景是否存在
-    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id))
+    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id))
     scenario = result.scalar_one_or_none()
     if not scenario:
         raise HTTPException(status_code=404, detail="场景不存在")

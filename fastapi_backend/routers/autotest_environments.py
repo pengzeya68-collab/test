@@ -8,15 +8,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestEnvironment
+from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import (
     AutoTestEnvironmentCreate,
     AutoTestEnvironmentUpdate,
 )
 
-router = APIRouter(prefix="/api/auto-test/environments", tags=["AutoTest-环境"], dependencies=[Depends(get_current_user)])
-
+router = APIRouter(prefix="/api/auto-test/environments", tags=["AutoTest-环境"])
 
 import re
 
@@ -47,17 +47,28 @@ def _env_to_dict(env):
 
 
 @router.get("")
-async def get_all_environments(db: AsyncSession = Depends(get_db)):
+async def get_all_environments(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取所有环境"""
-    result = await db.execute(select(AutoTestEnvironment).order_by(AutoTestEnvironment.created_at))
+    result = await db.execute(
+        select(AutoTestEnvironment)
+        .where(AutoTestEnvironment.user_id == current_user.id)
+        .order_by(AutoTestEnvironment.created_at)
+    )
     envs = result.scalars().all()
     return [_env_to_dict(e) for e in envs]
 
 
 @router.get("/{env_id}")
-async def get_environment(env_id: int, db: AsyncSession = Depends(get_db)):
+async def get_environment(
+    env_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取单个环境"""
-    result = await db.execute(select(AutoTestEnvironment).filter(AutoTestEnvironment.id == env_id))
+    result = await db.execute(select(AutoTestEnvironment).filter(AutoTestEnvironment.id == env_id, AutoTestEnvironment.user_id == current_user.id))
     env = result.scalar_one_or_none()
     if not env:
         raise HTTPException(status_code=404, detail="环境不存在")
@@ -67,6 +78,7 @@ async def get_environment(env_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("", status_code=201)
 async def create_environment(
     env_in: AutoTestEnvironmentCreate,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """创建环境"""
@@ -77,9 +89,11 @@ async def create_environment(
     if data.get("is_default"):
         await db.execute(
             update(AutoTestEnvironment)
+            .where(AutoTestEnvironment.user_id == current_user.id)
             .values(is_default=False)
         )
 
+    data["user_id"] = current_user.id
     env = AutoTestEnvironment(**data)
     db.add(env)
     await db.commit()
@@ -91,10 +105,11 @@ async def create_environment(
 async def update_environment(
     env_id: int,
     env_in: AutoTestEnvironmentUpdate,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """更新环境"""
-    result = await db.execute(select(AutoTestEnvironment).filter(AutoTestEnvironment.id == env_id))
+    result = await db.execute(select(AutoTestEnvironment).filter(AutoTestEnvironment.id == env_id, AutoTestEnvironment.user_id == current_user.id))
     env = result.scalar_one_or_none()
     if not env:
         raise HTTPException(status_code=404, detail="环境不存在")
@@ -102,7 +117,7 @@ async def update_environment(
     if env_in.is_default:
         await db.execute(
             update(AutoTestEnvironment)
-            .where(AutoTestEnvironment.id != env_id)
+            .where(AutoTestEnvironment.user_id == current_user.id, AutoTestEnvironment.id != env_id)
             .values(is_default=False)
         )
 
@@ -117,9 +132,13 @@ async def update_environment(
 
 
 @router.delete("/{env_id}")
-async def delete_environment(env_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_environment(
+    env_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """删除环境"""
-    result = await db.execute(select(AutoTestEnvironment).filter(AutoTestEnvironment.id == env_id))
+    result = await db.execute(select(AutoTestEnvironment).filter(AutoTestEnvironment.id == env_id, AutoTestEnvironment.user_id == current_user.id))
     env = result.scalar_one_or_none()
     if not env:
         raise HTTPException(status_code=404, detail="环境不存在")

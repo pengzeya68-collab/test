@@ -226,12 +226,12 @@ def _failed_step_count_payload(result: Optional[dict]) -> int:
     return 0
 
 
-def notify_scenario_schedule_webhook_from_db(scenario_id: int, result: dict) -> Tuple[bool, str]:
+def notify_scenario_schedule_webhook_from_db(scenario_id: int, result: dict, user_id: int = None) -> Tuple[bool, str]:
     from fastapi_backend.services.autotest_schedule_persistence import (
         read_schedule_webhook_sync,
     )
 
-    url = read_schedule_webhook_sync(scenario_id)
+    url = read_schedule_webhook_sync(scenario_id, user_id=user_id)
     if not url:
         return False, "no schedule_webhook_url in db"
 

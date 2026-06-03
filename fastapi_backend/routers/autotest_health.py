@@ -13,10 +13,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import get_autotest_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestEnvironment
+from fastapi_backend.models.models import User
 
-router = APIRouter(prefix="/api/auto-test/health-check", tags=["环境健康检查"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/auto-test/health-check", tags=["环境健康检查"])
 
 
 def _parse_env_url(env: AutoTestEnvironment) -> str:
@@ -64,12 +65,17 @@ async def _check_single(url: str, timeout: float = 5.0) -> Dict:
 
 
 @router.get("")
-async def health_check_all(db=Depends(get_autotest_db)):
+async def health_check_all(
+    current_user: User = Depends(get_current_active_user),
+    db=Depends(get_autotest_db),
+):
     """一键检查所有环境的健康状态"""
     results: List[Dict] = []
 
     async for session in db():
-        result = await session.execute(select(AutoTestEnvironment))
+        result = await session.execute(
+            select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id)
+        )
         envs = result.scalars().all()
 
         for env in envs:
@@ -108,10 +114,19 @@ async def health_check_all(db=Depends(get_autotest_db)):
 
 
 @router.get("/{env_id}")
-async def health_check_single(env_id: int, db=Depends(get_autotest_db)):
+async def health_check_single(
+    env_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db=Depends(get_autotest_db),
+):
     """检查单个环境"""
     async for session in db():
-        result = await session.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id))
+        result = await session.execute(
+            select(AutoTestEnvironment).where(
+                AutoTestEnvironment.id == env_id,
+                AutoTestEnvironment.user_id == current_user.id,
+            )
+        )
         env = result.scalar_one_or_none()
         if not env:
             return {"error": "环境不存在"}

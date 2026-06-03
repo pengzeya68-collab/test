@@ -49,7 +49,7 @@ def _persist_task_result(task_id: str, result_data: dict) -> None:
 
 
 @app.task(bind=True, name="fastapi_backend.tasks.run_scenario")
-def task_run_scenario(self, scenario_id: int, env_id: int = None):
+def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int = None):
     """Celery任务：执行测试场景，实时上报步骤进度"""
     task_id = self.request.id
 
@@ -127,7 +127,7 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
 
         async def _run_with_cleanup():
             try:
-                result = await execute_scenario_async(scenario_id, env_id, progress_callback=on_progress)
+                result = await execute_scenario_async(scenario_id, env_id, progress_callback=on_progress, user_id=user_id)
                 return result
             finally:
                 await _celery_engine.dispose()
@@ -146,7 +146,7 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
         )
 
         try:
-            wh_ok, wh_detail = notify_scenario_schedule_webhook_from_db(scenario_id, result)
+            wh_ok, wh_detail = notify_scenario_schedule_webhook_from_db(scenario_id, result, user_id=user_id)
             _logger.info(f"[Celery] schedule webhook: ok={wh_ok} {wh_detail[:300]}")
         except Exception as we:
             _logger.warning(f"通知 schedule webhook 失败（不影响执行结果）: {we}")
@@ -166,7 +166,7 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None):
                 notify_scenario_schedule_webhook_from_db,
             )
 
-            wh_ok, wh_detail = notify_scenario_schedule_webhook_from_db(scenario_id, fail_payload)
+            wh_ok, wh_detail = notify_scenario_schedule_webhook_from_db(scenario_id, fail_payload, user_id=user_id)
             _logger.warning(f"[Celery] schedule webhook (failed run): ok={wh_ok} {wh_detail[:300]}")
         except Exception as we:
             _logger.warning(f"通知 webhook 失败: {we}")

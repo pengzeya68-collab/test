@@ -16,35 +16,34 @@ from fastapi_backend.models.autotest import AutoTestCase, AutoTestHistory, AutoT
 _logger = logging.getLogger(__name__)
 
 
-async def get_coverage_summary(db: AsyncSession) -> dict:
+async def get_coverage_summary(db: AsyncSession, user_id: int = None) -> dict:
     """获取覆盖率汇总统计"""
     # 总接口数（用例中不同的 URL 数量）
-    total_apis = await db.scalar(select(func.count(distinct(AutoTestCase.url)))) or 0
+    q_total_apis = select(func.count(distinct(AutoTestCase.url)))
+    q_total_cases = select(func.count(AutoTestCase.id))
+    if user_id is not None:
+        q_total_apis = q_total_apis.where(AutoTestCase.user_id == user_id)
+        q_total_cases = q_total_cases.where(AutoTestCase.user_id == user_id)
 
-    # 有用例覆盖的接口数
+    total_apis = await db.scalar(q_total_apis) or 0
     covered_apis = total_apis  # 只要创建了用例就算覆盖
-
-    # 总用例数
-    total_cases = await db.scalar(select(func.count(AutoTestCase.id))) or 0
+    total_cases = await db.scalar(q_total_cases) or 0
 
     # 最近 30 天的执行记录
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    total_executions = (
-        await db.scalar(select(func.count(AutoTestHistory.id)).where(AutoTestHistory.created_at >= thirty_days_ago))
-        or 0
-    )
-
-    passed_executions = (
-        await db.scalar(
-            select(func.count(AutoTestHistory.id)).where(
-                and_(
-                    AutoTestHistory.created_at >= thirty_days_ago,
-                    AutoTestHistory.status == "passed",
-                )
-            )
+    q_total_exec = select(func.count(AutoTestHistory.id)).where(AutoTestHistory.created_at >= thirty_days_ago)
+    q_passed_exec = select(func.count(AutoTestHistory.id)).where(
+        and_(
+            AutoTestHistory.created_at >= thirty_days_ago,
+            AutoTestHistory.status == "passed",
         )
-        or 0
     )
+    if user_id is not None:
+        q_total_exec = q_total_exec.where(AutoTestHistory.user_id == user_id)
+        q_passed_exec = q_passed_exec.where(AutoTestHistory.user_id == user_id)
+
+    total_executions = await db.scalar(q_total_exec) or 0
+    passed_executions = await db.scalar(q_passed_exec) or 0
 
     pass_rate = round(passed_executions / total_executions * 100, 1) if total_executions > 0 else 0
 
@@ -59,7 +58,7 @@ async def get_coverage_summary(db: AsyncSession) -> dict:
     }
 
 
-async def get_coverage_heatmap(db: AsyncSession, days: int = 30) -> dict:
+async def get_coverage_heatmap(db: AsyncSession, days: int = 30, user_id: int = None) -> dict:
     """
     获取覆盖率热力图数据
 
@@ -69,10 +68,9 @@ async def get_coverage_heatmap(db: AsyncSession, days: int = 30) -> dict:
     """
     now = datetime.now(timezone.utc)
     start_date = now - timedelta(days=days)
-    # 用 cast(Date) 兼容 SQLite / PostgreSQL / MySQL
     start_date_only = start_date.date()
 
-    cases_result = await db.execute(
+    cases_query = (
         select(
             AutoTestCase.id,
             AutoTestCase.url,
@@ -83,6 +81,10 @@ async def get_coverage_heatmap(db: AsyncSession, days: int = 30) -> dict:
         .outerjoin(AutoTestGroup, AutoTestCase.group_id == AutoTestGroup.id)
         .order_by(AutoTestGroup.name, AutoTestCase.url)
     )
+    if user_id is not None:
+        cases_query = cases_query.where(AutoTestCase.user_id == user_id)
+
+    cases_result = await db.execute(cases_query)
     cases = cases_result.all()
 
     if not cases:
@@ -108,8 +110,8 @@ async def get_coverage_heatmap(db: AsyncSession, days: int = 30) -> dict:
         else:
             api_list[seen_urls[key]]["case_ids"].append(c.id)
 
-    # 获取最近 N 天的执行记录（用 cast(Date) 兼容多数据库）
-    history_result = await db.execute(
+    # 获取最近 N 天的执行记录
+    history_query = (
         select(
             AutoTestHistory.case_id,
             AutoTestHistory.status,
@@ -118,6 +120,10 @@ async def get_coverage_heatmap(db: AsyncSession, days: int = 30) -> dict:
         .where(cast(AutoTestHistory.created_at, Date) >= start_date_only)
         .order_by(AutoTestHistory.created_at)
     )
+    if user_id is not None:
+        history_query = history_query.where(AutoTestHistory.user_id == user_id)
+
+    history_result = await db.execute(history_query)
     history = history_result.all()
 
     # 构建日期列表
@@ -133,16 +139,13 @@ async def get_coverage_heatmap(db: AsyncSession, days: int = 30) -> dict:
     for c in cases:
         case_url_map[c.id] = f"{c.method}:{c.url}"
 
-    # 状态优先级：failed > unknown > passed > none（同一天多条记录取最差状态）
+    # 状态优先级：failed > unknown > passed > none
     status_priority = {"failed": 3, "unknown": 2, "passed": 1, "none": 0}
 
-    # 构建热力图矩阵: matrix[api_idx][date_idx] = status
-    # 初始化为 "none"
     matrix = [["none" for _ in dates] for _ in api_list]
     api_idx_map = {f"{a['method']}:{a['url']}": i for i, a in enumerate(api_list)}
     date_idx_map = {d: i for i, d in enumerate(dates)}
 
-    # 填充执行数据（同一接口同一天，取最差状态）
     for h in history:
         url_key = case_url_map.get(h.case_id)
         if not url_key:
@@ -159,7 +162,6 @@ async def get_coverage_heatmap(db: AsyncSession, days: int = 30) -> dict:
         if status_priority.get(new_status, 0) > status_priority.get(old_status, 0):
             matrix[api_idx][date_idx] = new_status
 
-    # 计算每个接口的覆盖率统计
     api_stats = []
     for i, api in enumerate(api_list):
         row = matrix[i]
@@ -193,27 +195,25 @@ async def get_api_execution_detail(
     db: AsyncSession,
     case_ids: list[int],
     days: int = 30,
+    user_id: int = None,
 ) -> dict:
     """
     获取接口的执行详情（支持同一 URL 对应多个用例）
-
-    Args:
-        db: 数据库会话
-        case_ids: 用例 ID 列表
-        days: 统计天数
     """
     if not case_ids:
         return {"case": None, "records": [], "total": 0}
 
     start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
-    # 获取第一个用例的基本信息用于展示
-    first_case = await db.get(AutoTestCase, case_ids[0])
+    case_query = select(AutoTestCase).where(AutoTestCase.id == case_ids[0])
+    if user_id is not None:
+        case_query = case_query.where(AutoTestCase.user_id == user_id)
+    first_result = await db.execute(case_query)
+    first_case = first_result.scalar_one_or_none()
     if not first_case:
         return {"case": None, "records": [], "total": 0}
 
-    # 查询所有关联用例的执行历史
-    history_result = await db.execute(
+    history_query = (
         select(AutoTestHistory)
         .where(
             and_(
@@ -224,6 +224,10 @@ async def get_api_execution_detail(
         .order_by(AutoTestHistory.created_at.desc())
         .limit(200)
     )
+    if user_id is not None:
+        history_query = history_query.where(AutoTestHistory.user_id == user_id)
+
+    history_result = await db.execute(history_query)
     history = history_result.scalars().all()
 
     records = []

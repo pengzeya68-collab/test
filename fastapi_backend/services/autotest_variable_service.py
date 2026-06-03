@@ -11,7 +11,7 @@ from sqlalchemy import select
 _logger = logging.getLogger(__name__)
 
 
-async def save_variables_to_db(variables: Dict[str, Any], source: str = "测试") -> bool:
+async def save_variables_to_db(variables: Dict[str, Any], source: str = "测试", user_id: int = None) -> bool:
     if not variables:
         return False
 
@@ -21,9 +21,10 @@ async def save_variables_to_db(variables: Dict[str, Any], source: str = "测试"
     try:
         async with async_session() as session:
             for var_name, var_value in variables.items():
-                result = await session.execute(
-                    select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == var_name)
-                )
+                query = select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == var_name)
+                if user_id is not None:
+                    query = query.where(AutoTestGlobalVariable.user_id == user_id)
+                result = await session.execute(query)
                 existing_var = result.scalar_one_or_none()
 
                 if existing_var:
@@ -34,7 +35,8 @@ async def save_variables_to_db(variables: Dict[str, Any], source: str = "测试"
                         name=var_name,
                         value=str(var_value),
                         description=f"从{source}提取",
-                        is_encrypted=False
+                        is_encrypted=False,
+                        user_id=user_id,
                     )
                     session.add(new_var)
 

@@ -40,44 +40,51 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 BASE_DIR = AUTOTEST_DATA_DIR
 
-# 全局变量缓存（5分钟过期）
-_global_vars_cache = {"vars": {}, "timestamp": 0}
+# 全局变量缓存（5分钟过期，按 user_id 隔离）
+_global_vars_cache: Dict[int, Dict] = {}  # {user_id: {"vars": {}, "timestamp": 0}}
 _GLOBAL_VARS_CACHE_TTL = 300  # 5分钟
 
 
-async def _get_global_variables_cached() -> Dict[str, Any]:
-    """获取全局变量（带缓存）"""
+async def _get_global_variables_cached(user_id: int = None) -> Dict[str, Any]:
+    """获取全局变量（带缓存，按用户隔离）"""
     now = time.time()
-    if now - _global_vars_cache["timestamp"] < _GLOBAL_VARS_CACHE_TTL:
-        return _global_vars_cache["vars"]
-    
+    cache_key = user_id or 0
+    cached = _global_vars_cache.get(cache_key)
+    if cached and now - cached["timestamp"] < _GLOBAL_VARS_CACHE_TTL:
+        return cached["vars"]
+
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(AutoTestGlobalVariable))
+        query = select(AutoTestGlobalVariable)
+        if user_id is not None:
+            query = query.where(AutoTestGlobalVariable.user_id == user_id)
+        result = await session.execute(query)
         global_vars = {}
         for var in result.scalars().all():
             value = var.value
             if var.is_encrypted:
                 value = decrypt(value)
             global_vars[var.name] = value
-    
-    _global_vars_cache["vars"] = global_vars
-    _global_vars_cache["timestamp"] = now
+
+    _global_vars_cache[cache_key] = {"vars": global_vars, "timestamp": now}
     return global_vars
 
 
-def _invalidate_global_vars_cache():
+def _invalidate_global_vars_cache(user_id: int = None):
     """使全局变量缓存失效"""
-    _global_vars_cache["timestamp"] = 0
+    if user_id is not None:
+        _global_vars_cache.pop(user_id, None)
+    else:
+        _global_vars_cache.clear()
 
 
-async def _save_variables_to_db_safe(extracted_vars: Dict[str, Any]):
+async def _save_variables_to_db_safe(extracted_vars: Dict[str, Any], user_id: int = None):
     """保存变量到数据库（带异常处理）"""
     if not extracted_vars:
         return
     try:
         from fastapi_backend.services.autotest_variable_service import save_variables_to_db
-        await save_variables_to_db(extracted_vars)
-        _invalidate_global_vars_cache()  # 使缓存失效，下次重新加载
+        await save_variables_to_db(extracted_vars, user_id=user_id)
+        _invalidate_global_vars_cache(user_id)
     except Exception as e:
         _logger.warning(f"保存变量失败: {e}")
 
@@ -117,14 +124,14 @@ def _smart_type_convert(obj: Any) -> Any:
     return obj
 
 
-async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvironment]) -> Dict[str, Any]:
+async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvironment], user_id: int = None) -> Dict[str, Any]:
     """
     替换用例中的变量占位符
     """
     variables = {}
 
-    # 使用缓存的全局变量
-    global_vars = await _get_global_variables_cached()
+    # 使用缓存的全局变量（按用户隔离）
+    global_vars = await _get_global_variables_cached(user_id)
     variables.update(global_vars)
 
     if env:
@@ -198,7 +205,8 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
 async def quick_run_case(
     case: AutoTestCase,
     env: Optional[AutoTestEnvironment],
-    override_params: Optional[Dict[str, Any]] = None
+    override_params: Optional[Dict[str, Any]] = None,
+    user_id: int = None,
 ) -> Dict[str, Any]:
     """
     快速执行用例（不保存历史记录）
@@ -207,7 +215,7 @@ async def quick_run_case(
     start_time = time.time()
 
     try:
-        case_data = await replace_case_variables(case, env)
+        case_data = await replace_case_variables(case, env, user_id=user_id)
 
         method = case_data["method"].upper()
         url = case_data["url"]
@@ -284,7 +292,7 @@ async def quick_run_case(
             extractors = case.extractors
         extracted_vars = await extract_variables_from_response(extractors, response_data, response.text, dict(response.headers))
         if extracted_vars:
-            await _save_variables_to_db_safe(extracted_vars)
+            await _save_variables_to_db_safe(extracted_vars, user_id=user_id)
 
         # 执行断言（不再提前拦截 status_code >= 400，让断言引擎根据用户配置判断）
         assert_result = execute_assertions(case_data["assert_rules"], response.status_code, response_data)
@@ -389,11 +397,12 @@ async def extract_variables_from_response(extractors: Any, response_data: Any, r
 
 
 
-async def save_variables_to_db(variables: Dict[str, str]) -> bool:
+async def save_variables_to_db(variables: Dict[str, str], user_id: int = None) -> bool:
     """
     将提取的变量保存到全局变量表
     Args:
         variables: 变量字典 {变量名: 变量值}
+        user_id: 用户ID，用于数据隔离
     Returns:
         是否保存成功
     """
@@ -406,9 +415,10 @@ async def save_variables_to_db(variables: Dict[str, str]) -> bool:
     try:
         async with AsyncSessionLocal() as session:
             for var_name, var_value in variables.items():
-                result = await session.execute(
-                    select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == var_name)
-                )
+                query = select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == var_name)
+                if user_id is not None:
+                    query = query.where(AutoTestGlobalVariable.user_id == user_id)
+                result = await session.execute(query)
                 existing_var = result.scalar_one_or_none()
 
                 if existing_var:
@@ -419,7 +429,8 @@ async def save_variables_to_db(variables: Dict[str, str]) -> bool:
                         name=var_name,
                         value=str(var_value),
                         description="从测试用例提取",
-                        is_encrypted=False
+                        is_encrypted=False,
+                        user_id=user_id,
                     )
                     session.add(new_var)
 
@@ -440,14 +451,14 @@ def generate_test_yaml(case_data: Dict[str, Any], output_path: Path) -> None:
         yaml.dump(yaml_content, f, allow_unicode=True, default_flow_style=False)
 
 
-async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnvironment], history_id: int) -> Dict[str, Any]:
+async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnvironment], history_id: int, user_id: int = None) -> Dict[str, Any]:
     """使用 Pytest 执行用例（生成 Allure 报告）"""
     from fastapi_backend.models.autotest import AutoTestHistory
 
     start_time = time.time()
 
     try:
-        case_data = await replace_case_variables(case, env)
+        case_data = await replace_case_variables(case, env, user_id=user_id)
 
         temp_dir = BASE_DIR / "temp_run_data"
         temp_dir.mkdir(exist_ok=True)
@@ -526,10 +537,11 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
         # 更新历史记录
         async with AsyncSessionLocal() as session:
             from sqlalchemy import update
+            stmt = update(AutoTestHistory).where(AutoTestHistory.id == history_id)
+            if user_id is not None:
+                stmt = stmt.where(AutoTestHistory.user_id == user_id)
             await session.execute(
-                update(AutoTestHistory)
-                .where(AutoTestHistory.id == history_id)
-                .values(status="success" if success else "failed", execution_time=execution_time, report_url=report_url)
+                stmt.values(status="success" if success else "failed", execution_time=execution_time, report_url=report_url)
             )
             await session.commit()
 
@@ -545,9 +557,11 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
         execution_time = int((time.time() - start_time) * 1000)
         async with AsyncSessionLocal() as session:
             from sqlalchemy import update
+            stmt = update(AutoTestHistory).where(AutoTestHistory.id == history_id)
+            if user_id is not None:
+                stmt = stmt.where(AutoTestHistory.user_id == user_id)
             await session.execute(
-                update(AutoTestHistory).where(AutoTestHistory.id == history_id)
-                .values(status="error", execution_time=execution_time, error_message="执行超时")
+                stmt.values(status="error", execution_time=execution_time, error_message="执行超时")
             )
             await session.commit()
         return {"success": False, "execution_time": execution_time, "error": "执行超时（60秒）", "report_url": None}
@@ -556,9 +570,11 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
         execution_time = int((time.time() - start_time) * 1000)
         async with AsyncSessionLocal() as session:
             from sqlalchemy import update
+            stmt = update(AutoTestHistory).where(AutoTestHistory.id == history_id)
+            if user_id is not None:
+                stmt = stmt.where(AutoTestHistory.user_id == user_id)
             await session.execute(
-                update(AutoTestHistory).where(AutoTestHistory.id == history_id)
-                .values(status="error", execution_time=execution_time, error_message=str(e))
+                stmt.values(status="error", execution_time=execution_time, error_message=str(e))
             )
             await session.commit()
         return {"success": False, "execution_time": execution_time, "error": str(e), "report_url": None}

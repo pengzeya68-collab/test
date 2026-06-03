@@ -50,7 +50,7 @@ class ScenarioExecutionEngine:
     - 下一步构造请求时，通过 replace_variables 自动从 context_vars 读取变量
     """
 
-    def __init__(self, scenario_id: int, env_id: Optional[int] = None, progress_callback=None):
+    def __init__(self, scenario_id: int, env_id: Optional[int] = None, progress_callback=None, user_id: int = None):
         self.scenario_id = scenario_id
         self.env_id = env_id
         self.context_vars: Dict[str, Any] = {}
@@ -58,6 +58,7 @@ class ScenarioExecutionEngine:
         self.total_duration = 0
         self.base_url: str = ""
         self.progress_callback = progress_callback
+        self.user_id = user_id
 
     async def execute(self) -> Dict[str, Any]:
         """
@@ -71,11 +72,10 @@ class ScenarioExecutionEngine:
 
         try:
             async with async_session() as db:
-                result = await db.execute(
-                    select(AutoTestScenario)
-                    .options(selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case))
-                    .where(AutoTestScenario.id == self.scenario_id)
-                )
+                query = select(AutoTestScenario).options(selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case)).where(AutoTestScenario.id == self.scenario_id)
+                if self.user_id is not None:
+                    query = query.where(AutoTestScenario.user_id == self.user_id)
+                result = await db.execute(query)
                 scenario = result.scalar_one_or_none()
                 if not scenario:
                     raise ValueError(f"场景 {self.scenario_id} 不存在")
@@ -85,17 +85,22 @@ class ScenarioExecutionEngine:
                 # 加载环境变量
                 env = None
                 if self.env_id:
-                    result = await db.execute(
-                        select(AutoTestEnvironment).where(AutoTestEnvironment.id == self.env_id)
-                    )
+                    env_query = select(AutoTestEnvironment).where(AutoTestEnvironment.id == self.env_id)
+                    if self.user_id is not None:
+                        env_query = env_query.where(AutoTestEnvironment.user_id == self.user_id)
+                    result = await db.execute(env_query)
                     env = result.scalar_one_or_none()
                 else:
-                    result = await db.execute(
-                        select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True)
-                    )
+                    env_query = select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True)
+                    if self.user_id is not None:
+                        env_query = env_query.where(AutoTestEnvironment.user_id == self.user_id)
+                    result = await db.execute(env_query)
                     env = result.scalar_one_or_none()
                     if not env:
-                        result = await db.execute(select(AutoTestEnvironment))
+                        fallback_query = select(AutoTestEnvironment)
+                        if self.user_id is not None:
+                            fallback_query = fallback_query.where(AutoTestEnvironment.user_id == self.user_id)
+                        result = await db.execute(fallback_query)
                         env = result.scalars().first()
 
                 if env:
@@ -904,7 +909,7 @@ class TestScenario{scenario_id}:
         if self.context_vars:
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(save_variables_to_db(dict(self.context_vars)))
+                loop.create_task(save_variables_to_db(dict(self.context_vars), user_id=self.user_id))
             except RuntimeError:
                 _logger.debug("无运行中的事件循环，跳过变量持久化")
 
@@ -912,25 +917,22 @@ class TestScenario{scenario_id}:
 class DataDrivenScenarioExecutionEngine:
     """数据驱动场景执行引擎"""
 
-    def __init__(self, scenario_id: int, env_id: Optional[int] = None, progress_callback=None):
+    def __init__(self, scenario_id: int, env_id: Optional[int] = None, progress_callback=None, user_id: int = None):
         self.scenario_id = scenario_id
         self.env_id = env_id
         self.iterations: List[Dict[str, Any]] = []
         self.total_duration = 0
         self.progress_callback = progress_callback
+        self.user_id = user_id
 
     async def execute(self) -> Dict[str, Any]:
         start_time = time.time()
 
         async with async_session() as db:
-            result = await db.execute(
-                select(AutoTestScenario)
-                .options(
-                    selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case),
-                    selectinload(AutoTestScenario.dataset)
-                )
-                .where(AutoTestScenario.id == self.scenario_id)
-            )
+            query = select(AutoTestScenario).options(selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case), selectinload(AutoTestScenario.dataset)).where(AutoTestScenario.id == self.scenario_id)
+            if self.user_id is not None:
+                query = query.where(AutoTestScenario.user_id == self.user_id)
+            result = await db.execute(query)
             scenario = result.scalar_one_or_none()
             if not scenario:
                 raise ValueError(f"场景 {self.scenario_id} 不存在")
@@ -949,17 +951,22 @@ class DataDrivenScenarioExecutionEngine:
             env_config = {}
             env = None
             if self.env_id:
-                result = await db.execute(
-                    select(AutoTestEnvironment).where(AutoTestEnvironment.id == self.env_id)
-                )
+                env_query = select(AutoTestEnvironment).where(AutoTestEnvironment.id == self.env_id)
+                if self.user_id is not None:
+                    env_query = env_query.where(AutoTestEnvironment.user_id == self.user_id)
+                result = await db.execute(env_query)
                 env = result.scalar_one_or_none()
             else:
-                result = await db.execute(
-                    select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True)
-                )
+                env_query = select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True)
+                if self.user_id is not None:
+                    env_query = env_query.where(AutoTestEnvironment.user_id == self.user_id)
+                result = await db.execute(env_query)
                 env = result.scalar_one_or_none()
                 if not env:
-                    result = await db.execute(select(AutoTestEnvironment))
+                    fallback_query = select(AutoTestEnvironment)
+                    if self.user_id is not None:
+                        fallback_query = fallback_query.where(AutoTestEnvironment.user_id == self.user_id)
+                    result = await db.execute(fallback_query)
                     env = result.scalars().first()
 
             if env:
@@ -998,7 +1005,7 @@ class DataDrivenScenarioExecutionEngine:
         for col_name, value in zip(columns, row_data):
             row_vars[col_name] = value
 
-        engine = ScenarioExecutionEngine(self.scenario_id, self.env_id, progress_callback=self.progress_callback)
+        engine = ScenarioExecutionEngine(self.scenario_id, self.env_id, progress_callback=self.progress_callback, user_id=self.user_id)
         engine.context_vars = dict(env_config)
         engine.context_vars.update(row_vars)
 
@@ -1031,18 +1038,20 @@ class DataDrivenScenarioExecutionEngine:
 async def run_scenario_data_driven(
     scenario_id: int,
     env_id: Optional[int] = None,
-    progress_callback=None
+    progress_callback=None,
+    user_id: int = None,
 ) -> Dict[str, Any]:
     """数据驱动执行场景的入口函数"""
-    engine = DataDrivenScenarioExecutionEngine(scenario_id, env_id, progress_callback=progress_callback)
+    engine = DataDrivenScenarioExecutionEngine(scenario_id, env_id, progress_callback=progress_callback, user_id=user_id)
     return await engine.execute()
 
 
 async def run_scenario(
     scenario_id: int,
     env_id: Optional[int] = None,
-    progress_callback=None
+    progress_callback=None,
+    user_id: int = None,
 ) -> Dict[str, Any]:
     """普通场景执行入口，不要求预先配置数据集。"""
-    engine = ScenarioExecutionEngine(scenario_id, env_id, progress_callback=progress_callback)
+    engine = ScenarioExecutionEngine(scenario_id, env_id, progress_callback=progress_callback, user_id=user_id)
     return await engine.execute()

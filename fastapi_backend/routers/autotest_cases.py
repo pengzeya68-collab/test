@@ -9,14 +9,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
-from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.autotest import AutoTestCase, AutoTestHistory, AutoTestScenarioStep
+from fastapi_backend.deps.auth import get_current_active_user
+from fastapi_backend.models.autotest import AutoTestCase, AutoTestHistory, AutoTestScenario, AutoTestScenarioStep
+from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import (
     AutoTestCaseCreate,
     AutoTestCaseUpdate,
 )
 
-router = APIRouter(prefix="/api/auto-test/cases", tags=["AutoTest-用例"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/auto-test/cases", tags=["AutoTest-用例"])
 
 
 def _case_to_dict(case):
@@ -45,10 +46,11 @@ async def list_cases(
     page_size: int = Query(20, ge=1, le=1000, description="每页数量"),
     group_id: Optional[int] = Query(None, description="按分组筛选"),
     keyword: str = Query(None, description="搜索关键词"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """获取接口用例列表，支持分页、搜索、筛选"""
-    query = select(AutoTestCase)
+    query = select(AutoTestCase).where(AutoTestCase.user_id == current_user.id)
 
     if group_id:
         query = query.where(AutoTestCase.group_id == group_id)
@@ -71,8 +73,6 @@ async def list_cases(
     # 批量查询每个用例的最近执行状态（避免 N+1 查询）
     case_ids = [case.id for case in cases]
     if case_ids:
-        # 查询每个 case_id 的最新历史记录
-        # 先获取所有 case_id 的最大 created_at
         max_time_subq = (
             select(AutoTestHistory.case_id, func.max(AutoTestHistory.created_at).label("max_time"))
             .where(AutoTestHistory.case_id.in_(case_ids))
@@ -110,16 +110,17 @@ async def list_cases(
 @router.get("/all")
 async def get_all_cases(
     group_id: int = Query(None, description="按分组筛选"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """获取所有用例（用于选择）"""
-    query = select(AutoTestCase).order_by(AutoTestCase.updated_at.desc())
+    query = select(AutoTestCase).where(AutoTestCase.user_id == current_user.id).order_by(AutoTestCase.updated_at.desc())
     if group_id:
         query = query.where(AutoTestCase.group_id == group_id)
     result = await db.execute(query)
     cases = result.scalars().all()
     
-    # 批量查询每个用例的最近执行状态（避免 N+1 查询）
+    # 批量查询每个用例的最近执行状态
     case_ids = [case.id for case in cases]
     if case_ids:
         max_time_subq = (
@@ -149,13 +150,17 @@ async def get_all_cases(
 
 
 @router.get("/{case_id}")
-async def get_case(case_id: int, db: AsyncSession = Depends(get_db)):
+async def get_case(
+    case_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取单个用例详情"""
-    result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id))
+    result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id))
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
-    
+
     # 查询最近的执行历史
     history_query = select(AutoTestHistory).where(AutoTestHistory.case_id == case.id).order_by(AutoTestHistory.created_at.desc()).limit(1)
     history_result = await db.execute(history_query)
@@ -168,7 +173,11 @@ async def get_case(case_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("", status_code=201)
-async def create_case(case_in: AutoTestCaseCreate, db: AsyncSession = Depends(get_db)):
+async def create_case(
+    case_in: AutoTestCaseCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """创建新用例"""
     # URL格式校验
     if case_in.url and not case_in.url.startswith(("/", "http://", "https://")):
@@ -183,7 +192,8 @@ async def create_case(case_in: AutoTestCaseCreate, db: AsyncSession = Depends(ge
         data.pop("folder_id", None)
     if data.get("group_id") in ("", None):
         data.pop("group_id", None)
-    # extractors 字段已添加到数据库，不再移除
+    # 设置用户归属
+    data["user_id"] = current_user.id
     case = AutoTestCase(**data)
     db.add(case)
     await db.commit()
@@ -195,6 +205,7 @@ async def create_case(case_in: AutoTestCaseCreate, db: AsyncSession = Depends(ge
 async def update_case(
     case_id: int,
     case_in: AutoTestCaseUpdate,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """更新用例"""
@@ -202,7 +213,7 @@ async def update_case(
     if case_in.url is not None and case_in.url != "" and not case_in.url.startswith(("/", "http://", "https://")):
         raise HTTPException(status_code=400, detail="URL格式不正确，必须以/或http://或https://开头")
     
-    result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id))
+    result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id))
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
@@ -216,7 +227,6 @@ async def update_case(
         update_data.pop("folder_id", None)
     if update_data.get("group_id") in ("", None):
         update_data.pop("group_id", None)
-    # extractors 字段已添加到数据库，不再移除
 
     for field, value in update_data.items():
         setattr(case, field, value)
@@ -227,16 +237,22 @@ async def update_case(
 
 
 @router.delete("/{case_id}")
-async def delete_case(case_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_case(
+    case_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """删除用例（自动解除场景步骤引用）"""
-    result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id))
+    result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id))
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
 
-    # 删除引用该用例的场景步骤
+    # 删除引用该用例的场景步骤（只删除当前用户拥有的场景中的步骤）
     steps_result = await db.execute(
-        select(AutoTestScenarioStep).where(AutoTestScenarioStep.api_case_id == case_id)
+        select(AutoTestScenarioStep)
+        .join(AutoTestScenario, AutoTestScenarioStep.scenario_id == AutoTestScenario.id)
+        .where(AutoTestScenarioStep.api_case_id == case_id, AutoTestScenario.user_id == current_user.id)
     )
     for step in steps_result.scalars().all():
         await db.delete(step)

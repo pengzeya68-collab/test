@@ -8,26 +8,36 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
-from fastapi_backend.deps.auth import get_current_user
-from fastapi_backend.models.autotest import AutoTestGroup, AutoTestCase, AutoTestScenarioStep
+from fastapi_backend.deps.auth import get_current_active_user
+from fastapi_backend.models.autotest import AutoTestGroup, AutoTestCase, AutoTestScenario, AutoTestScenarioStep
+from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import (
     AutoTestGroupCreate,
     AutoTestGroupUpdate,
 )
 
-router = APIRouter(prefix="/api/auto-test/groups", tags=["AutoTest-分组"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/auto-test/groups", tags=["AutoTest-分组"])
 
 
 @router.get("/tree")
-async def get_group_tree(db: AsyncSession = Depends(get_db)):
+async def get_group_tree(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取所有分组，返回树形结构"""
-    result = await db.execute(select(AutoTestGroup).order_by(AutoTestGroup.parent_id, AutoTestGroup.id))
+    result = await db.execute(
+        select(AutoTestGroup)
+        .where(AutoTestGroup.user_id == current_user.id)
+        .order_by(AutoTestGroup.parent_id, AutoTestGroup.id)
+    )
     groups = result.scalars().all()
 
-    # 计算每个分组的用例数
+    # 计算每个分组的用例数（只统计当前用户的）
     case_counts = {}
     count_result = await db.execute(
-        select(AutoTestCase.group_id, func.count(AutoTestCase.id)).group_by(AutoTestCase.group_id)
+        select(AutoTestCase.group_id, func.count(AutoTestCase.id))
+        .where(AutoTestCase.user_id == current_user.id)
+        .group_by(AutoTestCase.group_id)
     )
     for group_id, count in count_result.all():
         case_counts[group_id] = count
@@ -58,11 +68,17 @@ async def get_group_tree(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("")
-async def get_all_groups(db: AsyncSession = Depends(get_db)):
+async def get_all_groups(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取所有分组列表（扁平结构）"""
-    result = await db.execute(select(AutoTestGroup).order_by(AutoTestGroup.name))
+    result = await db.execute(
+        select(AutoTestGroup)
+        .where(AutoTestGroup.user_id == current_user.id)
+        .order_by(AutoTestGroup.name)
+    )
     groups = result.scalars().all()
-    # 不用严格 response_model 验证，因为数据库中 parent_id 可能为非整数
     return [
         {
             "id": g.id,
@@ -75,9 +91,13 @@ async def get_all_groups(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{group_id}")
-async def get_group(group_id: int, db: AsyncSession = Depends(get_db)):
+async def get_group(
+    group_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取单个分组详情"""
-    result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.id == group_id))
+    result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id))
     group = result.scalar_one_or_none()
     if not group:
         raise HTTPException(status_code=404, detail="分组不存在")
@@ -90,9 +110,13 @@ async def get_group(group_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("", status_code=201)
-async def create_group(group_in: AutoTestGroupCreate, db: AsyncSession = Depends(get_db)):
+async def create_group(
+    group_in: AutoTestGroupCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """创建新分组"""
-    group = AutoTestGroup(**group_in.model_dump())
+    group = AutoTestGroup(**group_in.model_dump(), user_id=current_user.id)
     db.add(group)
     await db.commit()
     await db.refresh(group)
@@ -108,10 +132,11 @@ async def create_group(group_in: AutoTestGroupCreate, db: AsyncSession = Depends
 async def update_group(
     group_id: int,
     group_in: AutoTestGroupUpdate,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """更新分组"""
-    result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.id == group_id))
+    result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id))
     group = result.scalar_one_or_none()
     if not group:
         raise HTTPException(status_code=404, detail="分组不存在")
@@ -130,28 +155,34 @@ async def update_group(
 
 
 @router.delete("/{group_id}")
-async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_group(
+    group_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """删除分组（级联删除分组下的用例，并解除场景步骤引用）"""
-    result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.id == group_id))
+    result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id))
     group = result.scalar_one_or_none()
     if not group:
         raise HTTPException(status_code=404, detail="分组不存在")
 
     # 检查是否有子分组
-    child_result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.parent_id == group_id))
+    child_result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.parent_id == group_id, AutoTestGroup.user_id == current_user.id))
     children = child_result.scalars().all()
     if children:
         raise HTTPException(status_code=400, detail="请先删除子分组")
 
     # 查找分组下所有用例
-    cases_result = await db.execute(select(AutoTestCase).filter(AutoTestCase.group_id == group_id))
+    cases_result = await db.execute(select(AutoTestCase).filter(AutoTestCase.group_id == group_id, AutoTestCase.user_id == current_user.id))
     cases = cases_result.scalars().all()
 
     if cases:
         case_ids = [case.id for case in cases]
-        # 删除引用这些用例的场景步骤（不是设为NULL，而是直接删除）
+        # 删除引用这些用例的场景步骤（只删除当前用户拥有的场景中的步骤）
         steps_result = await db.execute(
-            select(AutoTestScenarioStep).where(AutoTestScenarioStep.api_case_id.in_(case_ids))
+            select(AutoTestScenarioStep)
+            .join(AutoTestScenario, AutoTestScenarioStep.scenario_id == AutoTestScenario.id)
+            .where(AutoTestScenarioStep.api_case_id.in_(case_ids), AutoTestScenario.user_id == current_user.id)
         )
         for step in steps_result.scalars().all():
             await db.delete(step)

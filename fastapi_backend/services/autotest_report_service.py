@@ -108,15 +108,20 @@ def parse_allure_step_results(scenario_id: int, report_url: Optional[str] = None
     return step_results
 
 
-async def get_report_detail(report_id: int, db: AsyncSession) -> Optional[Dict]:
+async def get_report_detail(report_id: int, db: AsyncSession, user_id: int = None) -> Optional[Dict]:
     """
     获取执行报告详情
-    先查 AutoTestScenarioExecutionRecord，再查 AutoTestHistory
+    先查 AutoTestScenarioExecutionRecord（通过场景归属校验），再查 AutoTestHistory
     """
-    result = await db.execute(
+    from fastapi_backend.models.autotest import AutoTestScenario
+    record_query = (
         select(AutoTestScenarioExecutionRecord)
+        .join(AutoTestScenario, AutoTestScenarioExecutionRecord.scenario_id == AutoTestScenario.id)
         .where(AutoTestScenarioExecutionRecord.id == report_id)
     )
+    if user_id is not None:
+        record_query = record_query.where(AutoTestScenario.user_id == user_id)
+    result = await db.execute(record_query)
     record = result.scalar_one_or_none()
     if record:
         step_results = load_step_results_from_file(record)
@@ -146,9 +151,10 @@ async def get_report_detail(report_id: int, db: AsyncSession) -> Optional[Dict]:
             "created_at": record.created_at,
         }
 
-    result = await db.execute(
-        select(AutoTestHistory).where(AutoTestHistory.id == report_id)
-    )
+    history_query = select(AutoTestHistory).where(AutoTestHistory.id == report_id)
+    if user_id is not None:
+        history_query = history_query.where(AutoTestHistory.user_id == user_id)
+    result = await db.execute(history_query)
     history = result.scalar_one_or_none()
     if history:
         return {

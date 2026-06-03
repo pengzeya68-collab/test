@@ -17,12 +17,13 @@ from sqlalchemy.orm import selectinload
 from fastapi.responses import StreamingResponse
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import (
     AutoTestCase,
     AutoTestScenario,
     AutoTestScenarioStep,
 )
+from fastapi_backend.models.models import User
 from fastapi_backend.services.autotest_jmeter_service import (
     export_cases_to_jmx,
     import_jmx_to_cases,
@@ -30,25 +31,25 @@ from fastapi_backend.services.autotest_jmeter_service import (
 )
 from fastapi_backend.core.ssrf_guard import validate_url_safety
 
-router = APIRouter(prefix="/api/auto-test", tags=["AutoTest-JMeter"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/auto-test", tags=["AutoTest-JMeter"])
 
 
-async def _resolve_group_id(db: AsyncSession, group_id: Optional[int]) -> int:
+async def _resolve_group_id(db: AsyncSession, group_id: Optional[int], user_id: int) -> int:
     from fastapi_backend.models.autotest import AutoTestGroup
 
     if group_id is not None:
-        group_result = await db.execute(select(AutoTestGroup.id).where(AutoTestGroup.id == group_id))
+        group_result = await db.execute(select(AutoTestGroup.id).where(AutoTestGroup.id == group_id, AutoTestGroup.user_id == user_id))
         if group_result.scalar_one_or_none() is not None:
             return group_id
         raise HTTPException(status_code=404, detail="目标分组不存在")
 
     default_name = "JMeter Import"
     group_result = await db.execute(
-        select(AutoTestGroup).where(AutoTestGroup.name == default_name, AutoTestGroup.parent_id.is_(None))
+        select(AutoTestGroup).where(AutoTestGroup.name == default_name, AutoTestGroup.parent_id.is_(None), AutoTestGroup.user_id == user_id)
     )
     group = group_result.scalar_one_or_none()
     if not group:
-        group = AutoTestGroup(name=default_name, parent_id=None)
+        group = AutoTestGroup(name=default_name, parent_id=None, user_id=user_id)
         db.add(group)
         await db.flush()
     return group.id
@@ -59,6 +60,7 @@ async def _resolve_group_id(db: AsyncSession, group_id: Optional[int]) -> int:
 async def export_case_to_jmeter(
     case_id: int,
     thread_group_config: Optional[Dict[str, Any]] = None,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -73,7 +75,7 @@ async def export_case_to_jmeter(
             - duration: 持续时间（秒）
     """
     # 查询用例
-    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == case_id))
+    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id))
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
@@ -96,6 +98,7 @@ async def export_case_to_jmeter(
 @router.post("/export/jmeter/cases")
 async def export_cases_to_jmeter(
     request: Request,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -123,7 +126,12 @@ async def export_cases_to_jmeter(
         thread_group_config = body.get("thread_group_config")
 
     if not case_ids and group_id is not None:
-        result = await db.execute(select(AutoTestCase).where(AutoTestCase.group_id == group_id))
+        result = await db.execute(
+            select(AutoTestCase).where(
+                AutoTestCase.group_id == group_id,
+                AutoTestCase.user_id == current_user.id,
+            )
+        )
         group_cases = result.scalars().all()
         case_ids = [case.id for case in group_cases]
 
@@ -131,7 +139,12 @@ async def export_cases_to_jmeter(
         raise HTTPException(status_code=400, detail="请提供 case_ids 或 group_id")
 
     # 查询用例
-    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id.in_(case_ids)))
+    result = await db.execute(
+        select(AutoTestCase).where(
+            AutoTestCase.id.in_(case_ids),
+            AutoTestCase.user_id == current_user.id,
+        )
+    )
     cases = result.scalars().all()
 
     if not cases:
@@ -154,22 +167,33 @@ async def export_cases_to_jmeter_get(
     case_ids: Optional[List[int]] = None,
     group_id: Optional[int] = None,
     thread_group_config: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     GET 兼容入口，支持 query 参数导出
     """
     if not case_ids and group_id is not None:
-        result = await db.execute(select(AutoTestCase).where(AutoTestCase.group_id == group_id))
+        result = await db.execute(
+            select(AutoTestCase).where(
+                AutoTestCase.group_id == group_id,
+                AutoTestCase.user_id == current_user.id,
+            )
+        )
         group_cases = result.scalars().all()
         case_ids = [case.id for case in group_cases]
 
     if not case_ids:
         raise HTTPException(status_code=400, detail="请提供 case_ids 或 group_id")
 
-    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id.in_(case_ids)))
+    result = await db.execute(
+        select(AutoTestCase).where(
+            AutoTestCase.id.in_(case_ids),
+            AutoTestCase.user_id == current_user.id,
+        )
+    )
     cases = result.scalars().all()
-    
+
     if not cases:
         raise HTTPException(status_code=404, detail="未找到用例")
     
@@ -199,6 +223,7 @@ async def export_cases_to_jmeter_get(
 async def export_scenario_to_jmeter(
     scenario_id: int,
     thread_group_config: Optional[Dict[str, Any]] = None,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -211,7 +236,7 @@ async def export_scenario_to_jmeter(
     # 查询场景和步骤
     result = await db.execute(
         select(AutoTestScenario)
-        .where(AutoTestScenario.id == scenario_id)
+        .where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
         .options(
             selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case)
         )
@@ -249,6 +274,7 @@ async def export_scenario_to_jmeter(
 async def import_jmeter_file(
     file: UploadFile = File(...),
     group_id: Optional[int] = Form(None),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -275,13 +301,14 @@ async def import_jmeter_file(
     if not cases:
         raise HTTPException(status_code=400, detail="未能从文件中解析出接口用例")
     
-    target_group_id = await _resolve_group_id(db, group_id)
+    target_group_id = await _resolve_group_id(db, group_id, current_user.id)
 
     # 保存到数据库
     created_cases = []
     for case_data in cases:
         case = AutoTestCase(
             group_id=target_group_id,
+            user_id=current_user.id,
             name=case_data.get("name", "Imported Case"),
             method=case_data.get("method", "GET"),
             url=case_data.get("url", ""),
@@ -319,6 +346,7 @@ async def import_jmeter_file(
 @router.post("/import/jmeter/tree")
 async def import_jmeter_full_tree(
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
 ):
     """导入JMX文件为完整树结构(保留所有节点和层级)"""
     if not file.filename.endswith(".jmx"):
@@ -391,6 +419,7 @@ def _create_jmx_response(jmx_content: str, filename: str) -> StreamingResponse:
 @router.post("/preview/jmeter/jmx")
 async def preview_jmeter_jmx(
     body: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -412,7 +441,7 @@ async def preview_jmeter_jmx(
 
     # 查询用例
     result = await db.execute(
-        select(AutoTestCase).where(AutoTestCase.id.in_(case_ids))
+        select(AutoTestCase).where(AutoTestCase.id.in_(case_ids), AutoTestCase.user_id == current_user.id)
     )
     cases = result.scalars().all()
 
@@ -449,7 +478,7 @@ async def preview_jmeter_jmx(
 # ========== 树形导出 ==========
 
 @router.post("/export/jmeter/tree")
-async def export_tree_to_jmx(body: Dict[str, Any] = Body(...)):
+async def export_tree_to_jmx(body: Dict[str, Any] = Body(...), current_user: User = Depends(get_current_active_user)):
     """
     将树形脚本结构导出为 JMX
     
@@ -488,7 +517,7 @@ _bench_lock = asyncio.Lock()
 
 
 @router.post("/jmeter/quick-bench")
-async def quick_benchmark_submit(body: Dict[str, Any] = Body(...)):
+async def quick_benchmark_submit(body: Dict[str, Any] = Body(...), current_user: User = Depends(get_current_active_user)):
     """
     提交快速并发压测任务
     立即返回 task_id，通过 GET /jmeter/quick-bench/{task_id} 轮询结果
@@ -530,6 +559,7 @@ async def quick_benchmark_submit(body: Dict[str, Any] = Body(...)):
             "config": config,
             "result": None,
             "snapshots": [],
+            "user_id": current_user.id,
         }
 
     # 后台异步执行，不阻塞当前请求
@@ -539,7 +569,7 @@ async def quick_benchmark_submit(body: Dict[str, Any] = Body(...)):
 
 
 @router.get("/jmeter/quick-bench/{task_id}")
-async def quick_benchmark_status(task_id: str):
+async def quick_benchmark_status(task_id: str, current_user: User = Depends(get_current_active_user)):
     """
     查询压测任务状态
     
@@ -553,6 +583,10 @@ async def quick_benchmark_status(task_id: str):
     """
     task = _bench_tasks.get(task_id)
     if not task:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+
+    # 校验任务归属
+    if task.get("user_id") and task["user_id"] != current_user.id:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
 
     if task["status"] == "done":
@@ -920,7 +954,7 @@ def _is_placeholder_api_key(key: Optional[str]) -> bool:
 
 
 @router.post("/analyze-result")
-async def analyze_bench_result(req: BenchAnalyzeRequest, db: AsyncSession = Depends(get_db)):
+async def analyze_bench_result(req: BenchAnalyzeRequest, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
     from sqlalchemy import select
     from fastapi_backend.models.models import AIConfig
     from fastapi_backend.core.database import AsyncSessionLocal as MainAsyncSessionLocal

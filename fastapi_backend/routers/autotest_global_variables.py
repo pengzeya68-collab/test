@@ -8,11 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestGlobalVariable
+from fastapi_backend.models.models import User
 from fastapi_backend.utils.encryption import encrypt, decrypt
 
-router = APIRouter(prefix="/api/auto-test/global-variables", tags=["AutoTest-全局变量"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/auto-test/global-variables", tags=["AutoTest-全局变量"])
 
 
 def _variable_to_dict(variable):
@@ -34,17 +35,28 @@ def _variable_to_dict(variable):
 
 
 @router.get("")
-async def get_all_global_variables(db: AsyncSession = Depends(get_db)):
+async def get_all_global_variables(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取所有全局变量"""
-    result = await db.execute(select(AutoTestGlobalVariable).order_by(AutoTestGlobalVariable.name))
+    result = await db.execute(
+        select(AutoTestGlobalVariable)
+        .where(AutoTestGlobalVariable.user_id == current_user.id)
+        .order_by(AutoTestGlobalVariable.name)
+    )
     variables = result.scalars().all()
     return [_variable_to_dict(v) for v in variables]
 
 
 @router.get("/{variable_id}")
-async def get_global_variable(variable_id: int, db: AsyncSession = Depends(get_db)):
+async def get_global_variable(
+    variable_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取单个全局变量"""
-    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.id == variable_id))
+    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id))
     variable = result.scalar_one_or_none()
     if not variable:
         raise HTTPException(status_code=404, detail="全局变量不存在")
@@ -54,11 +66,16 @@ async def get_global_variable(variable_id: int, db: AsyncSession = Depends(get_d
 @router.post("", status_code=201)
 async def create_global_variable(
     variable_in: dict,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """创建全局变量"""
-    # 检查变量名是否已存在
-    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_in["name"]))
+    # 检查变量名是否已存在（同一用户下）
+    result = await db.execute(
+        select(AutoTestGlobalVariable)
+        .where(AutoTestGlobalVariable.name == variable_in["name"])
+        .where(AutoTestGlobalVariable.user_id == current_user.id)
+    )
     existing_variable = result.scalar_one_or_none()
     if existing_variable:
         raise HTTPException(status_code=400, detail="变量名已存在")
@@ -67,6 +84,7 @@ async def create_global_variable(
     if variable_in.get("is_encrypted"):
         variable_in["value"] = encrypt(variable_in["value"])
 
+    variable_in["user_id"] = current_user.id
     variable = AutoTestGlobalVariable(**variable_in)
     db.add(variable)
     await db.commit()
@@ -78,17 +96,22 @@ async def create_global_variable(
 async def update_global_variable(
     variable_id: int,
     variable_in: dict,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """更新全局变量"""
-    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.id == variable_id))
+    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id))
     variable = result.scalar_one_or_none()
     if not variable:
         raise HTTPException(status_code=404, detail="全局变量不存在")
 
-    # 检查变量名是否已被其他变量使用
+    # 检查变量名是否已被同一用户的其他变量使用
     if "name" in variable_in and variable_in["name"] != variable.name:
-        result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_in["name"]))
+        result = await db.execute(
+            select(AutoTestGlobalVariable)
+            .where(AutoTestGlobalVariable.name == variable_in["name"])
+            .where(AutoTestGlobalVariable.user_id == current_user.id)
+        )
         existing_variable = result.scalar_one_or_none()
         if existing_variable:
             raise HTTPException(status_code=400, detail="变量名已存在")
@@ -112,9 +135,13 @@ async def update_global_variable(
 
 
 @router.delete("/{variable_id}")
-async def delete_global_variable(variable_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_global_variable(
+    variable_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """删除全局变量"""
-    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.id == variable_id))
+    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id))
     variable = result.scalar_one_or_none()
     if not variable:
         raise HTTPException(status_code=404, detail="全局变量不存在")
@@ -127,18 +154,24 @@ async def delete_global_variable(variable_id: int, db: AsyncSession = Depends(ge
 @router.post("/batch")
 async def batch_create_global_variables(
     variables_in: List[dict],
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """批量创建全局变量"""
     created_variables = []
     for variable_data in variables_in:
-        # 检查变量名是否已存在
-        result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.name == variable_data["name"]))
+        # 检查变量名是否已存在（同一用户下）
+        result = await db.execute(
+            select(AutoTestGlobalVariable)
+            .where(AutoTestGlobalVariable.name == variable_data["name"])
+            .where(AutoTestGlobalVariable.user_id == current_user.id)
+        )
         existing_variable = result.scalar_one_or_none()
         if not existing_variable:
             # 对加密的变量值进行加密
             if variable_data.get("is_encrypted"):
                 variable_data["value"] = encrypt(variable_data["value"])
+            variable_data["user_id"] = current_user.id
             variable = AutoTestGlobalVariable(**variable_data)
             db.add(variable)
             created_variables.append(variable)
@@ -154,9 +187,14 @@ async def batch_create_global_variables(
 @router.delete("/batch")
 async def batch_delete_global_variables(
     variable_ids: List[int],
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """批量删除全局变量"""
-    await db.execute(delete(AutoTestGlobalVariable).where(AutoTestGlobalVariable.id.in_(variable_ids)))
+    await db.execute(
+        delete(AutoTestGlobalVariable)
+        .where(AutoTestGlobalVariable.id.in_(variable_ids))
+        .where(AutoTestGlobalVariable.user_id == current_user.id)
+    )
     await db.commit()
     return {"message": f"成功删除 {len(variable_ids)} 个全局变量"}

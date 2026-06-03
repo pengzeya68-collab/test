@@ -12,16 +12,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from fastapi_backend.core.autotest_database import get_autotest_db
-from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestCase
+from fastapi_backend.models.models import User
 from fastapi_backend.core.ssrf_guard import validate_url_safety
 
-router = APIRouter(prefix="/api/auto-test/debug", tags=["JMeter调试器"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/auto-test/debug", tags=["JMeter调试器"])
 
 
 @router.post("/execute")
 async def debug_execute_request(
     body: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     代理执行 HTTP 请求并返回详细结果
@@ -114,10 +116,11 @@ async def debug_execute_request(
 @router.post("/execute/case/{case_id}")
 async def debug_execute_from_case(
     case_id: int,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_autotest_db),
 ):
     """从已有接口用例执行调试请求"""
-    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == case_id))
+    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id))
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
