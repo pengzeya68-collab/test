@@ -303,6 +303,7 @@ class InterviewQuestion(Base):
     reference_solution = Column(Text, nullable=True, comment="参考答案")
     test_cases = Column(Text, nullable=True, default="", comment="测试用例 JSON 格式")
     is_published = Column(Boolean, default=True, comment="是否发布")
+    learning_path_id = Column(Integer, ForeignKey("learning_paths.id"), nullable=True, comment="关联学习路径ID")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(
         DateTime(timezone=True),
@@ -314,6 +315,7 @@ class InterviewQuestion(Base):
     __table_args__ = (
         Index("idx_iq_difficulty_published", "difficulty", "is_published"),
         Index("idx_iq_category", "category"),
+        Index("idx_iq_learning_path", "learning_path_id"),
     )
 
     def __repr__(self):
