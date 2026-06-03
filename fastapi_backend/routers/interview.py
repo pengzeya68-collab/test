@@ -51,6 +51,7 @@ from fastapi_backend.services.interview_stats_service import (
     get_interview_history,
     get_submission_result_detail,
 )
+from fastapi_backend.deps.ai_points import require_ai_points
 from fastapi_backend.services.interview_ai_service import (
     generate_follow_up,
     generate_reference_answers,
@@ -60,8 +61,13 @@ router = APIRouter(prefix="/api/v1/interview", tags=["AI 模拟面试"])
 
 
 @router.post("/evaluate", response_model=SuccessResponse[AIEvaluationResponse])
-async def evaluate_interview_code(submission: CodeSubmission, tutor: AITutorService = Depends(AITutorService)):
-    result = await tutor.evaluate_code(submission)
+async def evaluate_interview_code(submission: CodeSubmission, tutor: AITutorService = Depends(AITutorService), db: AsyncSession = Depends(get_db), _ai=Depends(require_ai_points("interview_code_eval"))):
+    try:
+        result = await tutor.evaluate_code(submission)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=502, detail="AI 服务调用失败，积分已退还")
+    await _ai()
     return SuccessResponse(data=result, message="代码评估完成")
 
 
@@ -579,6 +585,7 @@ async def create_submission(
     submission_data: SubmissionCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    _ai=Depends(require_ai_points("interview_text_eval")),
 ):
     """
     为面试会话提交代码
@@ -658,6 +665,10 @@ async def create_submission(
         logger.error(f"提交保存失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="提交保存失败，事务已回滚")
     await db.refresh(new_submission)
+
+    # 6.5 确认积分扣费（面试文本评测，提交即扣费）
+    # 注意：积分扣费和提交记录在同一个事务中，line 662 的 commit 已经一起提交了
+    await _ai()
 
     # 7. 异步执行代码沙盒和AI评估（不阻塞响应）
     import asyncio
@@ -775,6 +786,7 @@ async def generate_follow_up_question(
     body: dict,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    _ai=Depends(require_ai_points("interview_follow_up")),
 ):
     question_title = body.get("question_title", "")
     user_answer = body.get("user_answer", "")
@@ -784,7 +796,13 @@ async def generate_follow_up_question(
     if not user_answer:
         raise HTTPException(status_code=400, detail="user_answer 不能为空")
 
-    return await generate_follow_up(question_title, user_answer, ai_feedback, score, db)
+    try:
+        result = await generate_follow_up(question_title, user_answer, ai_feedback, score, db)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=502, detail="AI 服务调用失败，积分已退还")
+    await _ai()
+    return result
 
 
 @router.post("/report")

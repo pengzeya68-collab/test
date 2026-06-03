@@ -6,9 +6,12 @@ POST /api/auto-test/report/generate → 生成 Word 性能测试报告
 import io
 from fastapi import APIRouter, HTTPException, Body, Depends
 from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 from urllib.parse import quote
 
+from fastapi_backend.core.database import get_db
+from fastapi_backend.deps.ai_points import require_ai_points
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.models import User
 from fastapi_backend.services.performance_report_service import (
@@ -23,6 +26,8 @@ router = APIRouter(prefix="/api/auto-test/report", tags=["性能测试报告"])
 async def generate_report(
     body: Dict[str, Any] = Body(...),
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    _ai=Depends(require_ai_points("report_ai_suggestions")),
 ):
     """
     生成性能测试报告 (docx)
@@ -96,8 +101,10 @@ async def generate_report(
     ai_suggestions = ""
     try:
         ai_suggestions = await _call_ai_analysis(scenarios, summary or {}, test_env)
+        await _ai()
     except Exception as e:
         ai_suggestions = ""
+        await db.rollback()  # AI 调用失败，退还积分
         print(f"[Report] AI分析调用失败: {e}")
 
     try:

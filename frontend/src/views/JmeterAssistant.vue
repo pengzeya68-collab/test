@@ -358,6 +358,7 @@
                 <el-button size="small" @click="aiGenerateAssert('Json')" :loading="aiGenerating" style="margin-top:4px">
                   🤖 AI 帮写
                 </el-button>
+                <span v-if="getCostText('jmeter_ai_assertions')" class="ai-cost-hint">{{ getCostText('jmeter_ai_assertions') }}</span>
               </div>
             </template>
 
@@ -1375,6 +1376,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import { useAICosts } from '@/composables/useAICosts'
 import request from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 import BenchRunner from '@/views/jmeter/BenchRunner.vue'
@@ -1385,6 +1387,7 @@ import { helpContent } from '@/utils/help-content'
 
 const router = useRouter()
 const userStore = useUserStore()
+const { fetchCosts, getCostText } = useAICosts()
 
 const showHelp = ref(false)
 const helpData = helpContent.jmeterAssistant
@@ -2352,6 +2355,7 @@ const confirmSaveToCase = async () => {
 const resizeHandler = () => benchRunnerRef.value?.resizeAllBenchCharts()
 
 onMounted(() => {
+  fetchCosts()
   loadImportGroups()
   loadCases()
   loadCaseGroups()
@@ -3059,4 +3063,11 @@ onBeforeUnmount(() => {
 .ai-validation-ok .ai-validation-header { color: #059669; }
 .ai-validation-err .ai-validation-header { color: #dc2626; }
 .ai-validation-body { font-size: 12px; color: #475569; line-height: 1.7; white-space: pre-wrap; }
+
+.ai-cost-hint {
+  font-size: 11px;
+  color: #ffa502;
+  margin-left: 6px;
+  white-space: nowrap;
+}
 </style>

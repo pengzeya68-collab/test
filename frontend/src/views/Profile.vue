@@ -296,6 +296,10 @@
               <span class="quick-emoji">🤖</span>
               <span class="quick-txt">AI 导师</span>
             </div>
+            <div class="quick-item" @click="router.push('/points')">
+              <span class="quick-emoji">💰</span>
+              <span class="quick-txt">我的积分</span>
+            </div>
           </div>
         </div>
       </div>

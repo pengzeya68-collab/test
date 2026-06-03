@@ -35,6 +35,7 @@
             >
               <span class="func-icon">📈</span>
               <span>学习建议</span>
+              <span v-if="getCostText('ai_learning_advice')" class="ai-cost-tag">{{ getCostText('ai_learning_advice') }}</span>
             </div>
             <div
               class="function-item"
@@ -122,6 +123,7 @@
               <button class="btn-primary" @click="sendMessage" :disabled="sending">
                 <span>📨</span> {{ sending ? '发送中...' : '发送' }}
               </button>
+              <span v-if="getCostText('ai_chat')" class="ai-cost-hint">{{ getCostText('ai_chat') }}</span>
             </div>
           </template>
 
@@ -146,6 +148,7 @@
               <button class="btn-primary" @click="reviewCode" :disabled="sending">
                 ✅ {{ sending ? '审查中...' : '提交审查' }}
               </button>
+              <span v-if="getCostText('ai_code_review')" class="ai-cost-hint">{{ getCostText('ai_code_review') }}</span>
             </div>
           </template>
 
@@ -212,6 +215,7 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import { useAICosts } from '@/composables/useAICosts'
 import { renderMarkdown } from '@/utils/markdown'
 import {
   chat as aiChat,
@@ -220,6 +224,8 @@ import {
   clearHistory as aiClearHistory,
   startInterview as aiStartInterview
 } from '@/api/interview-adapter'
+
+const { fetchCosts, getCostText } = useAICosts()
 
 const currentMode = ref('chat')
 const inputMessage = ref('')
@@ -432,6 +438,10 @@ const clearHistory = async () => {
     ElMessage.error('清空历史失败')
   }
 }
+
+onMounted(() => {
+  fetchCosts()
+})
 </script>
 
 <style scoped>
@@ -902,5 +912,20 @@ const clearHistory = async () => {
   .right-panel { order: 1; min-height: 500px; }
   .message-content { max-width: 88%; }
   .ai-tutor-page { padding: 20px 16px; }
+}
+
+.ai-cost-hint {
+  font-size: 11px;
+  color: #ffa502;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+.ai-cost-tag {
+  font-size: 10px;
+  color: #ffa502;
+  background: rgba(255,165,2,0.1);
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: auto;
 }
 </style>

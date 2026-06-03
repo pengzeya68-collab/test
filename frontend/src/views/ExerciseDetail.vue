@@ -248,6 +248,7 @@
               >
                 {{ submitting ? '判题中...' : '✓ 提交' }}
               </button>
+              <span v-if="getCostText('exercise_code_eval')" class="ai-cost-hint">{{ getCostText('exercise_code_eval') }}</span>
             </div>
           </div>
 
@@ -546,12 +547,14 @@ import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import request from '@/utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useAICosts } from '@/composables/useAICosts'
 import CodeEditor from '@/components/CodeEditor.vue'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const { fetchCosts, getCostText } = useAICosts()
 
 const exercise = ref(null)
 const loading = ref(false)
@@ -662,6 +665,7 @@ watch(submitResult, (newVal) => {
 })
 
 onMounted(() => {
+  fetchCosts()
   fetchExerciseDetail()
   fetchRelatedExercises()
   fetchNotes()
@@ -2280,5 +2284,12 @@ const showHintDialog = () => {
   }
 
   .recommend-grid { grid-template-columns: 1fr; }
+}
+
+.ai-cost-hint {
+  font-size: 11px;
+  color: #ffa502;
+  margin-left: 8px;
+  white-space: nowrap;
 }
 </style>

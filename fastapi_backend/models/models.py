@@ -1220,3 +1220,59 @@ class Notification(Base):
             "is_read": self.is_read,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class AIPointsConfig(Base):
+    """AI 功能积分消耗配置"""
+
+    __tablename__ = "ai_points_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    feature = Column(String(50), unique=True, nullable=False, comment="功能标识")
+    display_name = Column(String(100), nullable=False, comment="显示名称")
+    points_cost = Column(Integer, nullable=False, default=1, comment="积分消耗")
+    description = Column(String(255), nullable=True, comment="功能说明")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class PointsTransaction(Base):
+    """积分流水账本 — 记录每一笔积分变动"""
+
+    __tablename__ = "points_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    amount = Column(Integer, nullable=False, comment="变动数量（正数=收入，负数=支出）")
+    balance_after = Column(Integer, nullable=False, comment="变动后余额")
+    tx_type = Column(String(30), nullable=False, index=True, comment="类型: checkin/project/purchase/admin_grant/admin_deduct/ai_usage/refund")
+    source = Column(String(100), nullable=True, comment="来源描述")
+    related_feature = Column(String(50), nullable=True, comment="关联的AI功能标识")
+    note = Column(String(255), nullable=True, comment="备注")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", backref="points_transactions")
+
+    __table_args__ = (
+        Index("idx_ptx_user_type", "user_id", "tx_type"),
+        Index("idx_ptx_created", "created_at"),
+    )
+
+
+class AIUsageLog(Base):
+    """AI 功能使用日志 — 记录每次 AI 调用"""
+
+    __tablename__ = "ai_usage_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    feature = Column(String(50), nullable=False, index=True, comment="功能标识")
+    points_cost = Column(Integer, nullable=False, comment="扣除的积分")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", backref="ai_usage_logs")
+
+    __table_args__ = (
+        Index("idx_ai_usage_user_feature", "user_id", "feature"),
+        Index("idx_ai_usage_created", "created_at"),
+    )

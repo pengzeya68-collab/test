@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
+from fastapi_backend.deps.ai_points import require_ai_points
 from fastapi_backend.models.models import Exercise, User, AIConfig
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai-tutor"])
@@ -136,6 +137,7 @@ async def ai_chat(
     body: dict,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _ai=Depends(require_ai_points("ai_chat")),
 ):
     question = body.get("question", "")
     context = body.get("context", "")
@@ -148,8 +150,13 @@ async def ai_chat(
     history.append({"role": "user", "content": question})
     _trim_history(current_user.id)
 
-    answer = await _get_ai_response(history, db)
+    try:
+        answer = await _get_ai_response(history, db)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=502, detail="AI 服务调用失败，积分已退还")
     history.append({"role": "assistant", "content": answer})
+    await _ai()
 
     return {"answer": answer, "timestamp": datetime.now(timezone.utc).isoformat()}
 
@@ -159,6 +166,7 @@ async def code_review(
     body: dict,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _ai=Depends(require_ai_points("ai_code_review")),
 ):
     code = body.get("code", "")
     language = body.get("language", "python")
@@ -170,8 +178,13 @@ async def code_review(
     history.append({"role": "user", "content": question})
     _trim_history(current_user.id)
 
-    answer = await _get_ai_response(history, db)
+    try:
+        answer = await _get_ai_response(history, db)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=502, detail="AI 服务调用失败，积分已退还")
     history.append({"role": "assistant", "content": answer})
+    await _ai()
 
     return {
         "review_result": answer,
@@ -183,6 +196,7 @@ async def code_review(
 async def learning_advice(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _ai=Depends(require_ai_points("ai_learning_advice")),
 ):
     skill_data = {
         "test_theory": 85,
@@ -201,7 +215,12 @@ async def learning_advice(
     history.append({"role": "user", "content": question})
     _trim_history(current_user.id)
 
-    answer = await _get_ai_response(history, db)
+    try:
+        answer = await _get_ai_response(history, db)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=502, detail="AI 服务调用失败，积分已退还")
+    await _ai()
     return {
         "advice": answer,
         "skill_data": skill_data,
@@ -214,6 +233,7 @@ async def explain_exercise(
     body: dict,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _ai=Depends(require_ai_points("ai_explain_exercise")),
 ):
     exercise_id = body.get("exercise_id")
     user_answer = body.get("user_answer", "")
@@ -236,7 +256,12 @@ async def explain_exercise(
     history.append({"role": "user", "content": question})
     _trim_history(current_user.id)
 
-    answer = await _get_ai_response(history, db)
+    try:
+        answer = await _get_ai_response(history, db)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=502, detail="AI 服务调用失败，积分已退还")
+    await _ai()
     return {
         "explanation": answer,
         "exercise_title": ex.title,

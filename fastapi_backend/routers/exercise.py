@@ -25,6 +25,7 @@ from fastapi_backend.schemas.exercise import (
     ExerciseSubmission,
     ExerciseEvaluationResponse,
 )
+from fastapi_backend.deps.ai_points import require_ai_points
 from fastapi_backend.services.ai_tutor_service import AITutorService
 from fastapi_backend.services.sandbox_service import CodeSandbox
 
@@ -160,6 +161,8 @@ async def evaluate_exercise_code(
     current_user: User = Depends(get_current_user),
     tutor: AITutorService = Depends(get_ai_tutor),
     sandbox: CodeSandbox = Depends(get_sandbox),
+    db: AsyncSession = Depends(get_db),
+    _ai=Depends(require_ai_points("exercise_code_eval")),
 ):
     """
     接收用户编写的练习代码，在沙箱中真实执行判题，再由 AI 给出评分与建议。
@@ -217,12 +220,17 @@ async def evaluate_exercise_code(
             "summary": "通过 1/1 个测试用例" if passed else "未通过测试用例",
         }
 
-    result = await tutor.evaluate_code(
-        submission=code_submission,
-        question_prompt=question_prompt,
-        judge_result=judge_result,
-    )
+    try:
+        result = await tutor.evaluate_code(
+            submission=code_submission,
+            question_prompt=question_prompt,
+            judge_result=judge_result,
+        )
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=502, detail="AI 服务调用失败，积分已退还")
 
+    await _ai()
     return SuccessResponse(data=result, message="练习代码评估完成")
 
 

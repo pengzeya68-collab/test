@@ -98,6 +98,7 @@ const menus = [
   { path: '/admin/community', title: '社区管理', icon: '💬' },
   { path: '/admin/backup', title: '备份管理', icon: '💾' },
   { path: '/admin/ai-config', title: 'AI配置', icon: '🤖' },
+  { path: '/admin/ai-points', title: 'AI积分管理', icon: '💰' },
   { path: '/admin/settings', title: '系统设置', icon: '⚙️' },
 ]
 

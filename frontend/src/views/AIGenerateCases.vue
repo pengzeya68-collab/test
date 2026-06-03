@@ -89,6 +89,7 @@
           <el-button type="primary" @click="startGenerate" :loading="submitting">
             {{ submitting ? '提交中...' : '开始生成' }}
           </el-button>
+          <span v-if="getCostText('ai_generate_cases')" class="ai-cost-hint">{{ getCostText('ai_generate_cases') }}{{ getCost('ai_generate_cases') > 0 ? '/批次' : '' }}</span>
         </div>
       </el-card>
     </div>
@@ -293,12 +294,14 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, UploadFilled, Timer, Close } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import { useAICosts } from '@/composables/useAICosts'
 import { useUserStore } from '@/stores/user'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
 
 const router = useRouter()
 const userStore = useUserStore()
+const { fetchCosts, getCostText, getCost } = useAICosts()
 const _uid = computed(() => userStore.userId || 'anon')
 
 const showHelp = ref(false)
@@ -744,6 +747,7 @@ const getCaseName = (idx) => {
 
 // 组件挂载时检查是否有未完成的任务
 onMounted(async () => {
+  fetchCosts()
   const storedTaskId = getStoredTaskId()
   if (storedTaskId) {
     await resumeTask(storedTaskId)
@@ -1067,5 +1071,12 @@ onUnmounted(() => {
 }
 .empty-tip {
   padding: 40px 0;
+}
+
+.ai-cost-hint {
+  font-size: 11px;
+  color: #ffa502;
+  margin-left: 8px;
+  white-space: nowrap;
 }
 </style>

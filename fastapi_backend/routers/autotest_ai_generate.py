@@ -16,6 +16,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
+from fastapi_backend.core.database import get_db as get_main_db
+from fastapi_backend.deps.ai_points import require_ai_points_batch
 from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestGroup, AutoTestScenario, AutoTestScenarioStep
 from fastapi_backend.models.models import User
@@ -95,6 +97,8 @@ async def generate_from_swagger(
     include_auth: bool = Form(True),
     include_chain: bool = Form(True),
     current_user: User = Depends(get_current_active_user),
+    main_db: AsyncSession = Depends(get_main_db),
+    _batch_check=Depends(require_ai_points_batch("ai_generate_cases", batch_desc="批次")),
 ):
     """
     从 Swagger/OpenAPI 文件启动 AI 生成测试用例任务
@@ -126,7 +130,7 @@ async def generate_from_swagger(
         }
 
         # 3. 创建任务并分发
-        return await _dispatch_generation_task(swagger_data, options, current_user.id)
+        return await _dispatch_generation_task(swagger_data, options, current_user.id, _batch_check, main_db)
 
     except HTTPException:
         raise
@@ -143,6 +147,8 @@ async def generate_from_swagger_url(
     include_auth: bool = Form(True),
     include_chain: bool = Form(True),
     current_user: User = Depends(get_current_active_user),
+    main_db: AsyncSession = Depends(get_main_db),
+    _batch_check=Depends(require_ai_points_batch("ai_generate_cases", batch_desc="批次")),
 ):
     """
     从 Swagger URL 启动 AI 生成测试用例任务
@@ -167,7 +173,7 @@ async def generate_from_swagger_url(
             "include_chain": include_chain,
         }
 
-        return await _dispatch_generation_task(swagger_data, options, current_user.id)
+        return await _dispatch_generation_task(swagger_data, options, current_user.id, _batch_check, main_db)
 
     except HTTPException:
         raise
@@ -178,7 +184,7 @@ async def generate_from_swagger_url(
         raise HTTPException(status_code=500, detail=f"启动失败: {type(e).__name__}: {str(e)}")
 
 
-async def _dispatch_generation_task(swagger_data: dict, options: dict, user_id: int) -> dict:
+async def _dispatch_generation_task(swagger_data: dict, options: dict, user_id: int, _batch_check=None, db=None) -> dict:
     """创建任务记录并分发到 Celery 或本地异步执行"""
     task_id = create_task_id()
 
@@ -187,6 +193,12 @@ async def _dispatch_generation_task(swagger_data: dict, options: dict, user_id: 
     parsed = generator._parse_swagger(swagger_data)
     total_apis = len(parsed["apis"])
     total_batches = (total_apis + 4) // 5  # BATCH_SIZE = 5
+
+    # 预扣所有批次的积分
+    if _batch_check is not None:
+        await _batch_check(total_batches)
+        if db is not None:
+            await db.commit()  # 提交积分扣费
 
     # 初始化任务记录
     await update_task(task_id, {

@@ -19,6 +19,7 @@ _ROUTER_MODULES = {
         "fastapi_backend.routers.backup",
         "fastapi_backend.routers.rbac",
         "fastapi_backend.routers.ai_config",
+        "fastapi_backend.routers.admin_ai_points",
     ],
     "autotest": [
         "fastapi_backend.routers.autotest_cases",
@@ -69,6 +70,7 @@ _ROUTER_MODULES = {
         "fastapi_backend.routers.assert_templates",
         "fastapi_backend.routers.report",
         "fastapi_backend.routers.reports",
+        "fastapi_backend.routers.user_points",
     ],
 }
 

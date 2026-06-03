@@ -103,6 +103,14 @@ const adminRoutes = {
       }
     },
     {
+      path: 'ai-points',
+      name: 'AIPointsManage',
+      component: () => import('@/admin/views/AIPoints/index.vue'),
+      meta: {
+        title: 'AI积分管理'
+      }
+    },
+    {
       path: 'settings',
       name: 'SystemSettings',
       component: () => import('@/views/admin/Settings.vue'),

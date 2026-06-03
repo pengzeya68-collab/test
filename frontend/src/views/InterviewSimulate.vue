@@ -151,6 +151,7 @@
               <button class="btn-follow-up" @click="requestFollowUp" :disabled="followUpLoading">
                 {{ followUpLoading ? '获取中...' : '🔍 面试官追问' }}
               </button>
+              <span v-if="getCostText('interview_follow_up')" class="ai-cost-hint">{{ getCostText('interview_follow_up') }}</span>
               <button class="btn-skip" @click="currentQuestion.follow_up_skipped = true">跳过追问</button>
             </div>
 
@@ -171,6 +172,7 @@
           >
             {{ submitting ? '提交中...' : '提交回答' }}
           </button>
+          <span v-if="getCostText('interview_text_eval')" class="ai-cost-hint">{{ getCostText('interview_text_eval') }}</span>
           <button
             v-else
             class="btn-submit"
@@ -228,16 +230,19 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, VideoPlay, Star } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useAICosts } from '@/composables/useAICosts'
 import { renderMarkdown } from '@/utils/markdown'
 import CodeEditor from '@/components/CodeEditor.vue'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+const { fetchCosts, getCostText } = useAICosts()
 
 const form = reactive({
   position: '测试工程师',
@@ -275,8 +280,8 @@ const needsCodeEditor = computed(() => {
 })
 
 onMounted(() => {
+  fetchCosts()
   fetchCategories()
-  const route = useRouter().currentRoute.value
   const idFromUrl = route.query.session_id
   if (idFromUrl) {
     sessionId.value = Number(idFromUrl)
@@ -1111,5 +1116,12 @@ const submitFollowUp = async () => {
   .interview-session-header { flex-direction: column; }
   .question-section { padding: 20px; }
   .result-score-row { flex-direction: column; text-align: center; }
+}
+
+.ai-cost-hint {
+  font-size: 11px;
+  color: #ffa502;
+  margin-left: 8px;
+  white-space: nowrap;
 }
 </style>

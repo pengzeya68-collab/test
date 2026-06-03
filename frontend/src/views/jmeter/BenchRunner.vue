@@ -40,6 +40,7 @@
 
         <!-- 结果操作按钮 -->
         <el-button v-if="benchResult && !analyzing" size="small" type="primary" plain @click.stop="analyzeBenchResult">🤖 AI 分析</el-button>
+        <span v-if="getCostText('bench_ai_analysis')" class="ai-cost-hint">{{ getCostText('bench_ai_analysis') }}</span>
         <el-button v-if="analyzing" size="small" type="warning" plain loading @click.stop>分析中...</el-button>
         <el-button v-if="benchResult" size="small" type="success" plain @click.stop="exportReport">📄 导出报告</el-button>
 
@@ -245,11 +246,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onBeforeUnmount, shallowRef } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted, shallowRef } from 'vue'
 import { ElMessage } from 'element-plus'
 import { SwitchButton, ArrowDown } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import autoTestRequest from '@/utils/autoTestRequest'
+import { useAICosts } from '@/composables/useAICosts'
 import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
@@ -277,6 +279,7 @@ const benching = ref(false)
 const runStatus = ref('idle')
 const showBenchHistory = ref(false)
 const userStore = useUserStore()
+const { fetchCosts, getCostText, getCost } = useAICosts()
 const _uid = computed(() => userStore.userId || 'anon')
 const BENCH_HISTORY_KEY = computed(() => `benchHistory_${_uid.value}`)
 const benchHistory = ref(JSON.parse(localStorage.getItem(BENCH_HISTORY_KEY.value) || '[]'))
@@ -435,6 +438,7 @@ const exportReport = async () => {
 }
 
 watch(benchPanelExpanded, (v) => { if (v) { nextTick(() => { initAllBenchCharts(); updateAllBenchCharts() }) } })
+onMounted(() => { fetchCosts() })
 onBeforeUnmount(() => { if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }; window.removeEventListener('resize', resizeAllBenchCharts) })
 
 defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurrency, benchDuration, benchRampUp, benchStartTime, aiAnalysisText, aiAnalysisDialogVisible, startBench, stopBench, shortUrl, resizeAllBenchCharts })
@@ -552,4 +556,11 @@ defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurre
 .bh-err { color: #ef4444; font-weight: 600; }
 
 .bench-body-preview { background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); padding: 12px; border-radius: 8px; font-size: 11.5px; color: #e2e8f0; font-family: 'Consolas','Monaco',monospace; max-height: 160px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid rgba(148,163,184,0.1); box-shadow: inset 0 2px 6px rgba(0,0,0,0.15); }
+
+.ai-cost-hint {
+  font-size: 11px;
+  color: #ffa502;
+  margin-left: 6px;
+  white-space: nowrap;
+}
 </style>

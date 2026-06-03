@@ -30,6 +30,7 @@ from fastapi_backend.services.autotest_jmeter_service import (
     import_jmx_to_full_tree,
 )
 from fastapi_backend.core.ssrf_guard import validate_url_safety
+from fastapi_backend.deps.ai_points import require_ai_points
 
 router = APIRouter(prefix="/api/auto-test", tags=["AutoTest-JMeter"])
 
@@ -954,7 +955,7 @@ def _is_placeholder_api_key(key: Optional[str]) -> bool:
 
 
 @router.post("/analyze-result")
-async def analyze_bench_result(req: BenchAnalyzeRequest, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
+async def analyze_bench_result(req: BenchAnalyzeRequest, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db), _ai=Depends(require_ai_points("bench_ai_analysis"))):
     from sqlalchemy import select
     from fastapi_backend.models.models import AIConfig
     from fastapi_backend.core.database import AsyncSessionLocal as MainAsyncSessionLocal
@@ -1111,10 +1112,13 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, current_user: User = De
             if resp.status_code == 200:
                 data = resp.json()
                 content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                await _ai()
                 return {"analysis": content.strip()}
             else:
+                # AI 返回非200，不调用 _ai()，积分事务自动回滚退还
                 return {"analysis": _build_offline_analysis(req)}
     except Exception:
+        # AI 调用异常，不调用 _ai()，积分事务自动回滚退还
         return {"analysis": _build_offline_analysis(req)}
 
 

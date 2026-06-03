@@ -64,6 +64,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/points',
+    name: 'Points',
+    component: () => import('@/views/Points.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/code-playground',
     name: 'CodePlayground',
     component: () => import(/* webpackChunkName: "ai" */ '@/views/CodePlayground.vue'),
