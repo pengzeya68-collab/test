@@ -234,15 +234,83 @@ async def create_batch_interview_session(
     difficulty_map = {"初级": "easy", "中级": "medium", "高级": "hard"}
     difficulty = difficulty_map.get(body.level, None)
 
+    # 前端大类 → Exercise 表细分类映射
     exercise_category_map = {
-        "基础测试": "测试基础",
-        "自动化测试": "自动化",
-        "性能测试": "性能测试",
-        "接口测试": "接口测试",
-        "数据库": "数据库",
-        "编程": "编程",
-        "安全测试": "安全",
-        "其他": "综合",
+        "测试基础": [
+            "测试基础", "软件测试的定义与目的", "软件开发生命周期与测试模型",
+            "测试分类体系", "测试的七大原则", "计算机硬件基础", "操作系统基础",
+            "网络基础",
+        ],
+        "测试用例设计": [
+            "测试用例设计", "等价类划分", "边界值分析", "决策表测试",
+            "正交实验设计", "测试用例设计概述", "接口测试用例设计", "AI用例生成",
+        ],
+        "缺陷管理": [
+            "缺陷管理", "缺陷基础概念", "缺陷报告编写", "缺陷管理流程",
+            "缺陷管理工具", "缺陷预防与过程改进", "缺陷管理与追踪",
+            "缺陷分析与RCA", "ML缺陷预测",
+        ],
+        "功能测试": [
+            "功能测试", "兼容性测试", "弱网测试",
+        ],
+        "Web测试": [
+            "Web测试", "Web安全概述",
+        ],
+        "接口测试": [
+            "接口测试", "HTTP协议基础", "接口测试概述", "常用接口测试工具",
+            "Requests库基础", "接口自动化测试", "接口自动化测试实战",
+            "RESTful API开发",
+        ],
+        "自动化测试": [
+            "自动化测试", "Pytest框架基础", "测试框架集成",
+            "自愈自动化测试", "视觉回归测试",
+        ],
+        "UI自动化": [
+            "UI自动化", "Selenium概述", "元素定位", "等待机制",
+        ],
+        "性能测试": [
+            "性能测试", "性能测试核心指标", "JMeter基础", "JMeter脚本开发",
+            "JMeter分布式", "Locust开发", "性能监控", "性能调优",
+        ],
+        "安全测试": [
+            "安全测试", "网络安全基础", "Web安全概述", "SQL注入", "XSS攻击",
+            "CSRF/SSRF", "认证授权安全", "安全编码与DevSecOps",
+            "Burp Suite工具", "文件上传漏洞",
+        ],
+        "数据库": [
+            "数据库", "SQL基础概念", "SELECT查询基础", "表连接（JOIN）",
+            "聚合函数与分组", "数据操作", "数据库设计与ORM",
+        ],
+        "Linux": [
+            "Linux", "文件与目录操作", "文件权限管理", "进程管理",
+            "系统管理", "网络管理", "常用操作",
+        ],
+        "Python编程": [
+            "Python编程", "Python基础概念", "变量与数据类型", "控制流",
+            "函数与模块", "面向对象编程",
+        ],
+        "移动端测试": [
+            "移动端测试", "移动端测试概述", "移动端功能测试", "Appium自动化",
+        ],
+        "CI/CD": [
+            "CI/CD", "CI/CD概念", "Docker容器化", "Git工作流",
+            "GitLab CI/CD", "Jenkins Pipeline",
+        ],
+        "测试策略": [
+            "测试策略", "测试架构师概述", "分层测试体系", "可测试性设计",
+            "微服务测试", "质量度量模型", "质量门禁",
+        ],
+        "测试开发": [
+            "测试开发", "需求分析与技术选型", "前端页面开发", "测试执行引擎",
+            "测试报表与可视化", "定时任务与通知", "平台部署",
+        ],
+        "测试管理": [
+            "测试管理", "测试计划概述", "测试计划的内容", "测试进度与里程碑",
+            "测试团队管理", "测试团队与工具链", "测试风险管理", "TMMi成熟度模型",
+        ],
+        "AI测试": [
+            "AI测试", "AI测试概述", "LLM测试生成", "NLP测试应用",
+        ],
     }
 
     selected = []
@@ -250,15 +318,14 @@ async def create_batch_interview_session(
 
     query = select(Exercise).where(Exercise.is_public)
     if body.categories:
-        mapped_cats = []
+        all_mapped = []
         for c in body.categories:
             if c in exercise_category_map:
-                mapped_cats.append(exercise_category_map[c])
+                all_mapped.extend(exercise_category_map[c])
             else:
-                mapped_cats.append(c)
-        valid_mapped = [mc for mc in mapped_cats if mc]
-        if valid_mapped:
-            query = query.where(Exercise.category.in_(valid_mapped) | Exercise.knowledge_point.in_(valid_mapped))
+                all_mapped.append(c)
+        if all_mapped:
+            query = query.where(Exercise.category.in_(all_mapped) | Exercise.knowledge_point.in_(all_mapped))
     if difficulty:
         query = query.where(Exercise.difficulty == difficulty)
 
