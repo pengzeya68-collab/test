@@ -21,6 +21,21 @@ class CodeSandbox:
         "shell": {"command": "bash", "extension": ".sh", "timeout": 5},
     }
 
+    # 语言别名映射：将各种变体统一为标准语言名
+    LANGUAGE_ALIASES = {
+        "python3": "python",
+        "python2": "python",
+        "py": "python",
+        "bash": "shell",
+        "sh": "shell",
+        "zsh": "shell",
+        "sqlite": "sql",
+        "mysql": "sql",
+        "postgresql": "sql",
+        "pgsql": "sql",
+        "中文": "python",  # 中文理论题中的代码题默认按python处理
+    }
+
     # 并发限制：同时运行的沙箱进程数
     _concurrency_semaphore = asyncio.Semaphore(10)
 
@@ -228,6 +243,10 @@ class CodeSandbox:
         timeout: int = None,
         setup_sql: str = None,
     ) -> dict:
+        # 标准化语言名称：小写 + 别名映射
+        language = language.lower().strip()
+        language = self.LANGUAGE_ALIASES.get(language, language)
+
         if language not in self.LANGUAGE_CONFIG:
             return {
                 "exit_code": -1,

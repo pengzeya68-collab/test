@@ -26,10 +26,22 @@ async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False
 from seed_exercises_p1 import EXERCISES_1
 from seed_exercises_p2 import EXERCISES_2
 from seed_exercises_p3 import EXERCISES_3
+from seed_enrich_exercises import NEW_EXERCISES as ENRICH_EXERCISES
 
 ALL_EXERCISES = {}
 for d in [EXERCISES_1, EXERCISES_2, EXERCISES_3]:
     for k, v in d.items():
+        ALL_EXERCISES[k] = v
+
+# 合并扩充习题（代码练习题）
+for k, v in ENRICH_EXERCISES.items():
+    if k in ALL_EXERCISES:
+        # 追加到已有路径
+        existing_titles = {ex["title"] for ex in ALL_EXERCISES[k]}
+        for ex in v:
+            if ex["title"] not in existing_titles:
+                ALL_EXERCISES[k].append(ex)
+    else:
         ALL_EXERCISES[k] = v
 
 
@@ -93,6 +105,11 @@ async def seed_all():
                     knowledge_point=ex.get("knowledge_point", ""),
                     time_estimate=ex.get("time_estimate", 1),
                     exercise_type=ex.get("exercise_type", "choice"),
+                    code_template=ex.get("code_template"),
+                    test_cases=ex.get("test_cases"),
+                    expected_output=ex.get("expected_output"),
+                    hint=ex.get("hint"),
+                    setup_sql=ex.get("setup_sql"),
                     is_public=True,
                     learning_path_id=path_id,
                 )

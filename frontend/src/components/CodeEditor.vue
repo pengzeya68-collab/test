@@ -102,8 +102,8 @@ const showOutput = ref(false)
 const outputResult = ref(null)
 
 const langLabel = computed(() => {
-  const map = { python: 'Python', sql: 'SQL', shell: 'Shell', javascript: 'JavaScript' }
-  return map[currentLanguage.value] || currentLanguage.value
+  const map = { python: 'Python', sql: 'SQL', shell: 'Shell', javascript: 'JavaScript', '中文': 'Python' }
+  return map[currentLanguage.value] || 'Python'
 })
 
 // 语言配置
@@ -137,7 +137,7 @@ const createEditor = () => {
         }
       }
     ]),
-    languageExtensions[currentLanguage.value],
+    languageExtensions[currentLanguage.value] || languageExtensions.python,
     EditorState.readOnly.of(props.readOnly),
     EditorView.updateListener.of(update => {
       if (update.docChanged) {
