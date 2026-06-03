@@ -40,7 +40,7 @@
           <el-icon><VideoPlay /></el-icon>
           运行场景
         </el-button>
-        <el-button @click="showHelp = true">使用说明</el-button>
+        <el-button @click="showHelp = true">❓ 使用说明</el-button>
       </div>
     </div>
 

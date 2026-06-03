@@ -43,7 +43,7 @@
           <el-icon><Plus /></el-icon>
           新建场景
         </el-button>
-        <el-button @click="showHelp = true">使用说明</el-button>
+        <el-button @click="showHelp = true">❓ 使用说明</el-button>
       </div>
     </div>
 

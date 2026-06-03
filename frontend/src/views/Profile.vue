@@ -17,8 +17,12 @@
       </div>
       <div class="hero-right">
         <div class="score-card">
-          <div class="score-value">{{ userInfo?.score || 0 }}</div>
+          <div class="score-value">{{ skillProfile ? Math.round(skillProfile.overall_score || 0) : '—' }}</div>
           <div class="score-label">综合得分</div>
+        </div>
+        <div class="score-card points-card">
+          <div class="score-value">{{ userInfo?.score || 0 }}</div>
+          <div class="score-label">积分</div>
         </div>
       </div>
     </section>
@@ -340,22 +344,32 @@ const passwordForm = ref({
   confirm_password: '',
 })
 
+const LEVEL_MAP = [
+  { min: 90, text: '专家', cls: 'lv-expert' },
+  { min: 80, text: '精通', cls: 'lv-advanced' },
+  { min: 70, text: '熟练', cls: 'lv-medium' },
+  { min: 60, text: '掌握', cls: 'lv-medium' },
+  { min: 40, text: '了解', cls: 'lv-beginner' },
+  { min: 0, text: '入门', cls: 'lv-beginner' },
+]
+
 const levelText = computed(() => {
-  const score = userInfo.value?.score || 0
-  if (score >= 90) return '专家'
-  if (score >= 80) return '精通'
-  if (score >= 70) return '熟练'
-  if (score >= 60) return '掌握'
-  if (score >= 40) return '了解'
-  return '入门'
+  const score = skillProfile.value?.overall_score ?? userInfo.value?.level ?? 1
+  // 如果没有技能画像，用 level 字段映射
+  if (!skillProfile.value) {
+    const level = userInfo.value?.level || 1
+    return { 1: '入门', 2: '了解', 3: '掌握', 4: '精通', 5: '专家' }[level] || '入门'
+  }
+  return LEVEL_MAP.find(l => score >= l.min)?.text || '入门'
 })
 
 const levelClass = computed(() => {
-  const score = userInfo.value?.score || 0
-  if (score >= 90) return 'lv-expert'
-  if (score >= 80) return 'lv-advanced'
-  if (score >= 60) return 'lv-medium'
-  return 'lv-beginner'
+  const score = skillProfile.value?.overall_score ?? 0
+  if (!skillProfile.value) {
+    const level = userInfo.value?.level || 1
+    return { 1: 'lv-beginner', 2: 'lv-beginner', 3: 'lv-medium', 4: 'lv-advanced', 5: 'lv-expert' }[level] || 'lv-beginner'
+  }
+  return LEVEL_MAP.find(l => score >= l.min)?.cls || 'lv-beginner'
 })
 
 const formatDate = (dateStr) => {
@@ -607,6 +621,18 @@ onMounted(() => {
   background: rgba(139, 92, 246, 0.08);
   border-radius: 14px;
   border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.points-card {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.15);
+}
+
+.points-card .score-value {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .score-value {
