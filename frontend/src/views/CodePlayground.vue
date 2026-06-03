@@ -181,26 +181,90 @@
                 <span class="status-text">{{ submitResult.success ? '执行成功' : '执行失败' }}</span>
               </div>
               <span class="result-time" v-if="submitResult.execution_time_ms">
-                {{ submitResult.execution_time_ms }}ms
+                ⏱ {{ submitResult.execution_time_ms }}ms
               </span>
             </div>
             <div class="result-body">
+              <!-- 无输出时显示提示 -->
+              <div v-if="!submitResult.stdout && !submitResult.stderr" class="result-block no-output-block">
+                <div class="result-label">输出</div>
+                <div class="no-output-msg">
+                  <span class="no-output-icon">✓</span>
+                  代码执行成功，无输出内容
+                  <div class="no-output-hint">💡 提示：函数定义不会自动输出，请在代码中添加 <code>print()</code> 调用或点击"提交判题"验证正确性</div>
+                </div>
+              </div>
+              <!-- 有输出时正常显示 -->
               <div v-if="submitResult.stdout" class="result-block">
                 <div class="result-label">输出</div>
                 <pre class="result-output">{{ submitResult.stdout }}</pre>
               </div>
+              <!-- 有错误时显示 -->
               <div v-if="submitResult.stderr" class="result-block">
                 <div class="result-label error-label">错误</div>
                 <pre class="result-output error-output">{{ submitResult.stderr }}</pre>
               </div>
             </div>
-            <!-- AI评估按钮 -->
-            <div class="result-actions" v-if="submitResult.success">
-              <button class="ai-btn" @click="getAIEvaluation" :disabled="aiLoading">
+            <!-- 操作按钮 -->
+            <div class="result-actions">
+              <button class="submit-btn" @click="submitCode" :disabled="submitLoading">
+                <span v-if="submitLoading" class="submit-btn-running"></span>
+                <span v-else>&#x1f4dd;</span>
+                {{ submitLoading ? '提交判题中...' : '提交判题' }}
+              </button>
+              <button class="ai-btn" @click="getAIEvaluation" :disabled="aiLoading || !submitResult.success">
                 <span v-if="aiLoading" class="ai-btn-loading"></span>
                 <span v-else>&#x1f916;</span>
                 {{ aiLoading ? 'AI评估中...' : '获取AI点评' }}
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 判题结果 -->
+        <div class="result-section" v-if="submissionResult">
+          <div class="submit-card" :class="submissionResult.judge_result?.all_passed ? 'result-success' : 'result-error'">
+            <div class="submit-header">
+              <div class="submit-status">
+                <span class="submit-dot" :class="submissionResult.judge_result?.all_passed ? 'dot-success' : 'dot-error'"></span>
+                <span class="submit-text">
+                  {{ submissionResult.judge_result?.all_passed ? '全部通过' : submissionResult.judge_result?.summary || '部分通过' }}
+                </span>
+              </div>
+              <span class="submit-time">
+                {{ submissionResult.judge_result?.passed_count || 0 }}/{{ submissionResult.judge_result?.total_cases || 0 }} 通过
+              </span>
+            </div>
+            <div class="submit-body">
+              <!-- 测试用例列表 -->
+              <div v-if="submissionResult.judge_result?.details?.length" class="submit-result-block">
+                <div class="testcase-list">
+                  <div
+                    v-for="tc in submissionResult.judge_result.details"
+                    :key="tc.case_index"
+                    class="testcase-item"
+                    :class="tc.passed ? 'tc-pass' : 'tc-fail'"
+                  >
+                    <span class="testcase-icon">{{ tc.passed ? '✓' : '✗' }}</span>
+                    <span class="testcase-label">测试用例 #{{ tc.case_index }}</span>
+                    <span class="testcase-detail">{{ tc.passed ? '通过' : '失败' }}</span>
+                  </div>
+                </div>
+              </div>
+              <!-- 通过率进度条 -->
+              <div v-if="submissionResult.judge_result?.total_cases > 1" class="submit-result-block">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                  <span style="font-size: 12px; color: var(--tm-text-secondary);">通过率</span>
+                  <span style="font-size: 12px; color: var(--tm-text-primary); font-weight: 600;">{{ (submissionResult.judge_result.pass_rate || 0).toFixed(0) }}%</span>
+                </div>
+                <div class="score-bar-track">
+                  <div
+                    class="score-bar-fill"
+                    :style="{ width: (submissionResult.judge_result.pass_rate || 0) + '%' }"
+                    :class="getScoreClass(submissionResult.judge_result.pass_rate || 0)"
+                  ></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -253,6 +317,8 @@ const selectedExercise = ref(null)
 const userCode = ref('')
 const currentLanguageFilter = ref('')
 const submitResult = ref(null)
+const submitLoading = ref(false)
+const submissionResult = ref(null)
 const editorRef = ref(null)
 const aiEvaluationResult = ref(null)
 const aiLoading = ref(false)
@@ -354,6 +420,31 @@ const getAIEvaluation = async () => {
     ElMessage.error('AI评估失败，请稍后重试')
   } finally {
     aiLoading.value = false
+  }
+}
+
+const submitCode = async () => {
+  if (!selectedExercise.value || !userCode.value.trim()) {
+    ElMessage.warning('请先编写代码')
+    return
+  }
+
+  submitLoading.value = true
+  try {
+    const res = await request.post('/exercise/submit', {
+      exercise_id: selectedExercise.value.id.toString(),
+      solution: userCode.value,
+      language: currentLanguage.value,
+      exercise_type: selectedExercise.value.exercise_type || 'code'
+    })
+
+    submissionResult.value = res
+    ElMessage.success(res.message || (res.judge_result?.all_passed ? '全部通过！' : '提交完成'))
+  } catch (error) {
+    console.error('提交判题失败:', error)
+    ElMessage.error(error.response?.data?.detail || '提交判题失败')
+  } finally {
+    submitLoading.value = false
   }
 }
 
@@ -1040,6 +1131,201 @@ const renderDescription = (text) => {
 .error-output {
   color: #f38ba8;
   background: rgba(243, 139, 168, 0.04);
+}
+
+.no-output-block {
+  .no-output-msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(74, 222, 128, 0.06);
+    border: 1px solid rgba(74, 222, 128, 0.15);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--tm-text-regular);
+    line-height: 1.6;
+  }
+
+  .no-output-icon {
+    color: #4ade80;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .no-output-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--tm-text-secondary);
+    line-height: 1.5;
+
+    code {
+      background: rgba(var(--tm-color-primary-rgb), 0.12);
+      color: var(--tm-color-primary);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-family: 'Consolas', 'Monaco', monospace;
+    }
+  }
+}
+
+/* ===== 提交判题区域 ===== */
+.submit-section {
+  flex-shrink: 0;
+}
+
+.submit-card {
+  border-radius: 12px;
+  border: 1px solid var(--tm-border-light);
+  overflow: hidden;
+  background: var(--tm-card-bg);
+}
+
+.submit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--tm-border-light);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.submit-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.submit-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-submitted {
+  background: #a78bfa;
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.5);
+}
+
+.submit-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tm-text-primary);
+}
+
+.submit-time {
+  font-size: 12px;
+  color: var(--tm-text-secondary);
+  font-family: 'Consolas', monospace;
+}
+
+.submit-body {
+  padding: 16px;
+}
+
+.submit-result-block {
+  margin-bottom: 12px;
+}
+
+.submit-result-block:last-child {
+  margin-bottom: 0;
+}
+
+.testcase-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.testcase-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.testcase-item.tc-pass {
+  background: rgba(74, 222, 128, 0.06);
+  border: 1px solid rgba(74, 222, 128, 0.15);
+}
+
+.testcase-item.tc-fail {
+  background: rgba(248, 113, 113, 0.06);
+  border: 1px solid rgba(248, 113, 113, 0.15);
+}
+
+.testcase-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.testcase-label {
+  flex: 1;
+  font-weight: 500;
+  color: var(--tm-text-primary);
+}
+
+.testcase-item.tc-pass .testcase-label {
+  color: #4ade80;
+}
+
+.testcase-item.tc-fail .testcase-label {
+  color: #f87171;
+}
+
+.testcase-detail {
+  font-size: 11px;
+  color: var(--tm-text-secondary);
+  font-family: 'Consolas', monospace;
+}
+
+.submit-actions {
+  padding: 12px 16px;
+  border-top: 1px solid var(--tm-border-light);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.submit-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.25s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.25);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submit-btn-running {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  border-top-color: #a78bfa;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .result-actions {
