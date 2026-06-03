@@ -1376,6 +1376,7 @@ import { ElMessage } from 'element-plus'
 import { Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 import BenchRunner from '@/views/jmeter/BenchRunner.vue'
 import ScriptHistory from '@/views/jmeter/ScriptHistory.vue'
 import TreeEditor from '@/views/jmeter/TreeEditor.vue'
@@ -1383,6 +1384,7 @@ import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const showHelp = ref(false)
 const helpData = helpContent.jmeterAssistant
@@ -1564,9 +1566,10 @@ const serializeTree = () => {
   return scriptTree.children.map(walk)
 }
 
-// ===== 状态持久化 =====
-const STORAGE_KEY = 'jmeter_scripts'
-const CURRENT_KEY = 'jmeter_current_script'
+// ===== 状态持久化（按用户隔离） =====
+const _uid = computed(() => userStore.userId || 'anon')
+const STORAGE_KEY = computed(() => `jmeter_scripts_${_uid.value}`)
+const CURRENT_KEY = computed(() => `jmeter_current_script_${_uid.value}`)
 const MAX_SCRIPTS = 20
 
 const loadScriptsList = () => {

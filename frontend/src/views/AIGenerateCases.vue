@@ -293,10 +293,13 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, UploadFilled, Timer, Close } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import { useUserStore } from '@/stores/user'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
 
 const router = useRouter()
+const userStore = useUserStore()
+const _uid = computed(() => userStore.userId || 'anon')
 
 const showHelp = ref(false)
 const helpData = helpContent.aiGenerateCases
@@ -400,24 +403,27 @@ const handleFileChange = (file) => {
 }
 
 // 保存当前任务到 localStorage，页面切换后可恢复
+const AI_TASK_ID_KEY = computed(() => `ai_generate_task_id_${_uid.value}`)
+const AI_TASK_TIME_KEY = computed(() => `ai_generate_task_time_${_uid.value}`)
+
 function saveTaskToStorage(taskId) {
   try {
-    localStorage.setItem('ai_generate_task_id', taskId)
-    localStorage.setItem('ai_generate_task_time', Date.now().toString())
+    localStorage.setItem(AI_TASK_ID_KEY.value, taskId)
+    localStorage.setItem(AI_TASK_TIME_KEY.value, Date.now().toString())
   } catch (e) { /* ignore */ }
 }
 
 function clearTaskStorage() {
   try {
-    localStorage.removeItem('ai_generate_task_id')
-    localStorage.removeItem('ai_generate_task_time')
+    localStorage.removeItem(AI_TASK_ID_KEY.value)
+    localStorage.removeItem(AI_TASK_TIME_KEY.value)
   } catch (e) { /* ignore */ }
 }
 
 function getStoredTaskId() {
   try {
-    const taskId = localStorage.getItem('ai_generate_task_id')
-    const taskTime = parseInt(localStorage.getItem('ai_generate_task_time') || '0')
+    const taskId = localStorage.getItem(AI_TASK_ID_KEY.value)
+    const taskTime = parseInt(localStorage.getItem(AI_TASK_TIME_KEY.value) || '0')
     // 任务超过 2 小时视为过期
     if (taskId && taskTime && (Date.now() - taskTime) < 2 * 60 * 60 * 1000) {
       return taskId

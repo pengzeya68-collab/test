@@ -250,6 +250,7 @@ import { ElMessage } from 'element-plus'
 import { SwitchButton, ArrowDown } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import autoTestRequest from '@/utils/autoTestRequest'
+import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
   scriptTree: { type: Object, required: true },
@@ -275,7 +276,10 @@ const benchTaskId = ref(null)
 const benching = ref(false)
 const runStatus = ref('idle')
 const showBenchHistory = ref(false)
-const benchHistory = ref(JSON.parse(localStorage.getItem('benchHistory') || '[]'))
+const userStore = useUserStore()
+const _uid = computed(() => userStore.userId || 'anon')
+const BENCH_HISTORY_KEY = computed(() => `benchHistory_${_uid.value}`)
+const benchHistory = ref(JSON.parse(localStorage.getItem(BENCH_HISTORY_KEY.value) || '[]'))
 const analyzing = ref(false)
 const aiAnalysisText = ref('')
 const aiAnalysisDialogVisible = ref(false)
@@ -355,7 +359,7 @@ const saveBenchHistory = (result) => {
   const entry = { time: new Date().toLocaleString(), planName: props.planName || '未命名', concurrency: benchConcurrency.value, duration: benchDuration.value, total: result.total, success: result.success, failed: result.failed, tps: result.tps, avg_ms: result.avg_ms, p95_ms: result.p95_ms, p99_ms: result.p99_ms, min_ms: result.min_ms, max_ms: result.max_ms, p50_ms: result.p50_ms, p90_ms: result.p90_ms, stddev_ms: result.stddev_ms, rt_distribution: result.rt_distribution, throughput_trend: result.throughput_trend, body_samples: result.body_samples, statusDistribution: result.status_distribution, perUrl: result.per_url, errors: result.errors, samples: result.samples }
   benchHistory.value.unshift(entry)
   if (benchHistory.value.length > 50) benchHistory.value = benchHistory.value.slice(0, 50)
-  try { localStorage.setItem('benchHistory', JSON.stringify(benchHistory.value)) } catch (e) { benchHistory.value.pop(); try { localStorage.setItem('benchHistory', JSON.stringify(benchHistory.value)) } catch (e2) {} }
+  try { localStorage.setItem(BENCH_HISTORY_KEY.value, JSON.stringify(benchHistory.value)) } catch (e) { benchHistory.value.pop(); try { localStorage.setItem(BENCH_HISTORY_KEY.value, JSON.stringify(benchHistory.value)) } catch (e2) {} }
 }
 
 const initAllBenchCharts = () => {

@@ -5,6 +5,8 @@
 import asyncio
 import json
 import logging
+import os
+import re
 import subprocess
 import time
 import uuid
@@ -35,6 +37,41 @@ _logger = logging.getLogger(__name__)
 # 项目根目录
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
+
+# Docker 内部访问后端服务的地址（可通过环境变量覆盖）
+_DOCKER_BACKEND_HOST = os.environ.get("SCENARIO_RUNNER_BACKEND_HOST", "backend")
+
+
+def _is_running_in_docker() -> bool:
+    """检测当前进程是否运行在 Docker 容器内。"""
+    if os.path.exists("/.dockerenv"):
+        return True
+    try:
+        with open("/proc/1/cgroup", "rt") as f:
+            return "docker" in f.read() or "kubepods" in f.read()
+    except (OSError, IOError):
+        return False
+
+
+def _rewrite_localhost_url(url: str) -> str:
+    """
+    当场景执行器运行在 Docker 容器内时，将 URL 中的 localhost/127.0.0.1
+    替换为 Docker 内部后端服务名，确保 celery-worker 能正确访问 backend。
+    """
+    if not url:
+        return url
+    # 只在 Docker 容器内生效
+    if not _is_running_in_docker():
+        return url
+    # 替换 localhost 和 127.0.0.1（保留端口）
+    rewritten = re.sub(
+        r"(https?://)(localhost|127\.0\.0\.1)(:\d+)?",
+        lambda m: f"{m.group(1)}{_DOCKER_BACKEND_HOST}{m.group(3) or ''}",
+        url,
+    )
+    if rewritten != url:
+        _logger.info(f"[ScenarioRunner] URL rewritten: {url} -> {rewritten}")
+    return rewritten
 
 
 
@@ -656,6 +693,9 @@ class TestScenario{scenario_id}:
             if not request_config["url"].startswith(("http://", "https://")):
                 if self.base_url:
                     request_config["url"] = self.base_url.rstrip("/") + "/" + request_config["url"].lstrip("/")
+
+            # Docker 内部执行时，将 localhost 重写为后端服务名
+            request_config["url"] = _rewrite_localhost_url(request_config["url"])
 
             method = request_config["method"]
             url = request_config["url"]
