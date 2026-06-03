@@ -32,7 +32,12 @@
     <!-- 输出区域 -->
     <div class="output-container" v-if="showOutput">
       <div class="output-header">
-        <span class="output-title">运行结果</span>
+        <div class="output-status">
+          <span class="status-indicator" :class="outputResult?.returncode === 0 ? 'status-ok' : 'status-err'"></span>
+          <span class="output-title">运行结果</span>
+          <span v-if="outputResult?.returncode === 0" class="status-badge badge-ok">成功</span>
+          <span v-else-if="outputResult" class="status-badge badge-err">失败</span>
+        </div>
         <el-button 
           link 
           size="small" 
@@ -42,12 +47,41 @@
         </el-button>
       </div>
       <div class="output-content" :class="{ 'error': outputResult?.returncode !== 0 }">
-        <pre v-if="outputResult?.stdout">{{ outputResult.stdout }}</pre>
-        <pre v-if="outputResult?.stderr" class="stderr">{{ outputResult.stderr }}</pre>
+        <!-- 加载中 -->
         <div v-if="!outputResult && running" class="loading">
           <el-icon class="is-loading" size="20"><Loading /></el-icon>
           <span>代码执行中...</span>
         </div>
+        <!-- 有输出 -->
+        <template v-else-if="outputResult">
+          <pre v-if="outputResult.stdout" class="stdout">{{ outputResult.stdout }}</pre>
+          <pre v-if="outputResult.stderr" class="stderr">{{ outputResult.stderr }}</pre>
+          <!-- 无输出提示 -->
+          <div v-if="!outputResult.stdout && !outputResult.stderr" class="no-output">
+            <div class="no-output-main">
+              <span class="no-output-check">&#x2713;</span>
+              代码执行成功，但没有产生输出
+            </div>
+            <div class="no-output-hint">
+              函数定义不会自动输出结果。你可以：<br>
+              &bull; 在代码中添加 <code>print()</code> 来查看运行结果<br>
+              &bull; 点击下方「提交判题」按钮验证代码正确性
+            </div>
+          </div>
+        </template>
+      </div>
+      <!-- 操作按钮 -->
+      <div class="output-actions" v-if="outputResult && !running">
+        <button class="action-btn submit-action" @click="$emit('submit')" :disabled="submitting">
+          <span v-if="submitting" class="btn-spinner"></span>
+          <span v-else>&#x1f4dd;</span>
+          {{ submitting ? '判题中...' : '提交判题' }}
+        </button>
+        <button class="action-btn ai-action" @click="$emit('aiEvaluate')" :disabled="aiEvaluating || outputResult?.returncode !== 0">
+          <span v-if="aiEvaluating" class="btn-spinner"></span>
+          <span v-else>&#x1f916;</span>
+          {{ aiEvaluating ? 'AI评估中...' : 'AI点评' }}
+        </button>
       </div>
     </div>
   </div>
@@ -89,10 +123,18 @@ const props = defineProps({
   hideRun: {
     type: Boolean,
     default: false
+  },
+  submitting: {
+    type: Boolean,
+    default: false
+  },
+  aiEvaluating: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'run'])
+const emit = defineEmits(['update:modelValue', 'run', 'submit', 'aiEvaluate'])
 
 const editorRef = ref(null)
 const currentLanguage = ref(props.language)
@@ -208,9 +250,14 @@ const runCode = async () => {
       returncode: result.exit_code !== undefined ? result.exit_code : (result.returncode !== undefined ? result.returncode : 0)
     }
 
-    if (res.success) {
-      emit('run', { code, result: outputResult.value })
-    }
+    emit('run', { 
+      code, 
+      result: {
+        ...outputResult.value,
+        success: outputResult.value.returncode === 0,
+        execution_time_ms: result.execution_time_ms
+      }
+    })
   } catch (error) {
     console.error('代码执行失败:', error)
     ElMessage.error('代码执行失败')
@@ -269,7 +316,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .code-editor-container {
   border: 1px solid var(--tm-border-light, rgba(255,255,255,0.08));
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   background: #1e1e2e;
 }
@@ -352,6 +399,7 @@ onBeforeUnmount(() => {
   caret-color: #89b4fa;
 }
 
+/* ===== 输出区域 ===== */
 .output-container {
   border-top: 1px solid var(--tm-border-light, rgba(255,255,255,0.08));
 }
@@ -360,21 +408,60 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 16px;
+  padding: 10px 16px;
   background: var(--tm-card-bg, #1a1a2e);
   border-bottom: 1px solid var(--tm-border-light, rgba(255,255,255,0.08));
 }
 
+.output-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-indicator.status-ok {
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+}
+
+.status-indicator.status-err {
+  background: #f87171;
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.5);
+}
+
 .output-title {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--tm-text-primary, #cdd6f4);
   font-size: 14px;
+}
+
+.status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.badge-ok {
+  background: rgba(74, 222, 128, 0.12);
+  color: #4ade80;
+}
+
+.badge-err {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
 }
 
 .output-content {
   padding: 16px;
   background: #11111b;
-  max-height: 200px;
+  max-height: 250px;
   overflow-y: auto;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
@@ -383,12 +470,21 @@ onBeforeUnmount(() => {
 }
 
 .output-content.error {
-  background: rgba(243, 139, 168, 0.06);
+  background: rgba(243, 139, 168, 0.04);
+}
+
+.stdout {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .stderr {
   color: #f38ba8;
   margin-top: 8px;
+  margin-bottom: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .loading {
@@ -398,9 +494,107 @@ onBeforeUnmount(() => {
   color: var(--tm-text-secondary);
 }
 
-pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+/* 无输出提示 */
+.no-output {
+  text-align: left;
+}
+
+.no-output-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #4ade80;
+  margin-bottom: 10px;
+}
+
+.no-output-check {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.no-output-hint {
+  font-size: 12px;
+  color: var(--tm-text-secondary, #6c7086);
+  line-height: 1.8;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.no-output-hint code {
+  background: rgba(137, 180, 250, 0.12);
+  color: #89b4fa;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+/* 操作按钮 */
+.output-actions {
+  display: flex;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--tm-card-bg, #1a1a2e);
+  border-top: 1px solid var(--tm-border-light, rgba(255,255,255,0.08));
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1px solid;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  background: transparent;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.submit-action {
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.submit-action:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.15);
+}
+
+.ai-action {
+  border-color: rgba(236, 72, 153, 0.3);
+  color: var(--tm-color-primary, #ec4899);
+  background: rgba(236, 72, 153, 0.1);
+}
+
+.ai-action:hover:not(:disabled) {
+  background: rgba(236, 72, 153, 0.2);
+  border-color: rgba(236, 72, 153, 0.5);
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.15);
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

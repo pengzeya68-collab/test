@@ -167,8 +167,12 @@
           <CodeEditor
             v-model="userCode"
             :language="currentLanguage"
+            :submitting="submitLoading"
+            :aiEvaluating="aiLoading"
             ref="editorRef"
             @run="handleCodeRun"
+            @submit="submitCode"
+            @aiEvaluate="getAIEvaluation"
           />
         </div>
 
