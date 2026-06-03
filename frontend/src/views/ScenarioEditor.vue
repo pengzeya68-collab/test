@@ -40,6 +40,7 @@
           <el-icon><VideoPlay /></el-icon>
           运行场景
         </el-button>
+        <el-button @click="showHelp = true">使用说明</el-button>
       </div>
     </div>
 
@@ -170,6 +171,13 @@
     </el-dialog>
 
     <ScenarioExecutionDialog ref="executionDialogRef" v-model="resultDialogVisible" @completed="handleExecutionCompleted" />
+
+    <HelpDrawer
+      v-model="showHelp"
+      :title="helpData.title"
+      :intro="helpData.intro"
+      :sections="helpData.sections"
+    />
   </div>
 </template>
 
@@ -179,6 +187,10 @@ import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, VideoPlay, Back, Search, Refresh, DocumentCopy } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import { helpContent } from '@/utils/help-content'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+
+const helpData = helpContent.scenarioEditor
 import ScenarioExecutionDialog from '@/components/ScenarioExecutionDialog.vue'
 import DataDrivenPanel from '@/views/scenario/DataDrivenPanel.vue'
 import StepList from '@/views/scenario/StepList.vue'
@@ -227,6 +239,7 @@ const selectedEnvId = ref(null)
 
 const isRunning = ref(false)
 const saving = ref(false)
+const showHelp = ref(false)
 
 const getMethodType = (method) => {
   const types = { GET: 'success', POST: 'warning', PUT: 'primary', DELETE: 'danger', PATCH: 'info' }

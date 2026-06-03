@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
         resolvers: [ElementPlusResolver()],
         dts: false,
       }),
-      removeConsole({ excludes: ['error', 'warn'] }),
+      // removeConsole({ excludes: ['error', 'warn'] }),
     ],
     css: {
       preprocessorOptions: {

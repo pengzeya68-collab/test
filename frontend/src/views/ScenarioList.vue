@@ -43,6 +43,7 @@
           <el-icon><Plus /></el-icon>
           新建场景
         </el-button>
+        <el-button @click="showHelp = true">使用说明</el-button>
       </div>
     </div>
 
@@ -184,6 +185,13 @@
       v-model="envManagerDrawerVisible"
       @close="handleEnvManagerClose"
     />
+
+    <HelpDrawer
+      v-model="showHelp"
+      :title="helpData.title"
+      :intro="helpData.intro"
+      :sections="helpData.sections"
+    />
   </div>
 </template>
 
@@ -192,12 +200,17 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, VideoPlay, Delete, Search, Link, DocumentCopy, Clock, Edit, Timer, Setting } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+import { helpContent } from '@/utils/help-content'
+import HelpDrawer from '@/components/HelpDrawer.vue'
+
+const helpData = helpContent.scenarioList
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
 import ScenarioExecutionDialog from '@/components/ScenarioExecutionDialog.vue'
 import ScheduleDialog from '@/views/scenario/ScheduleDialog.vue'
 import ExecutionHistoryDrawer from '@/views/scenario/ExecutionHistoryDrawer.vue'
 
 const loading = ref(false)
+const showHelp = ref(false)
 const scenarios = ref([])
 const totalScenarios = ref(0)
 const searchKeyword = ref('')
