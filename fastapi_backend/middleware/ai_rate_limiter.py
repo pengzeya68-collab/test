@@ -63,16 +63,23 @@ async def ai_rate_limit_middleware(request: Request, call_next):
     """
     FastAPI 中间件：对 AI 相关接口进行速率限制
 
-    限制的接口路径：
-    - /api/v1/ai/* (AI Tutor)
-    - /api/v1/interview/* (面试 AI 评估)
+    只限制真正调用 AI 的接口：
+    - /api/v1/ai/* (AI Tutor — 所有请求)
+    - /api/v1/interview/ 中的 POST 接口（提交答案、代码评测、追问生成）
+    - 不限制面试模块的 GET 请求（轮询结果、列表查询等）
 
     优化：解析 JWT 后将 payload 存入 request.state，后续路由可复用，避免重复解码
     """
     path = request.url.path
+    method = request.method
 
-    ai_prefixes = ["/api/v1/ai/", "/api/v1/interview/"]
-    if not any(path.startswith(prefix) for prefix in ai_prefixes):
+    # /api/v1/ai/ 全部限制
+    if path.startswith("/api/v1/ai/"):
+        pass
+    # /api/v1/interview/ 只限制 POST（真正调用 AI 的接口）
+    elif path.startswith("/api/v1/interview/") and method == "POST":
+        pass
+    else:
         return await call_next(request)
 
     from fastapi_backend.core.config import settings

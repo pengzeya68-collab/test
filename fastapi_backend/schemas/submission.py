@@ -24,6 +24,7 @@ class SubmissionBase(BaseModel):
     ai_evaluation_status: str = Field(default="pending", description="AI评估状态: pending/running/completed/failed")
     score: Optional[int] = Field(None, ge=0, le=100, description="AI评分 (0-100)")
     feedback: Optional[str] = Field(None, description="AI反馈")
+    feedback_json: Optional[str] = Field(None, description="AI结构化反馈 JSON")
     execution_result: Optional[str] = Field(None, description="执行结果 JSON 格式")
 
 
@@ -42,6 +43,7 @@ class SubmissionUpdate(BaseModel):
     ai_evaluation_status: Optional[str] = Field(None, description="AI评估状态: pending/running/completed/failed")
     score: Optional[int] = Field(None, ge=0, le=100, description="AI评分 (0-100)")
     feedback: Optional[str] = Field(None, description="AI反馈")
+    feedback_json: Optional[str] = Field(None, description="AI结构化反馈 JSON")
     execution_result: Optional[str] = Field(None, description="执行结果 JSON 格式")
 
 
@@ -63,6 +65,17 @@ class SubmissionDetail(SubmissionBase):
         try:
             return json.loads(self.execution_result)
         except json.JSONDecodeError:
+            return None
+
+    @computed_field
+    @property
+    def parsed_feedback(self) -> Optional[dict[str, Any]]:
+        """解析后的结构化AI反馈"""
+        if not self.feedback_json:
+            return None
+        try:
+            return json.loads(self.feedback_json)
+        except (json.JSONDecodeError, TypeError):
             return None
 
 
@@ -97,6 +110,7 @@ class SubmissionWithSessionInfo(BaseModel):
     ai_evaluation_status: str
     score: Optional[int] = None
     feedback: Optional[str] = None
+    feedback_json: Optional[str] = None
     execution_result: Optional[str] = None
     created_at: datetime
     updated_at: datetime

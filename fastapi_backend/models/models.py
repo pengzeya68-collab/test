@@ -408,6 +408,7 @@ class Submission(Base):
     )
     score = Column(Integer, nullable=True, comment="AI评分 (0-100)")
     feedback = Column(Text, nullable=True, comment="AI反馈")
+    feedback_json = Column(Text, nullable=True, comment="AI结构化反馈 JSON: {score, feedback, strengths[], weaknesses[], suggestion}")
     execution_result = Column(Text, nullable=True, comment="执行结果 JSON 格式")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(

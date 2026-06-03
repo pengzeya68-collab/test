@@ -282,6 +282,7 @@ async def create_batch_interview_session(
                     "user_answer": "",
                     "score": None,
                     "ai_feedback": None,
+                    "parsed_feedback": None,
                     "record_id": None,
                     "_source": "exercise",
                 }
@@ -318,6 +319,7 @@ async def create_batch_interview_session(
                         "user_answer": "",
                         "score": None,
                         "ai_feedback": None,
+                        "parsed_feedback": None,
                         "record_id": None,
                         "_source": "interview_question",
                     }
@@ -345,6 +347,7 @@ async def create_batch_interview_session(
                         "user_answer": "",
                         "score": None,
                         "ai_feedback": None,
+                        "parsed_feedback": None,
                         "record_id": None,
                         "_source": "exercise",
                     }
@@ -510,11 +513,19 @@ async def get_interview_session(
         ex_result = await db.execute(select(Exercise).where(Exercise.id.in_(all_qids)))
         ex_map = {ex.id: ex for ex in ex_result.scalars().all()}
 
+    import json as _json
+
     question_list = []
     for qid in all_qids:
         q = q_map.get(qid)
         ex = ex_map.get(qid)
         sub = answered_qids.get(qid)
+        parsed_fb = None
+        if sub and sub.feedback_json:
+            try:
+                parsed_fb = _json.loads(sub.feedback_json)
+            except (ValueError, TypeError):
+                pass
         if ex:
             question_list.append(
                 {
@@ -530,6 +541,7 @@ async def get_interview_session(
                     "user_answer": sub.source_code if sub else "",
                     "score": sub.score if sub else None,
                     "ai_feedback": sub.feedback if sub else None,
+                    "parsed_feedback": parsed_fb,
                     "record_id": sub.id if sub else None,
                 }
             )
@@ -548,6 +560,7 @@ async def get_interview_session(
                     "user_answer": sub.source_code if sub else "",
                     "score": sub.score if sub else None,
                     "ai_feedback": sub.feedback if sub else None,
+                    "parsed_feedback": parsed_fb,
                     "record_id": sub.id if sub else None,
                 }
             )

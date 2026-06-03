@@ -250,12 +250,16 @@ async def complete_session(session_id: int, user_id: int, db: AsyncSession) -> O
     await db.commit()
     await db.refresh(session)
 
+    # 生成面试报告
+    report = await generate_interview_report(session_id, user_id, db)
+
     return {
         "session_id": session.id,
         "status": session.status,
         "score": session.latest_score,
         "total_questions": len(submissions),
         "answered_questions": len(submissions),
+        "report": report,
     }
 
 

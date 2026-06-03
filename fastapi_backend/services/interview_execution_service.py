@@ -447,6 +447,17 @@ class InterviewExecutionService:
                 try:
                     result = _json.loads(content)
                     score = result.get("score", 60)
+
+                    # 构建结构化反馈
+                    feedback_data = {
+                        "score": score,
+                        "feedback": result.get("feedback", ""),
+                        "strengths": result.get("strengths", []),
+                        "weaknesses": result.get("weaknesses", []),
+                        "suggestion": result.get("suggestion", ""),
+                    }
+
+                    # 保留拼接版 feedback 作为纯文本兼容
                     feedback_parts = [result.get("feedback", "")]
                     if result.get("strengths"):
                         feedback_parts.append("优点: " + ", ".join(result["strengths"]))
@@ -458,8 +469,14 @@ class InterviewExecutionService:
                 except _json.JSONDecodeError:
                     score = 60
                     feedback = content if content else "AI评估完成"
+                    feedback_data = None
 
-                update_data = SubmissionUpdate(ai_evaluation_status="completed", score=score, feedback=feedback)
+                update_data = SubmissionUpdate(
+                    ai_evaluation_status="completed",
+                    score=score,
+                    feedback=feedback,
+                    feedback_json=_json.dumps(feedback_data, ensure_ascii=False) if feedback_data else None,
+                )
                 await self._update_submission(db, submission, update_data)
                 logger.info(f"文本回答 #{submission.id} AI评估完成，得分: {score}")
 
@@ -506,10 +523,20 @@ class InterviewExecutionService:
             )
 
             # 5. 更新评估结果
+            import json as _json
+
+            feedback_data = {
+                "score": ai_result.score,
+                "feedback": ai_result.feedback or "",
+                "strengths": [],
+                "weaknesses": [],
+                "suggestion": "",
+            }
             update_data = SubmissionUpdate(
                 ai_evaluation_status="completed",
                 score=ai_result.score,
                 feedback=ai_result.feedback,
+                feedback_json=_json.dumps(feedback_data, ensure_ascii=False),
             )
 
             await self._update_submission(db, submission, update_data)
