@@ -327,6 +327,11 @@ const currentQuestion = computed(() => {
 
 const needsCodeEditor = computed(() => {
   if (!currentQuestion.value) return false
+  // 优先使用 language 字段判断：text 表示文本题，其余视为代码题
+  const lang = (currentQuestion.value.language || '').toLowerCase()
+  if (lang === 'text' || lang === '中文' || lang === '通用') return false
+  if (['python', 'java', 'sql', 'shell', 'javascript', 'go', 'c', 'c++'].some(l => lang.includes(l))) return true
+  // 降级：用 category 判断（仅当 language 不明确时）
   const category = currentQuestion.value.category || ''
   const codeCategories = ['编程', '自动化测试', '接口测试', '数据库', 'SQL', 'Shell']
   return codeCategories.some(cat => category.includes(cat))
