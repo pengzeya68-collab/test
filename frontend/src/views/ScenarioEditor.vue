@@ -430,12 +430,13 @@ const handleRun = async () => {
   try {
     const stepCount = steps.value ? steps.value.length : 0
     await executionDialogRef.value?.startExecution(props.scenarioId, selectedEnvId.value, stepCount)
-  } finally {
+  } catch {
     isRunning.value = false
   }
 }
 
 const handleExecutionCompleted = () => {
+  isRunning.value = false
   loadExecutionHistory()
 }
 

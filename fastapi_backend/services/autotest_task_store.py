@@ -126,6 +126,15 @@ async def update_task(task_id: str, task_info: dict) -> None:
         _save_task_to_file(task_id, task_info)
 
 
+def update_task_sync(task_id: str, task_info: dict) -> None:
+    """同步版本的 update_task，供 Celery 等非 async 上下文使用"""
+    if "created_at" not in task_info:
+        task_info["created_at"] = time.time()
+    with _thread_lock:
+        _task_store[task_id] = task_info
+    _save_task_to_file(task_id, task_info)
+
+
 async def delete_task(task_id: str) -> None:
     async with _get_async_lock():
         with _thread_lock:

@@ -87,7 +87,7 @@ const dbInfo = reactive({
 async function loadCacheStats() {
   try {
     const res = await request.get('/admin/system/cache/stats')
-    cacheStats.value = res.data.caches
+    cacheStats.value = res.caches
   } catch (e) {
     console.error('加载缓存统计失败', e)
   }
@@ -131,7 +131,7 @@ async function saveSettings() {
 async function loadDbInfo() {
   try {
     const res = await request.get('/admin/system/database/info')
-    Object.assign(dbInfo, res.data)
+    Object.assign(dbInfo, res)
   } catch (e) {
     console.error('加载数据库信息失败', e)
   }

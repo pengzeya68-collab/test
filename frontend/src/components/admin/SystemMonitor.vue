@@ -65,7 +65,7 @@ const chartRef = ref(null)
 async function refreshSystemInfo() {
   try {
     const res = await request.get('/admin/system/system-info')
-    systemInfo.value = res.data
+    systemInfo.value = res
   } catch (e) {
     console.error('获取系统信息失败', e)
   }
@@ -74,7 +74,7 @@ async function refreshSystemInfo() {
 async function refreshProcessInfo() {
   try {
     const res = await request.get('/admin/system/process-info')
-    processInfo.value = res.data
+    processInfo.value = res
   } catch (e) {
     console.error('获取进程信息失败', e)
   }

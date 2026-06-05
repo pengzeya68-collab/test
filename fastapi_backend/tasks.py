@@ -18,8 +18,7 @@ def _persist_task_result(task_id: str, result_data: dict) -> None:
     try:
         from fastapi_backend.services.autotest_task_store import (
             get_task_sync,
-            _task_store,
-            _save_task_to_file,
+            update_task_sync,
         )
 
         stored = get_task_sync(task_id)
@@ -38,8 +37,7 @@ def _persist_task_result(task_id: str, result_data: dict) -> None:
                 "result": normalized_result,
             }
             stored.update(result_data)
-        _task_store[task_id] = stored
-        _save_task_to_file(task_id, stored)
+        update_task_sync(task_id, stored)
         _logger.info(f"[Celery] 任务 {task_id} 状态已持久化: {stored['status']}")
     except Exception as e:
         _logger.warning(f"[Celery] 持久化任务 {task_id} 状态失败: {e}", exc_info=True)
@@ -72,8 +70,8 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
 
             try:
                 from fastapi_backend.services.autotest_task_store import (
-                    _task_store,
-                    _save_task_to_file,
+                    get_task_sync,
+                    update_task_sync,
                 )
 
                 progress_data = {
@@ -92,11 +90,12 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
                     },
                     "updated_at": time.time(),
                 }
-                if task_id in _task_store:
-                    _task_store[task_id].update(progress_data)
+                stored = get_task_sync(task_id)
+                if stored is not None:
+                    stored.update(progress_data)
                 else:
-                    _task_store[task_id] = progress_data
-                _save_task_to_file(task_id, _task_store[task_id])
+                    stored = progress_data
+                update_task_sync(task_id, stored)
             except Exception as e:
                 _logger.warning(f"[Celery] 同步进度到持久化存储失败: {e}")
 

@@ -104,7 +104,7 @@ function getLevelType(level) {
 async function loadLogStats() {
   try {
     const res = await request.get('/admin/system/logs/stats')
-    Object.assign(logStats, res.data)
+    Object.assign(logStats, res)
   } catch (e) {
     console.error('加载日志统计失败', e)
   }
@@ -113,7 +113,7 @@ async function loadLogStats() {
 async function loadLogFiles() {
   try {
     const res = await request.get('/admin/system/logs/files')
-    logFiles.value = res.data.files
+    logFiles.value = res.files
   } catch (e) {
     console.error('加载日志文件列表失败', e)
   }
@@ -130,7 +130,7 @@ async function loadLogs() {
         keyword: filterKeyword.value || undefined,
       },
     })
-    logContent.value = res.data.logs
+    logContent.value = res.logs
   } catch (e) {
     ElMessage.error('加载日志内容失败')
   } finally {
@@ -158,7 +158,7 @@ async function clearOldLogs() {
       type: 'warning',
     })
     const res = await request.post('/admin/system/logs/clear', { days: 30 })
-    ElMessage.success(res.data.message)
+    ElMessage.success(res.message)
     await loadLogFiles()
     await loadLogStats()
   } catch (e) {
@@ -178,7 +178,7 @@ onMounted(() => {
   })
   
   request.get('/admin/system/logs/level').then(levelRes => {
-    currentLevel.value = levelRes.data.level
+    currentLevel.value = levelRes.level
   }).catch(err => {
     console.error('获取日志级别失败:', err)
   })

@@ -435,7 +435,7 @@ const startExecution = async (scenarioId, envId, totalSteps) => {
       `/auto-test/scenarios/${scenarioId}/run`,
       { env_id: envId }
     )
-    const taskId = res?.task_id || res?.data?.task_id
+    const taskId = res?.task_id
     if (!taskId) {
       isRunning.value = false
       submitError.value = '任务提交成功后未返回 task_id，前端无法进入轮询。请检查场景执行接口返回结构。'

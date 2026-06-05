@@ -454,7 +454,7 @@ async def run_case(
             raise HTTPException(status_code=400, detail=f"无效的环境 ID: {env_id}")
     if env is None:
         result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id))
-        env = result.scalar_one_or_none()
+        env = result.scalars().first()
         if not env:
             result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id))
             env = result.scalars().first()
@@ -559,7 +559,7 @@ async def batch_run(
         env = result.scalar_one_or_none()
     else:
         result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id))
-        env = result.scalar_one_or_none()
+        env = result.scalars().first()
         if not env:
             result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id))
             env = result.scalars().first()
@@ -641,7 +641,8 @@ async def get_history(
     query = query.offset(offset).limit(limit)
     result = await db.execute(query)
     history = result.scalars().all()
-    return {"items": history, "total": total, "limit": limit, "offset": offset}
+    items = [AutoTestHistoryResponse.model_validate(h).model_dump() for h in history]
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 @router.delete("/history/{history_id}", status_code=204)
