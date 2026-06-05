@@ -439,7 +439,13 @@ const exportReport = async () => {
 
 watch(benchPanelExpanded, (v) => { if (v) { nextTick(() => { initAllBenchCharts(); updateAllBenchCharts() }) } })
 onMounted(() => { fetchCosts() })
-onBeforeUnmount(() => { if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }; window.removeEventListener('resize', resizeAllBenchCharts) })
+onBeforeUnmount(() => {
+  if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
+  window.removeEventListener('resize', resizeAllBenchCharts)
+  ;[benchChartInstance, benchChartInstance2, benchChartInstance3, benchChartInstance4].forEach(inst => {
+    if (inst.value) { inst.value.dispose(); inst.value = null }
+  })
+})
 
 defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurrency, benchDuration, benchRampUp, benchStartTime, aiAnalysisText, aiAnalysisDialogVisible, startBench, stopBench, shortUrl, resizeAllBenchCharts })
 </script>

@@ -147,7 +147,7 @@ const validateConfirmPassword = (rule, value, callback) => {
   }
 }
 
-const sendCode = () => {
+const sendCode = async () => {
   if (codeCountdown.value > 0) return
   if (!forgotPasswordForm.value.phone) {
     ElMessage.warning('请先输入手机号')
@@ -157,9 +157,14 @@ const sendCode = () => {
     ElMessage.warning('请输入正确的手机号')
     return
   }
-  
-  // 模拟发送验证码
-  ElMessage.success('验证码已发送')
+
+  try {
+    await request.post('/auth/send-code', { phone: forgotPasswordForm.value.phone })
+    ElMessage.success('验证码已发送')
+  } catch (error) {
+    ElMessage.error('验证码发送失败，请稍后重试')
+    return
+  }
   codeCountdown.value = 60
   codeTimer = setInterval(() => {
     codeCountdown.value--

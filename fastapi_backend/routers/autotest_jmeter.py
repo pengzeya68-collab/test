@@ -294,7 +294,7 @@ async def import_jmeter_file(
         导入的用例列表
     """
     # 验证文件类型
-    if not file.filename.endswith(".jmx"):
+    if not file.filename or not file.filename.endswith(".jmx"):
         raise HTTPException(status_code=400, detail="只支持 .jmx 文件")
     
     # 读取文件内容（限制大小 10MB）
@@ -366,7 +366,7 @@ async def import_jmeter_full_tree(
     current_user: User = Depends(get_current_active_user),
 ):
     """导入JMX文件为完整树结构(保留所有节点和层级)"""
-    if not file.filename.endswith(".jmx"):
+    if not file.filename or not file.filename.endswith(".jmx"):
         raise HTTPException(status_code=400, detail="只支持 .jmx 文件")
     content = await file.read()
     xml_content = content.decode("UTF-8", errors="replace")

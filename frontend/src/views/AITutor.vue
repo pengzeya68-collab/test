@@ -424,10 +424,7 @@ const sendInterviewAnswer = async () => {
   }
 }
 
-const endInterview = async () => {
-  try {
-    await request.post('/interview/end')
-  } catch { /* silent */ }
+const endInterview = () => {
   interviewStarted.value = false
   ElMessage.success('面试模拟已结束')
 }

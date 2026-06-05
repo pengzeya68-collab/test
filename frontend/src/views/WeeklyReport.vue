@@ -183,7 +183,7 @@ const maxCatCount = computed(() => {
 })
 
 const getBarHeight = (count) => {
-  const maxVal = Math.max(...(report.value.daily_data || []).map(d => d.total), 1)
+  const maxVal = Math.max(...(report.value.daily_data || []).map(d => d.total || 0), 1)
   return Math.max((count / maxVal) * 120, 2)
 }
 </script>

@@ -94,23 +94,30 @@ async def _run_scenario_locally(task_id: str, scenario_id: int, env_id: Optional
         )
 
         def on_progress(current_step, total_steps, step_name):
-            percent = int((current_step / total_steps) * 100) if total_steps > 0 else 0
-            asyncio.create_task(update_task(task_id, {
-                "task_id": task_id,
-                "scenario_id": scenario_id,
-                "status": "PROGRESS",
-                "info": f"执行中: {step_name}",
-                "progress": {
-                    "percent": percent,
-                    "current": current_step,
-                    "total": total_steps,
-                    "current_api": step_name,
-                    "current_step": current_step,
-                    "total_steps": total_steps,
-                    "step_name": step_name,
-                },
-                "updated_at": time.time(),
-            }))
+            percent = min(int((current_step / total_steps) * 100), 100) if total_steps > 0 else 0
+            try:
+                loop = asyncio.get_event_loop()
+                asyncio.run_coroutine_threadsafe(
+                    update_task(task_id, {
+                        "task_id": task_id,
+                        "scenario_id": scenario_id,
+                        "status": "PROGRESS",
+                        "info": f"执行中: {step_name}",
+                        "progress": {
+                            "percent": percent,
+                            "current": current_step,
+                            "total": total_steps,
+                            "current_api": step_name,
+                            "current_step": current_step,
+                            "total_steps": total_steps,
+                            "step_name": step_name,
+                        },
+                        "updated_at": time.time(),
+                    }),
+                    loop
+                )
+            except RuntimeError:
+                logger.warning(f"无法更新任务进度: 事件循环不可用")
 
         result = await execute_scenario_async(scenario_id, env_id, progress_callback=on_progress, user_id=user_id)
         result["task_id"] = task_id

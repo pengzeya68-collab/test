@@ -919,7 +919,7 @@ const runSql = async () => {
   sqlRunning.value = true
   sqlResult.value = null
   try {
-    const res = await request.post('/exercises/execute-sql', {
+    const res = await request.post('/exercise/execute-sql', {
       setup_sql: exercise.value.setup_sql || '',
       user_sql: userCode.value
     })

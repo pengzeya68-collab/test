@@ -338,8 +338,8 @@ async def like_post(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        # 并发竞态：另一个请求已经插入了 like，回滚后 action 应修正
-        action = "unliked"
+        # 并发竞态：另一个请求已经插入了 like，视为点赞成功
+        action = "liked"
     await db.refresh(post)
     return LikeResponse(
         message="点赞成功" if action == "liked" else "取消点赞成功",
@@ -368,7 +368,12 @@ async def favorite_post(
         fav = Favorite(user_id=current_user.id, post_id=post_id)
         db.add(fav)
         action = "favorited"
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        # 并发竞态：另一个请求已经插入了收藏，视为收藏成功
+        action = "favorited"
     return FavoriteResponse(message="收藏成功" if action == "favorited" else "取消收藏成功", action=action)
 
 

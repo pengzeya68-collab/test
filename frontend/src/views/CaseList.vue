@@ -327,7 +327,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus,
@@ -536,6 +536,10 @@ const handleSearch = () => {
     loadCases()
   }, 300)
 }
+
+onUnmounted(() => {
+  if (searchTimer.value) clearTimeout(searchTimer.value)
+})
 
 // 分页大小变化
 const handlePageSizeChange = () => {

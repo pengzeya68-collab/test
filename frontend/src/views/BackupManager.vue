@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿<template>
   <div class="backup-manager">
     <div class="layout-fluid">
       <div class="page-header">
@@ -567,8 +567,6 @@ const handleResize = () => {
   if (systemLoadChart.value) systemLoadChart.value.resize()
 }
 
-window.addEventListener('resize', handleResize)
-
 // 获取系统监控指标 - 防弹版本兼容拦截器解包
 // silent: 是否静默刷新（心跳模式，不显示 loading，不闪烁）
 const fetchSystemMetrics = async (silent = false) => {
@@ -647,10 +645,11 @@ onMounted(() => {
   fetchSystemMetrics()
   fetchBackups()
   fetchAuditLogs()
-  
+  window.addEventListener('resize', handleResize)
+
   // 开启 15 秒心跳静默刷新
   refreshTimer = setInterval(() => {
-    fetchSystemMetrics()
+    fetchSystemMetrics(true)
   }, 15000)
 })
 

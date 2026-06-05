@@ -64,6 +64,7 @@ const handleClose = () => {
   visible.value = false
   curlString.value = ''
   parsedResult.value = null
+  parsing.value = false
 }
 
 const parseCurl = async () => {
