@@ -285,7 +285,7 @@ const fetchDashboardData = async () => {
       dashboardData.value.overallScore = skillsRes.value.overall_score
       dashboardData.value.overallLevel = skillsRes.value.overall_level
       const skills = skillsRes.value.skills || []
-      dashboardData.value.exercisesDone = skills.filter(s => s.score > 0).length
+      dashboardData.value.exercisesDone = skillsRes.value.exercises_done || skills.filter(s => s.score > 0).length
     }
     if (achievementsRes.status === 'fulfilled' && achievementsRes.value) {
       dashboardData.value.achievementsUnlocked = achievementsRes.value.unlocked_count || 0

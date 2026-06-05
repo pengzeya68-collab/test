@@ -12,15 +12,17 @@ export async function chat(params) {
         params: { page: 1, size: 1, status_filter: 'started' }
       })
 
-      if (sessionsRes.data?.items?.length > 0) {
+      const sessionsItems = sessionsRes.items || sessionsRes.data?.items || []
+      if (sessionsItems.length > 0) {
         // reuse existing session
       } else {
         const questionsRes = await request.get('/interview/questions', {
           params: { page: 1, size: 1 }
         })
 
-        if (questionsRes.data?.items?.length > 0) {
-          const questionId = questionsRes.data.items[0].id
+        const qItems = questionsRes.items || questionsRes.data?.items || []
+        if (qItems.length > 0) {
+          const questionId = qItems[0].id
           await request.post('/interview/sessions', {
             question_id: questionId
           })
@@ -35,7 +37,7 @@ export async function chat(params) {
         question_id: 'adapter-chat'
       })
 
-      return { answer: evaluateRes.data?.feedback || '收到您的回答，面试官正在评估...' }
+      return { answer: evaluateRes.feedback || evaluateRes.data?.feedback || '收到您的回答，面试官正在评估...' }
     } catch (error) {
       console.error('面试接口调用失败:', error)
       try {
@@ -68,7 +70,7 @@ export async function codeReview(params) {
       const execRes = await request.post('/sandbox/execute', {
         code, language, timeout: 5
       })
-      const executionResult = execRes.data
+      const executionResult = execRes.data || execRes
       let reviewResult = '# 代码审查结果\n\n'
       reviewResult += `**语言**: ${language}\n\n`
       if (executionResult.exit_code === 0) {
@@ -131,8 +133,9 @@ export async function startInterview(params) {
       const questionsRes = await request.get('/interview/questions', {
         params: { page: 1, size: 1, difficulty: experience < 3 ? 'easy' : experience < 5 ? 'medium' : 'hard' }
       })
-      if (questionsRes.data?.items?.length) {
-        const question = questionsRes.data.items[0]
+      const qItems = questionsRes.items || questionsRes.data?.items || []
+      if (qItems.length) {
+        const question = qItems[0]
         let answer = `欢迎参加${position}${round}模拟面试！\n\n**面试题目**: ${question.title}\n\n`
         if (question.description) answer += `**题目描述**:\n${question.description}\n\n`
         if (question.template_code) answer += '**代码模板**:\n' + BT + BT + BT + 'python\n' + question.template_code + '\n' + BT + BT + BT + '\n\n'

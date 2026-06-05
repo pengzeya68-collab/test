@@ -200,6 +200,7 @@ const fetchPathDetail = async () => {
   try {
     const res = await request.get(`/learning-paths/${pathId.value}`)
     path.value = res
+    isCollected.value = res.is_collected || false
   } catch (error) {
     ElMessage.error('获取学习路径详情失败')
   } finally {

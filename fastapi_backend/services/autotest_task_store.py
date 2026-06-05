@@ -179,14 +179,15 @@ async def _cleanup_expired_tasks() -> None:
             now = time.time()
             expired_ids = []
             async with _get_async_lock():
-                for task_id, task_info in list(_task_store.items()):
-                    status = task_info.get("status", "")
-                    if status in ("completed", "failed", "cancelled"):
-                        created_at = task_info.get("created_at", 0)
-                        if created_at and (now - created_at) > TASK_TTL_SECONDS:
-                            expired_ids.append(task_id)
-                for task_id in expired_ids:
-                    _task_store.pop(task_id, None)
+                with _thread_lock:
+                    for task_id, task_info in list(_task_store.items()):
+                        status = task_info.get("status", "")
+                        if status in ("completed", "failed", "cancelled"):
+                            created_at = task_info.get("created_at", 0)
+                            if created_at and (now - created_at) > TASK_TTL_SECONDS:
+                                expired_ids.append(task_id)
+                    for task_id in expired_ids:
+                        _task_store.pop(task_id, None)
             # 文件删除在锁外执行，避免阻塞
             for task_id in expired_ids:
                 _delete_task_file(task_id)

@@ -606,7 +606,7 @@ async def batch_run(
 
 # ========== 测试历史接口 ==========
 
-@router.get("/history", response_model=list[AutoTestHistoryResponse])
+@router.get("/history")
 async def get_history(
     case_id: int = None,
     limit: int = 50,
@@ -618,18 +618,17 @@ async def get_history(
     # 参数校验
     limit = max(1, min(limit, 100))  # 限制1-100
     offset = max(0, offset)
-    
+
     query = select(AutoTestHistory).where(AutoTestHistory.user_id == current_user.id).order_by(desc(AutoTestHistory.created_at))
     if case_id:
         query = query.where(AutoTestHistory.case_id == case_id)
 
     # 先查总数
     from sqlalchemy import func as sa_func
-    count_query = select(sa_func.count()).select_from(
-        select(AutoTestHistory).where(AutoTestHistory.user_id == current_user.id)
-        .where(AutoTestHistory.case_id == case_id if case_id else True)
-        .subquery()
-    )
+    count_base = select(AutoTestHistory).where(AutoTestHistory.user_id == current_user.id)
+    if case_id:
+        count_base = count_base.where(AutoTestHistory.case_id == case_id)
+    count_query = select(sa_func.count()).select_from(count_base.subquery())
     total = (await db.execute(count_query)).scalar_one()
 
     query = query.offset(offset).limit(limit)
@@ -804,6 +803,36 @@ async def get_scenario_execution_history(
         except ValueError:
             raise HTTPException(status_code=400, detail=f"结束日期格式无效: {end_date}")
 
+    # 先查总数（不带limit）
+    from sqlalchemy import func as sa_func
+    count_base = select(AutoTestScenarioExecutionRecord).where(
+        AutoTestScenarioExecutionRecord.scenario_id == scenario_id
+    )
+    if status:
+        normalized_status = {
+            "completed": "success",
+            "running": "running",
+            "success": "success",
+            "failed": "failed",
+            "error": "error",
+            "cancelled": "cancelled",
+        }.get(status, status)
+        count_base = count_base.where(AutoTestScenarioExecutionRecord.status == normalized_status)
+    if start_date:
+        try:
+            start_datetime = datetime.fromisoformat(start_date + "T00:00:00")
+            count_base = count_base.where(AutoTestScenarioExecutionRecord.created_at >= start_datetime)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            end_datetime = datetime.fromisoformat(end_date + "T23:59:59")
+            count_base = count_base.where(AutoTestScenarioExecutionRecord.created_at <= end_datetime)
+        except ValueError:
+            pass
+    count_query = select(sa_func.count()).select_from(count_base.subquery())
+    total = (await db.execute(count_query)).scalar_one()
+
     # 排序和限制
     query = query.order_by(AutoTestScenarioExecutionRecord.created_at.desc()).limit(limit)
 
@@ -813,7 +842,7 @@ async def get_scenario_execution_history(
     return {
         "scenario_id": scenario_id,
         "scenario_name": scenario.name,
-        "total": len(history),
+        "total": total,
         "items": [
             {
                 "id": rec.id,

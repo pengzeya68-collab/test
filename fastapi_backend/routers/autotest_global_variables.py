@@ -179,7 +179,7 @@ async def delete_global_variable(
 
 @router.post("/batch")
 async def batch_create_global_variables(
-    variables_in: List[dict],
+    variables_in: List[GlobalVariableCreate],
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -189,16 +189,17 @@ async def batch_create_global_variables(
         # 检查变量名是否已存在（同一用户下）
         result = await db.execute(
             select(AutoTestGlobalVariable)
-            .where(AutoTestGlobalVariable.name == variable_data["name"])
+            .where(AutoTestGlobalVariable.name == variable_data.name)
             .where(AutoTestGlobalVariable.user_id == current_user.id)
         )
         existing_variable = result.scalar_one_or_none()
         if not existing_variable:
+            data = variable_data.model_dump()
             # 对加密的变量值进行加密
-            if variable_data.get("is_encrypted"):
-                variable_data["value"] = encrypt(variable_data["value"])
-            variable_data["user_id"] = current_user.id
-            variable = AutoTestGlobalVariable(**variable_data)
+            if data.get("is_encrypted"):
+                data["value"] = encrypt(data["value"])
+            data["user_id"] = current_user.id
+            variable = AutoTestGlobalVariable(**data)
             db.add(variable)
             created_variables.append(variable)
 

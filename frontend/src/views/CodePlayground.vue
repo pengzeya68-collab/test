@@ -391,6 +391,7 @@ const fetchExercises = async () => {
 const selectExercise = (exercise) => {
   selectedExercise.value = exercise
   submitResult.value = null
+  submissionResult.value = null
   aiEvaluationResult.value = null
   userCode.value = exercise.code_template || ''
 }

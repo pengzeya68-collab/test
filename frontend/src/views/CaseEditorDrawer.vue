@@ -832,15 +832,20 @@ const initFormData = (data) => {
 }
 
 // 🔥 抽屉打开时，如果是编辑模式，强制从后端获取完整数据
+let loadVersion = 0
 watch(() => props.modelValue, async (visible) => {
   if (visible) {
     loadVariables() // 每次打开重新加载一下变量
     if (props.isEdit && props.caseData?.id) {
       // 编辑模式：先获取完整用例详情
+      loadVersion++
+      const currentVersion = loadVersion
       try {
         const res = await autoTestRequest.get(`/auto-test/cases/${props.caseData.id}`)
+        if (loadVersion !== currentVersion) return
         initFormData(res)
       } catch (e) {
+        if (loadVersion !== currentVersion) return
         console.error('获取用例详情失败', e)
         // 降级：用列表数据初始化
         initFormData(props.caseData)
@@ -1242,6 +1247,9 @@ const handleSaveAndRun = async () => {
   if (caseForm.value.name && caseForm.value.url) {
     // 确保传递真实数据，避免响应式问题
     const data = JSON.parse(JSON.stringify(toRaw(caseForm.value)))
+    if (data.url && !data.url.includes('://')) {
+      data.url = 'http://' + data.url
+    }
     emit('run', { ...data, id: savedCaseId })
   }
 }

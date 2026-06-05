@@ -33,6 +33,7 @@ class DataFactoryEngine:
         return {"columns": columns, "rows": rows}
 
     def generate_dataset(self, fields: List[dict], row_count: int = 10) -> Dict[str, Any]:
+        row_count = min(row_count, 10000)
         self._increment_counters.clear()  # 每次生成数据集时重置计数器
         columns = [f["field_name"] for f in fields]
         rows = []

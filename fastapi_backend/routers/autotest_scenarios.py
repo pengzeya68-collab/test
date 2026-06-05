@@ -423,16 +423,18 @@ async def reorder_steps(
     if not scenario_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="场景不存在")
 
-    for item in step_orders:
-        result = await db.execute(
-            select(AutoTestScenarioStep).where(
-                AutoTestScenarioStep.id == item.step_id,
-                AutoTestScenarioStep.scenario_id == scenario_id,
-            )
+    # 一次性查询该场景的所有步骤，避免 N+1 查询
+    steps_result = await db.execute(
+        select(AutoTestScenarioStep).where(
+            AutoTestScenarioStep.scenario_id == scenario_id,
         )
-        db_step = result.scalar_one_or_none()
-        if db_step:
-            db_step.step_order = item.step_order
+    )
+    steps_map = {step.id: step for step in steps_result.scalars().all()}
+
+    for item in step_orders:
+        step = steps_map.get(item.step_id)
+        if step:
+            step.step_order = item.step_order
 
     await db.commit()
     return {"message": "排序更新成功"}

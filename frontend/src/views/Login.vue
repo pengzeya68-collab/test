@@ -104,32 +104,34 @@ const loginForm = ref({
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return
-  
-  await loginFormRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true
-      try {
-        const res = await request.post('/auth/login', loginForm.value)
-        userStore.setLogin(res.access_token, res.user)
-        setToken(res.access_token)
-        
-        ElMessage.success('登录成功！')
-        
-        const redirect = router.currentRoute.value?.query?.redirect
-        
-        if (redirect) {
-          router.push(decodeURIComponent(redirect)).catch(() => router.push('/'))
-        } else {
-          router.push('/')
-        }
-      } catch (error) {
-        console.error('登录失败:', error)
-        ElMessage.error(error.response?.data?.detail || '登录失败，请检查用户名和密码')
-      } finally {
-        loading.value = false
-      }
+
+  try {
+    await loginFormRef.value.validate()
+  } catch {
+    return
+  }
+
+  loading.value = true
+  try {
+    const res = await request.post('/auth/login', loginForm.value)
+    userStore.setLogin(res.access_token, res.user)
+    setToken(res.access_token)
+
+    ElMessage.success('登录成功！')
+
+    const redirect = router.currentRoute.value?.query?.redirect
+
+    if (redirect) {
+      router.push(decodeURIComponent(redirect)).catch(() => router.push('/'))
+    } else {
+      router.push('/')
     }
-  })
+  } catch (error) {
+    console.error('登录失败:', error)
+    ElMessage.error(error.response?.data?.detail || '登录失败，请检查用户名和密码')
+  } finally {
+    loading.value = false
+  }
 }
 
 </script>

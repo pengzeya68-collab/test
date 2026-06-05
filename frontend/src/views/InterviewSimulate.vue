@@ -282,7 +282,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, VideoPlay, Star } from '@element-plus/icons-vue'
@@ -320,6 +320,11 @@ const showCompleteConfirm = ref(false)
 const result = ref(null)
 const followUpLoading = ref(false)
 const followUpSubmitting = ref(false)
+const pollingAborted = ref(false)
+
+onBeforeUnmount(() => {
+  pollingAborted.value = true
+})
 
 const currentQuestion = computed(() => {
   return questions.value[currentQuestionIndex.value]
@@ -454,8 +459,9 @@ const submitAnswer = async () => {
     currentQuestion.value.user_answer = currentAnswer.value.trim()
 
     const checkResult = async (attempts = 0) => {
-      if (attempts > 20) {
+      if (pollingAborted.value || attempts > 20) {
         currentQuestion.value.ai_feedback = 'AI评估超时，请稍后刷新查看'
+        submitting.value = false
         return
       }
       try {
@@ -465,6 +471,7 @@ const submitAnswer = async () => {
           currentQuestion.value.score = sub.score
           currentQuestion.value.ai_feedback = sub.feedback || '评估完成'
           currentQuestion.value.parsed_feedback = sub.parsed_feedback || null
+          submitting.value = false
           return
         }
       } catch {}
@@ -477,7 +484,6 @@ const submitAnswer = async () => {
   } catch (error) {
     console.error('提交答案失败:', error)
     ElMessage.error('提交失败，请稍后重试')
-  } finally {
     submitting.value = false
   }
 }

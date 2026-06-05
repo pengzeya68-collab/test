@@ -1128,7 +1128,9 @@ def _parse_http_sampler(sampler, sampler_hash_tree=None):
             try:
                 import json as json_module
                 case["payload"] = json_module.loads(post_body_elem.text)
-            except:
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).debug("JMX postBodyRaw 非 JSON，保留原始文本: %s", e)
                 case["payload"] = post_body_elem.text
         else:
             case["payload"] = None

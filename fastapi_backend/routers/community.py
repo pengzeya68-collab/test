@@ -179,9 +179,11 @@ async def get_posts(
     if category:
         q = q.filter(Post.category == category)
     if tag:
-        q = q.filter(Post.tags.like(f"%{tag}%"))
+        tag = tag.replace('%', '\\%').replace('_', '\\_')
+        q = q.filter(Post.tags.like(f"%{tag}%", escape='\\'))
     if search:
-        q = q.filter(or_(Post.title.like(f"%{search}%"), Post.content.like(f"%{search}%")))
+        search = search.replace('%', '\\%').replace('_', '\\_')
+        q = q.filter(or_(Post.title.like(f"%{search}%", escape='\\'), Post.content.like(f"%{search}%", escape='\\')))
     if sort == "essence":
         q = q.filter(Post.is_essence)
     if sort == "hot":

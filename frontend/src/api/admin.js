@@ -142,5 +142,5 @@ export function getActiveAIConfig() {
 
 // AI生成面试题参考答案
 export function generateInterviewAnswers(limit = 20) {
-  return request.post('/interview/questions/generate-answers', { limit }, { timeout: 300000 })
+  return request.post('/admin/interview/questions/generate-answers', { limit }, { timeout: 300000 })
 }

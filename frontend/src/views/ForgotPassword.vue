@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+<template>
   <div class="forgot-password-container">
     <div class="forgot-password-card">
       <div class="forgot-password-header">
@@ -148,6 +148,7 @@ const validateConfirmPassword = (rule, value, callback) => {
 }
 
 const sendCode = () => {
+  if (codeCountdown.value > 0) return
   if (!forgotPasswordForm.value.phone) {
     ElMessage.warning('请先输入手机号')
     return

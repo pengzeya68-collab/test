@@ -1,4 +1,4 @@
-﻿﻿<template>
+<template>
   <div class="exam-page">
     <div class="exam-header">
       <div class="container">
@@ -249,7 +249,7 @@ import CodeEditor from '@/components/CodeEditor.vue'
 
 const router = useRouter()
 const route = useRoute()
-const examId = route.params.id
+const examId = computed(() => route.params.id)
 
 const exam = ref(null)
 const questions = ref([])
@@ -274,7 +274,9 @@ const answeredCount = computed(() => {
 
 const timePercentage = computed(() => {
   if (!exam.value) return 0
-  return Math.round((exam.value.duration - remainingTime.value) / exam.value.duration * 100)
+  const totalSeconds = exam.value.duration * 60
+  if (totalSeconds <= 0) return 0
+  return Math.round((totalSeconds - remainingTime.value) / totalSeconds * 100)
 })
 
 const timeProgressColor = computed(() => {
@@ -296,7 +298,7 @@ onBeforeUnmount(() => {
 
 const fetchExamQuestions = async () => {
   try {
-    const res = await request.get(`/exams/${examId}/questions`)
+    const res = await request.get(`/exams/${examId.value}/questions`)
     exam.value = res.exam
     questions.value = res.questions
     attemptId.value = res.attempt_id
@@ -375,7 +377,7 @@ const jumpToQuestion = (index) => {
   // 如果是多选题，加载已选答案
   if (currentQuestion.value.question_type === 'multiple_choice') {
     const answer = userAnswers.value[currentQuestion.value.id]
-    selectedOptions.value = answer ? (answer || '').split(',') : []
+    selectedOptions.value = answer ? (answer || '').split(',').filter(Boolean) : []
   }
 }
 

@@ -1,11 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import request from '@/utils/request'
-import { setAdminToken, setAdminInfo as saveAdminInfo, clearAdminAuth, ADMIN_TOKEN_KEY, ADMIN_INFO_KEY, safeJsonParse } from '@/utils/auth'
+import { setAdminToken, setAdminInfo as saveAdminInfo, clearAdminAuth, ADMIN_TOKEN_KEY, ADMIN_INFO_KEY, safeJsonParse, isValidTokenFormat } from '@/utils/auth'
 
 export const useAdminStore = defineStore('admin', () => {
   const adminInfo = ref(safeJsonParse(localStorage.getItem(ADMIN_INFO_KEY) || 'null'))
-  const adminToken = ref(localStorage.getItem(ADMIN_TOKEN_KEY) || '')
+  const adminToken = ref(
+    (localStorage.getItem(ADMIN_TOKEN_KEY) && isValidTokenFormat(localStorage.getItem(ADMIN_TOKEN_KEY)))
+      ? localStorage.getItem(ADMIN_TOKEN_KEY) : ''
+  )
 
   const setAdminInfo = (info, token) => {
     adminInfo.value = info
@@ -16,7 +19,7 @@ export const useAdminStore = defineStore('admin', () => {
 
   const clearAdminInfo = async () => {
     try {
-      await request.post('/auth/logout', {})
+      await request.post('/admin/logout', {})
     } catch (error) {
       console.warn('管理员退出登录请求失败:', error)
     }
@@ -31,7 +34,7 @@ export const useAdminStore = defineStore('admin', () => {
     clearAdminAuth()
   }
 
-  const isLoggedIn = computed(() => !!adminToken.value)
+  const isLoggedIn = computed(() => !!adminToken.value && isValidTokenFormat(adminToken.value))
   const getAdminToken = () => adminToken.value
 
   return {

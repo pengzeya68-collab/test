@@ -152,6 +152,7 @@ const registerForm = ref({
 const codeCountdown = ref(0)
 
 const sendCode = () => {
+  if (codeCountdown.value > 0) return
   if (!registerForm.value.phone) {
     ElMessage.warning('请先输入手机号')
     return
@@ -192,33 +193,35 @@ const validateConfirmPassword = (rule, value, callback) => {
 
 const handleRegister = async () => {
   if (!registerFormRef.value) return
-  
-  await registerFormRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true
-      try {
-        const res = await request.post('/auth/register', {
-          username: registerForm.value.username,
-          email: registerForm.value.email,
-          phone: registerForm.value.phone || '',
-          password: registerForm.value.password
-        })
 
-        userStore.setLogin(res.access_token, res.user)
-        setToken(res.access_token)
+  try {
+    await registerFormRef.value.validate()
+  } catch {
+    return
+  }
 
-        ElMessage.success('注册成功！')
-        
-        router.push('/')
-      } catch (error) {
-        console.error('注册失败:', error)
-        const msg = error?.response?.data?.detail || error?.message || '注册失败，请稍后重试'
-        ElMessage.error(msg)
-      } finally {
-        loading.value = false
-      }
-    }
-  })
+  loading.value = true
+  try {
+    const res = await request.post('/auth/register', {
+      username: registerForm.value.username,
+      email: registerForm.value.email,
+      phone: registerForm.value.phone || '',
+      password: registerForm.value.password
+    })
+
+    userStore.setLogin(res.access_token, res.user)
+    setToken(res.access_token)
+
+    ElMessage.success('注册成功！')
+
+    router.push('/')
+  } catch (error) {
+    console.error('注册失败:', error)
+    const msg = error?.response?.data?.detail || error?.message || '注册失败，请稍后重试'
+    ElMessage.error(msg)
+  } finally {
+    loading.value = false
+  }
 }
 
 const goToLogin = () => {

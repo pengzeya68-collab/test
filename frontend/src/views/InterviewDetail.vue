@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, VideoPlay, List } from '@element-plus/icons-vue'
@@ -137,7 +137,7 @@ import CodeEvaluationResult from '@/components/CodeEvaluationResult.vue'
 
 const router = useRouter()
 const route = useRoute()
-const sessionId = route.params.id
+const sessionId = computed(() => route.params.id)
 
 const session = ref(null)
 const questions = ref([])
@@ -147,11 +147,15 @@ onMounted(() => {
   fetchDetail()
 })
 
+watch(sessionId, () => {
+  fetchDetail()
+})
+
 const fetchDetail = async () => {
   loading.value = true
   try {
     // 先尝试从 Flask 获取面试详情
-    const res = await request.get(`/interview/sessions/${sessionId}`)
+    const res = await request.get(`/interview/sessions/${sessionId.value}`)
     
     if (res.session) {
       session.value = res.session

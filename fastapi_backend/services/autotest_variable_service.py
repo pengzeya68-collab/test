@@ -64,30 +64,29 @@ async def save_variables_to_db(variables: Dict[str, Any], source: str = "测试"
                 serialized = _serialize_var_value(var_value)
                 now = datetime.now(timezone.utc)
 
-                # 使用数据库层面的 UPSERT，避免 TOCTOU 竞态条件
+                # 使用 savepoint 避免单个变量失败回滚所有已成功的变更
                 try:
-                    # PostgreSQL: INSERT ... ON CONFLICT DO UPDATE
-                    stmt = sa_insert(AutoTestGlobalVariable).values(
-                        name=var_name,
-                        value=serialized,
-                        description=f"从{source}提取",
-                        is_encrypted=False,
-                        user_id=user_id,
-                        updated_at=now,
-                    )
-                    stmt = stmt.on_conflict_do_update(
-                        index_elements=['name', 'user_id'],
-                        set_={
-                            'value': serialized,
-                            'updated_at': now,
-                            'description': f"从{source}提取",
-                        }
-                    )
-                    await session.execute(stmt)
+                    async with session.begin_nested():
+                        # PostgreSQL: INSERT ... ON CONFLICT DO UPDATE
+                        stmt = sa_insert(AutoTestGlobalVariable).values(
+                            name=var_name,
+                            value=serialized,
+                            description=f"从{source}提取",
+                            is_encrypted=False,
+                            user_id=user_id,
+                            updated_at=now,
+                        )
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=['name', 'user_id'],
+                            set_={
+                                'value': serialized,
+                                'updated_at': now,
+                                'description': f"从{source}提取",
+                            }
+                        )
+                        await session.execute(stmt)
                 except Exception:
-                    # 必须先回滚，清除 session 的错误状态
-                    await session.rollback()
-                    # 如果 UPSERT 失败，回退到 select-then-update
+                    # savepoint 已自动回滚，回退到 select-then-update
                     query = select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == var_name)
                     if user_id is not None:
                         query = query.where(AutoTestGlobalVariable.user_id == user_id)

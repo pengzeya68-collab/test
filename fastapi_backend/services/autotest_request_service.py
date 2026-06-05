@@ -37,9 +37,11 @@ def _get_http_client() -> httpx.AsyncClient:
 
 async def shutdown_http_client():
     global _http_client
-    if _http_client is not None:
-        await _http_client.aclose()
+    with _client_lock:
+        client = _http_client
         _http_client = None
+    if client is not None:
+        await client.aclose()
 
 
 async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any], user_id: int = None) -> Dict[str, Any]:

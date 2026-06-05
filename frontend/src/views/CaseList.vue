@@ -71,7 +71,7 @@
       <!-- 用例列表表格 -->
       <div class="case-table">
         <el-table
-          :data="paginatedCases"
+          :data="filteredCases"
           style="width: 100%"
           stripe
           highlight-current-row
@@ -426,7 +426,7 @@ const handleEnvListChange = (envs) => {
   // props.environmentList 是父组件传入的，这里不需要处理，父组件会重新加载
 }
 
-// 过滤后的用例（搜索分页）
+// 过滤后的用例（服务端已分页，直接使用）
 const filteredCases = computed(() => {
   let result = cases.value
   if (searchKeyword.value) {
@@ -437,13 +437,6 @@ const filteredCases = computed(() => {
     )
   }
   return result
-})
-
-// 分页后的用例 - 只返回当前页需要显示的数据
-const paginatedCases = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filteredCases.value.slice(start, end)
 })
 
 // 获取状态对应的 Tag 类型
@@ -745,13 +738,34 @@ const handleExportJmx = () => {
   doExportJmx(selectedCaseIds.value)
 }
 
-const handleExportAllJmx = () => {
-  const allIds = filteredCases.value.map(item => item.id)
-  if (allIds.length === 0) {
-    ElMessage.warning('当前没有可导出的用例')
-    return
+const handleExportAllJmx = async () => {
+  jmeterExporting.value = true
+  try {
+    const params = {}
+    if (props.groupId) {
+      params.group_id = props.groupId
+    }
+    if (searchKeyword.value) {
+      params.keyword = searchKeyword.value
+    }
+    const res = await autoTestRequest.post('/auto-test/export/jmeter/cases', params, { responseType: 'blob' })
+
+    const blob = new Blob([res], { type: 'application/octet-stream' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `TestMaster_Export_All_${new Date().getTime()}.jmx`
+    link.click()
+    URL.revokeObjectURL(link.href)
+
+    ElMessage.success('已导出全部用例')
+    exportSelectMode.value = false
+    selectedCaseIds.value = []
+  } catch (error) {
+    console.error('JMeter 导出失败:', error)
+    ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
+  } finally {
+    jmeterExporting.value = false
   }
-  doExportJmx(allIds)
 }
 
 // 导出单个用例到 JMeter

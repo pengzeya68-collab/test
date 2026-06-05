@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="post-detail">
     <div class="container">
       <div class="back-btn" @click="goBack">
@@ -314,9 +314,9 @@ const submitComment = async () => {
     })
     ElMessage.success('评论发表成功')
     commentContent.value = ''
-    post.value.comment_count += 1
-    // 刷新评论列表
+    // 刷新评论列表并同步帖子详情中的 comment_count
     fetchComments()
+    fetchPostDetail()
   } catch (error) {
     console.error('发表评论失败:', error)
     ElMessage.error('发表失败，请稍后重试')
@@ -345,9 +345,9 @@ const submitReply = async (comment) => {
     ElMessage.success('回复成功')
     replyToComment.value = null
     replyContent.value = ''
-    post.value.comment_count += 1
-    // 刷新评论列表
+    // 刷新评论列表并同步帖子详情中的 comment_count
     fetchComments()
+    fetchPostDetail()
   } catch (error) {
     console.error('回复失败:', error)
     ElMessage.error('回复失败，请稍后重试')

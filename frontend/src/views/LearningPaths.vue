@@ -338,8 +338,12 @@ const fetchAllProgress = async () => {
   try {
     const res = await request.get('/learning-paths/all-progress')
     allProgress.value = res.progress || []
+    // 从API返回数据计算 displayStreak 和 displayCompleted
+    const streak = res.streak || res.streak_days || 0
+    const completed = res.completed_exercises || totalCompletedExercises.value
     nextTick(() => {
-      animateValue(displayCompleted, totalCompletedExercises.value, 1000)
+      animateValue(displayCompleted, completed, 1000)
+      animateValue(displayStreak, streak, 1000)
     })
   } catch (error) {
     console.error('获取学习进度失败:', error)

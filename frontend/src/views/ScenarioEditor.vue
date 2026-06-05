@@ -334,23 +334,28 @@ const handleConfirmAddSteps = async () => {
     return
   }
 
-  try {
-    const currentMaxOrder = steps.value.length > 0
-      ? Math.max(...steps.value.map(step => Number(step.step_order) || 0))
-      : -1
-    for (let i = 0; i < selectedCases.value.length; i++) {
-      const caseItem = selectedCases.value[i]
+  const currentMaxOrder = steps.value.length > 0
+    ? Math.max(...steps.value.map(step => Number(step.step_order) || 0))
+    : -1
+  let failCount = 0
+  for (let i = 0; i < selectedCases.value.length; i++) {
+    const caseItem = selectedCases.value[i]
+    try {
       await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/steps`, {
         api_case_id: caseItem.id,
         step_order: currentMaxOrder + i + 1,
         is_active: true
       })
+    } catch {
+      failCount++
     }
+  }
+  addStepDialogVisible.value = false
+  await loadScenario()
+  if (failCount > 0) {
+    ElMessage.warning(`${failCount} 个步骤添加失败，其余已成功`)
+  } else {
     ElMessage.success('添加成功')
-    addStepDialogVisible.value = false
-    await loadScenario()
-  } catch (error) {
-    ElMessage.error('添加失败')
   }
 }
 
@@ -419,8 +424,13 @@ const handleRun = async () => {
     ElMessage.warning('该场景已停用，无法运行！')
     return
   }
-  const stepCount = steps.value ? steps.value.length : 0
-  executionDialogRef.value?.startExecution(props.scenarioId, selectedEnvId.value, stepCount)
+  isRunning.value = true
+  try {
+    const stepCount = steps.value ? steps.value.length : 0
+    executionDialogRef.value?.startExecution(props.scenarioId, selectedEnvId.value, stepCount)
+  } finally {
+    isRunning.value = false
+  }
 }
 
 const handleExecutionCompleted = () => {

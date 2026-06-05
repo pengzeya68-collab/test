@@ -84,13 +84,13 @@
                 <span class="type-score">{{ stats.score }}/{{ stats.total_score }}分</span>
               </div>
               <el-progress 
-                :percentage="Math.round(stats.score / stats.total_score * 100)" 
+                :percentage="stats.total_score ? Math.round(stats.score / stats.total_score * 100) : 0"
                 :color="getScoreColor(stats.score, stats.total_score)"
                 :show-text="false"
               />
               <div class="type-meta">
                 <span>{{ stats.correct }}/{{ stats.total }}题正确</span>
-                <span>正确率 {{ Math.round(stats.correct / stats.total * 100) }}%</span>
+                <span>正确率 {{ stats.total ? Math.round(stats.correct / stats.total * 100) : 0 }}%</span>
               </div>
             </div>
           </div>
@@ -190,7 +190,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Check, Close, Edit, List } from '@element-plus/icons-vue'
@@ -199,7 +199,7 @@ import { renderMarkdown } from '@/utils/markdown'
 
 const router = useRouter()
 const route = useRoute()
-const attemptId = route.params.id
+const attemptId = computed(() => route.params.id)
 
 const result = ref(null)
 const loading = ref(false)
@@ -208,10 +208,14 @@ onMounted(() => {
   fetchResult()
 })
 
+watch(attemptId, () => {
+  fetchResult()
+})
+
 const fetchResult = async () => {
   loading.value = true
   try {
-    const res = await request.get(`/exams/attempts/${attemptId}/result`)
+    const res = await request.get(`/exams/attempts/${attemptId.value}/result`)
     result.value = res
   } catch (error) {
     console.error('获取考试结果失败:', error)
@@ -245,6 +249,7 @@ const getQuestionTypeText = (type) => {
 }
 
 const getScoreColor = (score, total) => {
+  if (!total) return '#f56c6c'
   const rate = score / total
   if (rate >= 0.8) return '#67c23a'
   if (rate >= 0.6) return '#e6a23c'

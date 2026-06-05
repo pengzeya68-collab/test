@@ -279,17 +279,7 @@ const viewQuestion = async (question) => {
 
 const toggleCollect = (question) => {
   ElMessage.info('收藏功能暂未开放，敬请期待')
-  question.is_collected = !question.is_collected
-  if (question.is_collected) {
-    question.collect_count += 1
-  } else {
-    question.collect_count = Math.max(0, question.collect_count - 1)
-  }
-
-  if (currentQuestion.value && currentQuestion.value.id === question.id) {
-    currentQuestion.value.is_collected = question.is_collected
-    currentQuestion.value.collect_count = question.collect_count
-  }
+  return
 }
 
 const parseTags = (tags) => {

@@ -676,6 +676,12 @@ onMounted(() => {
 })
 
 watch(exerciseId, () => {
+  elapsedSeconds.value = 0
+  submitResult.value = null
+  userCode.value = ''
+  selectedChoices.value = []
+  userAnswer.value = ''
+  leftTab.value = 'desc'
   fetchExerciseDetail()
   fetchRelatedExercises()
   fetchNotes()

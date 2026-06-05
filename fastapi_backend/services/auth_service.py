@@ -9,6 +9,7 @@ import bcrypt
 import hashlib
 import jwt
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -51,18 +52,20 @@ class AuthService:
                 # 解码失败时回退到固定 24 小时
                 expiry_dt = datetime.now(timezone.utc) + timedelta(seconds=self._blacklist_max_age_seconds)
 
-            existing = await self._db_session.execute(
-                select(TokenBlacklist).where(TokenBlacklist.token_hash == token_hash)
+            record = TokenBlacklist(
+                token_hash=token_hash,
+                token_type=token_type,
+                user_id=user_id,
+                expires_at=expiry_dt,
             )
-            if not existing.scalar_one_or_none():
-                record = TokenBlacklist(
-                    token_hash=token_hash,
-                    token_type=token_type,
-                    user_id=user_id,
-                    expires_at=expiry_dt,
-                )
-                self._db_session.add(record)
-                await self._db_session.commit()
+            self._db_session.add(record)
+            await self._db_session.commit()
+        except IntegrityError:
+            # 并发竞态：token_hash 唯一约束冲突，说明已存在，忽略即可
+            try:
+                await self._db_session.rollback()
+            except Exception:
+                pass
         except Exception as exc:
             _logger.error("token_blacklist DB write failed: %s", exc)
             try:

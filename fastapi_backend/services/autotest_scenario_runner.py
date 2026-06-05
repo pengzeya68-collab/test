@@ -741,9 +741,22 @@ class TestScenario{scenario_id}:
 
             all_vars = dict(self.context_vars)
             request_config["url"] = replace_variables(request_config["url"], all_vars)
-            request_config["headers"] = replace_variables(request_config["headers"], all_vars)
-            request_config["params"] = replace_variables(request_config["params"], all_vars)
-            request_config["payload"] = replace_variables(request_config["payload"], all_vars)
+            # 对 dict/list 类型的值，先序列化为 JSON 字符串再替换再反序列化
+            if isinstance(request_config["headers"], dict):
+                headers_str = json.dumps(request_config["headers"], ensure_ascii=False)
+                request_config["headers"] = json.loads(replace_variables(headers_str, all_vars))
+            else:
+                request_config["headers"] = replace_variables(request_config["headers"], all_vars)
+            if isinstance(request_config["params"], dict):
+                params_str = json.dumps(request_config["params"], ensure_ascii=False)
+                request_config["params"] = json.loads(replace_variables(params_str, all_vars))
+            else:
+                request_config["params"] = replace_variables(request_config["params"], all_vars)
+            if isinstance(request_config["payload"], (dict, list)):
+                payload_str = json.dumps(request_config["payload"], ensure_ascii=False)
+                request_config["payload"] = json.loads(replace_variables(payload_str, all_vars))
+            else:
+                request_config["payload"] = replace_variables(request_config["payload"], all_vars)
 
             if not request_config["url"].startswith(("http://", "https://")):
                 if self.base_url:

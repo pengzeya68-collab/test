@@ -27,6 +27,14 @@ const setToken = (newToken) => {
   autoTestService.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
 }
 
+/** 设置管理员token到axios实例header（不写入用户token键） */
+const setAdminTokenHeader = (newToken) => {
+  if (newToken && isValidTokenFormat(newToken)) {
+    service.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+    autoTestService.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+  }
+}
+
 let isLoggingOut = false
 
 const syncClientAuthState = async () => {
@@ -45,13 +53,18 @@ const syncClientAuthState = async () => {
   }
 }
 
-// 请求拦截器：严格按路由选择 token，不 fallback
+// 请求拦截器：根据请求来源选择 token
+// /admin 路径使用管理员token；其他路径（包括/auto-test）优先使用用户token
 const requestInterceptor = (config) => {
-  const isAdminReq = config.url?.startsWith('/admin') ||
-                     config.url?.startsWith('/autotest') ||
-                     config.url?.startsWith('/auto-test')
+  const isAdminReq = config.url?.startsWith('/admin')
 
-  const token = isAdminReq ? getAdminToken() : getUserToken()
+  let token
+  if (isAdminReq) {
+    token = getAdminToken()
+  } else {
+    // 用户页面请求优先用户token，无用户token时尝试管理员token（兼容管理员预览）
+    token = getUserToken() || getAdminToken()
+  }
 
   if (token && isValidTokenFormat(token)) {
     config.headers['Authorization'] = `Bearer ${token}`
@@ -83,9 +96,7 @@ const responseErrorInterceptor = async (error) => {
     isLoggingOut = true
 
     // 根据请求 URL 判断是管理员请求还是用户请求，只清除对应会话
-    const isAdminReq = config.url?.startsWith('/admin') ||
-                       config.url?.startsWith('/autotest') ||
-                       config.url?.startsWith('/auto-test')
+    const isAdminReq = config.url?.startsWith('/admin')
 
     try {
       if (isAdminReq) {
@@ -140,4 +151,4 @@ const autoTestRequest = (config) => autoTestService(config)
 })
 
 export default service
-export { setToken, autoTestRequest }
+export { setToken, setAdminTokenHeader, autoTestRequest }

@@ -12,7 +12,7 @@
     <div class="section">
       <div class="section-header">
         <h3>测试套件</h3>
-        <el-button type="primary" @click="showCreateDialog = true">
+        <el-button type="primary" @click="openCreateDialog">
           <el-icon><Plus /></el-icon> 新建套件
         </el-button>
       </div>
@@ -210,6 +210,13 @@ const searchCases = async (query) => {
   } catch (err) {
     console.error('搜索用例失败:', err)
   }
+}
+
+// 打开新建对话框（重置表单）
+const openCreateDialog = () => {
+  editingSuite.value = null
+  suiteForm.value = { name: '', description: '', case_ids: [] }
+  showCreateDialog.value = true
 }
 
 // 查看套件详情

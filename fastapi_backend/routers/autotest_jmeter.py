@@ -329,7 +329,7 @@ async def import_jmeter_file(
             name=case_data.get("name", "Imported Case"),
             method=case_data.get("method", "GET"),
             url=case_data.get("url", ""),
-            headers=case_data.get("headers"),
+            headers=headers_data if isinstance(headers_data, dict) else case_data.get("headers"),
             params=case_data.get("params"),
             body_type=case_data.get("body_type", "none"),
             content_type=headers_data.get("Content-Type") if isinstance(headers_data, dict) else case_data.get("content_type"),
@@ -388,6 +388,16 @@ def _percentile(data, p):
     hi = min(lo + 1, n - 1)
     frac = idx - lo
     return round(arr[lo] * (1 - frac) + arr[hi] * frac, 1)
+
+
+def _parse_start_time_offset(start_time_str: str, bench_start_time: float) -> float:
+    """将请求的 start_time 字符串解析为相对于压测开始时间的偏移秒数"""
+    try:
+        from datetime import datetime as _dt
+        req_dt = _dt.strptime(start_time_str, "%Y-%m-%d %H:%M:%S").timestamp()
+        return req_dt - bench_start_time
+    except (ValueError, TypeError):
+        return -1
 
 
 def _safe_json_loads(val, default=None):
@@ -907,10 +917,10 @@ async def _run_bench(task_id: str, config: dict):
                         "count": snap.get("total", 0),
                     })
         else:
-            # 降级方案：如果没有快照数据，使用简单计算
+            # 降级方案：如果没有快照数据，使用 start_time 判断时间窗口
             window = 5
             for i in range(0, int(total_time), window):
-                w_count = sum(1 for r in results if i <= r.get("elapsed_ms", 0) / 1000 < i + window)
+                w_count = sum(1 for r in results if r.get("start_time") and i <= _parse_start_time_offset(r["start_time"], start_time) < i + window)
                 throughput_trend.append({"t": i, "tps": round(w_count / window, 1), "count": w_count})
 
         result = {

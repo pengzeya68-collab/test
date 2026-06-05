@@ -222,7 +222,12 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
 
     # 对断言规则中的变量占位符做替换
     assert_rules = case.assert_rules or {}
-    assert_rules = replace_variables(assert_rules, variables)
+    if isinstance(assert_rules, (dict, list)):
+        ar_str = json.dumps(assert_rules, ensure_ascii=False)
+        ar_str = replace_variables(ar_str, variables)
+        assert_rules = json.loads(ar_str)
+    else:
+        assert_rules = replace_variables(assert_rules, variables)
 
     return {
         "name": case.name,
