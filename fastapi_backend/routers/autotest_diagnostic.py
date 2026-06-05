@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/auto-test/diagnose", tags=["AutoTest-诊断"])
 async def diagnose_report(
     report_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_autotest_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     诊断报告数据完整性：检测同一 report_id 下是否有累积的孤儿步骤数据
@@ -80,7 +80,7 @@ async def diagnose_report(
 async def diagnose_scenario(
     scenario_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_autotest_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     诊断场景数据完整性：检查该场景下所有执行记录的数据一致性
