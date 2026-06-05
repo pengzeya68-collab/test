@@ -13,20 +13,33 @@ import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from sqlalchemy import select
+from pydantic import BaseModel, field_validator
+from sqlalchemy import and_, func, select
 
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
 from fastapi_backend.deps.auth import get_current_active_user
-from fastapi_backend.models.autotest import AutoTestCase, AutoTestGroup
+from fastapi_backend.models.autotest import (
+    AutoTestCase, 
+    AutoTestGroup, 
+    AutoTestHistory, 
+    AutoTestScenario, 
+    AutoTestScenarioStep,
+    MockRule,
+    MockProject,
+    AutoTestGlobalVariable,
+    AutoTestPerformanceExecutionRecord,
+    AutoTestPerformanceScenarioStep,
+)
 from fastapi_backend.models.models import User
 from fastapi_backend.services.autotest_export_service import (
     export_curl,
     export_openapi,
     export_python_code,
+    export_enhanced_api_doc,
 )
 from fastapi_backend.services.curl_parser import parse_curl
 
@@ -48,11 +61,25 @@ class ExportRequest(BaseModel):
     group_id: Optional[int] = None
     format: str = "openapi"  # openapi / python / curl
 
+    @field_validator("format")
+    @classmethod
+    def validate_format(cls, v):
+        if v not in ("openapi", "python", "curl"):
+            raise ValueError(f"不支持的导出格式: {v}，仅支持 openapi/python/curl")
+        return v
+
 
 class ShareDocRequest(BaseModel):
     case_ids: List[int] = []
     group_id: Optional[int] = None
     expires_hours: int = 72
+
+    def model_post_init(self, __context):
+        # 限制有效期在 1-720 小时之间（最多 30 天）
+        if self.expires_hours < 1:
+            self.expires_hours = 1
+        elif self.expires_hours > 720:
+            self.expires_hours = 720
 
 
 # ========== cURL 导入 ==========
@@ -190,17 +217,16 @@ async def create_share_link(
     if not cases:
         raise HTTPException(status_code=400, detail="没有找到用例")
 
-    # 清理过期 token 并检查上限
-    _cleanup_expired_tokens()
+    # 清理过期 token 并检查上限（在锁内操作，避免竞态条件）
     async with _share_tokens_lock:
+        _cleanup_expired_tokens()
         if len(_share_tokens) >= _MAX_SHARE_TOKENS:
             raise HTTPException(status_code=429, detail="分享链接数量已达上限，请稍后再试")
 
-    doc = export_openapi(cases)
-    token = secrets.token_urlsafe(16)
-    expires = datetime.now(timezone.utc) + timedelta(hours=body.expires_hours)
+        doc = export_openapi(cases)
+        token = secrets.token_urlsafe(16)
+        expires = datetime.now(timezone.utc) + timedelta(hours=body.expires_hours)
 
-    async with _share_tokens_lock:
         _share_tokens[token] = {
             "doc": doc,
             "expires": expires.isoformat(),
@@ -230,3 +256,235 @@ async def get_shared_doc(token: str):
             raise HTTPException(status_code=410, detail="分享链接已过期")
 
     return {"doc": info["doc"], "case_count": info["case_count"]}
+
+
+# ========== 增强版 API 文档生成 ==========
+
+
+@router.post("/api-docs/enhanced")
+async def generate_enhanced_api_doc(
+    body: ExportRequest,
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    从用例生成增强版 API 文档（文档即用例）
+    
+    自动聚合以下数据：
+    - 真实执行历史（请求/响应示例）
+    - Mock 服务关联
+    - 场景业务流程
+    - 性能测试指标
+    - 全局变量引用
+    """
+    user_id = current_user.id
+    
+    async with AsyncSessionLocal() as db:
+        # 1. 获取用例列表（增强版，包含完整信息）
+        query = select(AutoTestCase).where(AutoTestCase.user_id == user_id)
+        if body.case_ids:
+            query = query.where(AutoTestCase.id.in_(body.case_ids))
+        elif body.group_id is not None:
+            query = query.where(AutoTestCase.group_id == body.group_id)
+
+        # 限制最大返回数量，防止内存暴涨
+        query = query.order_by(AutoTestCase.updated_at.desc()).limit(500)
+        result = await db.execute(query)
+        cases = result.scalars().all()
+
+        if not cases:
+            raise HTTPException(status_code=400, detail="没有找到用例")
+
+        # 获取分组名
+        group_ids = list({c.group_id for c in cases if c.group_id is not None})
+        group_map = {}
+        if group_ids:
+            g_result = await db.execute(
+                select(AutoTestGroup).where(
+                    AutoTestGroup.id.in_(group_ids), 
+                    AutoTestGroup.user_id == user_id
+                )
+            )
+            group_map = {g.id: g.name for g in g_result.scalars().all()}
+
+        case_ids = [c.id for c in cases]
+        cases_data = []
+        for c in cases:
+            url = c.url or ""
+            parsed_url = url
+            # 确保 URL 以 http:// 或 https:// 开头（用于 Mock 匹配）
+            if url and not url.startswith(("http://", "https://")):
+                parsed_url = "http://example.com" + url if not url.startswith("/") else "http://example.com/" + url.lstrip("/")
+            else:
+                parsed_url = url
+            
+            path = urlparse(parsed_url).path
+            if not path:
+                path = url if url.startswith("/") else "/" + url
+            
+            cases_data.append({
+                "id": c.id,
+                "name": c.name,
+                "method": c.method,
+                "url": c.url,
+                "path": path,
+                "headers": c.headers or {},
+                "params": c.params or {},
+                "body_type": c.body_type or "none",
+                "content_type": c.content_type or "application/json",
+                "payload": c.payload,
+                "description": c.description,
+                "group_name": group_map.get(c.group_id, "default"),
+            })
+
+        # 2. 获取执行历史（每个用例最近 3 次）
+        execution_history = {}
+        if case_ids:
+            history_query = (
+                select(AutoTestHistory)
+                .where(AutoTestHistory.case_id.in_(case_ids))
+                .order_by(AutoTestHistory.case_id, AutoTestHistory.created_at.desc())
+            )
+            history_result = await db.execute(history_query)
+            all_histories = history_result.scalars().all()
+
+            for hist in all_histories:
+                if hist.case_id not in execution_history:
+                    execution_history[hist.case_id] = []
+                if len(execution_history[hist.case_id]) < 3:
+                    # response_data 可能是 dict、str 或 None，统一处理
+                    resp_data = hist.response_data
+                    if isinstance(resp_data, str):
+                        try:
+                            resp_data = json.loads(resp_data)
+                        except (json.JSONDecodeError, ValueError):
+                            resp_data = {"raw_response": resp_data}
+                    
+                    status_code = 200
+                    if isinstance(resp_data, dict):
+                        status_code = resp_data.get("status_code", 200) or 200
+                    
+                    execution_history[hist.case_id].append({
+                        "status_code": status_code,
+                        "response_data": resp_data,
+                        "execution_time": hist.execution_time,
+                        "status": hist.status,
+                    })
+
+        # 3. 获取 Mock 服务规则
+        mock_query = (
+            select(MockRule, MockProject)
+            .join(MockProject, MockRule.project_id == MockProject.id)
+            .where(MockRule.is_active == True, MockProject.user_id == user_id)
+        )
+        mock_result = await db.execute(mock_query)
+        mock_rules = {}
+        for mock_rule, mock_project in mock_result.all():
+            key = f"{mock_rule.method.upper()} {mock_rule.path}"
+            mock_rules[key] = {
+                "project_name": mock_project.name,
+                "rule_name": mock_rule.name or "未命名规则",
+                "base_url_slug": mock_project.base_url_slug,
+            }
+
+        # 4. 获取场景信息
+        scenario_query = (
+            select(AutoTestScenario, AutoTestScenarioStep)
+            .join(AutoTestScenarioStep, AutoTestScenario.id == AutoTestScenarioStep.scenario_id, isouter=True)
+            .where(AutoTestScenario.user_id == user_id)
+        )
+        scenario_result = await db.execute(scenario_query)
+        scenarios_map = {}
+        for scenario, step in scenario_result.all():
+            if scenario.id not in scenarios_map:
+                scenarios_map[scenario.id] = {
+                    "id": scenario.id,
+                    "name": scenario.name,
+                    "description": scenario.description,
+                    "steps": [],
+                }
+            if step:
+                scenarios_map[scenario.id]["steps"].append({
+                    "step_id": step.id,
+                    "api_case_id": step.api_case_id,
+                    "step_order": step.step_order,
+                })
+
+        scenarios = list(scenarios_map.values())
+
+        # 5. 获取性能指标（取每个用例最近一次性能测试记录）
+        # 使用子查询获取每个 scenario 的最新执行记录，避免笛卡尔积
+        if case_ids:
+            # 子查询：每个 scenario 的最新执行记录 ID
+            latest_perf_subq = (
+                select(
+                    AutoTestPerformanceExecutionRecord.scenario_id,
+                    func.max(AutoTestPerformanceExecutionRecord.id).label("max_id")
+                )
+                .group_by(AutoTestPerformanceExecutionRecord.scenario_id)
+                .subquery()
+            )
+            
+            perf_query = (
+                select(AutoTestPerformanceScenarioStep, AutoTestPerformanceExecutionRecord)
+                .join(
+                    AutoTestPerformanceExecutionRecord,
+                    and_(
+                        AutoTestPerformanceScenarioStep.scenario_id == AutoTestPerformanceExecutionRecord.scenario_id,
+                        AutoTestPerformanceExecutionRecord.id == latest_perf_subq.c.max_id
+                    )
+                )
+                .join(
+                    latest_perf_subq,
+                    AutoTestPerformanceScenarioStep.scenario_id == latest_perf_subq.c.scenario_id
+                )
+                .where(AutoTestPerformanceScenarioStep.api_case_id.in_(case_ids))
+            )
+            perf_result = await db.execute(perf_query)
+            performance_metrics = {}
+            for step, record in perf_result.all():
+                if step.api_case_id not in performance_metrics:
+                    performance_metrics[step.api_case_id] = {
+                        "avg_response_time": record.avg_response_time,
+                        "p95_response_time": record.p95_response_time,
+                        "p99_response_time": record.p99_response_time,
+                        "requests_per_second": record.requests_per_second,
+                        "error_rate": record.error_rate,
+                    }
+        else:
+            performance_metrics = {}
+
+        # 6. 获取全局变量
+        var_query = select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.user_id == user_id)
+        var_result = await db.execute(var_query)
+        global_variables = [
+            {
+                "name": v.name,
+                "description": v.description,
+                "is_encrypted": v.is_encrypted,
+            }
+            for v in var_result.scalars().all()
+        ]
+
+        # 7. 生成增强文档
+        doc = export_enhanced_api_doc(
+            cases=cases_data,
+            execution_history=execution_history,
+            mock_rules=mock_rules,
+            scenarios=scenarios,
+            performance_metrics=performance_metrics,
+            global_variables=global_variables,
+        )
+
+        return {
+            "doc": doc,
+            "message": "增强版文档生成成功",
+            "stats": {
+                "total_cases": len(cases_data),
+                "cases_with_history": len(execution_history),
+                "cases_with_mock": sum(1 for c in cases_data if f"{c['method'].upper()} {c['path']}" in mock_rules),
+                "cases_in_scenarios": len({c["id"] for c in cases_data if any(
+                    step["api_case_id"] == c["id"] for s in scenarios for step in s["steps"]
+                )}),
+                "cases_with_performance": len(performance_metrics),
+            },
+        }

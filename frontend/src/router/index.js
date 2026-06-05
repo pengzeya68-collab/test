@@ -166,6 +166,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/api-docs',
+    name: 'ApiDocs',
+    component: () => import(/* webpackChunkName: "autotest" */ '@/views/ApiDocs.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/assessment',
     name: 'OnboardingAssessment',
     component: () => import(/* webpackChunkName: "learning" */ '@/views/OnboardingAssessment.vue'),
