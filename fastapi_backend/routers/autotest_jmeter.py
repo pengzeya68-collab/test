@@ -314,6 +314,15 @@ async def import_jmeter_file(
     # 保存到数据库
     created_cases = []
     for case_data in cases:
+        # 处理 headers_data
+        headers_data = case_data.get("headers") or {}
+        if isinstance(headers_data, str):
+            try:
+                import json as _json
+                headers_data = _json.loads(headers_data)
+            except (ValueError, TypeError):
+                headers_data = {}
+
         case = AutoTestCase(
             group_id=target_group_id,
             user_id=current_user.id,
@@ -323,13 +332,6 @@ async def import_jmeter_file(
             headers=case_data.get("headers"),
             params=case_data.get("params"),
             body_type=case_data.get("body_type", "none"),
-            headers_data = case_data.get("headers") or {}
-            if isinstance(headers_data, str):
-                try:
-                    import json as _json
-                    headers_data = _json.loads(headers_data)
-                except (ValueError, TypeError):
-                    headers_data = {}
             content_type=headers_data.get("Content-Type") if isinstance(headers_data, dict) else case_data.get("content_type"),
             payload=case_data.get("payload"),
             assert_rules=case_data.get("assert_rules"),

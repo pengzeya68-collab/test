@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from fastapi_backend.core.autotest_database import get_autotest_db
+from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.models import (
     TestReport,

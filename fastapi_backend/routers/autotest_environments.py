@@ -11,10 +11,8 @@ from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestEnvironment
 from fastapi_backend.models.models import User
-from fastapi_backend.schemas.autotest import (
-    AutoTestEnvironmentCreate,
-    EnvironmentUpdate,
-)
+from fastapi_backend.schemas.autotest import AutoTestEnvironmentCreate
+from fastapi_backend.schemas.environments import EnvironmentUpdate
 
 router = APIRouter(prefix="/api/auto-test/environments", tags=["AutoTest-环境"])
 

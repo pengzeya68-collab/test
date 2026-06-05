@@ -125,7 +125,9 @@
       "Bash(do echo:*)",
       "Read(//c/Users/lenovo/Desktop/TestMasterProject/scripts/exercise_data/$dir/**)",
       "Bash(done)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(\"C:\\\\Users\\\\lenovo\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" _deploy_now.py)",
+      "Bash(\"C:\\\\Users\\\\lenovo\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" _check_deploy.py)"
     ]
   }
 }
