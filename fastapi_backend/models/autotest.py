@@ -25,7 +25,7 @@ class AutoTestGroup(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
 
     parent = relationship("AutoTestGroup", remote_side=[id], backref="children")
-    cases = relationship("AutoTestCase", back_populates="group", cascade="all, delete-orphan")
+    cases = relationship("AutoTestCase", back_populates="group", passive_deletes=True)
 
 
 class AutoTestCase(Base):
@@ -37,7 +37,7 @@ class AutoTestCase(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    group_id = Column(Integer, ForeignKey("api_groups.id", ondelete="SET NULL"), nullable=False, comment="所属分组")
+    group_id = Column(Integer, ForeignKey("api_groups.id", ondelete="SET NULL"), nullable=True, comment="所属分组")
     name = Column(String(200), nullable=False, comment="用例名称")
     method = Column(String(10), nullable=False, default="GET", comment="请求方法")
     url = Column(Text, nullable=False, comment="接口地址")
@@ -81,10 +81,11 @@ class AutoTestEnvironment(Base):
     __table_args__ = (
         Index("idx_environments_is_default", "is_default"),
         Index("idx_environments_user_id", "user_id"),
+        UniqueConstraint("env_name", "user_id", name="uq_env_name_user"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    env_name = Column(String(100), nullable=False, unique=True, comment="环境名称")
+    env_name = Column(String(100), nullable=False, comment="环境名称")
     base_url = Column(String(500), nullable=True, comment="基础路径")
     variables = Column(JSON, nullable=True, default=dict, comment="环境变量")
     is_default = Column(Boolean, default=False, comment="是否默认环境")
@@ -252,7 +253,7 @@ class AutoTestPerformanceScenarioStep(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     scenario_id = Column(Integer, ForeignKey("performance_scenarios.id", ondelete="CASCADE"), nullable=False, comment="所属场景ID")
-    api_case_id = Column(Integer, ForeignKey("api_cases.id"), nullable=False, comment="引用的接口ID")
+    api_case_id = Column(Integer, ForeignKey("api_cases.id", ondelete="CASCADE"), nullable=False, comment="引用的接口ID")
     step_order = Column(Integer, nullable=False, default=0, comment="执行顺序")
     weight = Column(Integer, nullable=False, default=1, comment="权重（用于混合场景）")
     think_time = Column(Integer, nullable=False, default=0, comment="思考时间(ms)")

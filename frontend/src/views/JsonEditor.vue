@@ -51,6 +51,15 @@ const error = ref('')
 watch(() => props.modelValue, (val) => {
   if (val !== content.value) {
     content.value = typeof val === 'object' ? JSON.stringify(val, null, 2) : val || ''
+    // 清除错误状态并重新验证
+    error.value = ''
+    try {
+      if (content.value.trim()) {
+        JSON.parse(content.value)
+      }
+    } catch (e) {
+      error.value = 'JSON 格式错误'
+    }
   }
 }, { immediate: true })
 

@@ -45,8 +45,16 @@ def require_ai_points(feature: str):
         current_user: User = Depends(get_current_user),
     ) -> Callable[[], Awaitable[None]]:
         cost = await get_feature_cost(db, feature)
-        if cost is None or cost <= 0:
-            return lambda: None
+        if cost is None:
+            # 功能未配置 → 视为免费，不扣费
+            async def _noop():
+                pass
+            return _noop
+        if cost <= 0:
+            # 功能费用为0 → 免费，不扣费
+            async def _noop():
+                pass
+            return _noop
 
         success = await check_and_deduct_points(db, current_user, feature)
         if not success:
@@ -70,19 +78,22 @@ def require_ai_points(feature: str):
 def require_ai_points_batch(feature: str, batch_desc: str = "批次"):
     """
     按批次扣费的依赖（用于 AI 生成测试用例等场景）。
-    返回 check_batch(n) 函数，调用时扣除 n 个批次的积分。
-    每批次消耗从数据库 ai_points_config 实时读取。
+    返回 (check_batch, confirm) 元组：
+    - check_batch(n): 检查并扣除 n 个批次的积分
+    - confirm(): 确认成功，提交扣费事务；不调用则回滚
     """
 
     async def _check(
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user),
-    ) -> Callable[[int], Awaitable[bool]]:
+    ):
+        cost_per_batch = await get_feature_cost(db, feature)
+
         async def check_batch(batch_count: int) -> bool:
             """检查并扣除 batch_count 个批次的积分。返回 True=成功"""
             if batch_count <= 0:
                 return True
-            cost_per_batch = await get_feature_cost(db, feature)
+            nonlocal cost_per_batch
             if cost_per_batch is None or cost_per_batch <= 0:
                 return True
             total_cost = cost_per_batch * batch_count
@@ -95,9 +106,12 @@ def require_ai_points_batch(feature: str, batch_desc: str = "批次"):
                     status_code=PAYMENT_REQUIRED,
                     detail=f"积分不足，需要 {total_cost} 积分（{batch_count}个{batch_desc}，每个{cost_per_batch}积分）。",
                 )
-            # 不在这里 commit！由调用方确认后提交
             return True
 
-        return check_batch
+        async def confirm():
+            """确认成功 → 提交扣费。不调用则事务回滚，积分不扣。"""
+            await db.commit()
+
+        return check_batch, confirm
 
     return _check

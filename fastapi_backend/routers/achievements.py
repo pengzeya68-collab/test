@@ -131,8 +131,9 @@ async def _ensure_achievements(db: AsyncSession):
     count = result.scalar_one()
     if count == 0:
         for ach_def in ACHIEVEMENT_DEFINITIONS:
+            # 用 merge 避免并发插入重复成就定义
             ach = Achievement(**ach_def)
-            db.add(ach)
+            await db.merge(ach)
         await db.commit()
 
 
@@ -201,6 +202,10 @@ async def check_and_unlock_achievements(user_id: int, db: AsyncSession):
 
     new_unlocks = []
 
+    # 加载用户对象，用于更新经验值
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
+
     for ach in all_achievements:
         should_unlock = False
 
@@ -238,6 +243,9 @@ async def check_and_unlock_achievements(user_id: int, db: AsyncSession):
             ua = UserAchievement(user_id=user_id, achievement_id=ach.id)
             db.add(ua)
             new_unlocks.append(ach)
+            # 增加用户经验值奖励
+            if ach.exp_reward and ach.exp_reward > 0:
+                user.score = (user.score or 0) + ach.exp_reward
 
     if new_unlocks:
         await db.commit()

@@ -8,6 +8,7 @@
 - 调用 Pytest 执行测试
 - 返回执行结果
 """
+import threading
 import json
 import time
 import subprocess
@@ -32,49 +33,89 @@ from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment, A
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
 from sqlalchemy import select
 from fastapi_backend.utils.encryption import decrypt
+from fastapi_backend.core.ssrf_guard import validate_url_safety
 
 _logger = logging.getLogger(__name__)
 
-# 项目根目录
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+# 项目根目录（services/autotest_execution.py -> fastapi_backend/ -> TestMasterProject/）
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 BASE_DIR = AUTOTEST_DATA_DIR
 
 # 全局变量缓存（5分钟过期，按 user_id 隔离）
 _global_vars_cache: Dict[int, Dict] = {}  # {user_id: {"vars": {}, "timestamp": 0}}
+_global_vars_lock: Optional[asyncio.Lock] = None
+_global_vars_fetch_locks: Dict[int, asyncio.Lock] = {}
+_global_vars_fetch_locks_lock = threading.Lock()
 _GLOBAL_VARS_CACHE_TTL = 300  # 5分钟
 
 
+def _get_global_vars_lock() -> asyncio.Lock:
+    """延迟创建 asyncio.Lock，确保在事件循环运行时创建"""
+    global _global_vars_lock
+    if _global_vars_lock is None:
+        _global_vars_lock = asyncio.Lock()
+    return _global_vars_lock
+
+
+def _get_fetch_lock(cache_key: int) -> asyncio.Lock:
+    """获取按用户隔离的异步锁，防止 thundering herd"""
+    with _global_vars_fetch_locks_lock:
+        if cache_key not in _global_vars_fetch_locks:
+            _global_vars_fetch_locks[cache_key] = asyncio.Lock()
+        return _global_vars_fetch_locks[cache_key]
+
+
 async def _get_global_variables_cached(user_id: int = None) -> Dict[str, Any]:
-    """获取全局变量（带缓存，按用户隔离）"""
+    """获取全局变量（带缓存，按用户隔离，防 thundering herd）"""
     now = time.time()
     cache_key = user_id or 0
-    cached = _global_vars_cache.get(cache_key)
-    if cached and now - cached["timestamp"] < _GLOBAL_VARS_CACHE_TTL:
-        return cached["vars"]
 
-    async with AsyncSessionLocal() as session:
-        query = select(AutoTestGlobalVariable)
-        if user_id is not None:
-            query = query.where(AutoTestGlobalVariable.user_id == user_id)
-        result = await session.execute(query)
-        global_vars = {}
-        for var in result.scalars().all():
-            value = var.value
-            if var.is_encrypted:
-                value = decrypt(value)
-            global_vars[var.name] = value
+    # 快速路径：缓存命中
+    async with _get_global_vars_lock():
+        cached = _global_vars_cache.get(cache_key)
+        if cached and now - cached["timestamp"] < _GLOBAL_VARS_CACHE_TTL:
+            return cached["vars"]
 
-    _global_vars_cache[cache_key] = {"vars": global_vars, "timestamp": now}
-    return global_vars
+    # 慢路径：使用 per-user asyncio.Lock 防止并发穿透
+    fetch_lock = _get_fetch_lock(cache_key)
+    async with fetch_lock:
+        # double-check：可能其他协程已经填充了缓存
+        async with _get_global_vars_lock():
+            cached = _global_vars_cache.get(cache_key)
+            if cached and time.time() - cached["timestamp"] < _GLOBAL_VARS_CACHE_TTL:
+                return cached["vars"]
+
+        async with AsyncSessionLocal() as session:
+            query = select(AutoTestGlobalVariable)
+            if user_id is not None:
+                query = query.where(AutoTestGlobalVariable.user_id == user_id)
+            result = await session.execute(query)
+            global_vars = {}
+            for var in result.scalars().all():
+                value = var.value
+                if var.is_encrypted:
+                    value = decrypt(value)
+                global_vars[var.name] = value
+
+        async with _get_global_vars_lock():
+            _global_vars_cache[cache_key] = {"vars": global_vars, "timestamp": time.time()}
+        return global_vars
 
 
-def _invalidate_global_vars_cache(user_id: int = None):
+async def _invalidate_global_vars_cache(user_id: int = None):
     """使全局变量缓存失效"""
-    if user_id is not None:
-        _global_vars_cache.pop(user_id, None)
-    else:
-        _global_vars_cache.clear()
+    async with _get_global_vars_lock():
+        if user_id is not None:
+            _global_vars_cache.pop(user_id, None)
+        else:
+            _global_vars_cache.clear()
+    # 清理对应的 fetch lock，防止内存泄漏
+    with _global_vars_fetch_locks_lock:
+        if user_id is not None:
+            _global_vars_fetch_locks.pop(user_id, None)
+        else:
+            _global_vars_fetch_locks.clear()
 
 
 async def _save_variables_to_db_safe(extracted_vars: Dict[str, Any], user_id: int = None):
@@ -84,7 +125,7 @@ async def _save_variables_to_db_safe(extracted_vars: Dict[str, Any], user_id: in
     try:
         from fastapi_backend.services.autotest_variable_service import save_variables_to_db
         await save_variables_to_db(extracted_vars, user_id=user_id)
-        _invalidate_global_vars_cache(user_id)
+        await _invalidate_global_vars_cache(user_id)
     except Exception as e:
         _logger.warning(f"保存变量失败: {e}")
 
@@ -101,26 +142,11 @@ def _validate_url(url: str) -> bool:
 
 
 def _smart_type_convert(obj: Any) -> Any:
-    """递归地将 dict/list 中看起来像数字的字符串值转换为数字类型"""
+    """递归遍历 dict/list，保持原始值类型不变"""
     if isinstance(obj, dict):
         return {k: _smart_type_convert(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [_smart_type_convert(item) for item in obj]
-    elif isinstance(obj, str):
-        if obj.isdigit():
-            return int(obj)
-        try:
-            float_val = float(obj)
-            if str(float_val) == obj or obj.count('.') == 1:
-                return float_val
-        except (ValueError, OverflowError):
-            pass
-        if obj.lower() == 'true':
-            return True
-        if obj.lower() == 'false':
-            return False
-        if obj.lower() == 'null' or obj.lower() == 'none':
-            return None
     return obj
 
 
@@ -157,6 +183,11 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
             headers = _smart_type_convert(headers)
         else:
             headers = replace_variables(headers, variables)
+            if isinstance(headers, str):
+                try:
+                    headers = json.loads(headers)
+                except (json.JSONDecodeError, TypeError):
+                    headers = {}
 
     payload = case.payload
     if payload:
@@ -189,6 +220,10 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
     body_type = getattr(case, 'body_type', 'none') or 'none'
     content_type = getattr(case, 'content_type', 'application/json') or 'application/json'
 
+    # 对断言规则中的变量占位符做替换
+    assert_rules = case.assert_rules or {}
+    assert_rules = replace_variables(assert_rules, variables)
+
     return {
         "name": case.name,
         "method": case.method,
@@ -198,7 +233,7 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
         "body_type": body_type,
         "content_type": content_type,
         "payload": payload,
-        "assert_rules": case.assert_rules or {}
+        "assert_rules": assert_rules
     }
 
 
@@ -219,6 +254,17 @@ async def quick_run_case(
 
         method = case_data["method"].upper()
         url = case_data["url"]
+        safe, reason = validate_url_safety(url)
+        if not safe:
+            return {
+                "success": False,
+                "status_code": 400,
+                "response": None,
+                "execution_time": 0,
+                "error": reason,
+                "assert_result": None,
+                "request_body": case_data.get("payload")
+            }
         headers = case_data["headers"]
         # 🔥 优先使用前端传来的 params（已替换变量），否则用 case 自带的
         params = override_params if override_params is not None else case_data.get("params", {})
@@ -256,7 +302,19 @@ async def quick_run_case(
                     else:
                         req_kwargs["headers"] = {**(headers or {}), "Content-Type": content_type}
             elif body_type == "form-data":
-                req_kwargs["data"] = payload
+                # form-data 类型需要使用 files 参数发送 multipart/form-data
+                if isinstance(payload, dict):
+                    # 将 dict 转为 multipart 字段
+                    form_fields = {}
+                    file_fields = {}
+                    for k, v in payload.items():
+                        if isinstance(v, (dict, list)):
+                            form_fields[k] = json.dumps(v, ensure_ascii=False)
+                        else:
+                            form_fields[k] = str(v)
+                    req_kwargs["data"] = form_fields
+                else:
+                    req_kwargs["data"] = str(payload) if payload else ""
 
         if method == "GET":
             response = await asyncio.to_thread(requests.get, url, **req_kwargs)
@@ -295,7 +353,7 @@ async def quick_run_case(
             await _save_variables_to_db_safe(extracted_vars, user_id=user_id)
 
         # 执行断言（不再提前拦截 status_code >= 400，让断言引擎根据用户配置判断）
-        assert_result = execute_assertions(case_data["assert_rules"], response.status_code, response_data)
+        assert_result = execute_assertions(case_data["assert_rules"], response.status_code, response_data, execution_time, dict(response.headers))
 
         return {
             "success": assert_result["passed"],
@@ -356,7 +414,7 @@ async def quick_run_case(
         }
 
 
-def execute_assertions(assert_rules: Any, status_code: int, response: Any) -> Dict[str, Any]:
+def execute_assertions(assert_rules: Any, status_code: int, response: Any, response_time_ms: int = 0, response_headers: Optional[Dict] = None) -> Dict[str, Any]:
     """
     执行断言，委托给统一断言引擎
     """
@@ -364,14 +422,14 @@ def execute_assertions(assert_rules: Any, status_code: int, response: Any) -> Di
         assert_rules=assert_rules,
         status_code=status_code,
         response_body=response,
-        response_time_ms=0,
-        response_headers=None,
+        response_time_ms=response_time_ms,
+        response_headers=response_headers,
     )
 
 
-def get_field_value(field: str, status_code: int, response: Any) -> Any:
+def get_field_value(field: str, status_code: int, response: Any, response_time_ms: float = 0, response_headers: Optional[Dict] = None) -> Any:
     """根据字段名获取实际值，委托给统一断言引擎"""
-    return _engine_get_field_value(field, status_code, response)
+    return _engine_get_field_value(field, status_code, response, response_time_ms, response_headers)
 
 
 def compare_values(actual: Any, operator: str, expected: Any) -> bool:
@@ -397,50 +455,6 @@ async def extract_variables_from_response(extractors: Any, response_data: Any, r
 
 
 
-async def save_variables_to_db(variables: Dict[str, str], user_id: int = None) -> bool:
-    """
-    将提取的变量保存到全局变量表
-    Args:
-        variables: 变量字典 {变量名: 变量值}
-        user_id: 用户ID，用于数据隔离
-    Returns:
-        是否保存成功
-    """
-    if not variables:
-        return False
-
-    from fastapi_backend.core.autotest_database import AsyncSessionLocal
-    from sqlalchemy import select
-
-    try:
-        async with AsyncSessionLocal() as session:
-            for var_name, var_value in variables.items():
-                query = select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == var_name)
-                if user_id is not None:
-                    query = query.where(AutoTestGlobalVariable.user_id == user_id)
-                result = await session.execute(query)
-                existing_var = result.scalar_one_or_none()
-
-                if existing_var:
-                    existing_var.value = str(var_value)
-                    existing_var.updated_at = datetime.now(timezone.utc)
-                else:
-                    new_var = AutoTestGlobalVariable(
-                        name=var_name,
-                        value=str(var_value),
-                        description="从测试用例提取",
-                        is_encrypted=False,
-                        user_id=user_id,
-                    )
-                    session.add(new_var)
-
-            await session.commit()
-            return True
-    except Exception as e:
-        _logger.info(f"保存变量失败: {str(e)}")
-        return False
-
-
 def generate_test_yaml(case_data: Dict[str, Any], output_path: Path) -> None:
     """将用例数据生成 YAML 文件供 Pytest 使用"""
     import yaml
@@ -456,6 +470,7 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
     from fastapi_backend.models.autotest import AutoTestHistory
 
     start_time = time.time()
+    yaml_file = None  # 预初始化，防止异常处理中 NameError
 
     try:
         case_data = await replace_case_variables(case, env, user_id=user_id)
@@ -463,10 +478,13 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
         temp_dir = BASE_DIR / "temp_run_data"
         temp_dir.mkdir(exist_ok=True)
 
-        yaml_file = temp_dir / f"case_{case.id}.yaml"
+        # 使用 UUID 避免并发执行同一用例时文件冲突
+        import uuid as _uuid
+        run_id = _uuid.uuid4().hex[:8]
+        yaml_file = temp_dir / f"case_{case.id}_{run_id}.yaml"
         generate_test_yaml(case_data, yaml_file)
 
-        allure_results_dir = BASE_DIR / "allure-results" / f"case_{case.id}"
+        allure_results_dir = BASE_DIR / "allure-results" / f"case_{case.id}_{run_id}"
         allure_results_dir.mkdir(parents=True, exist_ok=True)
 
         import sys
@@ -529,7 +547,7 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
                 capture_output=True, 
             )
             report_url = f"/reports/report_{history_id}/index.html" if cmd_result.returncode == 0 else None
-        except (FileNotFoundError, Exception):
+        except Exception:
             report_url = None
 
         success = result.returncode == 0
@@ -545,6 +563,13 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
             )
             await session.commit()
 
+        # 清理临时文件
+        try:
+            if yaml_file.exists():
+                yaml_file.unlink()
+        except Exception:
+            pass
+
         return {
             "success": success,
             "execution_time": execution_time,
@@ -555,26 +580,46 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
 
     except subprocess.TimeoutExpired:
         execution_time = int((time.time() - start_time) * 1000)
-        async with AsyncSessionLocal() as session:
-            from sqlalchemy import update
-            stmt = update(AutoTestHistory).where(AutoTestHistory.id == history_id)
-            if user_id is not None:
-                stmt = stmt.where(AutoTestHistory.user_id == user_id)
-            await session.execute(
-                stmt.values(status="error", execution_time=execution_time, error_message="执行超时")
-            )
-            await session.commit()
+        # 独立的 try/except 包裹数据库更新，确保数据库更新失败不会掩盖原始异常
+        try:
+            async with AsyncSessionLocal() as session:
+                from sqlalchemy import update
+                stmt = update(AutoTestHistory).where(AutoTestHistory.id == history_id)
+                if user_id is not None:
+                    stmt = stmt.where(AutoTestHistory.user_id == user_id)
+                await session.execute(
+                    stmt.values(status="error", execution_time=execution_time, error_message="执行超时")
+                )
+                await session.commit()
+        except Exception as db_err:
+            _logger.error(f"异常处理中更新历史记录也失败了: {db_err}")
+        # 清理临时文件
+        try:
+            if yaml_file and yaml_file.exists():
+                yaml_file.unlink()
+        except Exception:
+            pass
         return {"success": False, "execution_time": execution_time, "error": "执行超时（60秒）", "report_url": None}
 
     except Exception as e:
         execution_time = int((time.time() - start_time) * 1000)
-        async with AsyncSessionLocal() as session:
-            from sqlalchemy import update
-            stmt = update(AutoTestHistory).where(AutoTestHistory.id == history_id)
-            if user_id is not None:
-                stmt = stmt.where(AutoTestHistory.user_id == user_id)
-            await session.execute(
-                stmt.values(status="error", execution_time=execution_time, error_message=str(e))
-            )
-            await session.commit()
+        # 独立的 try/except 包裹数据库更新，确保数据库更新失败不会掩盖原始异常
+        try:
+            async with AsyncSessionLocal() as session:
+                from sqlalchemy import update
+                stmt = update(AutoTestHistory).where(AutoTestHistory.id == history_id)
+                if user_id is not None:
+                    stmt = stmt.where(AutoTestHistory.user_id == user_id)
+                await session.execute(
+                    stmt.values(status="error", execution_time=execution_time, error_message=str(e))
+                )
+                await session.commit()
+        except Exception as db_err:
+            _logger.error(f"异常处理中更新历史记录也失败了: {db_err}")
+        # 清理临时文件
+        try:
+            if yaml_file and yaml_file.exists():
+                yaml_file.unlink()
+        except Exception:
+            pass
         return {"success": False, "execution_time": execution_time, "error": str(e), "report_url": None}

@@ -19,7 +19,19 @@ _logger = logging.getLogger(__name__)
 
 # 注意：内存存储仅适用于单实例部署，多实例时每个 worker 独立计数
 _user_request_timestamps: Dict[str, List[float]] = defaultdict(list)
-_lock = __import__("threading").Lock()
+_lock = threading.Lock()
+
+
+def _cleanup_inactive_users():
+    """清理不活跃用户的请求记录，防止内存泄漏"""
+    now = time.time()
+    with _lock:
+        expired_users = [
+            user_id for user_id, timestamps in _user_request_timestamps.items()
+            if not timestamps or timestamps[-1] < now - 3600  # 1小时无请求
+        ]
+        for user_id in expired_users:
+            del _user_request_timestamps[user_id]
 
 
 def check_rate_limit(user_id: str, max_requests: int, window_seconds: int) -> bool:
@@ -36,6 +48,9 @@ def check_rate_limit(user_id: str, max_requests: int, window_seconds: int) -> bo
     """
     now = time.time()
     cutoff = now - window_seconds
+
+    if random.random() < 0.01:
+        _cleanup_inactive_users()
 
     with _lock:
         timestamps = _user_request_timestamps[user_id]

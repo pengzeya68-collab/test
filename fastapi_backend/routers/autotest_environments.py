@@ -13,7 +13,7 @@ from fastapi_backend.models.autotest import AutoTestEnvironment
 from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import (
     AutoTestEnvironmentCreate,
-    AutoTestEnvironmentUpdate,
+    EnvironmentUpdate,
 )
 
 router = APIRouter(prefix="/api/auto-test/environments", tags=["AutoTest-环境"])
@@ -104,7 +104,7 @@ async def create_environment(
 @router.put("/{env_id}")
 async def update_environment(
     env_id: int,
-    env_in: AutoTestEnvironmentUpdate,
+    env_in: EnvironmentUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -124,6 +124,14 @@ async def update_environment(
     for field, value in env_in.model_dump(exclude_unset=True).items():
         if field == "name":
             field = "env_name"
+        if field == "variables" and isinstance(value, dict):
+            existing_vars = env.variables if isinstance(env.variables, dict) else {}
+            merged = dict(existing_vars)
+            for k, v in value.items():
+                if v == "****":
+                    continue
+                merged[k] = v
+            value = merged
         setattr(env, field, value)
 
     await db.commit()

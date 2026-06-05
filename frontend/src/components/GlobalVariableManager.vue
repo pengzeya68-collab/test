@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="global-variable-manager">
     <el-card>
       <template #header>
@@ -321,7 +321,8 @@ const handleSubmit = async () => {
 const handleEdit = (row) => {
   editingRowId.value = row.id
   editForm.value = {
-    value: row.value,
+    // 加密变量不回显掩码值，留空让用户重新输入
+    value: row.is_encrypted ? '' : row.value,
     description: row.description,
     is_encrypted: row.is_encrypted
   }
@@ -330,7 +331,12 @@ const handleEdit = (row) => {
 // 保存编辑
 const handleSaveEdit = async (id) => {
   try {
-    const res = await autoTestRequest.put(`/auto-test/global-variables/${id}`, editForm.value)
+    const payload = { ...editForm.value }
+    // 如果是加密变量且值为空，不提交 value 字段，让后端保留原值
+    if (payload.is_encrypted && !payload.value) {
+      delete payload.value
+    }
+    const res = await autoTestRequest.put(`/auto-test/global-variables/${id}`, payload)
     const index = variables.value.findIndex(v => v.id === id)
     if (index !== -1) {
       variables.value[index] = res
@@ -488,7 +494,7 @@ const handleReplaceVariables = () => {
   })
   
   // 替换变量
-  result = result.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, varName) => {
+  result = result.replace(/\{\{\s*(\$\w+|\w+)\s*\}\}/g, (match, varName) => {
     return varMap.get(varName) || match
   })
   

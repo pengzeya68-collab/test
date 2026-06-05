@@ -553,26 +553,14 @@ const loadVariables = async () => {
       }
     })
 
-    // 如果后端没返回，为了演示效果，添加一些模拟变量
-    if (varMap.size === 0) {
-      varMap.set('base_url', { value: 'base_url', actualValue: 'http://api.example.com' })
-      varMap.set('token', { value: 'token', actualValue: 'eyJhbGciOiJIUzI1...' })
-      varMap.set('user_id', { value: 'user_id', actualValue: '10001' })
-      varMap.set('current_date', { value: 'current_date', actualValue: '2023-10-25' })
-      varMap.set('random_email', { value: 'random_email', actualValue: 'test_8df2@demo.com' })
-    }
+    // 如果后端没返回任何变量，显示空列表而非模拟数据
+    // 避免用户误以为模拟变量是真实可用的
 
     availableVariables.value = Array.from(varMap.values())
   } catch (error) {
     console.error('加载环境变量失败:', error)
-    // 降级：模拟变量
-    availableVariables.value = [
-      { value: 'base_url', actualValue: 'http://api.example.com' },
-      { value: 'token', actualValue: 'eyJhbGciOiJIUzI1...' },
-      { value: 'user_id', actualValue: '10001' },
-      { value: 'current_date', actualValue: '2023-10-25' },
-      { value: 'random_email', actualValue: 'test_8df2@demo.com' }
-    ]
+    // 降级：显示空列表而非模拟数据
+    availableVariables.value = []
   }
 }
 
@@ -980,7 +968,7 @@ const mapOldOperator = (oldOp) => {
     'not_contains': 'not_contains',
     'gt': '>',
     'lt': '<',
-    'gte': '<=',
+    'gte': '>=',
     'lte': '<=',
     'range': 'range',
     'regex': 'regex',
@@ -1078,7 +1066,7 @@ const applyAssertTemplate = (tpl) => {
       target: rule.type || 'status_code',
       operator: rule.operator === 'eq' ? '==' : rule.operator === 'neq' ? '!=' : rule.operator === 'lt' ? '<' : rule.operator === 'gt' ? '>' : rule.operator === 'contains' ? 'contains' : rule.operator,
       expected: String(rule.expected || ''),
-      expression: ''
+      expression: rule.expression || rule.json_path || ''
     })
   }
   assertTemplateDialogVisible.value = false
@@ -1157,15 +1145,20 @@ const handleSave = async () => {
     let payloadData = null
     if (rawForm.bodyType === 'raw' || rawForm.bodyType === 'json') {
       if (rawForm.payload && rawForm.payload.trim()) {
-        // raw/json 模式，必须是合法 JSON
-        try {
-          payloadData = JSON.parse(rawForm.payload)
-        } catch (e) {
-          ElMessage.error('请求体 JSON 格式错误，请检查！')
-          return
+        if (rawForm.contentType === 'application/json') {
+          // JSON 类型，必须合法
+          try {
+            payloadData = JSON.parse(rawForm.payload)
+          } catch (e) {
+            ElMessage.error('请求体 JSON 格式错误，请检查！')
+            return
+          }
+        } else {
+          // XML, Text, HTML 等类型，直接传字符串
+          payloadData = rawForm.payload
         }
       } else {
-        payloadData = {}
+        payloadData = rawForm.contentType === 'application/json' ? {} : ''
       }
     } else if (rawForm.bodyType === 'form-data') {
       // form-data 模式
@@ -1184,8 +1177,13 @@ const handleSave = async () => {
       }))
 
     // 构建断言规则 - 只保留有效的断言，新格式：[{"target": "status_code", "operator": "==", "expected": "200", "expression": ""}, ...]
+    const noExpectedOperators = ['not_empty', 'empty', 'exists', 'not_exists']
     const assertRules = rawForm.assertions
-      .filter(a => a.target && a.operator && a.expected !== '')
+      .filter(a => {
+        if (!a.target || !a.operator) return false
+        if (noExpectedOperators.includes(a.operator)) return true
+        return a.expected !== ''
+      })
       .map(a => ({
         target: a.target,
         operator: a.operator,
@@ -1237,14 +1235,14 @@ const handleSave = async () => {
 // 保存并运行
 const handleSaveAndRun = async () => {
   const savedCaseId = await handleSave()
+  // 保存失败时 savedCaseId 为 undefined，不应继续运行
+  if (!savedCaseId) {
+    return
+  }
   if (caseForm.value.name && caseForm.value.url) {
-    // 🔥 确保传递真实数据，避免响应式问题
+    // 确保传递真实数据，避免响应式问题
     const data = JSON.parse(JSON.stringify(toRaw(caseForm.value)))
-    // 使用保存后获得的ID，如果保存失败则不会执行到这里
-    const caseId = savedCaseId || props.caseData?.id
-    if (caseId) {
-      emit('run', { ...data, id: caseId })
-    }
+    emit('run', { ...data, id: savedCaseId })
   }
 }
 </script>

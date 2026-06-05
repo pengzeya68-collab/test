@@ -148,6 +148,7 @@ const dialogVisible = computed({
 const scheduleForm = ref({
   scenario_id: null,
   scenario_name: '',
+  name: '',
   cron_expression: '0 2 * * *',
   env_id: null,
   webhook_url: '',
@@ -187,14 +188,16 @@ const loadScheduleTasks = async () => {
 }
 
 const handleToggleTaskStatus = async (task) => {
-  const originalStatus = task.is_active
+  // v-model 已将 is_active 切换为新值，这里保存的是切换后的值
+  const toggledStatus = task.is_active
   task.statusLoading = true
   try {
     await autoTestRequest.post(`/auto-test/scheduler/tasks/${task.task_id}/toggle`)
-    ElMessage.success(`任务已${task.is_active ? '启用' : '暂停'}`)
+    ElMessage.success(`任务已${toggledStatus ? '启用' : '暂停'}`)
     await loadScheduleTasks()
   } catch (error) {
-    task.is_active = !originalStatus
+    // 恢复为切换前的值
+    task.is_active = !toggledStatus
     ElMessage.error('状态切换失败: ' + (error.response?.data?.error || error.message))
     console.error('切换状态失败:', error)
   } finally {

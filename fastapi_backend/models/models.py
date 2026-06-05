@@ -664,6 +664,7 @@ class Favorite(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "exercise_id", name="uq_favorites_user_exercise"),
+        UniqueConstraint("user_id", "post_id", name="uq_favorites_user_post"),
         Index("idx_favorite_user_id", "user_id"),
         Index("idx_favorite_item_type", "user_id", "item_type"),
     )

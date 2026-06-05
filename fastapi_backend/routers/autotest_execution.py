@@ -45,8 +45,8 @@ from fastapi_backend.core.ssrf_guard import validate_url_safety
 
 router = APIRouter(prefix="/api/auto-test", tags=["AutoTest-执行与工具"])
 
-# 项目根目录
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+# 项目根目录（routers/autotest_execution.py -> fastapi_backend/ -> TestMasterProject/）
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 TASKS_DIR = AUTOTEST_DATA_DIR / "tasks"
 
@@ -159,12 +159,16 @@ async def send_request(
     url = payload.get("url", "")
     if not url:
         raise HTTPException(status_code=400, detail="URL 不能为空")
+    method = payload.get("method", "GET").upper()
+    valid_methods = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
+    if method not in valid_methods:
+        raise HTTPException(status_code=400, detail=f"不支持的 HTTP 方法: {method}")
     safe, reason = validate_url_safety(url)
     if not safe:
         raise HTTPException(status_code=400, detail=reason)
     try:
         return await execute_http_request(
-            method=payload.get("method", "GET").upper(),
+            method=method,
             url=url,
             headers=convert_to_dict(payload.get("headers")),
             params=convert_to_dict(payload.get("params")),
@@ -363,7 +367,11 @@ async def cancel_task(
             report_url=None,
         )
         db.add(cancelled_record)
-        await db.commit()
+        try:
+            await db.commit()
+        except Exception as db_err:
+            await db.rollback()
+            logging.getLogger(__name__).error("取消任务时写入执行记录失败: %s", db_err)
 
     return {"message": "任务取消成功", "task_id": task_id}
 
@@ -436,9 +444,9 @@ async def run_case(
             result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id_int, AutoTestEnvironment.user_id == current_user.id))
             env = result.scalar_one_or_none()
         except (ValueError, TypeError):
-            pass
+            raise HTTPException(status_code=400, detail=f"无效的环境 ID: {env_id}")
     if env is None:
-        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default, AutoTestEnvironment.user_id == current_user.id))
+        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id))
         env = result.scalar_one_or_none()
         if not env:
             result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id))
@@ -449,7 +457,7 @@ async def run_case(
 
     history = AutoTestHistory(
         case_id=case_id,
-        status="success" if result_data["success"] else "failed",
+        status="success" if result_data.get("success", False) else "failed",
         execution_time=result_data.get("execution_time", 0),
         response_data=result_data.get("response"),
         error_message=result_data.get("error"),
@@ -486,10 +494,10 @@ async def quick_run(
                 result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id_int, AutoTestEnvironment.user_id == current_user.id))
                 env = result.scalar_one_or_none()
         except (ValueError, TypeError):
-            pass
+            raise HTTPException(status_code=400, detail=f"无效的环境 ID: {env_id}")
 
     if env is None:
-        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True, AutoTestEnvironment.user_id == current_user.id))
+        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id))
         env = result.scalars().first()
         if not env:
             result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id))
@@ -543,7 +551,7 @@ async def batch_run(
         result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id, AutoTestEnvironment.user_id == current_user.id))
         env = result.scalar_one_or_none()
     else:
-        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default == True, AutoTestEnvironment.user_id == current_user.id))
+        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id))
         env = result.scalar_one_or_none()
         if not env:
             result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id))
@@ -568,8 +576,30 @@ async def batch_run(
         if isinstance(result, Exception):
             formatted_results.append({"case_id": case.id, "case_name": case.name, "success": False, "error": str(result)})
         else:
-            success_count += 1 if result["success"] else 0
+            success_count += 1 if result.get("success", False) else 0
             formatted_results.append({"case_id": case.id, "case_name": case.name, **result})
+
+    # 批量执行也保存历史记录，与 run_case/quick_run 保持一致
+    for case, result in zip(cases, results):
+        if isinstance(result, Exception):
+            history = AutoTestHistory(
+                case_id=case.id,
+                status="failed",
+                execution_time=0,
+                error_message=str(result),
+                user_id=current_user.id,
+            )
+        else:
+            history = AutoTestHistory(
+                case_id=case.id,
+                status="success" if result.get("success", False) else "failed",
+                execution_time=result.get("execution_time") or result.get("response_time", 0),
+                response_data=result.get("response"),
+                error_message=result.get("error"),
+                user_id=current_user.id,
+            )
+        db.add(history)
+    await db.commit()
 
     return {"total": total, "success": success_count, "failed": total - success_count, "results": formatted_results}
 
@@ -592,10 +622,20 @@ async def get_history(
     query = select(AutoTestHistory).where(AutoTestHistory.user_id == current_user.id).order_by(desc(AutoTestHistory.created_at))
     if case_id:
         query = query.where(AutoTestHistory.case_id == case_id)
+
+    # 先查总数
+    from sqlalchemy import func as sa_func
+    count_query = select(sa_func.count()).select_from(
+        select(AutoTestHistory).where(AutoTestHistory.user_id == current_user.id)
+        .where(AutoTestHistory.case_id == case_id if case_id else True)
+        .subquery()
+    )
+    total = (await db.execute(count_query)).scalar_one()
+
     query = query.offset(offset).limit(limit)
     result = await db.execute(query)
     history = result.scalars().all()
-    return history
+    return {"items": history, "total": total, "limit": limit, "offset": offset}
 
 
 @router.delete("/history/{history_id}", status_code=204)
@@ -689,7 +729,15 @@ async def run_scenario(
         })
 
         if use_local_runner:
-            asyncio.create_task(_run_scenario_locally(task_id, scenario_id, env_id, user_id=current_user.id))
+            task = asyncio.create_task(_run_scenario_locally(task_id, scenario_id, env_id, user_id=current_user.id))
+            # 添加回调追踪异常，防止任务静默失败
+            def _on_task_done(t: asyncio.Task):
+                if t.cancelled():
+                    return
+                exc = t.exception()
+                if exc:
+                    logger.error(f"本地异步任务 {task_id} 执行异常: {exc}", exc_info=exc)
+            task.add_done_callback(_on_task_done)
             logger.info(f"本地异步任务已启动，任务ID: {task_id}")
         else:
             logger.info(f"Celery任务已发送，任务ID: {task_id}")
@@ -714,9 +762,9 @@ async def get_scenario_execution_history(
     status: str = None,
     start_date: str = None,
     end_date: str = None,
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=200),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """获取某个场景的执行历史记录列表"""
     result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id))
@@ -827,6 +875,7 @@ async def run_scenario_data_driven(
     """数据驱动执行测试场景"""
     env_id = body.env_id if body else None
     from fastapi_backend.services.autotest_scenario_runner import run_scenario_data_driven as execute_data_driven
+    from fastapi_backend.core.autotest_database import AsyncSessionLocal
 
     # 校验场景归属
     async with AsyncSessionLocal() as db:
@@ -836,7 +885,8 @@ async def run_scenario_data_driven(
                 AutoTestScenario.user_id == current_user.id,
             )
         )
-        if not result.scalar_one_or_none():
+        scenario = result.scalar_one_or_none()
+        if scenario is None:
             raise HTTPException(status_code=404, detail="场景不存在")
 
     try:
@@ -932,9 +982,10 @@ async def create_scheduler_task(
     """创建定时任务"""
     from fastapi_backend.services.autotest_scheduler import add_scheduled_task
     from fastapi_backend.services.autotest_schedule_persistence import persist_schedule_to_db
+    from fastapi_backend.core.autotest_database import AsyncSessionLocal as _AsyncSessionLocal
 
     # 校验场景归属
-    async with AsyncSessionLocal() as db:
+    async with _AsyncSessionLocal() as db:
         result = await db.execute(
             select(AutoTestScenario).where(
                 AutoTestScenario.id == int(task.scenario_id),
@@ -1108,7 +1159,8 @@ async def save_email_config(
     settings.EMAIL_SMTP_HOST = config.smtpHost
     settings.EMAIL_SMTP_PORT = config.smtpPort
     settings.EMAIL_SMTP_USER = config.smtpUser
-    settings.EMAIL_SMTP_PASSWORD = config.smtpPassword
+    if config.smtpPassword != "****":
+        settings.EMAIL_SMTP_PASSWORD = config.smtpPassword
     settings.EMAIL_FROM_ADDRESS = config.fromEmail
     settings.EMAIL_ADMIN_TO = config.adminToEmail
     settings.EMAIL_USE_SSL = config.enableSSL
@@ -1155,6 +1207,8 @@ async def import_postman(
 ):
     """导入 Postman Collection"""
     content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="文件大小超过 10MB 限制")
     try:
         data = json.loads(content.decode("utf-8"))
     except Exception as e:
@@ -1224,7 +1278,7 @@ async def import_postman(
         return {
             "message": f"解析成功，共识别 {len(parsed_cases)} 个用例",
             "cases": parsed_cases,
-            "imported_count": 0,
+            "imported_count": imported_count,
         }
 
     if target_group_id is not None:
@@ -1256,6 +1310,8 @@ async def import_swagger(
 ):
     """导入 Swagger/OpenAPI 文档"""
     content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="文件大小超过 10MB 限制")
     try:
         data = json.loads(content.decode("utf-8"))
     except Exception as e:
@@ -1332,7 +1388,7 @@ async def import_swagger(
         return {
             "message": f"解析成功，共识别 {len(parsed_cases)} 个用例",
             "cases": parsed_cases,
-            "imported_count": 0,
+            "imported_count": imported_count,
         }
 
     await db.commit()

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import request from '@/utils/request'
 import { ElNotification } from 'element-plus'
-import { setToken, setUserInfo, clearUserAuth, TOKEN_KEY, USER_KEY, ASSESSMENT_KEY, SKILL_PROFILE_KEY, safeJsonParse } from '@/utils/auth'
+import { setToken, setUserInfo, clearUserAuth, TOKEN_KEY, USER_KEY, ASSESSMENT_KEY, SKILL_PROFILE_KEY, safeJsonParse, isValidTokenFormat } from '@/utils/auth'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem(TOKEN_KEY) || '')
@@ -11,7 +11,7 @@ export const useUserStore = defineStore('user', () => {
   const skillProfile = ref(safeJsonParse(localStorage.getItem(SKILL_PROFILE_KEY) || 'null'))
   const isLoading = ref(false)
 
-  const isLoggedIn = computed(() => !!token.value)
+  const isLoggedIn = computed(() => !!token.value && isValidTokenFormat(token.value))
   const getToken = () => token.value
   const username = computed(() => userInfo.value?.username || '')
   const userId = computed(() => userInfo.value?.id || null)

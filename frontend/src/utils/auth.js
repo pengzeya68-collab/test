@@ -22,7 +22,7 @@ export const SKILL_PROFILE_KEY = 'skill_profile'
 
 export function isAdminRoute() {
   const hash = window.location.hash
-  return hash.startsWith('#/admin')
+  return hash.startsWith('#/admin') || hash.startsWith('#/auto-test') || hash.startsWith('#/jmeter-assistant') || hash.startsWith('#/ai-generate-cases') || hash.startsWith('#/test-coverage')
 }
 
 export function getToken() {

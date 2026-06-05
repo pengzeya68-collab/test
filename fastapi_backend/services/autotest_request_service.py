@@ -2,8 +2,10 @@
 AutoTest HTTP 请求服务
 从 routers/autotest_execution.py 的 send_request 端点下沉的业务逻辑
 """
+import asyncio
 import json
 import logging
+import threading
 import time
 from typing import Any, Dict, Optional
 
@@ -16,13 +18,28 @@ from fastapi_backend.utils.autotest_helpers import convert_to_dict
 _logger = logging.getLogger(__name__)
 
 _http_client: Optional[httpx.AsyncClient] = None
+_client_lock = threading.Lock()
 
 
 def _get_http_client() -> httpx.AsyncClient:
+    """获取 HTTP 客户端单例，线程安全"""
     global _http_client
     if _http_client is None or _http_client.is_closed:
-        _http_client = httpx.AsyncClient(timeout=30, verify=True)
+        with _client_lock:
+            if _http_client is None or _http_client.is_closed:
+                _http_client = httpx.AsyncClient(
+                    timeout=30,
+                    verify=True,
+                    limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+                )
     return _http_client
+
+
+async def shutdown_http_client():
+    global _http_client
+    if _http_client is not None:
+        await _http_client.aclose()
+        _http_client = None
 
 
 async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any], user_id: int = None) -> Dict[str, Any]:
@@ -125,6 +142,11 @@ async def execute_http_request(
         url, headers, params, body, variables
     )
 
+    # 变量替换后再次校验 SSRF（防止通过变量注入内网地址）
+    safe, reason = validate_url_safety(url)
+    if not safe:
+        return {"success": False, "error": reason, "execution_time": 0}
+
     start_time = time.time()
     try:
         req_kwargs: Dict[str, Any] = {"headers": headers, "params": params}
@@ -134,7 +156,7 @@ async def execute_http_request(
                 try:
                     processed_body = json.loads(processed_body)
                 except json.JSONDecodeError as e:
-                    return {"error": f"请求体 JSON 格式校验失败: {e}", "execution_time": 0}
+                    return {"success": False, "error": f"请求体 JSON 格式校验失败: {e}", "execution_time": 0}
             req_kwargs["json"] = processed_body
         elif body_type in ("form", "form-data") and processed_body:
             req_kwargs["data"] = processed_body
@@ -143,7 +165,7 @@ async def execute_http_request(
                 try:
                     processed_body = json.loads(processed_body)
                 except json.JSONDecodeError as e:
-                    return {"error": f"请求体 JSON 格式校验失败: {e}", "execution_time": 0}
+                    return {"success": False, "error": f"请求体 JSON 格式校验失败: {e}", "execution_time": 0}
             req_kwargs["json"] = processed_body
 
         client = _get_http_client()
@@ -167,10 +189,10 @@ async def execute_http_request(
             "success": 200 <= resp.status_code < 400,
         }
     except httpx.TimeoutException:
-        return {"success": False, "error": "请求超时", "execution_time": int((time.time() - start_time) * 1000)}
+        return {"success": False, "error": "请求超时", "execution_time": int((time.time() - start_time) * 1000), "status_code": None, "response_content": None, "headers": {}}
     except httpx.ConnectError:
-        return {"success": False, "error": "连接失败，请检查网络或服务地址", "execution_time": int((time.time() - start_time) * 1000)}
+        return {"success": False, "error": "连接失败，请检查网络或服务地址", "execution_time": int((time.time() - start_time) * 1000), "status_code": None, "response_content": None, "headers": {}}
     except ValueError as e:
-        return {"success": False, "error": str(e), "execution_time": int((time.time() - start_time) * 1000)}
+        return {"success": False, "error": str(e), "execution_time": int((time.time() - start_time) * 1000), "status_code": None, "response_content": None, "headers": {}}
     except Exception as e:
-        return {"success": False, "error": str(e), "execution_time": int((time.time() - start_time) * 1000)}
+        return {"success": False, "error": str(e), "execution_time": int((time.time() - start_time) * 1000), "status_code": None, "response_content": None, "headers": {}}

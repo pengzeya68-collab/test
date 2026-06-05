@@ -887,7 +887,7 @@ const handleConfirmImport = async () => {
 }
 
 onMounted(() => {
-  loadCases()
+  // loadCases 已由 watch immediate 触发，无需重复调用
 })
 
 // 暴露方法给父组件

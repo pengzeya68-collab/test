@@ -116,6 +116,14 @@ async def create_group(
     db: AsyncSession = Depends(get_db),
 ):
     """创建新分组"""
+    # 校验 parent_id 归属当前用户
+    if group_in.parent_id is not None:
+        parent_result = await db.execute(
+            select(AutoTestGroup).where(AutoTestGroup.id == group_in.parent_id, AutoTestGroup.user_id == current_user.id)
+        )
+        if not parent_result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="父分组不存在或不属于当前用户")
+
     group = AutoTestGroup(**group_in.model_dump(), user_id=current_user.id)
     db.add(group)
     await db.commit()
@@ -142,7 +150,28 @@ async def update_group(
         raise HTTPException(status_code=404, detail="分组不存在")
 
     for field, value in group_in.model_dump(exclude_unset=True).items():
+        if field in ("id", "user_id", "created_at"):
+            continue
         setattr(group, field, value)
+
+    # 循环引用检测：如果修改了 parent_id，检查 parent 链是否会形成环
+    if group.parent_id is not None:
+        visited = {group.id}
+        current_parent_id = group.parent_id
+        while current_parent_id is not None:
+            if current_parent_id in visited:
+                raise HTTPException(status_code=400, detail="不能设置循环引用的父分组")
+            visited.add(current_parent_id)
+            parent_result = await db.execute(
+                select(AutoTestGroup).where(
+                    AutoTestGroup.id == current_parent_id,
+                    AutoTestGroup.user_id == current_user.id
+                )
+            )
+            parent_group = parent_result.scalar_one_or_none()
+            if not parent_group:
+                raise HTTPException(status_code=400, detail="父分组不存在或不属于当前用户")
+            current_parent_id = parent_group.parent_id
 
     await db.commit()
     await db.refresh(group)
@@ -178,11 +207,10 @@ async def delete_group(
 
     if cases:
         case_ids = [case.id for case in cases]
-        # 删除引用这些用例的场景步骤（只删除当前用户拥有的场景中的步骤）
+        # 删除引用这些用例的场景步骤（包括其他用户场景中的引用，避免悬挂引用）
         steps_result = await db.execute(
             select(AutoTestScenarioStep)
-            .join(AutoTestScenario, AutoTestScenarioStep.scenario_id == AutoTestScenario.id)
-            .where(AutoTestScenarioStep.api_case_id.in_(case_ids), AutoTestScenario.user_id == current_user.id)
+            .where(AutoTestScenarioStep.api_case_id.in_(case_ids))
         )
         for step in steps_result.scalars().all():
             await db.delete(step)

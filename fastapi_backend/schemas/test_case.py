@@ -76,7 +76,18 @@ class TestCaseBatchCreate(BaseModel):
     test_cases: list[TestCaseBase] = Field(..., min_length=1, description="测试用例列表")
 
 
+class TestCaseUpdateItem(BaseModel):
+    """批量更新中的单条测试用例项 - 包含ID和可选更新字段"""
+
+    id: int = Field(..., description="测试用例ID")
+    input: Optional[str] = Field(None, min_length=0, description="输入数据")
+    expected_output: Optional[str] = Field(None, min_length=0, description="预期输出")
+    is_example: Optional[bool] = Field(None, description="是否为示例用例")
+    is_hidden: Optional[bool] = Field(None, description="是否为隐藏用例")
+    description: Optional[str] = Field(None, description="用例描述")
+
+
 class TestCaseBatchUpdate(BaseModel):
     """批量更新测试用例"""
 
-    test_cases: list[TestCaseUpdate] = Field(..., min_length=1, description="测试用例列表")
+    test_cases: list[TestCaseUpdateItem] = Field(..., min_length=1, description="测试用例列表")

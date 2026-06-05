@@ -115,7 +115,7 @@
         </el-table-column>
         <el-table-column prop="total_time" label="耗时" width="80" align="center">
           <template #default="{ row }">
-            {{ (row.total_time / 1000).toFixed(2) }}s
+            {{ ((row.total_time || 0) / 1000).toFixed(2) }}s
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="执行时间" width="170" />
@@ -220,7 +220,7 @@
         <el-divider>文本步骤详情</el-divider>
 
         <el-alert
-          v-if="reportDetailData.step_results.length === 0 && !reportDetailData.step_detail_available"
+          v-if="!reportDetailData.step_results?.length && !reportDetailData.step_detail_available"
           title="步骤详情不可用"
           description="该报告的步骤详情数据无法读取，可能已被清理或写入失败。统计信息仍然准确。"
           type="warning"
@@ -467,7 +467,7 @@ const loadExecutionHistory = async () => {
     const res = await autoTestRequest.get(`/auto-test/scenarios/${props.scenarioId}/history`, { params })
 
     const items = res.items || []
-    const total = items.length
+    const total = res.total || items.length
     const passedCount = items.filter(item => item.status === 'success' || item.status === 'completed').length
     const passRate = total > 0 ? Math.round((passedCount / total) * 100) : 0
 

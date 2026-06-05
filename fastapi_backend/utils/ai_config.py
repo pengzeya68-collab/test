@@ -84,8 +84,8 @@ def resolve_ai_params(config=None, defaults: Optional[dict] = None) -> AIParams:
         params.max_tokens = getattr(settings, "AI_MAX_TOKENS", 4000)
         params.temperature = getattr(settings, "AI_TEMPERATURE", 0.7)
 
-    # 确保 base_url 以 /v1 结尾
-    if params.base_url and not params.base_url.endswith("/v1"):
+    # 仅对 OpenAI 兼容的提供商确保 base_url 以 /v1 结尾
+    if params.base_url and params.provider in ("openai", "ark") and not params.base_url.endswith("/v1"):
         params.base_url = params.base_url.rstrip("/") + "/v1"
 
     # 应用覆盖默认值
@@ -160,7 +160,7 @@ async def call_openai_llm(
             raise ValueError(f"AI 返回内容为空（finish_reason={finish_reason}，可能被安全过滤器拒绝）")
         # 如果输出被截断，记录警告但仍然返回
         if finish_reason == "length":
-            _ai_logger.warning(
+            _logger.warning(
                 "AI 输出可能被截断: finish_reason=length, max_tokens=%d, content_len=%d",
                 params.max_tokens, len(content),
             )
@@ -188,7 +188,7 @@ async def call_llm_json(params: AIParams, messages: list) -> dict:
         return json.loads(content)
     except json.JSONDecodeError:
         # 尝试修复被截断的 JSON
-        _ai_logger.warning("JSON 解析失败，尝试修复截断内容 (len=%d)", len(content))
+        _logger.warning("JSON 解析失败，尝试修复截断内容 (len=%d)", len(content))
         repaired = _repair_truncated_json(content)
         if repaired is not None:
             return repaired

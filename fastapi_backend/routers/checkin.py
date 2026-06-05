@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
@@ -13,6 +15,8 @@ from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.models.models import User, DailyCheckin
 
 router = APIRouter(prefix="/api/v1/checkin", tags=["每日签到"])
+
+_CN_TZ = ZoneInfo("Asia/Shanghai")
 
 STREAK_REWARDS = {
     1: 5,
@@ -39,8 +43,8 @@ async def daily_checkin(
     db: AsyncSession = Depends(get_db),
 ):
     """执行每日签到"""
-    now = datetime.now(timezone.utc)
-    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    now = datetime.now(_CN_TZ)
+    today = now.date()
 
     existing_stmt = select(DailyCheckin).where(
         DailyCheckin.user_id == current_user.id,
@@ -81,10 +85,23 @@ async def daily_checkin(
         streak_count=streak,
         exp_earned=exp_earned,
     )
-    db.add(checkin)
 
-    current_user.score = (current_user.score or 0) + exp_earned
-    await db.commit()
+    try:
+        db.add(checkin)
+        current_user.score = (current_user.score or 0) + exp_earned
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        # 重复签到，重新查询
+        streak_stmt = select(func.max(DailyCheckin.streak_count)).where(DailyCheckin.user_id == current_user.id)
+        streak_result = await db.execute(streak_stmt)
+        actual_streak = streak_result.scalar_one_or_none() or 0
+        return {
+            "checked_in": False,
+            "message": "今日已签到",
+            "streak": actual_streak,
+            "exp_earned": 0,
+        }
 
     return {
         "checked_in": True,
@@ -101,8 +118,8 @@ async def checkin_status(
     db: AsyncSession = Depends(get_db),
 ):
     """获取签到状态"""
-    now = datetime.now(timezone.utc)
-    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    now = datetime.now(_CN_TZ)
+    today = now.date()
 
     today_stmt = select(DailyCheckin).where(
         DailyCheckin.user_id == current_user.id,
@@ -128,8 +145,6 @@ async def checkin_status(
     elif latest_checkin:
         yesterday = today - timedelta(days=1)
         checkin_date = latest_checkin.checkin_date
-        if checkin_date.tzinfo is None:
-            checkin_date = checkin_date.replace(tzinfo=timezone.utc)
         if checkin_date >= yesterday:
             current_streak = latest_checkin.streak_count
 
@@ -145,7 +160,7 @@ async def checkin_status(
 
     last_7_days = []
     for i in range(6, -1, -1):
-        d = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+        d = (today - timedelta(days=i)).isoformat()
         day_start = today - timedelta(days=i)
         day_end = today - timedelta(days=i - 1) if i > 0 else today + timedelta(days=1)
         check_stmt = select(DailyCheckin).where(

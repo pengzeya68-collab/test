@@ -106,8 +106,9 @@ def _simple_code_scoring(user_code: str, correct_answer: str | None, question_sc
         if 0.5 <= len_ratio <= 2.0:
             score_ratio += 0.2
 
-        syntax_errors = ["syntax error", "indentationerror", "nameerror"]
-        if not any(err in user_code.lower() for err in syntax_errors):
+        # 不再在源代码文本中搜索错误关键字（这是错误的检测方式）
+        # 改为：如果用户代码非空就给予基础分
+        if user_code.strip():
             score_ratio += 0.2
 
         correct_kw = set(re.findall(r"\b\w+\b", correct_answer.lower()))
@@ -119,6 +120,33 @@ def _simple_code_scoring(user_code: str, correct_answer: str | None, question_sc
     score = int(question_score * score_ratio)
     is_correct = score >= question_score * 0.6
     return score, is_correct, f"代码相似度评分: {score_ratio * 100:.1f}%"
+
+
+def _normalize_answer(answer: str, question_type: str) -> str:
+    """标准化答案，用于比较。"""
+    if not answer:
+        return ""
+    answer = answer.strip()
+    if question_type == "true_false":
+        a = answer.upper()
+        if a in ("A", "TRUE", "对", "正确", "T", "YES", "是"):
+            return "true"
+        return "false"
+    elif question_type == "single_choice":
+        # 只取第一个字母（A/B/C/D），忽略后面的描述文字
+        a = answer.strip().upper()
+        if a and a[0] in "ABCD":
+            return a[0]
+        return a
+    elif question_type == "multiple_choice":
+        # 标准化多选答案：排序、去空格、只取字母
+        parts = [p.strip().upper() for p in answer.replace(";", ",").split(",")]
+        letters = []
+        for p in parts:
+            if p and p[0] in "ABCD":
+                letters.append(p[0])
+        return ",".join(sorted(letters))
+    return answer.strip()
 
 
 async def _calculate_score(attempt: ExamAttempt, db: AsyncSession) -> int:
@@ -135,7 +163,10 @@ async def _calculate_score(attempt: ExamAttempt, db: AsyncSession) -> int:
             continue
 
         if question.question_type in ("single_choice", "multiple_choice", "true_false"):
-            if answer.user_answer == question.correct_answer:
+            # 对用户答案和正确答案都做标准化后再比较
+            normalized_user = _normalize_answer(answer.user_answer or "", question.question_type)
+            normalized_correct = _normalize_answer(question.correct_answer or "", question.question_type)
+            if normalized_user == normalized_correct:
                 answer.is_correct = True
                 answer.score = question.score
             else:
@@ -168,7 +199,7 @@ async def _calculate_score(attempt: ExamAttempt, db: AsyncSession) -> int:
     attempt.score = total_score
     attempt.is_passed = total_score >= (exam.pass_score if exam else 60)
     attempt.status = "graded"
-    await db.commit()
+    # 不在此处 commit，由调用方统一管理事务
     return total_score
 
 
@@ -628,6 +659,7 @@ async def submit_exam(
     await db.commit()
 
     total_score = await _calculate_score(attempt, db)
+    await db.commit()
     return ExamSubmitResponse(
         message="考试提交成功",
         score=total_score,

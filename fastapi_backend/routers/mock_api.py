@@ -192,7 +192,11 @@ async def update_project(project_id: int, body: MockProjectUpdate, current_user:
             project.name = body.name
         if body.description is not None:
             project.description = body.description
-        if body.base_url_slug is not None:
+        if body.base_url_slug is not None and body.base_url_slug != project.base_url_slug:
+            # 检查 slug 唯一性
+            existing = await db.execute(select(MockProject).where(MockProject.base_url_slug == body.base_url_slug))
+            if existing.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="URL标识(slug)已存在")
             project.base_url_slug = body.base_url_slug
         if body.is_active is not None:
             project.is_active = body.is_active
@@ -203,12 +207,22 @@ async def update_project(project_id: int, body: MockProjectUpdate, current_user:
 
 @router.delete("/projects/{project_id}")
 async def delete_project(project_id: int, current_user: User = Depends(get_current_active_user)):
-    """删除 Mock 项目"""
+    """删除 Mock 项目（级联删除关联的规则和日志）"""
+    from sqlalchemy import delete as sa_delete
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id))
         project = result.scalar_one_or_none()
         if not project:
             raise HTTPException(status_code=404, detail="项目不存在")
+
+        # 级联删除关联的请求日志
+        rule_ids_subq = select(MockRule.id).where(MockRule.project_id == project_id)
+        await db.execute(sa_delete(MockRequestLog).where(MockRequestLog.rule_id.in_(rule_ids_subq)))
+
+        # 级联删除关联的规则
+        await db.execute(sa_delete(MockRule).where(MockRule.project_id == project_id))
+
+        # 删除项目
         await db.delete(project)
         await db.commit()
         return {"message": "删除成功"}

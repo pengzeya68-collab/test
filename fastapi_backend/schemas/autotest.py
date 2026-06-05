@@ -20,7 +20,7 @@ OptionalInt = Annotated[Optional[int], BeforeValidator(empty_str_to_none)]
 
 class AutoTestGroupBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="分组名称")
-    parent_id: Optional[Any] = Field(None, description="父级分组ID")
+    parent_id: OptionalInt = Field(None, description="父级分组ID")
 
 
 class AutoTestGroupCreate(AutoTestGroupBase):
@@ -57,7 +57,7 @@ class AutoTestCaseBase(BaseModel):
     body_type: Optional[str] = Field(None, description="body类型: none/raw/form-data")
     content_type: Optional[str] = Field(None, description="Content-Type")
     payload: Optional[Dict[str, Any]] = Field(None, description="请求体")
-    assert_rules: Optional[Any] = Field(None, alias="assertions", description="断言规则")
+    assert_rules: Optional[Dict[str, Any]] = Field(None, alias="assertions", description="断言规则")
     extractors: Optional[List[Dict[str, Any]]] = Field(None, description="变量提取规则")
     description: Optional[str] = Field(None, description="用例描述")
 
@@ -65,8 +65,8 @@ class AutoTestCaseBase(BaseModel):
 
 
 class AutoTestCaseCreate(AutoTestCaseBase):
-    folder_id: Optional[Any] = Field(None, description="所属文件夹ID")
-    group_id: Optional[Any] = Field(None, description="所属分组ID，兼容旧前端字段")
+    folder_id: OptionalInt = Field(None, description="所属文件夹ID")
+    group_id: OptionalInt = Field(None, description="所属分组ID，兼容旧前端字段")
 
     @model_validator(mode="after")
     def validate_group_or_folder(self):
@@ -84,7 +84,7 @@ class AutoTestCaseUpdate(BaseModel):
     body_type: Optional[str] = None
     content_type: Optional[str] = None
     payload: Optional[Dict[str, Any]] = None
-    assert_rules: Optional[Any] = Field(None, alias="assertions", description="断言规则")
+    assert_rules: Optional[Dict[str, Any]] = Field(None, alias="assertions", description="断言规则")
     extractors: Optional[List[Dict[str, Any]]] = Field(None, description="变量提取规则")
     description: Optional[str] = None
     folder_id: Optional[Any] = None
@@ -95,8 +95,8 @@ class AutoTestCaseUpdate(BaseModel):
 
 class AutoTestCaseResponse(AutoTestCaseBase):
     id: int
-    folder_id: Optional[Any] = None
-    group_id: Optional[Any] = None
+    folder_id: OptionalInt = None
+    group_id: OptionalInt = None
     updated_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
@@ -137,18 +137,43 @@ class AutoTestEnvironmentUpdate(BaseModel):
         return data
 
 
-class AutoTestEnvironmentResponse(AutoTestEnvironmentBase):
+class AutoTestEnvironmentResponse(BaseModel):
     id: int
-    created_at: datetime
+    name: Optional[str] = None  # 对应模型的 env_name，通过 model_validator 映射
+    env_name: Optional[str] = None
+    base_url: Optional[str] = None
+    variables: Dict[str, Any] = Field(default_factory=dict)
+    is_default: bool = False
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_env_name(cls, data):
+        if isinstance(data, dict):
+            if "name" not in data and data.get("env_name"):
+                data = {**data, "name": data["env_name"]}
+            if "env_name" not in data and data.get("name"):
+                data = {**data, "env_name": data["name"]}
+        else:
+            # ORM 对象
+            env_name = getattr(data, 'env_name', None)
+            if env_name:
+                data_dict = {}
+                for field in ['id', 'base_url', 'variables', 'is_default', 'created_at']:
+                    data_dict[field] = getattr(data, field, None)
+                data_dict['name'] = env_name
+                data_dict['env_name'] = env_name
+                return data_dict
+        return data
 
 
 # ========== AutoTestHistory Schema ==========
 
 class AutoTestHistoryResponse(BaseModel):
     id: int
-    case_id: Any
+    case_id: int
     status: str
     execution_time: Optional[int] = None
     report_url: Optional[str] = None
@@ -162,7 +187,7 @@ class AutoTestHistoryResponse(BaseModel):
 # ========== 执行结果 Schema ==========
 
 class CaseRunRequest(BaseModel):
-    env_id: Optional[Any] = Field(None, description="环境ID")
+    env_id: OptionalInt = Field(None, description="环境ID")
 
 class CaseExecutionResult(BaseModel):
     success: bool
@@ -182,18 +207,18 @@ class CaseExecutionResult(BaseModel):
 # ========== 场景 Schema ==========
 
 class ScenarioStepBase(BaseModel):
-    api_case_id: Any = Field(..., description="引用的接口ID")
+    api_case_id: int = Field(..., description="引用的接口ID")
     step_order: int = Field(default=0, description="执行顺序")
     is_active: bool = Field(True, description="是否启用")
     variable_overrides: Optional[Dict[str, Any]] = Field(None, description="局部变量覆盖")
 
 
 class ScenarioStepCreate(ScenarioStepBase):
-    scenario_id: Optional[Any] = Field(None, description="所属场景ID")
+    scenario_id: OptionalInt = Field(None, description="所属场景ID")
 
 
 class ScenarioStepUpdate(BaseModel):
-    api_case_id: Optional[Any] = None
+    api_case_id: OptionalInt = None
     step_order: Optional[int] = None
     is_active: Optional[bool] = None
     variable_overrides: Optional[Dict[str, Any]] = None
@@ -201,7 +226,7 @@ class ScenarioStepUpdate(BaseModel):
 
 class ScenarioStepResponse(ScenarioStepBase):
     id: int
-    scenario_id: Any
+    scenario_id: int
     created_at: datetime
     api_case: Optional[AutoTestCaseResponse] = None
 
@@ -230,6 +255,15 @@ class AutoTestScenarioResponse(AutoTestScenarioBase):
     updated_at: datetime
     steps: List[ScenarioStepResponse] = []
     webhook_token: Optional[str] = None
+    user_id: Optional[int] = None
+    schedule_cron_expression: Optional[str] = None
+    schedule_env_id: Optional[int] = None
+    schedule_webhook_url: Optional[str] = None
+    schedule_task_name: Optional[str] = None
+    schedule_is_active: Optional[bool] = None
+    project_id: Optional[int] = None
+    fail_fast: Optional[bool] = None
+    is_active: Optional[bool] = True
 
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
@@ -259,19 +293,19 @@ class AutoTestDatasetBase(BaseModel):
 
 
 class AutoTestDatasetCreate(AutoTestDatasetBase):
-    scenario_id: Optional[Any] = Field(None, description="所属场景ID；通常由路径参数提供")
+    scenario_id: OptionalInt = Field(None, description="所属场景ID；通常由路径参数提供")
 
 
 class AutoTestDatasetUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200, description="数据集名称")
     data_matrix: Optional[DataMatrix] = Field(None, description="数据矩阵")
     description: Optional[str] = None
-    scenario_id: Optional[Any] = Field(None, description="所属场景ID")
+    scenario_id: OptionalInt = Field(None, description="所属场景ID")
 
 
 class AutoTestDatasetResponse(AutoTestDatasetBase):
     id: int
-    scenario_id: Any
+    scenario_id: int
     created_at: datetime
     updated_at: datetime
 
@@ -292,9 +326,9 @@ class DataDrivenExecutionResult(BaseModel):
 # ========== 调度任务 Schema ==========
 
 class ScheduleTaskCreate(BaseModel):
-    scenario_id: Any
+    scenario_id: int
     cron_expression: str
-    env_id: Optional[Any] = None
+    env_id: OptionalInt = None
     webhook_url: Optional[str] = None
     name: Optional[str] = None
     is_active: Optional[bool] = True
@@ -303,8 +337,8 @@ class ScheduleTaskCreate(BaseModel):
 class ScheduleTaskResponse(BaseModel):
     task_id: str
     job_id: str
-    scenario_id: Any
-    env_id: Optional[Any]
+    scenario_id: int
+    env_id: OptionalInt = None
     cron_expression: str
     webhook_url: Optional[str] = None
     name: str

@@ -56,7 +56,6 @@ async def _resolve_group_id(db: AsyncSession, group_id: Optional[int], user_id: 
     return group.id
 
 
-@router.get("/export/jmeter/case/{case_id}")
 @router.post("/export/jmeter/case/{case_id}")
 async def export_case_to_jmeter(
     case_id: int,
@@ -118,11 +117,17 @@ async def export_cases_to_jmeter(
     thread_group_config: Optional[Dict[str, Any]] = None
 
     if isinstance(body, list):
-        case_ids = [int(case_id) for case_id in body]
+        try:
+            case_ids = [int(case_id) for case_id in body]
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="case_ids 包含无效的数字")
     elif isinstance(body, dict):
         raw_case_ids = body.get("case_ids") or []
         if raw_case_ids:
-            case_ids = [int(case_id) for case_id in raw_case_ids]
+            try:
+                case_ids = [int(case_id) for case_id in raw_case_ids]
+            except (ValueError, TypeError):
+                raise HTTPException(status_code=400, detail="case_ids 包含无效的数字")
         group_id = body.get("group_id")
         thread_group_config = body.get("thread_group_config")
 
@@ -292,8 +297,10 @@ async def import_jmeter_file(
     if not file.filename.endswith(".jmx"):
         raise HTTPException(status_code=400, detail="只支持 .jmx 文件")
     
-    # 读取文件内容
+    # 读取文件内容（限制大小 10MB）
     content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="文件大小超过 10MB 限制")
     xml_content = content.decode("UTF-8", errors="replace")
     
     # 解析 JMeter XML
@@ -316,7 +323,14 @@ async def import_jmeter_file(
             headers=case_data.get("headers"),
             params=case_data.get("params"),
             body_type=case_data.get("body_type", "none"),
-            content_type=case_data.get("headers", {}).get("Content-Type") or case_data.get("content_type"),
+            headers_data = case_data.get("headers") or {}
+            if isinstance(headers_data, str):
+                try:
+                    import json as _json
+                    headers_data = _json.loads(headers_data)
+                except (ValueError, TypeError):
+                    headers_data = {}
+            content_type=headers_data.get("Content-Type") if isinstance(headers_data, dict) else case_data.get("content_type"),
             payload=case_data.get("payload"),
             assert_rules=case_data.get("assert_rules"),
             extractors=case_data.get("extractors"),
@@ -727,7 +741,7 @@ async def _run_bench(task_id: str, config: dict):
                             "headers_size": 0,
                             "worker": worker_id,
                             "thread_name": f"线程组 1-{worker_id + 1}",
-                            "start_time": req_start_iso if 'req_start_iso' in dir() else "-",
+                            "start_time": req_start_iso,
                             "data_type": "text",
                             "error": err_msg,
                             "request_body": (target.get("body", "") or "")[:10000],
@@ -835,8 +849,8 @@ async def _run_bench(task_id: str, config: dict):
         for key, s in url_map.items():
             t = sorted(s["times"])
             per_url.append({
-                "url": u,
-                "name": s.get("name", u),
+                "url": s["url"],
+                "name": s.get("name", s["url"]),
                 "method": s.get("method", "GET"),
                 "count": s["count"],
                 "success": s["success"],

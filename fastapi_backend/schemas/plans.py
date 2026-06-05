@@ -18,9 +18,11 @@ class TestPlanCreate(TestPlanBase):
     pass
 
 
-class TestPlanUpdate(TestPlanBase):
+class TestPlanUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    environment_id: Optional[int] = None
+    case_ids: Optional[List[int]] = None
 
 
 class TestPlanResponse(BaseModel):

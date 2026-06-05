@@ -427,10 +427,17 @@ async def create_batch_interview_session(
     try:
         from sqlalchemy import text as sa_text
 
+        # 只放弃同一批面试的旧会话（通过 position/level/type 匹配），而非所有会话
         await db.execute(
             sa_text(
-                "UPDATE interview_sessions SET status='abandoned' WHERE user_id=:uid AND status IN ('started', 'submitted')"
-            ).bindparams(uid=current_user.id)
+                "UPDATE interview_sessions SET status='abandoned' "
+                "WHERE user_id=:uid AND status IN ('started', 'submitted') "
+                "AND (position=:pos OR title LIKE :title_pattern)"
+            ).bindparams(
+                uid=current_user.id,
+                pos=body.position,
+                title_pattern=f"%{body.position}%",
+            )
         )
         await db.commit()
     except Exception as e:
@@ -733,12 +740,18 @@ async def create_submission(
 
     db.add(new_submission)
 
-    # 6. 更新会话的最新提交ID（与提交记录在同一事务中）
+    try:
+        await db.flush()  # flush 后 new_submission.id 才有值
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"提交保存失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="提交保存失败，事务已回滚")
+
+    # 6. 更新会话的最新提交ID（flush 后 id 已赋值）
     session.latest_submission_id = new_submission.id
     session.status = "submitted"
 
     try:
-        await db.flush()
         await db.commit()
     except Exception as e:
         await db.rollback()
@@ -765,7 +778,9 @@ async def create_submission(
                 exc_info=True,
             )
 
-    asyncio.create_task(_execute_and_evaluate_safe())
+    # 保存 task 引用，防止 GC 回收导致任务丢失
+    _bg_task = asyncio.create_task(_execute_and_evaluate_safe())
+    _bg_task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.exception() else None)
 
     return SuccessResponse(
         data=SubmissionDetail.model_validate(new_submission),

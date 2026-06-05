@@ -451,20 +451,55 @@ class CodeSandbox:
                     return False, f"检测到危险关键字: {pattern}"
             return True, ""
 
+        # setup_sql 安全检查：允许 DDL 但禁止危险操作
+        def is_safe_setup_sql(stmt: str) -> tuple[bool, str]:
+            stmt_upper = stmt.strip().upper()
+            # setup_sql 中禁止的危险关键字（允许 CREATE/INSERT/UPDATE/DELETE 用于建表和初始化数据）
+            dangerous_keywords = [
+                r"\bATTACH\b",
+                r"\bDETACH\b",
+                r"\bLOAD_EXTENSION\b",
+                r"\bGRANT\b",
+                r"\bREVOKE\b",
+                r"\bVACUUM\b",
+            ]
+            for pattern in dangerous_keywords:
+                if re.search(pattern, stmt_upper):
+                    return False, f"setup_sql 中检测到危险关键字: {pattern}"
+            return True, ""
+
         def _sync_execute():
             """同步执行 SQL，用于在线程池中运行"""
             conn = sqlite3.connect(":memory:")
             conn.row_factory = sqlite3.Row
             output = []
+            # 设置超时：使用 set_progress_handler 每 100ms 检查是否超时
+            import time as _time
+            _start_time = _time.monotonic()
+            _timeout_ms = int(timeout * 1000) if timeout else 5000
+
+            def _progress_check():
+                if (_time.monotonic() - _start_time) * 1000 > _timeout_ms:
+                    raise sqlite3.OperationalError("SQL 执行超时")
+
+            conn.set_progress_handler(_progress_check, 100)
 
             try:
                 cursor = conn.cursor()
 
-                # setup_sql 用于建表和初始数据，允许执行 DDL
+                # setup_sql 用于建表和初始数据，允许执行 DDL 但需安全检查
                 if setup_sql and setup_sql.strip():
                     for stmt in setup_sql.split(";"):
                         stmt = stmt.strip()
                         if stmt:
+                            safe, msg = is_safe_setup_sql(stmt)
+                            if not safe:
+                                return {
+                                    "exit_code": 1,
+                                    "stdout": "",
+                                    "stderr": f"setup_sql 安全检查失败：{msg}",
+                                    "execution_time_ms": 0,
+                                }
                             try:
                                 cursor.execute(stmt)
                             except sqlite3.Error:
@@ -529,11 +564,15 @@ class CodeSandbox:
 
         # 使用信号量限制并发
         async with self._concurrency_semaphore:
-            shell_cmd = "bash"
-            if platform.system() == "Windows":
+            is_windows = platform.system() == "Windows"
+            if is_windows:
                 shell_cmd = "powershell.exe"
+                suffix = ".ps1"
+            else:
+                shell_cmd = "bash"
+                suffix = ".sh"
 
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False, encoding="utf-8") as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False, encoding="utf-8") as f:
                 f.write(code)
                 temp_file = f.name
 
@@ -546,15 +585,27 @@ class CodeSandbox:
                     "TMPDIR": tempfile.gettempdir(),
                 }
 
-                process = await asyncio.create_subprocess_exec(
-                    shell_cmd,
-                    temp_file,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    stdin=asyncio.subprocess.DEVNULL,
-                    cwd=tempfile.gettempdir(),
-                    env=safe_env,
-                )
+                if is_windows:
+                    process = await asyncio.create_subprocess_exec(
+                        shell_cmd,
+                        "-ExecutionPolicy", "Bypass",
+                        "-File", temp_file,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        stdin=asyncio.subprocess.DEVNULL,
+                        cwd=tempfile.gettempdir(),
+                        env=safe_env,
+                    )
+                else:
+                    process = await asyncio.create_subprocess_exec(
+                        shell_cmd,
+                        temp_file,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        stdin=asyncio.subprocess.DEVNULL,
+                        cwd=tempfile.gettempdir(),
+                        env=safe_env,
+                    )
                 try:
                     stdout_bytes, stderr_bytes = await asyncio.wait_for(process.communicate(), timeout=timeout)
                 except asyncio.TimeoutError:

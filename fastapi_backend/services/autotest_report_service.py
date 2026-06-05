@@ -5,6 +5,8 @@ AutoTest 报告服务
 """
 import json
 import logging
+import os
+import tempfile
 import time
 import uuid
 from datetime import datetime
@@ -29,7 +31,14 @@ def load_step_results_from_file(record: AutoTestScenarioExecutionRecord) -> List
     if step_results_file.exists():
         try:
             with open(step_results_file, "r", encoding="utf-8") as f:
-                step_results = json.load(f)
+                content = f.read()
+            if content.strip():
+                step_results = json.loads(content)
+            else:
+                step_results = []
+        except json.JSONDecodeError as e:
+            _logger.warning(f"步骤结果文件 JSON 解析失败（可能正在写入中） {step_results_file}: {e}")
+            step_results = []
         except Exception as e:
             _logger.warning(f"加载步骤结果文件失败 {step_results_file}: {e}")
             step_results = []
@@ -173,6 +182,8 @@ async def get_report_detail(report_id: int, db: AsyncSession, user_id: int = Non
 
 
 def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dict, history_id: str):
+    if not result or not isinstance(result, dict):
+        result = {}
     start_time = result.get("start_time")
     if start_time:
         if isinstance(start_time, (int, float)):
@@ -193,7 +204,7 @@ def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dic
 
     for i, step in enumerate(step_results):
         i_plus_1 = i + 1
-        step_duration = step.get("duration", 0)
+        step_duration = step.get("duration", 0) or step.get("response_time", 0)
         step_start_ms = base_start_ms + cumulative_ms
         step_stop_ms = step_start_ms + step_duration
         cumulative_ms += step_duration
@@ -328,5 +339,19 @@ def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dic
             test_case_result["statusDetails"] = status_details
 
         output_file = allure_results_dir / f"scenario-{scenario_id}-step-{i_plus_1}-{history_id}.json"
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(test_case_result, f, ensure_ascii=False, indent=2)
+        # 原子写入：先写临时文件再 rename，避免并发读取到部分写入的 JSON
+        tmp_path = None
+        try:
+            fd, tmp_path = tempfile.mkstemp(suffix=".json", dir=str(allure_results_dir))
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(test_case_result, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, str(output_file))
+        except Exception:
+            # 原子写入失败时回退到直接写入
+            if tmp_path:
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(test_case_result, f, ensure_ascii=False, indent=2)

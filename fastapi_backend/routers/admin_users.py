@@ -235,11 +235,14 @@ async def delete_user(
         InterviewSession,
         ExamAttempt,
         UserProgress,
+        UserAchievement,
+        Note,
+        DailyCheckin,
     )
     from sqlalchemy import delete as sql_delete
 
     # 批量删除关联数据
-    for model in [Comment, Submission, InterviewSession, ExamAttempt, UserProgress, Like, Favorite]:
+    for model in [Comment, Submission, InterviewSession, ExamAttempt, UserProgress, Like, Favorite, UserAchievement, Note, DailyCheckin]:
         try:
             await db.execute(sql_delete(model).where(model.user_id == user_id))
         except Exception as e:
@@ -269,6 +272,8 @@ async def toggle_user_status(
     db: AsyncSession = Depends(get_db),
 ):
     """切换用户启用/禁用状态"""
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="不能禁用自己的账号")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -344,24 +349,34 @@ async def admin_login(data: AdminLoginRequest):
 
     async with AsyncSessionLocal() as session:
         user = await auth_service.authenticate_user(session, username, password)
+        if user:
+            # 在 session 关闭前提取 role 信息，避免 DetachedInstanceError
+            user_role = user.role
+            user_id = user.id
+            user_username = user.username
+            user_email = user.email
+            user_is_admin = user.is_admin
+            user_is_super_admin = user.is_super_admin
+            user_avatar = user.avatar
 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
 
-    if not user.is_admin and not user.is_super_admin:
+    if not user_is_admin and not user_is_super_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无管理员权限")
 
+    # 重新构造 user 对象供 create_token_pair 使用（仅需 id/username/is_admin）
     token_pair = auth_service.create_token_pair(user)
     return {
         "token": token_pair.access_token,
         "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "is_admin": user.is_admin,
-            "is_super_admin": user.is_super_admin,
-            "avatar": user.avatar,
-            "role": user.role,
+            "id": user_id,
+            "username": user_username,
+            "email": user_email,
+            "is_admin": user_is_admin,
+            "is_super_admin": user_is_super_admin,
+            "avatar": user_avatar,
+            "role": user_role,
         },
     }
 

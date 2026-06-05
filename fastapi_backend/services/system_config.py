@@ -6,6 +6,8 @@
 
 import json
 import logging
+import threading
+import copy
 from typing import Dict, Any, Optional
 from pathlib import Path
 
@@ -50,12 +52,15 @@ class SystemConfigManager:
     """系统配置管理器"""
 
     _instance = None
+    _instance_lock = threading.Lock()
     _config: Dict[str, Any] = {}
+    _config_lock = threading.RLock()
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+        with cls._instance_lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+            return cls._instance
 
     def __init__(self):
         if not hasattr(self, "initialized"):
@@ -71,9 +76,9 @@ class SystemConfigManager:
                 _logger.info(f"系统配置已加载: {CONFIG_FILE}")
             except Exception as e:
                 _logger.error(f"加载系统配置失败: {e}")
-                self._config = DEFAULT_CONFIG.copy()
+                self._config = copy.deepcopy(DEFAULT_CONFIG)
         else:
-            self._config = DEFAULT_CONFIG.copy()
+            self._config = copy.deepcopy(DEFAULT_CONFIG)
             self._save_config()
 
     def _save_config(self):
@@ -88,53 +93,59 @@ class SystemConfigManager:
 
     def get_all_config(self) -> Dict[str, Any]:
         """获取所有配置"""
-        return self._config.copy()
+        with self._config_lock:
+            return copy.deepcopy(self._config)
 
     def get_section(self, section: str) -> Dict[str, Any]:
         """获取配置节"""
-        return self._config.get(section, {}).copy()
+        with self._config_lock:
+            return self._config.get(section, {}).copy()
 
     def get_value(self, section: str, key: str, default=None) -> Any:
         """获取配置值"""
-        return self._config.get(section, {}).get(key, default)
+        with self._config_lock:
+            return self._config.get(section, {}).get(key, default)
 
     def update_section(self, section: str, values: Dict[str, Any]) -> Dict[str, Any]:
         """更新配置节"""
-        if section not in self._config:
-            self._config[section] = {}
+        with self._config_lock:
+            if section not in self._config:
+                self._config[section] = {}
 
-        self._config[section].update(values)
-        self._save_config()
+            self._config[section].update(values)
+            self._save_config()
 
-        # 如果是日志配置，动态调整日志级别
-        if section == "logging":
-            self._apply_logging_config()
+            # 如果是日志配置，动态调整日志级别
+            if section == "logging":
+                self._apply_logging_config()
 
-        return self._config[section].copy()
+            return self._config[section].copy()
 
     def update_value(self, section: str, key: str, value: Any) -> Any:
         """更新单个配置值"""
-        if section not in self._config:
-            self._config[section] = {}
+        with self._config_lock:
+            if section not in self._config:
+                self._config[section] = {}
 
-        self._config[section][key] = value
-        self._save_config()
+            self._config[section][key] = value
+            self._save_config()
 
-        # 如果是日志配置，动态调整日志级别
-        if section == "logging" and key == "level":
-            self._apply_logging_config()
+            # 如果是日志配置，动态调整日志级别
+            if section == "logging" and key == "level":
+                self._apply_logging_config()
 
-        return value
+            return value
 
     def reset_to_default(self, section: Optional[str] = None):
         """重置配置为默认值"""
-        if section:
-            if section in DEFAULT_CONFIG:
-                self._config[section] = DEFAULT_CONFIG[section].copy()
-        else:
-            self._config = DEFAULT_CONFIG.copy()
+        with self._config_lock:
+            if section:
+                if section in DEFAULT_CONFIG:
+                    self._config[section] = copy.deepcopy(DEFAULT_CONFIG[section])
+            else:
+                self._config = copy.deepcopy(DEFAULT_CONFIG)
 
-        self._save_config()
+            self._save_config()
         _logger.info(f"配置已重置为默认值: {section or '全部'}")
 
     def _apply_logging_config(self):

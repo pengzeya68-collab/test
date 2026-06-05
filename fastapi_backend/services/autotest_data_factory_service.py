@@ -4,6 +4,7 @@
 """
 import random
 import string
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
@@ -17,8 +18,10 @@ class DataFactoryEngine:
     def __init__(self, env_vars: Optional[Dict[str, Any]] = None):
         self.env_vars = env_vars or {}
         self._increment_counters: Dict[str, int] = {}
+        self._counter_lock = threading.Lock()
 
     def generate_preview(self, fields: List[dict], row_count: int = 5) -> Dict[str, Any]:
+        self._increment_counters.clear()  # 每次生成预览时重置计数器
         columns = [f["field_name"] for f in fields]
         rows = []
         for _ in range(min(row_count, 20)):
@@ -30,6 +33,7 @@ class DataFactoryEngine:
         return {"columns": columns, "rows": rows}
 
     def generate_dataset(self, fields: List[dict], row_count: int = 10) -> Dict[str, Any]:
+        self._increment_counters.clear()  # 每次生成数据集时重置计数器
         columns = [f["field_name"] for f in fields]
         rows = []
         for _ in range(row_count):
@@ -51,11 +55,12 @@ class DataFactoryEngine:
             start = config.get("start", 1)
             step = config.get("step", 1)
             key = field_name or "default"
-            if key not in self._increment_counters:
-                self._increment_counters[key] = start
-            else:
-                self._increment_counters[key] += step
-            return f"{prefix}{self._increment_counters[key]}"
+            with self._counter_lock:
+                if key not in self._increment_counters:
+                    self._increment_counters[key] = start
+                else:
+                    self._increment_counters[key] += step
+                return f"{prefix}{self._increment_counters[key]}"
         elif rule_type == "uuid":
             version = config.get("version", 4)
             raw = str(uuid.uuid4())
@@ -111,8 +116,9 @@ class DataFactoryEngine:
             return f"{prefix}_{suffix}"
         elif rule_type == "env_ref":
             var_name = config.get("variable_name", "")
-            default = config.get("default", "")
-            return self.env_vars.get(str(var_name), default)
+            default = config.get("default") if "default" in config else ""
+            val = self.env_vars.get(str(var_name))
+            return val if val is not None else default
         else:
             return config.get("value", "")
 

@@ -94,8 +94,9 @@ class MockEngine:
         expected = condition.get("value", "")
         source = condition.get("source", "query")  # query / body / header
 
-        # 从 request_params 中取值
-        actual = request_params.get(param_name)
+        # 根据 source 从对应子字典中取值
+        source_map = request_params.get(source, request_params) if isinstance(request_params, dict) else request_params
+        actual = source_map.get(param_name) if isinstance(source_map, dict) else request_params.get(param_name)
 
         try:
             if operator in ("eq", "equals", "=="):

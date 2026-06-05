@@ -5,7 +5,7 @@ from typing import Any, Optional
 import logging
 
 from sqlalchemy import select, text
-from fastapi_backend.core.database import async_session
+from fastapi_backend.core.autotest_database import async_session
 from fastapi_backend.models.autotest import AutoTestScenario
 
 _logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ async def clear_schedule_from_db(scenario_id: int, user_id: int = None) -> None:
         row.schedule_env_id = None
         row.schedule_webhook_url = None
         row.schedule_task_name = None
-        row.schedule_is_active = True
+        row.schedule_is_active = False  # 清除调度时应设为 False，避免重启时恢复空 cron 的任务
         await session.commit()
 
 
@@ -114,6 +114,21 @@ async def restore_scheduler_jobs_from_db() -> None:
         if not cron:
             continue
         if not s.is_active:
+            continue
+        if s.schedule_is_active is False:
+            # 调度被暂停，恢复任务但保持暂停状态
+            try:
+                add_scheduled_task(
+                    scenario_id=s.id,
+                    cron_expression=cron,
+                    env_id=s.schedule_env_id,
+                    webhook_url=s.schedule_webhook_url,
+                    task_name=s.schedule_task_name,
+                    is_active=False,
+                    user_id=s.user_id,
+                )
+            except Exception as e:
+                _logger.error(f"[Scheduler] 从数据库恢复暂停任务失败 scenario_id={s.id}: {e}")
             continue
         try:
             add_scheduled_task(

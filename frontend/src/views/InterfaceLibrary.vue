@@ -47,6 +47,7 @@
         :environment-list="environmentList"
         :curl-data="curlData"
         @run="(caseData, envId) => emit('run-cases', caseData, envId)"
+        @refresh-groups="loadGroups"
       />
     </div>
   </div>

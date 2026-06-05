@@ -192,15 +192,19 @@ def export_curl(cases: List[Dict]) -> List[str]:
         parts = [f'curl -X {method} "{url}"']
 
         for k, v in headers.items():
-            parts.append(f'  -H "{k}: {v}"')
+            v_escaped = str(v).replace('"', '\\"')
+            parts.append(f'  -H "{k}: {v_escaped}"')
 
         if payload and method in ("POST", "PUT", "PATCH"):
             if body_type == "form-data" and isinstance(payload, dict):
                 for k, v in payload.items():
-                    parts.append(f'  -d "{k}={v}"')
+                    v_escaped = str(v).replace('"', '\\"')
+                    parts.append(f'  -d "{k}={v_escaped}"')
             else:
                 body_str = json.dumps(payload, ensure_ascii=False) if isinstance(payload, (dict, list)) else str(payload)
-                parts.append(f"  --data-raw '{body_str}'")
+                # 转义 body 中的单引号
+                body_escaped = body_str.replace("'", "'\\''")
+                parts.append(f"  --data-raw '{body_escaped}'")
 
         curls.append(" \\\n".join(parts))
 
@@ -224,6 +228,8 @@ def _json_to_schema(value: Any) -> Dict:
         return {"type": "integer", "example": value}
     elif isinstance(value, float):
         return {"type": "number", "example": value}
+    elif value is None:
+        return {"type": "string", "nullable": True, "example": None}
     else:
         return {"type": "string", "example": str(value)}
 

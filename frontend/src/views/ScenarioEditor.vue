@@ -365,11 +365,14 @@ const handleRemoveStep = async (step) => {
 }
 
 const handleStepActiveChange = async (step) => {
+  const oldActive = step.is_active
+  // 注意：此时 step.is_active 已被 switch 组件改为新值
   try {
     await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}/steps/${step.id}`, {
       is_active: step.is_active
     })
   } catch (error) {
+    step.is_active = !step.is_active  // 回滚 UI 状态
     ElMessage.error('更新失败')
   }
 }

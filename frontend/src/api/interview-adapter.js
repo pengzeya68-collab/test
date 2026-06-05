@@ -112,7 +112,7 @@ export async function clearHistory() {
     return { success: true, message: res.message || '历史记录已清空' }
   } catch (error) {
     console.error('清空历史接口调用失败:', error)
-    return { success: true, message: '历史记录已清空' }
+    return { success: false, message: '清空历史记录失败，请重试' }
   }
 }
 

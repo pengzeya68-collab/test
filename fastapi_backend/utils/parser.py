@@ -7,6 +7,7 @@ import re
 import time
 import random
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 
@@ -14,14 +15,14 @@ def find_variables(text: str) -> List[str]:
     """查找字符串中所有的 {{variable_name}} 占位符"""
     if not isinstance(text, str):
         return []
-    pattern = r"\{\{([\w\-\.]+)\}\}"
+    pattern = r"\{\{([\w\-\.\$]+)\}\}"
     matches = re.findall(pattern, text)
     return list(set(matches))
 
 
-def replace_variables_in_text(text: str, variables: Dict[str, Any]) -> str:
-    """替换字符串中的 {{variable}} 占位符"""
-    if not isinstance(text, str):
+def replace_variables_in_text(text: str, variables: Dict[str, Any], _depth: int = 0) -> str:
+    """替换字符串中的 {{variable}} 占位符，限制最大递归深度防止无限循环"""
+    if not isinstance(text, str) or _depth > 5:
         return text
 
     def replace_match(match):
@@ -40,14 +41,18 @@ def replace_variables_in_text(text: str, variables: Dict[str, Any]) -> str:
             elif var_name == "$uuid":
                 return str(uuid.uuid4())
             elif var_name == "$datetime":
-                return time.strftime("%Y-%m-%d %H:%M:%S")
+                return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
         if var_name in variables:
             return str(variables[var_name])
         return match.group(0)
 
-    pattern = r"\{\{([\w\-\.]+)\}\}"
-    return re.sub(pattern, replace_match, text)
+    pattern = r"\{\{([\w\-\.\$]+)\}\}"
+    result = re.sub(pattern, replace_match, text)
+    # 如果结果仍然包含变量占位符且与原始文本不同，递归替换
+    if re.search(pattern, result) and result != text:
+        return replace_variables_in_text(result, variables, _depth + 1)
+    return result
 
 
 def replace_variables(obj: Any, variables: Dict[str, Any]) -> Any:

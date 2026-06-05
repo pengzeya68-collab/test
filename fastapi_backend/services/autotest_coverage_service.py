@@ -26,16 +26,24 @@ async def get_coverage_summary(db: AsyncSession, user_id: int = None) -> dict:
         q_total_cases = q_total_cases.where(AutoTestCase.user_id == user_id)
 
     total_apis = await db.scalar(q_total_apis) or 0
-    covered_apis = total_apis  # 只要创建了用例就算覆盖
     total_cases = await db.scalar(q_total_cases) or 0
 
     # 最近 30 天的执行记录
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+
+    # 被覆盖的接口数：有执行记录的不同 URL 数量（30天内执行过的）
+    q_covered = select(func.count(distinct(AutoTestCase.url))).join(
+        AutoTestHistory, AutoTestHistory.case_id == AutoTestCase.id
+    ).where(AutoTestHistory.created_at >= thirty_days_ago)
+    if user_id is not None:
+        q_covered = q_covered.where(AutoTestCase.user_id == user_id)
+    covered_apis = await db.scalar(q_covered) or 0
+
     q_total_exec = select(func.count(AutoTestHistory.id)).where(AutoTestHistory.created_at >= thirty_days_ago)
     q_passed_exec = select(func.count(AutoTestHistory.id)).where(
         and_(
             AutoTestHistory.created_at >= thirty_days_ago,
-            AutoTestHistory.status == "passed",
+            AutoTestHistory.status.in_(["success", "passed"]),
         )
     )
     if user_id is not None:
@@ -50,7 +58,7 @@ async def get_coverage_summary(db: AsyncSession, user_id: int = None) -> dict:
     return {
         "total_apis": total_apis,
         "covered_apis": covered_apis,
-        "coverage_rate": 100.0 if total_apis > 0 else 0,
+        "coverage_rate": round(covered_apis / total_apis * 100, 1) if total_apis > 0 else 0,
         "total_cases": total_cases,
         "total_executions_30d": total_executions,
         "passed_executions_30d": passed_executions,
@@ -140,7 +148,7 @@ async def get_coverage_heatmap(db: AsyncSession, days: int = 30, user_id: int = 
         case_url_map[c.id] = f"{c.method}:{c.url}"
 
     # 状态优先级：failed > unknown > passed > none
-    status_priority = {"failed": 3, "unknown": 2, "passed": 1, "none": 0}
+    status_priority = {"failed": 3, "unknown": 2, "success": 1, "passed": 1, "none": 0}
 
     matrix = [["none" for _ in dates] for _ in api_list]
     api_idx_map = {f"{a['method']}:{a['url']}": i for i, a in enumerate(api_list)}
@@ -166,7 +174,7 @@ async def get_coverage_heatmap(db: AsyncSession, days: int = 30, user_id: int = 
     for i, api in enumerate(api_list):
         row = matrix[i]
         executed = sum(1 for v in row if v != "none")
-        passed = sum(1 for v in row if v == "passed")
+        passed = sum(1 for v in row if v in ("passed", "success"))
         failed = sum(1 for v in row if v == "failed")
         api_stats.append(
             {

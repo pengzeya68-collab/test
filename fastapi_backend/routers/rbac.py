@@ -8,6 +8,7 @@ RBAC 权限管理路由
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func, delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_permission
@@ -155,7 +156,7 @@ async def get_role_permissions(
     _: User = Depends(require_permission("system:config")),
 ):
     """获取角色拥有的权限"""
-    result = await db.execute(select(Role).where(Role.id == role_id))
+    result = await db.execute(select(Role).options(selectinload(Role.permissions)).where(Role.id == role_id))
     role = result.scalar_one_or_none()
     if not role:
         raise HTTPException(status_code=404, detail="角色不存在")
@@ -176,16 +177,27 @@ async def assign_permissions_to_role(
     if not role:
         raise HTTPException(status_code=404, detail="角色不存在")
 
-    # 清空现有权限
-    await db.execute(sa_delete(RolePermissionMapping).where(RolePermissionMapping.role_id == role_id))
-
-    # 分配新权限
+    # 先验证所有权限码是否有效，避免清空后发现无效码导致权限丢失
+    valid_perms = []
+    invalid_codes = []
     for perm_code in data.permission_codes:
         perm_result = await db.execute(select(Permission).where(Permission.code == perm_code))
         permission = perm_result.scalar_one_or_none()
         if permission:
-            mapping = RolePermissionMapping(role_id=role_id, permission_id=permission.id)
-            db.add(mapping)
+            valid_perms.append(permission)
+        else:
+            invalid_codes.append(perm_code)
+
+    if invalid_codes:
+        raise HTTPException(status_code=400, detail=f"以下权限码不存在: {', '.join(invalid_codes)}")
+
+    # 验证通过后再清空现有权限
+    await db.execute(sa_delete(RolePermissionMapping).where(RolePermissionMapping.role_id == role_id))
+
+    # 分配新权限
+    for permission in valid_perms:
+        mapping = RolePermissionMapping(role_id=role_id, permission_id=permission.id)
+        db.add(mapping)
 
     await db.commit()
     return {"message": "权限分配成功"}

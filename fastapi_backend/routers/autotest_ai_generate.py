@@ -156,6 +156,11 @@ async def generate_from_swagger_url(
     自动拉取远程 Swagger 文档并启动生成任务。立即返回 task_id。
     """
     try:
+        from fastapi_backend.core.ssrf_guard import validate_url_safety
+        safe, reason = validate_url_safety(url)
+        if not safe:
+            raise HTTPException(status_code=400, detail=f"URL安全校验失败: {reason}")
+
         import httpx
 
         async with httpx.AsyncClient(timeout=30) as client:
@@ -196,9 +201,9 @@ async def _dispatch_generation_task(swagger_data: dict, options: dict, user_id: 
 
     # 预扣所有批次的积分
     if _batch_check is not None:
-        await _batch_check(total_batches)
-        if db is not None:
-            await db.commit()  # 提交积分扣费
+        check_batch, confirm = _batch_check
+        await check_batch(total_batches)
+        await confirm()  # 确认扣费
 
     # 初始化任务记录
     await update_task(task_id, {
@@ -252,7 +257,7 @@ async def get_generation_task_status(
 
     返回任务状态、进度百分比、当前阶段、已生成的用例和场景等。
     """
-    stored = get_task(task_id)
+    stored = await get_task(task_id)
     if not stored:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
     if stored.get("user_id") != current_user.id:
@@ -287,7 +292,7 @@ async def cancel_generation_task(
     立即标记任务为取消状态，后台任务会在下一批次前检查到取消标志并停止。
     已生成的用例会被保留，可在预览页查看并导入。
     """
-    stored = get_task(task_id)
+    stored = await get_task(task_id)
     if not stored:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
     if stored.get("user_id") != current_user.id:
@@ -453,9 +458,13 @@ async def confirm_import(
                 api_index = int(step_data.get("api_index", 0))
                 linked_case = created_cases[api_index] if 0 <= api_index < len(created_cases) else None
 
+                if linked_case is None:
+                    _logger.warning(f"场景 '{scenario_data.get('name')}' 步骤 {step_idx} 的 api_index={api_index} 越界，跳过该步骤")
+                    continue
+
                 step = AutoTestScenarioStep(
                     scenario_id=scenario.id,
-                    api_case_id=linked_case.id if linked_case else None,
+                    api_case_id=linked_case.id,
                     step_order=step_idx,
                     variable_overrides=step_data.get("use_variables"),
                 )

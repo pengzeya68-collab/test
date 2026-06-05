@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from fastapi_backend.core.database import get_db
+from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.models import (
     TestReport,
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/auto-test/diagnose", tags=["AutoTest-诊断"])
 async def diagnose_report(
     report_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_autotest_db),
 ):
     """
     诊断报告数据完整性：检测同一 report_id 下是否有累积的孤儿步骤数据
@@ -80,41 +80,50 @@ async def diagnose_report(
 async def diagnose_scenario(
     scenario_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_autotest_db),
 ):
     """
-    诊断场景数据完整性：检查该场景下所有报告的数据一致性
+    诊断场景数据完整性：检查该场景下所有执行记录的数据一致性
+    使用 AutoTestScenarioExecutionRecord 查询场景执行记录
     """
-    # 获取该场景下的所有报告（校验归属）
-    result = await db.execute(
-        select(TestReport)
-        .join(TestPlan, TestReport.plan_id == TestPlan.id, isouter=True)
-        .where(TestReport.plan_id == scenario_id, TestPlan.user_id == current_user.id)
-        .order_by(TestReport.id.desc())
+    from fastapi_backend.models.autotest import AutoTestScenarioExecutionRecord, AutoTestScenario
+
+    # 先检查场景是否属于当前用户
+    scenario_result = await db.execute(
+        select(AutoTestScenario)
+        .where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
     )
-    reports = result.scalars().all()
+    scenario = scenario_result.scalar_one_or_none()
+    if not scenario:
+        raise HTTPException(status_code=404, detail="场景不存在")
 
-    report_diagnostics = []
-    for report in reports:
-        # 计算实际步骤数
-        result = await db.execute(
-            select(func.count(TestReportResult.id))
-            .where(TestReportResult.report_id == report.id)
-        )
-        actual_steps = result.scalar()
+    # 查询该场景的所有执行记录
+    result = await db.execute(
+        select(AutoTestScenarioExecutionRecord)
+        .where(AutoTestScenarioExecutionRecord.scenario_id == scenario_id)
+        .order_by(AutoTestScenarioExecutionRecord.id.desc())
+    )
+    records = result.scalars().all()
 
-        report_diagnostics.append({
-            "report_id": report.id,
-            "status": report.status,
-            "total_count_db": report.total_count,
-            "actual_steps": actual_steps,
-            "executed_at": report.executed_at.isoformat() if report.executed_at else None
+    record_diagnostics = []
+    for record in records:
+        record_diagnostics.append({
+            "record_id": record.id,
+            "status": record.status,
+            "total_steps": record.total_steps,
+            "success_steps": record.success_steps,
+            "failed_steps": record.failed_steps,
+            "skipped_steps": record.skipped_steps,
+            "total_time": record.total_time,
+            "report_url": record.report_url,
+            "created_at": record.created_at.isoformat() if record.created_at else None,
         })
 
     return {
         "scenario_id": scenario_id,
-        "total_reports": len(reports),
-        "reports": report_diagnostics
+        "scenario_name": scenario.name,
+        "total_records": len(records),
+        "records": record_diagnostics
     }
 
 
@@ -130,7 +139,7 @@ async def check_data_consistency(
     # 检查报告和步骤的一致性（仅当前用户的数据）
     result = await db.execute(
         select(
-            func.count(TestReport.id).label("total_reports"),
+            func.count(func.distinct(TestReport.id)).label("total_reports"),
             func.count(TestReportResult.id).label("total_steps"),
             func.count(func.distinct(TestReportResult.report_id)).label("reports_with_steps")
         )

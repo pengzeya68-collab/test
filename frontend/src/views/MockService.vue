@@ -354,10 +354,26 @@ const saveRule = async () => {
   }
   saving.value = true
   try {
+    // 先验证 JSON 格式
+    let responseHeaders, responseBody
+    try {
+      responseHeaders = JSON.parse(ruleForm.value.response_headers_str || '{}')
+    } catch (e) {
+      ElMessage.error('响应头 JSON 格式错误: ' + e.message)
+      saving.value = false
+      return
+    }
+    try {
+      responseBody = JSON.parse(ruleForm.value.response_body_str || '{}')
+    } catch (e) {
+      ElMessage.error('响应体 JSON 格式错误: ' + e.message)
+      saving.value = false
+      return
+    }
     const data = {
       ...ruleForm.value,
-      response_headers: JSON.parse(ruleForm.value.response_headers_str || '{}'),
-      response_body: JSON.parse(ruleForm.value.response_body_str || '{}')
+      response_headers: responseHeaders,
+      response_body: responseBody
     }
     delete data.response_headers_str
     delete data.response_body_str

@@ -28,10 +28,13 @@ def validate_url_safety(url: str) -> tuple[bool, str]:
         try:
             resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
             for family, _, _, _, sockaddr in resolved:
-                ip = ipaddress.ip_address(sockaddr[0])
+                ip_obj = ipaddress.ip_address(sockaddr[0])
+                # 处理 IPv4-mapped IPv6 地址（如 ::ffff:127.0.0.1）
+                if isinstance(ip_obj, ipaddress.IPv6Address) and ip_obj.ipv4_mapped:
+                    ip_obj = ip_obj.ipv4_mapped
                 for network in BLOCKED_NETWORKS:
-                    if ip in network:
-                        return False, f"不允许访问内网地址 {ip}"
+                    if ip_obj in network:
+                        return False, f"不允许访问内网地址 {ip_obj}"
         except socket.gaierror:
             return False, f"无法解析主机名: {hostname}"
         return True, ""

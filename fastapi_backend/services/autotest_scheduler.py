@@ -3,12 +3,15 @@
 使用 APScheduler 实现定时执行测试场景
 """
 import asyncio
+import copy
 import json
 import logging
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional, List
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -23,14 +26,16 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 
 scheduler: Optional[AsyncIOScheduler] = None
+_scheduler_lock = threading.Lock()
 
 scheduled_tasks: Dict[str, Dict[str, Any]] = {}
+_scheduled_tasks_lock = threading.Lock()
 
 
 def _schedule_meta_from_db(scenario_id: int, user_id: int = None) -> Dict[str, Any]:
     """从 PostgreSQL 读取定时配置（内存丢失或从 Job 重建时补全 Webhook 等）。"""
     import asyncio
-    from fastapi_backend.core.database import async_session
+    from fastapi_backend.core.autotest_database import async_session
     from fastapi_backend.models.autotest import AutoTestScenario
     from sqlalchemy import select
 
@@ -58,13 +63,20 @@ def _schedule_meta_from_db(scenario_id: int, user_id: int = None) -> Dict[str, A
             }
 
     try:
-        loop = asyncio.get_running_loop()
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(asyncio.run, _read())
-            return future.result(timeout=5)
-    except RuntimeError:
-        return asyncio.run(_read())
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            # We're inside an existing event loop - use thread pool
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(asyncio.run, _read())
+                return future.result(timeout=5)
+        else:
+            # No running loop - safe to use asyncio.run
+            return asyncio.run(_read())
     except Exception as e:
         _logger.warning(f"读取定时配置失败: {e}")
         return {}
@@ -86,21 +98,23 @@ def get_scheduler() -> AsyncIOScheduler:
     """获取全局调度器实例"""
     global scheduler
     if scheduler is None:
-        db_url = settings.DATABASE_URL
-        if db_url.startswith("postgresql+asyncpg://"):
-            jobstore_url = db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
-        elif db_url.startswith("postgresql://"):
-            jobstore_url = db_url
-        else:
-            jobstore_url = f"sqlite:///{PROJECT_ROOT / 'instance' / 'scheduler_jobs.db'}"
-        scheduler = AsyncIOScheduler(
-            jobstores={'default': SQLAlchemyJobStore(url=jobstore_url)},
-            job_defaults={
-                'coalesce': True,
-                'max_instances': 1,
-                'misfire_grace_time': 300
-            }
-        )
+        with _scheduler_lock:
+            if scheduler is None:
+                db_url = settings.DATABASE_URL
+                if db_url.startswith("postgresql+asyncpg://"):
+                    jobstore_url = db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+                elif db_url.startswith("postgresql://"):
+                    jobstore_url = db_url
+                else:
+                    jobstore_url = f"sqlite:///{PROJECT_ROOT / 'instance' / 'scheduler_jobs.db'}"
+                scheduler = AsyncIOScheduler(
+                    jobstores={'default': SQLAlchemyJobStore(url=jobstore_url)},
+                    job_defaults={
+                        'coalesce': True,
+                        'max_instances': 1,
+                        'misfire_grace_time': 300
+                    }
+                )
     return scheduler
 
 
@@ -123,16 +137,18 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
             scenario = result.scalar_one_or_none()
             if not scenario or not scenario.is_active:
                 _logger.info(f"[Scheduler] 场景 {scenario_id} 已停用或不存在，跳过执行")
-                if task_id in scheduled_tasks:
-                    scheduled_tasks[task_id]["status"] = "skipped"
-                    scheduled_tasks[task_id]["last_error"] = "场景已停用，跳过执行"
+                with _scheduled_tasks_lock:
+                    if task_id in scheduled_tasks:
+                        scheduled_tasks[task_id]["status"] = "skipped"
+                        scheduled_tasks[task_id]["last_error"] = "场景已停用，跳过执行"
                 return
     except Exception as e:
         _logger.info(f"[Scheduler] 检查场景状态失败: {e}")
 
-    if task_id in scheduled_tasks:
-        scheduled_tasks[task_id]["last_run"] = datetime.now(timezone.utc).isoformat()
-        scheduled_tasks[task_id]["status"] = "running"
+    with _scheduled_tasks_lock:
+        if task_id in scheduled_tasks:
+            scheduled_tasks[task_id]["last_run"] = datetime.now(timezone.utc).isoformat()
+            scheduled_tasks[task_id]["status"] = "running"
 
     try:
         # 通过Celery发送任务
@@ -162,9 +178,10 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                     await asyncio.sleep(wait_interval)
                 except asyncio.CancelledError:
                     _logger.info(f"[Scheduler] 任务 {task_id} 等待被取消，正在更新任务状态")
-                    if task_id in scheduled_tasks:
-                        scheduled_tasks[task_id]["last_status"] = "cancelled"
-                        scheduled_tasks[task_id]["status"] = "idle"
+                    with _scheduled_tasks_lock:
+                        if task_id in scheduled_tasks:
+                            scheduled_tasks[task_id]["last_status"] = "cancelled"
+                            scheduled_tasks[task_id]["status"] = "idle"
                     raise  # 重新抛出，让外层处理
 
                 # 检查任务状态
@@ -185,9 +202,10 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                 raise TimeoutError(f"Celery任务超时: {celery_task_id}")
         except asyncio.CancelledError:
             _logger.info(f"[Scheduler] 任务 {task_id} 执行被完全取消")
-            if task_id in scheduled_tasks:
-                scheduled_tasks[task_id]["last_status"] = "cancelled"
-                scheduled_tasks[task_id]["status"] = "idle"
+            with _scheduled_tasks_lock:
+                if task_id in scheduled_tasks:
+                    scheduled_tasks[task_id]["last_status"] = "cancelled"
+                    scheduled_tasks[task_id]["status"] = "idle"
             return  # 直接返回，不继续执行后续代码
 
         # 生成Allure报告
@@ -214,7 +232,8 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                     shutil.rmtree(str(new_results_history))
                 shutil.copytree(str(old_report_history), str(new_results_history))
 
-            cmd_result = subprocess.run(
+            cmd_result = await asyncio.to_thread(
+                subprocess.run,
                 ["allure", "generate", str(allure_results_dir), "-o", str(report_dir), "--clean"],
                 capture_output=True,
                 timeout=60,
@@ -229,45 +248,58 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
         except (FileNotFoundError, Exception):
             report_url = None
 
-        if task_id in scheduled_tasks:
-            if result:
-                failed_steps = _failed_step_count(result)
-                scheduled_tasks[task_id]["last_status"] = "success" if failed_steps == 0 else "failed"
-                scheduled_tasks[task_id]["last_result"] = result
-            else:
-                scheduled_tasks[task_id]["last_status"] = "unknown"
-                scheduled_tasks[task_id]["last_result"] = None
-            scheduled_tasks[task_id]["report_url"] = report_url
-            scheduled_tasks[task_id]["status"] = "idle"
-
-            webhook_url = scheduled_tasks[task_id].get("webhook_url")
-            if webhook_url:
-                try:
-                    import requests as _req
-                    webhook_payload = {
-                        "scenario_id": scenario_id,
-                        "status": scheduled_tasks[task_id]["last_status"],
-                        "report_url": report_url,
-                        "total_steps": result.get("total_steps", 0) if result else 0,
-                        "failed_steps": _failed_step_count(result),
+        with _scheduled_tasks_lock:
+            if task_id in scheduled_tasks:
+                if result:
+                    failed_steps = _failed_step_count(result)
+                    scheduled_tasks[task_id]["last_status"] = "success" if failed_steps == 0 else "failed"
+                    # 仅存储摘要信息，避免内存膨胀
+                    scheduled_tasks[task_id]["last_result"] = {
+                        "total_steps": result.get("total_steps", 0),
+                        "failed_steps": failed_steps,
+                        "success_steps": result.get("success_steps", 0),
                     }
-                    await asyncio.to_thread(
-                        _req.post, webhook_url, json=webhook_payload, timeout=10
-                    )
-                except Exception as wh_err:
-                    _logger.warning(f"Webhook 通知失败 {webhook_url}: {wh_err}")
+                else:
+                    scheduled_tasks[task_id]["last_status"] = "unknown"
+                    scheduled_tasks[task_id]["last_result"] = None
+                scheduled_tasks[task_id]["report_url"] = report_url
+                scheduled_tasks[task_id]["status"] = "idle"
+
+                webhook_url = scheduled_tasks[task_id].get("webhook_url")
+                last_status = scheduled_tasks[task_id]["last_status"]
+            else:
+                webhook_url = None
+                last_status = "unknown"
+
+        if webhook_url:
+            try:
+                import requests as _req
+                webhook_payload = {
+                    "scenario_id": scenario_id,
+                    "status": last_status,
+                    "report_url": report_url,
+                    "total_steps": result.get("total_steps", 0) if result else 0,
+                    "failed_steps": _failed_step_count(result),
+                }
+                await asyncio.to_thread(
+                    _req.post, webhook_url, json=webhook_payload, timeout=10
+                )
+            except Exception as wh_err:
+                _logger.warning(f"Webhook 通知失败 {webhook_url}: {wh_err}")
 
     except asyncio.CancelledError:
         _logger.info(f"[Scheduler] 任务 {task_id} 被取消执行")
-        if task_id in scheduled_tasks:
-            scheduled_tasks[task_id]["last_status"] = "cancelled"
-            scheduled_tasks[task_id]["status"] = "idle"
+        with _scheduled_tasks_lock:
+            if task_id in scheduled_tasks:
+                scheduled_tasks[task_id]["last_status"] = "cancelled"
+                scheduled_tasks[task_id]["status"] = "idle"
     except Exception as e:
         _logger.info(f"[Scheduler] 任务 {task_id} 执行失败: {str(e)}")
-        if task_id in scheduled_tasks:
-            scheduled_tasks[task_id]["last_status"] = "error"
-            scheduled_tasks[task_id]["last_error"] = str(e)
-            scheduled_tasks[task_id]["status"] = "idle"
+        with _scheduled_tasks_lock:
+            if task_id in scheduled_tasks:
+                scheduled_tasks[task_id]["last_status"] = "error"
+                scheduled_tasks[task_id]["last_error"] = str(e)
+                scheduled_tasks[task_id]["status"] = "idle"
 
 
 def add_scheduled_task(
@@ -292,7 +324,7 @@ def add_scheduled_task(
 
     job = get_scheduler().add_job(
         func=execute_scenario_job,
-        trigger=CronTrigger(minute=minute, hour=hour, day=day, month=month, day_of_week=day_of_week),
+        trigger=CronTrigger(minute=minute, hour=hour, day=day, month=month, day_of_week=day_of_week, timezone=ZoneInfo("Asia/Shanghai")),
         args=[scenario_id, env_id, task_id, user_id],
         id=task_id,
         name=task_name or f"场景 {scenario_id} 定时执行",
@@ -324,7 +356,8 @@ def add_scheduled_task(
         "user_id": user_id,
     }
 
-    scheduled_tasks[task_id] = task_info
+    with _scheduled_tasks_lock:
+        scheduled_tasks[task_id] = task_info
     return task_info
 
 
@@ -334,8 +367,9 @@ def remove_scheduled_task(task_id: str) -> bool:
     try:
         sched = get_scheduler()
         sched.remove_job(task_id)
-        if task_id in scheduled_tasks:
-            del scheduled_tasks[task_id]
+        with _scheduled_tasks_lock:
+            if task_id in scheduled_tasks:
+                del scheduled_tasks[task_id]
         return True
     except Exception as e:
         _logger.error(f"删除定时任务失败 {task_id}: {e}")
@@ -345,7 +379,8 @@ def remove_scheduled_task(task_id: str) -> bool:
 def toggle_task_status(task_id: str) -> Dict[str, Any]:
     """切换定时任务的启用/暂停状态"""
     global scheduled_tasks
-    task_info = scheduled_tasks.get(task_id)
+    with _scheduled_tasks_lock:
+        task_info = scheduled_tasks.get(task_id)
     if not task_info:
         raise ValueError(f"任务 {task_id} 不存在")
 
@@ -358,33 +393,37 @@ def toggle_task_status(task_id: str) -> Dict[str, Any]:
         # 暂停任务
         _logger.info(f"[Scheduler] 暂停任务: {task_id}")
         sched.pause_job(task_id)
-        task_info["is_active"] = False
-        task_info["status"] = "paused"
+        with _scheduled_tasks_lock:
+            task_info["is_active"] = False
+            task_info["status"] = "paused"
     else:
         # 恢复任务
         _logger.info(f"[Scheduler] 恢复任务: {task_id}")
         sched.resume_job(task_id)
-        task_info["is_active"] = True
-        task_info["status"] = "idle"
+        with _scheduled_tasks_lock:
+            task_info["is_active"] = True
+            task_info["status"] = "idle"
 
     # 验证作业状态
     job = sched.get_job(task_id)
     if job:
         _logger.info(f"[Scheduler] 作业状态: pending={job.pending}, next_run_time={job.next_run_time}")
 
-    return {
-        "task_id": task_id,
-        "is_active": task_info["is_active"],
-        "status": task_info["status"],
-        "message": f"任务已{'启用' if task_info['is_active'] else '暂停'}"
-    }
+    with _scheduled_tasks_lock:
+        return {
+            "task_id": task_id,
+            "is_active": task_info["is_active"],
+            "status": task_info["status"],
+            "message": f"任务已{'启用' if task_info['is_active'] else '暂停'}"
+        }
 
 
 def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
     """获取任务信息"""
     # 首先检查内存字典
-    if task_id in scheduled_tasks:
-        return scheduled_tasks.get(task_id)
+    with _scheduled_tasks_lock:
+        if task_id in scheduled_tasks:
+            return copy.deepcopy(scheduled_tasks.get(task_id))
 
     # 如果内存中没有，检查调度器中是否有此任务
     sched = get_scheduler()
@@ -419,13 +458,12 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
             "last_result": None,
             "report_url": None,
             "status": "idle",
-            "is_active": not job.pending,
+            "is_active": job.next_run_time is not None,
             "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None
         }
-        scheduled_tasks[task_id] = task_info
-        return task_info
-
-    return None
+        with _scheduled_tasks_lock:
+            scheduled_tasks[task_id] = task_info
+        return copy.deepcopy(task_info)
 
 
 def get_all_scheduled_tasks(user_id: int = None) -> List[Dict[str, Any]]:
@@ -435,7 +473,9 @@ def get_all_scheduled_tasks(user_id: int = None) -> List[Dict[str, Any]]:
     # 首先确保scheduled_tasks包含所有调度器中的作业
     for job in sched.get_jobs():
         task_id = job.id
-        if task_id not in scheduled_tasks:
+        with _scheduled_tasks_lock:
+            already_loaded = task_id in scheduled_tasks
+        if not already_loaded:
             # 从作业重建任务信息
             args = job.args if job.args else []
             scenario_id = args[0] if len(args) > 0 else 0
@@ -465,20 +505,27 @@ def get_all_scheduled_tasks(user_id: int = None) -> List[Dict[str, Any]]:
                 "last_result": None,
                 "report_url": None,
                 "status": "idle",
-                "is_active": not job.pending,
+                "is_active": job.next_run_time is not None,
                 "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None
             }
-            scheduled_tasks[task_id] = task_info
+            with _scheduled_tasks_lock:
+                scheduled_tasks[task_id] = task_info
 
-    # 更新next_run_time；若内存中无 Webhook，从 DB 补全（避免仅内存字段丢失）
-    for task_id, task_info in scheduled_tasks.items():
+    # 更新next_run_time；若内存中无 Webhook，从 DB 补全
+    with _scheduled_tasks_lock:
+        task_ids = list(scheduled_tasks.keys())
+    for task_id in task_ids:
+        with _scheduled_tasks_lock:
+            task_info = scheduled_tasks.get(task_id)
+        if not task_info:
+            continue
         try:
             job = sched.get_job(task_id)
             if job and job.next_run_time:
                 task_info["next_run_time"] = job.next_run_time.isoformat()
             # 更新活动状态
             if job:
-                task_info["is_active"] = not job.pending
+                task_info["is_active"] = job.next_run_time is not None
         except Exception as e:
             _logger.warning(f"更新任务 next_run_time 失败 {task_id}: {e}")
         sid = task_info.get("scenario_id")
@@ -487,7 +534,8 @@ def get_all_scheduled_tasks(user_id: int = None) -> List[Dict[str, Any]]:
             if m.get("webhook_url"):
                 task_info["webhook_url"] = m.get("webhook_url")
 
-    tasks = list(scheduled_tasks.values())
+    with _scheduled_tasks_lock:
+        tasks = list(scheduled_tasks.values())
     if user_id is not None:
         tasks = [t for t in tasks if t.get("user_id") == user_id]
     return tasks
@@ -495,7 +543,8 @@ def get_all_scheduled_tasks(user_id: int = None) -> List[Dict[str, Any]]:
 
 def get_tasks_by_scenario(scenario_id: int, user_id: int = None) -> List[Dict[str, Any]]:
     """获取指定场景的所有定时任务"""
-    tasks = [task for task in scheduled_tasks.values() if task["scenario_id"] == scenario_id]
+    with _scheduled_tasks_lock:
+        tasks = [task for task in scheduled_tasks.values() if task["scenario_id"] == scenario_id]
     if user_id is not None:
         tasks = [t for t in tasks if t.get("user_id") == user_id]
     return tasks

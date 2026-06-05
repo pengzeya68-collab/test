@@ -17,14 +17,12 @@ def _persist_task_result(task_id: str, result_data: dict) -> None:
     """同步写入任务结果到持久化存储（Celery 进程内调用）"""
     try:
         from fastapi_backend.services.autotest_task_store import (
-            get_task,
+            get_task_sync,
             _task_store,
-            _get_store_lock,
             _save_task_to_file,
         )
 
-        lock = _get_store_lock()
-        stored = get_task(task_id)
+        stored = get_task_sync(task_id)
         normalized_result = dict(result_data)
         if stored is not None:
             stored.update(result_data)
@@ -40,9 +38,8 @@ def _persist_task_result(task_id: str, result_data: dict) -> None:
                 "result": normalized_result,
             }
             stored.update(result_data)
-        with lock:
-            _task_store[task_id] = stored
-            _save_task_to_file(task_id, stored)
+        _task_store[task_id] = stored
+        _save_task_to_file(task_id, stored)
         _logger.info(f"[Celery] 任务 {task_id} 状态已持久化: {stored['status']}")
     except Exception as e:
         _logger.warning(f"[Celery] 持久化任务 {task_id} 状态失败: {e}", exc_info=True)
@@ -76,11 +73,9 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
             try:
                 from fastapi_backend.services.autotest_task_store import (
                     _task_store,
-                    _get_store_lock,
                     _save_task_to_file,
                 )
 
-                lock = _get_store_lock()
                 progress_data = {
                     "task_id": task_id,
                     "scenario_id": scenario_id,
@@ -97,12 +92,11 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
                     },
                     "updated_at": time.time(),
                 }
-                with lock:
-                    if task_id in _task_store:
-                        _task_store[task_id].update(progress_data)
-                    else:
-                        _task_store[task_id] = progress_data
-                    _save_task_to_file(task_id, _task_store[task_id])
+                if task_id in _task_store:
+                    _task_store[task_id].update(progress_data)
+                else:
+                    _task_store[task_id] = progress_data
+                _save_task_to_file(task_id, _task_store[task_id])
             except Exception as e:
                 _logger.warning(f"[Celery] 同步进度到持久化存储失败: {e}")
 
@@ -137,6 +131,8 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
         # Force garbage collection to clean up any lingering async references
         gc.collect()
 
+        if not isinstance(result, dict):
+            result = {"raw_result": str(result)}
         result["task_id"] = task_id
         result["status"] = "completed"
         result["scenario_id"] = scenario_id
@@ -174,23 +170,56 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
         return fail_payload
 
 
-@app.task(bind=True, name="fastapi_backend.tasks.send_email")
-def task_send_email(self, to_email: str, subject: str, content: str):
-    """Celery任务：发送邮件"""
+@app.task(bind=True, max_retries=2, name="fastapi_backend.tasks.send_email")
+def task_send_email(self, to_email: str, subject: str, body: str, html_body: str = None):
+    """发送邮件的 Celery 任务"""
     task_id = self.request.id
 
     try:
-        time.sleep(1)
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        from fastapi_backend.utils.encryption import decrypt
+        from fastapi_backend.services.system_config import get_system_config_sync
 
-        return {
-            "task_id": task_id,
-            "status": "completed",
-            "to_email": to_email,
-            "subject": subject,
-            "sent": True,
-        }
+        config = get_system_config_sync()
+        smtp_host = config.get("smtpHost", "")
+        smtp_port = int(config.get("smtpPort", 465))
+        smtp_user = config.get("smtpUser", "")
+        smtp_password_encrypted = config.get("smtpPassword", "")
+        smtp_use_ssl = config.get("smtpUseSSL", config.get("enableSSL", True))
+        from_email = config.get("smtpFromEmail", smtp_user)
+
+        if not smtp_host or not smtp_user:
+            _logger.warning("SMTP 未配置，邮件发送跳过")
+            return {"status": "skipped", "reason": "SMTP not configured", "task_id": task_id}
+
+        smtp_password = decrypt(smtp_password_encrypted) if smtp_password_encrypted else ""
+
+        msg = MIMEMultipart("alternative")
+        msg["From"] = from_email
+        msg["To"] = to_email
+        msg["Subject"] = subject
+
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+        if html_body:
+            msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        # 根据端口和配置选择 SSL 或 TLS 模式
+        if smtp_use_ssl or smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+                server.login(smtp_user, smtp_password)
+                server.sendmail(from_email, [to_email], msg.as_string())
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(from_email, [to_email], msg.as_string())
+
+        return {"status": "sent", "to": to_email, "task_id": task_id}
     except Exception as e:
-        return {"task_id": task_id, "status": "failed", "error": str(e)}
+        _logger.error(f"邮件发送失败: {e}")
+        raise self.retry(exc=e, countdown=30)
 
 
 celery_app = app

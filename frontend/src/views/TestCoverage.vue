@@ -271,7 +271,12 @@ const showDetail = async (api, date) => {
   detailVisible.value = true
   detailLoading.value = true
   try {
-    const ids = (api.case_ids || [api.id]).join(',')
+    const ids = (api.case_ids || []).join(',')
+    if (!ids) {
+      detailRecords.value = []
+      detailLoading.value = false
+      return
+    }
     const resp = await autoTestRequest.get(`/auto-test/coverage/detail?case_ids=${ids}&days=${selectedDays.value}`)
     detailRecords.value = resp?.records || []
   } catch (e) {

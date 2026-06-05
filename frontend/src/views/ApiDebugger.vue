@@ -510,7 +510,7 @@ const confirmSaveToApiLibrary = async () => {
     else if (rawBodyType === 'html') contentType = 'text/html'
     else if (rawBodyType === 'text') contentType = 'text/plain'
     else if (rawBodyType === 'form-data') contentType = 'multipart/form-data'
-    const payload = { name: apiLibraryForm.value.name, group_id: apiLibraryForm.value.group_id, method: debugForm.value.method, url: debugForm.value.url, headers, params, body_type: bodyType, content_type: contentType, payload: requestPayload, description: apiLibraryForm.value.description }
+    const payload = { name: apiLibraryForm.value.name, group_id: apiLibraryForm.value.group_id, method: debugForm.value.method, url: debugForm.value.url, headers, params, body_type: bodyType, content_type: contentType, payload: requestPayload, form_data: bodyType === 'form-data' ? requestPayload : {}, description: apiLibraryForm.value.description }
     await autoTestRequest.post('/auto-test/cases', payload)
     ElMessage.success('保存到接口库成功'); saveToApiLibraryDialog.value = false; emit('case-saved')
   } catch (error) { ElMessage.error(error.response?.data?.detail || '保存到接口库失败') }

@@ -21,7 +21,14 @@ def _deep_diff(a: Any, b: Any, path: str = "") -> List[Dict]:
     """深度比较两个 JSON 对象，返回差异列表"""
     diffs = []
 
-    if type(a) != type(b):
+    # 类型比较：bool 和 int 视为不同类型，int 和 float 可比较
+    if isinstance(a, bool) != isinstance(b, bool):
+        diffs.append({"path": path or "$", "type": "type_changed", "from": type(a).__name__, "to": type(b).__name__})
+        return diffs
+    if isinstance(a, (int, float)) != isinstance(b, (int, float)):
+        diffs.append({"path": path or "$", "type": "type_changed", "from": type(a).__name__, "to": type(b).__name__})
+        return diffs
+    if not isinstance(a, (int, float)) and type(a) != type(b):
         diffs.append({"path": path or "$", "type": "type_changed", "from": type(a).__name__, "to": type(b).__name__})
         return diffs
 
@@ -69,13 +76,13 @@ async def compare_responses(
     if isinstance(a, str):
         try:
             a = json.loads(a)
-        except:
-            pass
+        except (json.JSONDecodeError, TypeError):
+            raise HTTPException(status_code=400, detail="请求体A不是有效的JSON")
     if isinstance(b, str):
         try:
             b = json.loads(b)
-        except:
-            pass
+        except (json.JSONDecodeError, TypeError):
+            raise HTTPException(status_code=400, detail="请求体B不是有效的JSON")
 
     diffs = _deep_diff(a, b)
     return {
@@ -94,14 +101,13 @@ async def compare_responses(
 @router.get("/cases")
 async def list_diffable_cases(
     current_user: User = Depends(get_current_active_user),
-    db=Depends(get_autotest_db),
+    db: AsyncSession = Depends(get_autotest_db),
 ):
     """列出可进行 Diff 对比的接口用例"""
-    async for session in db():
-        result = await session.execute(
-            select(AutoTestCase).where(
-                AutoTestCase.user_id == current_user.id,
-            ).limit(50)
-        )
-        cases = result.scalars().all()
-        return {"cases": [{"id": c.id, "name": c.name, "method": c.method, "url": c.url} for c in cases]}
+    result = await db.execute(
+        select(AutoTestCase).where(
+            AutoTestCase.user_id == current_user.id,
+        ).limit(50)
+    )
+    cases = result.scalars().all()
+    return {"cases": [{"id": c.id, "name": c.name, "method": c.method, "url": c.url} for c in cases]}

@@ -5,7 +5,7 @@ AutoTest 路由 - 测试覆盖率看板
 功能: 接口覆盖率统计、热力图数据、执行详情
 """
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
@@ -54,4 +54,6 @@ async def api_execution_detail(
         ids = [int(x.strip()) for x in case_ids.split(",") if x.strip()]
     except ValueError:
         ids = []
+    if not ids:
+        raise HTTPException(status_code=400, detail="case_ids 解析后为空")
     return await get_api_execution_detail(db, ids, days, user_id=current_user.id)

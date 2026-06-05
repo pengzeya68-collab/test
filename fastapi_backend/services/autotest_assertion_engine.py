@@ -7,6 +7,7 @@ AutoTest 统一断言引擎
 
 import json
 import logging
+import math
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -57,6 +58,8 @@ def get_field_value(
 
         if isinstance(response_body, dict):
             return extract_jsonpath_value(response_body, path)
+        elif isinstance(response_body, list):
+            return extract_jsonpath_value(response_body, path)
         return None
 
 
@@ -76,7 +79,7 @@ def compare_values(actual: Any, operator: str, expected: Any) -> bool:
         if operator in ("not_exists",):
             return True
         if operator in ("not_equals", "ne", "!="):
-            return str(expected) != "None"
+            return expected is not None
         if operator in ("empty",):
             return True
         if operator in ("not_empty",):
@@ -85,9 +88,17 @@ def compare_values(actual: Any, operator: str, expected: Any) -> bool:
         return False
 
     if operator in ("equals", "eq", "=="):
-        return str(actual) == str(expected)
+        # 优先数值比较，无法转数值时回退到字符串比较
+        try:
+            return math.isclose(float(actual), float(expected), rel_tol=1e-9, abs_tol=1e-9)
+        except (ValueError, TypeError):
+            return str(actual) == str(expected)
     elif operator in ("not_equals", "ne", "!="):
-        return str(actual) != str(expected)
+        # 使用与 equals 完全相反的逻辑，确保一致性
+        try:
+            return not math.isclose(float(actual), float(expected), rel_tol=1e-9, abs_tol=1e-9)
+        except (ValueError, TypeError):
+            return str(actual) != str(expected)
     elif operator == "contains":
         return str(expected) in str(actual)
     elif operator == "not_contains":

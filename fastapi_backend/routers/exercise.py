@@ -486,6 +486,8 @@ async def submit_exercise(
     ex = result.scalar_one_or_none()
     if not ex:
         raise HTTPException(status_code=404, detail="习题不存在")
+    if not ex.is_public:
+        raise HTTPException(status_code=403, detail="该习题未公开，无法提交")
 
     solution = body["solution"]
 
@@ -516,7 +518,7 @@ async def submit_exercise(
         )
         actual = exec_result.get("stdout", "").strip()
 
-        if exec_result.get("returncode", 1) != 0 and exec_result.get("exit_code", 1) != 0:
+        if exec_result.get("exit_code", 1) != 0:
             is_correct = False
             judge_result = {
                 "total_cases": 1,
@@ -669,20 +671,29 @@ async def submit_exercise(
                         "summary": "输出正确" if is_correct else "输出不匹配",
                     }
         else:
+            # 无 test_cases 也无参考答案：仅检查代码能否运行
             exec_result = await sandbox.execute_code(
                 code=solution,
                 language=language,
                 timeout=5,
             )
-            is_correct = False
+            no_error = exec_result.get("exit_code", -1) == 0 and not exec_result.get("stderr", "")
+            is_correct = no_error
             judge_result = {
                 "total_cases": 1,
-                "passed_count": 0,
-                "failed_count": 1,
-                "pass_rate": 0.0,
-                "all_passed": False,
-                "details": [],
-                "summary": "缺少测试用例，无法自动判定",
+                "passed_count": 1 if no_error else 0,
+                "failed_count": 0 if no_error else 1,
+                "pass_rate": 100.0 if no_error else 0.0,
+                "all_passed": no_error,
+                "details": [
+                    {
+                        "case_index": 1,
+                        "passed": no_error,
+                        "expected": "代码运行无错误",
+                        "actual": exec_result.get("stdout", "")[:500] if no_error else exec_result.get("stderr", "")[:500],
+                    }
+                ],
+                "summary": "代码运行成功（无测试用例，仅检查运行无错）" if no_error else "代码运行出错",
             }
 
     else:

@@ -445,6 +445,7 @@ watch(
   (tab) => {
     if (typeof tab === 'string' && tab) {
       activeTab.value = tab
+      visitedTabs.value = new Set([...visitedTabs.value, tab])
     }
   }
 )

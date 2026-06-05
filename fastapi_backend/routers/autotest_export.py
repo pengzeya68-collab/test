@@ -77,7 +77,7 @@ async def import_curl(
 
 
 async def _get_cases(user_id: int, case_ids: List[int] = None, group_id: int = None) -> List[dict]:
-    """获取用例列表"""
+    """获取用例列表（仅返回属于当前用户的用例）"""
     async with AsyncSessionLocal() as db:
         query = select(AutoTestCase).where(AutoTestCase.user_id == user_id)
         if case_ids:
@@ -87,6 +87,16 @@ async def _get_cases(user_id: int, case_ids: List[int] = None, group_id: int = N
 
         result = await db.execute(query)
         cases = result.scalars().all()
+
+        # 如果指定了 case_ids，检查是否有不可导出的用例
+        if case_ids:
+            found_ids = {c.id for c in cases}
+            missing_ids = set(case_ids) - found_ids
+            if missing_ids:
+                import logging
+                logging.getLogger(__name__).warning(
+                    f"用户 {user_id} 导出时跳过无权限或不存在的用例: {missing_ids}"
+                )
 
         # 批量获取分组名，避免 N+1 查询
         group_ids = list({c.group_id for c in cases if c.group_id is not None})
@@ -155,17 +165,19 @@ async def generate_api_doc(
 
 
 # ========== 分享链接（内存存储，带自动清理） ==========
+import asyncio
 
 _share_tokens: Dict[str, dict] = {}
+_share_tokens_lock = asyncio.Lock()
 _MAX_SHARE_TOKENS = 1000
 
 
 def _cleanup_expired_tokens():
-    """清理过期的分享 token，防止内存泄漏"""
+    """清理过期的分享 token，防止内存泄漏（非线程安全，需在锁内调用）"""
     now = datetime.now(timezone.utc)
-    expired = [t for t, info in _share_tokens.items() if datetime.fromisoformat(info["expires"]) < now]
-    for t in expired:
-        del _share_tokens[t]
+    expired = [k for k, v in _share_tokens.items() if datetime.fromisoformat(v["expires"]) < now]
+    for k in expired:
+        _share_tokens.pop(k, None)
 
 
 @router.post("/api-docs/share")
@@ -180,18 +192,20 @@ async def create_share_link(
 
     # 清理过期 token 并检查上限
     _cleanup_expired_tokens()
-    if len(_share_tokens) >= _MAX_SHARE_TOKENS:
-        raise HTTPException(status_code=429, detail="分享链接数量已达上限，请稍后再试")
+    async with _share_tokens_lock:
+        if len(_share_tokens) >= _MAX_SHARE_TOKENS:
+            raise HTTPException(status_code=429, detail="分享链接数量已达上限，请稍后再试")
 
     doc = export_openapi(cases)
     token = secrets.token_urlsafe(16)
     expires = datetime.now(timezone.utc) + timedelta(hours=body.expires_hours)
 
-    _share_tokens[token] = {
-        "doc": doc,
-        "expires": expires.isoformat(),
-        "case_count": len(cases),
-    }
+    async with _share_tokens_lock:
+        _share_tokens[token] = {
+            "doc": doc,
+            "expires": expires.isoformat(),
+            "case_count": len(cases),
+        }
 
     return {
         "token": token,
@@ -204,14 +218,15 @@ async def create_share_link(
 @router.get("/api-docs/shared/{token}", dependencies=[])
 async def get_shared_doc(token: str):
     """获取分享的 API 文档（无需登录）"""
-    info = _share_tokens.get(token)
-    if not info:
-        raise HTTPException(status_code=404, detail="分享链接不存在或已过期")
+    async with _share_tokens_lock:
+        info = _share_tokens.get(token)
+        if not info:
+            raise HTTPException(status_code=404, detail="分享链接不存在或已过期")
 
-    # 检查过期
-    expires = datetime.fromisoformat(info["expires"])
-    if datetime.now(timezone.utc) > expires:
-        del _share_tokens[token]
-        raise HTTPException(status_code=410, detail="分享链接已过期")
+        # 检查过期
+        expires = datetime.fromisoformat(info["expires"])
+        if datetime.now(timezone.utc) > expires:
+            _share_tokens.pop(token, None)
+            raise HTTPException(status_code=410, detail="分享链接已过期")
 
     return {"doc": info["doc"], "case_count": info["case_count"]}

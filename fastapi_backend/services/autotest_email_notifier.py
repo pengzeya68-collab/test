@@ -51,7 +51,11 @@ class EmailNotifier:
                     server = smtplib.SMTP_SSL(self.smtp_host, self.smtp_port, timeout=10)
                 else:
                     server = smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=10)
-                    server.starttls()
+                    # 检查服务器是否支持 STARTTLS
+                    server.ehlo()
+                    if server.has_extn('STARTTLS'):
+                        server.starttls()
+                        server.ehlo()
 
                 server.login(self.smtp_user, self.smtp_password)
                 server.sendmail(self.from_email, [to_email], msg.as_string())

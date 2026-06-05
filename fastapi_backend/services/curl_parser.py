@@ -8,6 +8,7 @@ cURL 命令解析器
 
 import re
 import shlex
+from urllib.parse import unquote
 from typing import Any, Dict
 
 
@@ -49,6 +50,7 @@ def parse_curl(curl_string: str) -> Dict[str, Any]:
     url = ""
     headers = {}
     body = None
+    body_str = None
     body_type = "none"
     content_type = "application/json"
     auth = None
@@ -73,9 +75,15 @@ def parse_curl(curl_string: str) -> Dict[str, Any]:
         elif token in ("-d", "--data", "--data-raw", "--data-binary", "--data-urlencode"):
             i += 1
             if i < len(tokens):
-                body_str = tokens[i]
+                data_str = tokens[i]
                 if method == "GET":
                     method = "POST"  # 有 body 时默认改为 POST
+
+                # 合并多个 -d 参数
+                if body_str:
+                    body_str += "&" + data_str
+                else:
+                    body_str = data_str
 
                 # 尝试解析为 JSON
                 try:
@@ -84,13 +92,13 @@ def parse_curl(curl_string: str) -> Dict[str, Any]:
                     body_type = "raw"
                     content_type = "application/json"
                 except (json.JSONDecodeError, ValueError):
-                    # 尝试解析为 form data
-                    if "=" in body_str and "&" in body_str:
+                    # 尝试解析为 form data（支持单参数和多参数）
+                    if "=" in body_str:
                         body = {}
                         for pair in body_str.split("&"):
                             if "=" in pair:
                                 k, v = pair.split("=", 1)
-                                body[k] = v
+                                body[unquote(k)] = unquote(v)
                         body_type = "form-data"
                         content_type = "application/x-www-form-urlencoded"
                     else:

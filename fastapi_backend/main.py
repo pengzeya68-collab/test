@@ -146,8 +146,8 @@ async def lifespan(_: FastAPI):
     finally:
         # 关闭 HTTP 客户端连接池
         try:
-            from fastapi_backend.services.autotest_request_service import close_http_client
-            await close_http_client()
+            from fastapi_backend.services.autotest_request_service import shutdown_http_client
+            await shutdown_http_client()
         except Exception as e:
             _logger.warning("HTTP 客户端关闭失败: %s", e)
         if _cleanup_needed:
@@ -269,7 +269,7 @@ REPORTS_DIR = AUTOTEST_DATA_DIR / "reports"
 REPORTS_DIR.mkdir(exist_ok=True, parents=True)
 app.mount(
     "/reports",
-    StaticFiles(directory=str(REPORTS_DIR.resolve()), html=False),
+    StaticFiles(directory=str(REPORTS_DIR.resolve()), html=True),
     name="reports",
 )
 

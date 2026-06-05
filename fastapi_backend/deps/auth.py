@@ -55,7 +55,7 @@ async def _resolve_role(user: User, db: AsyncSession) -> str:
         result = await db.execute(select(Role).where(Role.id == user.role_id))
         role = result.scalar_one_or_none()
         if role:
-            return role.name
+            return role.name.lower()
     return "admin" if user.is_admin else "user"
 
 
@@ -96,7 +96,7 @@ async def require_user(current_user: User = Depends(require_role("user"))) -> Us
 
 
 def require_permission(*required_permissions: str):
-    """检查当前用户是否拥有指定权限之一（RBAC 细粒度权限）"""
+    """检查当前用户是否拥有所有指定权限（RBAC 细粒度权限，AND 逻辑）"""
 
     async def permission_dependency(
         current_user: User = Depends(get_current_active_user),
@@ -129,15 +129,16 @@ def require_permission(*required_permissions: str):
         if "*" in user_permissions:
             return current_user
 
-        # 逐个检查所需权限
+        # AND 逻辑：必须拥有所有所需权限
+        missing_perms = []
         for req_perm in required_permissions:
-            if req_perm in user_permissions:
-                return current_user
-            # 模块级通配符（如 exercise:*）
             module_wildcard = req_perm.split(":")[0] + ":*"
-            if module_wildcard in user_permissions:
-                return current_user
+            if req_perm not in user_permissions and module_wildcard not in user_permissions:
+                missing_perms.append(req_perm)
 
-        raise AuthorizationException(f"权限不足。所需权限：{', '.join(required_permissions)}")
+        if missing_perms:
+            raise AuthorizationException(f"权限不足。缺少权限：{', '.join(missing_perms)}")
+
+        return current_user
 
     return permission_dependency

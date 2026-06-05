@@ -28,11 +28,12 @@ if _KEY_SEED is None:
     if env == "production":
         raise RuntimeError(f"生产环境必须设置 {_FERNET_KEY_ENV}，请在 .env 文件中配置 TESTMASTER_ENCRYPTION_KEY")
     else:
-        import secrets
-
-        _KEY_SEED = secrets.token_urlsafe(32)
+        # 开发环境使用机器特定种子（hostname + 用户名），比硬编码更安全
+        import platform
+        machine_seed = f"dev-key-{platform.node()}-{os.environ.get('USERNAME', 'default')}"
+        _KEY_SEED = machine_seed
         _logger.warning(
-            "开发环境使用随机生成的加密密钥，生产环境请务必在 .env 中设置 %s",
+            "开发环境使用机器特定加密密钥，生产环境请务必在 .env 中设置 %s",
             _FERNET_KEY_ENV,
         )
 KEY = _derive_fernet_key(_KEY_SEED)

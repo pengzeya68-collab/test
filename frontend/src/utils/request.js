@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-import { getUserToken, getAdminToken, clearAllAuth, isAdminRoute, setToken as saveToken, isValidTokenFormat } from '@/utils/auth'
+import { getUserToken, getAdminToken, clearAllAuth, clearUserAuth, clearAdminAuth, isAdminRoute, setToken as saveToken, isValidTokenFormat } from '@/utils/auth'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL
 const AUTO_TEST_BASE_URL = import.meta.env.VITE_AUTO_TEST_BASE_URL || '/api'
@@ -24,6 +24,7 @@ const autoTestService = axios.create({
 const setToken = (newToken) => {
   saveToken(newToken)
   service.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+  autoTestService.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
 }
 
 let isLoggingOut = false
@@ -47,7 +48,8 @@ const syncClientAuthState = async () => {
 // 请求拦截器：严格按路由选择 token，不 fallback
 const requestInterceptor = (config) => {
   const isAdminReq = config.url?.startsWith('/admin') ||
-                     config.url?.startsWith('/autotest')
+                     config.url?.startsWith('/autotest') ||
+                     config.url?.startsWith('/auto-test')
 
   const token = isAdminReq ? getAdminToken() : getUserToken()
 
@@ -79,11 +81,30 @@ const responseErrorInterceptor = async (error) => {
     }
 
     isLoggingOut = true
-    await syncClientAuthState()
+
+    // 根据请求 URL 判断是管理员请求还是用户请求，只清除对应会话
+    const isAdminReq = config.url?.startsWith('/admin') ||
+                       config.url?.startsWith('/autotest') ||
+                       config.url?.startsWith('/auto-test')
+
+    try {
+      if (isAdminReq) {
+        clearAdminAuth()
+        const { useAdminStore } = await import('@/stores/admin')
+        useAdminStore().resetSession()
+      } else {
+        clearUserAuth()
+        const { useUserStore } = await import('@/stores/user')
+        useUserStore().resetSession()
+      }
+    } catch (err) {
+      console.warn('重置客户端状态失败:', err)
+    }
 
     ElMessage.error('登录已过期，请重新登录')
 
-    if (isAdminRoute()) {
+    // 根据请求来源决定跳转目标
+    if (isAdminReq) {
       router.push('/admin/login')
     } else {
       router.push('/login')

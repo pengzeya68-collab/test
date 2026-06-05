@@ -28,9 +28,21 @@ from fastapi_backend.services.auth_service import AuthError, AuthService
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
 # 简单的登录速率限制（IP级别）
+# 注意: 此限流基于进程内存，多 worker 部署时各 worker 独立计数。
+# 生产环境建议使用 Redis 实现分布式限流。
 _login_attempts: dict[str, list[float]] = {}
 _LOGIN_RATE_LIMIT = 5  # 最多尝试次数
 _LOGIN_RATE_WINDOW = 300  # 时间窗口（秒）
+
+
+def _cleanup_old_attempts() -> None:
+    """清理过期的登录尝试记录，防止内存泄漏"""
+    import time
+    now = time.time()
+    stale_ips = [ip for ip, attempts in _login_attempts.items()
+                 if not attempts or now - attempts[-1] > _LOGIN_RATE_WINDOW]
+    for ip in stale_ips:
+        del _login_attempts[ip]
 
 
 def _check_login_rate_limit(client_ip: str) -> None:
@@ -38,6 +50,9 @@ def _check_login_rate_limit(client_ip: str) -> None:
     import time
 
     now = time.time()
+    # 每 100 次检查清理一次过期记录
+    if len(_login_attempts) > 100:
+        _cleanup_old_attempts()
     attempts = _login_attempts.get(client_ip, [])
     # 清除过期记录
     attempts = [t for t in attempts if now - t < _LOGIN_RATE_WINDOW]

@@ -797,7 +797,7 @@ async def _update_progress(task_id: str, **kwargs) -> None:
     """更新任务进度到 task_store"""
     from fastapi_backend.services.autotest_task_store import update_task, get_task
 
-    stored = get_task(task_id) or {"task_id": task_id}
+    stored = await get_task(task_id) or {"task_id": task_id}
     stored.update(kwargs)
     await update_task(task_id, stored)
 
@@ -1180,8 +1180,8 @@ def ai_generate_task(self, task_id: str, swagger_data: dict, options: dict):
         _logger.error("Celery AI 生成任务异常 task_id=%s: %s", task_id, e, exc_info=True)
         # 确保任务状态更新为失败
         try:
-            from fastapi_backend.services.autotest_task_store import update_task, get_task
-            stored = get_task(task_id) or {"task_id": task_id}
+            from fastapi_backend.services.autotest_task_store import update_task, get_task_sync
+            stored = get_task_sync(task_id) or {"task_id": task_id}
             stored.update({
                 "status": "failed",
                 "error": str(e),

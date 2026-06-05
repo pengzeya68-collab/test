@@ -108,5 +108,11 @@ class _LazySettingsProxy:
     def __getattr__(self, name):
         return getattr(get_settings(), name)
 
+    def __setattr__(self, name, value):
+        if name.startswith('_'):
+            super().__setattr__(name, value)
+        else:
+            setattr(get_settings(), name, value)
+
 
 autotest_settings = _LazySettingsProxy()

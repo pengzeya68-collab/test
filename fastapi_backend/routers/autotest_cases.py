@@ -55,11 +55,12 @@ async def list_cases(
     if group_id:
         query = query.where(AutoTestCase.group_id == group_id)
     if keyword:
+        keyword_escaped = keyword.replace('%', '\\%').replace('_', '\\_')
         query = query.where(
             or_(
-                AutoTestCase.name.contains(keyword),
-                AutoTestCase.url.contains(keyword),
-                AutoTestCase.description.contains(keyword),
+                AutoTestCase.name.like(f"%{keyword_escaped}%", escape='\\'),
+                AutoTestCase.url.like(f"%{keyword_escaped}%", escape='\\'),
+                AutoTestCase.description.like(f"%{keyword_escaped}%", escape='\\'),
             )
         )
 
@@ -218,7 +219,7 @@ async def update_case(
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
 
-    update_data = case_in.model_dump(exclude_unset=True, exclude_none=True)
+    update_data = case_in.model_dump(exclude_unset=True)
     if "assertions" in update_data:
         update_data["assert_rules"] = update_data.pop("assertions")
     if update_data.get("folder_id") is not None:
@@ -229,6 +230,8 @@ async def update_case(
         update_data.pop("group_id", None)
 
     for field, value in update_data.items():
+        if field in ("id", "user_id", "created_at"):
+            continue
         setattr(case, field, value)
 
     await db.commit()
@@ -248,11 +251,14 @@ async def delete_case(
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
 
-    # 删除引用该用例的场景步骤（只删除当前用户拥有的场景中的步骤）
+    # 删除引用该用例的场景步骤（仅删除当前用户自己的步骤，避免跨用户数据篡改）
     steps_result = await db.execute(
         select(AutoTestScenarioStep)
         .join(AutoTestScenario, AutoTestScenarioStep.scenario_id == AutoTestScenario.id)
-        .where(AutoTestScenarioStep.api_case_id == case_id, AutoTestScenario.user_id == current_user.id)
+        .where(
+            AutoTestScenarioStep.api_case_id == case_id,
+            AutoTestScenario.user_id == current_user.id
+        )
     )
     for step in steps_result.scalars().all():
         await db.delete(step)

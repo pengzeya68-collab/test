@@ -76,7 +76,9 @@ def extract_jsonpath_value(data: Any, path: str, default: Any = None) -> Any:
             else:
                 return default
         elif isinstance(value, dict):
-            value = value.get(key, default)
+            if key not in value:
+                return default
+            value = value[key]
         else:
             return default
 

@@ -5,7 +5,8 @@ AutoTest 统一路由 - 场景管理
 映射原 auto_test_platform 的 /api/scenarios
 """
 import uuid
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -18,6 +19,7 @@ from fastapi_backend.models.autotest import (
     AutoTestScenarioStep,
     AutoTestCase,
     AutoTestDataset,
+    AutoTestScenarioExecutionRecord,
 )
 from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import (
@@ -52,8 +54,9 @@ async def list_scenarios(
     count_query = select(func.count(AutoTestScenario.id)).where(AutoTestScenario.user_id == current_user.id)
 
     if keyword:
-        query = query.where(AutoTestScenario.name.like(f"%{keyword}%"))
-        count_query = count_query.where(AutoTestScenario.name.like(f"%{keyword}%"))
+        keyword_escaped = keyword.replace('%', '\\%').replace('_', '\\_')
+        query = query.where(AutoTestScenario.name.like(f"%{keyword_escaped}%", escape='\\'))
+        count_query = count_query.where(AutoTestScenario.name.like(f"%{keyword_escaped}%", escape='\\'))
     if is_active is not None:
         query = query.where(AutoTestScenario.is_active == is_active)
         count_query = count_query.where(AutoTestScenario.is_active == is_active)
@@ -112,7 +115,8 @@ async def get_available_cases(
     """获取可用的接口列表（用于添加步骤时选择）"""
     query = select(AutoTestCase).where(AutoTestCase.user_id == current_user.id)
     if keyword:
-        query = query.where(AutoTestCase.name.like(f"%{keyword}%"))
+        keyword_escaped = keyword.replace('%', '\\%').replace('_', '\\_')
+        query = query.where(AutoTestCase.name.like(f"%{keyword_escaped}%", escape='\\'))
     if group_id:
         query = query.where(AutoTestCase.group_id == group_id)
 
@@ -187,7 +191,10 @@ async def update_scenario(
     update_data = scenario.model_dump(exclude_unset=True)
     if not db_scenario.webhook_token and "webhook_token" not in update_data:
         update_data["webhook_token"] = str(uuid.uuid4())
+    PROTECTED_FIELDS = {"id", "user_id", "created_at"}
     for key, value in update_data.items():
+        if key in PROTECTED_FIELDS:
+            continue
         setattr(db_scenario, key, value)
 
     await db.commit()
@@ -201,10 +208,14 @@ async def update_scenario(
     return result.scalar_one()
 
 
+class ScenarioStatusUpdate(BaseModel):
+    is_active: bool
+
+
 @router.put("/{scenario_id}/status")
 async def update_scenario_status(
     scenario_id: int,
-    payload: Dict[str, Any],
+    payload: ScenarioStatusUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -214,11 +225,7 @@ async def update_scenario_status(
     if not db_scenario:
         raise HTTPException(status_code=404, detail="场景不存在")
 
-    is_active = payload.get("is_active")
-    if is_active is None:
-        raise HTTPException(status_code=400, detail="缺少 is_active 参数")
-
-    db_scenario.is_active = bool(is_active)
+    db_scenario.is_active = payload.is_active
     await db.commit()
     await db.refresh(db_scenario)
 
@@ -252,6 +259,20 @@ async def delete_scenario(
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"移除定时任务失败: {e}")
+
+    # 清理关联的执行记录
+    exec_records_result = await db.execute(
+        select(AutoTestScenarioExecutionRecord).where(AutoTestScenarioExecutionRecord.scenario_id == scenario_id)
+    )
+    for record in exec_records_result.scalars().all():
+        await db.delete(record)
+
+    # 清理关联的数据集
+    dataset_result = await db.execute(
+        select(AutoTestDataset).where(AutoTestDataset.scenario_id == scenario_id)
+    )
+    for dataset in dataset_result.scalars().all():
+        await db.delete(dataset)
 
     await db.delete(db_scenario)
     try:
@@ -379,10 +400,15 @@ async def delete_step(
     return {"message": "删除成功"}
 
 
+class StepOrderItem(BaseModel):
+    step_id: int
+    step_order: int
+
+
 @router.put("/{scenario_id}/steps/reorder")
 async def reorder_steps(
     scenario_id: int,
-    step_orders: List[dict],
+    step_orders: List[StepOrderItem],
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -400,13 +426,13 @@ async def reorder_steps(
     for item in step_orders:
         result = await db.execute(
             select(AutoTestScenarioStep).where(
-                AutoTestScenarioStep.id == item["step_id"],
+                AutoTestScenarioStep.id == item.step_id,
                 AutoTestScenarioStep.scenario_id == scenario_id,
             )
         )
         db_step = result.scalar_one_or_none()
         if db_step:
-            db_step.step_order = item["step_order"]
+            db_step.step_order = item.step_order
 
     await db.commit()
     return {"message": "排序更新成功"}
@@ -510,14 +536,25 @@ async def parse_dataset_file(
     import csv
     import io
 
+    # 验证场景归属
+    scenario_result = await db.execute(
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id,
+            AutoTestScenario.user_id == current_user.id,
+        )
+    )
+    if not scenario_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="场景不存在")
+
     content = await file.read()
 
     try:
-        if file.filename.endswith('.csv'):
+        filename = file.filename or ""
+        if filename.endswith('.csv'):
             decoded_content = content.decode('utf-8')
             reader = csv.reader(io.StringIO(decoded_content))
             rows = list(reader)
-        elif file.filename.endswith(('.xlsx', '.xls')):
+        elif filename.endswith(('.xlsx', '.xls')):
             import openpyxl
             wb = openpyxl.load_workbook(io.BytesIO(content))
             ws = wb.active
@@ -556,7 +593,9 @@ async def run_scenario_with_pytest(
 
     try:
         from fastapi_backend.services.autotest_pytest_engine import run_scenario_pytest
-        exec_result = run_scenario_pytest(
+        import asyncio
+        exec_result = await asyncio.to_thread(
+            run_scenario_pytest,
             scenario_id=scenario_id,
             scenario_name=scenario.name,
             steps=request.steps,

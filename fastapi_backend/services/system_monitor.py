@@ -88,9 +88,11 @@ class SystemMonitor:
 
     def get_system_info(self) -> Dict[str, Any]:
         """获取系统信息"""
+        import platform
         cpu_percent = psutil.cpu_percent(interval=1)
         memory = psutil.virtual_memory()
-        disk = psutil.disk_usage("/")
+        disk_path = "C:\\" if platform.system() == "Windows" else "/"
+        disk = psutil.disk_usage(disk_path)
 
         return {
             "cpu": {

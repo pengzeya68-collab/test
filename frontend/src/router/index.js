@@ -266,6 +266,14 @@ router.beforeEach(async (to, from, next) => {
   }
   
   // 2. 检查普通用户路由权限
+  // 已登录用户访问登录/注册页时重定向到首页
+  if (to.path === '/login' || to.path === '/register') {
+    if (userStore.isLoggedIn) {
+      next({ path: '/' })
+      return
+    }
+  }
+
   if (requiresAuth) {
     if (!userStore.isLoggedIn) {
       ElMessage.warning('你当前未登录，请登录后操作')

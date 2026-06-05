@@ -52,8 +52,8 @@ async def check_and_deduct_points(
     """
     cost = await get_feature_cost(db, feature)
     if cost is None:
-        _logger.warning(f"未找到功能 {feature} 的积分配置，跳过扣费")
-        return True
+        _logger.error(f"未找到功能 {feature} 的积分配置，拒绝扣费")
+        return False
     if cost <= 0:
         return True
 
@@ -151,7 +151,7 @@ async def refund_points(
     """退还积分（AI 调用失败时）。amount 为空则按配置退还全额。"""
     if amount is None:
         amount = await get_feature_cost(db, feature)
-    if not amount or amount <= 0:
+    if amount is None or amount <= 0:
         return
 
     result = await db.execute(

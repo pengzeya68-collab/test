@@ -43,7 +43,13 @@ class AuthService:
 
         try:
             token_hash = hashlib.sha256(token.encode()).hexdigest()
-            expiry_dt = datetime.now(timezone.utc) + timedelta(seconds=self._blacklist_max_age_seconds)
+            # 从 JWT payload 中提取过期时间，确保黑名单记录与 token 同时过期
+            try:
+                payload = jwt.decode(token, self.secret_key, algorithms=["HS256"], options={"verify_exp": False})
+                expiry_dt = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+            except Exception:
+                # 解码失败时回退到固定 24 小时
+                expiry_dt = datetime.now(timezone.utc) + timedelta(seconds=self._blacklist_max_age_seconds)
 
             existing = await self._db_session.execute(
                 select(TokenBlacklist).where(TokenBlacklist.token_hash == token_hash)
@@ -76,7 +82,7 @@ class AuthService:
             return result.scalar_one_or_none() is not None
         except Exception as exc:
             _logger.error("token_blacklist DB read failed: %s", exc)
-            return False
+            return False  # 数据库异常时不应阻止所有请求，返回 False 让请求通过
 
     @staticmethod
     def hash_password(password: str) -> str:

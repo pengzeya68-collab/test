@@ -155,7 +155,24 @@ def extract_value(response_data, expression, extractor_type="jsonpath", default=
     try:
         if extractor_type == "jsonpath":
             if isinstance(response_data, dict):
-                return response_data.get(expression, default)
+                # 支持多级路径，如 $.data.user.name 或 data.user.name
+                path = expression
+                if path.startswith("$."):
+                    path = path[2:]
+                keys = path.split(".")
+                value = response_data
+                for key in keys:
+                    if isinstance(value, dict) and key in value:
+                        value = value[key]
+                    elif isinstance(value, list):
+                        try:
+                            idx = int(key.strip("[]"))
+                            value = value[idx]
+                        except (ValueError, IndexError):
+                            return default
+                    else:
+                        return default
+                return value if value is not None else default
         elif extractor_type == "regex":
             body = response_data.get("body", "") if isinstance(response_data, dict) else str(response_data)
             match = re.search(expression, body)
@@ -280,6 +297,7 @@ def test_scenario_iteration(test_data, allure_dir, request):
                     response_json = response.json()
                     response_data = {{"status": response.status_code, "body": response.text, "json": response_json}}
                 except Exception:
+                    response_json = None
                     response_data = {{"status": response.status_code, "body": response.text}}
 
                 allure.attach(
@@ -298,7 +316,7 @@ def test_scenario_iteration(test_data, allure_dir, request):
                             assertion_failed = True
                             assertion_errors.append(f"状态码: 期望 {{expected}}, 实际 {{response.status_code}}")
 
-                    if "json_path" in assert_rules and isinstance(response_json, dict):
+                    if "json_path" in assert_rules and response_json is not None and isinstance(response_json, dict):
                         for path, rule in assert_rules["json_path"].items():
                             keys = path.replace("$.", "").split(".")
                             value = response_json
@@ -395,7 +413,7 @@ def pytest_addoption(parser):
                 cmd3 = ["pytest", str(test_file), f"--data_file={data_file}",
                         f"--alluredir={allure_results_dir_abs}", "-v", "--tb=short", "--no-header", "-p", "no:warnings"]
                 result = subprocess.run(cmd3, capture_output=True, text=True,
-                                        cwd=str(self.temp_dir))
+                                        cwd=str(self.temp_dir), timeout=300)
                 result_files = list(self.allure_results_dir.glob("*.json"))
 
         passed = 0

@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from typing import Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 import re
@@ -8,7 +10,7 @@ import re
 class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=20)
     email: str = Field(...)
-    phone: str = ""
+    phone: Optional[str] = None
     password: str = Field(..., min_length=8)
 
     @field_validator("email")
@@ -68,6 +70,7 @@ class CurrentUserResponse(BaseModel):
     phone: str | None = None
     is_active: bool
     is_admin: bool
+    is_super_admin: bool = False
     role: str
     avatar: str | None = None
     level: int

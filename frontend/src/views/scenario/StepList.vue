@@ -289,7 +289,7 @@ const loadExtractors = (step) => {
   currentExtractorStep.value = step
   const extractors = step.api_case?.extractors || step.extractors || []
   if (extractors.length > 0) {
-    extractorForm.value = [...extractors]
+    extractorForm.value = extractors.map(e => ({ ...e }))
   } else {
     extractorForm.value = []
   }

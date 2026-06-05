@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -227,7 +227,8 @@ async def get_post_detail(
         is_author = user_id == post.user_id
         if not is_admin and not is_author:
             raise HTTPException(status_code=404, detail="不存在或未通过审核")
-    post.view_count += 1
+    await db.execute(update(Post).where(Post.id == post_id).values(view_count=Post.view_count + 1))
+    await db.refresh(post)
     await db.commit()
     return await _format_post(post, user_id, db)
 
@@ -283,7 +284,6 @@ async def update_post(
             post.category = payload.category
     if payload.tags is not None:
         post.tags = ",".join([t.strip() for t in payload.tags if t.strip()])
-    post.updated_at = datetime.utcnow()
     await db.commit()
     await db.refresh(post)
     q = select(Post).options(selectinload(Post.user)).filter(Post.id == post.id)
@@ -325,17 +325,20 @@ async def like_post(
     like = like_q.scalar_one_or_none()
     if like:
         await db.delete(like)
-        post.like_count = max(0, post.like_count - 1)
+        await db.execute(update(Post).where(Post.id == post_id).values(like_count=Post.like_count - 1))
         action = "unliked"
     else:
         like = Like(user_id=current_user.id, post_id=post_id)
         db.add(like)
-        post.like_count += 1
+        await db.execute(update(Post).where(Post.id == post_id).values(like_count=Post.like_count + 1))
         action = "liked"
     try:
         await db.commit()
     except IntegrityError:
         await db.rollback()
+        # 并发竞态：另一个请求已经插入了 like，回滚后 action 应修正
+        action = "unliked"
+    await db.refresh(post)
     return LikeResponse(
         message="点赞成功" if action == "liked" else "取消点赞成功",
         action=action,
@@ -410,7 +413,7 @@ async def create_comment(
         parent_id=payload.parent_id,
     )
     db.add(comment)
-    post.comment_count += 1
+    await db.execute(update(Post).where(Post.id == post_id).values(comment_count=Post.comment_count + 1))
     await db.commit()
     await db.refresh(comment)
     q = select(Comment).options(selectinload(Comment.user)).filter(Comment.id == comment.id)
@@ -434,17 +437,20 @@ async def like_comment(
     like = like_q.scalar_one_or_none()
     if like:
         await db.delete(like)
-        comment.like_count = max(0, comment.like_count - 1)
+        await db.execute(update(Comment).where(Comment.id == comment_id).values(like_count=Comment.like_count - 1))
         action = "unliked"
     else:
         like = Like(user_id=current_user.id, comment_id=comment_id)
         db.add(like)
-        comment.like_count += 1
+        await db.execute(update(Comment).where(Comment.id == comment_id).values(like_count=Comment.like_count + 1))
         action = "liked"
     try:
         await db.commit()
     except IntegrityError:
         await db.rollback()
+        # 并发竞态：另一个请求已经插入了 like，回滚后 action 应修正
+        action = "unliked"
+    await db.refresh(comment)
     return LikeResponse(
         message="点赞成功" if action == "liked" else "取消点赞成功",
         action=action,
@@ -625,6 +631,7 @@ async def admin_delete_comment(
     comment = result.scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=404, detail="评论不存在")
+    await db.execute(update(Post).where(Post.id == comment.post_id).values(comment_count=func.greatest(Post.comment_count - 1, 0)))
     await db.delete(comment)
     await db.commit()
     return {"message": "评论已删除"}

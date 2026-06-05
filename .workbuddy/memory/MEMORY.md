@@ -57,12 +57,15 @@
 - ✅ 所有47+个前端 API 调用与后端路由完全对齐
 
 ## 关键架构决策
-- AutoTest 使用独立数据库（auto_test.db）而非主数据库（testmaster.db）
-- AutoTest 模型使用独立 Base（AutoTestBase），避免与主数据库模型冲突
+- AutoTest 已合并到主数据库（testmaster.db），autotest_database.py 仅重导出主数据库符号
+- AutoTest 模型使用主数据库 Base，不再使用独立 Base
+- **数据隔离**: 所有 AutoTest 模型都有 user_id 字段，路由使用参数式认证 `get_current_active_user`，查询加 user_id 过滤
+- test 账号 user_id=6，现有 AutoTest 数据已绑定到此账号
 - Schema 使用 Any 类型代替严格类型，兼容脏数据
 - 路由返回字典而非严格 response_model，避免数据验证错误
 - 数据库文件统一放在 `instance/` 目录下
 - 临时文件统一放在 `fastapi_backend/autotest_data/` 下
+- 迁移脚本: `scripts/migrate_add_user_id.py`
 
 ## 用户偏好
 - 称呼：亚哥
@@ -70,7 +73,8 @@
 
 ## 关键技术注意
 - FastAPI 路由用 `fastapi_backend.deps.auth` 导入认证依赖
-- AutoTest 数据库: `fastapi_backend.core.autotest_database.get_autotest_db`
+- **AutoTest 路由统一使用 `get_current_active_user`**（参数式），不再用 `get_current_user`（声明式）
+- AutoTest 数据库: `fastapi_backend.core.autotest_database.get_autotest_db`（实为主数据库）
 - AutoTest 异步会话: `fastapi_backend.core.autotest_database.async_session`
 - 主数据库: `fastapi_backend.core.database.get_db`
 - AutoTest 设置: `fastapi_backend.core.autotest_settings.get_settings()`
@@ -79,3 +83,6 @@
 - 密码哈希用 `AuthService.hash_password()` (在 services/auth_service.py)
 - 不存在 `core/security.py`，密码操作统一用 AuthService
 - Admin 路由分两个文件: admin.py(面试题管理) + admin_manage.py(其他管理)，共享 prefix /api/v1/admin
+- **AutoTest 查询必须带 user_id 过滤**: `.where(Model.user_id == current_user.id)`
+- **AutoTest 创建必须设置 user_id**: `Model(..., user_id=current_user.id)`
+- **AutoTest 更新/删除必须校验归属**: `if obj.user_id != current_user.id: raise 404`

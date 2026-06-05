@@ -77,7 +77,8 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
         if difficulty:
             difficulty_distribution[difficulty] = count
         else:
-            unknown_key = "exercise"
+            # None difficulty 表示来自 Exercise 而非 InterviewQuestion，用 "unknown" 更准确
+            unknown_key = "unknown"
             difficulty_distribution[unknown_key] = difficulty_distribution.get(unknown_key, 0) + count
 
     daily_submissions = []
@@ -219,10 +220,12 @@ async def generate_interview_report(session_id: int, user_id: int, db: AsyncSess
 
 async def complete_session(session_id: int, user_id: int, db: AsyncSession) -> Optional[Dict[str, Any]]:
     session_result = await db.execute(
-        select(InterviewSession).where(
+        select(InterviewSession)
+        .where(
             InterviewSession.id == session_id,
             InterviewSession.user_id == user_id,
         )
+        .with_for_update()
     )
     session = session_result.scalar_one_or_none()
     if not session:

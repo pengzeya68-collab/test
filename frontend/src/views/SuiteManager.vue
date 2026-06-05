@@ -51,7 +51,7 @@
           :total="total"
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next"
-          @size-change="loadSuites"
+          @size-change="handlePageSizeChange"
           @current-change="loadSuites"
         />
       </div>
@@ -197,6 +197,11 @@ const loadSuites = async () => {
   }
 }
 
+const handlePageSizeChange = () => {
+  currentPage.value = 1
+  loadSuites()
+}
+
 // 搜索用例
 const searchCases = async (query) => {
   try {
@@ -227,7 +232,7 @@ const editSuite = async (suite) => {
     suiteForm.value = {
       name: detail.name,
       description: detail.description,
-      case_ids: (detail.cases || []).map(c => c.case_id)
+      case_ids: (detail.cases || []).map(c => c.case_id || c.id)
     }
     // 加载用例选项
     await searchCases('')
