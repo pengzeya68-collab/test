@@ -165,6 +165,10 @@ const props = defineProps({
   dataset: {
     type: Object,
     default: () => ({ columns: [], rows: [] })
+  },
+  envId: {
+    type: [Number, String],
+    default: null
   }
 })
 
@@ -398,7 +402,9 @@ const handleRunDataDriven = async () => {
     return
   }
   try {
-    const res = await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/run-data-driven`)
+    const payload = {}
+    if (props.envId) payload.env_id = props.envId
+    const res = await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/run-data-driven`, payload)
     dataDrivenResult.value = res
     dataDrivenResultDialogVisible.value = true
     emit('run-data-driven', res)

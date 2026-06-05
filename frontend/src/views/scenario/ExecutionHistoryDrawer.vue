@@ -549,6 +549,7 @@ const viewReportDetail = async (reportId) => {
     reportDetailLoading.value = true
     reportDetailData.value = null
     expandedDetailSteps.value = []
+    isRunning.value = false
     const res = await autoTestRequest.get(`/auto-test/reports/${reportId}`)
     reportDetailData.value = res
     if (res.step_results) {

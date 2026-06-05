@@ -587,8 +587,8 @@ const submitFollowUp = async () => {
     currentQuestion.value.follow_up_feedback = res.data?.feedback || '回答已收到，继续保持！'
     ElMessage.success('追问回答已提交')
   } catch (error) {
-    currentQuestion.value.follow_up_feedback = '回答已收到，面试官对你的追问回答表示认可。'
-    ElMessage.success('追问回答已提交')
+    console.error('提交追问回答失败:', error)
+    ElMessage.error('提交追问回答失败，请稍后重试')
   } finally {
     followUpSubmitting.value = false
   }

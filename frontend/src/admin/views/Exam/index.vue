@@ -87,7 +87,7 @@
           :total="total"
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next"
-          @size-change="fetchList"
+          @size-change="handleSizeChange"
           @current-change="fetchList"
           class="dark-pagination"
         />
@@ -310,6 +310,11 @@ const fetchList = async () => {
 
 onMounted(fetchList)
 
+const handleSizeChange = () => {
+  page.value = 1
+  fetchList()
+}
+
 // ---- 状态辅助 ----
 const difficultyText = d => ({ easy: '简单', medium: '中等', hard: '困难' }[d] || d)
 const difficultyTag = d => ({ easy: 'success', medium: 'warning', hard: 'danger' }[d] || 'info')
@@ -449,9 +454,13 @@ const onQuestionTypeChange = (q) => {
 }
 
 const handleSubmit = async () => {
-  submitting.value = true
   try {
     await formRef.value.validate()
+  } catch {
+    return
+  }
+  submitting.value = true
+  try {
     // 整理多选题答案
     const questions = form.questions.map(q => {
       const item = { ...q }

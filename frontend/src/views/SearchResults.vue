@@ -65,7 +65,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import autoTestRequest from '@/utils/autoTestRequest'
@@ -81,11 +81,11 @@ const activeTab = ref('all')
 const doSearch = async () => {
   if (!keyword.value.trim()) return
   loading.value = true
-  router.replace({ query: { q: keyword.value } })
   try {
     const res = await autoTestRequest.get('/v1/search', { params: { q: keyword.value } })
     results.value = res.results
     total.value = res.total
+    router.replace({ query: { q: keyword.value } })
   } catch (e) {
     console.error(e)
   } finally {
@@ -93,7 +93,7 @@ const doSearch = async () => {
   }
 }
 
-if (keyword.value) doSearch()
+onMounted(() => { if (keyword.value) doSearch() })
 </script>
 
 <style scoped>

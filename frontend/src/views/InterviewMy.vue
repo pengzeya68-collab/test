@@ -50,8 +50,8 @@
         >
           <div class="card-header">
             <span class="session-title">{{ session.title }}</span>
-            <span class="status-tag" :class="session.status === 'completed' ? 'done' : 'ongoing'">
-              {{ session.status === 'completed' ? '已完成' : '进行中' }}
+            <span class="status-tag" :class="session.status === 'completed' ? 'done' : (session.status === 'abandoned' ? 'abandoned' : 'ongoing')">
+              {{ session.status === 'completed' ? '已完成' : (session.status === 'abandoned' ? '已放弃' : '进行中') }}
             </span>
           </div>
 
@@ -80,7 +80,7 @@
             <div class="progress-row" v-else>
               <span>继续上次面试</span>
               <div class="mini-progress-bar">
-                <div class="mini-progress-fill" style="width: 50%;"></div>
+                <div class="mini-progress-fill" :style="{ width: (session.question_count > 0 ? Math.min((session.answered_count || 0) / session.question_count * 100, 100) : 0) + '%' }"></div>
               </div>
             </div>
           </div>
@@ -152,8 +152,10 @@ const fetchSessions = async (resetPage = false) => {
     if (res.data && res.data.items) {
       sessions.value = res.data.items.map(session => {
         let frontendStatus = 'in_progress'
-        if (session.status === 'finished' || session.status === 'abandoned') {
+        if (session.status === 'finished') {
           frontendStatus = 'completed'
+        } else if (session.status === 'abandoned') {
+          frontendStatus = 'abandoned'
         }
 
         const difficultyMap = { easy: '初级', medium: '中级', hard: '高级' }
@@ -169,6 +171,7 @@ const fetchSessions = async (resetPage = false) => {
           total_score: 100,
           start_time: session.started_at ? formatDateTime(session.started_at) : formatDateTime(session.created_at),
           question_count: session.question_count || 1,
+          answered_count: session.answered_count || 0,
           raw_status: session.status,
         }
       })
@@ -400,6 +403,7 @@ const viewSession = (session) => {
 }
 .status-tag.ongoing { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
 .status-tag.done { background: rgba(52, 211, 153, 0.12); color: #34d399; }
+.status-tag.abandoned { background: rgba(161, 161, 170, 0.12); color: #a1a1aa; }
 
 .session-meta {
   display: flex;

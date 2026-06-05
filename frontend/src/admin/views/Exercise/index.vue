@@ -24,7 +24,7 @@
           placeholder="搜索习题标题"
           class="search-input"
         />
-        <el-select v-model="difficulty" placeholder="难度筛选" class="filter-select">
+        <el-select v-model="difficulty" placeholder="难度筛选" class="filter-select" @change="handleSearch">
           <el-option label="全部" value="" />
           <el-option label="简单" value="easy" />
           <el-option label="中等" value="medium" />
@@ -124,7 +124,7 @@
           :total="total"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
-          @size-change="fetchList"
+          @size-change="handleSizeChange"
           @current-change="fetchList"
           class="dark-pagination"
         />
@@ -138,7 +138,7 @@
       width="600px"
       custom-class="dark-dialog"
     >
-      <el-form :model="form" label-width="80px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="form.title" placeholder="请输入习题标题" class="dark-input" />
         </el-form-item>
@@ -183,6 +183,7 @@ const list = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const formRef = ref(null)
 
 const form = reactive({
   id: null,
@@ -192,6 +193,12 @@ const form = reactive({
   content: '',
   answer: ''
 })
+
+const rules = {
+  title: [{ required: true, message: '请输入习题标题', trigger: 'blur' }],
+  content: [{ required: true, message: '请输入习题内容', trigger: 'blur' }],
+  answer: [{ required: true, message: '请输入参考答案', trigger: 'blur' }],
+}
 
 // 批量导入相关
 const importDialogVisible = ref(false)
@@ -242,6 +249,11 @@ const handleSearch = () => {
   fetchList()
 }
 
+const handleSizeChange = () => {
+  page.value = 1
+  fetchList()
+}
+
 // 监听难度变化，自动搜索
 const handleDifficultyChange = () => {
   page.value = 1
@@ -263,6 +275,11 @@ const handleEdit = (row) => {
 }
 
 const handleSubmit = async () => {
+  try {
+    await formRef.value.validate()
+  } catch {
+    return
+  }
   try {
     if (isEdit.value) {
       await request.put(`/admin/exercises/${form.id}`, form)

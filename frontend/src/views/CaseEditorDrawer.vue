@@ -1117,8 +1117,8 @@ const handleSave = async () => {
     // 🔥 强制深度拷贝，确保拿到响应式对象的真实原生数据
     const rawForm = JSON.parse(JSON.stringify(toRaw(caseForm.value)))
 
-    // 🔥 自动补全 URL 协议
-    if (rawForm.url && !rawForm.url.includes('://')) {
+    // 🔥 自动补全 URL 协议（跳过包含变量模板的URL，避免产生 http://{{base_url}} 错误）
+    if (rawForm.url && !rawForm.url.includes('://') && !rawForm.url.includes('{{')) {
       rawForm.url = 'http://' + rawForm.url
     }
 
@@ -1247,7 +1247,7 @@ const handleSaveAndRun = async () => {
   if (caseForm.value.name && caseForm.value.url) {
     // 确保传递真实数据，避免响应式问题
     const data = JSON.parse(JSON.stringify(toRaw(caseForm.value)))
-    if (data.url && !data.url.includes('://')) {
+    if (data.url && !data.url.includes('://') && !data.url.includes('{{')) {
       data.url = 'http://' + data.url
     }
     emit('run', { ...data, id: savedCaseId })

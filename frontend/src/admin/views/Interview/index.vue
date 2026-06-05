@@ -181,11 +181,15 @@ const fetchList = async () => {
 }
 
 const handleGenerateAnswers = async () => {
-  await ElMessageBox.confirm(
-    '将使用AI为所有没有参考答案的面试题生成参考答案，可能需要几分钟时间。是否继续？',
-    'AI生成参考答案',
-    { confirmButtonText: '开始生成', cancelButtonText: '取消', type: 'warning' }
-  )
+  try {
+    await ElMessageBox.confirm(
+      '将使用AI为所有没有参考答案的面试题生成参考答案，可能需要几分钟时间。是否继续？',
+      'AI生成参考答案',
+      { confirmButtonText: '开始生成', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
   generating.value = true
   try {
     const res = await generateInterviewAnswers(20)
@@ -210,9 +214,13 @@ const difficultyTag = d => ({ easy: 'success', medium: 'warning', hard: 'danger'
 
 // ---- 删除 ----
 const handleDelete = async (row) => {
-  await ElMessageBox.confirm(`确定删除题目「${row.title.slice(0, 20)}...」吗？`, '删除确认', {
-    confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning'
-  })
+  try {
+    await ElMessageBox.confirm(`确定删除题目「${row.title.slice(0, 20)}...」吗？`, '删除确认', {
+      confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning'
+    })
+  } catch {
+    return
+  }
   try {
     await request.delete(`/admin/interview/questions/${row.id}`)
     ElMessage.success('删除成功')

@@ -7,9 +7,9 @@
           <div class="bench-body">
             <div class="section-hint"><el-icon><InfoFilled /></el-icon> 不依赖 JMeter，直接在平台内验证多个并发能否跑通。设置并发数、持续时间、预热时间，点击下方按钮开始</div>
             <div class="bench-controls">
-              <div class="form-group"><label>并发数</label><el-tooltip content="模拟多少个用户同时访问，如 50 = 50 个虚拟用户同时跑" placement="top"><el-input-number v-model="benchConcurrency" :min="1" :max="200" size="small" /></el-tooltip></div>
-              <div class="form-group"><label>持续(秒)</label><el-tooltip content="总共跑多长时间，如 60 = 持续压测 60 秒" placement="top"><el-input-number v-model="benchDuration" :min="3" :max="60" size="small" /></el-tooltip></div>
-              <div class="form-group"><label>预热(秒)</label><el-tooltip content="逐步启动的时间，避免瞬间压垮服务。如 5 = 5 秒内逐步启动完所有并发用户" placement="top"><el-input-number v-model="benchRampUp" :min="0" :max="10" size="small" /></el-tooltip></div>
+              <div class="form-group"><label>并发数</label><el-tooltip content="模拟多少个用户同时访问，如 50 = 50 个虚拟用户同时跑" placement="top"><el-input-number v-model="localBenchConcurrency" :min="1" :max="200" size="small" /></el-tooltip></div>
+              <div class="form-group"><label>持续(秒)</label><el-tooltip content="总共跑多长时间，如 60 = 持续压测 60 秒" placement="top"><el-input-number v-model="localBenchDuration" :min="3" :max="60" size="small" /></el-tooltip></div>
+              <div class="form-group"><label>预热(秒)</label><el-tooltip content="逐步启动的时间，避免瞬间压垮服务。如 5 = 5 秒内逐步启动完所有并发用户" placement="top"><el-input-number v-model="localBenchRampUp" :min="0" :max="10" size="small" /></el-tooltip></div>
             </div>
             <el-button v-if="!benching" type="danger" size="large" @click="$emit('start-bench')" style="width:100%;margin-bottom:8px;font-size:15px;font-weight:700">
               ⚡ 开始并发测试（{{ benchConcurrency }} 虚拟用户 × {{ benchDuration }}秒）
@@ -329,6 +329,9 @@ const emit = defineEmits([
   'stop-bench',
   'generate-preview',
   'download-jmx',
+  'update:benchConcurrency',
+  'update:benchDuration',
+  'update:benchRampUp',
 ])
 
 const rightTab = ref('bench')
@@ -346,6 +349,19 @@ const selectedSampleIdx = ref(-1)
 const selectedSampleTab = ref('sampler')
 const selectedRequestTab = ref('rbody')
 const selectedResponseTab = ref('resbody')
+
+const localBenchConcurrency = computed({
+  get: () => props.benchConcurrency,
+  set: (v) => emit('update:benchConcurrency', v)
+})
+const localBenchDuration = computed({
+  get: () => props.benchDuration,
+  set: (v) => emit('update:benchDuration', v)
+})
+const localBenchRampUp = computed({
+  get: () => props.benchRampUp,
+  set: (v) => emit('update:benchRampUp', v)
+})
 
 const shortUrl = (url) => {
   try {
@@ -382,6 +398,23 @@ const filteredSamples = computed(() => {
     else if (sampleStatusFilter.value === 'error') list = list.filter(s => s.status >= 400 && s.status < 600)
     else if (sampleStatusFilter.value === 'exception') list = list.filter(s => !s.status || s.status === 0)
   }
+  const q = (sampleSearchQuery.value || '').trim()
+  if (q) {
+    const caseSensitive = searchCaseSensitive.value
+    const useRegex = searchRegex.value
+    if (useRegex) {
+      try {
+        const regex = caseSensitive ? new RegExp(q) : new RegExp(q, 'i')
+        list = list.filter(s => regex.test(s.name || s.url || '') || regex.test(s.response_body || '') || regex.test(s.error || ''))
+      } catch { /* invalid regex, skip filter */ }
+    } else {
+      const searchStr = caseSensitive ? q : q.toLowerCase()
+      list = list.filter(s => {
+        const text = `${s.name || ''} ${s.url || ''} ${s.response_body || ''} ${s.error || ''}`
+        return caseSensitive ? text.includes(searchStr) : text.toLowerCase().includes(searchStr)
+      })
+    }
+  }
   return list
 })
 
@@ -397,14 +430,9 @@ const selectSample = (idx) => {
   selectedSampleTab.value = 'sampler'
 }
 
-const emitVrtSearch = () => {}
 const emitVrtReset = () => {
   sampleSearchQuery.value = ''
 }
-
-const updateBenchConcurrency = (v) => emit('update:benchConcurrency', v)
-const updateBenchDuration = (v) => emit('update:benchDuration', v)
-const updateBenchRampUp = (v) => emit('update:benchRampUp', v)
 
 defineExpose({
   rightTab,

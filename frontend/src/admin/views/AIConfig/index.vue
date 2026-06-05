@@ -353,7 +353,7 @@ const fetchConfigs = async () => {
   loading.value = true
   try {
     const res = await request.get('/admin/ai-configs')
-    configs.value = res?.data || []
+    configs.value = res?.data || res || []
   } catch (e) {
     ElMessage.error('获取AI配置失败')
   } finally {
@@ -530,7 +530,11 @@ const handleActivate = async (cfg) => {
 }
 
 const handleDelete = async (cfg) => {
-  await ElMessageBox.confirm(`确定删除「${cfg.name}」?`, '确认', { confirmButtonText: '删除', cancelButtonType: 'cancel', type: 'warning' })
+  try {
+    await ElMessageBox.confirm(`确定删除「${cfg.name}」?`, '确认', { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' })
+  } catch {
+    return
+  }
   try {
     await request.delete(`/admin/ai-configs/${cfg.id}`)
     ElMessage.success('已删除')
@@ -590,9 +594,13 @@ const handleEdit = (cfg) => {
 }
 
 const handleSubmit = async () => {
-  submitting.value = true
   try {
     await formRef.value.validate()
+  } catch {
+    return
+  }
+  submitting.value = true
+  try {
     const payload = { ...form }
     if (!payload.base_url) delete payload.base_url
     if (!payload.group_id) delete payload.group_id

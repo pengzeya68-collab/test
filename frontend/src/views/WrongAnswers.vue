@@ -145,7 +145,12 @@ onMounted(() => {
 const fetchWrongAnswers = async () => {
   try {
     const res = await request.get('/exercise/wrong-answers')
-    wrongData.value = res
+    wrongData.value = {
+      wrong_answers: res.wrong_answers || [],
+      mastered: res.mastered || [],
+      wrong_count: res.wrong_count || 0,
+      mastered_count: res.mastered_count || 0,
+    }
   } catch (error) {
     console.error('获取错题本失败:', error)
   }

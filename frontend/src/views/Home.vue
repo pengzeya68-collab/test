@@ -251,18 +251,23 @@ onMounted(async () => {
           const allPaths = pathRes.items || pathRes || []
           const pathList = Array.isArray(allPaths) ? allPaths : []
 
-          recommendedPaths.value = weakSkills.map((skill, idx) => {
-            const matched = pathList.find(p =>
-              (p.title || '').includes(skill.name.slice(0, 2)) ||
-              (p.description || '').includes(skill.name.slice(0, 2))
-            )
-            return {
-              id: matched ? matched.id : (pathList[idx % pathList.length]?.id || 1),
-              priority: idx + 1,
-              title: matched ? matched.title : `${skill.name}提升路线`,
-              reason: `${skill.name}当前${skill.score}分（${skill.level}），${skill.suggestion}`,
-            }
-          })
+          if (pathList.length === 0) {
+            recommendedPaths.value = []
+          } else {
+            recommendedPaths.value = weakSkills.map((skill, idx) => {
+              const matched = pathList.find(p =>
+                (p.title || '').includes(skill.name) ||
+                (p.description || '').includes(skill.name) ||
+                (p.tags || []).some(tag => (tag || '').includes(skill.name))
+              )
+              return {
+                id: matched ? matched.id : (pathList[idx % pathList.length]?.id || 1),
+                priority: idx + 1,
+                title: matched ? matched.title : `${skill.name}提升路线`,
+                reason: `${skill.name}当前${skill.score}分（${skill.level}），${skill.suggestion}`,
+              }
+            })
+          }
         }
       }
     } catch (e) {

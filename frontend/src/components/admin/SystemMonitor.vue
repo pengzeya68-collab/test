@@ -53,7 +53,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import request from '../../utils/request'
 
 const loading = ref(false)
@@ -81,6 +81,21 @@ async function refreshProcessInfo() {
 }
 
 let timer = null
+
+watch(autoRefresh, (val) => {
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
+  if (val) {
+    refreshSystemInfo()
+    refreshProcessInfo()
+    timer = setInterval(() => {
+      refreshSystemInfo()
+      refreshProcessInfo()
+    }, 5000)
+  }
+})
 
 onMounted(() => {
   refreshSystemInfo()

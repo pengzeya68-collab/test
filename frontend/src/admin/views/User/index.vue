@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿<template>
   <div class="user-management-dark">
     <h1 class="page-title">用户管理</h1>
 
@@ -103,7 +103,7 @@
           :total="total"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
-          @size-change="fetchList"
+          @size-change="handleSizeChange"
           @current-change="fetchList"
           class="dark-pagination"
         />
@@ -219,6 +219,11 @@ const handleSearch = () => {
   fetchList()
 }
 
+const handleSizeChange = () => {
+  page.value = 1
+  fetchList()
+}
+
 const handleAdd = () => {
   isEdit.value = false
   Object.keys(form).forEach(key => {
@@ -234,6 +239,7 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   isEdit.value = true
   Object.assign(form, row)
+  form.password = ''
   dialogVisible.value = true
 }
 

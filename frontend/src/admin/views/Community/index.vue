@@ -88,7 +88,7 @@
           :total="postTotal"
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next"
-          @size-change="fetchPosts"
+          @size-change="handlePostSizeChange"
           @current-change="fetchPosts"
           class="dark-pagination"
         />
@@ -133,7 +133,7 @@
           :total="commentTotal"
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next"
-          @size-change="fetchComments"
+          @size-change="handleCommentSizeChange"
           @current-change="fetchComments"
           class="dark-pagination"
         />
@@ -192,6 +192,11 @@ const fetchPosts = async () => {
   }
 }
 
+const handlePostSizeChange = () => {
+  postPage.value = 1
+  fetchPosts()
+}
+
 const toggleEssence = async (row) => {
   try {
     const res = await request.post(`/admin/community/posts/${row.id}/toggle-essence`)
@@ -248,6 +253,11 @@ const fetchComments = async () => {
   } finally {
     commentLoading.value = false
   }
+}
+
+const handleCommentSizeChange = () => {
+  commentPage.value = 1
+  fetchComments()
 }
 
 const deleteComment = async (row) => {

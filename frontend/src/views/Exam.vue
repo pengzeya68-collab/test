@@ -419,6 +419,15 @@ const jumpToMarkedQuestion = () => {
 }
 
 const submitExam = async () => {
+  // 防止重复提交
+  if (submitting.value) return
+
+  // 清除计时器，避免计时器到期再次触发提交
+  if (examTimer) {
+    clearInterval(examTimer)
+    examTimer = null
+  }
+
   // 保存当前题目的答案
   if (currentQuestion.value?.question_type === 'multiple_choice') {
     userAnswers.value[currentQuestion.value.id] = selectedOptions.value.join(',')

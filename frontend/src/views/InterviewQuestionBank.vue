@@ -256,16 +256,10 @@ const viewQuestion = async (question) => {
     if (res.success) {
       const questionDetail = res.data
       currentQuestion.value = {
-        id: questionDetail.id,
-        title: questionDetail.title,
-        slug: questionDetail.slug,
-        difficulty: questionDetail.difficulty,
+        ...question,
         content: questionDetail.description,
         answer: questionDetail.reference_solution || '暂无参考答案',
         category: questionDetail.category || questionDetail.knowledge_point || '综合',
-        view_count: 0,
-        collect_count: 0,
-        is_collected: false
       }
       showDetailDialog.value = true
     } else {

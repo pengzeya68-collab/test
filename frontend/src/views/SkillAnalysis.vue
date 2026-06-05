@@ -383,8 +383,8 @@ const radarOption = computed(() => {
 })
 
 const barOption = computed(() => {
-  const categories = ['Pytest', 'Requests/AIOHTTP', 'FastAPI', 'Docker/Nginx', 'Vue3/ElementPlus', 'Jenkins/GitLabCI', 'Allure/报告', 'SQL/Redis']
-  const values = [85, 90, 78, 75, 72, 70, 82, 68]
+  const categories = skills.value.map(s => s.name)
+  const values = skills.value.map(s => s.score)
   return {
     tooltip: {
       trigger: 'axis',

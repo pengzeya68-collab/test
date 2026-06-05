@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import autoTestRequest from '@/utils/autoTestRequest'
@@ -80,7 +80,7 @@ const removeFav = async (item) => {
   }
 }
 
-load()
+onMounted(() => load())
 </script>
 
 <style scoped>

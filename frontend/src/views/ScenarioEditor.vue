@@ -63,6 +63,7 @@
           ref="dataDrivenPanelRef"
           :scenario-id="scenarioId"
           :dataset="dataset"
+          :env-id="selectedEnvId"
           @save-dataset="onDatasetSave"
           @run-data-driven="onRunDataDriven"
           @dataset-changed="onDatasetChanged"
@@ -277,6 +278,7 @@ const loadScenario = async () => {
 }
 
 const handleSaveBasic = async () => {
+  if (!scenarioForm.value.name?.trim()) return
   try {
     await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}`, scenarioForm.value)
   } catch (error) {
@@ -427,7 +429,7 @@ const handleRun = async () => {
   isRunning.value = true
   try {
     const stepCount = steps.value ? steps.value.length : 0
-    executionDialogRef.value?.startExecution(props.scenarioId, selectedEnvId.value, stepCount)
+    await executionDialogRef.value?.startExecution(props.scenarioId, selectedEnvId.value, stepCount)
   } finally {
     isRunning.value = false
   }

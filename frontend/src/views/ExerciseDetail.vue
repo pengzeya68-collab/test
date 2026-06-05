@@ -682,6 +682,9 @@ watch(exerciseId, () => {
   selectedChoices.value = []
   userAnswer.value = ''
   leftTab.value = 'desc'
+  showSolution.value = false
+  sqlResult.value = null
+  pythonResult.value = null
   fetchExerciseDetail()
   fetchRelatedExercises()
   fetchNotes()

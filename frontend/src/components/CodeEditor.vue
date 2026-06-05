@@ -221,7 +221,7 @@ const onLanguageChange = () => {
 
 // 运行代码
 const runCode = async () => {
-  if (!editorView.value) return
+  if (!editorView.value || running.value) return
   
   const code = editorView.value.state.doc.toString()
   if (!code.trim()) {

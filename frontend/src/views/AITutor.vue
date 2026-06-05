@@ -300,7 +300,8 @@ const sendMessage = async () => {
   } catch (error) {
     console.error('发送消息失败:', error)
     ElMessage.error('发送消息失败，请稍后重试')
-    messages.value.pop()
+    const loadingIdx = messages.value.findIndex(m => m.loading)
+    if (loadingIdx !== -1) messages.value.splice(loadingIdx, 1)
   } finally {
     sending.value = false
     scrollToBottom()
@@ -329,7 +330,8 @@ const reviewCode = async () => {
   } catch (error) {
     console.error('代码审查失败:', error)
     ElMessage.error('代码审查失败，请稍后重试')
-    messages.value.pop()
+    const loadingIdx = messages.value.findIndex(m => m.loading)
+    if (loadingIdx !== -1) messages.value.splice(loadingIdx, 1)
   } finally {
     sending.value = false
     scrollToBottom()
@@ -353,7 +355,8 @@ const getLearningAdvice = async () => {
   } catch (error) {
     console.error('获取学习建议失败:', error)
     ElMessage.error('获取学习建议失败，请稍后重试')
-    messages.value.pop()
+    const loadingIdx = messages.value.findIndex(m => m.loading)
+    if (loadingIdx !== -1) messages.value.splice(loadingIdx, 1)
   } finally {
     sending.value = false
     scrollToBottom()
@@ -382,7 +385,8 @@ const startInterview = async () => {
   } catch (error) {
     console.error('开始面试失败:', error)
     ElMessage.error('开始面试失败，请稍后重试')
-    messages.value.pop()
+    const loadingIdx = messages.value.findIndex(m => m.loading)
+    if (loadingIdx !== -1) messages.value.splice(loadingIdx, 1)
   } finally {
     sending.value = false
     scrollToBottom()
@@ -412,14 +416,18 @@ const sendInterviewAnswer = async () => {
   } catch (error) {
     console.error('提交回答失败:', error)
     ElMessage.error('提交回答失败，请稍后重试')
-    messages.value.pop()
+    const loadingIdx = messages.value.findIndex(m => m.loading)
+    if (loadingIdx !== -1) messages.value.splice(loadingIdx, 1)
   } finally {
     sending.value = false
     scrollToBottom()
   }
 }
 
-const endInterview = () => {
+const endInterview = async () => {
+  try {
+    await request.post('/interview/end')
+  } catch { /* silent */ }
   interviewStarted.value = false
   ElMessage.success('面试模拟已结束')
 }

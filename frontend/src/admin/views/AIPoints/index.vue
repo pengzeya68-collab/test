@@ -29,11 +29,11 @@
       <!-- 使用日志 -->
       <el-tab-pane label="使用日志" name="logs">
         <div class="filter-bar">
-          <el-input v-model="logsFilter.userId" placeholder="用户ID" clearable style="width:140px" @clear="fetchLogs" />
-          <el-select v-model="logsFilter.feature" placeholder="功能" clearable style="width:200px" @change="fetchLogs">
+          <el-input v-model="logsFilter.userId" placeholder="用户ID" clearable style="width:140px" @clear="handleLogsFilterChange" />
+          <el-select v-model="logsFilter.feature" placeholder="功能" clearable style="width:200px" @change="handleLogsFilterChange">
             <el-option v-for="c in configs" :key="c.feature" :label="c.display_name" :value="c.feature" />
           </el-select>
-          <el-button @click="fetchLogs">查询</el-button>
+          <el-button @click="handleLogsFilterChange">查询</el-button>
         </div>
         <el-table :data="logs" v-loading="logsLoading" stripe>
           <el-table-column prop="id" label="ID" width="80" />
@@ -59,8 +59,8 @@
       <!-- 积分流水 -->
       <el-tab-pane label="积分流水" name="transactions">
         <div class="filter-bar">
-          <el-input v-model="txFilter.userId" placeholder="用户ID" clearable style="width:140px" @clear="fetchTransactions" />
-          <el-select v-model="txFilter.txType" placeholder="类型" clearable style="width:180px" @change="fetchTransactions">
+          <el-input v-model="txFilter.userId" placeholder="用户ID" clearable style="width:140px" @clear="handleTxFilterChange" />
+          <el-select v-model="txFilter.txType" placeholder="类型" clearable style="width:180px" @change="handleTxFilterChange">
             <el-option label="每日签到" value="checkin" />
             <el-option label="项目实战" value="project" />
             <el-option label="积分购买" value="purchase" />
@@ -69,7 +69,7 @@
             <el-option label="AI 使用" value="ai_usage" />
             <el-option label="积分退还" value="refund" />
           </el-select>
-          <el-button @click="fetchTransactions">查询</el-button>
+          <el-button @click="handleTxFilterChange">查询</el-button>
         </div>
         <el-table :data="transactions" v-loading="txLoading" stripe>
           <el-table-column prop="id" label="ID" width="70" />
@@ -191,6 +191,11 @@ const fetchLogs = async () => {
   }
 }
 
+const handleLogsFilterChange = () => {
+  logsFilter.page = 1
+  fetchLogs()
+}
+
 // ── 积分流水 ──
 const transactions = ref([])
 const txTotal = ref(0)
@@ -212,6 +217,11 @@ const fetchTransactions = async () => {
   } finally {
     txLoading.value = false
   }
+}
+
+const handleTxFilterChange = () => {
+  txFilter.page = 1
+  fetchTransactions()
 }
 
 // ── 使用统计 ──

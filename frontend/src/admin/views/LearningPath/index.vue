@@ -68,8 +68,8 @@
         :total="total"
         :page-sizes="[9, 18, 36]"
         layout="total, sizes, prev, pager, next, jumper"
-        @size-change="fetchList"
-        @current-change="fetchList"
+        @size-change="handleSizeChange"
+          @current-change="fetchList"
         class="dark-pagination"
       />
     </div>
@@ -187,6 +187,11 @@ const handleSearch = () => {
   fetchList()
 }
 
+const handleSizeChange = () => {
+  page.value = 1
+  fetchList()
+}
+
 const handleAdd = () => {
   isEdit.value = false
   Object.keys(form).forEach(key => {
@@ -198,11 +203,15 @@ const handleAdd = () => {
 
 const handleEdit = async (row) => {
   isEdit.value = true
-  // 先获取路径详情获取已关联的习题ID
-  const res = await request.get(`/admin/paths/${row.id}`)
-  Object.assign(form, row)
-  if (res && res.exerciseIds) {
-    form.exerciseIds = res.exerciseIds
+  try {
+    const res = await request.get(`/admin/paths/${row.id}`)
+    Object.assign(form, row)
+    if (res && res.exerciseIds) {
+      form.exerciseIds = res.exerciseIds
+    }
+  } catch (e) {
+    ElMessage.error('获取路径详情失败')
+    return
   }
   fetchExerciseOptions()
   dialogVisible.value = true

@@ -60,7 +60,7 @@ const load = async () => {
     const res = await autoTestRequest.get('/v1/notifications', { params: { page: page.value, page_size: pageSize.value } })
     notifications.value = res.notifications || []
     total.value = res.total || 0
-    unreadTotal.value = (res.notifications || []).filter(n => !n.is_read).length
+    unreadTotal.value = res.unread_total || 0
   } catch (e) {
     console.error(e)
   } finally {
@@ -71,8 +71,7 @@ const load = async () => {
 const readAll = async () => {
   try {
     await autoTestRequest.post('/v1/notifications/read-all')
-    notifications.value.forEach(n => n.is_read = true)
-    unreadTotal.value = 0
+    await load()
     ElMessage.success('已全部标记为已读')
   } catch (e) {
     ElMessage.error('操作失败')
