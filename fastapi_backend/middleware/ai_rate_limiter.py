@@ -8,6 +8,8 @@ AI API 速率限制中间件
 """
 
 import time
+import random
+import threading
 import logging
 from collections import defaultdict
 from typing import Dict, List
