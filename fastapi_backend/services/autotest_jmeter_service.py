@@ -1135,7 +1135,8 @@ def _parse_http_sampler(sampler, sampler_hash_tree=None):
         else:
             case["payload"] = None
         
-        case["body_type"] = "json" if headers.get("Content-Type", "").startswith("application/json") else "none"
+        _ct_val = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
+        case["body_type"] = "json" if _ct_val.startswith("application/json") else "none"
         case["assert_rules"] = []
         case["extractors"] = []
         
@@ -1838,7 +1839,7 @@ def _build_influxdb_backend_listener(parent, name, props):
     ]
     for i, (aname, aval) in enumerate(influxdb_args):
         arg = ET.SubElement(coll, "elementProp")
-        arg.set(f"Argument.name_{i}", aname)
+        arg.set("name", aname)
         arg.set("elementType", "Argument")
         arg.set("guiclass", "ArgumentPanel")
         arg.set("testclass", "Argument")
@@ -1872,10 +1873,10 @@ def _build_user_parameters(parent, name, props):
     thread_users.set("name", "UserUsers.thread_users")
     for ui, user in enumerate(users):
         up = ET.SubElement(thread_users, "collectionProp")
-        up.set(f"name_{ui}", f"{ui}")
+        up.set("name", f"{ui}")
         for vi, val in enumerate(user):
             sp = ET.SubElement(up, "stringProp")
-            sp.set(f"name_{vi}", val if val else "")
+            sp.set("name", val if val else "")
             sp.text = val
     ET.SubElement(parent, "hashTree")
 

@@ -218,7 +218,7 @@ async def get_task_status(
         pass
     
     # 2. 再查持久化存储
-    stored = get_task(task_id)
+    stored = await get_task(task_id)
 
     # 2.5 校验任务归属
     if stored and stored.get("user_id") and stored["user_id"] != current_user.id:
@@ -356,7 +356,7 @@ async def cancel_task(
     db: AsyncSession = Depends(get_db),
 ):
     """取消任务，优先更新持久化存储，同时撤销 Celery 任务"""
-    stored = get_task(task_id)
+    stored = await get_task(task_id)
 
     # 未知任务（不在持久化层也不在 Celery）直接返回
     if stored is None:

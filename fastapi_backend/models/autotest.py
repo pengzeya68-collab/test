@@ -206,6 +206,7 @@ class AutoTestScenarioExecutionRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     scenario_id = Column(Integer, ForeignKey("test_scenarios.id", ondelete="CASCADE"), nullable=False, comment="场景ID")
     env_id = Column(Integer, nullable=True, comment="执行环境ID")
+    user_id = Column(Integer, nullable=True, comment="执行用户ID")
     status = Column(String(20), nullable=False, comment="执行状态")
     total_steps = Column(Integer, nullable=False, default=0, comment="总步骤数")
     failed_steps = Column(Integer, nullable=False, default=0, comment="失败步骤数")

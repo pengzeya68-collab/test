@@ -6,6 +6,7 @@ import logging
 import time
 
 from fastapi_backend.celery_config import app
+from celery.exceptions import Ignore
 
 # 确保 AI 生成任务被 Celery worker 发现和注册
 import fastapi_backend.services.autotest_ai_generator  # noqa: F401
@@ -166,7 +167,9 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
         except Exception as we:
             _logger.warning(f"通知 webhook 失败: {we}")
         _persist_task_result(task_id, fail_payload)
-        return fail_payload
+        # 显式标记 Celery 任务状态为 FAILURE，避免误报 SUCCESS
+        self.update_state(state='FAILURE', meta=fail_payload)
+        raise Ignore()
 
 
 @app.task(bind=True, max_retries=2, name="fastapi_backend.tasks.send_email")

@@ -162,6 +162,12 @@ async def execute_http_request(
             req_kwargs["json"] = processed_body
         elif body_type in ("form", "form-data") and processed_body:
             req_kwargs["data"] = processed_body
+        elif body_type == "raw" and processed_body:
+            # raw 模式：直接发送原始字符串
+            if isinstance(processed_body, str):
+                req_kwargs["content"] = processed_body.encode('utf-8')
+            else:
+                req_kwargs["content"] = str(processed_body).encode('utf-8')
         elif processed_body:
             if isinstance(processed_body, str):
                 try:

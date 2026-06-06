@@ -423,7 +423,8 @@ class ScenarioExecutionEngine:
             error = step.get("error", "")
 
             response_data = step.get("response", {})
-            response_body = response_data.get("body", "")
+            _raw_body = response_data.get("body", "")
+            response_body = json.dumps(_raw_body, ensure_ascii=False) if not isinstance(_raw_body, str) else _raw_body
 
             assertions = step.get("assertions", {})
             failed_assertions = assertions.get("failed", [])
@@ -768,18 +769,28 @@ class TestScenario{scenario_id}:
             request_config["url"] = replace_variables(request_config["url"], all_vars)
             # 对 dict/list 类型的值，先序列化为 JSON 字符串再替换再反序列化
             if isinstance(request_config["headers"], dict):
+                _orig_headers = dict(request_config["headers"])
                 headers_str = json.dumps(request_config["headers"], ensure_ascii=False)
-                request_config["headers"] = json.loads(replace_variables(headers_str, all_vars))
+                try:
+                    request_config["headers"] = json.loads(replace_variables(headers_str, all_vars))
+                except json.JSONDecodeError:
+                    request_config["headers"] = _orig_headers  # 变量替换后JSON非法，回退到原始值
             else:
                 request_config["headers"] = replace_variables(request_config["headers"], all_vars)
             if isinstance(request_config["params"], dict):
                 params_str = json.dumps(request_config["params"], ensure_ascii=False)
-                request_config["params"] = json.loads(replace_variables(params_str, all_vars))
+                try:
+                    request_config["params"] = json.loads(replace_variables(params_str, all_vars))
+                except json.JSONDecodeError:
+                    pass  # 保留替换前的 params
             else:
                 request_config["params"] = replace_variables(request_config["params"], all_vars)
             if isinstance(request_config["payload"], (dict, list)):
                 payload_str = json.dumps(request_config["payload"], ensure_ascii=False)
-                request_config["payload"] = json.loads(replace_variables(payload_str, all_vars))
+                try:
+                    request_config["payload"] = json.loads(replace_variables(payload_str, all_vars))
+                except json.JSONDecodeError:
+                    pass  # 保留替换前的 payload
             else:
                 request_config["payload"] = replace_variables(request_config["payload"], all_vars)
 
@@ -840,8 +851,9 @@ class TestScenario{scenario_id}:
                     else:
                         req_kwargs["data"] = str(raw_payload)
                     # form-data 不设置 Content-Type，让 httpx 自动处理
-                    if 'Content-Type' in final_headers:
-                        del final_headers['Content-Type']
+                    _ct_keys_to_del = [k for k in final_headers if k.lower() == 'content-type']
+                    for _ck in _ct_keys_to_del:
+                        del final_headers[_ck]
                 elif body_type == 'raw':
                     # raw 模式：直接发送原始字符串
                     if isinstance(raw_payload, str):
@@ -1019,7 +1031,9 @@ class TestScenario{scenario_id}:
     def _check_assertion(self, assertion: Dict, response_data: Dict, step_duration: int = 0) -> tuple:
         field = assertion.get("field") or assertion.get("target", "")
         operator = assertion.get("operator") or assertion.get("condition", "equals")
-        expected = assertion.get("expectedValue") or assertion.get("value", "")
+        expected = assertion.get("expectedValue")
+        if expected is None:
+            expected = assertion.get("value", "")
 
         # 使用 expression 作为 field 的备选（兼容旧格式）
         expression = assertion.get("expression", "")
@@ -1173,14 +1187,18 @@ class DataDrivenScenarioExecutionEngine:
                 self.iterations.append(iteration_result)
                 self.total_duration += iteration_result.get("duration", 0)
 
+        # 在 db 会话关闭前保存名称，避免 DetachedInstanceError
+        _scenario_name = scenario.name
+        _dataset_name = dataset.name
+
         overall_duration = int((time.time() - start_time) * 1000)
         success_count = len([i for i in self.iterations if i.get("success")])
         failed_count = len(self.iterations) - success_count
 
         return {
             "scenario_id": self.scenario_id,
-            "scenario_name": scenario.name,
-            "dataset_name": dataset.name,
+            "scenario_name": _scenario_name,
+            "dataset_name": _dataset_name,
             "total_iterations": len(self.iterations),
             "success_iterations": success_count,
             "failed_iterations": failed_count,

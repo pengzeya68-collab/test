@@ -195,8 +195,22 @@ async def generate_api_doc(
 import asyncio
 
 _share_tokens: Dict[str, dict] = {}
-_share_tokens_lock = asyncio.Lock()
+_share_tokens_lock: Optional[asyncio.Lock] = None
+_share_tokens_lock_loop: Optional[asyncio.AbstractEventLoop] = None
 _MAX_SHARE_TOKENS = 1000
+
+
+def _get_share_tokens_lock() -> asyncio.Lock:
+    """懒初始化 asyncio.Lock，跨事件循环自动重建"""
+    global _share_tokens_lock, _share_tokens_lock_loop
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
+    if _share_tokens_lock is None or _share_tokens_lock_loop is not current_loop:
+        _share_tokens_lock = asyncio.Lock()
+        _share_tokens_lock_loop = current_loop
+    return _share_tokens_lock
 
 
 def _cleanup_expired_tokens():
@@ -218,7 +232,7 @@ async def create_share_link(
         raise HTTPException(status_code=400, detail="没有找到用例")
 
     # 清理过期 token 并检查上限（在锁内操作，避免竞态条件）
-    async with _share_tokens_lock:
+    async with _get_share_tokens_lock():
         _cleanup_expired_tokens()
         if len(_share_tokens) >= _MAX_SHARE_TOKENS:
             raise HTTPException(status_code=429, detail="分享链接数量已达上限，请稍后再试")
@@ -244,7 +258,7 @@ async def create_share_link(
 @router.get("/api-docs/shared/{token}", dependencies=[])
 async def get_shared_doc(token: str):
     """获取分享的 API 文档（无需登录）"""
-    async with _share_tokens_lock:
+    async with _get_share_tokens_lock():
         info = _share_tokens.get(token)
         if not info:
             raise HTTPException(status_code=404, detail="分享链接不存在或已过期")

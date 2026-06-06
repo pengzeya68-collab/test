@@ -160,7 +160,9 @@ def _check_range(actual: Any, expected: Any) -> bool:
         return 400 <= val < 500
     elif "5xx" == range_text:
         return 500 <= val < 600
-    return 200 <= val < 400
+    # 无法识别的范围格式，返回 False 而非默默 fallback
+    _logger.warning(f"无法识别的范围断言格式: {expected}")
+    return False
 
 
 def get_operator_text(operator: str) -> str:
@@ -319,7 +321,7 @@ def execute_assertions(
                 value = extract_jsonpath_value(response_body, path)
                 if isinstance(rule, dict):
                     if "eq" in rule:
-                        passed = value == rule["eq"]
+                        passed = compare_values(value, "equals", rule["eq"])
                         if not passed:
                             all_passed = False
                             error_messages.append(f"JSON路径 {path} 断言失败: 期望 {rule['eq']}, 实际 {value}")
@@ -337,8 +339,8 @@ def execute_assertions(
                             "expected": rule["contains"], "actual": value, "passed": passed,
                         })
                 else:
-                    # 直接比较值
-                    passed = value == rule
+                    # 直接比较值（使用 compare_values 统一类型转换）
+                    passed = compare_values(value, "equals", rule)
                     if not passed:
                         all_passed = False
                         error_messages.append(f"JSON路径 {path} 断言失败: 期望 {rule}, 实际 {value}")

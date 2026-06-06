@@ -45,24 +45,37 @@ BASE_DIR = AUTOTEST_DATA_DIR
 # 全局变量缓存（5分钟过期，按 user_id 隔离）
 _global_vars_cache: Dict[int, Dict] = {}  # {user_id: {"vars": {}, "timestamp": 0}}
 _global_vars_lock: Optional[asyncio.Lock] = None
+_global_vars_lock_loop: Optional[asyncio.AbstractEventLoop] = None
 _global_vars_fetch_locks: Dict[int, asyncio.Lock] = {}
+_global_vars_fetch_locks_loop: Dict[int, asyncio.AbstractEventLoop] = {}
 _global_vars_fetch_locks_lock = threading.Lock()
 _GLOBAL_VARS_CACHE_TTL = 300  # 5分钟
 
 
 def _get_global_vars_lock() -> asyncio.Lock:
-    """延迟创建 asyncio.Lock，确保在事件循环运行时创建"""
-    global _global_vars_lock
-    if _global_vars_lock is None:
+    """延迟创建 asyncio.Lock，确保在事件循环运行时创建，跨循环自动重建"""
+    global _global_vars_lock, _global_vars_lock_loop
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
+    if _global_vars_lock is None or _global_vars_lock_loop is not current_loop:
         _global_vars_lock = asyncio.Lock()
+        _global_vars_lock_loop = current_loop
     return _global_vars_lock
 
 
 def _get_fetch_lock(cache_key: int) -> asyncio.Lock:
-    """获取按用户隔离的异步锁，防止 thundering herd"""
+    """获取按用户隔离的异步锁，防止 thundering herd，跨事件循环自动重建"""
     with _global_vars_fetch_locks_lock:
-        if cache_key not in _global_vars_fetch_locks:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+        existing_loop = _global_vars_fetch_locks_loop.get(cache_key)
+        if cache_key not in _global_vars_fetch_locks or existing_loop is not current_loop:
             _global_vars_fetch_locks[cache_key] = asyncio.Lock()
+            _global_vars_fetch_locks_loop[cache_key] = current_loop
         return _global_vars_fetch_locks[cache_key]
 
 
@@ -142,11 +155,21 @@ def _validate_url(url: str) -> bool:
 
 
 def _smart_type_convert(obj: Any) -> Any:
-    """递归遍历 dict/list，保持原始值类型不变"""
+    """递归遍历 dict/list，将变量替换后丢失的类型恢复（字符串→数值）"""
     if isinstance(obj, dict):
         return {k: _smart_type_convert(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [_smart_type_convert(item) for item in obj]
+    elif isinstance(obj, str):
+        # 尝试恢复被 str() 化的数值类型（变量替换后 "100" → 100）
+        # 保守策略：仅转换明确是数值的字符串，避免误转换 "001"、"v2" 等
+        if obj and not obj.startswith('0') and obj.lstrip('-').isdigit():
+            return int(obj)
+        try:
+            if obj and '.' in obj and obj.lstrip('-').replace('.', '', 1).isdigit():
+                return float(obj)
+        except (ValueError, AttributeError):
+            pass
     return obj
 
 
@@ -225,7 +248,11 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
     if isinstance(assert_rules, (dict, list)):
         ar_str = json.dumps(assert_rules, ensure_ascii=False)
         ar_str = replace_variables(ar_str, variables)
-        assert_rules = json.loads(ar_str)
+        try:
+            assert_rules = json.loads(ar_str)
+        except json.JSONDecodeError:
+            # 变量替换后 JSON 非法，回退到原始断言规则
+            assert_rules = case.assert_rules or {}
     else:
         assert_rules = replace_variables(assert_rules, variables)
 
