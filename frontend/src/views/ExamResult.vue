@@ -69,7 +69,7 @@
             <div class="stat-label">做错</div>
           </div>
           <div class="stat-card">
-            <div class="stat-number" style="color: var(--tm-text-secondary);">{{ result.statistics.total_questions - result.statistics.correct_count - result.statistics.wrong_count }}</div>
+            <div class="stat-number" style="color: var(--tm-text-secondary);">{{ Math.max(0, result.statistics.total_questions - result.statistics.correct_count - result.statistics.wrong_count) }}</div>
             <div class="stat-label">未判分</div>
           </div>
         </div>

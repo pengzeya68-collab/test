@@ -230,6 +230,10 @@ async def submit_assessment(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # 防止重复提交：已完成的测评不允许重新提交
+    if current_user.assessment_score and current_user.assessment_score > 0:
+        raise HTTPException(status_code=400, detail="您已完成测评，无法重复提交")
+
     question_map = {q["id"]: q for q in ASSESSMENT_QUESTIONS}
     dim_name_map = {q["dimension"]: q["dimension_name"] for q in ASSESSMENT_QUESTIONS}
 
@@ -242,8 +246,9 @@ async def submit_assessment(
         if dim not in dimension_scores_raw:
             dimension_scores_raw[dim] = []
         is_correct = 1 if ans.selected_index == q["correct_index"] else 0
-        difficulty_bonus = q.get("difficulty", 1) * 0.1
-        score = is_correct * (0.7 + difficulty_bonus)
+        # 修复评分公式：答对满分100，答错0分，难度作为权重微调
+        difficulty_weight = 1 + (q.get("difficulty", 1) - 1) * 0.1  # 难度1=1.0, 难度2=1.1
+        score = is_correct * 100 * difficulty_weight
         dimension_scores_raw[dim].append(score)
 
     dimension_results: list[DimensionScore] = []
@@ -252,7 +257,7 @@ async def submit_assessment(
         raw = dimension_scores_raw.get(dim, [])
         if raw:
             avg = sum(raw) / len(raw)
-            dim_score = round(avg * 100)
+            dim_score = round(avg)
         else:
             dim_score = 0
         overall_score += dim_score * weight

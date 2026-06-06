@@ -1889,7 +1889,12 @@ const duplicateNode = (uid) => {
   const pInfo = findParent(scriptTree, uid)
   if (!pInfo) return
   const copy = JSON.parse(JSON.stringify(source))
-  copy.uid = newUid()
+  // 递归为所有节点重新分配UID，避免重复
+  const reassignUids = (node) => {
+    node.uid = newUid()
+    if (node.children) node.children.forEach(reassignUids)
+  }
+  reassignUids(copy)
   pInfo.parent.children.splice(pInfo.index + 1, 0, reactive(copy))
 }
 
@@ -2568,6 +2573,9 @@ const findParentSampler = (parent, uid) => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeHandler)
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
+  // 清理可能残留的拖拽事件监听器
+  document.removeEventListener('mousemove', onDragMove)
+  document.removeEventListener('mouseup', onDragEnd)
 })
 </script>
 

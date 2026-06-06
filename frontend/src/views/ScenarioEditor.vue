@@ -322,8 +322,14 @@ const loadAvailableCases = async () => {
   }
 }
 
+let searchDebounceTimer = null
+let isRunningFallbackTimer = null
+
 const handleSearchCases = () => {
-  loadAvailableCases()
+  clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(() => {
+    loadAvailableCases()
+  }, 300)
 }
 
 const handleCaseSelectionChange = (selection) => {
@@ -433,6 +439,9 @@ const handleRun = async () => {
   } catch {
     isRunning.value = false
   }
+  // 安全兜底：3分钟后自动重置isRunning，防止对话框未触发completed事件
+  if (isRunningFallbackTimer) clearTimeout(isRunningFallbackTimer)
+  isRunningFallbackTimer = setTimeout(() => { isRunning.value = false }, 180000)
 }
 
 const handleExecutionCompleted = () => {
@@ -528,10 +537,18 @@ watch(
 
 onUnmounted(() => {
   stopPolling()
+  if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
+  if (isRunningFallbackTimer) { clearTimeout(isRunningFallbackTimer); isRunningFallbackTimer = null }
 })
 
 onBeforeRouteLeave(async () => {
-  await dataDrivenPanelRef.value?.flushSave()
+  try {
+    await dataDrivenPanelRef.value?.flushSave()
+  } catch (error) {
+    console.error('保存数据驱动面板失败:', error)
+    const answer = window.confirm('数据保存失败，确定要离开吗？未保存的数据将丢失。')
+    if (!answer) return false
+  }
 })
 </script>
 

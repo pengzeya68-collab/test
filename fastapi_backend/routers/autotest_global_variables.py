@@ -218,6 +218,8 @@ async def batch_delete_global_variables(
     db: AsyncSession = Depends(get_db),
 ):
     """批量删除全局变量"""
+    if not variable_ids:
+        return {"message": "成功删除 0 个全局变量"}
     result = await db.execute(
         delete(AutoTestGlobalVariable)
         .where(AutoTestGlobalVariable.id.in_(variable_ids))

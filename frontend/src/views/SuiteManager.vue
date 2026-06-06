@@ -205,10 +205,11 @@ const handlePageSizeChange = () => {
 // 搜索用例
 const searchCases = async (query) => {
   try {
-    const res = await autoTestRequest.get(`${CASES_API}/all`, { params: { keyword: query } })
-    availableCases.value = res || []
+    const res = await autoTestRequest.get(CASES_API, { params: { keyword: query, page_size: 100 } })
+    availableCases.value = Array.isArray(res) ? res : (res.items || [])
   } catch (err) {
     console.error('搜索用例失败:', err)
+    availableCases.value = []
   }
 }
 

@@ -210,8 +210,16 @@ const cronToHuman = (cron) => {
   if (parts.length !== 5) return cron || ''
   const [minute, hour, day, month, dow] = parts
 
+  const formatHour = (h) => {
+    if (h === '*') return '每小时'
+    if (h.startsWith('*/')) return `每${h.slice(2)}小时`
+    return h
+  }
+
   if (day === '*' && month === '*' && dow === '*') {
-    if (hour === '*') return `${minute}分钟执行`
+    if (hour === '*' && minute === '*') return '每分钟执行'
+    if (hour === '*') return `每小时第${minute}分钟执行`
+    if (hour.startsWith('*/')) return `${formatHour(hour)}的${minute.padStart(2, '0')}分执行`
     return `每天 ${hour}:${minute.padStart(2, '0')}`
   }
   if (dow === '1' && day === '*') return `每周一 ${hour}:${minute.padStart(2, '0')}`
@@ -228,9 +236,16 @@ const getScheduleLabel = (scenarioId) => {
 
 const handleScheduleSubmit = async () => {
   try {
+    // 先删除旧任务，再创建新任务，避免重复
     const existingTasks = scheduleTasks.value[scheduleForm.value.scenario_id] || []
+    const deleteErrors = []
     for (const task of existingTasks) {
-      await autoTestRequest.delete(`/auto-test/scheduler/tasks/${task.task_id}`)
+      try {
+        await autoTestRequest.delete(`/auto-test/scheduler/tasks/${task.task_id}`)
+      } catch (e) {
+        deleteErrors.push(task.task_id)
+        console.warn('删除旧定时任务失败:', e)
+      }
     }
 
     await autoTestRequest.post('/auto-test/scheduler/tasks', {
@@ -242,7 +257,11 @@ const handleScheduleSubmit = async () => {
       is_active: scheduleForm.value.is_active
     })
 
-    ElMessage.success('定时任务设置成功')
+    if (deleteErrors.length > 0) {
+      ElMessage.warning(`定时任务已创建，但${deleteErrors.length}个旧任务删除失败，请手动清理`)
+    } else {
+      ElMessage.success('定时任务设置成功')
+    }
     dialogVisible.value = false
     emit('schedule-changed')
   } catch (error) {

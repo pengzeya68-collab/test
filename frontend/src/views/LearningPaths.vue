@@ -296,7 +296,8 @@ const animateValue = (refVar, target, duration = 800) => {
 
 onMounted(() => {
   if (route.query.stage) {
-    currentStage.value = parseInt(route.query.stage)
+    const parsed = parseInt(route.query.stage)
+    currentStage.value = (parsed >= 1 && parsed <= 5) ? parsed : 1
   }
   fetchLearningPaths()
   if (isLoggedIn.value) {

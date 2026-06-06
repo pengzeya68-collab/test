@@ -37,9 +37,9 @@
         <div class="form-group row-group">
           <label>题目数量</label>
           <div class="number-input-wrap">
-            <button class="num-btn" @click="form.question_count = Math.max(5, form.question_count - 1)">−</button>
+            <button class="num-btn" @click="form.question_count = Math.max(5, (form.question_count || 5) - 1)">−</button>
             <input type="number" v-model.number="form.question_count" class="num-input" />
-            <button class="num-btn" @click="form.question_count = Math.min(20, form.question_count + 1)">+</button>
+            <button class="num-btn" @click="form.question_count = Math.min(20, (form.question_count || 5) + 1)">+</button>
           </div>
         </div>
 
@@ -347,8 +347,9 @@ onMounted(() => {
   fetchCategories()
   const idFromUrl = route.query.session_id
   if (idFromUrl) {
-    sessionId.value = Number(idFromUrl)
-    fetchSession()
+    const parsed = Number(idFromUrl)
+    sessionId.value = isNaN(parsed) ? null : parsed
+    if (sessionId.value) fetchSession()
   }
 })
 
@@ -445,6 +446,10 @@ const submitAnswer = async () => {
   }
 
   submitting.value = true
+  // 捕获当前题目索引，防止异步操作期间用户切换题目导致数据写入错误
+  const submitIdx = currentQuestionIndex.value
+  const getQuestion = () => questions.value[submitIdx]
+
   try {
     const isCode = needsCodeEditor.value
     const res = await request.post(`/interview/sessions/${sessionId.value}/submissions`, {
@@ -454,13 +459,17 @@ const submitAnswer = async () => {
     }, { timeout: 120000 })
 
     const subData = res.data || res
-    currentQuestion.value.is_answered = true
-    currentQuestion.value.record_id = subData.id
-    currentQuestion.value.user_answer = currentAnswer.value.trim()
+    const q = getQuestion()
+    if (q) {
+      q.is_answered = true
+      q.record_id = subData.id
+      q.user_answer = currentAnswer.value.trim()
+    }
 
     const checkResult = async (attempts = 0) => {
       if (pollingAborted.value || attempts > 20) {
-        currentQuestion.value.ai_feedback = 'AI评估超时，请稍后刷新查看'
+        const q2 = getQuestion()
+        if (q2) q2.ai_feedback = 'AI评估超时，请稍后刷新查看'
         submitting.value = false
         return
       }
@@ -468,13 +477,18 @@ const submitAnswer = async () => {
         const subRes = await request.get(`/interview/submissions/${subData.id}`)
         const sub = subRes.data || subRes
         if (sub.score !== null && sub.score !== undefined) {
-          currentQuestion.value.score = sub.score
-          currentQuestion.value.ai_feedback = sub.feedback || '评估完成'
-          currentQuestion.value.parsed_feedback = sub.parsed_feedback || null
+          const q3 = getQuestion()
+          if (q3) {
+            q3.score = sub.score
+            q3.ai_feedback = sub.feedback || '评估完成'
+            q3.parsed_feedback = sub.parsed_feedback || null
+          }
           submitting.value = false
           return
         }
-      } catch {}
+      } catch (err) {
+        console.warn('获取评估结果失败:', err)
+      }
       await new Promise(r => setTimeout(r, 2000))
       await checkResult(attempts + 1)
     }

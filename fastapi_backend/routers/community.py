@@ -83,7 +83,7 @@ def _fmt_dt(dt: datetime | None) -> str:
 async def _format_post(post: Post, user_id: int | None = None, db: AsyncSession | None = None) -> PostListResponse:
     cat = _category_info(post.category) if post.category else None
     tags = post.tags.split(",") if post.tags else []
-    summary = post.summary or (post.content[:200] + "..." if len(post.content) > 200 else post.content)
+    summary = post.summary or (post.content[:200] + "..." if post.content and len(post.content) > 200 else (post.content or ""))
 
     is_liked: bool | None = None
     is_favorited: bool | None = None
@@ -327,7 +327,8 @@ async def like_post(
     like = like_q.scalar_one_or_none()
     if like:
         await db.delete(like)
-        await db.execute(update(Post).where(Post.id == post_id).values(like_count=Post.like_count - 1))
+        # 只有当like确实被删除时才减少计数，防止并发双重取消导致计数多减
+        await db.execute(update(Post).where(Post.id == post_id).values(like_count=func.greatest(Post.like_count - 1, 0)))
         action = "unliked"
     else:
         like = Like(user_id=current_user.id, post_id=post_id)
@@ -444,7 +445,7 @@ async def like_comment(
     like = like_q.scalar_one_or_none()
     if like:
         await db.delete(like)
-        await db.execute(update(Comment).where(Comment.id == comment_id).values(like_count=Comment.like_count - 1))
+        await db.execute(update(Comment).where(Comment.id == comment_id).values(like_count=func.greatest(Comment.like_count - 1, 0)))
         action = "unliked"
     else:
         like = Like(user_id=current_user.id, comment_id=comment_id)
@@ -455,8 +456,8 @@ async def like_comment(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        # 并发竞态：另一个请求已经插入了 like，回滚后 action 应修正
-        action = "unliked"
+        # 并发竞态：另一个请求已经插入了 like，视为点赞成功
+        action = "liked"
     await db.refresh(comment)
     return LikeResponse(
         message="点赞成功" if action == "liked" else "取消点赞成功",
@@ -477,7 +478,7 @@ async def get_user_posts(
     user_q = await db.execute(select(User).filter_by(id=user_id))
     if not user_q.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="用户不存在")
-    q = select(Post).options(selectinload(Post.user)).filter_by(user_id=user_id).order_by(Post.created_at.desc())
+    q = select(Post).options(selectinload(Post.user)).filter_by(user_id=user_id).filter(Post.is_approved == True).order_by(Post.created_at.desc())
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
     q = q.offset((page - 1) * per_page).limit(per_page)

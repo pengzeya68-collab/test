@@ -17,7 +17,8 @@ from fastapi_backend.models.models import User
 
 router = APIRouter(prefix="/api/auto-test/suites", tags=["回归套件"])
 
-# 内存存储（可后续迁移到数据库）
+# 内存存储 - 已知限制：服务重启后数据丢失，多worker部署时数据不共享
+# TODO: 迁移到数据库持久化存储
 _suites: Dict[int, dict] = {}
 _suite_id_seq = 1
 _run_id_seq = 1

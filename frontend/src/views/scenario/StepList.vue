@@ -154,6 +154,9 @@
                     </div>
                   </el-tab-pane>
                 </el-tabs>
+                <div style="margin-top: 12px; text-align: right;">
+                  <el-button size="small" type="primary" @click="saveOverrides(element)">保存覆盖</el-button>
+                </div>
               </div>
             </el-popover>
           </div>
@@ -314,7 +317,7 @@ const saveExtractors = async () => {
   )
 
   try {
-    await autoTestRequest.put(`/auto-test/cases/${currentExtractorStep.value.api_case_id}`, {
+    await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}/steps/${currentExtractorStep.value.id}`, {
       extractors: validExtractors.length > 0 ? validExtractors : null
     })
     if (currentExtractorStep.value.api_case) {

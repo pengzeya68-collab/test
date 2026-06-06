@@ -448,8 +448,12 @@ async def run_case(
     if env_id:
         try:
             env_id_int = int(env_id)
+            if env_id_int <= 0:
+                raise HTTPException(status_code=400, detail=f"无效的环境 ID: {env_id}")
             result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id_int, AutoTestEnvironment.user_id == current_user.id))
             env = result.scalar_one_or_none()
+            if env is None:
+                raise HTTPException(status_code=400, detail=f"环境 ID {env_id} 不存在")
         except (ValueError, TypeError):
             raise HTTPException(status_code=400, detail=f"无效的环境 ID: {env_id}")
     if env is None:
@@ -548,6 +552,8 @@ async def batch_run(
     db: AsyncSession = Depends(get_db),
 ):
     """批量执行多个用例（并发执行）"""
+    if not case_ids:
+        raise HTTPException(status_code=400, detail="请提供至少一个用例ID")
     if len(case_ids) > 50:
         raise HTTPException(status_code=400, detail="单次批量执行最多支持 50 个用例")
     result = await db.execute(select(AutoTestCase).where(AutoTestCase.id.in_(case_ids), AutoTestCase.user_id == current_user.id))
@@ -1123,7 +1129,8 @@ async def run_scheduler_task_now(
                 import logging
                 logging.getLogger(__name__).error(f"定时任务执行失败 task_id={task_id}: {e}", exc_info=True)
 
-        asyncio.create_task(_execute_job_safe())
+        _bg_task = asyncio.create_task(_execute_job_safe())
+        _bg_task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.exception() else None)
         return {"message": "任务已触发执行"}
     except HTTPException:
         raise

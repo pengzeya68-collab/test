@@ -354,7 +354,7 @@ const pollBench = async () => {
 const stopBench = async () => {
   if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
   benching.value = false; runStatus.value = 'idle'
-  if (benchTaskId.value) { try { await autoTestRequest.post('/auto-test/bench/stop', { task_id: benchTaskId.value }) } catch (e) {} }
+  if (benchTaskId.value) { try { await autoTestRequest.post('/auto-test/bench/stop', { task_id: benchTaskId.value }) } catch (e) { console.warn('停止压测任务失败:', e) } }
   ElMessage.info('已停止')
 }
 
@@ -438,7 +438,13 @@ const exportReport = async () => {
 }
 
 watch(benchPanelExpanded, (v) => { if (v) { nextTick(() => { initAllBenchCharts(); updateAllBenchCharts() }) } })
-onMounted(() => { fetchCosts() })
+watch(BENCH_HISTORY_KEY, (newKey) => {
+  benchHistory.value = JSON.parse(localStorage.getItem(newKey) || '[]')
+})
+onMounted(() => {
+  fetchCosts()
+  window.addEventListener('resize', resizeAllBenchCharts)
+})
 onBeforeUnmount(() => {
   if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
   window.removeEventListener('resize', resizeAllBenchCharts)

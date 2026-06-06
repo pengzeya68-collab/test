@@ -224,7 +224,7 @@ use([
 
 const router = useRouter()
 
-const PRIMARY_PURPLE = 'var(--tm-color-primary)'
+const PRIMARY_PURPLE = '#8b5cf6'
 const PRIMARY_MAGENTA = '#d946ef'
 const LIGHT_PURPLE = '#c084fc'
 const TEXT_LIGHT = '#e2e8f0'
@@ -270,11 +270,13 @@ const barChartRef = ref(null)
 const lineChartRef = ref(null)
 
 let animationFrameId = null
+let isUnmounted = false
 
 const animateScore = (target) => {
   const duration = 1500
   const startTime = performance.now()
   const step = (currentTime) => {
+    if (isUnmounted) return
     const elapsed = currentTime - startTime
     const progress = Math.min(elapsed / duration, 1)
     const eased = 1 - Math.pow(1 - progress, 3)
@@ -480,12 +482,14 @@ const lineOption = computed(() => {
 })
 
 onMounted(async () => {
+  isUnmounted = false
   await fetchSkillData()
   await nextTick()
   animateScore(overallScore.value)
 })
 
 onBeforeUnmount(() => {
+  isUnmounted = true
   if (animationFrameId) cancelAnimationFrame(animationFrameId)
 })
 
@@ -503,9 +507,10 @@ const fetchSkillData = async () => {
   try {
     const res = await request.get('/skills/progress')
     if (res.progress) {
-      const months = res.progress.map(p => p.skill).slice(-6)
+      // 使用时间维度作为X轴，而非技能名称
+      const months = res.progress.map(p => p.month || p.date || p.period || p.skill).slice(-6)
       const scores = res.progress.map(p => {
-        if (!p.target || p.target === 0) return 0
+        if (!p.target || p.target === 0) return p.score || p.progress || 0
         return Math.round((p.current || 0) / p.target * 100)
       }).slice(-6)
       if (months.length > 0) lineData.value = { months, scores }

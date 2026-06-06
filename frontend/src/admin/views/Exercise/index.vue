@@ -169,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload, Download } from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -206,10 +206,10 @@ const uploadRef = ref()
 const importLoading = ref(false)
 const importResult = ref(null)
 
-// 请求头，添加token
-const headers = {
+// 请求头，动态获取token（避免token刷新后headers过期）
+const headers = computed(() => ({
   Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}`
-}
+}))
 
 const getDifficultyType = (val) => {
   const map = { easy: 'success', medium: 'warning', hard: 'danger' }

@@ -261,6 +261,13 @@ router.beforeEach(async (to, from, next) => {
         })
         return
       }
+      // 验证管理员角色，防止伪造token绕过
+      if (!adminStore.adminInfo?.is_admin && !adminStore.adminInfo?.is_super_admin) {
+        ElMessage.error('无管理员权限')
+        adminStore.resetSession()
+        next({ path: '/admin/login' })
+        return
+      }
     } else {
       if (adminStore.isLoggedIn && to.path === '/admin/login') {
         next({ path: '/admin/dashboard' })

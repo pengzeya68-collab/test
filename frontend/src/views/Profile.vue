@@ -354,12 +354,11 @@ const LEVEL_MAP = [
 ]
 
 const levelText = computed(() => {
-  const score = skillProfile.value?.overall_score ?? userInfo.value?.level ?? 1
-  // 如果没有技能画像，用 level 字段映射
   if (!skillProfile.value) {
     const level = userInfo.value?.level || 1
     return { 1: '入门', 2: '了解', 3: '掌握', 4: '精通', 5: '专家' }[level] || '入门'
   }
+  const score = skillProfile.value.overall_score ?? 0
   return LEVEL_MAP.find(l => score >= l.min)?.text || '入门'
 })
 
@@ -417,13 +416,13 @@ const fetchStats = async () => {
       request.get('/interview/sessions?limit=1', { skipAuthError: true }),
     ])
     if (exercises.status === 'fulfilled') {
-      stats.value.exercises_done = exercises.value.total || 0
+      stats.value.exercises_done = exercises.value?.total || 0
     }
     if (exams.status === 'fulfilled') {
-      stats.value.exams_taken = exams.value.total || 0
+      stats.value.exams_taken = exams.value?.total || 0
     }
     if (interviews.status === 'fulfilled') {
-      stats.value.interviews_done = interviews.value.total || 0
+      stats.value.interviews_done = interviews.value?.total || 0
     }
   } catch {
     // silently fail
@@ -464,7 +463,7 @@ const handleChangePassword = async () => {
       new_password: passwordForm.value.new_password,
     })
     ElMessage.success('密码修改成功！请重新登录')
-    userStore.logout()
+    await userStore.logout()
     router.push('/login')
   } catch (error) {
     ElMessage.error(error.response?.data?.error || '密码修改失败')

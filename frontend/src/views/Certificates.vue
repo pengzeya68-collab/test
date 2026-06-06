@@ -58,7 +58,7 @@
 
         <div class="cert-score-bar" v-if="!cert.unlocked">
           <div class="score-track">
-            <div class="score-fill" :style="{ width: Math.min(cert.current_score / cert.required_score * 100, 100) + '%' }"></div>
+            <div class="score-fill" :style="{ width: Math.min((cert.required_score ? cert.current_score / cert.required_score * 100 : 0), 100) + '%' }"></div>
           </div>
           <span class="score-text">{{ cert.current_score }}<span class="score-divider">/</span>{{ cert.required_score }}</span>
         </div>

@@ -167,7 +167,7 @@ class MockEngine:
             matched_rule_name=matched_rule_name,
         )
         db.add(log)
-        await db.commit()
+        await db.flush()
 
     async def import_from_swagger(self, db: AsyncSession, project_id: int, swagger_data: dict) -> int:
         """

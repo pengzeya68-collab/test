@@ -129,7 +129,7 @@
 </template>
 
 <script setup>
-import { ref, onUnmounted } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Lock, Message, Phone } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -150,6 +150,7 @@ const registerForm = ref({
 })
 
 const codeCountdown = ref(0)
+let codeTimer = null
 
 const sendCode = () => {
   if (codeCountdown.value > 0) return
@@ -162,7 +163,7 @@ const sendCode = () => {
     return
   }
   
-  // 模拟发送验证码
+  // TODO: 接入后端验证码API
   ElMessage.success('验证码已发送')
   codeCountdown.value = 60
   codeTimer = setInterval(() => {
@@ -174,9 +175,7 @@ const sendCode = () => {
   }, 1000)
 }
 
-let codeTimer = null
-
-onUnmounted(() => {
+onBeforeUnmount(() => {
   if (codeTimer) {
     clearInterval(codeTimer)
     codeTimer = null

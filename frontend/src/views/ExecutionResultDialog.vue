@@ -231,9 +231,23 @@ const copyResponseBody = () => {
   } catch {
     textToCopy = String(raw)
   }
-  navigator.clipboard.writeText(textToCopy)
-    .then(() => ElMessage.success('响应体已复制到剪贴板'))
-    .catch(() => ElMessage.error('复制失败'))
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => ElMessage.success('响应体已复制到剪贴板'))
+      .catch(() => ElMessage.error('复制失败'))
+  } else {
+    const textArea = document.createElement('textarea')
+    textArea.value = textToCopy
+    document.body.appendChild(textArea)
+    textArea.select()
+    try {
+      document.execCommand('copy')
+      ElMessage.success('响应体已复制到剪贴板')
+    } catch {
+      ElMessage.error('复制失败')
+    }
+    document.body.removeChild(textArea)
+  }
 }
 </script>
 

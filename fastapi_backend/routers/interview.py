@@ -231,7 +231,7 @@ async def create_batch_interview_session(
 ):
     import random
 
-    difficulty_map = {"初级": "easy", "中级": "medium", "高级": "hard"}
+    difficulty_map = {"初级": "easy", "中级": "medium", "高级": "hard", "专家": "hard"}
     difficulty = difficulty_map.get(body.level, None)
 
     # 前端大类 → Exercise 表细分类映射
@@ -436,7 +436,7 @@ async def create_batch_interview_session(
             ).bindparams(
                 uid=current_user.id,
                 pos=body.position,
-                title_pattern=f"%{body.position}%",
+                title_pattern=f"%{body.position.replace('%', '\\%').replace('_', '\\_')}%",
             )
         )
         await db.commit()

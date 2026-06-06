@@ -88,7 +88,10 @@ async def daily_checkin(
 
     try:
         db.add(checkin)
-        current_user.score = (current_user.score or 0) + exp_earned
+        # 使用SQL表达式保证原子更新，避免并发场景下积分丢失
+        await db.execute(
+            update(User).where(User.id == current_user.id).values(score=func.coalesce(User.score, 0) + exp_earned)
+        )
         await db.commit()
     except IntegrityError:
         await db.rollback()

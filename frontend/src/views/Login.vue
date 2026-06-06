@@ -121,7 +121,7 @@ const handleLogin = async () => {
 
     const redirect = router.currentRoute.value?.query?.redirect
 
-    if (redirect) {
+    if (redirect && !redirect.startsWith('http') && !redirect.startsWith('//')) {
       router.push(decodeURIComponent(redirect)).catch(() => router.push('/'))
     } else {
       router.push('/')

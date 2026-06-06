@@ -285,7 +285,9 @@ const fetchCheckinStatus = async () => {
     checkinStatus.value = res
     unreadCount.value = res.checked_in_today ? 0 : 1
   } catch {
-    // silently fail
+    // 获取签到状态失败时，假设已签到以避免误显示提示
+    checkinStatus.value = { ...checkinStatus.value, checked_in_today: true }
+    unreadCount.value = 0
   }
 }
 
@@ -350,8 +352,8 @@ const handleLogout = () => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  ).then(() => {
-    userStore.logout()
+  ).then(async () => {
+    await userStore.logout()
     ElMessage.success('退出登录成功')
     router.push('/login')
   }).catch(() => {})

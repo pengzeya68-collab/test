@@ -237,7 +237,8 @@ const goBack = () => router.back()
 
 const startLearning = () => {
   if (lessons.value.length > 0) {
-    const nextLesson = lessons.value[0]
+    // 查找第一个未完成的课程，否则跳转第一个
+    const nextLesson = progressData.value.lessons?.find(l => !l.completed) || lessons.value[0]
     router.push(`/learning-paths/${pathId.value}/lessons/${nextLesson.id}`)
   } else if (path.value?.exercises?.length > 0) {
     const nextEx = progressData.value.exercises?.find(e => !e.completed)

@@ -546,6 +546,7 @@ async function resumeTask(taskId) {
 }
 
 // 开始轮询
+let pollInFlight = false
 function startPolling(taskId) {
   if (pollTimer) {
     clearInterval(pollTimer)
@@ -556,6 +557,9 @@ function startPolling(taskId) {
   const pollStartTime = Date.now()
 
   pollTimer = setInterval(async () => {
+    // 防止并发请求：上一次请求尚未完成时跳过本次
+    if (pollInFlight) return
+    pollInFlight = true
     try {
       const task = await autoTestRequest.get(`/auto-test/ai-generate/tasks/${taskId}`)
 
@@ -623,6 +627,8 @@ function startPolling(taskId) {
     } catch (e) {
       // 轮询请求失败不立即中断，继续尝试
       console.error('轮询进度失败:', e)
+    } finally {
+      pollInFlight = false
     }
   }, 2000)
 }

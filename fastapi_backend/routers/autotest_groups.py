@@ -207,13 +207,17 @@ async def delete_group(
 
     if cases:
         case_ids = [case.id for case in cases]
-        # 删除引用这些用例的场景步骤（包括其他用户场景中的引用，避免悬挂引用）
+        # 将引用这些用例的当前用户的场景步骤的api_case_id置空，避免悬挂引用
         steps_result = await db.execute(
             select(AutoTestScenarioStep)
-            .where(AutoTestScenarioStep.api_case_id.in_(case_ids))
+            .join(AutoTestScenario, AutoTestScenarioStep.scenario_id == AutoTestScenario.id)
+            .where(
+                AutoTestScenarioStep.api_case_id.in_(case_ids),
+                AutoTestScenario.user_id == current_user.id
+            )
         )
         for step in steps_result.scalars().all():
-            await db.delete(step)
+            step.api_case_id = None
         # 删除用例
         for case in cases:
             await db.delete(case)

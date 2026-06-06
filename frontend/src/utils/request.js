@@ -21,6 +21,22 @@ const autoTestService = axios.create({
   timeout: 120000,
 })
 
+const clearTokenHeader = () => {
+  delete service.defaults.headers.common['Authorization']
+  delete autoTestService.defaults.headers.common['Authorization']
+}
+
+/** 恢复仍有效的身份token到axios默认header */
+const restoreActiveTokenHeader = () => {
+  const userToken = getUserToken()
+  const adminToken = getAdminToken()
+  const token = userToken || adminToken
+  if (token && isValidTokenFormat(token)) {
+    service.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    autoTestService.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  }
+}
+
 const setToken = (newToken) => {
   saveToken(newToken)
   service.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
@@ -62,12 +78,15 @@ const requestInterceptor = (config) => {
   if (isAdminReq) {
     token = getAdminToken()
   } else {
-    // 用户页面请求优先用户token，无用户token时尝试管理员token（兼容管理员预览）
-    token = getUserToken() || getAdminToken()
+    // 用户页面请求仅使用用户token，不fallback到管理员token
+    // 避免用户token过期后以管理员身份继续操作
+    token = getUserToken()
   }
 
   if (token && isValidTokenFormat(token)) {
     config.headers['Authorization'] = `Bearer ${token}`
+  } else {
+    delete config.headers['Authorization']
   }
   return config
 }
@@ -90,6 +109,7 @@ const responseErrorInterceptor = async (error) => {
     }
 
     if (isLoggingOut) {
+      // 并发401：静默拒绝，避免重复弹窗和跳转
       return Promise.reject(error)
     }
 
@@ -112,6 +132,9 @@ const responseErrorInterceptor = async (error) => {
       console.warn('重置客户端状态失败:', err)
     }
 
+    // 清除已过期身份的header后，恢复另一方仍有效的token
+    restoreActiveTokenHeader()
+
     ElMessage.error('登录已过期，请重新登录')
 
     // 根据请求来源决定跳转目标
@@ -121,7 +144,7 @@ const responseErrorInterceptor = async (error) => {
       router.push('/login')
     }
 
-    setTimeout(() => { isLoggingOut = false }, 1000)
+    setTimeout(() => { isLoggingOut = false }, 3000)
     return Promise.reject(error)
   }
 
@@ -151,4 +174,4 @@ const autoTestRequest = (config) => autoTestService(config)
 })
 
 export default service
-export { setToken, setAdminTokenHeader, autoTestRequest }
+export { setToken, setAdminTokenHeader, autoTestRequest, clearTokenHeader, restoreActiveTokenHeader }

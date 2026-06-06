@@ -16,7 +16,7 @@ from sqlalchemy import (
     Index,
     UniqueConstraint,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from fastapi_backend.core.database import Base
 
 
@@ -605,11 +605,11 @@ class Comment(Base):
     like_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=False)
     parent_id = Column(Integer, ForeignKey("comments.id"))
 
     user = relationship("User", backref="comments")
-    post = relationship("Post", backref="comments")
+    post = relationship("Post", backref=backref("comments", cascade="all, delete-orphan"))
     parent = relationship("Comment", remote_side=[id], backref="replies")
 
     __table_args__ = (
@@ -636,6 +636,10 @@ class Like(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "post_id", name="uq_likes_user_post"),
         UniqueConstraint("user_id", "comment_id", name="uq_likes_user_comment"),
+        Index("uq_likes_user_post_not_null", "user_id", "post_id", unique=True,
+              postgresql_where=post_id.isnot(None)),
+        Index("uq_likes_user_comment_not_null", "user_id", "comment_id", unique=True,
+              postgresql_where=comment_id.isnot(None)),
     )
 
 

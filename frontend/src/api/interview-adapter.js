@@ -8,13 +8,14 @@ export async function chat(params) {
 
   if (type === 'interview') {
     try {
+      let activeQuestionId = null
       const sessionsRes = await request.get('/interview/sessions', {
         params: { page: 1, size: 1, status_filter: 'started' }
       })
 
       const sessionsItems = sessionsRes.items || sessionsRes.data?.items || []
       if (sessionsItems.length > 0) {
-        // reuse existing session
+        activeQuestionId = sessionsItems[0].question_id
       } else {
         const questionsRes = await request.get('/interview/questions', {
           params: { page: 1, size: 1 }
@@ -22,9 +23,9 @@ export async function chat(params) {
 
         const qItems = questionsRes.items || questionsRes.data?.items || []
         if (qItems.length > 0) {
-          const questionId = qItems[0].id
+          activeQuestionId = qItems[0].id
           await request.post('/interview/sessions', {
-            question_id: questionId
+            question_id: activeQuestionId
           })
         } else {
           return { answer: '目前没有可用的面试题目，请联系管理员添加题目。' }
@@ -34,7 +35,7 @@ export async function chat(params) {
       const evaluateRes = await request.post('/interview/evaluate', {
         source_code: question,
         language: 'text',
-        question_id: 'adapter-chat'
+        question_id: activeQuestionId
       })
 
       return { answer: evaluateRes.feedback || evaluateRes.data?.feedback || '收到您的回答，面试官正在评估...' }

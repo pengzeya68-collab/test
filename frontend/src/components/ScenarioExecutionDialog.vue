@@ -381,7 +381,8 @@ const pollTaskStatus = (taskId) => {
       if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
       stopPolling()
       isRunning.value = false
-      ElMessage.error('查询任务状态失败: ' + (error.response?.data?.detail || error.message))
+      submitError.value = '查询任务状态失败: ' + (error.response?.data?.detail || error.message)
+      ElMessage.error(submitError.value)
     }
   }, 2000)
 }

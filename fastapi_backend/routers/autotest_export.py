@@ -109,7 +109,7 @@ async def _get_cases(user_id: int, case_ids: List[int] = None, group_id: int = N
         query = select(AutoTestCase).where(AutoTestCase.user_id == user_id)
         if case_ids:
             query = query.where(AutoTestCase.id.in_(case_ids))
-        elif group_id is not None:
+        if group_id is not None:
             query = query.where(AutoTestCase.group_id == group_id)
 
         result = await db.execute(query)

@@ -62,7 +62,7 @@
 
         <div class="rank-list">
           <div
-            v-for="item in scoreList"
+            v-for="item in scoreList.slice(3)"
             :key="item.rank"
             class="rank-item"
             :class="{ 'is-me': item.is_me }"
@@ -162,7 +162,7 @@ const fetchWeeklyLeaderboard = async () => {
   try {
     const res = await request.get('/leaderboard/weekly')
     weeklyList.value = res.leaderboard || []
-    myRank.value = 0
+    myRank.value = res.my_rank || 0
     myScore.value = res.my_weekly_correct
   } catch (error) {
     console.error('获取周排行失败:', error)
@@ -174,7 +174,7 @@ const fetchStreakLeaderboard = async () => {
   try {
     const res = await request.get('/leaderboard/streak')
     streakList.value = res.leaderboard || []
-    myRank.value = 0
+    myRank.value = res.my_rank || 0
     myScore.value = res.my_streak
   } catch (error) {
     console.error('获取签到排行失败:', error)

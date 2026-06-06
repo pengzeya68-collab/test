@@ -66,7 +66,7 @@
           :total="total"
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next"
-          @size-change="fetchList"
+          @size-change="handleSizeChange"
           @current-change="fetchList"
           class="dark-pagination"
         />
@@ -180,6 +180,11 @@ const fetchList = async () => {
   }
 }
 
+const handleSizeChange = () => {
+  page.value = 1
+  fetchList()
+}
+
 const handleGenerateAnswers = async () => {
   try {
     await ElMessageBox.confirm(
@@ -215,7 +220,7 @@ const difficultyTag = d => ({ easy: 'success', medium: 'warning', hard: 'danger'
 // ---- 删除 ----
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定删除题目「${row.title.slice(0, 20)}...」吗？`, '删除确认', {
+    await ElMessageBox.confirm(`确定删除题目「${(row.title || '').slice(0, 20)}...」吗？`, '删除确认', {
       confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning'
     })
   } catch {

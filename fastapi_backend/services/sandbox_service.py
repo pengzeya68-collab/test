@@ -36,8 +36,14 @@ class CodeSandbox:
         "中文": "python",  # 中文理论题中的代码题默认按python处理
     }
 
-    # 并发限制：同时运行的沙箱进程数
-    _concurrency_semaphore = asyncio.Semaphore(10)
+    # 并发限制：同时运行的沙箱进程数（延迟初始化，避免模块导入时无事件循环）
+    _concurrency_semaphore = None
+
+    @classmethod
+    def _get_semaphore(cls):
+        if cls._concurrency_semaphore is None:
+            cls._concurrency_semaphore = asyncio.Semaphore(10)
+        return cls._concurrency_semaphore
 
     BLOCKED_BUILTINS = frozenset(
         {
@@ -306,7 +312,7 @@ class CodeSandbox:
         logger.info(f"开始执行 Python 代码, timeout={timeout}s, has_input={input_data is not None}")
 
         # 使用信号量限制并发
-        async with self._concurrency_semaphore:
+        async with self._get_semaphore():
             start_time = time.perf_counter()
             temp_path: Optional[Path] = None
             process = None
@@ -563,7 +569,7 @@ class CodeSandbox:
             timeout = self.LANGUAGE_CONFIG["shell"]["timeout"]
 
         # 使用信号量限制并发
-        async with self._concurrency_semaphore:
+        async with self._get_semaphore():
             is_windows = platform.system() == "Windows"
             if is_windows:
                 shell_cmd = "powershell.exe"

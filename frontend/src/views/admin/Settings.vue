@@ -18,6 +18,7 @@
               <el-upload
                 class="avatar-uploader"
                 action="/api/v1/admin/upload"
+                :headers="uploadHeaders"
                 :show-file-list="false"
                 :on-success="handleLogoSuccess"
                 :before-upload="beforeLogoUpload"
@@ -133,15 +134,19 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import autoTestRequest from '@/utils/autoTestRequest'
+import { getAdminToken } from '@/utils/auth'
 
 const activeTab = ref('basic')
 const emailSaving = ref(false)
 const emailTesting = ref(false)
+const uploadHeaders = computed(() => ({
+  Authorization: `Bearer ${getAdminToken()}`
+}))
 
 const basicSettings = reactive({
   siteName: 'TestMaster 测试工程师成长平台',
@@ -195,12 +200,12 @@ const beforeLogoUpload = (file) => {
 }
 
 const saveBasicSettings = () => {
-  ElMessage.success('基础设置保存成功')
+  ElMessage.warning('基础设置暂不支持保存，请联系管理员修改配置文件')
 }
 
 const loadEmailSettings = async () => {
   try {
-    const res = await autoTestRequest.get('/auto-test/email/config')
+    const res = await request.get('/admin/email/config')
     if (res) {
       Object.assign(emailSettings, res)
     }
@@ -212,7 +217,7 @@ const loadEmailSettings = async () => {
 const saveEmailSettings = async () => {
   emailSaving.value = true
   try {
-    await autoTestRequest.post('/auto-test/email/config', emailSettings)
+    await request.post('/admin/email/config', emailSettings)
     ElMessage.success('邮件配置保存成功')
   } catch (error) {
     ElMessage.error('保存失败: ' + (error.response?.data?.detail || error.message))
@@ -228,7 +233,7 @@ const testEmail = async () => {
   }
   emailTesting.value = true
   try {
-    await autoTestRequest.post('/auto-test/email/test', {
+    await request.post('/admin/email/test', {
       to_email: emailSettings.testToEmail
     })
     ElMessage.success('测试邮件发送成功，请查收')
@@ -240,7 +245,7 @@ const testEmail = async () => {
 }
 
 const saveStorageSettings = () => {
-  ElMessage.success('存储设置保存成功')
+  ElMessage.warning('存储设置暂不支持保存，请联系管理员修改配置文件')
 }
 
 onMounted(() => {

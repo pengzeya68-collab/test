@@ -97,6 +97,7 @@
                 <el-button @click="editing = !editing">
                   {{ editing ? '完成编辑' : '编辑' }}
                 </el-button>
+                <el-button v-if="editing" type="primary" @click="saveTemplate" :loading="saving">保存</el-button>
                 <el-button type="danger" plain @click="deleteTemplate">删除</el-button>
               </template>
             </div>

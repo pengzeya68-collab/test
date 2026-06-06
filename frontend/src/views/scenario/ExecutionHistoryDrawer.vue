@@ -538,7 +538,6 @@ const reRunHistory = (historyRow) => {
     ElMessage.error('无法获取场景 ID，请从场景列表运行')
     return
   }
-  isRunning.value = true
   reportDetailVisible.value = false
   emit('update:visible', false)
   emit('re-run', { scenarioId, envId, stepCount: historyRow.total_steps || 0 })

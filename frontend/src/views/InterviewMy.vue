@@ -215,7 +215,11 @@ const getScoreClass = (score) => {
 }
 
 const viewSession = (session) => {
-  router.push(`/interview/simulate?session_id=${session.id}`)
+  if (session.status === 'completed') {
+    router.push(`/interview/detail/${session.id}`)
+  } else {
+    router.push(`/interview/simulate?session_id=${session.id}`)
+  }
 }
 </script>
 

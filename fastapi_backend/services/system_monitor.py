@@ -160,7 +160,8 @@ class SystemMonitor:
                 health["status"] = "degraded"
 
         # 磁盘检查
-        disk = psutil.disk_usage("/")
+        disk_path = "C:\\" if platform.system() == "Windows" else "/"
+        disk = psutil.disk_usage(disk_path)
         if disk.percent > 90:
             health["checks"]["disk"] = {"status": "warning", "percent": disk.percent}
             health["status"] = "degraded"

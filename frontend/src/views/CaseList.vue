@@ -428,15 +428,7 @@ const handleEnvListChange = (envs) => {
 
 // 过滤后的用例（服务端已分页，直接使用）
 const filteredCases = computed(() => {
-  let result = cases.value
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(c =>
-      c.name.toLowerCase().includes(keyword) ||
-      (c.url && c.url.toLowerCase().includes(keyword))
-    )
-  }
-  return result
+  return cases.value
 })
 
 // 获取状态对应的 Tag 类型

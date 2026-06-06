@@ -85,7 +85,9 @@ class AuthService:
             return result.scalar_one_or_none() is not None
         except Exception as exc:
             _logger.error("token_blacklist DB read failed: %s", exc)
-            return False  # 数据库异常时不应阻止所有请求，返回 False 让请求通过
+            # 数据库异常时保守处理：返回True视为已撤销，阻止请求通过
+            # 避免已登出的token在DB故障期间仍可访问系统
+            return True
 
     @staticmethod
     def hash_password(password: str) -> str:

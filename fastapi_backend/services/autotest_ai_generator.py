@@ -1168,10 +1168,25 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
 # Celery 任务定义
 # ======================================================================
 
-from fastapi_backend.celery_config import app as _celery_app
+try:
+    from fastapi_backend.celery_config import app as _celery_app
+    _CELERY_AVAILABLE = True
+except ImportError:
+    _CELERY_AVAILABLE = False
+    _celery_app = None
 
 
-@_celery_app.task(bind=True, name="fastapi_backend.services.autotest_ai_generator.ai_generate_task", time_limit=600)
+def _celery_task(*args, **kwargs):
+    """当Celery不可用时，返回一个空装饰器"""
+    if _CELERY_AVAILABLE and _celery_app is not None:
+        return _celery_app.task(*args, **kwargs)
+    def decorator(func):
+        func._is_celery_task = False
+        return func
+    return decorator
+
+
+@_celery_task(bind=True, name="fastapi_backend.services.autotest_ai_generator.ai_generate_task", time_limit=600)
 def ai_generate_task(self, task_id: str, swagger_data: dict, options: dict):
     """Celery 任务：AI 生成测试用例"""
     try:

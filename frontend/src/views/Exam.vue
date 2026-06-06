@@ -280,8 +280,8 @@ const timePercentage = computed(() => {
 })
 
 const timeProgressColor = computed(() => {
-  if (remainingTime.value <= 10) return '#f56c6c'
-  if (remainingTime.value <= 30) return '#e6a23c'
+  if (remainingTime.value <= 60) return '#f56c6c'
+  if (remainingTime.value <= 300) return '#e6a23c'
   return '#67c23a'
 })
 
@@ -304,6 +304,11 @@ const fetchExamQuestions = async () => {
     attemptId.value = res.attempt_id
     
     // 初始化倒计时
+    if (!exam.value.duration || exam.value.duration <= 0) {
+      ElMessage.error('考试时长数据异常')
+      router.back()
+      return
+    }
     remainingTime.value = exam.value.duration
     startTimer()
     
@@ -314,6 +319,9 @@ const fetchExamQuestions = async () => {
     
     // 如果是多选题，初始化选项数组
     if (currentQuestion.value?.question_type === 'multiple_choice') {
+      const answer = userAnswers.value[currentQuestion.value.id]
+      selectedOptions.value = answer ? answer.split(',').filter(Boolean) : []
+    } else {
       selectedOptions.value = []
     }
     
@@ -324,17 +332,26 @@ const fetchExamQuestions = async () => {
   }
 }
 
+let timerInitialized = false
+
 const startTimer = () => {
-  // 将分钟转换为秒
-  remainingTime.value = remainingTime.value * 60
-  
+  // 仅首次调用时将分钟转为秒
+  if (!timerInitialized) {
+    remainingTime.value = remainingTime.value * 60
+    timerInitialized = true
+  }
+  // 使用时间戳计算，避免浏览器标签页切换时计时器漂移
+  const _startAt = Date.now()
+  const _totalSeconds = remainingTime.value
+
   examTimer = setInterval(() => {
-    remainingTime.value -= 1
-    
-    if (remainingTime.value === 600) {
+    const elapsed = Math.floor((Date.now() - _startAt) / 1000)
+    remainingTime.value = Math.max(_totalSeconds - elapsed, 0)
+
+    if (remainingTime.value <= 600 && remainingTime.value > 595) {
       showTimeWarning.value = true
     }
-    
+
     if (remainingTime.value <= 0) {
       clearInterval(examTimer)
       examTimer = null
@@ -422,36 +439,38 @@ const submitExam = async () => {
   // 防止重复提交
   if (submitting.value) return
 
+  // 保存当前题目的答案
+  if (currentQuestion.value?.question_type === 'multiple_choice') {
+    userAnswers.value[currentQuestion.value.id] = selectedOptions.value.join(',')
+  }
+
+  submitting.value = true
   // 清除计时器，避免计时器到期再次触发提交
   if (examTimer) {
     clearInterval(examTimer)
     examTimer = null
   }
 
-  // 保存当前题目的答案
-  if (currentQuestion.value?.question_type === 'multiple_choice') {
-    userAnswers.value[currentQuestion.value.id] = selectedOptions.value.join(',')
-  }
-  
-  submitting.value = true
   try {
     // 构造答案数组
     const answers = Object.entries(userAnswers.value).map(([question_id, answer]) => ({
       question_id: parseInt(question_id),
       answer: answer
     }))
-    
+
     const res = await request.post(`/exams/attempts/${attemptId.value}/submit`, {
       answers
     })
-    
+
     ElMessage.success('考试提交成功！')
-    
+
     // 跳转到结果页
     router.push(`/exam/result/${attemptId.value}`)
   } catch (error) {
     console.error('提交考试失败:', error)
     ElMessage.error('提交失败，请稍后重试')
+    // 提交失败时重启计时器，防止考试状态冻结
+    startTimer()
   } finally {
     submitting.value = false
     showSubmitConfirm.value = false

@@ -97,8 +97,8 @@
             ></div>
             <div
               class="daily-bar bar-wrong"
-              :style="{ height: getBarHeight(day.total - day.correct) + 'px' }"
-              :title="`错误: ${day.total - day.correct}`"
+              :style="{ height: getBarHeight((day.total || 0) - (day.correct || 0)) + 'px' }"
+              :title="`错误: ${(day.total || 0) - (day.correct || 0)}`"
             ></div>
           </div>
           <div class="daily-label">{{ day.day_name }}</div>
@@ -179,12 +179,14 @@ const fetchReport = async () => {
 
 const maxCatCount = computed(() => {
   const vals = Object.values(report.value.category_distribution || {})
-  return Math.max(...vals, 1)
+  return vals.reduce((a, b) => Math.max(a, b), 1)
 })
 
 const getBarHeight = (count) => {
-  const maxVal = Math.max(...(report.value.daily_data || []).map(d => d.total || 0), 1)
-  return Math.max((count / maxVal) * 120, 2)
+  const safeCount = count || 0
+  const data = report.value.daily_data || []
+  const maxVal = data.reduce((a, d) => Math.max(a, d.total || 0), 1)
+  return Math.max((safeCount / maxVal) * 120, 2)
 }
 </script>
 

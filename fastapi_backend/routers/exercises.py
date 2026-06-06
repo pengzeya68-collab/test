@@ -265,9 +265,12 @@ async def execute_sql(
 
     # user_sql 只允许只读查询
     _check_sql_safe(user_sql, "user_sql", allow_ddl=False)
-    # setup_sql 允许 DDL（用于建表和初始数据）
+    # setup_sql 允许 DDL（用于建表和初始数据），但需逐语句校验
     if setup_sql and setup_sql.strip():
-        _check_sql_safe(setup_sql, "setup_sql", allow_ddl=True)
+        for stmt in setup_sql.split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                _check_sql_safe(stmt, "setup_sql", allow_ddl=True)
 
     start_time = time.time()
     conn = await aiosqlite.connect(":memory:")
@@ -343,7 +346,7 @@ async def get_exercise(
         "created_at": ex.created_at.isoformat() if ex.created_at else None,
         "updated_at": ex.updated_at.isoformat() if ex.updated_at else None,
     }
-    resp["solution"] = ex.solution
+    resp["solution"] = ex.solution if is_admin else None
     return resp
 
 

@@ -161,12 +161,12 @@ const goToExercise = (id) => {
 }
 
 const getDifficultyType = (d) => {
-  const map = { beginner: 'success', intermediate: 'warning', advanced: 'danger' }
+  const map = { beginner: 'success', intermediate: 'warning', advanced: 'danger', easy: 'success', medium: 'warning', hard: 'danger' }
   return map[d] || 'info'
 }
 
 const getDifficultyText = (d) => {
-  const map = { beginner: '初级', intermediate: '中级', advanced: '高级' }
+  const map = { beginner: '初级', intermediate: '中级', advanced: '高级', easy: '初级', medium: '中级', hard: '高级' }
   return map[d] || d
 }
 </script>

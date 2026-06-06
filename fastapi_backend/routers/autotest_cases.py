@@ -52,7 +52,7 @@ async def list_cases(
     """获取接口用例列表，支持分页、搜索、筛选"""
     query = select(AutoTestCase).where(AutoTestCase.user_id == current_user.id)
 
-    if group_id:
+    if group_id is not None:
         query = query.where(AutoTestCase.group_id == group_id)
     if keyword:
         keyword_escaped = keyword.replace('%', '\\%').replace('_', '\\_')
@@ -116,7 +116,7 @@ async def get_all_cases(
 ):
     """获取所有用例（用于选择）"""
     query = select(AutoTestCase).where(AutoTestCase.user_id == current_user.id).order_by(AutoTestCase.updated_at.desc())
-    if group_id:
+    if group_id is not None:
         query = query.where(AutoTestCase.group_id == group_id)
     result = await db.execute(query)
     cases = result.scalars().all()

@@ -53,11 +53,11 @@
                   </el-tag>
                 </div>
                 <div class="question-result">
-                  <el-tag 
-                    :type="item.score >= 6 ? 'success' : item.score >= 4 ? 'warning' : 'danger'"
+                  <el-tag
+                    :type="item.score >= 60 ? 'success' : item.score >= 40 ? 'warning' : 'danger'"
                     size="small"
                   >
-                    得分：{{ item.score || 0 }}/10
+                    得分：{{ item.score !== undefined && item.score !== null ? item.score : 0 }}/100
                   </el-tag>
                 </div>
               </div>
@@ -179,9 +179,24 @@ const fetchDetail = async () => {
       }
       // FastAPI 创建的会话题目通过关联获取
       questions.value = []
-      
-      // 如果有最新提交记录，获取提交结果来展示
-      if (detail.latest_submission_id) {
+
+      // 如果有提交记录，获取所有提交结果来展示
+      if (detail.submissions && detail.submissions.length > 0) {
+        questions.value = detail.submissions.map(sub => ({
+          id: sub.question_id || detail.question_id,
+          title: sub.question_title || '面试题目',
+          content: sub.question_description || sub.question_prompt || '',
+          category: '编程',
+          difficulty: sub.question_difficulty || 'medium',
+          user_answer: sub.source_code || '',
+          answer: sub.question_prompt || '',
+          ai_feedback: sub.feedback || '',
+          score: sub.score,
+          execution_status: sub.execution_status || 'success',
+          ai_evaluation_status: sub.ai_evaluation_status || 'completed',
+          execution_result: sub.execution_result || ''
+        }))
+      } else if (detail.latest_submission_id) {
         try {
           const subRes = await request.get(`/interview/submissions/${detail.latest_submission_id}/result`)
           if (subRes.success && subRes.data) {

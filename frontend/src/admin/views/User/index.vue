@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="user-management-dark">
     <h1 class="page-title">用户管理</h1>
 
@@ -117,7 +117,7 @@
       width="520px"
       custom-class="dark-dialog"
     >
-      <el-form :model="form" label-width="100px">
+      <el-form :model="form" :rules="userRules" ref="formRef" label-width="100px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名" class="dark-input" />
         </el-form-item>
@@ -170,8 +170,8 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const currentAdminId = computed(() => {
   try {
-    const user = localStorage.getItem('user')
-    return user ? JSON.parse(user).id : 0
+    const adminInfo = localStorage.getItem('admin_info')
+    return adminInfo ? JSON.parse(adminInfo).id : 0
   } catch {
     return 0
   }
@@ -187,6 +187,25 @@ const form = reactive({
   status: 'active',
   is_admin: false
 })
+
+const formRef = ref(null)
+const userRules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  password: [{
+    validator: (rule, value, callback) => {
+      if (!isEdit.value && !value) {
+        callback(new Error('新增用户时密码不能为空'))
+      } else {
+        callback()
+      }
+    },
+    trigger: 'blur'
+  }]
+}
 
 const fetchList = async () => {
   loading.value = true
@@ -245,8 +264,14 @@ const handleEdit = (row) => {
 
 const handleSubmit = async () => {
   try {
+    await formRef.value?.validate()
+  } catch { return }
+  try {
     if (isEdit.value) {
-      await request.put(`/admin/users/${form.id}`, form)
+      const payload = { ...form }
+      // 编辑时空密码不提交，避免覆盖用户密码
+      if (!payload.password) delete payload.password
+      await request.put(`/admin/users/${form.id}`, payload)
       ElMessage.success('更新成功')
     } else {
       await request.post('/admin/users', form)

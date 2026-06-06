@@ -452,7 +452,10 @@ const pollTaskStatus = async (taskId, scenarioName) => {
   stopPolling()
   pollingAbortController = new AbortController()
   const signal = pollingAbortController.signal
+  let pollInFlight = false
   pollingTimer = setInterval(async () => {
+    if (pollInFlight) return
+    pollInFlight = true
     try {
       const res = await autoTestRequest.get(`/auto-test/tasks/${taskId}`, { signal })
       const state = res.status
@@ -504,6 +507,8 @@ const pollTaskStatus = async (taskId, scenarioName) => {
       stopFakeProgress()
       isRunning.value = false
       ElMessage.error('查询任务状态失败: ' + (error.response?.data?.detail || error.message))
+    } finally {
+      pollInFlight = false
     }
   }, 2000)
 }

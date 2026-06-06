@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import BenchRunner from '@/views/jmeter/BenchRunner.vue'
 import TreeEditor from '@/views/jmeter/TreeEditor.vue'
 import NodeEditorPanel from '@/views/jmeter/NodeEditorPanel.vue'
@@ -298,6 +298,15 @@ const onDragEnd = () => {
   document.removeEventListener('mousemove', onDragMove)
   document.removeEventListener('mouseup', onDragEnd)
 }
+
+// 组件卸载时清理拖拽事件监听器，防止泄漏
+onBeforeUnmount(() => {
+  if (draggingCol.value) {
+    document.removeEventListener('mousemove', onDragMove)
+    document.removeEventListener('mouseup', onDragEnd)
+    draggingCol.value = null
+  }
+})
 
 const doVrtSearch = () => {
   if (nodeEditorRef.value) {

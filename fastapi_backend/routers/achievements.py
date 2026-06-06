@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 
+import json
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
@@ -237,18 +239,38 @@ async def check_and_unlock_achievements(user_id: int, db: AsyncSession):
             if max_streak >= 7:
                 should_unlock = True
         elif ach.key in ("skill_80", "all_rounder"):
-            pass
+            # skill_80: 任意技能维度得分>=80
+            # all_rounder: 所有技能维度得分>=60
+            if user.assessment_score and user.assessment_score > 0:
+                try:
+                    profile = json.loads(user.skill_profile) if isinstance(user.skill_profile, str) else user.skill_profile
+                    if profile and isinstance(profile, dict):
+                        dims = profile.get("dimensions", {})
+                        if ach.key == "skill_80" and any(v >= 80 for v in dims.values() if isinstance(v, (int, float))):
+                            should_unlock = True
+                        elif ach.key == "all_rounder" and dims and all(v >= 60 for v in dims.values() if isinstance(v, (int, float))):
+                            should_unlock = True
+                except (json.JSONDecodeError, TypeError, AttributeError):
+                    pass
 
         if should_unlock:
-            ua = UserAchievement(user_id=user_id, achievement_id=ach.id)
-            db.add(ua)
-            new_unlocks.append(ach)
-            # 增加用户经验值奖励
-            if ach.exp_reward and ach.exp_reward > 0:
-                user.score = (user.score or 0) + ach.exp_reward
+            try:
+                ua = UserAchievement(user_id=user_id, achievement_id=ach.id)
+                db.add(ua)
+                new_unlocks.append(ach)
+                # 原子更新用户经验值
+                if ach.exp_reward and ach.exp_reward > 0:
+                    await db.execute(
+                        update(User).where(User.id == user_id).values(score=func.coalesce(User.score, 0) + ach.exp_reward)
+                    )
+            except Exception:
+                pass  # 并发场景下IntegrityError忽略
 
     if new_unlocks:
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
 
     return new_unlocks
 

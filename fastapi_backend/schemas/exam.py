@@ -69,6 +69,7 @@ class ExamBrief(BaseModel):
     attempt_status: Optional[str] = None
     attempt_score: Optional[int] = None
     attempt_id: Optional[int] = None
+    is_passed: Optional[bool] = None
 
 
 class ExamListResponse(BaseModel):

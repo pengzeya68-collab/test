@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import request from '@/utils/request'
+import request, { clearTokenHeader, restoreActiveTokenHeader } from '@/utils/request'
 import { ElNotification } from 'element-plus'
-import { setToken, setUserInfo, clearUserAuth, TOKEN_KEY, USER_KEY, ASSESSMENT_KEY, SKILL_PROFILE_KEY, safeJsonParse, isValidTokenFormat } from '@/utils/auth'
+import { setToken, setUserInfo, clearUserAuth, TOKEN_KEY, USER_KEY, ASSESSMENT_KEY, SKILL_PROFILE_KEY, safeJsonParse, isValidTokenFormat, getAdminToken } from '@/utils/auth'
+import { resetAICostsCache } from '@/composables/useAICosts'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem(TOKEN_KEY) || '')
@@ -10,6 +11,7 @@ export const useUserStore = defineStore('user', () => {
   const assessmentCompleted = ref(localStorage.getItem(ASSESSMENT_KEY) === 'true')
   const skillProfile = ref(safeJsonParse(localStorage.getItem(SKILL_PROFILE_KEY) || 'null'))
   const isLoading = ref(false)
+  let assessmentPromise = null
 
   const isLoggedIn = computed(() => !!token.value && isValidTokenFormat(token.value))
   const getToken = () => token.value
@@ -35,28 +37,35 @@ export const useUserStore = defineStore('user', () => {
 
   const checkAssessmentStatus = async () => {
     if (!isLoggedIn.value) return false
-    if (isLoading.value) return assessmentCompleted.value
+    // 复用进行中的请求，避免并发返回过时缓存
+    if (assessmentPromise) return assessmentPromise
     
-    isLoading.value = true
-    try {
-      const res = await request.get('/assessment/status')
-      const completed = res.has_completed_assessment
-      assessmentCompleted.value = completed
-      localStorage.setItem(ASSESSMENT_KEY, String(completed))
-      if (completed && res.overall_score) {
-        skillProfile.value = {
-          overall_score: res.overall_score,
-          overall_level: res.overall_level,
+    const currentPromise = assessmentPromise = (async () => {
+      try {
+        const res = await request.get('/assessment/status')
+        // 如果请求期间用户已登出（assessmentPromise被置null），丢弃结果
+        if (assessmentPromise !== currentPromise) return assessmentCompleted.value
+        const completed = res.has_completed_assessment
+        assessmentCompleted.value = completed
+        localStorage.setItem(ASSESSMENT_KEY, String(completed))
+        if (completed && res.overall_score) {
+          skillProfile.value = {
+            overall_score: res.overall_score,
+            overall_level: res.overall_level,
+          }
+          localStorage.setItem(SKILL_PROFILE_KEY, JSON.stringify(skillProfile.value))
         }
-        localStorage.setItem(SKILL_PROFILE_KEY, JSON.stringify(skillProfile.value))
+        return completed
+      } catch (error) {
+        console.warn('检查测评状态失败，使用本地缓存:', error)
+        return assessmentCompleted.value
+      } finally {
+        if (assessmentPromise === currentPromise) {
+          assessmentPromise = null
+        }
       }
-      return completed
-    } catch (error) {
-      console.warn('检查测评状态失败，使用本地缓存:', error)
-      return assessmentCompleted.value
-    } finally {
-      isLoading.value = false
-    }
+    })()
+    return assessmentPromise
   }
 
   const checkNewAchievements = async () => {
@@ -80,6 +89,8 @@ export const useUserStore = defineStore('user', () => {
   }
 
   const logout = async () => {
+    // 取消进行中的assessment请求，防止回调覆盖已清空的状态
+    assessmentPromise = null
     try {
       await request.post('/auth/logout', {})
     } catch (error) {
@@ -89,15 +100,24 @@ export const useUserStore = defineStore('user', () => {
     userInfo.value = null
     assessmentCompleted.value = false
     skillProfile.value = null
+    clearTokenHeader()
+    resetAICostsCache()
     clearUserAuth()
+    // 用户登出后恢复管理员token（如果管理员仍登录）
+    restoreActiveTokenHeader()
   }
 
   const resetSession = () => {
+    // 取消进行中的assessment请求，防止回调覆盖已清空的状态
+    assessmentPromise = null
     token.value = ''
     userInfo.value = null
     assessmentCompleted.value = false
     skillProfile.value = null
+    clearTokenHeader()
+    resetAICostsCache()
     clearUserAuth()
+    restoreActiveTokenHeader()
   }
 
   return {

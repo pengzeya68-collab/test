@@ -107,16 +107,17 @@
               <div class="post-header">
                 <div class="post-meta">
                   <el-avatar :size="32" style="margin-right: 12px;">
-                    {{ post.author.username.charAt(0).toUpperCase() }}
+                    {{ (post.author?.username || '?').charAt(0).toUpperCase() }}
                   </el-avatar>
                   <div>
-                    <div class="author-name">{{ post.author.username }}</div>
+                    <div class="author-name">{{ post.author?.username || '匿名' }}</div>
                     <div class="post-time">{{ post.created_at }}</div>
                   </div>
                 </div>
                 <div class="post-badges">
-                  <el-tag 
-                    size="small" 
+                  <el-tag
+                    v-if="post.category"
+                    size="small"
                     :color="post.category.color"
                     effect="light"
                   >
@@ -139,7 +140,7 @@
                 {{ post.summary }}
               </p>
               
-              <div class="post-tags" v-if="post.tags.length > 0">
+              <div class="post-tags" v-if="post.tags?.length > 0">
                 <el-tag 
                   v-for="tag in post.tags" 
                   :key="tag" 
@@ -368,7 +369,14 @@ const fetchCategories = async () => {
   }
 }
 
+let fetchAbortController = null
+
 const fetchPosts = async () => {
+  // 取消上一次未完成的请求，防止竞态
+  if (fetchAbortController) fetchAbortController.abort()
+  fetchAbortController = new AbortController()
+  const signal = fetchAbortController.signal
+
   loading.value = true
   try {
     const params = {
@@ -376,7 +384,7 @@ const fetchPosts = async () => {
       per_page: perPage.value,
       sort: currentSort.value
     }
-    
+
     if (currentCategory.value) {
       params.category = currentCategory.value
     }
@@ -386,11 +394,12 @@ const fetchPosts = async () => {
     if (searchKeyword.value.trim()) {
       params.search = searchKeyword.value.trim()
     }
-    
-    const res = await request.get('/community/posts', { params })
-    posts.value = res.list
-    total.value = res.total
+
+    const res = await request.get('/community/posts', { params, signal })
+    posts.value = res.list || res.items || res || []
+    total.value = res.total || 0
   } catch (error) {
+    if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
     console.error('获取帖子列表失败:', error)
     ElMessage.error('获取帖子列表失败')
   } finally {

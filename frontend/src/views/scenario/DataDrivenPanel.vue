@@ -181,6 +181,7 @@ const dataDrivenResultDialogVisible = ref(false)
 const dataDrivenResult = ref(null)
 let datasetSaveTimer = null
 let datasetDirty = false
+let datasetSaving = false
 
 const getMethodType = (method) => {
   const types = { GET: 'success', POST: 'warning', PUT: 'primary', DELETE: 'danger', PATCH: 'info' }
@@ -231,6 +232,8 @@ const loadDataset = async () => {
 }
 
 const saveDataset = async () => {
+  if (datasetSaving) return
+  datasetSaving = true
   try {
     await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/dataset`, {
       name: '默认数据集',
@@ -243,6 +246,8 @@ const saveDataset = async () => {
     emit('save-dataset')
   } catch (error) {
     console.error('保存数据集失败:', error)
+  } finally {
+    datasetSaving = false
   }
 }
 
@@ -259,7 +264,9 @@ const handleDatasetChange = () => {
   datasetDirty = true
   clearTimeout(datasetSaveTimer)
   datasetSaveTimer = setTimeout(() => {
-    saveDataset()
+    if (!datasetSaving) {
+      saveDataset()
+    }
   }, 300)
   emit('dataset-changed', {
     columns: datasetColumns.value,

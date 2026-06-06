@@ -614,11 +614,21 @@ async def get_exam_questions(
     if existing:
         attempt_id = existing.id
     else:
-        attempt = ExamAttempt(user_id=user_id, exam_id=exam_id, start_time=now, status="in_progress", score=0)
-        db.add(attempt)
-        await db.commit()
-        await db.refresh(attempt)
-        attempt_id = attempt.id
+        try:
+            attempt = ExamAttempt(user_id=user_id, exam_id=exam_id, start_time=now, status="in_progress", score=0)
+            db.add(attempt)
+            await db.commit()
+            await db.refresh(attempt)
+            attempt_id = attempt.id
+        except Exception:
+            await db.rollback()
+            # 并发场景：另一个请求可能已创建了attempt，重新查询
+            att_result2 = await db.execute(att_stmt)
+            existing2 = att_result2.scalar_one_or_none()
+            if existing2:
+                attempt_id = existing2.id
+            else:
+                raise
 
     questions = sorted(exam.questions, key=lambda q: q.sort_order)
     return ExamStartResponse(
@@ -656,10 +666,18 @@ async def submit_exam(
 
     attempt.end_time = datetime.now(timezone.utc)
     attempt.status = "submitted"
-    await db.commit()
 
-    total_score = await _calculate_score(attempt, db)
-    await db.commit()
+    try:
+        total_score = await _calculate_score(attempt, db)
+        await db.commit()
+    except Exception as e:
+        # 评分失败时回退状态，同时删除已写入的答案记录，避免重复提交时产生重复答案
+        await db.rollback()
+        attempt.status = "in_progress"
+        attempt.end_time = None
+        await db.commit()
+        raise HTTPException(status_code=500, detail=f"评分失败，请重新提交: {str(e)}")
+
     return ExamSubmitResponse(
         message="考试提交成功",
         score=total_score,

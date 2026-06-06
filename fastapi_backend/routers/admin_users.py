@@ -6,7 +6,7 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, Request, status
 from sqlalchemy import select, func, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -369,8 +369,13 @@ async def reset_user_password(
 
 
 @router.post("/login")
-async def admin_login(data: AdminLoginRequest):
+async def admin_login(data: AdminLoginRequest, request: Request):
     """管理员登录"""
+    # 管理员登录速率限制（复用auth模块的限流逻辑）
+    from fastapi_backend.routers.auth import _check_login_rate_limit
+    client_ip = request.client.host if request.client else "unknown"
+    _check_login_rate_limit(client_ip)
+
     username = data.username
     password = data.password
 
@@ -408,6 +413,25 @@ async def admin_login(data: AdminLoginRequest):
             "role": user_role,
         },
     }
+
+
+@router.post("/logout")
+async def admin_logout(
+    request: Request,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """管理员登出，将token加入黑名单"""
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
+    if token:
+        try:
+            auth_service = AuthService(db)
+            await auth_service.add_to_blacklist(token)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"管理员登出黑名单添加失败: {e}")
+    return {"message": "登出成功"}
 
 
 @router.get("/info")

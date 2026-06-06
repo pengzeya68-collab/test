@@ -14,16 +14,17 @@
             <div class="post-meta">
               <div class="meta-left">
                 <el-avatar :size="40" style="margin-right: 12px;">
-                  {{ post.author.username.charAt(0).toUpperCase() }}
+                  {{ (post.author?.username || '?').charAt(0).toUpperCase() }}
                 </el-avatar>
                 <div>
-                  <div class="author-name">{{ post.author.username }}</div>
+                  <div class="author-name">{{ post.author?.username || '匿名' }}</div>
                   <div class="post-time">{{ post.created_at }}</div>
                 </div>
               </div>
               <div class="meta-right">
-                <el-tag 
-                  size="small" 
+                <el-tag
+                  v-if="post.category"
+                  size="small"
                   :color="post.category.color"
                   effect="light"
                 >
@@ -39,7 +40,7 @@
             </div>
           </div>
           
-          <div class="post-tags" v-if="post.tags.length > 0">
+          <div class="post-tags" v-if="post.tags?.length > 0">
             <el-tag 
               v-for="tag in post.tags" 
               :key="tag" 
@@ -115,10 +116,10 @@
             <div class="comment-item" v-for="comment in comments" :key="comment.id">
               <div class="comment-header">
                 <el-avatar :size="36" style="margin-right: 12px;">
-                  {{ comment.author.username.charAt(0).toUpperCase() }}
+                  {{ (comment.author?.username || '?').charAt(0).toUpperCase() }}
                 </el-avatar>
                 <div class="comment-info">
-                  <div class="comment-author">{{ comment.author.username }}</div>
+                  <div class="comment-author">{{ comment.author?.username || '匿名' }}</div>
                   <div class="comment-time">{{ comment.created_at }}</div>
                 </div>
                 <div class="comment-actions">
@@ -164,14 +165,14 @@
               </div>
               
               <!-- 回复列表 -->
-              <div class="reply-list" v-if="comment.replies.length > 0">
+              <div class="reply-list" v-if="comment.replies?.length > 0">
                 <div class="reply-item" v-for="reply in comment.replies" :key="reply.id">
                   <div class="reply-header">
                     <el-avatar :size="28" style="margin-right: 8px;">
-                      {{ reply.author.username.charAt(0).toUpperCase() }}
+                      {{ (reply.author?.username || '?').charAt(0).toUpperCase() }}
                     </el-avatar>
                     <div class="reply-info">
-                      <span class="reply-author">{{ reply.author.username }}</span>
+                      <span class="reply-author">{{ reply.author?.username || '匿名' }}</span>
                       <span class="reply-time">{{ reply.created_at }}</span>
                     </div>
                     <div class="reply-actions">
@@ -215,9 +216,11 @@ import {
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { renderMarkdown } from '@/utils/markdown'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 const postId = computed(() => route.params.id)
 
 const post = ref(null)
@@ -272,6 +275,11 @@ const goBack = () => {
 
 const toggleLike = async () => {
   if (!post.value) return
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+    router.push('/login')
+    return
+  }
   
   try {
     const res = await request.post(`/community/posts/${post.value.id}/like`)
@@ -286,6 +294,11 @@ const toggleLike = async () => {
 
 const toggleFavorite = async () => {
   if (!post.value) return
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+    router.push('/login')
+    return
+  }
   
   try {
     const res = await request.post(`/community/posts/${post.value.id}/favorite`)
@@ -357,6 +370,11 @@ const submitReply = async (comment) => {
 }
 
 const toggleCommentLike = async (comment) => {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+    router.push('/login')
+    return
+  }
   try {
     const res = await request.post(`/community/comments/${comment.id}/like`)
     comment.like_count = res.like_count

@@ -60,7 +60,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
-import request, { setToken } from '@/utils/request'
+import request, { setAdminTokenHeader } from '@/utils/request'
 import { setAdminToken, setAdminInfo } from '@/utils/auth'
 import { useAdminStore } from '@/stores/admin'
 import { loadSavedTheme, applyTheme } from '@/utils/ThemeConfig'
@@ -118,13 +118,15 @@ const handleLogin = async () => {
         setAdminInfo(adminUser)
         // 更新 Pinia store 响应式状态
         adminStore.setAdminInfo(adminUser, adminToken)
-        // 设置 axios 默认 Authorization 头
-        setToken(adminToken)
+        // 设置 axios 默认 Authorization 头（仅设置header，不写入用户token键）
+        setAdminTokenHeader(adminToken)
 
         ElMessage.success('登录成功')
 
         const redirect = route.query.redirect || '/admin/dashboard'
-        router.push(redirect).catch(err => {
+        // 校验重定向路径必须以/admin/开头，防止开放重定向
+        const safeRedirect = (typeof redirect === 'string' && redirect.startsWith('/admin/')) ? redirect : '/admin/dashboard'
+        router.push(safeRedirect).catch(err => {
           console.error('路由跳转失败:', err)
           router.push('/admin/dashboard')
         })

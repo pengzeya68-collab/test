@@ -297,7 +297,7 @@ const fetchList = async () => {
     const params = { page: page.value, size: size.value }
     if (keyword.value) params.keyword = keyword.value
     if (filterType.value) params.exam_type = filterType.value
-    if (filterPublished.value !== '') params.is_published = filterPublished.value
+    if (filterPublished.value !== '') params.is_published = filterPublished.value === 'true'
     const res = await request.get('/admin/exams', { params })
     list.value = res?.list || []
     total.value = res?.total || 0
@@ -322,11 +322,14 @@ const difficultyTag = d => ({ easy: 'success', medium: 'warning', hard: 'danger'
 // ---- 发布切换 ----
 const togglePublish = async (row) => {
   try {
+    await ElMessageBox.confirm(`确定${row.is_published ? '取消发布' : '发布'}考试「${row.title}」吗？`, '操作确认', {
+      confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
+    })
     await request.put(`/admin/exams/${row.id}/publish`, { is_published: !row.is_published })
     ElMessage.success(row.is_published ? '已取消发布' : '已发布')
     fetchList()
   } catch (e) {
-    ElMessage.error('操作失败')
+    if (e !== 'cancel') ElMessage.error('操作失败')
   }
 }
 

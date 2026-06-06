@@ -21,8 +21,9 @@ export const ASSESSMENT_KEY = 'assessment_completed'
 export const SKILL_PROFILE_KEY = 'skill_profile'
 
 export function isAdminRoute() {
-  const hash = window.location.hash
-  return hash.startsWith('#/admin')
+  // 兼容 Hash 模式和 History 模式路由
+  const path = window.location.hash ? window.location.hash.replace('#', '') : window.location.pathname
+  return path.startsWith('/admin')
 }
 
 export function getToken() {

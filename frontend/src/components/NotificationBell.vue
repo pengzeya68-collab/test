@@ -114,6 +114,8 @@ const fetchNotifications = async () => {
 }
 
 const fetchUnreadCount = async () => {
+  // readAll后短暂暂停轮询，避免后端延迟导致角标闪烁
+  if (readAllCooldown) return
   try {
     const res = await autoTestRequest.get('/v1/notifications/unread-count')
     unreadCount.value = res.unread_count || 0
@@ -128,6 +130,9 @@ const readAll = async () => {
     unreadCount.value = 0
     notifications.value.forEach(n => n.is_read = true)
     ElMessage.success('已全部标记为已读')
+    // 暂停轮询5秒，等待后端完成标记
+    readAllCooldown = true
+    setTimeout(() => { readAllCooldown = false }, 5000)
   } catch (e) {
     ElMessage.error('操作失败')
   }
@@ -165,6 +170,8 @@ const formatTime = (t) => {
 }
 
 let pollTimer = null
+let readAllCooldown = false
+let readAllCooldownTimer = null
 
 onMounted(() => {
   fetchUnreadCount()
@@ -175,6 +182,10 @@ onBeforeUnmount(() => {
   if (pollTimer) {
     clearInterval(pollTimer)
     pollTimer = null
+  }
+  if (readAllCooldownTimer) {
+    clearTimeout(readAllCooldownTimer)
+    readAllCooldownTimer = null
   }
 })
 </script>

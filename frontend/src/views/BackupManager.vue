@@ -1,4 +1,4 @@
-﻿﻿<template>
+<template>
   <div class="backup-manager">
     <div class="layout-fluid">
       <div class="page-header">
@@ -184,7 +184,7 @@
             layout="total, sizes, prev, pager, next, jumper"
             style="margin-top: 16px; justify-content: flex-end;"
             @current-change="handleAuditPageChange"
-            @size-change="handleAuditPageChange"
+            @size-change="handleAuditSizeChange"
           />
         </el-tab-pane>
       </el-tabs>
@@ -351,45 +351,24 @@ const cleanOldBackups = async () => {
 }
 
 // 下载备份文件
-const downloadBackup = (backup) => {
-  // 构建下载 URL
-  const token = localStorage.getItem('admin_token') || localStorage.getItem('token')
-  const downloadUrl = `/api/v1/admin/backups/download/${encodeURIComponent(backup.name)}`
-  
-  // 使用动态创建 a 标签的方式下载
-  const link = document.createElement('a')
-  link.href = downloadUrl
-  link.download = backup.name
-  // 添加 Authorization header
-  link.target = '_blank'
-  
-  // 通过 fetch 获取文件 blob 然后触发下载（解决跨域和认证问题）
-  fetch(downloadUrl, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('下载失败')
-      }
-      return response.blob()
-    })
-    .then(blob => {
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = backup.name
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      ElMessage.success('下载成功')
-    })
-    .catch(error => {
-      console.error('下载失败:', error)
-      ElMessage.error('下载失败，请重试')
-    })
+const downloadBackup = async (backup) => {
+  const downloadUrl = `/admin/backups/download/${encodeURIComponent(backup.name)}`
+
+  try {
+    const response = await request.get(downloadUrl, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(response)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = backup.name
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    ElMessage.success('下载成功')
+  } catch (error) {
+    console.error('下载失败:', error)
+    ElMessage.error('下载失败，请重试')
+  }
 }
 
 // 恢复备份 - Popconfirm 触发（不再需要 MessageBox）
@@ -469,6 +448,11 @@ const getActionTagType = (action) => {
 // 审计日志分页切换
 const handleAuditPageChange = (page) => {
   fetchAuditLogs(page)
+}
+
+const handleAuditSizeChange = () => {
+  auditPage.value = 1
+  fetchAuditLogs(1)
 }
 
 // 格式化时间 - 严格 YYYY-MM-DD HH:mm:ss（禁止斜杠）

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import request from '@/utils/request'
-import { setAdminToken, setAdminInfo as saveAdminInfo, clearAdminAuth, ADMIN_TOKEN_KEY, ADMIN_INFO_KEY, safeJsonParse, isValidTokenFormat } from '@/utils/auth'
+import request, { clearTokenHeader, restoreActiveTokenHeader } from '@/utils/request'
+import { setAdminToken, setAdminInfo as saveAdminInfo, clearAdminAuth, ADMIN_TOKEN_KEY, ADMIN_INFO_KEY, safeJsonParse, isValidTokenFormat, getUserToken } from '@/utils/auth'
 
 export const useAdminStore = defineStore('admin', () => {
   const adminInfo = ref(safeJsonParse(localStorage.getItem(ADMIN_INFO_KEY) || 'null'))
@@ -25,13 +25,18 @@ export const useAdminStore = defineStore('admin', () => {
     }
     adminInfo.value = null
     adminToken.value = ''
+    clearTokenHeader()
     clearAdminAuth()
+    // 管理员登出后恢复用户token（如果用户仍登录）
+    restoreActiveTokenHeader()
   }
 
   const resetSession = () => {
     adminInfo.value = null
     adminToken.value = ''
+    clearTokenHeader()
     clearAdminAuth()
+    restoreActiveTokenHeader()
   }
 
   const isLoggedIn = computed(() => !!adminToken.value && isValidTokenFormat(adminToken.value))

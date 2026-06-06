@@ -233,6 +233,7 @@ const animateResultScore = (target) => {
 }
 
 onMounted(async () => {
+  await userStore.checkAssessmentStatus()
   if (userStore.assessmentCompleted) {
     router.replace('/')
     return
@@ -326,8 +327,12 @@ const goToSkillAnalysis = () => {
 }
 
 const skipAssessment = () => {
-  userStore.assessmentCompleted = true
-  localStorage.setItem('assessment_completed', 'true')
+  userStore.setAssessmentCompleted({
+    overall_score: 0,
+    overall_level: '入门',
+    dimension_scores: [],
+    skipped: true,
+  })
   router.push('/')
 }
 </script>

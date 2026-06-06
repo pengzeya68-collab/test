@@ -208,7 +208,7 @@
                 <el-button size="small" @click="loadHistoryItem(item)">
                   <el-icon><Edit /></el-icon> 加载
                 </el-button>
-                <el-button size="small" type="danger" @click="debugHistory.splice(index, 1)">
+                <el-button size="small" type="danger" @click="debugHistory.splice(debugHistory.indexOf(item), 1)">
                   <el-icon><Delete /></el-icon>
                 </el-button>
               </div>
@@ -427,6 +427,7 @@ const addToHistory = () => {
   const paramsObj = {}
   debugForm.value.params.forEach(item => { if (item.key) paramsObj[replaceVariables(item.key, varsArray)] = replaceVariables(item.value, varsArray) })
   const historyItem = {
+    id: Date.now() + Math.random(),
     method: debugForm.value.method, url: replaceVariables(debugForm.value.url, varsArray),
     headers: headersObj, params: paramsObj, body: replaceVariables(debugForm.value.body || '', varsArray),
     body_type: debugForm.value.bodyType,

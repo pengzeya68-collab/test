@@ -85,13 +85,20 @@ const renderedContent = computed(() => renderMarkdown(lesson.value?.content || '
 const fetchLesson = async () => {
   loading.value = true
   try {
-    const [lessonRes, sectionsRes] = await Promise.all([
+    const [lessonRes, sectionsRes] = await Promise.allSettled([
       request.get(`/learning-paths/${pathId.value}/lessons/${lessonId.value}`),
       request.get(`/learning-paths/${pathId.value}/lessons`),
     ])
-    lesson.value = lessonRes
-    pathTitle.value = sectionsRes.path_title
-    sections.value = sectionsRes.lessons || []
+    if (lessonRes.status === 'fulfilled') {
+      lesson.value = lessonRes.value
+    }
+    if (sectionsRes.status === 'fulfilled') {
+      pathTitle.value = sectionsRes.value.path_title
+      sections.value = sectionsRes.value.lessons || []
+    }
+    if (lessonRes.status === 'rejected') {
+      ElMessage.error('加载课程内容失败')
+    }
   } catch (error) {
     ElMessage.error('加载课程内容失败')
   } finally {

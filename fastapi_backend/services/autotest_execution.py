@@ -602,6 +602,9 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
         try:
             if yaml_file and yaml_file.exists():
                 yaml_file.unlink()
+            if allure_results_dir and allure_results_dir.exists():
+                import shutil
+                shutil.rmtree(allure_results_dir, ignore_errors=True)
         except Exception:
             pass
         return {"success": False, "execution_time": execution_time, "error": "执行超时（60秒）", "report_url": None}
@@ -625,6 +628,9 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
         try:
             if yaml_file and yaml_file.exists():
                 yaml_file.unlink()
+            if allure_results_dir and allure_results_dir.exists():
+                import shutil
+                shutil.rmtree(allure_results_dir, ignore_errors=True)
         except Exception:
             pass
         return {"success": False, "execution_time": execution_time, "error": str(e), "report_url": None}

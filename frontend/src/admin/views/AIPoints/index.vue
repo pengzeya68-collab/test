@@ -247,6 +247,9 @@ const grantForm = reactive({ userId: null, amount: 100, note: '' })
 const handleGrant = async () => {
   if (!grantForm.userId) return ElMessage.warning('请输入用户ID')
   try {
+    await ElMessageBox.confirm(`确定为用户 ${grantForm.userId} 充值 ${grantForm.amount} 积分吗？`, '充值确认', {
+      confirmButtonText: '确定充值', cancelButtonText: '取消', type: 'warning'
+    })
     const res = await request.post('/admin/ai-points/grant', {
       user_id: grantForm.userId,
       amount: grantForm.amount,
@@ -256,7 +259,7 @@ const handleGrant = async () => {
     showGrantDialog.value = false
     if (activeTab.value === 'transactions') fetchTransactions()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '充值失败')
+    if (e !== 'cancel') ElMessage.error(e?.response?.data?.detail || '充值失败')
   }
 }
 

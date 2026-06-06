@@ -77,6 +77,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import DOMPurify from 'dompurify'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -96,10 +97,16 @@ const visible = computed({
 
 const renderRich = (text) => {
   if (!text || typeof text !== 'string') return ''
-  return text
+  // 先转义HTML，再进行格式替换，最后用DOMPurify消毒
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  const formatted = escaped
     .replace(/\n/g, '<br/>')
     .replace(/`([^`]+)`/g, '<code class="help-inline-code">$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  return DOMPurify.sanitize(formatted, { ALLOWED_TAGS: ['br', 'code', 'strong'], ALLOWED_ATTR: ['class'] })
 }
 </script>
 

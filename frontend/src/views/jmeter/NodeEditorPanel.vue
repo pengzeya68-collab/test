@@ -927,6 +927,13 @@ const filteredSamples = computed(() => {
     else if (sampleStatusFilter.value === 'error') list = list.filter(s => s.status >= 400 && s.status < 600)
     else if (sampleStatusFilter.value === 'exception') list = list.filter(s => !s.status || s.status === 0)
   }
+  if (sampleSearchQuery.value) {
+    const q = sampleSearchQuery.value.toLowerCase()
+    list = list.filter(s => {
+      const url = (s.url || s.label || '').toLowerCase()
+      return url.includes(q)
+    })
+  }
   return list
 })
 

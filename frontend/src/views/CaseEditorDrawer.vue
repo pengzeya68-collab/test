@@ -425,8 +425,8 @@
     <template #footer>
       <div class="drawer-footer">
         <el-button @click="handleClose">取消</el-button>
-        <el-button type="info" @click="handleSave">仅保存</el-button>
-        <el-button type="primary" @click="handleSaveAndRun">
+        <el-button type="info" @click="handleSave" :loading="saving" :disabled="saving">仅保存</el-button>
+        <el-button type="primary" @click="handleSaveAndRun" :loading="saving" :disabled="saving">
           <el-icon><VideoPlay /></el-icon>
           保存并运行
         </el-button>

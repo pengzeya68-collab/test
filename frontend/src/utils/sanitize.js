@@ -15,7 +15,7 @@ export function sanitizeHtml(html) {
       'table', 'thead', 'tbody', 'tr', 'th', 'td',
       'a', 'img',
       'blockquote', 'pre', 'code', 'span', 'div',
-      'input', 'label',
+      'label',
       'details', 'summary',
     ],
     ALLOWED_ATTR: [

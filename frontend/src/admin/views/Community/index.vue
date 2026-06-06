@@ -180,8 +180,8 @@ const fetchPosts = async () => {
     const params = { page: postPage.value, size: postSize.value }
     if (postKeyword.value) params.keyword = postKeyword.value
     if (postCategory.value) params.category = postCategory.value
-    if (postEssence.value !== '') params.is_essence = postEssence.value
-    if (postTop.value !== '') params.is_top = postTop.value
+    if (postEssence.value !== '') params.is_essence = postEssence.value === 'true'
+    if (postTop.value !== '') params.is_top = postTop.value === 'true'
     const res = await request.get('/admin/community/posts', { params })
     postList.value = res?.list || []
     postTotal.value = res?.total || 0
@@ -199,21 +199,27 @@ const handlePostSizeChange = () => {
 
 const toggleEssence = async (row) => {
   try {
+    await ElMessageBox.confirm(`确定${row.is_essence ? '取消精华' : '设为精华'}帖子「${row.title?.slice(0, 20)}」吗？`, '操作确认', {
+      confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
+    })
     const res = await request.post(`/admin/community/posts/${row.id}/toggle-essence`)
     ElMessage.success(res.message || '操作成功')
     fetchPosts()
   } catch (e) {
-    ElMessage.error('操作失败')
+    if (e !== 'cancel') ElMessage.error('操作失败')
   }
 }
 
 const toggleTop = async (row) => {
   try {
+    await ElMessageBox.confirm(`确定${row.is_top ? '取消置顶' : '设为置顶'}帖子「${row.title?.slice(0, 20)}」吗？`, '操作确认', {
+      confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
+    })
     const res = await request.post(`/admin/community/posts/${row.id}/toggle-top`)
     ElMessage.success(res.message || '操作成功')
     fetchPosts()
   } catch (e) {
-    ElMessage.error('操作失败')
+    if (e !== 'cancel') ElMessage.error('操作失败')
   }
 }
 

@@ -336,8 +336,8 @@
               class="choice-option-card"
               :class="{
                 'selected': isChoiceSelected(opt.key),
-                'correct-answer': submitResult && !submitResult?.correct && opt.key === submitResult?.correct_answer,
-                'wrong-answer': submitResult && !submitResult?.correct && isChoiceSelected(opt.key) && opt.key !== submitResult?.correct_answer,
+                'correct-answer': submitResult && !submitResult?.correct && opt.key === (submitResult?.correct_answer || submitResult?.expected_solution),
+                'wrong-answer': submitResult && !submitResult?.correct && isChoiceSelected(opt.key) && opt.key !== (submitResult?.correct_answer || submitResult?.expected_solution),
                 'my-correct': submitResult && submitResult?.correct && isChoiceSelected(opt.key),
                 'disabled': !!submitResult
               }"
@@ -346,7 +346,7 @@
               <span class="option-label">{{ opt.key }}</span>
               <span class="option-text">{{ opt.text }}</span>
               <span class="option-check" v-if="isChoiceSelected(opt.key)">
-                <template v-if="submitResult && !submitResult?.correct && opt.key !== submitResult?.correct_answer">✗</template>
+                <template v-if="submitResult && !submitResult?.correct && opt.key !== (submitResult?.correct_answer || submitResult?.expected_solution)">✗</template>
                 <template v-else>✓</template>
               </span>
             </div>
@@ -366,8 +366,8 @@
               <span class="result-text">{{ submitResult?.correct ? '回答正确！' : '回答错误' }}</span>
               <span class="result-msg">{{ submitResult?.message }}</span>
             </div>
-            <div v-if="!submitResult?.correct && submitResult?.correct_answer" class="correct-answer-hint">
-              正确答案：<strong>{{ submitResult?.correct_answer }}</strong>
+            <div v-if="!submitResult?.correct && (submitResult?.correct_answer || submitResult?.expected_solution)" class="correct-answer-hint">
+              正确答案：<strong>{{ submitResult?.correct_answer || submitResult?.expected_solution }}</strong>
             </div>
           </div>
 
@@ -550,6 +550,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAICosts } from '@/composables/useAICosts'
 import CodeEditor from '@/components/CodeEditor.vue'
 import { useUserStore } from '@/stores/user'
+import DOMPurify from 'dompurify'
 
 const router = useRouter()
 const route = useRoute()
@@ -745,14 +746,14 @@ const fetchRelatedExercises = async () => {
     if (relatedExercises.value.length > 0) {
       nextExerciseId.value = relatedExercises.value[0].id
     }
-  } catch {}
+  } catch (e) { console.warn('获取相关习题失败:', e) }
 }
 
 const fetchNotes = async () => {
   try {
     const res = await request.get('/notes', { params: { exercise_id: exerciseId.value } })
     exerciseNotes.value = res.notes || []
-  } catch {}
+  } catch (e) { console.warn('获取笔记失败:', e) }
 }
 
 const saveNote = async () => {
@@ -948,8 +949,9 @@ const prevExercise = () => {
 
 const showHintDialog = () => {
   if (!exercise.value?.hint) return
+  const safeHint = DOMPurify.sanitize(exercise.value.hint)
   ElMessageBox.alert(
-    `<div style="color: #a5b4fc; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${exercise.value.hint}</div>`,
+    `<div style="color: #a5b4fc; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${safeHint}</div>`,
     '💡 提示',
     {
       dangerouslyUseHTMLString: true,

@@ -81,8 +81,8 @@
 
           <div
             class="message-item"
-            v-for="(msg, index) in messages"
-            :key="index"
+            v-for="msg in messages"
+            :key="msg.id"
             :class="msg.role"
           >
             <div class="message-avatar">
@@ -254,11 +254,13 @@ const quickQuestion = (question) => {
   sendMessage()
 }
 
+let _msgId = 0
 const addMessage = (role, content, loading = false) => {
   const now = new Date()
   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
 
   messages.value.push({
+    id: ++_msgId,
     role,
     content,
     time,

@@ -26,6 +26,7 @@ from fastapi_backend.models.autotest import (
     # AutoTestCase,
     AutoTestEnvironment,
     AutoTestScenarioExecutionRecord,
+    AutoTestGlobalVariable,
 )
 from fastapi_backend.services.autotest_email_notifier import get_email_notifier
 from fastapi_backend.utils.parser import replace_variables
@@ -165,6 +166,28 @@ class ScenarioExecutionEngine:
                 # 获取所有启用的步骤并排序
                 all_steps = sorted([s for s in scenario.steps if s.is_active], key=lambda x: x.step_order)
 
+                # 预加载步骤数据到内存，避免db会话关闭后DetachedInstanceError
+                steps_data = []
+                for step in all_steps:
+                    step_info = {
+                        'id': step.id,
+                        'step_order': step.step_order,
+                        'api_case_id': step.api_case_id,
+                        'is_active': step.is_active,
+                        'variable_overrides': step.variable_overrides,
+                    }
+                    if step.api_case:
+                        step_info['api_case_name'] = step.api_case.name
+                        step_info['api_case_method'] = step.api_case.method
+                        step_info['api_case_url'] = step.api_case.url
+                        step_info['api_case_headers'] = step.api_case.headers
+                        step_info['api_case_params'] = step.api_case.params
+                        step_info['api_case_body'] = step.api_case.payload
+                        step_info['api_case_body_type'] = step.api_case.body_type
+                        step_info['api_case_assert_rules'] = step.api_case.assert_rules
+                        step_info['api_case_extractors'] = step.api_case.extractors
+                    steps_data.append(step_info)
+
                 total_steps = len(all_steps)
                 fail_fast_enabled = getattr(scenario, 'fail_fast', False)
 
@@ -173,17 +196,17 @@ class ScenarioExecutionEngine:
 
             # 阶段2：执行步骤（不需要数据库会话，避免高并发下连接池耗尽）
             failed_encountered = False
-            for idx, step in enumerate(all_steps):
-                step_name = step.api_case.name if step.api_case else f"Step {step.step_order}"
+            for idx, step_info in enumerate(steps_data):
+                step_name = step_info.get('api_case_name', f"Step {step_info['step_order']}")
                 step_start = time.time()
 
                 if failed_encountered and fail_fast_enabled:
                     self.step_results.append({
-                        "step_id": step.id,
-                        "step_order": step.step_order,
-                        "api_case_id": step.api_case_id,
-                        "api_case_name": step.api_case.name if step.api_case else f"Step {step.step_order}",
-                        "method": step.api_case.method if step.api_case else "GET",
+                        "step_id": step_info['id'],
+                        "step_order": step_info['step_order'],
+                        "api_case_id": step_info['api_case_id'],
+                        "api_case_name": step_info.get('api_case_name', f"Step {step_info['step_order']}"),
+                        "method": step_info.get('api_case_method', 'GET'),
                         "success": False,
                         "status": "skipped",
                         "response_time": 0,
@@ -197,7 +220,7 @@ class ScenarioExecutionEngine:
                     self.progress_callback(idx, total_steps, f'执行: {step_name}')
 
                 try:
-                    step_result = await self._execute_step(step)
+                    step_result = await self._execute_step(step_info)
                     if not step_result.get("success", False):
                         step_result["status"] = "failed"
                         self.step_results.append(step_result)
@@ -214,11 +237,11 @@ class ScenarioExecutionEngine:
                 except AssertionError as e:
                     step_duration = int((time.time() - step_start) * 1000)
                     self.step_results.append({
-                        "step_id": step.id,
-                        "step_order": step.step_order,
-                        "api_case_id": step.api_case_id,
-                        "api_case_name": step.api_case.name if step.api_case else f"Step {step.step_order}",
-                        "method": step.api_case.method if step.api_case else "GET",
+                        "step_id": step_info['id'],
+                        "step_order": step_info['step_order'],
+                        "api_case_id": step_info['api_case_id'],
+                        "api_case_name": step_info.get('api_case_name', f"Step {step_info['step_order']}"),
+                        "method": step_info.get('api_case_method', 'GET'),
                         "success": False,
                         "status": "failed",
                         "response_time": step_duration,
@@ -232,10 +255,10 @@ class ScenarioExecutionEngine:
                 except Exception as e:
                     step_duration = int((time.time() - step_start) * 1000)
                     self.step_results.append({
-                        "step_id": step.id,
-                        "step_order": step.step_order,
-                        "api_case_id": step.api_case_id,
-                        "api_case_name": step.api_case.name if step.api_case else f"Step {step.step_order}",
+                        "step_id": step_info['id'],
+                        "step_order": step_info['step_order'],
+                        "api_case_id": step_info['api_case_id'],
+                        "api_case_name": step_info.get('api_case_name', f"Step {step_info['step_order']}"),
                         "success": False,
                         "status": "failed",
                         "response_time": step_duration,
@@ -699,15 +722,17 @@ class TestScenario{scenario_id}:
         """已废弃，保留兼容"""
         pass
 
-    async def _execute_step(self, step: AutoTestScenarioStep) -> Dict[str, Any]:
-        api_case = step.api_case
-        if api_case is None:
+    async def _execute_step(self, step_info: Dict[str, Any]) -> Dict[str, Any]:
+        """执行单个步骤，接受预加载的步骤数据字典（避免DetachedInstanceError）"""
+        # 检查是否有api_case数据
+        api_case_name = step_info.get('api_case_name')
+        if not api_case_name:
             return {
-                "step_order": step.step_order,
-                "api_case_name": f"步骤{step.step_order}",
+                "step_order": step_info['step_order'],
+                "api_case_name": f"步骤{step_info['step_order']}",
                 "status": "error",
                 "success": False,
-                "error": f"关联的接口用例不存在 (api_case_id={step.api_case_id})",
+                "error": f"关联的接口用例不存在 (api_case_id={step_info.get('api_case_id')})",
                 "assertion_results": [],
                 "variable_extractions": [],
             }
@@ -716,16 +741,16 @@ class TestScenario{scenario_id}:
         try:
             import copy
             request_config = {
-                "method": api_case.method,
-                "url": api_case.url,
-                "headers": copy.deepcopy(api_case.headers) or {},
-                "params": copy.deepcopy(getattr(api_case, 'params', None)) or {},
-                "body": copy.deepcopy(getattr(api_case, 'body', None) or getattr(api_case, 'payload', None)) or "",
-                "payload": copy.deepcopy(getattr(api_case, 'body', None) or getattr(api_case, 'payload', None)) or "",
+                "method": step_info.get('api_case_method', 'GET'),
+                "url": step_info.get('api_case_url', ''),
+                "headers": copy.deepcopy(step_info.get('api_case_headers')) or {},
+                "params": copy.deepcopy(step_info.get('api_case_params')) or {},
+                "body": copy.deepcopy(step_info.get('api_case_body')) or "",
+                "payload": copy.deepcopy(step_info.get('api_case_body')) or "",
             }
 
-            if step.variable_overrides:
-                overrides = step.variable_overrides
+            if step_info.get('variable_overrides'):
+                overrides = step_info['variable_overrides']
                 if "url" in overrides:
                     request_config["url"] = overrides["url"]
                 if "headers" in overrides:
@@ -793,7 +818,7 @@ class TestScenario{scenario_id}:
                 req_kwargs["params"] = raw_params
 
             # 获取 body_type，决定如何发送请求体
-            body_type = getattr(api_case, 'body_type', None) or ''
+            body_type = step_info.get('api_case_body_type') or ''
 
             if raw_payload:
                 if body_type in ('form-data', 'form', 'multipart'):
@@ -854,11 +879,20 @@ class TestScenario{scenario_id}:
             step_duration = int((time.time() - step_start_time) * 1000)
 
             # 解析断言规则（由断言引擎统一判断，不再提前拦截）
-            assertions = api_case.assert_rules
+            assertions = step_info.get('api_case_assert_rules')
 
-            # 对断言规则中的变量占位符做替换
+            # 对断言规则中的变量占位符做替换（支持dict/list类型）
             if assertions:
-                assertions = replace_variables(assertions, all_vars)
+                if isinstance(assertions, (dict, list)):
+                    import json
+                    assertions_str = json.dumps(assertions, ensure_ascii=False)
+                    assertions_str = replace_variables(assertions_str, all_vars)
+                    try:
+                        assertions = json.loads(assertions_str)
+                    except json.JSONDecodeError:
+                        pass
+                elif isinstance(assertions, str):
+                    assertions = replace_variables(assertions, all_vars)
 
             # 解析响应
             response_data = {
@@ -934,7 +968,7 @@ class TestScenario{scenario_id}:
                         failed_assertions.append({"assertion": assertion, "reason": reason})
 
             # 提取变量
-            extractors = getattr(api_case, 'extractors', None) or []
+            extractors = step_info.get('api_case_extractors') or []
             await self._extract_variables(extractors, response_data)
 
             # 安全解析 payload 为 JSON，解析失败时保留原始字符串
@@ -950,11 +984,11 @@ class TestScenario{scenario_id}:
                 payload_for_result = {}
 
             step_result = {
-                "step_id": step.id,
-                "step_order": step.step_order,
-                "api_case_id": api_case.id,
-                "api_case_name": api_case.name,
-                "method": api_case.method,
+                "step_id": step_info['id'],
+                "step_order": step_info['step_order'],
+                "api_case_id": step_info['api_case_id'],
+                "api_case_name": step_info.get('api_case_name', ''),
+                "method": step_info.get('api_case_method', 'GET'),
                 "url": request_config["url"],
                 "headers": final_headers,
                 "payload": payload_for_result,

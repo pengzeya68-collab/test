@@ -284,12 +284,15 @@ const resetCode = () => {
 // 监听外部modelValue变化
 watch(() => props.modelValue, (newVal) => {
   if (editorView.value && newVal !== editorView.value.state.doc.toString()) {
+    // 保存当前光标位置
+    const pos = Math.min(editorView.value.state.selection.main.head, newVal?.length || 0)
     editorView.value.dispatch({
       changes: {
         from: 0,
         to: editorView.value.state.doc.length,
         insert: newVal
-      }
+      },
+      selection: { anchor: pos }
     })
   }
 })

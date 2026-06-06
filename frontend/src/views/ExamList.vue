@@ -117,7 +117,7 @@
                 type="primary" 
                 size="small" 
                 @click="startExam(exam)"
-                :disabled="exam.attempt_status === 'submitted' || exam.attempt_status === 'graded'"
+                :disabled="exam.attempt_status === 'submitted'"
               >
                 {{ getExamButtonText(exam) }}
               </el-button>
@@ -291,7 +291,7 @@ const fetchExams = async () => {
     const examList = res.list || res.items || res || []
     exams.value = examList.map(exam => ({
       ...exam,
-      difficultyLevel: exam.difficulty === 'easy' ? 1 : exam.difficulty === 'medium' ? 2 : 3
+      difficultyLevel: exam.difficulty === 'easy' ? 1 : exam.difficulty === 'medium' ? 2 : exam.difficulty === 'hard' ? 3 : 2
     }))
     total.value = res.total || 0
   } catch (error) {
@@ -323,10 +323,12 @@ const getExamButtonText = (exam) => {
 
 const startExam = (exam) => {
   if (exam.attempt_status) {
-    if (exam.attempt_status === 'graded') {
+    if (exam.attempt_status === 'graded' || exam.attempt_status === 'submitted') {
       router.push(`/exam/result/${exam.attempt_id}`)
-    } else {
+    } else if (exam.attempt_status === 'in_progress') {
       router.push(`/exam/${exam.id}`)
+    } else {
+      router.push(`/exam/result/${exam.attempt_id}`)
     }
   } else {
     router.push(`/exam/${exam.id}`)

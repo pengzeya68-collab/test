@@ -57,7 +57,7 @@
               {{ codeCountdown > 0 ? `${codeCountdown}s后重新发送` : '发送验证码' }}
             </el-button>
           </div>
-          <p style="font-size: 12px; color: var(--tm-text-secondary); margin: 5px 0 0 0;">测试验证码：123456</p>
+          <p v-if="isDev" style="font-size: 12px; color: var(--tm-text-secondary); margin: 5px 0 0 0;">测试验证码：123456</p>
         </el-form-item>
         
         <el-form-item
@@ -128,6 +128,7 @@ import { Phone, Lock } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
+const isDev = import.meta.env.DEV
 const forgotPasswordFormRef = ref(null)
 const loading = ref(false)
 const codeCountdown = ref(0)

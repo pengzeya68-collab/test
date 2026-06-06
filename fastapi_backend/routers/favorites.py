@@ -7,6 +7,7 @@
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, and_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
@@ -84,16 +85,20 @@ async def toggle_favorite(
         await db.commit()
         return {"favorited": False, "message": "已取消收藏"}
     else:
-        kw = {"user_id": current_user.id, "item_type": item_type}
-        if item_type == "post":
-            kw["post_id"] = item_id
-        elif item_type == "exercise":
-            kw["exercise_id"] = item_id
-        elif item_type == "note":
-            kw["note_id"] = item_id
-        db.add(Favorite(**kw))
-        await db.commit()
-        return {"favorited": True, "message": "已收藏"}
+        try:
+            kw = {"user_id": current_user.id, "item_type": item_type}
+            if item_type == "post":
+                kw["post_id"] = item_id
+            elif item_type == "exercise":
+                kw["exercise_id"] = item_id
+            elif item_type == "note":
+                kw["note_id"] = item_id
+            db.add(Favorite(**kw))
+            await db.commit()
+            return {"favorited": True, "message": "已收藏"}
+        except IntegrityError:
+            await db.rollback()
+            return {"favorited": True, "message": "已收藏"}
 
 
 @router.get("/check")

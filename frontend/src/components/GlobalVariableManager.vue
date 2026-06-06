@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿<template>
   <div class="global-variable-manager">
     <el-card>
       <template #header>
@@ -115,7 +115,7 @@
               type="info" 
               link 
               size="small"
-              @click="editingRowId = null"
+              @mousedown.prevent="editingRowId = null"
             >
               取消
             </el-button>
@@ -491,6 +491,20 @@ const handleReplaceVariables = () => {
   // 构建变量映射
   variables.value.forEach(varItem => {
     varMap.set(varItem.name, varItem.value)
+  })
+
+  // 动态变量映射
+  const dynamicVars = {
+    '$timestamp': String(Math.floor(Date.now() / 1000)),
+    '$random_int': String(Math.floor(Math.random() * 10000)),
+    '$random_string': Math.random().toString(36).substring(2, 10),
+    '$uuid': crypto.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
+    }),
+  }
+  Object.entries(dynamicVars).forEach(([key, value]) => {
+    varMap.set(key, value)
   })
   
   // 替换变量

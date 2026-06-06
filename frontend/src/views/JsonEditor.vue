@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="json-editor">
     <div class="editor-toolbar">
       <span class="toolbar-hint">支持 JSON 语法高亮</span>
@@ -124,21 +124,30 @@ const highlightedContent = computed(() => {
 // JSON 语法高亮
 const syntaxHighlight = (json) => {
   if (!json) return ''
-  return json
+  // 先转义HTML实体
+  const escaped = json
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?)/g, (match) => {
-      if (/:$/.test(match)) {
-        // key
-        return `<span class="json-key">${match}</span>`
+  // 使用单一正则交替匹配，避免双重包裹
+  return escaped.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+\.?\d*([eE][+-]?\d+)?)/g,
+    (match) => {
+      let cls = 'json-number'
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          cls = 'json-key'
+        } else {
+          cls = 'json-string'
+        }
+      } else if (/true|false/.test(match)) {
+        cls = 'json-boolean'
+      } else if (/null/.test(match)) {
+        cls = 'json-null'
       }
-      // string value
-      return `<span class="json-string">${match}</span>`
-    })
-    .replace(/\b(true|false)\b/g, '<span class="json-boolean">$1</span>')
-    .replace(/\b(null)\b/g, '<span class="json-null">$1</span>')
-    .replace(/\b(-?\d+\.?\d*([eE][+-]?\d+)?)\b/g, '<span class="json-number">$1</span>')
+      return `<span class="${cls}">${match}</span>`
+    }
+  )
 }
 
 defineExpose({
