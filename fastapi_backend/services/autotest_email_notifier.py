@@ -229,7 +229,7 @@ class EmailNotifier:
                     <tr><td class="label">步骤统计</td><td>总步骤: {total_steps} | <span class="success">成功: {success_steps}</span> | <span class="failed">失败: {failed_steps}</span> | 跳过: {skipped_steps}</td></tr>
                 </table>
                 <div class="button">
-                    <a href="{report_url}" target="_blank">点击查看详细 Allure 报告</a>
+                    <a href="{html_module.escape(report_url, quote=True)}" target="_blank">点击查看详细 Allure 报告</a>
                 </div>
                 <div class="footer">
                     <p>此邮件由 TestMaster 自动化测试平台自动发送，请勿回复</p>

@@ -484,8 +484,20 @@ async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
     request_headers = dict(request.headers)
 
     async with AsyncSessionLocal() as db:
+        # 构建完整的请求参数字典，支持 query/body/header 条件匹配
+        _body_dict = {}
+        if body_text:
+            try:
+                _body_dict = json.loads(body_text)
+            except (json.JSONDecodeError, ValueError):
+                pass
+        _full_request_params = {
+            "query": query_params,
+            "body": _body_dict if isinstance(_body_dict, dict) else {},
+            "header": request_headers,
+        }
         # 匹配规则
-        rule = await mock_engine.match_rule(db, slug, method, path, query_params)
+        rule = await mock_engine.match_rule(db, slug, method, path, _full_request_params)
 
         if not rule:
             elapsed = int((time.time() - start_time) * 1000)

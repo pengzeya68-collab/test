@@ -373,6 +373,28 @@
               </draggable>
           </div>
         </el-tab-pane>
+
+        <!-- 前置脚本 -->
+        <el-tab-pane label="前置脚本" name="pre_script">
+          <div class="tab-content">
+            <div class="table-toolbar">
+              <span class="toolbar-title">前置脚本 (请求前执行)</span>
+            </div>
+            <p class="script-hint">支持 pm.* API: pm.environment.get/set, pm.globals.get/set, pm.sessionVariables.get/set</p>
+            <CodeEditor v-model="caseForm.pre_script" language="javascript" :hide-run="true" />
+          </div>
+        </el-tab-pane>
+
+        <!-- 后置脚本 -->
+        <el-tab-pane label="后置脚本" name="post_script">
+          <div class="tab-content">
+            <div class="table-toolbar">
+              <span class="toolbar-title">后置脚本 (请求后执行)</span>
+            </div>
+            <p class="script-hint">支持 pm.* API: pm.response.json(), pm.response.status, pm.test(), pm.expect()</p>
+            <CodeEditor v-model="caseForm.post_script" language="javascript" :hide-run="true" />
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </div>
 
@@ -467,6 +489,7 @@ import { ref, watch, toRaw, computed, onMounted, onUnmounted, nextTick } from 'v
 import { ElMessage } from 'element-plus'
 import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy, Collection } from '@element-plus/icons-vue'
 import JsonEditor from './JsonEditor.vue'
+import CodeEditor from '@/components/CodeEditor.vue'
 import draggable from 'vuedraggable'
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
@@ -627,7 +650,10 @@ const caseForm = ref({
   payload: '',
   formData: [],
   extractors: [],
-  assertions: []
+  assertions: [],
+  pre_script: null,
+  post_script: null,
+  response_schema: null,
 })
 
 // 断言模板相关
@@ -1367,6 +1393,12 @@ const handleSaveAndRun = async () => {
 
 .assertions-hint {
   margin-top: 12px;
+}
+
+.script-hint {
+  margin: 0 0 12px;
+  color: var(--tm-text-secondary);
+  font-size: 12px;
 }
 
 /* 变量补全下拉框样式 */

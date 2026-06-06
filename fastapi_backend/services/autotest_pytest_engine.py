@@ -103,9 +103,13 @@ class PytestDataDrivenEngine:
         steps_json = json.dumps(steps, ensure_ascii=False, indent=8)
         env_vars_json = json.dumps(env_vars or {}, ensure_ascii=False, indent=8)
 
+        # 对场景名做安全转义，防止代码注入
+        _name_for_doc = (self.scenario_name or "").replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+        _name_for_code = repr(self.scenario_name or "")
+
         code = f'''"""
 自动生成的场景测试文件
-场景: {self.scenario_name}
+场景: {_name_for_doc}
 生成时间: {datetime.now(timezone.utc).isoformat()}
 """
 import pytest
@@ -119,7 +123,7 @@ from pathlib import Path
 
 
 SCENARIO_ID = {self.scenario_id}
-SCENARIO_NAME = "{self.scenario_name}"
+SCENARIO_NAME = {_name_for_code}
 ENV_VARS = {env_vars_json}
 STEPS = {steps_json}
 COLUMNS = {json.dumps(columns)}

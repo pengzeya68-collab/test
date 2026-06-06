@@ -60,6 +60,9 @@ class AutoTestCaseBase(BaseModel):
     assert_rules: Optional[Dict[str, Any]] = Field(None, alias="assertions", description="断言规则")
     extractors: Optional[List[Dict[str, Any]]] = Field(None, description="变量提取规则")
     description: Optional[str] = Field(None, description="用例描述")
+    pre_script: Optional[str] = Field(None, description="前置JS脚本")
+    post_script: Optional[str] = Field(None, description="后置JS脚本")
+    response_schema: Optional[Dict[str, Any]] = Field(None, description="响应JSON Schema")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -89,6 +92,9 @@ class AutoTestCaseUpdate(BaseModel):
     description: Optional[str] = None
     folder_id: Optional[Any] = None
     group_id: Optional[Any] = None
+    pre_script: Optional[str] = None
+    post_script: Optional[str] = None
+    response_schema: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -110,6 +116,7 @@ class AutoTestEnvironmentBase(BaseModel):
     base_url: Optional[str] = Field(None, description="基础路径")
     variables: Dict[str, Any] = Field(default_factory=dict, description="全局变量")
     is_default: bool = Field(False, description="是否为默认环境")
+    services: Optional[List[Dict[str, Any]]] = Field(None, description="多服务URL配置")
 
     @model_validator(mode="before")
     @classmethod
@@ -128,6 +135,7 @@ class AutoTestEnvironmentUpdate(BaseModel):
     base_url: Optional[str] = None
     variables: Optional[Dict[str, Any]] = None
     is_default: Optional[bool] = None
+    services: Optional[List[Dict[str, Any]]] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -144,6 +152,7 @@ class AutoTestEnvironmentResponse(BaseModel):
     base_url: Optional[str] = None
     variables: Dict[str, Any] = Field(default_factory=dict)
     is_default: bool = False
+    services: Optional[List[Dict[str, Any]]] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -161,7 +170,7 @@ class AutoTestEnvironmentResponse(BaseModel):
             env_name = getattr(data, 'env_name', None)
             if env_name:
                 data_dict = {}
-                for field in ['id', 'base_url', 'variables', 'is_default', 'created_at']:
+                for field in ['id', 'base_url', 'variables', 'is_default', 'services', 'created_at']:
                     data_dict[field] = getattr(data, field, None)
                 data_dict['name'] = env_name
                 data_dict['env_name'] = env_name
@@ -207,10 +216,15 @@ class CaseExecutionResult(BaseModel):
 # ========== 场景 Schema ==========
 
 class ScenarioStepBase(BaseModel):
-    api_case_id: int = Field(..., description="引用的接口ID")
+    api_case_id: Optional[int] = Field(None, description="引用的接口ID")
     step_order: int = Field(default=0, description="执行顺序")
     is_active: bool = Field(True, description="是否启用")
     variable_overrides: Optional[Dict[str, Any]] = Field(None, description="局部变量覆盖")
+    step_type: str = Field(default="api_request", description="步骤类型: api_request/if_condition/for_loop/for_each/wait/group/scenario_ref/db_query")
+    step_config: Optional[Dict[str, Any]] = Field(None, description="类型专属配置")
+    parent_step_id: Optional[int] = Field(None, description="父步骤ID")
+    pre_script: Optional[str] = Field(None, description="前置JS脚本")
+    post_script: Optional[str] = Field(None, description="后置JS脚本")
 
 
 class ScenarioStepCreate(ScenarioStepBase):
@@ -222,6 +236,11 @@ class ScenarioStepUpdate(BaseModel):
     step_order: Optional[int] = None
     is_active: Optional[bool] = None
     variable_overrides: Optional[Dict[str, Any]] = None
+    step_type: Optional[str] = None
+    step_config: Optional[Dict[str, Any]] = None
+    parent_step_id: Optional[int] = None
+    pre_script: Optional[str] = None
+    post_script: Optional[str] = None
 
 
 class ScenarioStepResponse(ScenarioStepBase):
@@ -488,3 +507,47 @@ class GeneratedDatasetResponse(BaseModel):
 
 # 重建前向引用
 AutoTestGroupTree.model_rebuild()
+
+
+# ========== 数据库连接 Schema ==========
+
+class DBConnectionBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200, description="连接名称")
+    db_type: str = Field(..., description="数据库类型: mysql/postgresql/mongodb/redis")
+    host: str = Field(..., description="主机地址")
+    port: int = Field(..., ge=1, le=65535, description="端口")
+    database_name: Optional[str] = Field(None, description="数据库名")
+    username: Optional[str] = Field(None, description="用户名")
+    password: Optional[str] = Field(None, description="密码（创建/更新时传入明文，响应时不返回）")
+    is_active: bool = Field(True, description="是否启用")
+
+
+class DBConnectionCreate(DBConnectionBase):
+    pass
+
+
+class DBConnectionUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    db_type: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = Field(None, ge=1, le=65535)
+    database_name: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class DBConnectionResponse(BaseModel):
+    id: int
+    name: str
+    db_type: str
+    host: str
+    port: int
+    database_name: Optional[str] = None
+    username: Optional[str] = None
+    is_active: bool = True
+    user_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)

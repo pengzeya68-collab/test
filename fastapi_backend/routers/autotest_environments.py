@@ -112,14 +112,15 @@ async def update_environment(
     if not env:
         raise HTTPException(status_code=404, detail="环境不存在")
 
-    if env_in.is_default:
+    _set_fields = env_in.model_dump(exclude_unset=True)
+    if _set_fields.get("is_default"):
         await db.execute(
             update(AutoTestEnvironment)
             .where(AutoTestEnvironment.user_id == current_user.id, AutoTestEnvironment.id != env_id)
             .values(is_default=False)
         )
 
-    for field, value in env_in.model_dump(exclude_unset=True).items():
+    for field, value in _set_fields.items():
         if field == "name":
             field = "env_name"
         if field == "variables" and isinstance(value, dict):

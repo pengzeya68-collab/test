@@ -137,6 +137,14 @@
           <el-icon><Collection /></el-icon>
           <span>测试套件</span>
         </div>
+        <div
+          class="tab-item"
+          :class="{ 'active': activeTab === 'dbConnections' }"
+          @click="activeTab = 'dbConnections'; handleTabChange('dbConnections')"
+        >
+          <el-icon><Coin /></el-icon>
+          <span>数据库连接</span>
+        </div>
         <div class="tab-item ai-tab" @click="$router.push('/ai-generate-cases')">
           <span>🧪 AI生成用例</span>
           <el-tag size="small" type="warning" class="new-tag">新</el-tag>
@@ -203,6 +211,10 @@
       <SuiteManager />
     </div>
 
+    <div v-if="activeTab === 'dbConnections' || visitedTabs.has('dbConnections')" v-show="activeTab === 'dbConnections'" class="tab-content">
+      <DBConnectionManager />
+    </div>
+
     <ExecutionResultDialog
       v-model="resultDialogVisible"
       :result="runResult"
@@ -224,6 +236,7 @@ import InterfaceLibrary from './InterfaceLibrary.vue'
 import JmeterAssistant from './JmeterAssistant.vue'
 import MockService from './MockService.vue'
 import SuiteManager from './SuiteManager.vue'
+import DBConnectionManager from './scenario/DBConnectionManager.vue'
 import ExecutionResultDialog from './ExecutionResultDialog.vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 

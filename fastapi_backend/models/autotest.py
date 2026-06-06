@@ -49,6 +49,9 @@ class AutoTestCase(Base):
     assert_rules = Column(JSON, nullable=True, comment="断言规则")
     extractors = Column(JSON, nullable=True, comment="变量提取规则")
     description = Column(Text, nullable=True, comment="用例描述")
+    pre_script = Column(Text, nullable=True, comment="前置JS脚本")
+    post_script = Column(Text, nullable=True, comment="后置JS脚本")
+    response_schema = Column(JSON, nullable=True, comment="响应JSON Schema")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
@@ -89,6 +92,7 @@ class AutoTestEnvironment(Base):
     base_url = Column(String(500), nullable=True, comment="基础路径")
     variables = Column(JSON, nullable=True, default=dict, comment="环境变量")
     is_default = Column(Boolean, default=False, comment="是否默认环境")
+    services = Column(JSON, nullable=True, comment="多服务URL配置列表")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
 
@@ -168,10 +172,16 @@ class AutoTestScenarioStep(Base):
     step_order = Column(Integer, nullable=False, default=0, comment="执行顺序")
     is_active = Column(Boolean, default=True, comment="是否启用")
     variable_overrides = Column(JSON, nullable=True, comment="局部变量覆盖")
+    step_type = Column(String(20), nullable=False, default="api_request", comment="步骤类型: api_request/if_condition/for_loop/for_each/wait/group/scenario_ref/db_query")
+    step_config = Column(JSON, nullable=True, comment="类型专属配置")
+    parent_step_id = Column(Integer, ForeignKey("scenario_steps.id"), nullable=True, comment="父步骤ID(嵌套)")
+    pre_script = Column(Text, nullable=True, comment="前置JS脚本")
+    post_script = Column(Text, nullable=True, comment="后置JS脚本")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
 
     scenario = relationship("AutoTestScenario", back_populates="steps")
     api_case = relationship("AutoTestCase")
+    parent_step = relationship("AutoTestScenarioStep", remote_side=[id], backref="child_steps")
 
 
 class AutoTestDataset(Base):
@@ -550,3 +560,26 @@ class TestSuiteExecution(Base):
     )
 
     suite = relationship("TestSuite", back_populates="executions")
+
+
+# ========== 数据库连接模型 ==========
+
+class AutoTestDBConnection(Base):
+    """数据库连接配置表"""
+    __tablename__ = "autotest_db_connections"
+    __table_args__ = (
+        Index("idx_db_connections_user_id", "user_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False, comment="连接名称")
+    db_type = Column(String(20), nullable=False, comment="数据库类型: mysql/postgresql/mongodb/redis")
+    host = Column(String(500), nullable=False, comment="主机地址")
+    port = Column(Integer, nullable=False, comment="端口")
+    database_name = Column(String(200), nullable=True, comment="数据库名")
+    username = Column(String(200), nullable=True, comment="用户名")
+    password_encrypted = Column(Text, nullable=True, comment="加密后的密码")
+    is_active = Column(Boolean, default=True, comment="是否启用")
+    user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")

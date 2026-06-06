@@ -138,6 +138,8 @@ def compare_values(actual: Any, operator: str, expected: Any) -> bool:
         return bool(actual)
     elif operator == "range":
         return _check_range(actual, expected)
+    elif operator == "json_schema":
+        return _validate_json_schema(actual, expected)
     _logger.warning(f"未知的断言操作符: {operator}")
     return False
 
@@ -165,6 +167,37 @@ def _check_range(actual: Any, expected: Any) -> bool:
     return False
 
 
+def _validate_json_schema(actual: Any, schema: Any) -> bool:
+    """
+    使用 jsonschema 校验实际响应是否符合 JSON Schema。
+    schema 可以是 dict 或 JSON 字符串。
+    """
+    if not schema:
+        return True
+
+    # 解析字符串 schema
+    if isinstance(schema, str):
+        try:
+            schema = json.loads(schema)
+        except (json.JSONDecodeError, TypeError):
+            _logger.warning("JSON Schema 解析失败")
+            return False
+
+    if not isinstance(schema, dict):
+        return False
+
+    try:
+        import jsonschema
+        jsonschema.validate(instance=actual, schema=schema)
+        return True
+    except ImportError:
+        _logger.warning("jsonschema 未安装，无法执行 JSON Schema 校验")
+        return False
+    except Exception as e:
+        _logger.info(f"JSON Schema 校验失败: {e}")
+        return False
+
+
 def get_operator_text(operator: str) -> str:
     """获取操作符的中文描述"""
     mapping = {
@@ -178,6 +211,7 @@ def get_operator_text(operator: str) -> str:
         "regex": "正则匹配", "match": "正则匹配",
         "json_exists": "存在", "exists": "存在", "not_exists": "不存在",
         "range": "范围", "empty": "为空", "not_empty": "不为空",
+        "json_schema": "JSON Schema 校验",
     }
     return mapping.get(operator, operator)
 

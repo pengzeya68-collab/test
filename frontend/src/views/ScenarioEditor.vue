@@ -55,6 +55,7 @@
           @remove="handleRemoveStep"
           @edit-overrides="handleEditOverrides"
           @add-step="handleAddStep"
+          @add-step-type="handleAddFlowStep"
         />
       </el-tab-pane>
 
@@ -400,6 +401,36 @@ const handleDragEnd = async (stepOrders) => {
 }
 
 const handleEditOverrides = () => {
+}
+
+// 添加流控类型步骤
+const handleAddFlowStep = async (stepType) => {
+  const defaultConfigs = {
+    if_condition: { field: '', operator: '==', value: '' },
+    for_loop: { count: 5, var_name: 'i' },
+    for_each: { collection: 'items', item_var: 'item', index_var: 'index' },
+    wait: { duration_ms: 1000 },
+    group: { name: '分组' },
+    db_query: { connection_id: null, query: 'SELECT 1', extract_to: '' },
+    scenario_ref: { scenario_id: null },
+  }
+
+  const currentMaxOrder = steps.value.length > 0
+    ? Math.max(...steps.value.map(step => Number(step.step_order) || 0))
+    : -1
+
+  try {
+    await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/steps`, {
+      step_type: stepType,
+      step_config: defaultConfigs[stepType] || {},
+      step_order: currentMaxOrder + 1,
+      is_active: true,
+    })
+    ElMessage.success('步骤添加成功')
+    await loadScenario()
+  } catch (error) {
+    ElMessage.error('步骤添加失败')
+  }
 }
 
 const onDatasetSave = () => {

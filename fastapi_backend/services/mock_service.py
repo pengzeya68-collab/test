@@ -12,7 +12,9 @@ import asyncio
 import fnmatch
 import json
 import logging
+import random
 import re
+import string
 import time
 import uuid
 from datetime import datetime, timezone
@@ -133,6 +135,9 @@ class MockEngine:
         if body is None:
             body = {"message": "ok"}
 
+        # 解析响应体中的 @表达式 动态值
+        body = self._resolve_dynamic_values(body)
+
         return {
             "status": rule.response_status,
             "headers": headers,
@@ -212,7 +217,7 @@ class MockEngine:
         return self._mock_value(schema)
 
     def _mock_value(self, schema: dict) -> Any:
-        """递归生成 mock 数据"""
+        """递归生成 mock 数据（增强版：复用 DataFactory 生成模式）"""
         if not isinstance(schema, dict):
             return schema
 
@@ -224,17 +229,27 @@ class MockEngine:
             return schema["enum"][0]
         elif schema_type == "string":
             fmt = schema.get("format", "")
+            # 检查 x-mock-expression 动态表达式
+            mock_expr = schema.get("x-mock-expression", "")
+            if mock_expr:
+                return self._resolve_expression(mock_expr)
             if fmt == "email":
-                return "test@example.com"
+                return self._gen_email()
+            elif fmt in ("phone", "tel"):
+                return self._gen_phone()
             elif fmt == "date-time":
-                return "2024-01-01T00:00:00Z"
+                return datetime.now(timezone.utc).isoformat()
             elif fmt == "date":
-                return "2024-01-01"
+                return datetime.now(timezone.utc).strftime("%Y-%m-%d")
             elif fmt == "uuid":
                 return str(uuid.uuid4())
             return "string"
         elif schema_type in ("integer", "number"):
-            return schema.get("minimum", 0)
+            minimum = schema.get("minimum", 0)
+            maximum = schema.get("maximum", 1000)
+            if schema_type == "integer":
+                return random.randint(int(minimum), int(maximum))
+            return round(random.uniform(float(minimum), float(maximum)), 2)
         elif schema_type == "boolean":
             return True
         elif schema_type == "array":
@@ -248,6 +263,111 @@ class MockEngine:
             return result
 
         return {}
+
+    # ========== 动态值生成（复用 DataFactory 模式） ==========
+
+    def _gen_phone(self) -> str:
+        """生成随机手机号（复用 DataFactory 前缀列表）"""
+        prefixes = ["130", "131", "132", "133", "134", "135", "136", "137", "138", "139",
+                     "150", "151", "152", "153", "155", "156", "157", "158", "159",
+                     "180", "181", "182", "183", "184", "185", "186", "187", "188", "189"]
+        return random.choice(prefixes) + ''.join(random.choices(string.digits, k=8))
+
+    def _gen_email(self) -> str:
+        """生成随机邮箱"""
+        return f"testuser{random.randint(1000, 9999)}@test.com"
+
+    def _gen_uuid(self) -> str:
+        return str(uuid.uuid4())
+
+    def _gen_timestamp(self) -> int:
+        return int(datetime.now(timezone.utc).timestamp())
+
+    def _gen_datetime(self) -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    def _resolve_expression(self, expr: str) -> Any:
+        """解析 @表达式 为动态值"""
+        if not expr or not isinstance(expr, str):
+            return expr
+        expr = expr.strip()
+        if not expr.startswith("@"):
+            return expr
+
+        name = expr[1:].lower()
+        # 基础表达式
+        generators = {
+            "phone": self._gen_phone,
+            "email": self._gen_email,
+            "uuid": self._gen_uuid,
+            "timestamp": self._gen_timestamp,
+            "datetime": self._gen_datetime,
+        }
+        if name in generators:
+            return generators[name]()
+
+        # faker 表达式（name, address, id_card 等）
+        try:
+            return self._faker_generate(name)
+        except Exception:
+            return expr
+
+    def _faker_generate(self, name: str) -> str:
+        """使用 faker 生成中文数据"""
+        try:
+            from faker import Faker
+            fake = Faker('zh_CN')
+            faker_map = {
+                "name": fake.name,
+                "address": fake.address,
+                "id_card": fake.ssn,
+                "company": fake.company,
+                "sentence": lambda: fake.sentence(nb_words=6),
+                "paragraph": lambda: fake.paragraph(nb_sentences=3),
+                "word": fake.word,
+                "text": lambda: fake.text(max_nb_chars=200),
+                "job": fake.job,
+                "phone_number": fake.phone_number,
+                "zipcode": fake.postcode,
+                "city": fake.city,
+                "province": fake.province,
+                "country": fake.country,
+                "url": fake.url,
+                "ipv4": fake.ipv4,
+                "color": fake.color_name,
+            }
+            gen_fn = faker_map.get(name)
+            if gen_fn:
+                return gen_fn()
+        except ImportError:
+            # faker 未安装时回退到简单随机
+            fallback = {
+                "name": lambda: f"用户{random.randint(1000, 9999)}",
+                "address": f"北京市某某路{random.randint(1, 999)}号",
+                "id_card": f"1101011990010{random.randint(10000, 99999)}",
+                "company": f"测试公司{random.randint(1, 100)}",
+                "sentence": "这是一条测试句子。",
+                "paragraph": "这是一段测试文本，用于生成 mock 数据。",
+                "word": "测试",
+                "text": "测试文本内容",
+                "job": "工程师",
+            }
+            gen_fn = fallback.get(name)
+            if gen_fn:
+                return gen_fn()
+        raise ValueError(f"未知的 faker 表达式: @{name}")
+
+    def _resolve_dynamic_values(self, body: Any) -> Any:
+        """递归替换响应体中的 @表达式"""
+        if isinstance(body, str):
+            if body.startswith("@") and len(body) < 50:
+                return self._resolve_expression(body)
+            return body
+        elif isinstance(body, dict):
+            return {k: self._resolve_dynamic_values(v) for k, v in body.items()}
+        elif isinstance(body, list):
+            return [self._resolve_dynamic_values(item) for item in body]
+        return body
 
 
 # 全局引擎实例

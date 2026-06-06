@@ -95,6 +95,12 @@ import { defaultKeymap } from '@codemirror/commands'
 import { python } from '@codemirror/lang-python'
 import { sql } from '@codemirror/lang-sql'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
+
+let _jsExtension = null
+try {
+  const jsMod = await import('@codemirror/lang-javascript')
+  _jsExtension = jsMod.javascript()
+} catch(e) { console.warn('JavaScript lang not loaded, install @codemirror/lang-javascript') }
 import { VideoPlay, Refresh, Loading } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
@@ -152,6 +158,7 @@ const langLabel = computed(() => {
 const languageExtensions = {}
 try { languageExtensions.python = python() } catch(e) { console.warn('Python lang not loaded') }
 try { languageExtensions.sql = sql() } catch(e) { console.warn('SQL lang not loaded') }
+if (_jsExtension) { languageExtensions.javascript = _jsExtension }
 // shell 使用 Python 语法高亮作为回退，但保持 shell 标识
 languageExtensions.shell = languageExtensions.python
 
@@ -206,7 +213,8 @@ const getDefaultTemplate = (lang) => {
   const templates = {
     python: '# 在这里写你的Python代码\nprint("Hello World!")',
     sql: '-- 在这里写你的SQL查询语句\nSELECT * FROM users LIMIT 10;',
-    shell: '# 在这里写你的Shell脚本\necho "Hello World!"'
+    shell: '# 在这里写你的Shell脚本\necho "Hello World!"',
+    javascript: '// 在这里写你的JavaScript脚本\n// 可用 API: pm.environment.get/set, pm.response.json(), pm.test()\nconsole.log("Hello from TestMaster!");'
   }
   return templates[lang] || ''
 }

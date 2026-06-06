@@ -174,6 +174,16 @@
         </el-form-item>
         <el-form-item label="响应体">
           <el-input v-model="ruleForm.response_body_str" type="textarea" :rows="5" placeholder='JSON 格式，例如: {"code": 200, "data": {}}' />
+          <el-collapse style="margin-top: 6px;">
+            <el-collapse-item title="💡 动态值表达式（点击复制）">
+              <p class="dynamic-hint">在响应体 JSON 中使用以下表达式，Mock 返回时会自动替换为动态数据：</p>
+              <div class="dynamic-list">
+                <el-tag v-for="item in dynamicExpressions" :key="item.expr" size="small" class="expr-tag" @click="copyExpression(item.expr)">
+                  {{ item.expr }} <span class="expr-desc">{{ item.desc }}</span>
+                </el-tag>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
         </el-form-item>
         <el-form-item label="延迟(ms)">
           <el-input-number v-model="ruleForm.delay_ms" :min="0" :max="30000" />
@@ -224,6 +234,28 @@ const editingRule = ref(null)
 
 const showHelp = ref(false)
 const helpData = helpContent.mockService
+
+// 动态值表达式列表
+const dynamicExpressions = [
+  { expr: '@name', desc: '随机姓名' },
+  { expr: '@phone', desc: '手机号' },
+  { expr: '@email', desc: '邮箱' },
+  { expr: '@address', desc: '地址' },
+  { expr: '@id_card', desc: '身份证号' },
+  { expr: '@company', desc: '公司名' },
+  { expr: '@uuid', desc: 'UUID' },
+  { expr: '@timestamp', desc: '时间戳' },
+  { expr: '@datetime', desc: '日期时间' },
+  { expr: '@integer(1,100)', desc: '随机整数' },
+]
+
+const copyExpression = (expr) => {
+  navigator.clipboard?.writeText(`"${expr}"`).then(() => {
+    ElMessage.success(`已复制 ${expr}`)
+  }).catch(() => {
+    ElMessage.info(`请手动输入: ${expr}`)
+  })
+}
 
 // 表单数据
 const projectForm = ref({ name: '', description: '', base_url_slug: '' })
@@ -639,5 +671,31 @@ onMounted(() => {
   margin-left: 10px;
   color: #909399;
   font-size: 12px;
+}
+
+.dynamic-hint {
+  margin: 0 0 8px;
+  color: #606266;
+  font-size: 12px;
+}
+
+.dynamic-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.expr-tag {
+  cursor: pointer;
+}
+
+.expr-tag:hover {
+  opacity: 0.8;
+}
+
+.expr-desc {
+  color: #909399;
+  margin-left: 4px;
+  font-size: 11px;
 }
 </style>

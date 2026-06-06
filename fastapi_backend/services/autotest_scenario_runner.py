@@ -17,7 +17,7 @@ from typing import Dict, Any, List, Optional
 
 from fastapi_backend.utils.autotest_helpers import convert_to_dict, extract_jsonpath_value
 from fastapi_backend.services.autotest_variable_service import save_variables_to_db
-from fastapi_backend.services.autotest_assertion_engine import get_field_value, compare_values, get_operator_text
+from fastapi_backend.services.autotest_assertion_engine import get_field_value, compare_values, get_operator_text, execute_assertions
 # from fastapi_backend.services.autotest_report_service import write_allure_results
 from fastapi_backend.core.autotest_database import async_session
 from fastapi_backend.models.autotest import (
@@ -96,10 +96,11 @@ class ScenarioExecutionEngine:
     - 下一步构造请求时，通过 replace_variables 自动从 context_vars 读取变量
     """
 
-    def __init__(self, scenario_id: int, env_id: Optional[int] = None, progress_callback=None, user_id: int = None, _skip_record=False):
+    def __init__(self, scenario_id: int, env_id: Optional[int] = None, progress_callback=None, user_id: int = None, _skip_record=False, _depth=0, _visited_scenarios=None):
         self.scenario_id = scenario_id
         self.env_id = env_id
         self.context_vars: Dict[str, Any] = {}
+        self.session_vars: Dict[str, Any] = {}  # 会话变量，仅当前执行生命周期
         self.step_results: List[Dict[str, Any]] = []
         self.total_duration = 0
         self.base_url: str = ""
@@ -107,7 +108,13 @@ class ScenarioExecutionEngine:
         self.user_id = user_id
         self._skip_record = _skip_record
         self._initial_var_keys: set = set()
-        self.env = None  # 初始化 env 属性，避免 finally 块中 AttributeError
+        self.env = None
+        self._depth = _depth  # 嵌套深度，用于场景引用防循环
+        self._visited_scenarios = _visited_scenarios or set()  # 已访问场景ID集合
+        self._step_execution_count = 0  # 步骤执行计数器
+        self._max_step_executions = 10000  # 单次执行最大步骤数
+        self._max_loop_iterations = 1000  # 循环最大迭代次数
+        self._env_services = {}  # 多服务URL配置
 
     async def execute(self) -> Dict[str, Any]:
         """
@@ -153,20 +160,23 @@ class ScenarioExecutionEngine:
                         env = result.scalars().first()
 
                 if env:
-                    self.env = env  # 保存到 self.env，供 finally 块写数据库记录使用
+                    self.env = env
                     env_name = env.env_name or ""
                     if isinstance(env.variables, dict):
                         self.context_vars.update(env.variables)
                     if env.base_url:
                         self.base_url = env.base_url
                         self.context_vars["base_url"] = env.base_url
+                    # 加载多服务URL配置
+                    if isinstance(getattr(env, 'services', None), list):
+                        self._env_services = {s.get("name"): s.get("base_url", "") for s in env.services if s.get("name")}
 
                 self._initial_var_keys = set(self.context_vars.keys())
 
                 # 获取所有启用的步骤并排序
                 all_steps = sorted([s for s in scenario.steps if s.is_active], key=lambda x: x.step_order)
 
-                # 预加载步骤数据到内存，避免db会话关闭后DetachedInstanceError
+                # 预加载步骤数据到内存
                 steps_data = []
                 for step in all_steps:
                     step_info = {
@@ -175,6 +185,11 @@ class ScenarioExecutionEngine:
                         'api_case_id': step.api_case_id,
                         'is_active': step.is_active,
                         'variable_overrides': step.variable_overrides,
+                        'step_type': getattr(step, 'step_type', None) or 'api_request',
+                        'step_config': getattr(step, 'step_config', None),
+                        'parent_step_id': getattr(step, 'parent_step_id', None),
+                        'pre_script': getattr(step, 'pre_script', None),
+                        'post_script': getattr(step, 'post_script', None),
                     }
                     if step.api_case:
                         step_info['api_case_name'] = step.api_case.name
@@ -186,6 +201,9 @@ class ScenarioExecutionEngine:
                         step_info['api_case_body_type'] = step.api_case.body_type
                         step_info['api_case_assert_rules'] = step.api_case.assert_rules
                         step_info['api_case_extractors'] = step.api_case.extractors
+                        step_info['api_case_pre_script'] = getattr(step.api_case, 'pre_script', None)
+                        step_info['api_case_post_script'] = getattr(step.api_case, 'post_script', None)
+                        step_info['api_case_response_schema'] = getattr(step.api_case, 'response_schema', None)
                     steps_data.append(step_info)
 
                 total_steps = len(all_steps)
@@ -194,19 +212,42 @@ class ScenarioExecutionEngine:
                 if self.progress_callback:
                     self.progress_callback(0, total_steps, '加载场景和环境中...')
 
-            # 阶段2：执行步骤（不需要数据库会话，避免高并发下连接池耗尽）
+            # 阶段2：执行步骤（不需要数据库会话）
+            # 收集被流控步骤引用的子步骤 step_order，避免双重执行
+            consumed_step_orders = set()
+            for s in steps_data:
+                cfg = s.get('step_config') or {}
+                st = s.get('step_type', 'api_request')
+                if st == 'if_condition':
+                    for order in cfg.get('then_branch', []):
+                        consumed_step_orders.add(order)
+                    for order in cfg.get('else_branch', []):
+                        consumed_step_orders.add(order)
+                elif st in ('for_loop', 'for_each'):
+                    for order in cfg.get('body', []):
+                        consumed_step_orders.add(order)
+                elif st == 'group':
+                    for order in cfg.get('children', []):
+                        consumed_step_orders.add(order)
+
             failed_encountered = False
             for idx, step_info in enumerate(steps_data):
-                step_name = step_info.get('api_case_name', f"Step {step_info['step_order']}")
+                # 跳过已被流控步骤引用的子步骤
+                if step_info['step_order'] in consumed_step_orders:
+                    continue
+                step_name = step_info.get('api_case_name') or step_info.get('step_config', {}).get('name', '') if isinstance(step_info.get('step_config'), dict) else ''
+                step_name = step_name or f"Step {step_info['step_order']}"
                 step_start = time.time()
+                step_type = step_info.get('step_type', 'api_request')
 
                 if failed_encountered and fail_fast_enabled:
                     self.step_results.append({
                         "step_id": step_info['id'],
                         "step_order": step_info['step_order'],
-                        "api_case_id": step_info['api_case_id'],
+                        "api_case_id": step_info.get('api_case_id'),
                         "api_case_name": step_info.get('api_case_name', f"Step {step_info['step_order']}"),
                         "method": step_info.get('api_case_method', 'GET'),
+                        "step_type": step_type,
                         "success": False,
                         "status": "skipped",
                         "response_time": 0,
@@ -220,7 +261,8 @@ class ScenarioExecutionEngine:
                     self.progress_callback(idx, total_steps, f'执行: {step_name}')
 
                 try:
-                    step_result = await self._execute_step(step_info)
+                    # 步骤分发器：根据 step_type 调用对应处理器
+                    step_result = await self._dispatch_step(step_info, steps_data, idx)
                     if not step_result.get("success", False):
                         step_result["status"] = "failed"
                         self.step_results.append(step_result)
@@ -239,9 +281,10 @@ class ScenarioExecutionEngine:
                     self.step_results.append({
                         "step_id": step_info['id'],
                         "step_order": step_info['step_order'],
-                        "api_case_id": step_info['api_case_id'],
+                        "api_case_id": step_info.get('api_case_id'),
                         "api_case_name": step_info.get('api_case_name', f"Step {step_info['step_order']}"),
                         "method": step_info.get('api_case_method', 'GET'),
+                        "step_type": step_type,
                         "success": False,
                         "status": "failed",
                         "response_time": step_duration,
@@ -257,8 +300,9 @@ class ScenarioExecutionEngine:
                     self.step_results.append({
                         "step_id": step_info['id'],
                         "step_order": step_info['step_order'],
-                        "api_case_id": step_info['api_case_id'],
+                        "api_case_id": step_info.get('api_case_id'),
                         "api_case_name": step_info.get('api_case_name', f"Step {step_info['step_order']}"),
+                        "step_type": step_type,
                         "success": False,
                         "status": "failed",
                         "response_time": step_duration,
@@ -723,14 +767,277 @@ class TestScenario{scenario_id}:
         """已废弃，保留兼容"""
         pass
 
-    async def _execute_step(self, step_info: Dict[str, Any]) -> Dict[str, Any]:
-        """执行单个步骤，接受预加载的步骤数据字典（避免DetachedInstanceError）"""
+    # ========== 步骤分发器 + 流程控制 ==========
+
+    async def _dispatch_step(self, step_info: Dict, all_steps: List[Dict], current_idx: int) -> Dict[str, Any]:
+        """根据 step_type 分发到对应处理器"""
+        self._step_execution_count += 1
+        if self._step_execution_count > self._max_step_executions:
+            raise RuntimeError(f"步骤执行次数超过上限 ({self._max_step_executions})")
+
+        step_type = step_info.get('step_type', 'api_request')
+        handlers = {
+            'api_request': self._execute_api_request,
+            'if_condition': self._execute_if,
+            'for_loop': self._execute_for,
+            'for_each': self._execute_for_each,
+            'wait': self._execute_wait,
+            'group': self._execute_group,
+            'scenario_ref': self._execute_scenario_ref,
+            'db_query': self._execute_db_query,
+        }
+        handler = handlers.get(step_type, self._execute_api_request)
+        return await handler(step_info, all_steps, current_idx)
+
+    async def _run_sub_step(self, sub_step: Dict, all_steps: List[Dict]):
+        """执行子步骤并将结果记入报告"""
+        try:
+            sub_result = await self._dispatch_step(sub_step, all_steps, 0)
+            if not sub_result.get('success', False):
+                sub_result['status'] = 'failed'
+            else:
+                sub_result['status'] = 'success'
+            self.step_results.append(sub_result)
+        except Exception as e:
+            self.step_results.append({
+                'step_id': sub_step['id'],
+                'step_order': sub_step['step_order'],
+                'step_type': sub_step.get('step_type', 'api_request'),
+                'success': False,
+                'status': 'failed',
+                'response_time': 0,
+                'error': f'子步骤执行异常: {str(e)}'
+            })
+
+    def _evaluate_condition(self, condition_config: Dict) -> bool:
+        """评估条件表达式，复用断言引擎的 compare_values"""
+        if not condition_config or not isinstance(condition_config, dict):
+            return True
+        variable = condition_config.get('variable', '')
+        operator = condition_config.get('operator', 'equals')
+        expected = condition_config.get('value', '')
+        # 从 context_vars 中获取变量值
+        actual = self.context_vars.get(variable)
+        if actual is None:
+            # 尝试从 session_vars 获取
+            actual = self.session_vars.get(variable)
+        # 对 actual 和 expected 做变量替换
+        if isinstance(actual, str):
+            all_vars = {**self.context_vars, **self.session_vars}
+            actual = replace_variables(actual, all_vars)
+        if isinstance(expected, str):
+            all_vars = {**self.context_vars, **self.session_vars}
+            expected = replace_variables(expected, all_vars)
+        return compare_values(actual, operator, expected)
+
+    async def _execute_if(self, step_info: Dict, all_steps: List[Dict], current_idx: int) -> Dict[str, Any]:
+        """If 条件分支"""
+        config = step_info.get('step_config') or {}
+        # 优先读取嵌套的 condition 对象，兼容平铺格式
+        condition_config = config.get('condition', {})
+        if not condition_config and config.get('field'):
+            condition_config = {
+                'variable': config.get('field', ''),
+                'operator': config.get('operator', '=='),
+                'value': config.get('value', ''),
+            }
+        condition_met = self._evaluate_condition(condition_config)
+        branch = 'then_branch' if condition_met else 'else_branch'
+        branch_steps = config.get(branch, [])
+        # 执行分支步骤（支持所有步骤类型）
+        for sub_step_order in branch_steps:
+            sub_step = next((s for s in all_steps if s['step_order'] == sub_step_order), None)
+            if sub_step:
+                await self._run_sub_step(sub_step, all_steps)
+        return {
+            "step_id": step_info['id'],
+            "step_order": step_info['step_order'],
+            "step_type": "if_condition",
+            "success": True,
+            "status": "success",
+            "condition_result": condition_met,
+            "branch": branch,
+            "response_time": 0,
+        }
+
+    async def _execute_for(self, step_info: Dict, all_steps: List[Dict], current_idx: int) -> Dict[str, Any]:
+        """For 循环"""
+        config = step_info.get('step_config') or {}
+        count = min(int(config.get('count', 1)), self._max_loop_iterations)
+        var_name = config.get('var_name', 'i')
+        start = int(config.get('start', 0))
+        step_val = int(config.get('step', 1))
+        body_steps = config.get('body', [])
+        for iteration in range(count):
+            loop_var = start + iteration * step_val
+            self.context_vars[var_name] = loop_var
+            for sub_step_order in body_steps:
+                sub_step = next((s for s in all_steps if s['step_order'] == sub_step_order), None)
+                if sub_step:
+                    await self._run_sub_step(sub_step, all_steps)
+        return {
+            "step_id": step_info['id'],
+            "step_order": step_info['step_order'],
+            "step_type": "for_loop",
+            "success": True,
+            "iterations": count,
+            "response_time": 0,
+        }
+
+    async def _execute_for_each(self, step_info: Dict, all_steps: List[Dict], current_idx: int) -> Dict[str, Any]:
+        """ForEach 循环遍历数组"""
+        config = step_info.get('step_config') or {}
+        collection_expr = config.get('collection', '')
+        item_var = config.get('item_var', 'item')
+        index_var = config.get('index_var', 'index')
+        body_steps = config.get('body', [])
+        # 解析集合：从 context_vars 获取或用 replace_variables
+        all_vars = {**self.context_vars, **self.session_vars}
+        resolved = replace_variables(collection_expr, all_vars) if isinstance(collection_expr, str) else collection_expr
+        # 尝试解析为 JSON 数组
+        collection = []
+        if isinstance(resolved, list):
+            collection = resolved
+        elif isinstance(resolved, str):
+            try:
+                parsed = json.loads(resolved)
+                if isinstance(parsed, list):
+                    collection = parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+        count = 0
+        for idx, item in enumerate(collection[:self._max_loop_iterations]):
+            self.context_vars[item_var] = item
+            self.context_vars[index_var] = idx
+            for sub_step_order in body_steps:
+                sub_step = next((s for s in all_steps if s['step_order'] == sub_step_order), None)
+                if sub_step:
+                    await self._run_sub_step(sub_step, all_steps)
+            count += 1
+        return {
+            "step_id": step_info['id'],
+            "step_order": step_info['step_order'],
+            "step_type": "for_each",
+            "success": True,
+            "iterations": count,
+            "response_time": 0,
+        }
+
+    async def _execute_wait(self, step_info: Dict, all_steps: List[Dict], current_idx: int) -> Dict[str, Any]:
+        """等待延迟"""
+        config = step_info.get('step_config') or {}
+        duration_ms = int(config.get('duration_ms', 1000))
+        wait_start = time.time()
+        await asyncio.sleep(duration_ms / 1000.0)
+        actual_ms = int((time.time() - wait_start) * 1000)
+        return {
+            "step_id": step_info['id'],
+            "step_order": step_info['step_order'],
+            "step_type": "wait",
+            "success": True,
+            "duration_ms": duration_ms,
+            "response_time": actual_ms,
+        }
+
+    async def _execute_group(self, step_info: Dict, all_steps: List[Dict], current_idx: int) -> Dict[str, Any]:
+        """执行分组内的子步骤"""
+        config = step_info.get('step_config') or {}
+        children = config.get('children', [])
+        for child_order in children:
+            child_step = next((s for s in all_steps if s['step_order'] == child_order), None)
+            if child_step:
+                await self._run_sub_step(child_step, all_steps)
+        return {
+            "step_id": step_info['id'],
+            "step_order": step_info['step_order'],
+            "step_type": "group",
+            "success": True,
+            "children_count": len(children),
+            "response_time": 0,
+        }
+
+    async def _execute_scenario_ref(self, step_info: Dict, all_steps: List[Dict], current_idx: int) -> Dict[str, Any]:
+        """引用其他场景作为子步骤"""
+        config = step_info.get('step_config') or {}
+        ref_scenario_id = config.get('scenario_id')
+        if not ref_scenario_id:
+            return {"step_id": step_info['id'], "step_order": step_info['step_order'], "step_type": "scenario_ref",
+                    "success": False, "error": "未配置引用的场景ID", "response_time": 0}
+        # 防循环引用
+        if ref_scenario_id in self._visited_scenarios:
+            return {"step_id": step_info['id'], "step_order": step_info['step_order'], "step_type": "scenario_ref",
+                    "success": False, "error": f"循环引用检测: 场景 {ref_scenario_id} 已在执行链中", "response_time": 0}
+        if self._depth >= 5:
+            return {"step_id": step_info['id'], "step_order": step_info['step_order'], "step_type": "scenario_ref",
+                    "success": False, "error": "场景嵌套深度超过上限(5层)", "response_time": 0}
+        # 创建子引擎
+        visited = self._visited_scenarios | {self.scenario_id}
+        sub_engine = ScenarioExecutionEngine(
+            ref_scenario_id, self.env_id, user_id=self.user_id,
+            _skip_record=True, _depth=self._depth + 1, _visited_scenarios=visited
+        )
+        # 传递当前上下文
+        sub_engine.context_vars = dict(self.context_vars)
+        sub_engine.session_vars = dict(self.session_vars)
+        sub_engine.base_url = self.base_url
+        sub_engine._env_services = dict(self._env_services)
+        result = await sub_engine.execute()
+        # 合并子场景的上下文变量
+        if config.get('pass_context', True):
+            self.context_vars.update(sub_engine.context_vars)
+            self.session_vars.update(sub_engine.session_vars)
+        return {
+            "step_id": step_info['id'],
+            "step_order": step_info['step_order'],
+            "step_type": "scenario_ref",
+            "success": result.get('failed_steps', 0) == 0,
+            "ref_scenario_id": ref_scenario_id,
+            "ref_result": {"total_steps": result.get('total_steps'), "success": result.get('failed_steps', 0) == 0},
+            "response_time": result.get('total_time', 0),
+        }
+
+    async def _execute_db_query(self, step_info: Dict, all_steps: List[Dict], current_idx: int) -> Dict[str, Any]:
+        """执行数据库查询步骤"""
+        config = step_info.get('step_config') or {}
+        connection_id = config.get('connection_id')
+        query = config.get('query', '')
+        extract_to = config.get('extract_to')
+        if not connection_id or not query:
+            return {"step_id": step_info['id'], "step_order": step_info['step_order'], "step_type": "db_query",
+                    "success": False, "error": "未配置数据库连接或查询语句", "response_time": 0}
+        # 变量替换
+        all_vars = {**self.context_vars, **self.session_vars}
+        query = replace_variables(query, all_vars)
+        try:
+            from fastapi_backend.services.db_operation_service import execute_db_query
+            result_data, elapsed = await execute_db_query(connection_id, query, self.user_id)
+            # 提取结果到变量
+            if extract_to and result_data:
+                if isinstance(result_data, list) and len(result_data) > 0:
+                    self.context_vars[extract_to] = result_data[0] if len(result_data) == 1 else result_data
+                else:
+                    self.context_vars[extract_to] = result_data
+            return {
+                "step_id": step_info['id'],
+                "step_order": step_info['step_order'],
+                "step_type": "db_query",
+                "success": True,
+                "result": result_data,
+                "response_time": elapsed,
+            }
+        except Exception as e:
+            return {"step_id": step_info['id'], "step_order": step_info['step_order'], "step_type": "db_query",
+                    "success": False, "error": str(e), "response_time": 0}
+
+    async def _execute_api_request(self, step_info: Dict, all_steps: List[Dict] = None, current_idx: int = 0) -> Dict[str, Any]:
+        """执行 API 请求步骤（原 _execute_step 重命名）"""
         # 检查是否有api_case数据
         api_case_name = step_info.get('api_case_name')
         if not api_case_name:
             return {
                 "step_order": step_info['step_order'],
                 "api_case_name": f"步骤{step_info['step_order']}",
+                "step_type": step_info.get('step_type', 'api_request'),
                 "status": "error",
                 "success": False,
                 "error": f"关联的接口用例不存在 (api_case_id={step_info.get('api_case_id')})",
@@ -765,7 +1072,22 @@ class TestScenario{scenario_id}:
                     # 同步更新 body，确保后续 raw_payload 取值一致
                     request_config["body"] = request_config["payload"]
 
-            all_vars = dict(self.context_vars)
+            all_vars = {**self.context_vars, **self.session_vars}
+
+            # 执行前置JS脚本
+            pre_script = step_info.get('pre_script') or step_info.get('api_case_pre_script')
+            if pre_script:
+                try:
+                    from fastapi_backend.services.script_engine import ScriptEngine
+                    script_ctx = ScriptEngine.build_context(self.context_vars, self.session_vars, self.user_id)
+                    script_ctx = ScriptEngine.run_pre_script(pre_script, script_ctx)
+                    # 将脚本中设置的变量回写到引擎
+                    self.context_vars.update(script_ctx.get('env_vars', {}))
+                    self.session_vars.update(script_ctx.get('session_vars', {}))
+                    all_vars = {**self.context_vars, **self.session_vars}
+                except Exception as e:
+                    _logger.warning(f"前置脚本执行失败: {e}")
+
             request_config["url"] = replace_variables(request_config["url"], all_vars)
             # 对 dict/list 类型的值，先序列化为 JSON 字符串再替换再反序列化
             if isinstance(request_config["headers"], dict):
@@ -795,7 +1117,12 @@ class TestScenario{scenario_id}:
                 request_config["payload"] = replace_variables(request_config["payload"], all_vars)
 
             if not request_config["url"].startswith(("http://", "https://")):
-                if self.base_url:
+                # 多服务URL解析：检查是否有服务名前缀 (如 user-service:/api/users)
+                url_parts = request_config["url"].split(":/", 1)
+                if len(url_parts) == 2 and url_parts[0] in self._env_services:
+                    service_base = self._env_services[url_parts[0]]
+                    request_config["url"] = service_base.rstrip("/") + "/" + url_parts[1].lstrip("/")
+                elif self.base_url:
                     request_config["url"] = self.base_url.rstrip("/") + "/" + request_config["url"].lstrip("/")
 
             # Docker 内部执行时，将 localhost 重写为后端服务名
@@ -982,6 +1309,45 @@ class TestScenario{scenario_id}:
             # 提取变量
             extractors = step_info.get('api_case_extractors') or []
             await self._extract_variables(extractors, response_data)
+
+            # JSON Schema 响应自动校验
+            response_schema = step_info.get('api_case_response_schema')
+            if response_schema and response_data.get('json') is not None:
+                try:
+                    import jsonschema as _jsonschema
+                    _jsonschema.validate(instance=response_data['json'], schema=response_schema)
+                except ImportError:
+                    _logger.warning("jsonschema 未安装，跳过 Schema 校验")
+                except _jsonschema.ValidationError as ve:
+                    failed_assertions.append({"assertion": {"type": "json_schema"}, "reason": f"Schema校验失败: {ve.message}"})
+                except Exception as ve:
+                    failed_assertions.append({"assertion": {"type": "json_schema"}, "reason": f"Schema校验异常: {str(ve)}"})
+
+            # 执行后置JS脚本
+            post_script = step_info.get('post_script') or step_info.get('api_case_post_script')
+            if post_script:
+                try:
+                    from fastapi_backend.services.script_engine import ScriptEngine
+                    script_ctx = ScriptEngine.build_context(
+                        self.context_vars, self.session_vars, self.user_id,
+                        response_body=response_data.get('json') or response_data.get('body', ''),
+                        status_code=response.status_code,
+                        response_headers=dict(response.headers)
+                    )
+                    script_result = ScriptEngine.run_post_script(post_script, script_ctx)
+                    self.context_vars.update(script_result.get('env_vars', {}))
+                    self.session_vars.update(script_result.get('session_vars', {}))
+                    # 合并脚本中的 pm.test 结果到断言
+                    for test_result in script_result.get('test_results', []):
+                        if test_result.get('passed'):
+                            passed_assertions += 1
+                        else:
+                            failed_assertions.append({"assertion": {"type": "pm_test", "name": test_result.get('name')}, "reason": test_result.get('error', 'pm.test failed')})
+                        total_assertions += 1
+                except Exception as e:
+                    _logger.warning(f"后置脚本执行失败: {e}")
+                    failed_assertions.append({"assertion": {"type": "post_script"}, "reason": f"后置脚本异常: {str(e)}"})
+                    total_assertions += 1
 
             # 安全解析 payload 为 JSON，解析失败时保留原始字符串
             if isinstance(raw_payload, (dict, list)):

@@ -117,6 +117,37 @@
         <el-form-item label="设为默认">
           <el-switch v-model="formData.is_default" />
         </el-form-item>
+
+        <!-- 多服务配置 -->
+        <div class="section-title">
+          多服务配置
+          <el-button size="small" text type="primary" @click="addService" style="margin-left: 8px;">
+            <el-icon><Plus /></el-icon> 添加服务
+          </el-button>
+        </div>
+        <p class="services-hint">支持微服务架构下多个服务的 URL 配置，场景步骤中可用 service-name:/path 引用</p>
+        <div class="var-editor">
+          <div class="var-item-editor" v-for="(svc, index) in services" :key="index">
+            <el-input
+              v-model="svc.name"
+              placeholder="服务名称，如 user-service"
+              style="width: 160px; margin-right: 8px;"
+            />
+            <el-input
+              v-model="svc.base_url"
+              placeholder="服务 URL，如 http://user-service:8080"
+              style="flex: 1; margin-right: 8px;"
+            />
+            <el-button
+              type="danger"
+              icon="Delete"
+              circle
+              size="small"
+              @click="removeService(index)"
+            />
+          </div>
+        </div>
+
         <div class="section-title">自定义变量</div>
         <div class="var-editor">
           <div class="var-item-editor" v-for="(item, index) in vars" :key="item.id || item.key || index">
@@ -193,6 +224,7 @@ const formData = ref({
 })
 
 const vars = ref([{ key: '', value: '' }])
+const services = ref([])
 
 const showHelp = ref(false)
 const helpData = helpContent.environmentManager
@@ -203,6 +235,14 @@ const addVar = () => {
 
 const removeVar = (index) => {
   vars.value.splice(index, 1)
+}
+
+const addService = () => {
+  services.value.push({ name: '', base_url: '' })
+}
+
+const removeService = (index) => {
+  services.value.splice(index, 1)
 }
 
 const collectVars = () => {
@@ -239,6 +279,7 @@ const handleCreate = () => {
     variables: {}
   }
   vars.value = [{ key: '', value: '' }]
+  services.value = []
   dialogVisible.value = true
 }
 
@@ -258,6 +299,8 @@ const handleEdit = (env) => {
   } else {
     vars.value = entries.map(([key, value]) => ({ key, value }))
   }
+  // 加载多服务配置
+  services.value = Array.isArray(env.services) ? env.services.map(s => ({ ...s })) : []
   dialogVisible.value = true
 }
 
@@ -270,7 +313,10 @@ const handleSave = async () => {
 
   const payload = {
     ...formData.value,
-    name: formData.value.name.trim()
+    name: formData.value.name.trim(),
+    services: services.value.filter(s => s.name && s.base_url).length > 0
+      ? services.value.filter(s => s.name && s.base_url)
+      : null,
   }
 
   try {
@@ -479,6 +525,14 @@ watch(() => props.modelValue, (newVal) => {
   font-weight: 600;
   margin-bottom: 12px;
   color: var(--tm-text-primary);
+  display: flex;
+  align-items: center;
+}
+
+.services-hint {
+  margin: 0 0 12px;
+  color: var(--tm-text-secondary);
+  font-size: 12px;
 }
 
 .var-editor {

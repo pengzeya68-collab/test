@@ -299,9 +299,14 @@ async def add_step(
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="场景不存在")
 
-    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == step.api_case_id, AutoTestCase.user_id == current_user.id))
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="指定的接口不存在")
+    # 只有 api_request 类型需要验证 api_case_id
+    if step.step_type == 'api_request' or not step.step_type:
+        if step.api_case_id:
+            result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == step.api_case_id, AutoTestCase.user_id == current_user.id))
+            if not result.scalar_one_or_none():
+                raise HTTPException(status_code=404, detail="指定的接口不存在")
+        else:
+            raise HTTPException(status_code=400, detail="API 请求类型步骤必须指定 api_case_id")
 
     db_step = AutoTestScenarioStep(
         scenario_id=scenario_id,
@@ -309,6 +314,11 @@ async def add_step(
         step_order=step.step_order,
         is_active=step.is_active,
         variable_overrides=step.variable_overrides,
+        step_type=step.step_type,
+        step_config=step.step_config,
+        parent_step_id=step.parent_step_id,
+        pre_script=step.pre_script,
+        post_script=step.post_script,
     )
     db.add(db_step)
     await db.commit()
