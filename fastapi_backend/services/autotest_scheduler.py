@@ -273,7 +273,6 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
 
         if webhook_url:
             try:
-                import requests as _req
                 webhook_payload = {
                     "scenario_id": scenario_id,
                     "status": last_status,
@@ -281,9 +280,20 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                     "total_steps": result.get("total_steps", 0) if result else 0,
                     "failed_steps": _failed_step_count(result),
                 }
-                await asyncio.to_thread(
-                    _req.post, webhook_url, json=webhook_payload, timeout=10
-                )
+
+                def _post_webhook(url: str, payload: dict) -> None:
+                    """使用 stdlib urllib 发送 webhook，避免 requests 依赖不可用"""
+                    import urllib.request
+                    data = json.dumps(payload).encode("utf-8")
+                    req = urllib.request.Request(
+                        url, data=data,
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        resp.read()
+
+                await asyncio.to_thread(_post_webhook, webhook_url, webhook_payload)
             except Exception as wh_err:
                 _logger.warning(f"Webhook 通知失败 {webhook_url}: {wh_err}")
 

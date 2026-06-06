@@ -122,8 +122,11 @@ async def update_task(task_id: str, task_info: dict) -> None:
         task_info["created_at"] = time.time()
     async with _get_async_lock():
         with _thread_lock:
-            _task_store[task_id] = task_info
-        _save_task_to_file(task_id, task_info)
+            # 合并而非替换：保留其他协程/线程已写入的字段（如 cancelled）
+            existing = _task_store.get(task_id, {})
+            merged = {**existing, **task_info}
+            _task_store[task_id] = merged
+        _save_task_to_file(task_id, merged)
 
 
 def update_task_sync(task_id: str, task_info: dict) -> None:
@@ -131,8 +134,11 @@ def update_task_sync(task_id: str, task_info: dict) -> None:
     if "created_at" not in task_info:
         task_info["created_at"] = time.time()
     with _thread_lock:
-        _task_store[task_id] = task_info
-    _save_task_to_file(task_id, task_info)
+        # 合并而非替换：保留其他协程/线程已写入的字段（如 cancelled）
+        existing = _task_store.get(task_id, {})
+        merged = {**existing, **task_info}
+        _task_store[task_id] = merged
+    _save_task_to_file(task_id, merged)
 
 
 async def delete_task(task_id: str) -> None:
@@ -228,7 +234,8 @@ def _load_all_tasks_sync() -> None:
                 task_data = json.load(f)
                 task_id = task_data.get("task_id")
                 if task_id:
-                    _task_store[task_id] = task_data
+                    with _thread_lock:
+                        _task_store[task_id] = task_data
         except Exception:
             pass
 

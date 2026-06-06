@@ -116,7 +116,7 @@ async def run_suite(suite_id: int, current_user: User = Depends(get_current_acti
         run_id = _run_id_seq
         _run_id_seq += 1
 
-    # 模拟执行（实际应调用 ScenarioExecutionEngine）
+    # 实际执行每个场景
     results = []
     passed = 0
     failed = 0
@@ -124,19 +124,59 @@ async def run_suite(suite_id: int, current_user: User = Depends(get_current_acti
     for sid in scenario_ids:
         result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == sid, AutoTestScenario.user_id == current_user.id))
         sc = result.scalar_one_or_none()
-        scenario_result = {
-            "scenario_id": sid,
-            "scenario_name": sc.name if sc else "未知",
-            "status": "pending",
-            "message": "待执行引擎调度",
-            "duration_ms": 0,
-        }
-        results.append(scenario_result)
-        # 根据场景是否存在和激活状态统计 passed/failed
-        if sc and sc.is_active:
-            passed += 1
-        else:
+        if not sc:
+            scenario_result = {
+                "scenario_id": sid,
+                "scenario_name": "未知",
+                "status": "error",
+                "message": "场景不存在",
+                "duration_ms": 0,
+            }
+            results.append(scenario_result)
             failed += 1
+            continue
+        if not sc.is_active:
+            scenario_result = {
+                "scenario_id": sid,
+                "scenario_name": sc.name,
+                "status": "skipped",
+                "message": "场景已停用",
+                "duration_ms": 0,
+            }
+            results.append(scenario_result)
+            failed += 1
+            continue
+
+        # 实际执行场景
+        import time as _time
+        t0 = _time.time()
+        try:
+            from fastapi_backend.services.autotest_scenario_runner import run_scenario as _run_scenario
+            exec_result = await _run_scenario(sid, env_id=None, user_id=current_user.id)
+            duration_ms = int((_time.time() - t0) * 1000)
+            exec_failed = exec_result.get("failed_steps", 0) > 0
+            scenario_result = {
+                "scenario_id": sid,
+                "scenario_name": sc.name,
+                "status": "failed" if exec_failed else "success",
+                "message": f"完成: {exec_result.get('success_steps', 0)} 成功, {exec_result.get('failed_steps', 0)} 失败",
+                "duration_ms": duration_ms,
+            }
+            if exec_failed:
+                failed += 1
+            else:
+                passed += 1
+        except Exception as e:
+            duration_ms = int((_time.time() - t0) * 1000)
+            scenario_result = {
+                "scenario_id": sid,
+                "scenario_name": sc.name,
+                "status": "error",
+                "message": str(e)[:200],
+                "duration_ms": duration_ms,
+            }
+            failed += 1
+        results.append(scenario_result)
 
     run_record = {
         "run_id": run_id,

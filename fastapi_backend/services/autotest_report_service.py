@@ -210,13 +210,14 @@ def write_allure_results(allure_results_dir: Path, scenario_id: int, result: dic
         cumulative_ms += step_duration
 
         step_status_raw = step.get("status", "success")
+        # 初始化 status_code 和 url 供后续子步骤使用（skipped 分支也需要）
+        status_code = step.get("status_code", 0)
+        url = step.get("url", "")
         if step_status_raw == "skipped":
             step_status = "skipped"
             status_details = {"message": step.get("skipped_reason", "步骤被跳过")}
         else:
             success = step_status_raw != "failed"
-            status_code = step.get("status_code", 0)
-            url = step.get("url", "")
             is_really_success = success and status_code > 0 and url
 
             if is_really_success:

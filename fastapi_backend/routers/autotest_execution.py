@@ -95,29 +95,34 @@ async def _run_scenario_locally(task_id: str, scenario_id: int, env_id: Optional
 
         def on_progress(current_step, total_steps, step_name):
             percent = min(int((current_step / total_steps) * 100), 100) if total_steps > 0 else 0
+            progress_data = {
+                "task_id": task_id,
+                "scenario_id": scenario_id,
+                "status": "PROGRESS",
+                "info": f"执行中: {step_name}",
+                "progress": {
+                    "percent": percent,
+                    "current": current_step,
+                    "total": total_steps,
+                    "current_api": step_name,
+                    "current_step": current_step,
+                    "total_steps": total_steps,
+                    "step_name": step_name,
+                },
+                "updated_at": time.time(),
+            }
             try:
-                loop = asyncio.get_event_loop()
-                asyncio.run_coroutine_threadsafe(
-                    update_task(task_id, {
-                        "task_id": task_id,
-                        "scenario_id": scenario_id,
-                        "status": "PROGRESS",
-                        "info": f"执行中: {step_name}",
-                        "progress": {
-                            "percent": percent,
-                            "current": current_step,
-                            "total": total_steps,
-                            "current_api": step_name,
-                            "current_step": current_step,
-                            "total_steps": total_steps,
-                            "step_name": step_name,
-                        },
-                        "updated_at": time.time(),
-                    }),
-                    loop
-                )
+                # 优先使用 get_running_loop（Python 3.10+ 推荐）
+                loop = asyncio.get_running_loop()
+                # 在同一事件循环内用 create_task，避免 run_coroutine_threadsafe 不等待的问题
+                loop.create_task(update_task(task_id, progress_data))
             except RuntimeError:
-                logger.warning(f"无法更新任务进度: 事件循环不可用")
+                # 不在事件循环线程中，回退到线程安全方式
+                try:
+                    loop = asyncio.get_event_loop()
+                    asyncio.run_coroutine_threadsafe(update_task(task_id, progress_data), loop)
+                except RuntimeError:
+                    logger.warning("无法更新任务进度: 事件循环不可用")
 
         result = await execute_scenario_async(scenario_id, env_id, progress_callback=on_progress, user_id=user_id)
         result["task_id"] = task_id
@@ -219,7 +224,31 @@ async def get_task_status(
     if stored and stored.get("user_id") and stored["user_id"] != current_user.id:
         raise HTTPException(status_code=404, detail="任务不存在")
 
-    # 3. 如果 Celery 有实时状态且任务非终态，优先使用 Celery 状态
+    # 2.6 无持久化记录时无法校验归属，拒绝返回 Celery 状态
+    if stored is None:
+        return {
+            "task_id": task_id,
+            "status": "UNKNOWN",
+            "state": "UNKNOWN",
+            "info": "任务不存在或已过期"
+        }
+
+    # 3. 如果持久化存储已标记为终态（如 cancelled），优先使用持久化状态
+    TERMINAL_STORED_STATUSES = {"cancelled", "completed", "failed"}
+    if stored and stored.get("status") in TERMINAL_STORED_STATUSES:
+        stored_status = stored["status"]
+        return {
+            "task_id": task_id,
+            "status": stored_status,
+            "state": stored_status,
+            "info": stored.get("info", ""),
+            "progress": stored.get("progress"),
+            "result": _build_stored_task_result(stored),
+            "error": stored.get("error"),
+            "traceback": stored.get("traceback"),
+        }
+
+    # 4. 如果 Celery 有实时状态且任务非终态，优先使用 Celery 状态
     if celery_state and celery_state not in ("PENDING",):
         if celery_state == 'PROGRESS':
             meta = celery_meta if isinstance(celery_meta, dict) else {}
@@ -297,7 +326,7 @@ async def get_task_status(
                 "info": f"任务失败: {error_str[:100]}"
             }
     
-    # 4. 查持久化存储（终态或 Celery 无状态）
+    # 5. 查持久化存储（终态或 Celery 无状态）
     if stored is not None:
         stored_status = stored.get("status", "UNKNOWN")
         return {
@@ -311,7 +340,7 @@ async def get_task_status(
             "traceback": stored.get("traceback"),
         }
     
-    # 5. 未知任务
+    # 6. 未知任务
     return {
         "task_id": task_id,
         "status": "UNKNOWN",

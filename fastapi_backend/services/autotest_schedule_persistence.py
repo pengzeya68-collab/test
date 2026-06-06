@@ -113,8 +113,8 @@ async def restore_scheduler_jobs_from_db() -> None:
         cron = (s.schedule_cron_expression or "").strip()
         if not cron:
             continue
-        if not s.is_active:
-            continue
+        # 注意：不根据 s.is_active 跳过——场景停用但调度启用时仍应恢复调度，
+        # execute_scenario_job 运行时会检查 is_active 并跳过执行
         if s.schedule_is_active is False:
             # 调度被暂停，恢复任务但保持暂停状态
             try:
@@ -157,7 +157,11 @@ def read_schedule_webhook_sync(scenario_id: int, user_id: int = None) -> Optiona
             row = res.scalar_one_or_none()
             if not row:
                 return None
-            s = str(row).strip()
+            # scalar_one_or_none 返回标量值，但防御性处理 Row 对象
+            val = row[0] if hasattr(row, '__getitem__') and not isinstance(row, str) else row
+            if val is None:
+                return None
+            s = str(val).strip()
             return s or None
 
     try:

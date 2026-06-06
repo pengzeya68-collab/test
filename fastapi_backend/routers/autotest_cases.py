@@ -222,12 +222,14 @@ async def update_case(
     update_data = case_in.model_dump(exclude_unset=True)
     if "assertions" in update_data:
         update_data["assert_rules"] = update_data.pop("assertions")
-    if update_data.get("folder_id") is not None:
-        update_data["group_id"] = update_data.pop("folder_id")
-    else:
-        update_data.pop("folder_id", None)
-    if update_data.get("group_id") in ("", None):
-        update_data.pop("group_id", None)
+    if "folder_id" in update_data:
+        folder_val = update_data.pop("folder_id")
+        # 仅当 group_id 未被显式设置时，才从 folder_id 派生
+        if "group_id" not in update_data:
+            update_data["group_id"] = folder_val if folder_val not in ("", None) else None
+    # 空字符串视为取消分组，保留 None（显式取消分组）
+    if update_data.get("group_id") == "":
+        update_data["group_id"] = None
 
     for field, value in update_data.items():
         if field in ("id", "user_id", "created_at"):

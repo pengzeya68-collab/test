@@ -351,6 +351,16 @@ async def update_step(
         raise HTTPException(status_code=404, detail="步骤不存在")
 
     update_data = step.model_dump(exclude_unset=True)
+    # 如果更新了 api_case_id，校验新用例归属当前用户
+    if "api_case_id" in update_data and update_data["api_case_id"] is not None:
+        case_result = await db.execute(
+            select(AutoTestCase).where(
+                AutoTestCase.id == update_data["api_case_id"],
+                AutoTestCase.user_id == current_user.id,
+            )
+        )
+        if not case_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="指定的接口不存在或无权访问")
     for key, value in update_data.items():
         setattr(db_step, key, value)
 
