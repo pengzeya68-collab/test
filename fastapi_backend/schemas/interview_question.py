@@ -68,8 +68,8 @@ class InterviewQuestionDetail(InterviewQuestionBase):
     company: Optional[str] = None
     view_count: int = 0
     collect_count: int = 0
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

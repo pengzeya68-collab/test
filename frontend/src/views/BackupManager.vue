@@ -153,13 +153,18 @@
 
         <el-tab-pane label="高危操作审计" name="audit">
           <el-table :data="auditLogs" empty-text="暂无高危操作记录" style="width: 100%">
-            <el-table-column label="操作时间" prop="time" width="180" />
-            <el-table-column label="操作人" prop="user" width="120" />
-            <el-table-column prop="action" label="操作内容" show-overflow-tooltip>
+            <el-table-column label="操作时间" width="180">
               <template #default="scope">
-                <el-tag :type="scope.row.action.includes('删除') || scope.row.action.includes('清理') ? 'warning' : 'info'">
+                {{ formatTime(scope.row.createTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作人" prop="user" width="120" />
+            <el-table-column prop="action" label="操作内容" min-width="200" show-overflow-tooltip>
+              <template #default="scope">
+                <el-tag :type="scope.row.action?.includes('删除') || scope.row.action?.includes('清理') ? 'warning' : scope.row.action?.includes('创建') || scope.row.action?.includes('备份') ? 'success' : 'info'">
                   {{ scope.row.action }}
                 </el-tag>
+                <span v-if="scope.row.detail" style="margin-left: 8px; color: #909399; font-size: 12px;">{{ scope.row.detail }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="status" label="状态" width="120">

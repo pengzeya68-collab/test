@@ -24,6 +24,7 @@ from fastapi_backend.core.config import settings
 _logger = logging.getLogger(__name__)
 from fastapi_backend.core.database import Base, engine
 from fastapi_backend.core.exceptions import BusinessException
+from sqlalchemy import text
 
 from fastapi_backend.schemas.common import ErrorResponse
 from fastapi_backend.middleware.request_stats import request_stats_middleware
@@ -76,6 +77,11 @@ async def ensure_dev_tables() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # 补齐 audit_logs 表缺失的 detail 列（旧迁移未包含）
+        try:
+            await conn.execute(text("ALTER TABLE audit_logs ADD COLUMN detail TEXT"))
+        except Exception:
+            pass  # 列已存在则忽略
 
 
 async def init_auto_test_runtime() -> None:

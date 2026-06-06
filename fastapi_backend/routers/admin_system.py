@@ -20,6 +20,7 @@ from fastapi_backend.models.models import (
     Exam,
     InterviewQuestion,
     Submission,
+    AuditLog,
 )
 import os
 import subprocess
@@ -80,6 +81,7 @@ async def list_backups(
 @router.post("/backups")
 async def create_backup(
     current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ):
     """创建数据库备份 (pg_dump)"""
     os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -115,6 +117,7 @@ async def create_backup(
             raise HTTPException(status_code=500, detail=f"pg_dump 失败: {result.stderr[:200]}")
         with open(backup_path, "w", encoding="utf-8") as f:
             f.write(result.stdout)
+        await _write_audit_log(db, user_id=current_user.id, action="创建数据库备份", action_type="backup", detail=f"备份文件: {backup_name}")
         return {"message": "备份创建成功", "name": backup_name}
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="pg_dump 命令未找到")
@@ -125,6 +128,7 @@ async def create_backup(
 @router.delete("/backups/old")
 async def delete_old_backups(
     current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ):
     """清理旧备份（保留最近5个）"""
     os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -138,6 +142,7 @@ async def delete_old_backups(
         os.remove(os.path.join(BACKUP_DIR, f))
         deleted += 1
 
+    await _write_audit_log(db, user_id=current_user.id, action="清理旧备份", action_type="backup", detail=f"清理了 {deleted} 个旧备份文件")
     return {"message": f"已清理 {deleted} 个旧备份"}
 
 
@@ -164,6 +169,7 @@ async def download_backup(
 async def restore_backup(
     name: str,
     current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ):
     """恢复备份 (psql)"""
     backup_path = _safe_backup_path(name)
@@ -195,11 +201,15 @@ async def restore_backup(
     try:
         result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, env=env, timeout=300)
         if result.returncode != 0:
+            await _write_audit_log(db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name}", status="failed")
             raise HTTPException(status_code=500, detail=f"恢复失败: {result.stderr[:200]}")
+        await _write_audit_log(db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name}")
         return {"message": "备份恢复成功"}
     except FileNotFoundError:
+        await _write_audit_log(db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name} - psql命令未找到", status="failed")
         raise HTTPException(status_code=500, detail="psql 命令未找到")
     except subprocess.TimeoutExpired:
+        await _write_audit_log(db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name} - 超时", status="failed")
         raise HTTPException(status_code=500, detail="恢复超时")
 
 
@@ -207,16 +217,42 @@ async def restore_backup(
 async def delete_backup(
     name: str,
     current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ):
     filepath = _safe_backup_path(name)
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="备份文件不存在")
 
     os.remove(filepath)
+    await _write_audit_log(db, user_id=current_user.id, action="删除备份文件", action_type="backup", detail=f"删除文件: {name}")
     return {"message": "备份删除成功"}
 
 
 # ============== 审计日志 ==============
+
+
+async def _write_audit_log(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    action: str,
+    action_type: str = "other",
+    detail: str = None,
+    ip_address: str = None,
+    status: str = "success",
+):
+    """写入审计日志的辅助函数"""
+    log = AuditLog(
+        user_id=user_id,
+        admin_id=user_id,
+        action=action,
+        action_type=action_type,
+        detail=detail,
+        ip_address=ip_address,
+        status=status,
+    )
+    db.add(log)
+    await db.commit()
 
 
 @router.get("/audit-logs")
@@ -226,36 +262,33 @@ async def list_audit_logs(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取审计日志（基于用户操作记录）"""
-    total = await db.scalar(select(func.count(Submission.id))) or 0
+    """获取高危操作审计日志"""
+    total = await db.scalar(select(func.count(AuditLog.id))) or 0
     offset = (page - 1) * size
 
-    query = select(Submission).order_by(desc(Submission.created_at)).offset(offset).limit(size)
+    query = select(AuditLog).order_by(desc(AuditLog.created_at)).offset(offset).limit(size)
     result = await db.execute(query)
-    submissions = result.scalars().all()
+    audit_logs = result.scalars().all()
 
-    # 批量获取用户和题目信息，避免 N+1 查询
-    user_ids = {s.user_id for s in submissions}
-    question_ids = {s.question_id for s in submissions if s.question_id}
+    # 批量获取用户信息
+    user_ids = {log.user_id for log in audit_logs if log.user_id}
     users_map = {}
-    questions_map = {}
     if user_ids:
         user_rows = (await db.execute(select(User.id, User.username).where(User.id.in_(user_ids)))).all()
         users_map = {row[0]: row[1] for row in user_rows}
-    if question_ids:
-        q_rows = (await db.execute(select(InterviewQuestion.id, InterviewQuestion.title).where(InterviewQuestion.id.in_(question_ids)))).all()
-        questions_map = {row[0]: row[1] for row in q_rows}
 
     logs = []
-    for s in submissions:
+    for log in audit_logs:
         logs.append(
             {
-                "id": s.id,
-                "user": users_map.get(s.user_id, "unknown"),
-                "action": "代码提交",
-                "detail": f'提交了面试题 "{questions_map.get(s.question_id, "未知")}" 的代码',
-                "status": s.execution_status,
-                "createTime": s.created_at.isoformat() if s.created_at else None,
+                "id": log.id,
+                "user": users_map.get(log.user_id, "系统"),
+                "action": log.action,
+                "detail": log.detail or "",
+                "actionType": log.action_type,
+                "status": log.status or "success",
+                "ip": log.ip_address or "-",
+                "createTime": log.created_at.isoformat() if log.created_at else None,
             }
         )
 

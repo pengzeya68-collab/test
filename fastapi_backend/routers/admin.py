@@ -1,8 +1,11 @@
 from typing import Optional
+import logging
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy import select, func, or_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
+
+_logger = logging.getLogger(__name__)
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.core.exceptions import NotFoundException
@@ -101,44 +104,48 @@ async def list_interview_questions(
     db: AsyncSession = Depends(get_db),
 ):
     """获取面试题目列表（仅管理员）"""
-    query = select(InterviewQuestion)
+    try:
+        query = select(InterviewQuestion)
 
-    if keyword:
-        keyword = keyword.strip()
-        query = query.where(
-            or_(
-                InterviewQuestion.title.contains(keyword),
-                InterviewQuestion.description.contains(keyword),
-                InterviewQuestion.tags.contains(keyword),
+        if keyword:
+            keyword = keyword.strip()
+            query = query.where(
+                or_(
+                    InterviewQuestion.title.contains(keyword),
+                    InterviewQuestion.description.contains(keyword),
+                    InterviewQuestion.tags.contains(keyword),
+                )
             )
-        )
 
-    if difficulty and difficulty.lower() in ["easy", "medium", "hard"]:
-        query = query.where(InterviewQuestion.difficulty == difficulty.lower())
+        if difficulty and difficulty.lower() in ["easy", "medium", "hard"]:
+            query = query.where(InterviewQuestion.difficulty == difficulty.lower())
 
-    if category:
-        category = category.strip()
-        query = query.where(InterviewQuestion.category == category)
+        if category:
+            category = category.strip()
+            query = query.where(InterviewQuestion.category == category)
 
-    if is_published is not None:
-        query = query.where(InterviewQuestion.is_published == is_published)
+        if is_published is not None:
+            query = query.where(InterviewQuestion.is_published == is_published)
 
-    count_query = select(func.count()).select_from(query.subquery())
-    count_result = await db.execute(count_query)
-    total = count_result.scalar_one()
+        count_query = select(func.count()).select_from(query.subquery())
+        count_result = await db.execute(count_query)
+        total = count_result.scalar_one()
 
-    pages = (total + size - 1) // size if size > 0 else 0
-    offset = (page - 1) * size
+        pages = (total + size - 1) // size if size > 0 else 0
+        offset = (page - 1) * size
 
-    query = query.order_by(InterviewQuestion.created_at.desc()).offset(offset).limit(size)
-    result = await db.execute(query)
-    questions = result.scalars().all()
+        query = query.order_by(InterviewQuestion.created_at.desc()).offset(offset).limit(size)
+        result = await db.execute(query)
+        questions = result.scalars().all()
 
-    items = [InterviewQuestionList.model_validate(q) for q in questions]
+        items = [InterviewQuestionList.model_validate(q) for q in questions]
 
-    list_response = InterviewQuestionListResponse(items=items, total=total, page=page, size=size, pages=pages)
+        list_response = InterviewQuestionListResponse(items=items, total=total, page=page, size=size, pages=pages)
 
-    return SuccessResponse(data=list_response, message=f"获取到 {len(items)} 条题目")
+        return SuccessResponse(data=list_response, message=f"获取到 {len(items)} 条题目")
+    except Exception as e:
+        _logger.error("获取面试题目列表失败: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取题目列表失败: {str(e)}")
 
 
 @router.get(
@@ -151,16 +158,22 @@ async def get_interview_question(
     db: AsyncSession = Depends(get_db),
 ):
     """获取面试题目详情"""
-    result = await db.execute(select(InterviewQuestion).where(InterviewQuestion.id == question_id))
-    question = result.scalar_one_or_none()
+    try:
+        result = await db.execute(select(InterviewQuestion).where(InterviewQuestion.id == question_id))
+        question = result.scalar_one_or_none()
 
-    if not question:
-        raise NotFoundException("题目不存在")
+        if not question:
+            raise NotFoundException("题目不存在")
 
-    return SuccessResponse(
-        data=InterviewQuestionDetail.model_validate(question),
-        message="题目详情获取成功",
-    )
+        return SuccessResponse(
+            data=InterviewQuestionDetail.model_validate(question),
+            message="题目详情获取成功",
+        )
+    except NotFoundException:
+        raise
+    except Exception as e:
+        _logger.error("获取面试题目详情失败: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取题目详情失败: {str(e)}")
 
 
 @router.put(

@@ -21,6 +21,7 @@ from fastapi_backend.models.models import (
     Submission,
     Like,
     Favorite,
+    AuditLog,
 )
 from fastapi_backend.schemas.admin import (
     AdminUserCreate,
@@ -262,6 +263,13 @@ async def delete_user(
         await db.rollback()
         logging.getLogger(__name__).error(f"删除用户失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="删除失败，事务已回滚")
+    # 写入审计日志
+    try:
+        log = AuditLog(user_id=current_user.id, admin_id=current_user.id, action="删除用户", action_type="user_management", detail=f"删除用户: {user.username} (ID: {user_id})")
+        db.add(log)
+        await db.commit()
+    except Exception:
+        pass
     return {"message": "删除成功"}
 
 
@@ -287,6 +295,13 @@ async def toggle_user_status(
         logging.getLogger(__name__).error(f"切换用户状态失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="操作失败")
     action = "启用" if user.is_active else "禁用"
+    # 写入审计日志
+    try:
+        log = AuditLog(user_id=current_user.id, admin_id=current_user.id, action=f"{action}用户", action_type="user_management", detail=f"{action}用户: {user.username} (ID: {user_id})")
+        db.add(log)
+        await db.commit()
+    except Exception:
+        pass
     return {"message": f"用户已{action}"}
 
 
@@ -313,6 +328,13 @@ async def toggle_user_admin(
         logging.getLogger(__name__).error(f"切换管理员权限失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="操作失败")
     action = "设置为管理员" if user.is_admin else "取消管理员权限"
+    # 写入审计日志
+    try:
+        log = AuditLog(user_id=current_user.id, admin_id=current_user.id, action=f"{action}", action_type="user_management", detail=f"{action}: {user.username} (ID: {user_id})")
+        db.add(log)
+        await db.commit()
+    except Exception:
+        pass
     return {"message": f"用户已{action}"}
 
 
@@ -336,6 +358,13 @@ async def reset_user_password(
         await db.rollback()
         logging.getLogger(__name__).error(f"重置密码失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="密码重置失败")
+    # 写入审计日志
+    try:
+        log = AuditLog(user_id=current_user.id, admin_id=current_user.id, action="重置用户密码", action_type="user_management", detail=f"重置用户密码: {user.username} (ID: {user_id})")
+        db.add(log)
+        await db.commit()
+    except Exception:
+        pass
     return {"message": "密码重置成功"}
 
 

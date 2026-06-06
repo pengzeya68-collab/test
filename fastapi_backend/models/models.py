@@ -1280,3 +1280,26 @@ class AIUsageLog(Base):
         Index("idx_ai_usage_user_feature", "user_id", "feature"),
         Index("idx_ai_usage_created", "created_at"),
     )
+
+
+class AuditLog(Base):
+    """高危操作审计日志表"""
+
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, comment="操作用户ID")
+    admin_id = Column(Integer, nullable=True, comment="管理员ID")
+    action = Column(String(200), nullable=False, comment="操作描述")
+    action_type = Column(String(50), nullable=False, default="other", comment="操作类型: backup/user_management/system/other")
+    detail = Column(Text, nullable=True, comment="操作详情")
+    ip_address = Column(String(50), nullable=True, comment="操作IP地址")
+    status = Column(String(20), nullable=True, default="success", comment="操作状态: success/failed")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="操作时间")
+
+    user = relationship("User", backref="audit_logs", foreign_keys=[user_id])
+
+    __table_args__ = (
+        Index("idx_audit_created", "created_at"),
+        Index("idx_audit_action_type", "action_type"),
+    )
