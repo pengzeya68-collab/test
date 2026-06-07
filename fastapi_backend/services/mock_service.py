@@ -10,20 +10,17 @@ Mock 服务引擎
 
 import asyncio
 import fnmatch
-import json
 import logging
 import random
 import re
 import string
-import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi_backend.core.autotest_database import AsyncSessionLocal
 from fastapi_backend.models.autotest import MockProject, MockRule, MockRequestLog
 
 _logger = logging.getLogger(__name__)
@@ -40,7 +37,8 @@ class MockEngine:
         if cls._faker_instance is None:
             try:
                 from faker import Faker
-                cls._faker_instance = Faker('zh_CN')
+
+                cls._faker_instance = Faker("zh_CN")
             except ImportError:
                 cls._faker_instance = False  # 标记为不可用
         return cls._faker_instance if cls._faker_instance is not False else None
@@ -54,7 +52,7 @@ class MockEngine:
         """
         # 查找项目
         result = await db.execute(
-            select(MockProject).where(MockProject.base_url_slug == project_slug, MockProject.is_active == True)
+            select(MockProject).where(MockProject.base_url_slug == project_slug, MockProject.is_active)
         )
         project = result.scalar_one_or_none()
         if not project:
@@ -63,7 +61,7 @@ class MockEngine:
         # 获取所有启用的规则，按优先级降序
         result = await db.execute(
             select(MockRule)
-            .where(MockRule.project_id == project.id, MockRule.is_active == True)
+            .where(MockRule.project_id == project.id, MockRule.is_active)
             .order_by(MockRule.priority.desc())
         )
         rules = result.scalars().all()
@@ -224,7 +222,9 @@ class MockEngine:
 
     def _generate_mock_from_schema(self, response_spec: dict) -> dict:
         """从 OpenAPI schema 生成 mock 数据"""
-        schema = response_spec.get("schema", response_spec.get("content", {}).get("application/json", {}).get("schema", {}))
+        schema = response_spec.get(
+            "schema", response_spec.get("content", {}).get("application/json", {}).get("schema", {})
+        )
         if not schema:
             return {"message": "ok"}
         return self._mock_value(schema)
@@ -281,10 +281,38 @@ class MockEngine:
 
     def _gen_phone(self) -> str:
         """生成随机手机号（复用 DataFactory 前缀列表）"""
-        prefixes = ["130", "131", "132", "133", "134", "135", "136", "137", "138", "139",
-                     "150", "151", "152", "153", "155", "156", "157", "158", "159",
-                     "180", "181", "182", "183", "184", "185", "186", "187", "188", "189"]
-        return random.choice(prefixes) + ''.join(random.choices(string.digits, k=8))
+        prefixes = [
+            "130",
+            "131",
+            "132",
+            "133",
+            "134",
+            "135",
+            "136",
+            "137",
+            "138",
+            "139",
+            "150",
+            "151",
+            "152",
+            "153",
+            "155",
+            "156",
+            "157",
+            "158",
+            "159",
+            "180",
+            "181",
+            "182",
+            "183",
+            "184",
+            "185",
+            "186",
+            "187",
+            "188",
+            "189",
+        ]
+        return random.choice(prefixes) + "".join(random.choices(string.digits, k=8))
 
     def _gen_email(self) -> str:
         """生成随机邮箱"""
@@ -310,30 +338,30 @@ class MockEngine:
         name = expr[1:].lower()
 
         # 带参数的表达式: @integer(1,100)
-        param_match = re.match(r'^(\w+)\(([^)]*)\)$', name)
+        param_match = re.match(r"^(\w+)\(([^)]*)\)$", name)
         if param_match:
             func_name = param_match.group(1)
             args_str = param_match.group(2)
-            if func_name == 'integer':
+            if func_name == "integer":
                 try:
-                    parts = [int(x.strip()) for x in args_str.split(',')]
+                    parts = [int(x.strip()) for x in args_str.split(",")]
                     lo, hi = parts[0], parts[1] if len(parts) > 1 else parts[0]
                     return random.randint(lo, hi)
                 except (ValueError, IndexError):
                     return random.randint(0, 100)
-            elif func_name == 'float':
+            elif func_name == "float":
                 try:
-                    parts = [float(x.strip()) for x in args_str.split(',')]
+                    parts = [float(x.strip()) for x in args_str.split(",")]
                     lo, hi = parts[0], parts[1] if len(parts) > 1 else parts[0]
                     return round(random.uniform(lo, hi), 2)
                 except (ValueError, IndexError):
                     return round(random.uniform(0, 100), 2)
-            elif func_name == 'string':
+            elif func_name == "string":
                 try:
                     length = int(args_str.strip())
-                    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+                    return "".join(random.choices(string.ascii_letters + string.digits, k=length))
                 except (ValueError, IndexError):
-                    return ''.join(random.choices(string.ascii_letters, k=8))
+                    return "".join(random.choices(string.ascii_letters, k=8))
 
         # 基础表达式
         generators = {

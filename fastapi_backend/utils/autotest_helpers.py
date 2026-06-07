@@ -5,6 +5,7 @@ AutoTest 纯工具函数
 - save_variables_to_db → services/autotest_variable_service.py
 - write_allure_results → services/autotest_report_service.py
 """
+
 import json
 import logging
 from typing import Any
@@ -53,7 +54,7 @@ def extract_jsonpath_value(data: Any, path: str, default: Any = None) -> Any:
             j = i + 1
             while j < len(path) and path[j] != "]":
                 j += 1
-            index_str = path[i + 1:j]
+            index_str = path[i + 1 : j]
             try:
                 keys.append(int(index_str))
             except ValueError:

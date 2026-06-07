@@ -38,9 +38,11 @@ _LOGIN_RATE_WINDOW = 300  # 时间窗口（秒）
 def _cleanup_old_attempts() -> None:
     """清理过期的登录尝试记录，防止内存泄漏"""
     import time
+
     now = time.time()
-    stale_ips = [ip for ip, attempts in _login_attempts.items()
-                 if not attempts or now - attempts[-1] > _LOGIN_RATE_WINDOW]
+    stale_ips = [
+        ip for ip, attempts in _login_attempts.items() if not attempts or now - attempts[-1] > _LOGIN_RATE_WINDOW
+    ]
     for ip in stale_ips:
         del _login_attempts[ip]
 

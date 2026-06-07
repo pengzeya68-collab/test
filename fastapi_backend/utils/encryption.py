@@ -30,6 +30,7 @@ if _KEY_SEED is None:
     else:
         # 开发环境使用机器特定种子（hostname + 用户名），比硬编码更安全
         import platform
+
         machine_seed = f"dev-key-{platform.node()}-{os.environ.get('USERNAME', 'default')}"
         _KEY_SEED = machine_seed
         _logger.warning(

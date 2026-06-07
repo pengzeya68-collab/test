@@ -16,11 +16,10 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
 from fastapi_backend.deps.auth import get_current_active_user
@@ -96,9 +95,7 @@ async def create_project(body: MockProjectCreate, current_user: User = Depends(g
     """创建 Mock 项目"""
     async with AsyncSessionLocal() as db:
         # 检查 slug 唯一性
-        existing = await db.execute(
-            select(MockProject).where(MockProject.base_url_slug == body.base_url_slug)
-        )
+        existing = await db.execute(select(MockProject).where(MockProject.base_url_slug == body.base_url_slug))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="URL标识(slug)已存在")
 
@@ -125,7 +122,9 @@ async def create_project(body: MockProjectCreate, current_user: User = Depends(g
 async def list_projects(page: int = 1, size: int = 20, current_user: User = Depends(get_current_active_user)):
     """列出 Mock 项目"""
     async with AsyncSessionLocal() as db:
-        total_result = await db.execute(select(func.count(MockProject.id)).where(MockProject.user_id == current_user.id))
+        total_result = await db.execute(
+            select(func.count(MockProject.id)).where(MockProject.user_id == current_user.id)
+        )
         total = total_result.scalar() or 0
 
         result = await db.execute(
@@ -140,22 +139,22 @@ async def list_projects(page: int = 1, size: int = 20, current_user: User = Depe
         items = []
         for p in projects:
             # 统计规则数和日志数
-            rule_count_result = await db.execute(
-                select(func.count(MockRule.id)).where(MockRule.project_id == p.id)
-            )
+            rule_count_result = await db.execute(select(func.count(MockRule.id)).where(MockRule.project_id == p.id))
             log_count_result = await db.execute(
                 select(func.count(MockRequestLog.id)).where(MockRequestLog.project_id == p.id)
             )
-            items.append({
-                "id": p.id,
-                "name": p.name,
-                "description": p.description,
-                "base_url_slug": p.base_url_slug,
-                "is_active": p.is_active,
-                "rule_count": rule_count_result.scalar() or 0,
-                "log_count": log_count_result.scalar() or 0,
-                "created_at": str(p.created_at),
-            })
+            items.append(
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "description": p.description,
+                    "base_url_slug": p.base_url_slug,
+                    "is_active": p.is_active,
+                    "rule_count": rule_count_result.scalar() or 0,
+                    "log_count": log_count_result.scalar() or 0,
+                    "created_at": str(p.created_at),
+                }
+            )
 
         return {"list": items, "total": total, "page": page, "size": size}
 
@@ -164,7 +163,9 @@ async def list_projects(page: int = 1, size: int = 20, current_user: User = Depe
 async def get_project(project_id: int, current_user: User = Depends(get_current_active_user)):
     """获取 Mock 项目详情"""
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id))
+        result = await db.execute(
+            select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id)
+        )
         project = result.scalar_one_or_none()
         if not project:
             raise HTTPException(status_code=404, detail="项目不存在")
@@ -180,10 +181,14 @@ async def get_project(project_id: int, current_user: User = Depends(get_current_
 
 
 @router.put("/projects/{project_id}")
-async def update_project(project_id: int, body: MockProjectUpdate, current_user: User = Depends(get_current_active_user)):
+async def update_project(
+    project_id: int, body: MockProjectUpdate, current_user: User = Depends(get_current_active_user)
+):
     """更新 Mock 项目"""
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id))
+        result = await db.execute(
+            select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id)
+        )
         project = result.scalar_one_or_none()
         if not project:
             raise HTTPException(status_code=404, detail="项目不存在")
@@ -209,8 +214,11 @@ async def update_project(project_id: int, body: MockProjectUpdate, current_user:
 async def delete_project(project_id: int, current_user: User = Depends(get_current_active_user)):
     """删除 Mock 项目（级联删除关联的规则和日志）"""
     from sqlalchemy import delete as sa_delete
+
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id))
+        result = await db.execute(
+            select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id)
+        )
         project = result.scalar_one_or_none()
         if not project:
             raise HTTPException(status_code=404, detail="项目不存在")
@@ -235,7 +243,9 @@ async def delete_project(project_id: int, current_user: User = Depends(get_curre
 async def create_rule(project_id: int, body: MockRuleCreate, current_user: User = Depends(get_current_active_user)):
     """创建 Mock 规则"""
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id))
+        result = await db.execute(
+            select(MockProject).where(MockProject.id == project_id, MockProject.user_id == current_user.id)
+        )
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="项目不存在")
 
@@ -275,9 +285,7 @@ async def list_rules(
         if not project_result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="项目不存在")
 
-        total_result = await db.execute(
-            select(func.count(MockRule.id)).where(MockRule.project_id == project_id)
-        )
+        total_result = await db.execute(select(func.count(MockRule.id)).where(MockRule.project_id == project_id))
         total = total_result.scalar() or 0
 
         result = await db.execute(
@@ -327,9 +335,7 @@ async def update_rule(
         if not project_result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="项目不存在")
 
-        result = await db.execute(
-            select(MockRule).where(MockRule.id == rule_id, MockRule.project_id == project_id)
-        )
+        result = await db.execute(select(MockRule).where(MockRule.id == rule_id, MockRule.project_id == project_id))
         rule = result.scalar_one_or_none()
         if not rule:
             raise HTTPException(status_code=404, detail="规则不存在")
@@ -358,9 +364,7 @@ async def delete_rule(
         if not project_result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="项目不存在")
 
-        result = await db.execute(
-            select(MockRule).where(MockRule.id == rule_id, MockRule.project_id == project_id)
-        )
+        result = await db.execute(select(MockRule).where(MockRule.id == rule_id, MockRule.project_id == project_id))
         rule = result.scalar_one_or_none()
         if not rule:
             raise HTTPException(status_code=404, detail="规则不存在")
@@ -400,9 +404,7 @@ async def list_logs(
         total = total_result.scalar() or 0
 
         result = await db.execute(
-            query.order_by(MockRequestLog.created_at.desc())
-            .offset((page - 1) * size)
-            .limit(size)
+            query.order_by(MockRequestLog.created_at.desc()).offset((page - 1) * size).limit(size)
         )
         logs = result.scalars().all()
 
@@ -440,6 +442,7 @@ async def import_swagger(
     if isinstance(swagger_data, str):
         try:
             import yaml
+
             swagger_data = yaml.safe_load(swagger_data)
         except Exception:
             raise HTTPException(status_code=400, detail="YAML 解析失败")
@@ -502,15 +505,20 @@ async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
         if not rule:
             elapsed = int((time.time() - start_time) * 1000)
             # 记录未匹配的请求
-            project_result = await db.execute(
-                select(MockProject).where(MockProject.base_url_slug == slug)
-            )
+            project_result = await db.execute(select(MockProject).where(MockProject.base_url_slug == slug))
             project = project_result.scalar_one_or_none()
             if project:
                 await mock_engine.log_request(
-                    db, project.id, None, method, path,
-                    request_headers, body_text, 404,
-                    '{"error": "No mock rule found"}', elapsed,
+                    db,
+                    project.id,
+                    None,
+                    method,
+                    path,
+                    request_headers,
+                    body_text,
+                    404,
+                    '{"error": "No mock rule found"}',
+                    elapsed,
                 )
             return JSONResponse(
                 status_code=404,
@@ -523,11 +531,19 @@ async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
 
         # 记录请求日志
         import json as json_lib
+
         response_body_str = json_lib.dumps(response_info["body"], ensure_ascii=False) if response_info["body"] else ""
         await mock_engine.log_request(
-            db, rule.project_id, rule.id, method, path,
-            request_headers, body_text,
-            response_info["status"], response_body_str, elapsed,
+            db,
+            rule.project_id,
+            rule.id,
+            method,
+            path,
+            request_headers,
+            body_text,
+            response_info["status"],
+            response_body_str,
+            elapsed,
             rule.name,
         )
 
@@ -571,6 +587,7 @@ def _generate_mock_data(schema: dict) -> Any:
         return {k: _generate_mock_data(v) for k, v in props.items()}
     elif stype == "uuid":
         import uuid
+
         return str(uuid.uuid4())
     elif stype == "timestamp":
         return int(datetime.now(timezone.utc).timestamp())

@@ -4,6 +4,7 @@ AutoTest 统一路由 - 数据库连接管理
 路径前缀: /api/auto-test/db-connections
 CRUD + 测试连接，复用 environments 路由模式，密码加密复用 encryption.py
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -14,7 +15,6 @@ from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import (
     DBConnectionCreate,
     DBConnectionUpdate,
-    DBConnectionResponse,
 )
 from fastapi_backend.utils.encryption import encrypt
 

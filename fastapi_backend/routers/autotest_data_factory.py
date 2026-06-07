@@ -3,7 +3,8 @@
 
 路径前缀: /api/auto-test/data-factory
 """
-from typing import List, Optional, Dict, Any
+
+from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -176,7 +177,9 @@ async def delete_template(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(TestDataTemplate).where(TestDataTemplate.id == template_id, TestDataTemplate.user_id == current_user.id))
+    result = await db.execute(
+        select(TestDataTemplate).where(TestDataTemplate.id == template_id, TestDataTemplate.user_id == current_user.id)
+    )
     template = result.scalar_one_or_none()
     if not template:
         raise HTTPException(status_code=404, detail="模板不存在")
@@ -210,6 +213,7 @@ async def preview_template(
     ]
 
     from fastapi_backend.services.autotest_data_factory_service import DataFactoryEngine
+
     engine = DataFactoryEngine()
     result_data = engine.generate_preview(fields_data, row_count=template.row_count)
     return {
@@ -246,19 +250,22 @@ async def generate_dataset(
     ]
 
     from fastapi_backend.services.autotest_data_factory_service import DataFactoryEngine
+
     engine = DataFactoryEngine()
     generated = engine.generate_dataset(fields_data, row_count=template.row_count)
 
     if template.scenario_id:
         result = await db.execute(
-            select(AutoTestScenario).where(AutoTestScenario.id == template.scenario_id, AutoTestScenario.user_id == current_user.id)
+            select(AutoTestScenario).where(
+                AutoTestScenario.id == template.scenario_id, AutoTestScenario.user_id == current_user.id
+            )
         )
         if not result.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail=f"关联的场景(ID={template.scenario_id})不存在，请先绑定有效场景")
+            raise HTTPException(
+                status_code=400, detail=f"关联的场景(ID={template.scenario_id})不存在，请先绑定有效场景"
+            )
 
-        result = await db.execute(
-            select(AutoTestDataset).where(AutoTestDataset.scenario_id == template.scenario_id)
-        )
+        result = await db.execute(select(AutoTestDataset).where(AutoTestDataset.scenario_id == template.scenario_id))
         existing = result.scalar_one_or_none()
         if existing:
             existing.name = f"{template.name}_数据集"
@@ -292,7 +299,9 @@ async def bind_dataset_to_scenario(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id))
+    result = await db.execute(
+        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+    )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="场景不存在")
 
@@ -332,6 +341,7 @@ async def run_dataset_driven(
     env_id = payload.get("env_id") if payload else None
 
     from fastapi_backend.services.autotest_scenario_runner import run_scenario_data_driven
+
     exec_result = await run_scenario_data_driven(
         scenario_id=dataset.scenario_id,
         env_id=env_id,

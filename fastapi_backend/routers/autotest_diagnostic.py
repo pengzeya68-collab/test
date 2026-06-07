@@ -45,21 +45,13 @@ async def diagnose_report(
 
     # 获取所有步骤
     result = await db.execute(
-        select(TestReportResult)
-        .where(TestReportResult.report_id == report_id)
-        .order_by(TestReportResult.id)
+        select(TestReportResult).where(TestReportResult.report_id == report_id).order_by(TestReportResult.id)
     )
     all_steps = result.scalars().all()
     total_count = len(all_steps)
 
     if total_count == 0:
-        return {
-            "has_orphans": False,
-            "orphan_count": 0,
-            "total_count": 0,
-            "latest_step_id": None,
-            "step_ids": []
-        }
+        return {"has_orphans": False, "orphan_count": 0, "total_count": 0, "latest_step_id": None, "step_ids": []}
 
     latest_steps_count = report.total_count or 0
 
@@ -72,7 +64,7 @@ async def diagnose_report(
         "total_count": total_count,
         "expected_count": latest_steps_count,
         "latest_step_id": all_steps[-1].id if all_steps else None,
-        "step_ids": [s.id for s in all_steps]
+        "step_ids": [s.id for s in all_steps],
     }
 
 
@@ -90,8 +82,7 @@ async def diagnose_scenario(
 
     # 先检查场景是否属于当前用户
     scenario_result = await db.execute(
-        select(AutoTestScenario)
-        .where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
     )
     scenario = scenario_result.scalar_one_or_none()
     if not scenario:
@@ -107,23 +98,25 @@ async def diagnose_scenario(
 
     record_diagnostics = []
     for record in records:
-        record_diagnostics.append({
-            "record_id": record.id,
-            "status": record.status,
-            "total_steps": record.total_steps,
-            "success_steps": record.success_steps,
-            "failed_steps": record.failed_steps,
-            "skipped_steps": record.skipped_steps,
-            "total_time": record.total_time,
-            "report_url": record.report_url,
-            "created_at": record.created_at.isoformat() if record.created_at else None,
-        })
+        record_diagnostics.append(
+            {
+                "record_id": record.id,
+                "status": record.status,
+                "total_steps": record.total_steps,
+                "success_steps": record.success_steps,
+                "failed_steps": record.failed_steps,
+                "skipped_steps": record.skipped_steps,
+                "total_time": record.total_time,
+                "report_url": record.report_url,
+                "created_at": record.created_at.isoformat() if record.created_at else None,
+            }
+        )
 
     return {
         "scenario_id": scenario_id,
         "scenario_name": scenario.name,
         "total_records": len(records),
-        "records": record_diagnostics
+        "records": record_diagnostics,
     }
 
 
@@ -141,7 +134,7 @@ async def check_data_consistency(
         select(
             func.count(func.distinct(TestReport.id)).label("total_reports"),
             func.count(TestReportResult.id).label("total_steps"),
-            func.count(func.distinct(TestReportResult.report_id)).label("reports_with_steps")
+            func.count(func.distinct(TestReportResult.report_id)).label("reports_with_steps"),
         )
         .join(TestPlan, TestReport.plan_id == TestPlan.id, isouter=True)
         .where(TestPlan.user_id == current_user.id)
@@ -166,9 +159,5 @@ async def check_data_consistency(
             "reports_with_steps": stats.reports_with_steps,
             "reports_without_steps": len(reports_without_steps),
         },
-        "issues": {
-            "reports_without_steps": [
-                {"id": r.id, "title": r.plan_name} for r in reports_without_steps
-            ]
-        }
+        "issues": {"reports_without_steps": [{"id": r.id, "title": r.plan_name} for r in reports_without_steps]},
     }

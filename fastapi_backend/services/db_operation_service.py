@@ -3,10 +3,10 @@
 
 支持 MySQL/PostgreSQL/Redis 数据库查询，复用现有加密和变量提取工具。
 """
-import json
+
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 _logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ async def execute_db_query(
         database = conn.database_name or ""
         username = conn.username or ""
 
-    elapsed = int((time.time() - start_time) * 1000)
+    int((time.time() - start_time) * 1000)
 
     if db_type == "postgresql":
         return await _exec_postgresql(host, port, database, username, password, query, start_time)
@@ -68,8 +68,13 @@ async def execute_db_query(
 
 
 async def _exec_postgresql(
-    host: str, port: int, database: str, username: str, password: str,
-    query: str, start_time: float,
+    host: str,
+    port: int,
+    database: str,
+    username: str,
+    password: str,
+    query: str,
+    start_time: float,
 ) -> Tuple[Any, int]:
     """执行 PostgreSQL 查询"""
     try:
@@ -78,8 +83,12 @@ async def _exec_postgresql(
         raise RuntimeError("asyncpg 未安装，无法连接 PostgreSQL")
 
     conn = await asyncpg.connect(
-        host=host, port=port, database=database,
-        user=username, password=password, timeout=10,
+        host=host,
+        port=port,
+        database=database,
+        user=username,
+        password=password,
+        timeout=10,
     )
     try:
         rows = await conn.fetch(query)
@@ -92,8 +101,13 @@ async def _exec_postgresql(
 
 
 async def _exec_mysql(
-    host: str, port: int, database: str, username: str, password: str,
-    query: str, start_time: float,
+    host: str,
+    port: int,
+    database: str,
+    username: str,
+    password: str,
+    query: str,
+    start_time: float,
 ) -> Tuple[Any, int]:
     """执行 MySQL 查询"""
     try:
@@ -102,8 +116,12 @@ async def _exec_mysql(
         raise RuntimeError("aiomysql 未安装，无法连接 MySQL")
 
     conn = await aiomysql.connect(
-        host=host, port=port, db=database,
-        user=username, password=password, connect_timeout=10,
+        host=host,
+        port=port,
+        db=database,
+        user=username,
+        password=password,
+        connect_timeout=10,
     )
     try:
         async with conn.cursor(aiomysql.DictCursor) as cur:
@@ -116,8 +134,11 @@ async def _exec_mysql(
 
 
 async def _exec_redis(
-    host: str, port: int, password: str,
-    query: str, start_time: float,
+    host: str,
+    port: int,
+    password: str,
+    query: str,
+    start_time: float,
 ) -> Tuple[Any, int]:
     """执行 Redis 命令"""
     try:

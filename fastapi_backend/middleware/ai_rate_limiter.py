@@ -29,7 +29,8 @@ def _cleanup_inactive_users():
     now = time.time()
     with _lock:
         expired_users = [
-            user_id for user_id, timestamps in _user_request_timestamps.items()
+            user_id
+            for user_id, timestamps in _user_request_timestamps.items()
             if not timestamps or timestamps[-1] < now - 3600  # 1小时无请求
         ]
         for user_id in expired_users:

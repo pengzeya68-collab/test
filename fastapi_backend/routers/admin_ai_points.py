@@ -10,9 +10,7 @@ from fastapi_backend.models.models import User, AIPointsConfig, AIUsageLog, Poin
 from fastapi_backend.schemas.ai_points import (
     AIPointsConfigResponse,
     AIPointsConfigUpdate,
-    AIUsageLogResponse,
     AIUsageStatsResponse,
-    PointsTransactionResponse,
     PointsPurchaseRequest,
 )
 from fastapi_backend.services.points_service import (
@@ -26,6 +24,7 @@ router = APIRouter(prefix="/api/v1/admin/ai-points", tags=["AI积分管理"])
 
 
 # ──────────── 积分配置管理 ────────────
+
 
 @router.get("/config", response_model=list[AIPointsConfigResponse])
 async def list_configs(
@@ -42,9 +41,7 @@ async def update_config(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
-    result = await db.execute(
-        select(AIPointsConfig).where(AIPointsConfig.feature == feature)
-    )
+    result = await db.execute(select(AIPointsConfig).where(AIPointsConfig.feature == feature))
     config = result.scalar_one_or_none()
     if not config:
         raise HTTPException(status_code=404, detail="功能配置不存在")
@@ -57,6 +54,7 @@ async def update_config(
         config.description = data.description
 
     from datetime import datetime, timezone
+
     config.updated_at = datetime.now(timezone.utc)
 
     await db.commit()
@@ -65,6 +63,7 @@ async def update_config(
 
 
 # ──────────── AI 使用日志 ────────────
+
 
 @router.get("/logs")
 async def list_usage_logs(
@@ -100,15 +99,17 @@ async def list_usage_logs(
 
     items = []
     for l in logs:
-        items.append({
-            "id": l.id,
-            "user_id": l.user_id,
-            "username": users.get(l.user_id, ""),
-            "feature": l.feature,
-            "feature_name": _feature_display_name(l.feature),
-            "points_cost": l.points_cost,
-            "created_at": l.created_at,
-        })
+        items.append(
+            {
+                "id": l.id,
+                "user_id": l.user_id,
+                "username": users.get(l.user_id, ""),
+                "feature": l.feature,
+                "feature_name": _feature_display_name(l.feature),
+                "points_cost": l.points_cost,
+                "created_at": l.created_at,
+            }
+        )
 
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
@@ -140,6 +141,7 @@ async def usage_stats(
 
 
 # ──────────── 积分流水查询 ────────────
+
 
 @router.get("/transactions")
 async def list_all_transactions(
@@ -174,24 +176,27 @@ async def list_all_transactions(
 
     items = []
     for t in txs:
-        items.append({
-            "id": t.id,
-            "user_id": t.user_id,
-            "username": users.get(t.user_id, ""),
-            "amount": t.amount,
-            "balance_after": t.balance_after,
-            "tx_type": t.tx_type,
-            "tx_type_name": get_tx_type_name(t.tx_type),
-            "source": t.source,
-            "related_feature": t.related_feature,
-            "note": t.note,
-            "created_at": t.created_at,
-        })
+        items.append(
+            {
+                "id": t.id,
+                "user_id": t.user_id,
+                "username": users.get(t.user_id, ""),
+                "amount": t.amount,
+                "balance_after": t.balance_after,
+                "tx_type": t.tx_type,
+                "tx_type_name": get_tx_type_name(t.tx_type),
+                "source": t.source,
+                "related_feature": t.related_feature,
+                "note": t.note,
+                "created_at": t.created_at,
+            }
+        )
 
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 # ──────────── 管理员手动充值 ────────────
+
 
 @router.post("/grant")
 async def grant_points_to_user(
@@ -205,9 +210,11 @@ async def grant_points_to_user(
         raise HTTPException(status_code=404, detail="用户不存在")
 
     new_balance = await grant_points(
-        db, user, data.amount,
+        db,
+        user,
+        data.amount,
         tx_type="admin_grant",
-        source=f"管理员充值",
+        source="管理员充值",
         note=data.note or f"管理员 {admin.username} 充值 {data.amount} 积分",
     )
     await db.commit()
@@ -216,6 +223,7 @@ async def grant_points_to_user(
 
 
 # ──────────── 管理员扣减积分 ────────────
+
 
 @router.post("/deduct")
 async def deduct_points_from_user(
@@ -230,7 +238,9 @@ async def deduct_points_from_user(
 
     try:
         new_balance = await grant_points(
-            db, user, -abs(data.amount),
+            db,
+            user,
+            -abs(data.amount),
             tx_type="admin_deduct",
             source="管理员扣减",
             note=data.note or f"管理员 {admin.username} 扣减 {data.amount} 积分",

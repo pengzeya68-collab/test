@@ -4,14 +4,28 @@ AutoTest 模型 - 使用 auto_test_platform 原始表名确保数据兼容
 这些模型映射到 auto_test_platform 的原有表，
 现已合并到主 PostgreSQL 数据库，使用统一的 Base。
 """
+
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, ForeignKey, Boolean, Float, Index, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    JSON,
+    DateTime,
+    ForeignKey,
+    Boolean,
+    Float,
+    Index,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from fastapi_backend.core.database import Base
 
 
 class AutoTestGroup(Base):
     """接口分组表（auto_test_platform 原始表）"""
+
     __tablename__ = "api_groups"
     __table_args__ = (
         Index("idx_api_groups_parent_id", "parent_id"),
@@ -30,6 +44,7 @@ class AutoTestGroup(Base):
 
 class AutoTestCase(Base):
     """接口用例表（auto_test_platform 原始表）"""
+
     __tablename__ = "api_cases"
     __table_args__ = (
         Index("idx_api_cases_group_id", "group_id"),
@@ -54,7 +69,12 @@ class AutoTestCase(Base):
     response_schema = Column(JSON, nullable=True, comment="响应JSON Schema")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     group = relationship("AutoTestGroup", back_populates="cases")
     history = relationship("AutoTestHistory", back_populates="case", cascade="all, delete-orphan")
@@ -62,6 +82,7 @@ class AutoTestCase(Base):
 
 class AutoTestGlobalVariable(Base):
     """全局变量表"""
+
     __tablename__ = "global_variables"
     __table_args__ = (
         Index("idx_global_variables_user_id", "user_id"),
@@ -75,11 +96,17 @@ class AutoTestGlobalVariable(Base):
     is_encrypted = Column(Boolean, default=False, comment="是否加密")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
 
 class AutoTestEnvironment(Base):
     """测试环境表（auto_test_platform 原始表）"""
+
     __tablename__ = "environments"
     __table_args__ = (
         Index("idx_environments_is_default", "is_default"),
@@ -99,6 +126,7 @@ class AutoTestEnvironment(Base):
 
 class AutoTestHistory(Base):
     """测试历史记录表（auto_test_platform 原始表）"""
+
     __tablename__ = "test_history"
     __table_args__ = (
         Index("idx_test_history_case_id", "case_id"),
@@ -120,6 +148,7 @@ class AutoTestHistory(Base):
 
 class AutoTestScenario(Base):
     """测试场景表（auto_test_platform 原始表）"""
+
     __tablename__ = "test_scenarios"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -128,7 +157,12 @@ class AutoTestScenario(Base):
     is_active = Column(Boolean, default=True, comment="是否启用")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )
     schedule_cron_expression = Column(String(200), nullable=True, comment="Cron 表达式")
     schedule_env_id = Column(Integer, nullable=True, comment="定时执行环境 ID")
     schedule_webhook_url = Column(Text, nullable=True, comment="定时任务 Webhook 告警地址")
@@ -159,6 +193,7 @@ class AutoTestScenario(Base):
 
 class AutoTestScenarioStep(Base):
     """场景步骤表（auto_test_platform 原始表）"""
+
     __tablename__ = "scenario_steps"
     __table_args__ = (
         Index("idx_scenario_steps_scenario_id", "scenario_id"),
@@ -167,12 +202,21 @@ class AutoTestScenarioStep(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    scenario_id = Column(Integer, ForeignKey("test_scenarios.id", ondelete="CASCADE"), nullable=False, comment="所属场景ID")
-    api_case_id = Column(Integer, ForeignKey("api_cases.id", ondelete="SET NULL"), nullable=True, comment="引用的接口ID")
+    scenario_id = Column(
+        Integer, ForeignKey("test_scenarios.id", ondelete="CASCADE"), nullable=False, comment="所属场景ID"
+    )
+    api_case_id = Column(
+        Integer, ForeignKey("api_cases.id", ondelete="SET NULL"), nullable=True, comment="引用的接口ID"
+    )
     step_order = Column(Integer, nullable=False, default=0, comment="执行顺序")
     is_active = Column(Boolean, default=True, comment="是否启用")
     variable_overrides = Column(JSON, nullable=True, comment="局部变量覆盖")
-    step_type = Column(String(20), nullable=False, default="api_request", comment="步骤类型: api_request/if_condition/for_loop/for_each/wait/group/scenario_ref/db_query")
+    step_type = Column(
+        String(20),
+        nullable=False,
+        default="api_request",
+        comment="步骤类型: api_request/if_condition/for_loop/for_each/wait/group/scenario_ref/db_query",
+    )
     step_config = Column(JSON, nullable=True, comment="类型专属配置")
     parent_step_id = Column(Integer, ForeignKey("scenario_steps.id"), nullable=True, comment="父步骤ID(嵌套)")
     pre_script = Column(Text, nullable=True, comment="前置JS脚本")
@@ -186,6 +230,7 @@ class AutoTestScenarioStep(Base):
 
 class AutoTestDataset(Base):
     """测试数据集表（auto_test_platform 原始表）"""
+
     __tablename__ = "test_datasets"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -200,13 +245,19 @@ class AutoTestDataset(Base):
     data_matrix = Column(JSON, nullable=False, default=lambda: {"columns": [], "rows": []}, comment="数据矩阵")
     description = Column(Text, nullable=True, comment="数据集描述")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     scenario = relationship("AutoTestScenario", back_populates="dataset")
 
 
 class AutoTestScenarioExecutionRecord(Base):
     """场景执行历史记录表（auto_test_platform 原始表）"""
+
     __tablename__ = "scenario_execution_records"
     __table_args__ = (
         Index("idx_scenario_exec_records_scenario_id", "scenario_id"),
@@ -231,8 +282,10 @@ class AutoTestScenarioExecutionRecord(Base):
 
 # ========== 性能测试模型 ==========
 
+
 class AutoTestPerformanceScenario(Base):
     """性能测试场景表"""
+
     __tablename__ = "performance_scenarios"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -243,7 +296,12 @@ class AutoTestPerformanceScenario(Base):
     status = Column(String(20), nullable=False, default="inactive", comment="状态: active/inactive")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     steps = relationship(
         "AutoTestPerformanceScenarioStep",
@@ -260,11 +318,16 @@ class AutoTestPerformanceScenario(Base):
 
 class AutoTestPerformanceScenarioStep(Base):
     """性能测试场景步骤表（引用接口用例）"""
+
     __tablename__ = "performance_scenario_steps"
 
     id = Column(Integer, primary_key=True, index=True)
-    scenario_id = Column(Integer, ForeignKey("performance_scenarios.id", ondelete="CASCADE"), nullable=False, comment="所属场景ID")
-    api_case_id = Column(Integer, ForeignKey("api_cases.id", ondelete="CASCADE"), nullable=False, comment="引用的接口ID")
+    scenario_id = Column(
+        Integer, ForeignKey("performance_scenarios.id", ondelete="CASCADE"), nullable=False, comment="所属场景ID"
+    )
+    api_case_id = Column(
+        Integer, ForeignKey("api_cases.id", ondelete="CASCADE"), nullable=False, comment="引用的接口ID"
+    )
     step_order = Column(Integer, nullable=False, default=0, comment="执行顺序")
     weight = Column(Integer, nullable=False, default=1, comment="权重（用于混合场景）")
     think_time = Column(Integer, nullable=False, default=0, comment="思考时间(ms)")
@@ -277,13 +340,14 @@ class AutoTestPerformanceScenarioStep(Base):
 
 class AutoTestPerformanceExecutionRecord(Base):
     """性能测试执行记录表"""
+
     __tablename__ = "performance_execution_records"
-    __table_args__ = (
-        Index("idx_perf_exec_records_scenario_id", "scenario_id"),
-    )
+    __table_args__ = (Index("idx_perf_exec_records_scenario_id", "scenario_id"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    scenario_id = Column(Integer, ForeignKey("performance_scenarios.id", ondelete="CASCADE"), nullable=False, comment="场景ID")
+    scenario_id = Column(
+        Integer, ForeignKey("performance_scenarios.id", ondelete="CASCADE"), nullable=False, comment="场景ID"
+    )
     status = Column(String(20), nullable=False, default="pending", comment="执行状态: pending/running/completed/failed")
     start_time = Column(DateTime(timezone=True), nullable=True, comment="开始时间")
     end_time = Column(DateTime(timezone=True), nullable=True, comment="结束时间")
@@ -314,13 +378,17 @@ class AutoTestPerformanceExecutionRecord(Base):
 
 class AutoTestPerformanceMetrics(Base):
     """性能指标时序数据表"""
+
     __tablename__ = "performance_metrics"
-    __table_args__ = (
-        Index("idx_perf_metrics_execution_id", "execution_id"),
-    )
+    __table_args__ = (Index("idx_perf_metrics_execution_id", "execution_id"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    execution_id = Column(Integer, ForeignKey("performance_execution_records.id", ondelete="CASCADE"), nullable=False, comment="执行记录ID")
+    execution_id = Column(
+        Integer,
+        ForeignKey("performance_execution_records.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="执行记录ID",
+    )
     timestamp = Column(DateTime(timezone=True), nullable=False, comment="时间戳")
 
     active_users = Column(Integer, nullable=True, comment="活跃用户数")
@@ -338,19 +406,28 @@ class AutoTestPerformanceMetrics(Base):
 
 # ========== 测试数据工厂模型 ==========
 
+
 class TestDataTemplate(Base):
     """测试数据模板表"""
+
     __tablename__ = "test_data_templates"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, comment="模板名称")
     description = Column(Text, nullable=True, comment="模板描述")
     user_id = Column(Integer, nullable=True, index=True, comment="创建者用户ID(跨库引用，非FK)")
-    scenario_id = Column(Integer, ForeignKey("test_scenarios.id", ondelete="CASCADE"), nullable=True, comment="关联场景ID")
+    scenario_id = Column(
+        Integer, ForeignKey("test_scenarios.id", ondelete="CASCADE"), nullable=True, comment="关联场景ID"
+    )
     row_count = Column(Integer, default=10, comment="生成行数")
     is_active = Column(Boolean, default=True, comment="是否启用")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     fields = relationship(
         "TestDataTemplateField",
@@ -362,16 +439,21 @@ class TestDataTemplate(Base):
 
 class TestDataTemplateField(Base):
     """测试数据模板字段规则表"""
+
     __tablename__ = "test_data_template_fields"
-    __table_args__ = (
-        Index("idx_template_fields_template_id", "template_id"),
-    )
+    __table_args__ = (Index("idx_template_fields_template_id", "template_id"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    template_id = Column(Integer, ForeignKey("test_data_templates.id", ondelete="CASCADE"), nullable=False, comment="所属模板ID")
+    template_id = Column(
+        Integer, ForeignKey("test_data_templates.id", ondelete="CASCADE"), nullable=False, comment="所属模板ID"
+    )
     field_name = Column(String(100), nullable=False, comment="字段名")
     field_label = Column(String(200), nullable=True, comment="字段标签")
-    rule_type = Column(String(50), nullable=False, comment="规则类型: fixed/enum/increment/uuid/timestamp/date_offset/phone/email/username/env_ref")
+    rule_type = Column(
+        String(50),
+        nullable=False,
+        comment="规则类型: fixed/enum/increment/uuid/timestamp/date_offset/phone/email/username/env_ref",
+    )
     rule_config = Column(JSON, nullable=True, comment="规则配置JSON")
     sort_order = Column(Integer, default=0, comment="排序")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
@@ -380,6 +462,7 @@ class TestDataTemplateField(Base):
 
 
 # ========== Mock 服务模型 ==========
+
 
 class MockProject(Base):
     """Mock 项目表"""
@@ -478,6 +561,7 @@ class MockRequestLog(Base):
 
 # ========== 测试套件模型 ==========
 
+
 class TestSuite(Base):
     """测试套件表"""
 
@@ -564,12 +648,12 @@ class TestSuiteExecution(Base):
 
 # ========== 数据库连接模型 ==========
 
+
 class AutoTestDBConnection(Base):
     """数据库连接配置表"""
+
     __tablename__ = "autotest_db_connections"
-    __table_args__ = (
-        Index("idx_db_connections_user_id", "user_id"),
-    )
+    __table_args__ = (Index("idx_db_connections_user_id", "user_id"),)
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, comment="连接名称")
@@ -582,4 +666,9 @@ class AutoTestDBConnection(Base):
     is_active = Column(Boolean, default=True, comment="是否启用")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )

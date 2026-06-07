@@ -11,33 +11,30 @@ _logger = logging.getLogger(__name__)
 
 # ──────────── 积分配置查询 ────────────
 
+
 async def get_feature_cost(db: AsyncSession, feature: str) -> int | None:
     """获取某功能的积分消耗，不存在则返回 None"""
-    result = await db.execute(
-        select(AIPointsConfig.points_cost).where(AIPointsConfig.feature == feature)
-    )
+    result = await db.execute(select(AIPointsConfig.points_cost).where(AIPointsConfig.feature == feature))
     return result.scalar_one_or_none()
 
 
 async def get_all_ai_costs(db: AsyncSession) -> list[AIPointsConfig]:
     """获取所有 AI 功能的积分配置"""
-    result = await db.execute(
-        select(AIPointsConfig).order_by(AIPointsConfig.points_cost.desc())
-    )
+    result = await db.execute(select(AIPointsConfig).order_by(AIPointsConfig.points_cost.desc()))
     return list(result.scalars().all())
 
 
 # ──────────── 积分余额查询 ────────────
 
+
 async def get_user_balance(db: AsyncSession, user_id: int) -> int:
     """查询用户积分余额"""
-    result = await db.execute(
-        select(User.score).where(User.id == user_id)
-    )
+    result = await db.execute(select(User.score).where(User.id == user_id))
     return result.scalar_one_or_none() or 0
 
 
 # ──────────── 核心扣费（带账本） ────────────
+
 
 async def check_and_deduct_points(
     db: AsyncSession,
@@ -58,9 +55,7 @@ async def check_and_deduct_points(
         return True
 
     # 锁定用户行
-    result = await db.execute(
-        select(User).where(User.id == user.id).with_for_update()
-    )
+    result = await db.execute(select(User).where(User.id == user.id).with_for_update())
     locked_user = result.scalar_one()
     current = locked_user.score or 0
 
@@ -105,9 +100,7 @@ async def deduct_points_direct(
     if cost <= 0:
         return True
 
-    result = await db.execute(
-        select(User).where(User.id == user.id).with_for_update()
-    )
+    result = await db.execute(select(User).where(User.id == user.id).with_for_update())
     locked_user = result.scalar_one()
     current = locked_user.score or 0
 
@@ -141,6 +134,7 @@ async def deduct_points_direct(
 
 # ──────────── 退还积分 ────────────
 
+
 async def refund_points(
     db: AsyncSession,
     user: User,
@@ -154,9 +148,7 @@ async def refund_points(
     if amount is None or amount <= 0:
         return
 
-    result = await db.execute(
-        select(User).where(User.id == user.id).with_for_update()
-    )
+    result = await db.execute(select(User).where(User.id == user.id).with_for_update())
     locked_user = result.scalar_one()
     new_balance = (locked_user.score or 0) + amount
     locked_user.score = new_balance
@@ -168,7 +160,7 @@ async def refund_points(
         tx_type="refund",
         source=f"退还-{_feature_display_name(feature)}",
         related_feature=feature,
-        note=note or f"AI调用失败退还",
+        note=note or "AI调用失败退还",
     )
     db.add(tx)
     await db.flush()
@@ -186,9 +178,7 @@ async def refund_points_direct(
     if not amount or amount <= 0:
         return
 
-    result = await db.execute(
-        select(User).where(User.id == user.id).with_for_update()
-    )
+    result = await db.execute(select(User).where(User.id == user.id).with_for_update())
     locked_user = result.scalar_one()
     new_balance = (locked_user.score or 0) + amount
     locked_user.score = new_balance
@@ -209,6 +199,7 @@ async def refund_points_direct(
 
 # ──────────── 积分充值 ────────────
 
+
 async def grant_points(
     db: AsyncSession,
     user: User,
@@ -223,9 +214,7 @@ async def grant_points(
     返回变动后余额。
     如果是扣减（amount<0）且余额不足，抛出 ValueError。
     """
-    result = await db.execute(
-        select(User).where(User.id == user.id).with_for_update()
-    )
+    result = await db.execute(select(User).where(User.id == user.id).with_for_update())
     locked_user = result.scalar_one()
     current = locked_user.score or 0
     new_balance = current + amount
@@ -249,6 +238,7 @@ async def grant_points(
 
 
 # ──────────── 流水查询 ────────────
+
 
 async def get_user_transactions(
     db: AsyncSession,
@@ -286,10 +276,7 @@ async def get_user_usage_stats(db: AsyncSession, user_id: int) -> list[dict]:
         .group_by(AIUsageLog.feature)
         .order_by(func.sum(AIUsageLog.points_cost).desc())
     )
-    return [
-        {"feature": row.feature, "count": row.count, "total_cost": row.total_cost}
-        for row in result.all()
-    ]
+    return [{"feature": row.feature, "count": row.count, "total_cost": row.total_cost} for row in result.all()]
 
 
 # ──────────── 辅助函数 ────────────

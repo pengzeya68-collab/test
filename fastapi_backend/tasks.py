@@ -121,7 +121,9 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
 
         async def _run_with_cleanup():
             try:
-                result = await execute_scenario_async(scenario_id, env_id, progress_callback=on_progress, user_id=user_id)
+                result = await execute_scenario_async(
+                    scenario_id, env_id, progress_callback=on_progress, user_id=user_id
+                )
                 return result
             finally:
                 await _celery_engine.dispose()
@@ -168,7 +170,7 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
             _logger.warning(f"通知 webhook 失败: {we}")
         _persist_task_result(task_id, fail_payload)
         # 显式标记 Celery 任务状态为 FAILURE，避免误报 SUCCESS
-        self.update_state(state='FAILURE', meta=fail_payload)
+        self.update_state(state="FAILURE", meta=fail_payload)
         raise Ignore()
 
 

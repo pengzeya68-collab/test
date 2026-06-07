@@ -143,9 +143,7 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
 ):
     """创建用户"""
-    existing = await db.execute(
-        select(User).where(or_(User.username == data.username, User.email == data.email))
-    )
+    existing = await db.execute(select(User).where(or_(User.username == data.username, User.email == data.email)))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="用户名或邮箱已存在")
 
@@ -243,7 +241,18 @@ async def delete_user(
     from sqlalchemy import delete as sql_delete
 
     # 批量删除关联数据
-    for model in [Comment, Submission, InterviewSession, ExamAttempt, UserProgress, Like, Favorite, UserAchievement, Note, DailyCheckin]:
+    for model in [
+        Comment,
+        Submission,
+        InterviewSession,
+        ExamAttempt,
+        UserProgress,
+        Like,
+        Favorite,
+        UserAchievement,
+        Note,
+        DailyCheckin,
+    ]:
         try:
             await db.execute(sql_delete(model).where(model.user_id == user_id))
         except Exception as e:
@@ -265,7 +274,13 @@ async def delete_user(
         raise HTTPException(status_code=500, detail="删除失败，事务已回滚")
     # 写入审计日志
     try:
-        log = AuditLog(user_id=current_user.id, admin_id=current_user.id, action="删除用户", action_type="user_management", detail=f"删除用户: {user.username} (ID: {user_id})")
+        log = AuditLog(
+            user_id=current_user.id,
+            admin_id=current_user.id,
+            action="删除用户",
+            action_type="user_management",
+            detail=f"删除用户: {user.username} (ID: {user_id})",
+        )
         db.add(log)
         await db.commit()
     except Exception:
@@ -297,7 +312,13 @@ async def toggle_user_status(
     action = "启用" if user.is_active else "禁用"
     # 写入审计日志
     try:
-        log = AuditLog(user_id=current_user.id, admin_id=current_user.id, action=f"{action}用户", action_type="user_management", detail=f"{action}用户: {user.username} (ID: {user_id})")
+        log = AuditLog(
+            user_id=current_user.id,
+            admin_id=current_user.id,
+            action=f"{action}用户",
+            action_type="user_management",
+            detail=f"{action}用户: {user.username} (ID: {user_id})",
+        )
         db.add(log)
         await db.commit()
     except Exception:
@@ -330,7 +351,13 @@ async def toggle_user_admin(
     action = "设置为管理员" if user.is_admin else "取消管理员权限"
     # 写入审计日志
     try:
-        log = AuditLog(user_id=current_user.id, admin_id=current_user.id, action=f"{action}", action_type="user_management", detail=f"{action}: {user.username} (ID: {user_id})")
+        log = AuditLog(
+            user_id=current_user.id,
+            admin_id=current_user.id,
+            action=f"{action}",
+            action_type="user_management",
+            detail=f"{action}: {user.username} (ID: {user_id})",
+        )
         db.add(log)
         await db.commit()
     except Exception:
@@ -360,7 +387,13 @@ async def reset_user_password(
         raise HTTPException(status_code=500, detail="密码重置失败")
     # 写入审计日志
     try:
-        log = AuditLog(user_id=current_user.id, admin_id=current_user.id, action="重置用户密码", action_type="user_management", detail=f"重置用户密码: {user.username} (ID: {user_id})")
+        log = AuditLog(
+            user_id=current_user.id,
+            admin_id=current_user.id,
+            action="重置用户密码",
+            action_type="user_management",
+            detail=f"重置用户密码: {user.username} (ID: {user_id})",
+        )
         db.add(log)
         await db.commit()
     except Exception:
@@ -373,6 +406,7 @@ async def admin_login(data: AdminLoginRequest, request: Request):
     """管理员登录"""
     # 管理员登录速率限制（复用auth模块的限流逻辑）
     from fastapi_backend.routers.auth import _check_login_rate_limit
+
     client_ip = request.client.host if request.client else "unknown"
     _check_login_rate_limit(client_ip)
 
@@ -430,6 +464,7 @@ async def admin_logout(
             await auth_service.add_to_blacklist(token)
         except Exception as e:
             import logging
+
             logging.getLogger(__name__).warning(f"管理员登出黑名单添加失败: {e}")
     return {"message": "登出成功"}
 

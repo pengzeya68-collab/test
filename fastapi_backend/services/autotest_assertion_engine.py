@@ -9,7 +9,7 @@ import json
 import logging
 import math
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 from fastapi_backend.utils.autotest_helpers import extract_jsonpath_value
 
@@ -46,14 +46,14 @@ def get_field_value(
     elif field == "headers":
         return response_headers or {}
     elif field.startswith("headers."):
-        header_name = field[len("headers."):]
+        header_name = field[len("headers.") :]
         return (response_headers or {}).get(header_name)
     else:
         # 从响应 JSON 中提取
         path = field
         for prefix in ("json_body.", "response.", "body."):
             if path.startswith(prefix):
-                path = path[len(prefix):]
+                path = path[len(prefix) :]
                 break
 
         if isinstance(response_body, dict):
@@ -188,6 +188,7 @@ def _validate_json_schema(actual: Any, schema: Any) -> bool:
 
     try:
         import jsonschema
+
         jsonschema.validate(instance=actual, schema=schema)
         return True
     except ImportError:
@@ -201,16 +202,30 @@ def _validate_json_schema(actual: Any, schema: Any) -> bool:
 def get_operator_text(operator: str) -> str:
     """获取操作符的中文描述"""
     mapping = {
-        "equals": "等于", "eq": "等于", "==": "等于",
-        "not_equals": "不等于", "ne": "不等于", "!=": "不等于",
-        "contains": "包含", "not_contains": "不包含",
-        "gt": "大于", ">": "大于",
-        "lt": "小于", "<": "小于",
-        "gte": "大于等于", ">=": "大于等于",
-        "lte": "小于等于", "<=": "小于等于",
-        "regex": "正则匹配", "match": "正则匹配",
-        "json_exists": "存在", "exists": "存在", "not_exists": "不存在",
-        "range": "范围", "empty": "为空", "not_empty": "不为空",
+        "equals": "等于",
+        "eq": "等于",
+        "==": "等于",
+        "not_equals": "不等于",
+        "ne": "不等于",
+        "!=": "不等于",
+        "contains": "包含",
+        "not_contains": "不包含",
+        "gt": "大于",
+        ">": "大于",
+        "lt": "小于",
+        "<": "小于",
+        "gte": "大于等于",
+        ">=": "大于等于",
+        "lte": "小于等于",
+        "<=": "小于等于",
+        "regex": "正则匹配",
+        "match": "正则匹配",
+        "json_exists": "存在",
+        "exists": "存在",
+        "not_exists": "不存在",
+        "range": "范围",
+        "empty": "为空",
+        "not_empty": "不为空",
         "json_schema": "JSON Schema 校验",
     }
     return mapping.get(operator, operator)
@@ -240,8 +255,10 @@ def _normalize_operator(rule: Dict) -> str:
     """从断言规则中提取操作符，兼容多种 key 命名"""
     op = rule.get("operator") or rule.get("condition") or "equals"
     op_map = {
-        "eq": "equals", "equal": "equals",
-        "ne": "not_equals", "not_equal": "not_equals",
+        "eq": "equals",
+        "equal": "equals",
+        "ne": "not_equals",
+        "not_equal": "not_equals",
         "match": "regex",
     }
     return op_map.get(op, op)
@@ -279,19 +296,23 @@ def execute_assertions(
         if not (200 <= status_code < 400):
             all_passed = False
             error_messages.append(f"默认断言失败: 期望 2xx/3xx, 实际返回 {status_code}")
-            details.append({
-                "type": "default_status_code",
-                "expected": "2xx/3xx",
-                "actual": status_code,
-                "passed": False,
-            })
+            details.append(
+                {
+                    "type": "default_status_code",
+                    "expected": "2xx/3xx",
+                    "actual": status_code,
+                    "passed": False,
+                }
+            )
         else:
-            details.append({
-                "type": "default_status_code",
-                "expected": "2xx/3xx",
-                "actual": status_code,
-                "passed": True,
-            })
+            details.append(
+                {
+                    "type": "default_status_code",
+                    "expected": "2xx/3xx",
+                    "actual": status_code,
+                    "passed": True,
+                }
+            )
         return {
             "passed": all_passed,
             "message": "; ".join(error_messages) if error_messages else "默认状态码检查通过",
@@ -316,14 +337,16 @@ def execute_assertions(
                 all_passed = False
                 error_messages.append(f"字段 {field} {get_operator_text(operator)} {expected}，实际: {actual}")
 
-            details.append({
-                "type": "assertion",
-                "field": field,
-                "operator": operator,
-                "expected": expected,
-                "actual": actual,
-                "passed": passed,
-            })
+            details.append(
+                {
+                    "type": "assertion",
+                    "field": field,
+                    "operator": operator,
+                    "expected": expected,
+                    "actual": actual,
+                    "passed": passed,
+                }
+            )
 
     # 对象格式
     elif isinstance(assert_rules, dict):
@@ -343,12 +366,14 @@ def execute_assertions(
             if not passed:
                 all_passed = False
                 error_messages.append(f"状态码断言失败: 期望 {expected}, 实际 {status_code}")
-            details.append({
-                "type": "status_code",
-                "expected": expected,
-                "actual": status_code,
-                "passed": passed,
-            })
+            details.append(
+                {
+                    "type": "status_code",
+                    "expected": expected,
+                    "actual": status_code,
+                    "passed": passed,
+                }
+            )
 
         if "json_path" in assert_rules and isinstance(response_body, dict):
             for path, rule in assert_rules["json_path"].items():
@@ -359,29 +384,47 @@ def execute_assertions(
                         if not passed:
                             all_passed = False
                             error_messages.append(f"JSON路径 {path} 断言失败: 期望 {rule['eq']}, 实际 {value}")
-                        details.append({
-                            "type": "json_path", "path": path, "assertion": "eq",
-                            "expected": rule["eq"], "actual": value, "passed": passed,
-                        })
+                        details.append(
+                            {
+                                "type": "json_path",
+                                "path": path,
+                                "assertion": "eq",
+                                "expected": rule["eq"],
+                                "actual": value,
+                                "passed": passed,
+                            }
+                        )
                     elif "contains" in rule:
                         passed = value is not None and rule["contains"] in str(value)
                         if not passed:
                             all_passed = False
                             error_messages.append(f"JSON路径 {path} 不包含: {rule['contains']}")
-                        details.append({
-                            "type": "json_path", "path": path, "assertion": "contains",
-                            "expected": rule["contains"], "actual": value, "passed": passed,
-                        })
+                        details.append(
+                            {
+                                "type": "json_path",
+                                "path": path,
+                                "assertion": "contains",
+                                "expected": rule["contains"],
+                                "actual": value,
+                                "passed": passed,
+                            }
+                        )
                 else:
                     # 直接比较值（使用 compare_values 统一类型转换）
                     passed = compare_values(value, "equals", rule)
                     if not passed:
                         all_passed = False
                         error_messages.append(f"JSON路径 {path} 断言失败: 期望 {rule}, 实际 {value}")
-                    details.append({
-                        "type": "json_path", "path": path, "assertion": "eq",
-                        "expected": rule, "actual": value, "passed": passed,
-                    })
+                    details.append(
+                        {
+                            "type": "json_path",
+                            "path": path,
+                            "assertion": "eq",
+                            "expected": rule,
+                            "actual": value,
+                            "passed": passed,
+                        }
+                    )
 
     # 注意：无断言规则的情况已在上方提前返回（默认 2xx/3xx 检查）
     # 这里不再追加默认 status_code 兜底断言

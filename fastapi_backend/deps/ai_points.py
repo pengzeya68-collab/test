@@ -49,11 +49,13 @@ def require_ai_points(feature: str):
             # 功能未配置 → 视为免费，不扣费
             async def _noop():
                 pass
+
             return _noop
         if cost <= 0:
             # 功能费用为0 → 免费，不扣费
             async def _noop():
                 pass
+
             return _noop
 
         success = await check_and_deduct_points(db, current_user, feature)
@@ -98,7 +100,10 @@ def require_ai_points_batch(feature: str, batch_desc: str = "批次"):
                 return True
             total_cost = cost_per_batch * batch_count
             success = await deduct_points_direct(
-                db, current_user, total_cost, feature,
+                db,
+                current_user,
+                total_cost,
+                feature,
                 note=f"{batch_desc} x{batch_count}",
             )
             if not success:

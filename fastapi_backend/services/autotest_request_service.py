@@ -2,7 +2,7 @@
 AutoTest HTTP 请求服务
 从 routers/autotest_execution.py 的 send_request 端点下沉的业务逻辑
 """
-import asyncio
+
 import json
 import logging
 import threading
@@ -140,9 +140,7 @@ async def execute_http_request(
 
     variables = await resolve_variables(env_id, variables, user_id=user_id)
 
-    url, headers, params, body = apply_variable_substitution(
-        url, headers, params, body, variables
-    )
+    url, headers, params, body = apply_variable_substitution(url, headers, params, body, variables)
 
     # 变量替换后再次校验 SSRF（防止通过变量注入内网地址）
     safe, reason = validate_url_safety(url)
@@ -165,9 +163,9 @@ async def execute_http_request(
         elif body_type == "raw" and processed_body:
             # raw 模式：直接发送原始字符串
             if isinstance(processed_body, str):
-                req_kwargs["content"] = processed_body.encode('utf-8')
+                req_kwargs["content"] = processed_body.encode("utf-8")
             else:
-                req_kwargs["content"] = str(processed_body).encode('utf-8')
+                req_kwargs["content"] = str(processed_body).encode("utf-8")
         elif processed_body:
             if isinstance(processed_body, str):
                 try:
@@ -197,10 +195,38 @@ async def execute_http_request(
             "success": 200 <= resp.status_code < 400,
         }
     except httpx.TimeoutException:
-        return {"success": False, "error": "请求超时", "execution_time": int((time.time() - start_time) * 1000), "status_code": None, "response_content": None, "headers": {}}
+        return {
+            "success": False,
+            "error": "请求超时",
+            "execution_time": int((time.time() - start_time) * 1000),
+            "status_code": None,
+            "response_content": None,
+            "headers": {},
+        }
     except httpx.ConnectError:
-        return {"success": False, "error": "连接失败，请检查网络或服务地址", "execution_time": int((time.time() - start_time) * 1000), "status_code": None, "response_content": None, "headers": {}}
+        return {
+            "success": False,
+            "error": "连接失败，请检查网络或服务地址",
+            "execution_time": int((time.time() - start_time) * 1000),
+            "status_code": None,
+            "response_content": None,
+            "headers": {},
+        }
     except ValueError as e:
-        return {"success": False, "error": str(e), "execution_time": int((time.time() - start_time) * 1000), "status_code": None, "response_content": None, "headers": {}}
+        return {
+            "success": False,
+            "error": str(e),
+            "execution_time": int((time.time() - start_time) * 1000),
+            "status_code": None,
+            "response_content": None,
+            "headers": {},
+        }
     except Exception as e:
-        return {"success": False, "error": str(e), "execution_time": int((time.time() - start_time) * 1000), "status_code": None, "response_content": None, "headers": {}}
+        return {
+            "success": False,
+            "error": str(e),
+            "execution_time": int((time.time() - start_time) * 1000),
+            "status_code": None,
+            "response_content": None,
+            "headers": {},
+        }

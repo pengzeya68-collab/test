@@ -1,4 +1,5 @@
 """Persist AutoTest scheduler settings on test_scenarios so reload/restart keeps cron + webhook."""
+
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -14,11 +15,14 @@ _logger = logging.getLogger(__name__)
 async def ensure_schedule_columns_on_db() -> None:
     """Ensure schedule columns exist on test_scenarios (PostgreSQL compatible)."""
     async with async_session() as session:
+
         def _migrate(sync_conn: Any) -> None:
-            r = sync_conn.execute(text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
-            ))
+            r = sync_conn.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
+                )
+            )
             existing = {row[0] for row in r.fetchall()}
             for col, ddl in _schedule_column_ddl():
                 if col not in existing:
@@ -158,15 +162,16 @@ def read_schedule_webhook_sync(scenario_id: int, user_id: int = None) -> Optiona
             if not row:
                 return None
             # scalar_one_or_none 返回标量值，但防御性处理 Row 对象
-            val = row[0] if hasattr(row, '__getitem__') and not isinstance(row, str) else row
+            val = row[0] if hasattr(row, "__getitem__") and not isinstance(row, str) else row
             if val is None:
                 return None
             s = str(val).strip()
             return s or None
 
     try:
-        loop = asyncio.get_running_loop()
+        asyncio.get_running_loop()
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(asyncio.run, _read())
             return future.result(timeout=5)

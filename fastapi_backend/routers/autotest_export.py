@@ -23,10 +23,10 @@ from sqlalchemy import and_, func, select
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
 from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import (
-    AutoTestCase, 
-    AutoTestGroup, 
-    AutoTestHistory, 
-    AutoTestScenario, 
+    AutoTestCase,
+    AutoTestGroup,
+    AutoTestHistory,
+    AutoTestScenario,
     AutoTestScenarioStep,
     MockRule,
     MockProject,
@@ -121,32 +121,35 @@ async def _get_cases(user_id: int, case_ids: List[int] = None, group_id: int = N
             missing_ids = set(case_ids) - found_ids
             if missing_ids:
                 import logging
-                logging.getLogger(__name__).warning(
-                    f"用户 {user_id} 导出时跳过无权限或不存在的用例: {missing_ids}"
-                )
+
+                logging.getLogger(__name__).warning(f"用户 {user_id} 导出时跳过无权限或不存在的用例: {missing_ids}")
 
         # 批量获取分组名，避免 N+1 查询
         group_ids = list({c.group_id for c in cases if c.group_id is not None})
         group_map = {}
         if group_ids:
-            g_result = await db.execute(select(AutoTestGroup).where(AutoTestGroup.id.in_(group_ids), AutoTestGroup.user_id == user_id))
+            g_result = await db.execute(
+                select(AutoTestGroup).where(AutoTestGroup.id.in_(group_ids), AutoTestGroup.user_id == user_id)
+            )
             group_map = {g.id: g.name for g in g_result.scalars().all()}
 
         items = []
         for c in cases:
-            items.append({
-                "id": c.id,
-                "name": c.name,
-                "method": c.method,
-                "url": c.url,
-                "headers": c.headers,
-                "params": c.params,
-                "body_type": c.body_type,
-                "content_type": c.content_type,
-                "payload": c.payload,
-                "description": c.description,
-                "group_name": group_map.get(c.group_id, "default"),
-            })
+            items.append(
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "method": c.method,
+                    "url": c.url,
+                    "headers": c.headers,
+                    "params": c.params,
+                    "body_type": c.body_type,
+                    "content_type": c.content_type,
+                    "payload": c.payload,
+                    "description": c.description,
+                    "group_name": group_map.get(c.group_id, "default"),
+                }
+            )
 
         return items
 
@@ -282,7 +285,7 @@ async def generate_enhanced_api_doc(
 ):
     """
     从用例生成增强版 API 文档（文档即用例）
-    
+
     自动聚合以下数据：
     - 真实执行历史（请求/响应示例）
     - Mock 服务关联
@@ -291,7 +294,7 @@ async def generate_enhanced_api_doc(
     - 全局变量引用
     """
     user_id = current_user.id
-    
+
     async with AsyncSessionLocal() as db:
         # 1. 获取用例列表（增强版，包含完整信息）
         query = select(AutoTestCase).where(AutoTestCase.user_id == user_id)
@@ -313,10 +316,7 @@ async def generate_enhanced_api_doc(
         group_map = {}
         if group_ids:
             g_result = await db.execute(
-                select(AutoTestGroup).where(
-                    AutoTestGroup.id.in_(group_ids), 
-                    AutoTestGroup.user_id == user_id
-                )
+                select(AutoTestGroup).where(AutoTestGroup.id.in_(group_ids), AutoTestGroup.user_id == user_id)
             )
             group_map = {g.id: g.name for g in g_result.scalars().all()}
 
@@ -327,28 +327,32 @@ async def generate_enhanced_api_doc(
             parsed_url = url
             # 确保 URL 以 http:// 或 https:// 开头（用于 Mock 匹配）
             if url and not url.startswith(("http://", "https://")):
-                parsed_url = "http://example.com" + url if not url.startswith("/") else "http://example.com/" + url.lstrip("/")
+                parsed_url = (
+                    "http://example.com" + url if not url.startswith("/") else "http://example.com/" + url.lstrip("/")
+                )
             else:
                 parsed_url = url
-            
+
             path = urlparse(parsed_url).path
             if not path:
                 path = url if url.startswith("/") else "/" + url
-            
-            cases_data.append({
-                "id": c.id,
-                "name": c.name,
-                "method": c.method,
-                "url": c.url,
-                "path": path,
-                "headers": c.headers or {},
-                "params": c.params or {},
-                "body_type": c.body_type or "none",
-                "content_type": c.content_type or "application/json",
-                "payload": c.payload,
-                "description": c.description,
-                "group_name": group_map.get(c.group_id, "default"),
-            })
+
+            cases_data.append(
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "method": c.method,
+                    "url": c.url,
+                    "path": path,
+                    "headers": c.headers or {},
+                    "params": c.params or {},
+                    "body_type": c.body_type or "none",
+                    "content_type": c.content_type or "application/json",
+                    "payload": c.payload,
+                    "description": c.description,
+                    "group_name": group_map.get(c.group_id, "default"),
+                }
+            )
 
         # 2. 获取执行历史（每个用例最近 3 次）
         execution_history = {}
@@ -372,23 +376,25 @@ async def generate_enhanced_api_doc(
                             resp_data = json.loads(resp_data)
                         except (json.JSONDecodeError, ValueError):
                             resp_data = {"raw_response": resp_data}
-                    
+
                     status_code = 200
                     if isinstance(resp_data, dict):
                         status_code = resp_data.get("status_code", 200) or 200
-                    
-                    execution_history[hist.case_id].append({
-                        "status_code": status_code,
-                        "response_data": resp_data,
-                        "execution_time": hist.execution_time,
-                        "status": hist.status,
-                    })
+
+                    execution_history[hist.case_id].append(
+                        {
+                            "status_code": status_code,
+                            "response_data": resp_data,
+                            "execution_time": hist.execution_time,
+                            "status": hist.status,
+                        }
+                    )
 
         # 3. 获取 Mock 服务规则
         mock_query = (
             select(MockRule, MockProject)
             .join(MockProject, MockRule.project_id == MockProject.id)
-            .where(MockRule.is_active == True, MockProject.user_id == user_id)
+            .where(MockRule.is_active, MockProject.user_id == user_id)
         )
         mock_result = await db.execute(mock_query)
         mock_rules = {}
@@ -417,11 +423,13 @@ async def generate_enhanced_api_doc(
                     "steps": [],
                 }
             if step:
-                scenarios_map[scenario.id]["steps"].append({
-                    "step_id": step.id,
-                    "api_case_id": step.api_case_id,
-                    "step_order": step.step_order,
-                })
+                scenarios_map[scenario.id]["steps"].append(
+                    {
+                        "step_id": step.id,
+                        "api_case_id": step.api_case_id,
+                        "step_order": step.step_order,
+                    }
+                )
 
         scenarios = list(scenarios_map.values())
 
@@ -432,25 +440,22 @@ async def generate_enhanced_api_doc(
             latest_perf_subq = (
                 select(
                     AutoTestPerformanceExecutionRecord.scenario_id,
-                    func.max(AutoTestPerformanceExecutionRecord.id).label("max_id")
+                    func.max(AutoTestPerformanceExecutionRecord.id).label("max_id"),
                 )
                 .group_by(AutoTestPerformanceExecutionRecord.scenario_id)
                 .subquery()
             )
-            
+
             perf_query = (
                 select(AutoTestPerformanceScenarioStep, AutoTestPerformanceExecutionRecord)
                 .join(
                     AutoTestPerformanceExecutionRecord,
                     and_(
                         AutoTestPerformanceScenarioStep.scenario_id == AutoTestPerformanceExecutionRecord.scenario_id,
-                        AutoTestPerformanceExecutionRecord.id == latest_perf_subq.c.max_id
-                    )
+                        AutoTestPerformanceExecutionRecord.id == latest_perf_subq.c.max_id,
+                    ),
                 )
-                .join(
-                    latest_perf_subq,
-                    AutoTestPerformanceScenarioStep.scenario_id == latest_perf_subq.c.scenario_id
-                )
+                .join(latest_perf_subq, AutoTestPerformanceScenarioStep.scenario_id == latest_perf_subq.c.scenario_id)
                 .where(AutoTestPerformanceScenarioStep.api_case_id.in_(case_ids))
             )
             perf_result = await db.execute(perf_query)
@@ -496,9 +501,13 @@ async def generate_enhanced_api_doc(
                 "total_cases": len(cases_data),
                 "cases_with_history": len(execution_history),
                 "cases_with_mock": sum(1 for c in cases_data if f"{c['method'].upper()} {c['path']}" in mock_rules),
-                "cases_in_scenarios": len({c["id"] for c in cases_data if any(
-                    step["api_case_id"] == c["id"] for s in scenarios for step in s["steps"]
-                )}),
+                "cases_in_scenarios": len(
+                    {
+                        c["id"]
+                        for c in cases_data
+                        if any(step["api_case_id"] == c["id"] for s in scenarios for step in s["steps"])
+                    }
+                ),
                 "cases_with_performance": len(performance_metrics),
             },
         }

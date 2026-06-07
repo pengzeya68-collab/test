@@ -2,6 +2,7 @@
 AutoTest 任务状态持久化服务
 从 routers/autotest_execution.py 的任务存储函数下沉
 """
+
 import asyncio
 import copy
 import json
@@ -19,6 +20,7 @@ _thread_lock = threading.Lock()  # 用于保护 _task_store 的线程安全
 _async_lock = None
 _async_lock_create_lock = threading.Lock()  # 保护 _async_lock 创建的线程锁
 
+
 def _get_async_lock():
     """延迟创建 asyncio.Lock，避免模块导入时绑定到错误的事件循环，线程安全"""
     global _async_lock
@@ -28,6 +30,7 @@ def _get_async_lock():
                 _async_lock = asyncio.Lock()
     return _async_lock
 
+
 TASK_TTL_SECONDS = 24 * 60 * 60
 CLEANUP_INTERVAL_SECONDS = 60 * 60
 _cleanup_task: Optional[asyncio.Task] = None
@@ -35,6 +38,7 @@ _cleanup_task: Optional[asyncio.Task] = None
 
 def _get_tasks_dir() -> Path:
     from fastapi_backend.core.config import PROJECT_ROOT
+
     tasks_dir = PROJECT_ROOT / "instance" / "tasks"
     tasks_dir.mkdir(parents=True, exist_ok=True)
     return tasks_dir

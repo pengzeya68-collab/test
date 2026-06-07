@@ -83,7 +83,9 @@ def _fmt_dt(dt: datetime | None) -> str:
 async def _format_post(post: Post, user_id: int | None = None, db: AsyncSession | None = None) -> PostListResponse:
     cat = _category_info(post.category) if post.category else None
     tags = post.tags.split(",") if post.tags else []
-    summary = post.summary or (post.content[:200] + "..." if post.content and len(post.content) > 200 else (post.content or ""))
+    summary = post.summary or (
+        post.content[:200] + "..." if post.content and len(post.content) > 200 else (post.content or "")
+    )
 
     is_liked: bool | None = None
     is_favorited: bool | None = None
@@ -179,11 +181,11 @@ async def get_posts(
     if category:
         q = q.filter(Post.category == category)
     if tag:
-        tag = tag.replace('%', '\\%').replace('_', '\\_')
-        q = q.filter(Post.tags.like(f"%{tag}%", escape='\\'))
+        tag = tag.replace("%", "\\%").replace("_", "\\_")
+        q = q.filter(Post.tags.like(f"%{tag}%", escape="\\"))
     if search:
-        search = search.replace('%', '\\%').replace('_', '\\_')
-        q = q.filter(or_(Post.title.like(f"%{search}%", escape='\\'), Post.content.like(f"%{search}%", escape='\\')))
+        search = search.replace("%", "\\%").replace("_", "\\_")
+        q = q.filter(or_(Post.title.like(f"%{search}%", escape="\\"), Post.content.like(f"%{search}%", escape="\\")))
     if sort == "essence":
         q = q.filter(Post.is_essence)
     if sort == "hot":
@@ -328,7 +330,9 @@ async def like_post(
     if like:
         await db.delete(like)
         # 只有当like确实被删除时才减少计数，防止并发双重取消导致计数多减
-        await db.execute(update(Post).where(Post.id == post_id).values(like_count=func.greatest(Post.like_count - 1, 0)))
+        await db.execute(
+            update(Post).where(Post.id == post_id).values(like_count=func.greatest(Post.like_count - 1, 0))
+        )
         action = "unliked"
     else:
         like = Like(user_id=current_user.id, post_id=post_id)
@@ -445,7 +449,9 @@ async def like_comment(
     like = like_q.scalar_one_or_none()
     if like:
         await db.delete(like)
-        await db.execute(update(Comment).where(Comment.id == comment_id).values(like_count=func.greatest(Comment.like_count - 1, 0)))
+        await db.execute(
+            update(Comment).where(Comment.id == comment_id).values(like_count=func.greatest(Comment.like_count - 1, 0))
+        )
         action = "unliked"
     else:
         like = Like(user_id=current_user.id, comment_id=comment_id)
@@ -478,7 +484,13 @@ async def get_user_posts(
     user_q = await db.execute(select(User).filter_by(id=user_id))
     if not user_q.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="用户不存在")
-    q = select(Post).options(selectinload(Post.user)).filter_by(user_id=user_id).filter(Post.is_approved == True).order_by(Post.created_at.desc())
+    q = (
+        select(Post)
+        .options(selectinload(Post.user))
+        .filter_by(user_id=user_id)
+        .filter(Post.is_approved)
+        .order_by(Post.created_at.desc())
+    )
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
     q = q.offset((page - 1) * per_page).limit(per_page)
@@ -639,7 +651,9 @@ async def admin_delete_comment(
     comment = result.scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=404, detail="评论不存在")
-    await db.execute(update(Post).where(Post.id == comment.post_id).values(comment_count=func.greatest(Post.comment_count - 1, 0)))
+    await db.execute(
+        update(Post).where(Post.id == comment.post_id).values(comment_count=func.greatest(Post.comment_count - 1, 0))
+    )
     await db.delete(comment)
     await db.commit()
     return {"message": "评论已删除"}

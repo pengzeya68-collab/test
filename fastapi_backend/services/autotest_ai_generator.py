@@ -35,6 +35,7 @@ RETRY_BASE_DELAY = 5  # 秒
 
 class RateLimitExceededError(Exception):
     """AI API 5小时窗口限额耗尽，无法继续"""
+
     def __init__(self, message: str, provider: str = ""):
         super().__init__(message)
         self.provider = provider
@@ -80,11 +81,16 @@ async def _call_llm_with_retry(params: AIParams, messages: list, timeout: int = 
                     )
 
                 # 普通 RPM 限流 - 指数退避重试
-                delay = RETRY_BASE_DELAY * (2 ** attempt)
-                _logger.warning("AI API RPM 限流 (429)，第 %d/%d 次重试，等待 %ds: %s",
-                                attempt + 1, MAX_RETRIES, delay, error_str[:200])
+                delay = RETRY_BASE_DELAY * (2**attempt)
+                _logger.warning(
+                    "AI API RPM 限流 (429)，第 %d/%d 次重试，等待 %ds: %s",
+                    attempt + 1,
+                    MAX_RETRIES,
+                    delay,
+                    error_str[:200],
+                )
                 if progress_callback:
-                    await progress_callback(f"AI 限流，等待 {delay}s 后重试 ({attempt+1}/{MAX_RETRIES})...")
+                    await progress_callback(f"AI 限流，等待 {delay}s 后重试 ({attempt + 1}/{MAX_RETRIES})...")
                 await asyncio.sleep(delay)
                 continue
             # 其他错误不重试
@@ -171,7 +177,7 @@ class AITestCaseGenerator:
                 if rb:
                     content = rb.get("content", {})
                     for ct, ct_detail in content.items():
-                        schema = (ct_detail.get("schema") or {})
+                        schema = ct_detail.get("schema") or {}
                         request_body = {"content_type": ct, "schema": schema}
                         break
 
@@ -287,9 +293,7 @@ class AITestCaseGenerator:
                 if str(status).isdigit() and int(status) < 400:
                     resp_schema = resp.get("schema", {})
                     if resp_schema.get("type") == "object" or resp_schema.get("properties"):
-                        assert_rules.append(
-                            {"field": "$", "operator": "not_empty", "expected": ""}
-                        )
+                        assert_rules.append({"field": "$", "operator": "not_empty", "expected": ""})
                     break
 
             cases.append(
@@ -344,7 +348,9 @@ class AITestCaseGenerator:
             previous_analysis: 之前批次累积的分析结果，供 AI 参考已有关系
         """
         parts = []
-        parts.append(f"分析以下API文档片段，识别CRUD关系和数据依赖。标题:{parsed['title']} 本批接口数:{len(batch_apis)}")
+        parts.append(
+            f"分析以下API文档片段，识别CRUD关系和数据依赖。标题:{parsed['title']} 本批接口数:{len(batch_apis)}"
+        )
         parts.append("")
 
         # 当前批次接口列表
@@ -364,7 +370,9 @@ class AITestCaseGenerator:
                 parts.append("")
                 parts.append("已识别的资源分组（请在此基础上补充，不要重复）:")
                 for g in prev_groups[:15]:
-                    parts.append(f"  - {g.get('resource_name', '')}({g.get('resource_name_en', '')}) 接口{g.get('api_indices', [])}")
+                    parts.append(
+                        f"  - {g.get('resource_name', '')}({g.get('resource_name_en', '')}) 接口{g.get('api_indices', [])}"
+                    )
             if prev_rels:
                 parts.append("")
                 parts.append("已识别的接口关系（请在此基础上补充，不要重复）:")
@@ -374,11 +382,15 @@ class AITestCaseGenerator:
                 parts.append("")
                 parts.append("已识别的数据流（请在此基础上补充，不要重复）:")
                 for f in prev_flow[:10]:
-                    parts.append(f"  - [{f.get('source_api')}].{f.get('source_field')})->[{f.get('target_api')}].{f.get('target_param')} var:{f.get('variable_name', '')}")
+                    parts.append(
+                        f"  - [{f.get('source_api')}].{f.get('source_field')})->[{f.get('target_api')}].{f.get('target_param')} var:{f.get('variable_name', '')}"
+                    )
 
         parts.append("")
         parts.append("输出JSON格式（只包含本批新增的分析结果，与之前不重复）:")
-        parts.append('{"resource_groups":[{"resource_name":"用户","resource_name_en":"user","api_indices":[0,1,2,3],"crud_mapping":{"create":0,"read":1,"update":2,"delete":3}}],"relationships":[{"from_api":0,"to_api":1,"type":"id_dependency","description":"创建返回ID用于查询"}],"auth_pattern":{"type":"Bearer Token","login_api_index":null,"token_field":"$.data.token"},"data_flow":[{"source_api":0,"source_field":"$.data.id","target_api":1,"target_param":"id","variable_name":"user_id"}]}')
+        parts.append(
+            '{"resource_groups":[{"resource_name":"用户","resource_name_en":"user","api_indices":[0,1,2,3],"crud_mapping":{"create":0,"read":1,"update":2,"delete":3}}],"relationships":[{"from_api":0,"to_api":1,"type":"id_dependency","description":"创建返回ID用于查询"}],"auth_pattern":{"type":"Bearer Token","login_api_index":null,"token_field":"$.data.token"},"data_flow":[{"source_api":0,"source_field":"$.data.id","target_api":1,"target_param":"id","variable_name":"user_id"}]}'
+        )
         return "\n".join(parts)
 
     async def _phase_analyze(self, parsed: dict, params: AIParams) -> dict:
@@ -512,11 +524,15 @@ class AITestCaseGenerator:
         parts.append('  {"field":"$.data.id","operator":"regex","expected":"^\\\\d+$"}')
         parts.append('  {"field":"$.detail","operator":"not_empty","expected":""}')
         parts.append("  field支持: status_code, $.xxx(JSONPath), response_time")
-        parts.append("  operator支持: range, equals, not_equals, contains, not_contains, regex, not_empty, empty, exists, not_exists, gt, lt, gte, lte")
+        parts.append(
+            "  operator支持: range, equals, not_equals, contains, not_contains, regex, not_empty, empty, exists, not_exists, gt, lt, gte, lte"
+        )
         parts.append("  range值: 2xx/3xx(成功), 4xx(客户端错误), 5xx(服务端错误), 2xx, 3xx")
         parts.append("")
         parts.append("2.提取器格式(必须严格遵守):")
-        parts.append('  {"extractorType":"jsonpath","expression":"$.data.id","variableName":"user_id","defaultValue":""}')
+        parts.append(
+            '  {"extractorType":"jsonpath","expression":"$.data.id","variableName":"user_id","defaultValue":""}'
+        )
         parts.append("  extractorType支持: jsonpath, regex, header")
         parts.append("  变量名用variableName(不是variable/var_name)")
         parts.append("")
@@ -534,7 +550,9 @@ class AITestCaseGenerator:
         parts.append("  - 有minimum/maximum的参数,边界用边界值±1")
         parts.append("")
         parts.append("输出JSON:")
-        parts.append('{"cases":[{"name":"[正向]创建用户","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json","Authorization":"Bearer {{auth_token}}"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"2xx/3xx"},{"field":"$.code","operator":"equals","expected":"0"},{"field":"$.data.id","operator":"regex","expected":"^\\\\d+$"}],"extractors":[{"extractorType":"jsonpath","expression":"$.data.id","variableName":"user_id","defaultValue":""}],"description":"正常注册","api_index":0},{"name":"[鉴权]创建用户-无Token","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"4xx"},{"field":"$.detail","operator":"not_empty","expected":""}],"extractors":[],"description":"无Token请求应被拒绝","api_index":0},{"name":"[异常]创建用户-缺少必填","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json","Authorization":"Bearer {{auth_token}}"},"payload":{},"assert_rules":[{"field":"status_code","operator":"equals","expected":"422"},{"field":"$.detail","operator":"not_empty","expected":""}],"extractors":[],"description":"缺少必填字段","api_index":0}]}')
+        parts.append(
+            '{"cases":[{"name":"[正向]创建用户","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json","Authorization":"Bearer {{auth_token}}"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"2xx/3xx"},{"field":"$.code","operator":"equals","expected":"0"},{"field":"$.data.id","operator":"regex","expected":"^\\\\d+$"}],"extractors":[{"extractorType":"jsonpath","expression":"$.data.id","variableName":"user_id","defaultValue":""}],"description":"正常注册","api_index":0},{"name":"[鉴权]创建用户-无Token","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json"},"payload":{"username":"testuser01","password":"Test@123456"},"assert_rules":[{"field":"status_code","operator":"range","expected":"4xx"},{"field":"$.detail","operator":"not_empty","expected":""}],"extractors":[],"description":"无Token请求应被拒绝","api_index":0},{"name":"[异常]创建用户-缺少必填","method":"POST","url":"/api/users","headers":{"Content-Type":"application/json","Authorization":"Bearer {{auth_token}}"},"payload":{},"assert_rules":[{"field":"status_code","operator":"equals","expected":"422"},{"field":"$.detail","operator":"not_empty","expected":""}],"extractors":[],"description":"缺少必填字段","api_index":0}]}'
+        )
 
         if not include_boundary:
             parts.append("不生成边界用例。")
@@ -605,8 +623,13 @@ class AITestCaseGenerator:
                         temperature=reloaded.temperature,
                         group_id=reloaded.group_id,
                     )
-                    _logger.info("任务 %s 批次 %d 重载 AI 配置: provider=%s model=%s",
-                                 task_id, batch_idx + 1, params.provider, params.model)
+                    _logger.info(
+                        "任务 %s 批次 %d 重载 AI 配置: provider=%s model=%s",
+                        task_id,
+                        batch_idx + 1,
+                        params.provider,
+                        params.model,
+                    )
 
             start = batch_idx * BATCH_SIZE
             end = min(start + BATCH_SIZE, total_apis)
@@ -619,9 +642,7 @@ class AITestCaseGenerator:
                 api_copy["_global_index"] = start + i
                 batch_with_index.append(api_copy)
 
-            prompt = self._build_case_generation_prompt(
-                batch_with_index, parsed, analysis, options
-            )
+            prompt = self._build_case_generation_prompt(batch_with_index, parsed, analysis, options)
             messages = [
                 {
                     "role": "system",
@@ -685,11 +706,15 @@ class AITestCaseGenerator:
         for rel in analysis.get("relationships", [])[:10]:
             parts.append(f"关系:[{rel.get('from_api')}]->[{rel.get('to_api')}]: {rel.get('description', '')}")
         for flow in analysis.get("data_flow", [])[:10]:
-            parts.append(f"数据流:[{flow.get('source_api')}].{flow.get('source_field')})->[{flow.get('target_api')}].{flow.get('target_param')} var:{flow.get('variable_name', '')}")
+            parts.append(
+                f"数据流:[{flow.get('source_api')}].{flow.get('source_field')})->[{flow.get('target_api')}].{flow.get('target_param')} var:{flow.get('variable_name', '')}"
+            )
 
         # 资源分组 - 精简
         for group in analysis.get("resource_groups", [])[:10]:
-            parts.append(f"资源:{group.get('resource_name', '')}({group.get('resource_name_en', '')}) 接口{group.get('api_indices', [])}")
+            parts.append(
+                f"资源:{group.get('resource_name', '')}({group.get('resource_name_en', '')}) 接口{group.get('api_indices', [])}"
+            )
 
         # 已有用例摘要 - 限制数量
         parts.append(f"\n已有{len(all_cases)}个用例:")
@@ -701,12 +726,12 @@ class AITestCaseGenerator:
         parts.append("")
         parts.append("为每个资源生成CRUD场景链，步骤引用api_index，用use_variables传变量。")
         parts.append("输出JSON:")
-        parts.append('{"scenarios":[{"name":"用户CRUD流程","description":"创建→查询→更新→删除","steps":[{"api_index":0,"description":"创建用户","use_variables":{}},{"api_index":1,"description":"查询用户","use_variables":{"id":"{{user_id}}"}}]}]}')
+        parts.append(
+            '{"scenarios":[{"name":"用户CRUD流程","description":"创建→查询→更新→删除","steps":[{"api_index":0,"description":"创建用户","use_variables":{}},{"api_index":1,"description":"查询用户","use_variables":{"id":"{{user_id}}"}}]}]}'
+        )
         return "\n".join(parts)
 
-    async def _phase_generate_scenarios(
-        self, parsed: dict, analysis: dict, all_cases: list, params: AIParams
-    ) -> list:
+    async def _phase_generate_scenarios(self, parsed: dict, analysis: dict, all_cases: list, params: AIParams) -> list:
         """Phase 3: 生成场景链"""
         prompt = self._build_scenario_prompt(parsed, analysis, all_cases)
         messages = [
@@ -737,6 +762,7 @@ class AITestCaseGenerator:
 
         try:
             from fastapi_backend.core.database import AsyncSessionLocal as MainDBSession
+
             async with MainDBSession() as main_db:
                 config = await load_ai_config(main_db)
             params = resolve_ai_params(config)
@@ -779,6 +805,7 @@ async def _reload_ai_params(task_id: str) -> Optional[AIParams]:
     """每次批次调用前重新加载 AI 配置，让后管模型切换实时生效"""
     try:
         from fastapi_backend.core.database import AsyncSessionLocal as MainDBSession
+
         async with MainDBSession() as main_db:
             config = await load_ai_config(main_db)
         return resolve_ai_params(config)
@@ -790,6 +817,7 @@ async def _reload_ai_params(task_id: str) -> Optional[AIParams]:
 async def _check_cancelled(task_id: str) -> bool:
     """检查任务是否被取消"""
     from fastapi_backend.services.autotest_task_store import is_task_cancelled
+
     return is_task_cancelled(task_id)
 
 
@@ -827,6 +855,7 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
     # 加载 AI 配置
     try:
         from fastapi_backend.core.database import AsyncSessionLocal as MainDBSession
+
         async with MainDBSession() as main_db:
             config = await load_ai_config(main_db)
         params = resolve_ai_params(config)
@@ -875,10 +904,14 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
     )
     _logger.info(
         "AI 生成参数(流水线模式): provider=%s model=%s max_tokens=%d->%d timeout=%d->%d total_apis=%d batches=%d",
-        params.provider, params.model,
-        params.max_tokens, effective_params.max_tokens,
-        params.timeout, effective_params.timeout,
-        total_apis, total_batches,
+        params.provider,
+        params.model,
+        params.max_tokens,
+        effective_params.max_tokens,
+        params.timeout,
+        effective_params.timeout,
+        total_apis,
+        total_batches,
     )
 
     start_time = time.time()
@@ -925,8 +958,13 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
                         temperature=reloaded.temperature,
                         group_id=reloaded.group_id,
                     )
-                    _logger.info("任务 %s 批次 %d 重载 AI 配置: provider=%s model=%s",
-                                 task_id, batch_idx + 1, effective_params.provider, effective_params.model)
+                    _logger.info(
+                        "任务 %s 批次 %d 重载 AI 配置: provider=%s model=%s",
+                        task_id,
+                        batch_idx + 1,
+                        effective_params.provider,
+                        effective_params.model,
+                    )
 
             start = batch_idx * BATCH_SIZE
             end = min(start + BATCH_SIZE, total_apis)
@@ -981,9 +1019,7 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
                 start_time=start_time,
             )
 
-            prompt = generator._build_case_generation_prompt(
-                batch_with_index, parsed, accumulated_analysis, options
-            )
+            prompt = generator._build_case_generation_prompt(batch_with_index, parsed, accumulated_analysis, options)
             messages = [
                 {
                     "role": "system",
@@ -1026,7 +1062,10 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
 
             _logger.info(
                 "流水线批次 %d/%d 完成: 分析+生成，本批 %d 个用例，累计 %d 个",
-                batch_idx + 1, total_batches, len(batch_cases), len(all_cases),
+                batch_idx + 1,
+                total_batches,
+                len(batch_cases),
+                len(all_cases),
             )
 
         # ---- Phase 3: 生成场景链（所有批次完成后） ----
@@ -1046,7 +1085,9 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
                 cases=all_cases,
                 start_time=start_time,
             )
-            scenarios = await generator._phase_generate_scenarios(parsed, accumulated_analysis, all_cases, effective_params)
+            scenarios = await generator._phase_generate_scenarios(
+                parsed, accumulated_analysis, all_cases, effective_params
+            )
 
         # ---- 完成 ----
         elapsed = time.time() - start_time
@@ -1170,6 +1211,7 @@ async def _run_generation(task_id: str, swagger_data: dict, options: dict) -> No
 
 try:
     from fastapi_backend.celery_config import app as _celery_app
+
     _CELERY_AVAILABLE = True
 except ImportError:
     _CELERY_AVAILABLE = False
@@ -1180,9 +1222,11 @@ def _celery_task(*args, **kwargs):
     """当Celery不可用时，返回一个空装饰器"""
     if _CELERY_AVAILABLE and _celery_app is not None:
         return _celery_app.task(*args, **kwargs)
+
     def decorator(func):
         func._is_celery_task = False
         return func
+
     return decorator
 
 
@@ -1196,13 +1240,17 @@ def ai_generate_task(self, task_id: str, swagger_data: dict, options: dict):
         # 确保任务状态更新为失败
         try:
             from fastapi_backend.services.autotest_task_store import update_task, get_task_sync
+
             stored = get_task_sync(task_id) or {"task_id": task_id}
-            stored.update({
-                "status": "failed",
-                "error": str(e),
-                "message": f"生成失败: {str(e)[:200]}",
-            })
+            stored.update(
+                {
+                    "status": "failed",
+                    "error": str(e),
+                    "message": f"生成失败: {str(e)[:200]}",
+                }
+            )
             import asyncio as _aio
+
             _aio.run(update_task(task_id, stored))
         except Exception:
             pass

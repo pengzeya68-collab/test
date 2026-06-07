@@ -44,6 +44,7 @@ def _parse_swagger_content(content: bytes) -> dict:
     # 再尝试 YAML
     try:
         import yaml
+
         result = yaml.safe_load(text)
         if isinstance(result, dict):
             return result
@@ -117,7 +118,9 @@ async def generate_from_swagger(
             raise HTTPException(status_code=400, detail=str(e))
 
         if not isinstance(swagger_data, dict):
-            raise HTTPException(status_code=400, detail=f"解析结果不是有效的字典对象，类型: {type(swagger_data).__name__}")
+            raise HTTPException(
+                status_code=400, detail=f"解析结果不是有效的字典对象，类型: {type(swagger_data).__name__}"
+            )
 
         _logger.info("Swagger 解析成功, paths 数量: %d", len(swagger_data.get("paths", {})))
 
@@ -157,6 +160,7 @@ async def generate_from_swagger_url(
     """
     try:
         from fastapi_backend.core.ssrf_guard import validate_url_safety
+
         safe, reason = validate_url_safety(url)
         if not safe:
             raise HTTPException(status_code=400, detail=f"URL安全校验失败: {reason}")
@@ -169,7 +173,9 @@ async def generate_from_swagger_url(
             swagger_data = _parse_swagger_content(resp.content)
 
         if not isinstance(swagger_data, dict):
-            raise HTTPException(status_code=400, detail=f"URL 内容解析结果不是字典，类型: {type(swagger_data).__name__}")
+            raise HTTPException(
+                status_code=400, detail=f"URL 内容解析结果不是字典，类型: {type(swagger_data).__name__}"
+            )
 
         options = {
             "max_cases_per_api": max_cases_per_api,
@@ -189,7 +195,9 @@ async def generate_from_swagger_url(
         raise HTTPException(status_code=500, detail=f"启动失败: {type(e).__name__}: {str(e)}")
 
 
-async def _dispatch_generation_task(swagger_data: dict, options: dict, user_id: int, _batch_check=None, db=None) -> dict:
+async def _dispatch_generation_task(
+    swagger_data: dict, options: dict, user_id: int, _batch_check=None, db=None
+) -> dict:
     """创建任务记录并分发到 Celery 或本地异步执行"""
     task_id = create_task_id()
 
@@ -206,23 +214,26 @@ async def _dispatch_generation_task(swagger_data: dict, options: dict, user_id: 
         await confirm()  # 确认扣费
 
     # 初始化任务记录
-    await update_task(task_id, {
-        "task_id": task_id,
-        "status": "PENDING",
-        "progress": 0.0,
-        "phase": "pending",
-        "phase_label": "任务已提交，等待处理...",
-        "total_apis": total_apis,
-        "processed_apis": 0,
-        "total_batches": total_batches,
-        "current_batch": 0,
-        "cases": [],
-        "scenarios": [],
-        "message": "",
-        "error": None,
-        "created_at": time.time(),
-        "user_id": user_id,
-    })
+    await update_task(
+        task_id,
+        {
+            "task_id": task_id,
+            "status": "PENDING",
+            "progress": 0.0,
+            "phase": "pending",
+            "phase_label": "任务已提交，等待处理...",
+            "total_apis": total_apis,
+            "processed_apis": 0,
+            "total_batches": total_batches,
+            "current_batch": 0,
+            "cases": [],
+            "scenarios": [],
+            "message": "",
+            "error": None,
+            "created_at": time.time(),
+            "user_id": user_id,
+        },
+    )
 
     use_local = _should_run_locally()
 
@@ -232,6 +243,7 @@ async def _dispatch_generation_task(swagger_data: dict, options: dict, user_id: 
     else:
         try:
             from fastapi_backend.tasks import celery_app
+
             celery_app.send_task(
                 "fastapi_backend.services.autotest_ai_generator.ai_generate_task",
                 args=[task_id, swagger_data, options],
@@ -305,12 +317,15 @@ async def cancel_generation_task(
             "existing_cases": len(stored.get("cases", [])),
         }
 
-    await update_task(task_id, {
-        **stored,
-        "status": "cancelling",
-        "cancelled": True,
-        "phase_label": "正在中止生成任务...",
-    })
+    await update_task(
+        task_id,
+        {
+            **stored,
+            "status": "cancelling",
+            "cancelled": True,
+            "phase_label": "正在中止生成任务...",
+        },
+    )
 
     await cancel_task(task_id)
 
@@ -459,7 +474,9 @@ async def confirm_import(
                 linked_case = created_cases[api_index] if 0 <= api_index < len(created_cases) else None
 
                 if linked_case is None:
-                    _logger.warning(f"场景 '{scenario_data.get('name')}' 步骤 {step_idx} 的 api_index={api_index} 越界，跳过该步骤")
+                    _logger.warning(
+                        f"场景 '{scenario_data.get('name')}' 步骤 {step_idx} 的 api_index={api_index} 越界，跳过该步骤"
+                    )
                     continue
 
                 step = AutoTestScenarioStep(

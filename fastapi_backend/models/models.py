@@ -410,7 +410,9 @@ class Submission(Base):
     )
     score = Column(Integer, nullable=True, comment="AI评分 (0-100)")
     feedback = Column(Text, nullable=True, comment="AI反馈")
-    feedback_json = Column(Text, nullable=True, comment="AI结构化反馈 JSON: {score, feedback, strengths[], weaknesses[], suggestion}")
+    feedback_json = Column(
+        Text, nullable=True, comment="AI结构化反馈 JSON: {score, feedback, strengths[], weaknesses[], suggestion}"
+    )
     execution_result = Column(Text, nullable=True, comment="执行结果 JSON 格式")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(
@@ -636,10 +638,14 @@ class Like(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "post_id", name="uq_likes_user_post"),
         UniqueConstraint("user_id", "comment_id", name="uq_likes_user_comment"),
-        Index("uq_likes_user_post_not_null", "user_id", "post_id", unique=True,
-              postgresql_where=post_id.isnot(None)),
-        Index("uq_likes_user_comment_not_null", "user_id", "comment_id", unique=True,
-              postgresql_where=comment_id.isnot(None)),
+        Index("uq_likes_user_post_not_null", "user_id", "post_id", unique=True, postgresql_where=post_id.isnot(None)),
+        Index(
+            "uq_likes_user_comment_not_null",
+            "user_id",
+            "comment_id",
+            unique=True,
+            postgresql_where=comment_id.isnot(None),
+        ),
     )
 
 
@@ -1241,7 +1247,9 @@ class AIPointsConfig(Base):
     points_cost = Column(Integer, nullable=False, default=1, comment="积分消耗")
     description = Column(String(255), nullable=True, comment="功能说明")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
+    )
 
 
 class PointsTransaction(Base):
@@ -1253,7 +1261,12 @@ class PointsTransaction(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     amount = Column(Integer, nullable=False, comment="变动数量（正数=收入，负数=支出）")
     balance_after = Column(Integer, nullable=False, comment="变动后余额")
-    tx_type = Column(String(30), nullable=False, index=True, comment="类型: checkin/project/purchase/admin_grant/admin_deduct/ai_usage/refund")
+    tx_type = Column(
+        String(30),
+        nullable=False,
+        index=True,
+        comment="类型: checkin/project/purchase/admin_grant/admin_deduct/ai_usage/refund",
+    )
     source = Column(String(100), nullable=True, comment="来源描述")
     related_feature = Column(String(50), nullable=True, comment="关联的AI功能标识")
     note = Column(String(255), nullable=True, comment="备注")
@@ -1295,7 +1308,9 @@ class AuditLog(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, comment="操作用户ID")
     admin_id = Column(Integer, nullable=True, comment="管理员ID")
     action = Column(String(200), nullable=False, comment="操作描述")
-    action_type = Column(String(50), nullable=False, default="other", comment="操作类型: backup/user_management/system/other")
+    action_type = Column(
+        String(50), nullable=False, default="other", comment="操作类型: backup/user_management/system/other"
+    )
     detail = Column(Text, nullable=True, comment="操作详情")
     ip_address = Column(String(50), nullable=True, comment="操作IP地址")
     status = Column(String(20), nullable=True, default="success", comment="操作状态: success/failed")

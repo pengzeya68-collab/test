@@ -4,6 +4,7 @@ JMeter 调试执行器 - 后端代理 HTTP 请求
 解决跨域问题：前端通过后端代理发请求，不在浏览器直接发
 返回完整的请求/响应详情，作为 JMeter 调试器的执行引擎
 """
+
 import time
 import json
 from typing import Dict, Any, Optional
@@ -27,21 +28,21 @@ async def debug_execute_request(
 ):
     """
     代理执行 HTTP 请求并返回详细结果
-    
+
     用于 JMeter 调试器：前端发送请求参数 → 后端代理执行 → 返回完整响应
-    
+
     Request Body:
         method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
         url: "https://api.example.com/users"
         headers: {"Content-Type": "application/json"}
         body: "..."  (请求体字符串)
         timeout: 30  (超时秒数，默认 30)
-    
+
     Response:
         status_code, headers, body, elapsed_ms, size_bytes, error
     """
     import aiohttp
-    
+
     method = body.get("method", "GET").upper()
     url = body.get("url", "")
     headers = body.get("headers", {}) or {}
@@ -51,7 +52,9 @@ async def debug_execute_request(
     # 校验 HTTP 方法
     allowed_methods = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
     if method not in allowed_methods:
-        raise HTTPException(status_code=400, detail=f"不支持的 HTTP 方法: {method}，仅支持 {', '.join(sorted(allowed_methods))}")
+        raise HTTPException(
+            status_code=400, detail=f"不支持的 HTTP 方法: {method}，仅支持 {', '.join(sorted(allowed_methods))}"
+        )
 
     # 校验超时范围
     try:
@@ -60,14 +63,14 @@ async def debug_execute_request(
             timeout = 30
     except (TypeError, ValueError):
         timeout = 30
-    
+
     if not url:
         raise HTTPException(status_code=400, detail="请提供 URL")
-    
+
     safe, reason = validate_url_safety(url)
     if not safe:
         raise HTTPException(status_code=400, detail=reason)
-    
+
     start = time.time()
     result = {
         "request": {
@@ -76,20 +79,20 @@ async def debug_execute_request(
             "headers": headers,
             "body": request_body[:5000],
         },
-        "response": {}
+        "response": {},
     }
-    
+
     try:
         timeout_obj = aiohttp.ClientTimeout(total=timeout)
         async with aiohttp.ClientSession() as session:
             request_kw = {"headers": headers, "timeout": timeout_obj}
             if request_body and method in ("POST", "PUT", "PATCH", "DELETE"):
                 request_kw["data"] = request_body
-            
+
             async with session.request(method, url, **request_kw) as resp:
                 elapsed = round((time.time() - start) * 1000)
                 resp_body = await resp.text()
-                
+
                 result["response"] = {
                     "status_code": resp.status,
                     "status_text": resp.reason,
@@ -122,7 +125,7 @@ async def debug_execute_request(
             "error": str(e),
             "elapsed_ms": elapsed,
         }
-    
+
     return result
 
 
@@ -137,7 +140,9 @@ async def debug_execute_from_case(
     from fastapi_backend.models.autotest import AutoTestEnvironment
     from fastapi_backend.utils.parser import replace_variables
 
-    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id))
+    result = await db.execute(
+        select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id)
+    )
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
@@ -147,10 +152,18 @@ async def debug_execute_from_case(
     base_url = ""
     env_vars = {}
     if env_id:
-        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id, AutoTestEnvironment.user_id == current_user.id))
+        result = await db.execute(
+            select(AutoTestEnvironment).where(
+                AutoTestEnvironment.id == env_id, AutoTestEnvironment.user_id == current_user.id
+            )
+        )
         env = result.scalar_one_or_none()
     if env is None:
-        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id))
+        result = await db.execute(
+            select(AutoTestEnvironment).where(
+                AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id
+            )
+        )
         env = result.scalars().first()
 
     if env:
@@ -196,7 +209,7 @@ async def debug_execute_from_case(
             url=url,
             headers=convert_to_dict(headers),
             body=body_str or None,
-            body_type=getattr(case, 'body_type', 'json') or 'json',
+            body_type=getattr(case, "body_type", "json") or "json",
             env_id=env_id,
             user_id=current_user.id,
         )

@@ -3,10 +3,10 @@
 
 一键 Ping 所有配置的环境，快速定位环境问题
 """
+
 import time
 import asyncio
-from urllib.parse import urlparse
-from typing import Dict, Any, List
+from typing import Dict, List
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -25,6 +25,7 @@ def _parse_env_url(env: AutoTestEnvironment) -> str:
     config = env.config or {}
     if isinstance(config, str):
         import json
+
         try:
             config = json.loads(config)
         except Exception:
@@ -46,9 +47,16 @@ async def _check_single(url: str, timeout: float = 5.0) -> Dict:
 
     # SSRF 安全校验
     from fastapi_backend.core.ssrf_guard import validate_url_safety
+
     safe, reason = validate_url_safety(url)
     if not safe:
-        return {"url": url, "status": "unhealthy", "status_code": None, "response_time_ms": 0, "error": f"URL安全校验失败: {reason}"}
+        return {
+            "url": url,
+            "status": "unhealthy",
+            "status_code": None,
+            "response_time_ms": 0,
+            "error": f"URL安全校验失败: {reason}",
+        }
 
     start = time.time()
     try:
@@ -57,14 +65,22 @@ async def _check_single(url: str, timeout: float = 5.0) -> Dict:
                 elapsed = round((time.time() - start) * 1000)
                 return {
                     "url": url,
-                    "status": "healthy" if 200 <= resp.status < 300 else ("degraded" if 300 <= resp.status < 400 else "unhealthy"),
+                    "status": "healthy"
+                    if 200 <= resp.status < 300
+                    else ("degraded" if 300 <= resp.status < 400 else "unhealthy"),
                     "status_code": resp.status,
                     "response_time_ms": elapsed,
                     "error": None,
                 }
     except asyncio.TimeoutError:
         elapsed = round((time.time() - start) * 1000)
-        return {"url": url, "status": "unhealthy", "status_code": None, "response_time_ms": elapsed, "error": "连接超时"}
+        return {
+            "url": url,
+            "status": "unhealthy",
+            "status_code": None,
+            "response_time_ms": elapsed,
+            "error": "连接超时",
+        }
     except Exception as e:
         elapsed = round((time.time() - start) * 1000)
         return {"url": url, "status": "unhealthy", "status_code": None, "response_time_ms": elapsed, "error": str(e)}
@@ -78,9 +94,7 @@ async def health_check_all(
     """一键检查所有环境的健康状态"""
     results: List[Dict] = []
 
-    result = await db.execute(
-        select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id)
-    )
+    result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id))
     envs = result.scalars().all()
 
     # 并发执行环境检查
@@ -89,15 +103,17 @@ async def health_check_all(
     for env in envs:
         url = _parse_env_url(env)
         if not url:
-            results.append({
-                "env_id": env.id,
-                "env_name": env.env_name,
-                "status": "unknown",
-                "url": "未配置",
-                "status_code": None,
-                "response_time_ms": 0,
-                "error": "该环境未配置 base_url",
-            })
+            results.append(
+                {
+                    "env_id": env.id,
+                    "env_name": env.env_name,
+                    "status": "unknown",
+                    "url": "未配置",
+                    "status_code": None,
+                    "response_time_ms": 0,
+                    "error": "该环境未配置 base_url",
+                }
+            )
         else:
             check_tasks.append(_check_single(url))
             env_info.append(env)
@@ -140,6 +156,7 @@ async def health_check_single(
     env = result.scalar_one_or_none()
     if not env:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="环境不存在")
 
     url = _parse_env_url(env)

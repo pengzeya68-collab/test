@@ -55,37 +55,35 @@ def export_openapi(cases: List[Dict], title: str = "TestMaster API", version: st
             elif body_type in ("xml", "raw_xml"):
                 content_type = "application/xml"
 
-            request_body = {
-                "content": {
-                    content_type: {
-                        "schema": _json_to_schema(payload)
-                    }
-                }
-            }
+            request_body = {"content": {content_type: {"schema": _json_to_schema(payload)}}}
 
         # 构建参数
         parameters = []
         params = case.get("params")
         if params and isinstance(params, dict):
             for k, v in params.items():
-                parameters.append({
-                    "name": k,
-                    "in": "query",
-                    "schema": {"type": _guess_type(v)},
-                    "example": v,
-                })
+                parameters.append(
+                    {
+                        "name": k,
+                        "in": "query",
+                        "schema": {"type": _guess_type(v)},
+                        "example": v,
+                    }
+                )
 
         # 构建 headers
         headers = case.get("headers")
         if headers and isinstance(headers, dict):
             for k, v in headers.items():
                 if k.lower() not in ("content-type", "authorization"):
-                    parameters.append({
-                        "name": k,
-                        "in": "header",
-                        "schema": {"type": "string"},
-                        "example": v,
-                    })
+                    parameters.append(
+                        {
+                            "name": k,
+                            "in": "header",
+                            "schema": {"type": "string"},
+                            "example": v,
+                        }
+                    )
 
         operation = {
             "summary": name,
@@ -93,15 +91,8 @@ def export_openapi(cases: List[Dict], title: str = "TestMaster API", version: st
             "operationId": f"{method}_{path.replace('/', '_').strip('_')}",
             "tags": [case.get("group_name", "default")],
             "responses": {
-                "200": {
-                    "description": "成功",
-                    "content": {
-                        "application/json": {
-                            "schema": {"type": "object"}
-                        }
-                    }
-                }
-            }
+                "200": {"description": "成功", "content": {"application/json": {"schema": {"type": "object"}}}}
+            },
         }
 
         if parameters:
@@ -126,12 +117,12 @@ def export_python_code(cases: List[Dict]) -> str:
     """将用例列表导出为 Python requests 代码"""
     lines = [
         '"""',
-        '由 TestMaster 自动生成的 API 测试代码',
+        "由 TestMaster 自动生成的 API 测试代码",
         '"""',
-        'import requests',
-        'import json',
-        '',
-        '',
+        "import requests",
+        "import json",
+        "",
+        "",
     ]
 
     for i, case in enumerate(cases):
@@ -140,45 +131,45 @@ def export_python_code(cases: List[Dict]) -> str:
         headers = case.get("headers", {})
         payload = case.get("payload")
         body_type = case.get("body_type", "none")
-        name = case.get("name", f"test_case_{i+1}")
+        name = case.get("name", f"test_case_{i + 1}")
 
         # 函数名
-        func_name = re.sub(r'[^a-zA-Z0-9_]', '_', name.lower()).strip('_')
+        func_name = re.sub(r"[^a-zA-Z0-9_]", "_", name.lower()).strip("_")
         if not func_name:
-            func_name = f"test_case_{i+1}"
+            func_name = f"test_case_{i + 1}"
 
-        lines.append(f'def {func_name}():')
+        lines.append(f"def {func_name}():")
         lines.append(f'    """{name}"""')
         lines.append(f'    url = "{url}"')
 
         if headers:
-            lines.append(f'    headers = {json.dumps(headers, ensure_ascii=False)}')
+            lines.append(f"    headers = {json.dumps(headers, ensure_ascii=False)}")
         else:
-            lines.append(f'    headers = {{}}')
+            lines.append("    headers = {}")
 
         if payload and method in ("POST", "PUT", "PATCH"):
             if body_type == "form-data":
-                lines.append(f'    data = {json.dumps(payload, ensure_ascii=False)}')
-                lines.append(f'    response = requests.{method.lower()}(url, headers=headers, data=data)')
+                lines.append(f"    data = {json.dumps(payload, ensure_ascii=False)}")
+                lines.append(f"    response = requests.{method.lower()}(url, headers=headers, data=data)")
             elif body_type == "graphql":
                 graphql_body = {"query": payload.get("query", "") if isinstance(payload, dict) else str(payload)}
                 if isinstance(payload, dict) and "variables" in payload:
                     graphql_body["variables"] = payload["variables"]
-                lines.append(f'    payload = {json.dumps(graphql_body, ensure_ascii=False)}')
-                lines.append(f'    response = requests.{method.lower()}(url, headers=headers, json=payload)')
+                lines.append(f"    payload = {json.dumps(graphql_body, ensure_ascii=False)}")
+                lines.append(f"    response = requests.{method.lower()}(url, headers=headers, json=payload)")
             else:
-                lines.append(f'    payload = {json.dumps(payload, ensure_ascii=False)}')
-                lines.append(f'    response = requests.{method.lower()}(url, headers=headers, json=payload)')
+                lines.append(f"    payload = {json.dumps(payload, ensure_ascii=False)}")
+                lines.append(f"    response = requests.{method.lower()}(url, headers=headers, json=payload)")
         else:
-            lines.append(f'    response = requests.{method.lower()}(url, headers=headers)')
+            lines.append(f"    response = requests.{method.lower()}(url, headers=headers)")
 
-        lines.append(f'    print(f"Status: {{response.status_code}}")')
-        lines.append(f'    print(f"Body: {{response.text[:500]}}")')
-        lines.append(f'    return response')
-        lines.append('')
-        lines.append('')
+        lines.append('    print(f"Status: {response.status_code}")')
+        lines.append('    print(f"Body: {response.text[:500]}")')
+        lines.append("    return response")
+        lines.append("")
+        lines.append("")
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def export_curl(cases: List[Dict]) -> List[str]:
@@ -204,7 +195,9 @@ def export_curl(cases: List[Dict]) -> List[str]:
                     v_escaped = str(v).replace('"', '\\"')
                     parts.append(f'  -d "{k}={v_escaped}"')
             else:
-                body_str = json.dumps(payload, ensure_ascii=False) if isinstance(payload, (dict, list)) else str(payload)
+                body_str = (
+                    json.dumps(payload, ensure_ascii=False) if isinstance(payload, (dict, list)) else str(payload)
+                )
                 # 转义 body 中的单引号
                 body_escaped = body_str.replace("'", "'\\''")
                 parts.append(f"  --data-raw '{body_escaped}'")
@@ -218,7 +211,7 @@ def _json_to_schema(value: Any, _depth: int = 0) -> Dict:
     """将 JSON 值转换为 OpenAPI Schema（带深度限制防止循环引用）"""
     if _depth > 10:
         return {"type": "object"}
-    
+
     if isinstance(value, dict):
         properties = {}
         for k, v in value.items():
@@ -263,7 +256,7 @@ def export_enhanced_api_doc(
 ) -> Dict:
     """
     导出增强的 API 文档（超越 Apifox 的核心功能）
-    
+
     联动特性：
     - 真实执行数据示例（从执行历史提取）
     - Mock 服务关联提示
@@ -324,7 +317,7 @@ def export_enhanced_api_doc(
                         "schema": schema,
                         "example": example_value,
                     }
-                }
+                },
             }
 
         # ========== 构建参数 ==========
@@ -332,25 +325,29 @@ def export_enhanced_api_doc(
         params = case.get("params")
         if params and isinstance(params, dict):
             for k, v in params.items():
-                parameters.append({
-                    "name": k,
-                    "in": "query",
-                    "required": False,
-                    "schema": {"type": _guess_type(v)},
-                    "example": v,
-                    "description": f"查询参数: {k}",
-                })
+                parameters.append(
+                    {
+                        "name": k,
+                        "in": "query",
+                        "required": False,
+                        "schema": {"type": _guess_type(v)},
+                        "example": v,
+                        "description": f"查询参数: {k}",
+                    }
+                )
 
         headers = case.get("headers")
         if headers and isinstance(headers, dict):
             for k, v in headers.items():
                 if k.lower() not in ("content-type", "authorization"):
-                    parameters.append({
-                        "name": k,
-                        "in": "header",
-                        "schema": {"type": "string"},
-                        "example": v,
-                    })
+                    parameters.append(
+                        {
+                            "name": k,
+                            "in": "header",
+                            "schema": {"type": "string"},
+                            "example": v,
+                        }
+                    )
 
         # ========== 构建响应（从真实执行历史提取） ==========
         responses = {}
@@ -378,14 +375,7 @@ def export_enhanced_api_doc(
 
         if not responses:
             responses = {
-                "200": {
-                    "description": "成功",
-                    "content": {
-                        "application/json": {
-                            "schema": {"type": "object"}
-                        }
-                    }
-                }
+                "200": {"description": "成功", "content": {"application/json": {"schema": {"type": "object"}}}}
             }
 
         # ========== 构建 operation ==========
@@ -418,7 +408,7 @@ def export_enhanced_api_doc(
                     if space_idx == -1:
                         continue
                     rule_method = rule_key[:space_idx]
-                    rule_path = rule_key[space_idx + 1:]
+                    rule_path = rule_key[space_idx + 1 :]
                     if rule_method != method.upper():
                         continue
                     # 支持 * 通配符匹配
@@ -436,24 +426,25 @@ def export_enhanced_api_doc(
 
         # 2. 场景流程关联
         if scenarios and case_id is not None:
-            related_scenarios = [s for s in scenarios if any(
-                step.get("api_case_id") == case_id for step in s.get("steps", [])
-            )]
+            related_scenarios = [
+                s for s in scenarios if any(step.get("api_case_id") == case_id for step in s.get("steps", []))
+            ]
             if related_scenarios:
                 x_testmaster["scenarios"] = []
                 for s in related_scenarios:
                     # 找到该用例在场景中的步骤顺序，使用默认值避免 StopIteration
                     matching_steps = [
-                        step.get("step_order", 0) for step in s.get("steps", [])
-                        if step.get("api_case_id") == case_id
+                        step.get("step_order", 0) for step in s.get("steps", []) if step.get("api_case_id") == case_id
                     ]
                     step_order = matching_steps[0] if matching_steps else 0
-                    x_testmaster["scenarios"].append({
-                        "id": s["id"],
-                        "name": s["name"],
-                        "description": s.get("description"),
-                        "step_order": step_order,
-                    })
+                    x_testmaster["scenarios"].append(
+                        {
+                            "id": s["id"],
+                            "name": s["name"],
+                            "description": s.get("description"),
+                            "step_order": step_order,
+                        }
+                    )
 
         # 3. 性能指标（来自 JMeter 测试）
         if performance_metrics and case_id in performance_metrics:
@@ -472,7 +463,9 @@ def export_enhanced_api_doc(
             url_text = url
             # payload 可能是 dict/list/str/None，统一转为字符串进行匹配
             if payload is not None:
-                payload_text = json.dumps(payload, ensure_ascii=False) if isinstance(payload, (dict, list)) else str(payload)
+                payload_text = (
+                    json.dumps(payload, ensure_ascii=False) if isinstance(payload, (dict, list)) else str(payload)
+                )
             else:
                 payload_text = ""
             headers_text = json.dumps(headers, ensure_ascii=False) if headers and isinstance(headers, dict) else ""
@@ -481,11 +474,13 @@ def export_enhanced_api_doc(
             for var in global_variables:
                 var_name = var.get("name", "")
                 if f"${{{var_name}}}" in all_text or f"${var_name}" in all_text:
-                    var_refs.append({
-                        "name": var_name,
-                        "description": var.get("description"),
-                        "is_encrypted": var.get("is_encrypted", False),
-                    })
+                    var_refs.append(
+                        {
+                            "name": var_name,
+                            "description": var.get("description"),
+                            "is_encrypted": var.get("is_encrypted", False),
+                        }
+                    )
 
             if var_refs:
                 x_testmaster["global_variables"] = var_refs

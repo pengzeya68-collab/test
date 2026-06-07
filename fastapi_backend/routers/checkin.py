@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
@@ -149,7 +149,7 @@ async def checkin_status(
         yesterday = today - timedelta(days=1)
         checkin_date = latest_checkin.checkin_date
         # 统一转为 date 类型比较，避免 datetime vs date 报错
-        if hasattr(checkin_date, 'date'):
+        if hasattr(checkin_date, "date"):
             checkin_date = checkin_date.date()
         if checkin_date >= yesterday:
             current_streak = latest_checkin.streak_count

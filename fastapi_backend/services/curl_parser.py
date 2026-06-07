@@ -6,7 +6,6 @@ cURL 命令解析器
 - 支持 -X, -H, -d, --data-raw, -u, --url 等参数
 """
 
-import re
 import shlex
 from urllib.parse import unquote
 from typing import Any, Dict
@@ -53,7 +52,6 @@ def parse_curl(curl_string: str) -> Dict[str, Any]:
     body_str = None
     body_type = "none"
     content_type = "application/json"
-    auth = None
 
     i = 0
     while i < len(tokens):
@@ -88,6 +86,7 @@ def parse_curl(curl_string: str) -> Dict[str, Any]:
                 # 尝试解析为 JSON
                 try:
                     import json
+
                     body = json.loads(body_str)
                     body_type = "raw"
                     content_type = "application/json"
@@ -109,6 +108,7 @@ def parse_curl(curl_string: str) -> Dict[str, Any]:
             i += 1
             if i < len(tokens):
                 import base64
+
                 auth_str = tokens[i]
                 encoded = base64.b64encode(auth_str.encode()).decode()
                 headers["Authorization"] = f"Basic {encoded}"

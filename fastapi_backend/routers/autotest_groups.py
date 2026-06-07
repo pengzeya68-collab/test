@@ -4,6 +4,7 @@ AutoTest 统一路由 - 分组管理
 路径前缀: /api/auto-test/groups
 映射原 auto_test_platform 的 /api/groups
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -74,9 +75,7 @@ async def get_all_groups(
 ):
     """获取所有分组列表（扁平结构）"""
     result = await db.execute(
-        select(AutoTestGroup)
-        .where(AutoTestGroup.user_id == current_user.id)
-        .order_by(AutoTestGroup.name)
+        select(AutoTestGroup).where(AutoTestGroup.user_id == current_user.id).order_by(AutoTestGroup.name)
     )
     groups = result.scalars().all()
     return [
@@ -97,7 +96,9 @@ async def get_group(
     db: AsyncSession = Depends(get_db),
 ):
     """获取单个分组详情"""
-    result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id))
+    result = await db.execute(
+        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
+    )
     group = result.scalar_one_or_none()
     if not group:
         raise HTTPException(status_code=404, detail="分组不存在")
@@ -119,7 +120,9 @@ async def create_group(
     # 校验 parent_id 归属当前用户
     if group_in.parent_id is not None:
         parent_result = await db.execute(
-            select(AutoTestGroup).where(AutoTestGroup.id == group_in.parent_id, AutoTestGroup.user_id == current_user.id)
+            select(AutoTestGroup).where(
+                AutoTestGroup.id == group_in.parent_id, AutoTestGroup.user_id == current_user.id
+            )
         )
         if not parent_result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="父分组不存在或不属于当前用户")
@@ -144,7 +147,9 @@ async def update_group(
     db: AsyncSession = Depends(get_db),
 ):
     """更新分组"""
-    result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id))
+    result = await db.execute(
+        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
+    )
     group = result.scalar_one_or_none()
     if not group:
         raise HTTPException(status_code=404, detail="分组不存在")
@@ -164,8 +169,7 @@ async def update_group(
             visited.add(current_parent_id)
             parent_result = await db.execute(
                 select(AutoTestGroup).where(
-                    AutoTestGroup.id == current_parent_id,
-                    AutoTestGroup.user_id == current_user.id
+                    AutoTestGroup.id == current_parent_id, AutoTestGroup.user_id == current_user.id
                 )
             )
             parent_group = parent_result.scalar_one_or_none()
@@ -190,19 +194,25 @@ async def delete_group(
     db: AsyncSession = Depends(get_db),
 ):
     """删除分组（级联删除分组下的用例，并解除场景步骤引用）"""
-    result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id))
+    result = await db.execute(
+        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
+    )
     group = result.scalar_one_or_none()
     if not group:
         raise HTTPException(status_code=404, detail="分组不存在")
 
     # 检查是否有子分组
-    child_result = await db.execute(select(AutoTestGroup).filter(AutoTestGroup.parent_id == group_id, AutoTestGroup.user_id == current_user.id))
+    child_result = await db.execute(
+        select(AutoTestGroup).filter(AutoTestGroup.parent_id == group_id, AutoTestGroup.user_id == current_user.id)
+    )
     children = child_result.scalars().all()
     if children:
         raise HTTPException(status_code=400, detail="请先删除子分组")
 
     # 查找分组下所有用例
-    cases_result = await db.execute(select(AutoTestCase).filter(AutoTestCase.group_id == group_id, AutoTestCase.user_id == current_user.id))
+    cases_result = await db.execute(
+        select(AutoTestCase).filter(AutoTestCase.group_id == group_id, AutoTestCase.user_id == current_user.id)
+    )
     cases = cases_result.scalars().all()
 
     if cases:
@@ -211,10 +221,7 @@ async def delete_group(
         steps_result = await db.execute(
             select(AutoTestScenarioStep)
             .join(AutoTestScenario, AutoTestScenarioStep.scenario_id == AutoTestScenario.id)
-            .where(
-                AutoTestScenarioStep.api_case_id.in_(case_ids),
-                AutoTestScenario.user_id == current_user.id
-            )
+            .where(AutoTestScenarioStep.api_case_id.in_(case_ids), AutoTestScenario.user_id == current_user.id)
         )
         for step in steps_result.scalars().all():
             step.api_case_id = None

@@ -243,12 +243,18 @@ async def check_and_unlock_achievements(user_id: int, db: AsyncSession):
             # all_rounder: 所有技能维度得分>=60
             if user.assessment_score and user.assessment_score > 0:
                 try:
-                    profile = json.loads(user.skill_profile) if isinstance(user.skill_profile, str) else user.skill_profile
+                    profile = (
+                        json.loads(user.skill_profile) if isinstance(user.skill_profile, str) else user.skill_profile
+                    )
                     if profile and isinstance(profile, dict):
                         dims = profile.get("dimensions", {})
                         if ach.key == "skill_80" and any(v >= 80 for v in dims.values() if isinstance(v, (int, float))):
                             should_unlock = True
-                        elif ach.key == "all_rounder" and dims and all(v >= 60 for v in dims.values() if isinstance(v, (int, float))):
+                        elif (
+                            ach.key == "all_rounder"
+                            and dims
+                            and all(v >= 60 for v in dims.values() if isinstance(v, (int, float)))
+                        ):
                             should_unlock = True
                 except (json.JSONDecodeError, TypeError, AttributeError):
                     pass
@@ -261,7 +267,9 @@ async def check_and_unlock_achievements(user_id: int, db: AsyncSession):
                 # 原子更新用户经验值
                 if ach.exp_reward and ach.exp_reward > 0:
                     await db.execute(
-                        update(User).where(User.id == user_id).values(score=func.coalesce(User.score, 0) + ach.exp_reward)
+                        update(User)
+                        .where(User.id == user_id)
+                        .values(score=func.coalesce(User.score, 0) + ach.exp_reward)
                     )
             except Exception:
                 pass  # 并发场景下IntegrityError忽略

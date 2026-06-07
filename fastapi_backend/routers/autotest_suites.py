@@ -3,10 +3,11 @@
 
 创建、管理、执行测试套件（多个场景的集合）
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any, List
+from typing import Dict, Any
 from datetime import datetime, timezone
 import asyncio
 
@@ -39,13 +40,19 @@ async def list_suites(current_user: User = Depends(get_current_active_user)):
 
 
 @router.post("")
-async def create_suite(body: Dict[str, Any], current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_autotest_db)):
+async def create_suite(
+    body: Dict[str, Any],
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_autotest_db),
+):
     """创建测试套件"""
     scenario_ids = body.get("scenario_ids", [])
     # 校验每个 scenario_id 是否存在
     if scenario_ids:
         for sid in scenario_ids:
-            result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == sid, AutoTestScenario.user_id == current_user.id))
+            result = await db.execute(
+                select(AutoTestScenario).where(AutoTestScenario.id == sid, AutoTestScenario.user_id == current_user.id)
+            )
             if result.scalar_one_or_none() is None:
                 raise HTTPException(400, f"场景 {sid} 不存在或无权访问")
 
@@ -77,7 +84,9 @@ async def delete_suite(suite_id: int, current_user: User = Depends(get_current_a
 
 
 @router.get("/{suite_id}")
-async def get_suite(suite_id: int, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_autotest_db)):
+async def get_suite(
+    suite_id: int, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_autotest_db)
+):
     """获取套件详情（含场景名称）"""
     async with _suites_lock:
         suite = _suites.get(suite_id)
@@ -88,13 +97,17 @@ async def get_suite(suite_id: int, current_user: User = Depends(get_current_acti
     # 获取场景名称
     scenario_details = []
     for sid in scenario_ids:
-        result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == sid, AutoTestScenario.user_id == current_user.id))
+        result = await db.execute(
+            select(AutoTestScenario).where(AutoTestScenario.id == sid, AutoTestScenario.user_id == current_user.id)
+        )
         sc = result.scalar_one_or_none()
-        scenario_details.append({
-            "id": sid,
-            "name": sc.name if sc else f"场景{sid}(已删除或无权访问)",
-            "active": sc.is_active if sc else False,
-        })
+        scenario_details.append(
+            {
+                "id": sid,
+                "name": sc.name if sc else f"场景{sid}(已删除或无权访问)",
+                "active": sc.is_active if sc else False,
+            }
+        )
 
     async with _suites_lock:
         suite = _suites.get(suite_id, suite)
@@ -102,7 +115,9 @@ async def get_suite(suite_id: int, current_user: User = Depends(get_current_acti
 
 
 @router.post("/{suite_id}/run")
-async def run_suite(suite_id: int, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_autotest_db)):
+async def run_suite(
+    suite_id: int, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_autotest_db)
+):
     """执行回归测试套件"""
     async with _suites_lock:
         suite = _suites.get(suite_id)
@@ -122,7 +137,9 @@ async def run_suite(suite_id: int, current_user: User = Depends(get_current_acti
     failed = 0
 
     for sid in scenario_ids:
-        result = await db.execute(select(AutoTestScenario).where(AutoTestScenario.id == sid, AutoTestScenario.user_id == current_user.id))
+        result = await db.execute(
+            select(AutoTestScenario).where(AutoTestScenario.id == sid, AutoTestScenario.user_id == current_user.id)
+        )
         sc = result.scalar_one_or_none()
         if not sc:
             scenario_result = {
@@ -149,9 +166,11 @@ async def run_suite(suite_id: int, current_user: User = Depends(get_current_acti
 
         # 实际执行场景
         import time as _time
+
         t0 = _time.time()
         try:
             from fastapi_backend.services.autotest_scenario_runner import run_scenario as _run_scenario
+
             exec_result = await _run_scenario(sid, env_id=None, user_id=current_user.id)
             duration_ms = int((_time.time() - t0) * 1000)
             exec_failed = exec_result.get("failed_steps", 0) > 0

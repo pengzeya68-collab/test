@@ -7,6 +7,7 @@ from datetime import datetime
 
 # ──────────── 积分配置 ────────────
 
+
 class AIPointsConfigResponse(BaseModel):
     feature: str
     display_name: str
@@ -24,6 +25,7 @@ class AIPointsConfigUpdate(BaseModel):
 
 
 # ──────────── 使用日志 ────────────
+
 
 class AIUsageLogResponse(BaseModel):
     id: int
@@ -46,6 +48,7 @@ class AIUsageStatsResponse(BaseModel):
 
 
 # ──────────── 积分流水 ────────────
+
 
 class PointsTransactionResponse(BaseModel):
     id: int
@@ -71,6 +74,7 @@ class PointsBalanceResponse(BaseModel):
 
 class PointsPurchaseRequest(BaseModel):
     """管理员手动充值"""
+
     user_id: int = Field(..., description="用户ID")
     amount: int = Field(..., gt=0, description="充值积分数量")
     note: Optional[str] = Field(None, max_length=255, description="备注")
@@ -78,6 +82,7 @@ class PointsPurchaseRequest(BaseModel):
 
 class PointsPageResponse(BaseModel):
     """积分流水列表响应"""
+
     items: list[PointsTransactionResponse]
     total: int
     page: int
@@ -86,5 +91,6 @@ class PointsPageResponse(BaseModel):
 
 class UserUsageStatsResponse(BaseModel):
     """用户 AI 使用统计"""
+
     items: list[AIUsageStatsResponse]
     total_points_used: int

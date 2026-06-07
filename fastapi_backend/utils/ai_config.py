@@ -154,15 +154,15 @@ async def call_openai_llm(
             # finish_reason='length' 表示输出被 max_tokens 截断
             if finish_reason == "length":
                 raise ValueError(
-                    f"AI 输出被截断（finish_reason=length, max_tokens={params.max_tokens}），"
-                    f"请增大 max_tokens 配置"
+                    f"AI 输出被截断（finish_reason=length, max_tokens={params.max_tokens}），请增大 max_tokens 配置"
                 )
             raise ValueError(f"AI 返回内容为空（finish_reason={finish_reason}，可能被安全过滤器拒绝）")
         # 如果输出被截断，记录警告但仍然返回
         if finish_reason == "length":
             _logger.warning(
                 "AI 输出可能被截断: finish_reason=length, max_tokens=%d, content_len=%d",
-                params.max_tokens, len(content),
+                params.max_tokens,
+                len(content),
             )
         return content
     finally:
@@ -203,18 +203,18 @@ def _repair_truncated_json(content: str) -> Optional[dict]:
     for _ in range(5):
         try:
             # 尝试补全括号
-            open_braces = cleaned.count('{') - cleaned.count('}')
-            open_brackets = cleaned.count('[') - cleaned.count(']')
+            open_braces = cleaned.count("{") - cleaned.count("}")
+            open_brackets = cleaned.count("[") - cleaned.count("]")
             if open_braces > 0 or open_brackets > 0:
                 # 移除最后一个不完整的值
-                last_comma = cleaned.rfind(',')
+                last_comma = cleaned.rfind(",")
                 if last_comma > 0:
                     cleaned = cleaned[:last_comma]
-                cleaned += ']' * open_brackets + '}' * open_braces
+                cleaned += "]" * open_brackets + "}" * open_braces
             return json.loads(cleaned)
         except (json.JSONDecodeError, ValueError):
             # 继续尝试移除更多内容
-            last_comma = cleaned.rfind(',')
+            last_comma = cleaned.rfind(",")
             if last_comma > 0:
                 cleaned = cleaned[:last_comma]
             else:

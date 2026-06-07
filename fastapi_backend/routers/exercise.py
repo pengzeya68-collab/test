@@ -88,7 +88,7 @@ async def _smart_judge_python_function(
     import re
 
     # 从参考答案中提取函数名和参数
-    func_match = re.search(r'def\s+(\w+)\s*\(([^)]*)\)', reference_code)
+    func_match = re.search(r"def\s+(\w+)\s*\(([^)]*)\)", reference_code)
     if not func_match:
         # 无法提取函数名，回退到执行比较
         ref_result = await sandbox.execute_code(code=reference_code, language="python", timeout=5)
@@ -102,9 +102,14 @@ async def _smart_judge_python_function(
             "failed_count": 0 if passed else 1,
             "pass_rate": 100.0 if passed else 0.0,
             "all_passed": passed,
-            "details": [{"case_index": 1, "passed": passed,
-                          "expected": ref_out[:500] or "(无输出)",
-                          "actual": user_out[:500] or "(无输出)"}],
+            "details": [
+                {
+                    "case_index": 1,
+                    "passed": passed,
+                    "expected": ref_out[:500] or "(无输出)",
+                    "actual": user_out[:500] or "(无输出)",
+                }
+            ],
             "summary": "输出匹配" if passed else "输出不匹配",
         }
 
@@ -127,9 +132,14 @@ async def _smart_judge_python_function(
             "failed_count": 0 if passed else 1,
             "pass_rate": 100.0 if passed else 0.0,
             "all_passed": passed,
-            "details": [{"case_index": 1, "passed": passed,
-                          "expected": ref_out[:500] or "(无输出)",
-                          "actual": user_out[:500] or "(无输出)"}],
+            "details": [
+                {
+                    "case_index": 1,
+                    "passed": passed,
+                    "expected": ref_out[:500] or "(无输出)",
+                    "actual": user_out[:500] or "(无输出)",
+                }
+            ],
             "summary": "输出匹配" if passed else "输出不匹配",
         }
 
@@ -150,13 +160,15 @@ async def _smart_judge_python_function(
         actual = user_result.get("stdout", "").strip()
 
         passed = actual == expected
-        results.append({
-            "case_index": i + 1,
-            "passed": passed,
-            "expected": expected[:500] or "(无输出)",
-            "actual": actual[:500] or "(无输出)",
-            "error": user_result.get("stderr", "")[:200] if user_result.get("stderr") else None,
-        })
+        results.append(
+            {
+                "case_index": i + 1,
+                "passed": passed,
+                "expected": expected[:500] or "(无输出)",
+                "actual": actual[:500] or "(无输出)",
+                "error": user_result.get("stderr", "")[:200] if user_result.get("stderr") else None,
+            }
+        )
 
     total = len(results)
     passed_count = sum(1 for r in results if r["passed"])
@@ -187,12 +199,12 @@ def _generate_test_inputs(func_name: str, params_str: str) -> list[list]:
     # 密码强度检查类
     if "password" in fn or "passwd" in fn:
         return [
-            ["Abc123!"],        # 长度7 → weak
-            ["Abcd123!"],       # 全满足 → strong
-            ["Abcd1234"],       # 缺特殊字符 → medium
-            ["abcd1234"],       # 缺大写+特殊 → weak
-            ["ABCDEFGH"],       # 只有大写 → weak
-            ["Abcdefg!"],       # 缺数字 → medium
+            ["Abc123!"],  # 长度7 → weak
+            ["Abcd123!"],  # 全满足 → strong
+            ["Abcd1234"],  # 缺特殊字符 → medium
+            ["abcd1234"],  # 缺大写+特殊 → weak
+            ["ABCDEFGH"],  # 只有大写 → weak
+            ["Abcdefg!"],  # 缺数字 → medium
         ]
 
     # 边界值类
@@ -277,7 +289,7 @@ async def _execute_and_judge(
             if func_call:
                 # 生成调用代码：先执行用户代码定义函数，再调用并 print 结果
                 args_str = ", ".join(repr(a) for a in func_args)
-                call_code = f'{source_code}\nprint({func_call}({args_str}))'
+                call_code = f"{source_code}\nprint({func_call}({args_str}))"
                 exec_result = await sandbox.execute_code(
                     code=call_code,
                     language="python",
@@ -339,7 +351,7 @@ async def _execute_and_judge(
 
             if func_call and language == "python":
                 args_str = ", ".join(repr(a) for a in func_args)
-                call_code = f'{source_code}\nprint({func_call}({args_str}))'
+                call_code = f"{source_code}\nprint({func_call}({args_str}))"
             else:
                 call_code = source_code
 
@@ -690,7 +702,9 @@ async def submit_exercise(
                         "case_index": 1,
                         "passed": no_error,
                         "expected": "代码运行无错误",
-                        "actual": exec_result.get("stdout", "")[:500] if no_error else exec_result.get("stderr", "")[:500],
+                        "actual": exec_result.get("stdout", "")[:500]
+                        if no_error
+                        else exec_result.get("stderr", "")[:500],
                     }
                 ],
                 "summary": "代码运行成功（无测试用例，仅检查运行无错）" if no_error else "代码运行出错",

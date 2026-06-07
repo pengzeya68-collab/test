@@ -5,6 +5,7 @@ AutoTest JMeter 导出/导入路由
 1. 将接口用例/场景导出为 JMeter .jmx 文件
 2. 解析 JMeter .jmx 文件并导入为接口用例
 """
+
 import io
 import json
 from typing import List, Optional, Dict, Any
@@ -39,14 +40,18 @@ async def _resolve_group_id(db: AsyncSession, group_id: Optional[int], user_id: 
     from fastapi_backend.models.autotest import AutoTestGroup
 
     if group_id is not None:
-        group_result = await db.execute(select(AutoTestGroup.id).where(AutoTestGroup.id == group_id, AutoTestGroup.user_id == user_id))
+        group_result = await db.execute(
+            select(AutoTestGroup.id).where(AutoTestGroup.id == group_id, AutoTestGroup.user_id == user_id)
+        )
         if group_result.scalar_one_or_none() is not None:
             return group_id
         raise HTTPException(status_code=404, detail="目标分组不存在")
 
     default_name = "JMeter Import"
     group_result = await db.execute(
-        select(AutoTestGroup).where(AutoTestGroup.name == default_name, AutoTestGroup.parent_id.is_(None), AutoTestGroup.user_id == user_id)
+        select(AutoTestGroup).where(
+            AutoTestGroup.name == default_name, AutoTestGroup.parent_id.is_(None), AutoTestGroup.user_id == user_id
+        )
     )
     group = group_result.scalar_one_or_none()
     if not group:
@@ -65,7 +70,7 @@ async def export_case_to_jmeter(
 ):
     """
     将单个接口用例导出为 JMeter .jmx 文件
-    
+
     Args:
         case_id: 用例ID
         thread_group_config: 线程组配置（可选）
@@ -75,21 +80,23 @@ async def export_case_to_jmeter(
             - duration: 持续时间（秒）
     """
     # 查询用例
-    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id))
+    result = await db.execute(
+        select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id)
+    )
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
-    
+
     # 转换为字典
     case_dict = _case_to_dict(case)
-    
+
     # 生成 JMeter XML
     jmx_content = export_cases_to_jmx(
         cases=[case_dict],
         test_plan_name=f"TestMaster - {case.name}",
         thread_group_config=thread_group_config,
     )
-    
+
     # 返回文件
     filename = f"{case.name.replace('/', '_').replace(' ', '_')}.jmx"
     return _create_jmx_response(jmx_content, filename)
@@ -202,10 +209,10 @@ async def export_cases_to_jmeter_get(
 
     if not cases:
         raise HTTPException(status_code=404, detail="未找到用例")
-    
+
     # 转换为字典
     case_dicts = [_case_to_dict(case) for case in cases]
-    
+
     parsed_thread_group_config = None
     if thread_group_config:
         try:
@@ -219,7 +226,7 @@ async def export_cases_to_jmeter_get(
         test_plan_name="TestMaster - Batch Export",
         thread_group_config=parsed_thread_group_config,
     )
-    
+
     # 返回文件
     filename = f"TestMaster_Export_{len(cases)}_cases.jmx"
     return _create_jmx_response(jmx_content, filename)
@@ -234,7 +241,7 @@ async def export_scenario_to_jmeter(
 ):
     """
     将测试场景导出为 JMeter .jmx 文件
-    
+
     Args:
         scenario_id: 场景ID
         thread_group_config: 线程组配置（可选）
@@ -243,34 +250,32 @@ async def export_scenario_to_jmeter(
     result = await db.execute(
         select(AutoTestScenario)
         .where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
-        .options(
-            selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case)
-        )
+        .options(selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case))
     )
     scenario = result.scalar_one_or_none()
     if not scenario:
         raise HTTPException(status_code=404, detail="场景不存在")
-    
+
     # 获取场景的所有步骤（按 step_order 排序）
     steps = sorted(scenario.steps, key=lambda s: s.step_order)
-    
+
     # 转换为字典
     case_dicts = []
     for step in steps:
         if step.api_case:
             case_dict = _case_to_dict(step.api_case)
             case_dicts.append(case_dict)
-    
+
     if not case_dicts:
         raise HTTPException(status_code=400, detail="场景中没有可用的接口用例")
-    
+
     # 生成 JMeter XML
     jmx_content = export_cases_to_jmx(
         cases=case_dicts,
         test_plan_name=f"TestMaster - {scenario.name}",
         thread_group_config=thread_group_config,
     )
-    
+
     # 返回文件
     filename = f"{scenario.name.replace('/', '_').replace(' ', '_')}.jmx"
     return _create_jmx_response(jmx_content, filename)
@@ -285,30 +290,30 @@ async def import_jmeter_file(
 ):
     """
     导入 JMeter .jmx 文件，解析并创建接口用例
-    
+
     Args:
         file: JMeter .jmx 文件
         group_id: 导入到的分组ID（可选）
-    
+
     Returns:
         导入的用例列表
     """
     # 验证文件类型
     if not file.filename or not file.filename.endswith(".jmx"):
         raise HTTPException(status_code=400, detail="只支持 .jmx 文件")
-    
+
     # 读取文件内容（限制大小 10MB）
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="文件大小超过 10MB 限制")
     xml_content = content.decode("UTF-8", errors="replace")
-    
+
     # 解析 JMeter XML
     cases = import_jmx_to_cases(xml_content)
-    
+
     if not cases:
         raise HTTPException(status_code=400, detail="未能从文件中解析出接口用例")
-    
+
     target_group_id = await _resolve_group_id(db, group_id, current_user.id)
 
     # 保存到数据库
@@ -319,6 +324,7 @@ async def import_jmeter_file(
         if isinstance(headers_data, str):
             try:
                 import json as _json
+
                 headers_data = _json.loads(headers_data)
             except (ValueError, TypeError):
                 headers_data = {}
@@ -332,7 +338,9 @@ async def import_jmeter_file(
             headers=headers_data if isinstance(headers_data, dict) else case_data.get("headers"),
             params=case_data.get("params"),
             body_type=case_data.get("body_type", "none"),
-            content_type=headers_data.get("Content-Type") if isinstance(headers_data, dict) else case_data.get("content_type"),
+            content_type=headers_data.get("Content-Type")
+            if isinstance(headers_data, dict)
+            else case_data.get("content_type"),
             payload=case_data.get("payload"),
             assert_rules=case_data.get("assert_rules"),
             extractors=case_data.get("extractors"),
@@ -340,20 +348,22 @@ async def import_jmeter_file(
         )
         db.add(case)
         created_cases.append(case)
-    
+
     await db.commit()
-    
+
     # 返回创建的用例
     result = []
     for case in created_cases:
         await db.refresh(case)
-        result.append({
-            "id": case.id,
-            "name": case.name,
-            "method": case.method,
-            "url": case.url,
-        })
-    
+        result.append(
+            {
+                "id": case.id,
+                "name": case.name,
+                "method": case.method,
+                "url": case.url,
+            }
+        )
+
     return {
         "message": f"成功导入 {len(result)} 个接口用例",
         "cases": result,
@@ -394,6 +404,7 @@ def _parse_start_time_offset(start_time_str: str, bench_start_time: float) -> fl
     """将请求的 start_time 字符串解析为相对于压测开始时间的偏移秒数"""
     try:
         from datetime import datetime as _dt
+
         req_dt = _dt.strptime(start_time_str, "%Y-%m-%d %H:%M:%S").timestamp()
         return req_dt - bench_start_time
     except (ValueError, TypeError):
@@ -430,7 +441,7 @@ def _create_jmx_response(jmx_content: str, filename: str) -> StreamingResponse:
     """创建 JMeter .jmx 文件响应"""
     file_stream = io.BytesIO(jmx_content.encode("UTF-8"))
 
-    encoded_filename = quote(filename, safe='')
+    encoded_filename = quote(filename, safe="")
 
     return StreamingResponse(
         file_stream,
@@ -451,7 +462,7 @@ async def preview_jmeter_jmx(
 ):
     """
     预览生成的 JMeter JMX 脚本（不下载）
-    
+
     Request Body:
         case_ids: [1, 2, 3]
         config: {
@@ -504,24 +515,25 @@ async def preview_jmeter_jmx(
 
 # ========== 树形导出 ==========
 
+
 @router.post("/export/jmeter/tree")
 async def export_tree_to_jmx(body: Dict[str, Any] = Body(...), current_user: User = Depends(get_current_active_user)):
     """
     将树形脚本结构导出为 JMX
-    
+
     Request Body:
         tree: [{type: "ThreadGroup", name: "...", props: {...}, children: [...]}, ...]
         plan_name: "Test Plan"
         plan_variables: [{name: "BASE_URL", value: "..."}]
     """
     from fastapi_backend.services.autotest_jmeter_service import export_tree_to_jmx
-    
+
     tree = body.get("tree", [])
     plan_name = body.get("plan_name", "TestMaster Test Plan")
     plan_variables = body.get("plan_variables", [])
-    
+
     jmx_content = export_tree_to_jmx(tree, plan_name, plan_variables)
-    
+
     return {
         "jmx_content": jmx_content,
         "elements": _count_elements(tree),
@@ -534,7 +546,6 @@ async def export_tree_to_jmx(body: Dict[str, Any] = Body(...), current_user: Use
 import asyncio
 import time
 import uuid
-import logging
 import aiohttp
 import httpx
 
@@ -544,17 +555,19 @@ _bench_lock = asyncio.Lock()
 
 
 @router.post("/jmeter/quick-bench")
-async def quick_benchmark_submit(body: Dict[str, Any] = Body(...), current_user: User = Depends(get_current_active_user)):
+async def quick_benchmark_submit(
+    body: Dict[str, Any] = Body(...), current_user: User = Depends(get_current_active_user)
+):
     """
     提交快速并发压测任务
     立即返回 task_id，通过 GET /jmeter/quick-bench/{task_id} 轮询结果
-    
+
     Request Body:
         requests: [{"method", "url", "headers", "body"}, ...]
         concurrency: 并发数（默认10，最大200）
         duration: 持续秒数（默认10，最大60）
         ramp_up: 预热秒数（默认2）
-    
+
     Response:
         task_id: 任务ID
         status: pending / running / done
@@ -562,14 +575,14 @@ async def quick_benchmark_submit(body: Dict[str, Any] = Body(...), current_user:
     targets = body.get("requests", [])
     if not targets:
         raise HTTPException(status_code=400, detail="请提供至少一个请求")
-    
+
     for t in targets:
         t_url = t.get("url", "")
         if t_url:
             safe, reason = validate_url_safety(t_url)
             if not safe:
                 raise HTTPException(status_code=400, detail=reason)
-    
+
     task_id = str(uuid.uuid4())
     config = {
         "targets": targets,
@@ -599,10 +612,10 @@ async def quick_benchmark_submit(body: Dict[str, Any] = Body(...), current_user:
 async def quick_benchmark_status(task_id: str, current_user: User = Depends(get_current_active_user)):
     """
     查询压测任务状态
-    
+
     Response (status=pending/running):
         status, progress, percent
-    
+
     Response (status=done):
         status: "done"
         result: { total, success, failed, avg_ms, min_ms, max_ms,
@@ -673,14 +686,14 @@ async def _run_bench(task_id: str, config: dict):
                         sent_bytes = len(req_body) if req_body else 0
                         hdr_str = ""
                         for k, v in headers.items():
-                            if k.lower() != 'content-length':
+                            if k.lower() != "content-length":
                                 hdr_str += f"{k}: {v}\r\n"
                             else:
                                 try:
                                     sent_bytes = int(v)
                                 except (ValueError, TypeError):
                                     pass
-                        headers_size = len(hdr_str.encode('utf-8')) if hdr_str else 0
+                        headers_size = len(hdr_str.encode("utf-8")) if hdr_str else 0
 
                         kwargs = {"headers": headers}
                         if req_body and method in ("POST", "PUT", "PATCH"):
@@ -728,12 +741,15 @@ async def _run_bench(task_id: str, config: dict):
 
                             _body_captured_count[url] = _body_captured_count.get(url, 0) + 1
                             if _body_captured_count[url] <= 5 and body_len > 0:
-                                body_samples.append({
-                                    "url": url, "name": name,
-                                    "status": resp.status,
-                                    "body": raw_body[:30000].decode('utf-8', errors='replace'),
-                                    "headers": resp_headers,
-                                })
+                                body_samples.append(
+                                    {
+                                        "url": url,
+                                        "name": name,
+                                        "status": resp.status,
+                                        "body": raw_body[:30000].decode("utf-8", errors="replace"),
+                                        "headers": resp_headers,
+                                    }
+                                )
                     except asyncio.CancelledError:
                         return
                     except Exception as e:
@@ -768,12 +784,8 @@ async def _run_bench(task_id: str, config: dict):
                     # 每50个请求更新一次进度
                     if len(results) % 50 == 0:
                         async with _bench_lock:
-                            _bench_tasks[task_id]["percent"] = min(
-                                int((time.time() - start_time) / duration * 100), 99
-                            )
-                            _bench_tasks[task_id]["progress"] = (
-                                f"已发送 {len(results)} 请求，{len(errors)} 失败"
-                            )
+                            _bench_tasks[task_id]["percent"] = min(int((time.time() - start_time) / duration * 100), 99)
+                            _bench_tasks[task_id]["progress"] = f"已发送 {len(results)} 请求，{len(errors)} 失败"
 
     async def snapshot_collector():
         """每秒采集一次实时指标快照"""
@@ -795,15 +807,17 @@ async def _run_bench(task_id: str, config: dict):
             p95_now = _percentile(recent_elapsed, 95)
             p99_now = _percentile(recent_elapsed, 99)
             async with _bench_lock:
-                _bench_tasks[task_id]["snapshots"].append({
-                    "t": elapsed_seconds,
-                    "tps": tps_now,
-                    "avg": avg_now,
-                    "p95": p95_now,
-                    "p99": p99_now,
-                    "total": total_now,
-                    "errors": err_now,
-                })
+                _bench_tasks[task_id]["snapshots"].append(
+                    {
+                        "t": elapsed_seconds,
+                        "tps": tps_now,
+                        "avg": avg_now,
+                        "p95": p95_now,
+                        "p99": p99_now,
+                        "total": total_now,
+                        "errors": err_now,
+                    }
+                )
             last_count = total_now
             last_ts = now
 
@@ -827,11 +841,20 @@ async def _run_bench(task_id: str, config: dict):
     # 计算结果
     if not results:
         result = {
-            "total": 0, "success": 0, "failed": 0,
-            "avg_ms": 0, "min_ms": 0, "max_ms": 0,
-            "p50_ms": 0, "p95_ms": 0, "p99_ms": 0,
-            "tps": 0, "status_distribution": {}, "errors": errors[:20],
-            "per_url": [], "samples": [],
+            "total": 0,
+            "success": 0,
+            "failed": 0,
+            "avg_ms": 0,
+            "min_ms": 0,
+            "max_ms": 0,
+            "p50_ms": 0,
+            "p95_ms": 0,
+            "p99_ms": 0,
+            "tps": 0,
+            "status_distribution": {},
+            "errors": errors[:20],
+            "per_url": [],
+            "samples": [],
         }
     else:
         elapsed_list = [r["elapsed_ms"] for r in results]
@@ -850,7 +873,15 @@ async def _run_bench(task_id: str, config: dict):
             m = r.get("method", "GET")
             key = f"{m}:{u}"
             if key not in url_map:
-                url_map[key] = {"url": u, "name": r.get("name", u), "method": m, "count": 0, "success": 0, "failed": 0, "times": []}
+                url_map[key] = {
+                    "url": u,
+                    "name": r.get("name", u),
+                    "method": m,
+                    "count": 0,
+                    "success": 0,
+                    "failed": 0,
+                    "times": [],
+                }
             url_map[key]["count"] += 1
             if 200 <= r["status"] < 400:
                 url_map[key]["success"] += 1
@@ -860,23 +891,27 @@ async def _run_bench(task_id: str, config: dict):
         per_url = []
         for key, s in url_map.items():
             t = sorted(s["times"])
-            per_url.append({
-                "url": s["url"],
-                "name": s.get("name", s["url"]),
-                "method": s.get("method", "GET"),
-                "count": s["count"],
-                "success": s["success"],
-                "failed": s["failed"],
-                "success_rate": round(s["success"] / s["count"] * 100, 1) if s["count"] > 0 else 0,
-                "avg_ms": round(sum(t) / len(t), 1),
-                "p50_ms": _percentile(t, 50),
-                "p90_ms": _percentile(t, 90),
-                "p95_ms": _percentile(t, 95),
-                "p99_ms": _percentile(t, 99),
-                "min_ms": round(t[0], 1),
-                "max_ms": round(t[-1], 1),
-                "stddev_ms": round((sum((x - sum(t)/len(t))**2 for x in t) / len(t)) ** 0.5, 1) if len(t) > 1 else 0,
-            })
+            per_url.append(
+                {
+                    "url": s["url"],
+                    "name": s.get("name", s["url"]),
+                    "method": s.get("method", "GET"),
+                    "count": s["count"],
+                    "success": s["success"],
+                    "failed": s["failed"],
+                    "success_rate": round(s["success"] / s["count"] * 100, 1) if s["count"] > 0 else 0,
+                    "avg_ms": round(sum(t) / len(t), 1),
+                    "p50_ms": _percentile(t, 50),
+                    "p90_ms": _percentile(t, 90),
+                    "p95_ms": _percentile(t, 95),
+                    "p99_ms": _percentile(t, 99),
+                    "min_ms": round(t[0], 1),
+                    "max_ms": round(t[-1], 1),
+                    "stddev_ms": round((sum((x - sum(t) / len(t)) ** 2 for x in t) / len(t)) ** 0.5, 1)
+                    if len(t) > 1
+                    else 0,
+                }
+            )
 
         # 请求详情样本（≈ 查看结果树）：所有失败 + 每个 URL 前 50 个成功
         seen_url_ok = {}
@@ -894,15 +929,30 @@ async def _run_bench(task_id: str, config: dict):
                 break
 
         # 响应时间分布区间统计
-        rt_buckets = {"<10ms": 0, "10-50ms": 0, "50-100ms": 0, "100-200ms": 0, "200-500ms": 0, "500-1000ms": 0, ">1000ms": 0}
+        rt_buckets = {
+            "<10ms": 0,
+            "10-50ms": 0,
+            "50-100ms": 0,
+            "100-200ms": 0,
+            "200-500ms": 0,
+            "500-1000ms": 0,
+            ">1000ms": 0,
+        }
         for ms in elapsed_list:
-            if ms < 10: rt_buckets["<10ms"] += 1
-            elif ms < 50: rt_buckets["10-50ms"] += 1
-            elif ms < 100: rt_buckets["50-100ms"] += 1
-            elif ms < 200: rt_buckets["100-200ms"] += 1
-            elif ms < 500: rt_buckets["200-500ms"] += 1
-            elif ms < 1000: rt_buckets["500-1000ms"] += 1
-            else: rt_buckets[">1000ms"] += 1
+            if ms < 10:
+                rt_buckets["<10ms"] += 1
+            elif ms < 50:
+                rt_buckets["10-50ms"] += 1
+            elif ms < 100:
+                rt_buckets["50-100ms"] += 1
+            elif ms < 200:
+                rt_buckets["100-200ms"] += 1
+            elif ms < 500:
+                rt_buckets["200-500ms"] += 1
+            elif ms < 1000:
+                rt_buckets["500-1000ms"] += 1
+            else:
+                rt_buckets[">1000ms"] += 1
 
         # 吞吐量趋势（使用 snapshot_collector 采集的实时快照数据）
         snapshots = _bench_tasks.get(task_id, {}).get("snapshots", [])
@@ -911,16 +961,22 @@ async def _run_bench(task_id: str, config: dict):
             # 每5秒采样一次快照数据
             for i, snap in enumerate(snapshots):
                 if i % 5 == 0:  # 每5秒一个数据点
-                    throughput_trend.append({
-                        "t": snap.get("t", 0),
-                        "tps": snap.get("tps", 0),
-                        "count": snap.get("total", 0),
-                    })
+                    throughput_trend.append(
+                        {
+                            "t": snap.get("t", 0),
+                            "tps": snap.get("tps", 0),
+                            "count": snap.get("total", 0),
+                        }
+                    )
         else:
             # 降级方案：如果没有快照数据，使用 start_time 判断时间窗口
             window = 5
             for i in range(0, int(total_time), window):
-                w_count = sum(1 for r in results if r.get("start_time") and i <= _parse_start_time_offset(r["start_time"], start_time) < i + window)
+                w_count = sum(
+                    1
+                    for r in results
+                    if r.get("start_time") and i <= _parse_start_time_offset(r["start_time"], start_time) < i + window
+                )
                 throughput_trend.append({"t": i, "tps": round(w_count / window, 1), "count": w_count})
 
         result = {
@@ -934,7 +990,13 @@ async def _run_bench(task_id: str, config: dict):
             "p90_ms": _percentile(elapsed_sorted, 90),
             "p95_ms": _percentile(elapsed_sorted, 95),
             "p99_ms": _percentile(elapsed_sorted, 99),
-            "stddev_ms": round((sum((x - sum(elapsed_list)/len(elapsed_list))**2 for x in elapsed_list) / len(elapsed_list)) ** 0.5, 1) if len(elapsed_list) > 1 else 0,
+            "stddev_ms": round(
+                (sum((x - sum(elapsed_list) / len(elapsed_list)) ** 2 for x in elapsed_list) / len(elapsed_list))
+                ** 0.5,
+                1,
+            )
+            if len(elapsed_list) > 1
+            else 0,
             "tps": round(len(results) / total_time, 1) if total_time > 0 else 0,
             "status_distribution": status_dist,
             "rt_distribution": rt_buckets,
@@ -942,7 +1004,9 @@ async def _run_bench(task_id: str, config: dict):
             "errors": errors[:20],
             "per_url": per_url,
             "samples": samples,
-            "body_samples": [{ "url": bs["url"], "status": bs["status"], "body": bs["body"][:500] } for bs in body_samples],
+            "body_samples": [
+                {"url": bs["url"], "status": bs["status"], "body": bs["body"][:500]} for bs in body_samples
+            ],
         }
 
     async with _bench_lock:
@@ -963,6 +1027,7 @@ class BenchAnalyzeRequest(BaseModel):
     duration: int = 10
     result: dict = {}
 
+
 def _is_placeholder_api_key(key: Optional[str]) -> bool:
     if not key:
         return True
@@ -981,7 +1046,12 @@ def _is_placeholder_api_key(key: Optional[str]) -> bool:
 
 
 @router.post("/analyze-result")
-async def analyze_bench_result(req: BenchAnalyzeRequest, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db), _ai=Depends(require_ai_points("bench_ai_analysis"))):
+async def analyze_bench_result(
+    req: BenchAnalyzeRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+    _ai=Depends(require_ai_points("bench_ai_analysis")),
+):
     from sqlalchemy import select
     from fastapi_backend.models.models import AIConfig
     from fastapi_backend.core.database import AsyncSessionLocal as MainAsyncSessionLocal
@@ -998,18 +1068,17 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, current_user: User = De
     api_key = None
     base_url = None
     model = None
-    provider = "openai"
 
     if config:
         api_key = config.api_key
         base_url = config.base_url
         model = config.model
-        provider = config.provider.lower() if config.provider else "openai"
+        config.provider.lower() if config.provider else "openai"
     elif settings.AI_API_KEY and not _is_placeholder_api_key(settings.AI_API_KEY):
         api_key = settings.AI_API_KEY
         base_url = settings.AI_BASE_URL
         model = settings.AI_MODEL
-        provider = getattr(settings, 'AI_PROVIDER', 'openai').lower()
+        getattr(settings, "AI_PROVIDER", "openai").lower()
 
     if not api_key:
         return {"analysis": _build_offline_analysis(req)}
@@ -1019,10 +1088,10 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, current_user: User = De
     if r.get("per_url"):
         for pu in r["per_url"]:
             per_url_text += (
-                f"  [{pu.get('name','') or pu.get('url','')}]\n"
-                f"    请求: {pu.get('count',0)}次 | 成功: {pu.get('success',0)} | 失败: {pu.get('failed',0)}\n"
-                f"    响应: 平均{pu.get('avg_ms',0)}ms | P50={pu.get('p50_ms',0)}ms | P95={pu.get('p95_ms',0)}ms | P99={pu.get('p99_ms',0)}ms\n"
-                f"    极值: 最小{pu.get('min_ms',0)}ms | 最大{pu.get('max_ms',0)}ms | 标准差{pu.get('stddev_ms',0)}ms\n"
+                f"  [{pu.get('name', '') or pu.get('url', '')}]\n"
+                f"    请求: {pu.get('count', 0)}次 | 成功: {pu.get('success', 0)} | 失败: {pu.get('failed', 0)}\n"
+                f"    响应: 平均{pu.get('avg_ms', 0)}ms | P50={pu.get('p50_ms', 0)}ms | P95={pu.get('p95_ms', 0)}ms | P99={pu.get('p99_ms', 0)}ms\n"
+                f"    极值: 最小{pu.get('min_ms', 0)}ms | 最大{pu.get('max_ms', 0)}ms | 标准差{pu.get('stddev_ms', 0)}ms\n"
             )
 
     rt_dist_text = ""
@@ -1035,7 +1104,7 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, current_user: User = De
     if r.get("throughput_trend"):
         throughput_text = "  吞吐量时序变化 (每5秒采样):\n"
         for tp in r["throughput_trend"][:20]:
-            throughput_text += f"    T+{tp.get('t',0)}s: TPS={tp.get('tps',0)}, 请求数={tp.get('count',0)}\n"
+            throughput_text += f"    T+{tp.get('t', 0)}s: TPS={tp.get('tps', 0)}, 请求数={tp.get('count', 0)}\n"
 
     errors_text = ""
     if r.get("errors"):
@@ -1052,10 +1121,10 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, current_user: User = De
 【压测环境】
 - 计划名称: {req.plan_name}
 - 并发用户数: {req.concurrency} | 持续时间: {req.duration}秒
-- 总请求: {r.get('total', 0)} | 成功: {r.get('success', 0)} | 失败: {r.get('failed', 0)}
-- TPS: {r.get('tps', 0)} | 标准差: {r.get('stddev_ms', 0)}ms
-- 平均: {r.get('avg_ms', 0)}ms | P50: {r.get('p50_ms', 0)}ms | P95: {r.get('p95_ms', 0)}ms | P99: {r.get('p99_ms', 0)}ms
-- 最小: {r.get('min_ms', 0)}ms | 最大: {r.get('max_ms', 0)}ms
+- 总请求: {r.get("total", 0)} | 成功: {r.get("success", 0)} | 失败: {r.get("failed", 0)}
+- TPS: {r.get("tps", 0)} | 标准差: {r.get("stddev_ms", 0)}ms
+- 平均: {r.get("avg_ms", 0)}ms | P50: {r.get("p50_ms", 0)}ms | P95: {r.get("p95_ms", 0)}ms | P99: {r.get("p99_ms", 0)}ms
+- 最小: {r.get("min_ms", 0)}ms | 最大: {r.get("max_ms", 0)}ms
 
 【响应时间分布 (分段直方图)】
 {rt_dist_text if rt_dist_text else "无"}
@@ -1128,12 +1197,15 @@ async def analyze_bench_result(req: BenchAnalyzeRequest, current_user: User = De
                 json={
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": "你是一位资深性能测试架构师，擅长从接口维度进行深度瓶颈分析和根因定位，输出专业详尽的性能分析报告。"},
-                        {"role": "user", "content": prompt}
+                        {
+                            "role": "system",
+                            "content": "你是一位资深性能测试架构师，擅长从接口维度进行深度瓶颈分析和根因定位，输出专业详尽的性能分析报告。",
+                        },
+                        {"role": "user", "content": prompt},
                     ],
                     "max_tokens": 8192,
                     "temperature": 0.5,
-                }
+                },
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -1152,7 +1224,7 @@ def _build_offline_analysis(req) -> str:
     r = req.result
     total = r.get("total", 0)
     failed = r.get("failed", 0)
-    success = r.get("success", 0)
+    r.get("success", 0)
     tps = r.get("tps", 0)
     avg = r.get("avg_ms", 0)
     p95 = r.get("p95_ms", 0)
@@ -1172,11 +1244,16 @@ def _build_offline_analysis(req) -> str:
         lines.append(f"## 一、整体评估：较差 - 失败率 {fail_rate:.1f}%，系统可能存在问题")
 
     lines.append(f"  并发={req.concurrency} | TPS={tps} | 平均={avg}ms | P95={p95}ms | P99={p99}ms")
-    if avg < 100: lines.append("  响应时间等级：S（<100ms）")
-    elif avg < 500: lines.append("  响应时间等级：A（<500ms）")
-    elif avg < 1000: lines.append("  响应时间等级：B（<1s）")
-    elif avg < 3000: lines.append("  响应时间等级：C（<3s）")
-    else: lines.append("  响应时间等级：D（>3s，需优化）")
+    if avg < 100:
+        lines.append("  响应时间等级：S（<100ms）")
+    elif avg < 500:
+        lines.append("  响应时间等级：A（<500ms）")
+    elif avg < 1000:
+        lines.append("  响应时间等级：B（<1s）")
+    elif avg < 3000:
+        lines.append("  响应时间等级：C（<3s）")
+    else:
+        lines.append("  响应时间等级：D（>3s，需优化）")
     if p99 > 0 and p95 > 0 and p99 / max(p95, 1) > 2:
         lines.append("  ⚠ P99远大于P95，存在极端长尾延迟")
     lines.append("")
@@ -1197,11 +1274,16 @@ def _build_offline_analysis(req) -> str:
             fr = (s_fail / c * 100) if c > 0 else 0
 
             # 评估等级
-            if a < 100: grade = "🟢 S"
-            elif a < 500: grade = "🟡 A"
-            elif a < 1000: grade = "🟠 B"
-            elif a < 3000: grade = "🔴 C"
-            else: grade = "⛔ D"
+            if a < 100:
+                grade = "🟢 S"
+            elif a < 500:
+                grade = "🟡 A"
+            elif a < 1000:
+                grade = "🟠 B"
+            elif a < 3000:
+                grade = "🔴 C"
+            else:
+                grade = "⛔ D"
 
             lines.append(f"\n  [{i}] {grade} | {url}")
             lines.append(f"      请求: {c}次 | 成功: {s_ok} | 失败: {s_fail} | 失败率: {fr:.1f}%")
@@ -1214,15 +1296,18 @@ def _build_offline_analysis(req) -> str:
             lines.append(f"      响应: 平均{a}ms | P50={p50_u}ms | P95={p95u}ms | P99={p99u}ms | 标准差={stddev_u}ms")
             lines.append(f"      极值: 最小{min_u}ms | 最大{max_u}ms")
 
-            if fr > 0: lines.append(f"      ⚠ 存在失败，检查错误类型")
+            if fr > 0:
+                lines.append("      ⚠ 存在失败，检查错误类型")
             if p99u > 0 and p95u > 0 and p99u / max(p95u, 1) > 2:
                 lines.append(f"      ⚠ P99({p99u}ms)>>P95({p95u}ms)，长尾瓶颈")
             if stddev_u > 0 and a > 0 and stddev_u / a > 0.5:
-                lines.append(f"      ⚠ 标准差/均值={stddev_u/a:.2f}，响应抖动剧烈")
+                lines.append(f"      ⚠ 标准差/均值={stddev_u / a:.2f}，响应抖动剧烈")
             if max_u > 0 and p99u > 0 and max_u > p99u * 2:
                 lines.append(f"      ⚠ 最大{max_u}ms远超P99{p99u}ms，存在异常尖刺")
-            if a > 1000: lines.append(f"      💡 建议：排查慢SQL/缓存/下游服务")
-            if c > 1 and fr > 50: lines.append(f"      🚨 高失败率！立即排查")
+            if a > 1000:
+                lines.append("      💡 建议：排查慢SQL/缓存/下游服务")
+            if c > 1 and fr > 50:
+                lines.append("      🚨 高失败率！立即排查")
     else:
         lines.append("## 二、逐接口分析")
         lines.append("   （无按接口统计数据）")
@@ -1235,16 +1320,19 @@ def _build_offline_analysis(req) -> str:
     stddev_all = r.get("stddev_ms", 0)
     if stddev_all > 0 and avg > 0:
         cv = stddev_all / avg
-        if cv < 0.3: lines.append(f"  变异系数={cv:.2f} - 系统稳定 ✅")
-        elif cv < 0.8: lines.append(f"  变异系数={cv:.2f} - 存在抖动 ⚠")
-        else: lines.append(f"  变异系数={cv:.2f} - 系统不稳定 🚨")
+        if cv < 0.3:
+            lines.append(f"  变异系数={cv:.2f} - 系统稳定 ✅")
+        elif cv < 0.8:
+            lines.append(f"  变异系数={cv:.2f} - 存在抖动 ⚠")
+        else:
+            lines.append(f"  变异系数={cv:.2f} - 系统不稳定 🚨")
     lines.append("")
 
     # 四、吞吐趋势
     tp_list = r.get("throughput_trend", [])
     if len(tp_list) > 1:
         tps_values = [t.get("tps", 0) for t in tp_list]
-        tps_std = (sum((x - sum(tps_values)/len(tps_values))**2 for x in tps_values) / len(tps_values)) ** 0.5
+        tps_std = (sum((x - sum(tps_values) / len(tps_values)) ** 2 for x in tps_values) / len(tps_values)) ** 0.5
         tps_avg = sum(tps_values) / len(tps_values)
         lines.append(f"  TPS均值={tps_avg:.1f} | 波动标准差={tps_std:.1f}")
         if tps_avg > 0 and tps_std / tps_avg > 0.3:
@@ -1259,11 +1347,12 @@ def _build_offline_analysis(req) -> str:
     errs = r.get("errors", [])
     if errs:
         from collections import Counter
+
         lines.append(f"  错误总数: {len(errs)}")
         for err_type, cnt in Counter(str(e) for e in errs).most_common(5):
             lines.append(f"    - [{cnt}次] {err_type[:100]}")
     lines.append("")
-    lines.append(f"  1. 总TPS={tps}，平均每接口TPS={tps/max(len(per_url_list),1):.1f}")
+    lines.append(f"  1. 总TPS={tps}，平均每接口TPS={tps / max(len(per_url_list), 1):.1f}")
     if avg > 500:
         lines.append("  2. 瓶颈在响应时间，排查慢SQL/外部调用/序列化开销")
     if tps < 10 and req.concurrency > 1:
@@ -1277,9 +1366,11 @@ def _build_offline_analysis(req) -> str:
 def _count_elements(tree):
     """统计树中各类元素数量"""
     counts = {}
+
     def walk(nodes):
         for n in nodes:
             counts[n.get("type", "unknown")] = counts.get(n.get("type", "unknown"), 0) + 1
             walk(n.get("children", []))
+
     walk(tree)
     return counts

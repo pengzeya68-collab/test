@@ -3,6 +3,7 @@ API Diff 对比工具路由
 
 对比两个环境的API响应差异
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +12,7 @@ import json
 
 from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.deps.auth import get_current_active_user
-from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment
+from fastapi_backend.models.autotest import AutoTestCase
 from fastapi_backend.models.models import User
 
 router = APIRouter(prefix="/api/auto-test/diff", tags=["API-Diff"])
@@ -64,7 +65,7 @@ async def compare_responses(
 ):
     """
     比较两个 JSON 响应的差异
-    
+
     Request: {"response_a": {...}, "response_b": {...}}
     Response: {"diffs": [...], "total": N, "has_changes": bool}
     """
@@ -105,9 +106,11 @@ async def list_diffable_cases(
 ):
     """列出可进行 Diff 对比的接口用例"""
     result = await db.execute(
-        select(AutoTestCase).where(
+        select(AutoTestCase)
+        .where(
             AutoTestCase.user_id == current_user.id,
-        ).limit(50)
+        )
+        .limit(50)
     )
     cases = result.scalars().all()
     return {"cases": [{"id": c.id, "name": c.name, "method": c.method, "url": c.url} for c in cases]}

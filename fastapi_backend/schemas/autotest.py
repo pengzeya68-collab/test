@@ -2,6 +2,7 @@
 AutoTest Pydantic Schema 模型
 用于请求校验和响应序列化
 """
+
 from pydantic import BaseModel, Field, BeforeValidator, ConfigDict, field_validator, model_validator
 from typing import Optional, List, Dict, Any, Annotated
 from datetime import datetime
@@ -13,10 +14,12 @@ def empty_str_to_none(v):
         return None
     return v
 
+
 OptionalInt = Annotated[Optional[int], BeforeValidator(empty_str_to_none)]
 
 
 # ========== AutoTestGroup Schema ==========
+
 
 class AutoTestGroupBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="分组名称")
@@ -47,6 +50,7 @@ class AutoTestGroupTree(AutoTestGroupResponse):
 
 
 # ========== AutoTestCase Schema ==========
+
 
 class AutoTestCaseBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="用例名称")
@@ -111,6 +115,7 @@ class AutoTestCaseResponse(AutoTestCaseBase):
 
 # ========== AutoTestEnvironment Schema ==========
 
+
 class AutoTestEnvironmentBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="环境名称")
     base_url: Optional[str] = Field(None, description="基础路径")
@@ -167,18 +172,19 @@ class AutoTestEnvironmentResponse(BaseModel):
                 data = {**data, "env_name": data["name"]}
         else:
             # ORM 对象
-            env_name = getattr(data, 'env_name', None)
+            env_name = getattr(data, "env_name", None)
             if env_name:
                 data_dict = {}
-                for field in ['id', 'base_url', 'variables', 'is_default', 'services', 'created_at']:
+                for field in ["id", "base_url", "variables", "is_default", "services", "created_at"]:
                     data_dict[field] = getattr(data, field, None)
-                data_dict['name'] = env_name
-                data_dict['env_name'] = env_name
+                data_dict["name"] = env_name
+                data_dict["env_name"] = env_name
                 return data_dict
         return data
 
 
 # ========== AutoTestHistory Schema ==========
+
 
 class AutoTestHistoryResponse(BaseModel):
     id: int
@@ -195,8 +201,10 @@ class AutoTestHistoryResponse(BaseModel):
 
 # ========== 执行结果 Schema ==========
 
+
 class CaseRunRequest(BaseModel):
     env_id: OptionalInt = Field(None, description="环境ID")
+
 
 class CaseExecutionResult(BaseModel):
     success: bool
@@ -215,12 +223,16 @@ class CaseExecutionResult(BaseModel):
 
 # ========== 场景 Schema ==========
 
+
 class ScenarioStepBase(BaseModel):
     api_case_id: Optional[int] = Field(None, description="引用的接口ID")
     step_order: int = Field(default=0, description="执行顺序")
     is_active: bool = Field(True, description="是否启用")
     variable_overrides: Optional[Dict[str, Any]] = Field(None, description="局部变量覆盖")
-    step_type: str = Field(default="api_request", description="步骤类型: api_request/if_condition/for_loop/for_each/wait/group/scenario_ref/db_query")
+    step_type: str = Field(
+        default="api_request",
+        description="步骤类型: api_request/if_condition/for_loop/for_each/wait/group/scenario_ref/db_query",
+    )
     step_config: Optional[Dict[str, Any]] = Field(None, description="类型专属配置")
     parent_step_id: Optional[int] = Field(None, description="父步骤ID")
     pre_script: Optional[str] = Field(None, description="前置JS脚本")
@@ -300,6 +312,7 @@ class ScenarioExecutionResult(BaseModel):
 
 # ========== 数据集 Schema ==========
 
+
 class DataMatrix(BaseModel):
     columns: List[str] = Field(default_factory=list, description="变量名列表")
     rows: List[List[Any]] = Field(default_factory=list, description="数据行")
@@ -344,6 +357,7 @@ class DataDrivenExecutionResult(BaseModel):
 
 # ========== 调度任务 Schema ==========
 
+
 class ScheduleTaskCreate(BaseModel):
     scenario_id: int
     cron_expression: str
@@ -373,6 +387,7 @@ class ScheduleTaskResponse(BaseModel):
 
 # ========== 邮件配置 Schema ==========
 
+
 class EmailConfig(BaseModel):
     enabled: bool
     smtpHost: str
@@ -392,6 +407,7 @@ class TestEmailRequest(BaseModel):
 
 # ========== 变量预览 Schema ==========
 
+
 class VariablePreviewRequest(BaseModel):
     text: str
     variables: Dict[str, Any] = Field(default_factory=dict)
@@ -405,6 +421,7 @@ class VariablePreviewResponse(BaseModel):
 
 # ========== 内联场景执行请求 Schema ==========
 
+
 class InlineScenarioExecutionRequest(BaseModel):
     steps: List[dict] = Field(..., description="步骤列表")
     data_matrix: DataMatrix = Field(..., description="数据矩阵")
@@ -414,9 +431,18 @@ class InlineScenarioExecutionRequest(BaseModel):
 # ========== 测试数据工厂 Schema ==========
 
 VALID_RULE_TYPES = {
-    "fixed", "enum", "increment", "uuid", "timestamp",
-    "date_offset", "phone", "email", "username", "env_ref",
+    "fixed",
+    "enum",
+    "increment",
+    "uuid",
+    "timestamp",
+    "date_offset",
+    "phone",
+    "email",
+    "username",
+    "env_ref",
 }
+
 
 class TemplateFieldRuleCreate(BaseModel):
     field_name: str = Field(..., min_length=1, max_length=100, description="字段名")
@@ -510,6 +536,7 @@ AutoTestGroupTree.model_rebuild()
 
 
 # ========== 数据库连接 Schema ==========
+
 
 class DBConnectionBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="连接名称")

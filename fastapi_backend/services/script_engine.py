@@ -4,9 +4,10 @@ JavaScript 脚本引擎
 提供 pm.* API 兼容层，支持前置/后置脚本执行。
 复用现有变量系统（context_vars, session_vars, global_vars）。
 """
+
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 _logger = logging.getLogger(__name__)
 
@@ -71,8 +72,6 @@ class ScriptEngine:
 
         env_vars = context.get("env_vars", {})
         session_vars = context.get("session_vars", {})
-        test_results = []
-        globals_to_save = {}
 
         # 构建 pm 对象的 JS 代码
         pm_bridge = f"""
@@ -96,9 +95,9 @@ var pm = {{
         set: function(key, val) {{ this._data[key] = val; __globals_to_save[key] = val; }}
     }},
     response: {{
-        _body: {json.dumps(context.get('response_body'), ensure_ascii=False) if context.get('response_body') is not None else 'null'},
-        _status: {context.get('status_code', 0)},
-        _headers: {json.dumps(context.get('response_headers', {}), ensure_ascii=False)},
+        _body: {json.dumps(context.get("response_body"), ensure_ascii=False) if context.get("response_body") is not None else "null"},
+        _status: {context.get("status_code", 0)},
+        _headers: {json.dumps(context.get("response_headers", {}), ensure_ascii=False)},
         json: function() {{
             if (typeof this._body === 'string') {{
                 try {{ return JSON.parse(this._body); }} catch(e) {{ return null; }}
@@ -109,7 +108,7 @@ var pm = {{
         get statusCode() {{ return this._status; }},
         text: function() {{ return typeof this._body === 'string' ? this._body : JSON.stringify(this._body); }},
         headers: {{
-            _h: {json.dumps(context.get('response_headers', {}), ensure_ascii=False)},
+            _h: {json.dumps(context.get("response_headers", {}), ensure_ascii=False)},
             get: function(name) {{
                 var lower = name.toLowerCase();
                 for (var k in this._h) {{
@@ -185,7 +184,6 @@ var __globals_to_save = {{}};
         Python 模拟执行：解析常见的 pm.* API 调用。
         当 dukpy 不可用时的回退方案。
         """
-        import re
 
         env_vars = context.get("env_vars", {})
         session_vars = context.get("session_vars", {})
@@ -200,9 +198,11 @@ var __globals_to_save = {{}};
                 @staticmethod
                 def get(key):
                     return env_vars.get(key)
+
                 @staticmethod
                 def set(key, val):
                     env_vars[key] = val
+
                 @staticmethod
                 def unset(key):
                     env_vars.pop(key, None)
@@ -211,6 +211,7 @@ var __globals_to_save = {{}};
                 @staticmethod
                 def get(key):
                     return session_vars.get(key)
+
                 @staticmethod
                 def set(key, val):
                     session_vars[key] = val
@@ -219,6 +220,7 @@ var __globals_to_save = {{}};
                 @staticmethod
                 def get(key):
                     return context.get("globals_to_save", {}).get(key)
+
                 @staticmethod
                 def set(key, val):
                     context.setdefault("globals_to_save", {})[key] = val
@@ -269,17 +271,31 @@ var __globals_to_save = {{}};
                         def equal(expected):
                             if val != expected:
                                 raise AssertionError(f"Expected {expected}, got {val}")
+
                         @staticmethod
                         def include(s):
                             if str(s) not in str(val):
                                 raise AssertionError(f"Not contains: {s}")
+
                     to = To()
+
                 return ExpectChain()
 
         pm = MockPM()
 
         # 尝试执行 Python 化的代码
-        safe_globals = {"pm": pm, "json": json, "print": print, "len": len, "int": int, "str": str, "float": float, "bool": bool, "list": list, "dict": dict}
+        safe_globals = {
+            "pm": pm,
+            "json": json,
+            "print": print,
+            "len": len,
+            "int": int,
+            "str": str,
+            "float": float,
+            "bool": bool,
+            "list": list,
+            "dict": dict,
+        }
         try:
             # 简单的 JS → Python 语法转换
             py_code = code.replace("var ", "").replace("let ", "").replace("const ", "")

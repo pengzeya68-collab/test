@@ -481,6 +481,7 @@ class CodeSandbox:
             output = []
             # 设置超时：使用 set_progress_handler 每 100ms 检查是否超时
             import time as _time
+
             _start_time = _time.monotonic()
             _timeout_ms = int(timeout * 1000) if timeout else 5000
 
@@ -594,8 +595,10 @@ class CodeSandbox:
                 if is_windows:
                     process = await asyncio.create_subprocess_exec(
                         shell_cmd,
-                        "-ExecutionPolicy", "Bypass",
-                        "-File", temp_file,
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-File",
+                        temp_file,
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.PIPE,
                         stdin=asyncio.subprocess.DEVNULL,

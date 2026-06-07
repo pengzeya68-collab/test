@@ -41,22 +41,22 @@ async def my_transactions(
     db: AsyncSession = Depends(get_db),
 ):
     """查询当前用户积分流水"""
-    txs, total = await get_user_transactions(
-        db, current_user.id, tx_type=tx_type, page=page, page_size=page_size
-    )
+    txs, total = await get_user_transactions(db, current_user.id, tx_type=tx_type, page=page, page_size=page_size)
     items = []
     for t in txs:
-        items.append({
-            "id": t.id,
-            "amount": t.amount,
-            "balance_after": t.balance_after,
-            "tx_type": t.tx_type,
-            "tx_type_name": get_tx_type_name(t.tx_type),
-            "source": t.source,
-            "related_feature": t.related_feature,
-            "note": t.note,
-            "created_at": t.created_at.isoformat() if t.created_at else None,
-        })
+        items.append(
+            {
+                "id": t.id,
+                "amount": t.amount,
+                "balance_after": t.balance_after,
+                "tx_type": t.tx_type,
+                "tx_type_name": get_tx_type_name(t.tx_type),
+                "source": t.source,
+                "related_feature": t.related_feature,
+                "note": t.note,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+            }
+        )
 
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 

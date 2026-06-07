@@ -552,7 +552,11 @@ async def project_autotest_run(
     from fastapi_backend.models.autotest import AutoTestScenario
 
     async for autotest_db in get_autotest_db():
-        scenario_check = await autotest_db.execute(select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id))
+        scenario_check = await autotest_db.execute(
+            select(AutoTestScenario).where(
+                AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id
+            )
+        )
         scenario = scenario_check.scalar_one_or_none()
         if not scenario:
             raise HTTPException(

@@ -117,7 +117,13 @@ async def create_backup(
             raise HTTPException(status_code=500, detail=f"pg_dump 失败: {result.stderr[:200]}")
         with open(backup_path, "w", encoding="utf-8") as f:
             f.write(result.stdout)
-        await _write_audit_log(db, user_id=current_user.id, action="创建数据库备份", action_type="backup", detail=f"备份文件: {backup_name}")
+        await _write_audit_log(
+            db,
+            user_id=current_user.id,
+            action="创建数据库备份",
+            action_type="backup",
+            detail=f"备份文件: {backup_name}",
+        )
         return {"message": "备份创建成功", "name": backup_name}
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="pg_dump 命令未找到")
@@ -142,7 +148,9 @@ async def delete_old_backups(
         os.remove(os.path.join(BACKUP_DIR, f))
         deleted += 1
 
-    await _write_audit_log(db, user_id=current_user.id, action="清理旧备份", action_type="backup", detail=f"清理了 {deleted} 个旧备份文件")
+    await _write_audit_log(
+        db, user_id=current_user.id, action="清理旧备份", action_type="backup", detail=f"清理了 {deleted} 个旧备份文件"
+    )
     return {"message": f"已清理 {deleted} 个旧备份"}
 
 
@@ -201,15 +209,38 @@ async def restore_backup(
     try:
         result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, env=env, timeout=300)
         if result.returncode != 0:
-            await _write_audit_log(db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name}", status="failed")
+            await _write_audit_log(
+                db,
+                user_id=current_user.id,
+                action="恢复数据库备份",
+                action_type="backup",
+                detail=f"恢复文件: {name}",
+                status="failed",
+            )
             raise HTTPException(status_code=500, detail=f"恢复失败: {result.stderr[:200]}")
-        await _write_audit_log(db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name}")
+        await _write_audit_log(
+            db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name}"
+        )
         return {"message": "备份恢复成功"}
     except FileNotFoundError:
-        await _write_audit_log(db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name} - psql命令未找到", status="failed")
+        await _write_audit_log(
+            db,
+            user_id=current_user.id,
+            action="恢复数据库备份",
+            action_type="backup",
+            detail=f"恢复文件: {name} - psql命令未找到",
+            status="failed",
+        )
         raise HTTPException(status_code=500, detail="psql 命令未找到")
     except subprocess.TimeoutExpired:
-        await _write_audit_log(db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name} - 超时", status="failed")
+        await _write_audit_log(
+            db,
+            user_id=current_user.id,
+            action="恢复数据库备份",
+            action_type="backup",
+            detail=f"恢复文件: {name} - 超时",
+            status="failed",
+        )
         raise HTTPException(status_code=500, detail="恢复超时")
 
 
@@ -224,7 +255,9 @@ async def delete_backup(
         raise HTTPException(status_code=404, detail="备份文件不存在")
 
     os.remove(filepath)
-    await _write_audit_log(db, user_id=current_user.id, action="删除备份文件", action_type="backup", detail=f"删除文件: {name}")
+    await _write_audit_log(
+        db, user_id=current_user.id, action="删除备份文件", action_type="backup", detail=f"删除文件: {name}"
+    )
     return {"message": "备份删除成功"}
 
 

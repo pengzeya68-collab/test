@@ -32,9 +32,11 @@ async def get_coverage_summary(db: AsyncSession, user_id: int = None) -> dict:
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
     # 被覆盖的接口数：有执行记录的不同 URL 数量（30天内执行过的）
-    q_covered = select(func.count(distinct(AutoTestCase.url))).join(
-        AutoTestHistory, AutoTestHistory.case_id == AutoTestCase.id
-    ).where(AutoTestHistory.created_at >= thirty_days_ago)
+    q_covered = (
+        select(func.count(distinct(AutoTestCase.url)))
+        .join(AutoTestHistory, AutoTestHistory.case_id == AutoTestCase.id)
+        .where(AutoTestHistory.created_at >= thirty_days_ago)
+    )
     if user_id is not None:
         q_covered = q_covered.where(AutoTestCase.user_id == user_id)
     covered_apis = await db.scalar(q_covered) or 0

@@ -153,6 +153,7 @@ async def lifespan(_: FastAPI):
         # 关闭 HTTP 客户端连接池
         try:
             from fastapi_backend.services.autotest_request_service import shutdown_http_client
+
             await shutdown_http_client()
         except Exception as e:
             _logger.warning("HTTP 客户端关闭失败: %s", e)

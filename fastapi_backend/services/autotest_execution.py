@@ -8,6 +8,7 @@
 - 调用 Pytest 执行测试
 - 返回执行结果
 """
+
 import threading
 import json
 import time
@@ -16,10 +17,8 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
-from datetime import datetime, timezone
 import requests
 
-from fastapi_backend.utils.autotest_helpers import extract_jsonpath_value
 from fastapi_backend.services.autotest_assertion_engine import (
     execute_assertions as _engine_execute,
     get_field_value as _engine_get_field_value,
@@ -27,6 +26,7 @@ from fastapi_backend.services.autotest_assertion_engine import (
     get_operator_text as _engine_get_operator_text,
     extract_variables_from_response as _engine_extract_variables,
 )
+
 # from fastapi_backend.services.autotest_variable_service import save_variables_to_db
 from fastapi_backend.utils.parser import replace_variables
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment, AutoTestGlobalVariable
@@ -137,6 +137,7 @@ async def _save_variables_to_db_safe(extracted_vars: Dict[str, Any], user_id: in
         return
     try:
         from fastapi_backend.services.autotest_variable_service import save_variables_to_db
+
         await save_variables_to_db(extracted_vars, user_id=user_id)
         await _invalidate_global_vars_cache(user_id)
     except Exception as e:
@@ -163,17 +164,19 @@ def _smart_type_convert(obj: Any) -> Any:
     elif isinstance(obj, str):
         # 尝试恢复被 str() 化的数值类型（变量替换后 "100" → 100）
         # 保守策略：仅转换明确是数值的字符串，避免误转换 "001"、"v2" 等
-        if obj and not obj.startswith('0') and obj.lstrip('-').isdigit():
+        if obj and not obj.startswith("0") and obj.lstrip("-").isdigit():
             return int(obj)
         try:
-            if obj and '.' in obj and obj.lstrip('-').replace('.', '', 1).isdigit():
+            if obj and "." in obj and obj.lstrip("-").replace(".", "", 1).isdigit():
                 return float(obj)
         except (ValueError, AttributeError):
             pass
     return obj
 
 
-async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvironment], user_id: int = None) -> Dict[str, Any]:
+async def replace_case_variables(
+    case: AutoTestCase, env: Optional[AutoTestEnvironment], user_id: int = None
+) -> Dict[str, Any]:
     """
     替换用例中的变量占位符
     """
@@ -222,7 +225,7 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
         else:
             payload = replace_variables(payload, variables)
 
-    params = getattr(case, 'params', None)
+    params = getattr(case, "params", None)
     if params:
         if isinstance(params, dict):
             params_str = json.dumps(params, ensure_ascii=False)
@@ -240,8 +243,8 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
         params = {}
 
     # 处理 body_type 和 content_type
-    body_type = getattr(case, 'body_type', 'none') or 'none'
-    content_type = getattr(case, 'content_type', 'application/json') or 'application/json'
+    body_type = getattr(case, "body_type", "none") or "none"
+    content_type = getattr(case, "content_type", "application/json") or "application/json"
 
     # 对断言规则中的变量占位符做替换
     assert_rules = case.assert_rules or {}
@@ -265,7 +268,7 @@ async def replace_case_variables(case: AutoTestCase, env: Optional[AutoTestEnvir
         "body_type": body_type,
         "content_type": content_type,
         "payload": payload,
-        "assert_rules": assert_rules
+        "assert_rules": assert_rules,
     }
 
 
@@ -295,7 +298,7 @@ async def quick_run_case(
                 "execution_time": 0,
                 "error": reason,
                 "assert_result": None,
-                "request_body": case_data.get("payload")
+                "request_body": case_data.get("payload"),
             }
         headers = case_data["headers"]
         # 🔥 优先使用前端传来的 params（已替换变量），否则用 case 自带的
@@ -312,10 +315,7 @@ async def quick_run_case(
                 pass
 
         # 构建请求 kwargs
-        req_kwargs = {
-            "headers": headers,
-            "timeout": 30
-        }
+        req_kwargs = {"headers": headers, "timeout": 30}
 
         if params:
             req_kwargs["params"] = params
@@ -337,7 +337,6 @@ async def quick_run_case(
                 if isinstance(payload, dict):
                     # 将 dict 转为 multipart 字段
                     form_fields = {}
-                    file_fields = {}
                     for k, v in payload.items():
                         if isinstance(v, (dict, list)):
                             form_fields[k] = json.dumps(v, ensure_ascii=False)
@@ -365,7 +364,7 @@ async def quick_run_case(
                 "execution_time": 0,
                 "error": f"不支持的请求方法: {method}",
                 "assert_result": None,
-                "request_body": payload
+                "request_body": payload,
             }
 
         execution_time = int((time.time() - start_time) * 1000)
@@ -377,14 +376,18 @@ async def quick_run_case(
 
         # 🔥 修复：无论状态码如何，都执行变量提取
         extractors = None
-        if hasattr(case, 'extractors'):
+        if hasattr(case, "extractors"):
             extractors = case.extractors
-        extracted_vars = await extract_variables_from_response(extractors, response_data, response.text, dict(response.headers))
+        extracted_vars = await extract_variables_from_response(
+            extractors, response_data, response.text, dict(response.headers)
+        )
         if extracted_vars:
             await _save_variables_to_db_safe(extracted_vars, user_id=user_id)
 
         # 执行断言（不再提前拦截 status_code >= 400，让断言引擎根据用户配置判断）
-        assert_result = execute_assertions(case_data["assert_rules"], response.status_code, response_data, execution_time, dict(response.headers))
+        assert_result = execute_assertions(
+            case_data["assert_rules"], response.status_code, response_data, execution_time, dict(response.headers)
+        )
 
         return {
             "success": assert_result["passed"],
@@ -398,7 +401,7 @@ async def quick_run_case(
             "request_method": method,
             "request_headers": headers,
             "request_params": params,
-            "extracted_variables": extracted_vars
+            "extracted_variables": extracted_vars,
         }
 
     except requests.exceptions.Timeout:
@@ -410,10 +413,10 @@ async def quick_run_case(
             "error": "请求超时",
             "assert_result": None,
             "request_body": case.payload,
-            "request_url": case.url if hasattr(case, 'url') else None,
-            "request_method": case.method if hasattr(case, 'method') else None,
+            "request_url": case.url if hasattr(case, "url") else None,
+            "request_method": case.method if hasattr(case, "method") else None,
             "request_headers": None,
-            "request_params": None
+            "request_params": None,
         }
     except requests.exceptions.ConnectionError:
         return {
@@ -424,10 +427,10 @@ async def quick_run_case(
             "error": "连接失败，请检查网络或服务地址",
             "assert_result": None,
             "request_body": case.payload,
-            "request_url": case.url if hasattr(case, 'url') else None,
-            "request_method": case.method if hasattr(case, 'method') else None,
+            "request_url": case.url if hasattr(case, "url") else None,
+            "request_method": case.method if hasattr(case, "method") else None,
             "request_headers": None,
-            "request_params": None
+            "request_params": None,
         }
     except Exception as e:
         return {
@@ -438,14 +441,20 @@ async def quick_run_case(
             "error": str(e),
             "assert_result": None,
             "request_body": case.payload,
-            "request_url": case.url if hasattr(case, 'url') else None,
-            "request_method": case.method if hasattr(case, 'method') else None,
+            "request_url": case.url if hasattr(case, "url") else None,
+            "request_method": case.method if hasattr(case, "method") else None,
             "request_headers": None,
-            "request_params": None
+            "request_params": None,
         }
 
 
-def execute_assertions(assert_rules: Any, status_code: int, response: Any, response_time_ms: int = 0, response_headers: Optional[Dict] = None) -> Dict[str, Any]:
+def execute_assertions(
+    assert_rules: Any,
+    status_code: int,
+    response: Any,
+    response_time_ms: int = 0,
+    response_headers: Optional[Dict] = None,
+) -> Dict[str, Any]:
     """
     执行断言，委托给统一断言引擎
     """
@@ -458,7 +467,9 @@ def execute_assertions(assert_rules: Any, status_code: int, response: Any, respo
     )
 
 
-def get_field_value(field: str, status_code: int, response: Any, response_time_ms: float = 0, response_headers: Optional[Dict] = None) -> Any:
+def get_field_value(
+    field: str, status_code: int, response: Any, response_time_ms: float = 0, response_headers: Optional[Dict] = None
+) -> Any:
     """根据字段名获取实际值，委托给统一断言引擎"""
     return _engine_get_field_value(field, status_code, response, response_time_ms, response_headers)
 
@@ -473,7 +484,9 @@ def get_operator_text(operator: str) -> str:
     return _engine_get_operator_text(operator)
 
 
-async def extract_variables_from_response(extractors: Any, response_data: Any, response_text: str, response_headers: Optional[Dict] = None) -> Dict[str, str]:
+async def extract_variables_from_response(
+    extractors: Any, response_data: Any, response_text: str, response_headers: Optional[Dict] = None
+) -> Dict[str, str]:
     """
     从响应中提取变量，委托给统一断言引擎
     """
@@ -483,7 +496,6 @@ async def extract_variables_from_response(extractors: Any, response_data: Any, r
         response_text=response_text,
         response_headers=response_headers,
     )
-
 
 
 def generate_test_yaml(case_data: Dict[str, Any], output_path: Path) -> None:
@@ -496,7 +508,9 @@ def generate_test_yaml(case_data: Dict[str, Any], output_path: Path) -> None:
         yaml.dump(yaml_content, f, allow_unicode=True, default_flow_style=False)
 
 
-async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnvironment], history_id: int, user_id: int = None) -> Dict[str, Any]:
+async def run_case_with_pytest(
+    case: AutoTestCase, env: Optional[AutoTestEnvironment], history_id: int, user_id: int = None
+) -> Dict[str, Any]:
     """使用 Pytest 执行用例（生成 Allure 报告）"""
     from fastapi_backend.models.autotest import AutoTestHistory
 
@@ -511,6 +525,7 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
 
         # 使用 UUID 避免并发执行同一用例时文件冲突
         import uuid as _uuid
+
         run_id = _uuid.uuid4().hex[:8]
         yaml_file = temp_dir / f"case_{case.id}_{run_id}.yaml"
         generate_test_yaml(case_data, yaml_file)
@@ -519,18 +534,28 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
         allure_results_dir.mkdir(parents=True, exist_ok=True)
 
         import sys
+
         runner_script = BASE_DIR / "runner" / "test_core.py"
         allure_results_dir_abs = str(allure_results_dir.absolute())
 
         python_executable = sys.executable
         cmd1 = [
-            python_executable, "-m", "pytest", str(runner_script),
-            f"--data_path={yaml_file}", f"--alluredir={allure_results_dir_abs}", "-v"
+            python_executable,
+            "-m",
+            "pytest",
+            str(runner_script),
+            f"--data_path={yaml_file}",
+            f"--alluredir={allure_results_dir_abs}",
+            "-v",
         ]
 
         _logger.info(f"[Execution] 尝试方式1: {' '.join(cmd1)}")
         result = await asyncio.to_thread(
-            subprocess.run, cmd1, capture_output=True, text=True, timeout=60, 
+            subprocess.run,
+            cmd1,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
 
         result_files = list(allure_results_dir.glob("*.json"))
@@ -543,18 +568,38 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
             pytest_exe = python_dir / "Scripts" / "pytest.exe"
 
             if pytest_exe.exists():
-                cmd2 = [str(pytest_exe), str(runner_script), f"--data_path={yaml_file}", f"--alluredir={allure_results_dir_abs}", "-v"]
+                cmd2 = [
+                    str(pytest_exe),
+                    str(runner_script),
+                    f"--data_path={yaml_file}",
+                    f"--alluredir={allure_results_dir_abs}",
+                    "-v",
+                ]
                 _logger.info(f"[Execution] 尝试方式2 (Python Scripts): {' '.join(cmd2)}")
                 result = await asyncio.to_thread(
-                    subprocess.run, cmd2, capture_output=True, text=True, timeout=60, 
+                    subprocess.run,
+                    cmd2,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
                 )
                 result_files = list(allure_results_dir.glob("*.json"))
 
             if len(result_files) == 0:
-                cmd3 = ["pytest", str(runner_script), f"--data_path={yaml_file}", f"--alluredir={allure_results_dir_abs}", "-v"]
+                cmd3 = [
+                    "pytest",
+                    str(runner_script),
+                    f"--data_path={yaml_file}",
+                    f"--alluredir={allure_results_dir_abs}",
+                    "-v",
+                ]
                 _logger.info(f"[Execution] 尝试方式3: {' '.join(cmd3)}")
                 result = await asyncio.to_thread(
-                    subprocess.run, cmd3, capture_output=True, text=True, timeout=60, 
+                    subprocess.run,
+                    cmd3,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
                 )
                 result_files = list(allure_results_dir.glob("*.json"))
 
@@ -565,6 +610,7 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
 
         try:
             import shutil
+
             old_report_history = report_dir / "history"
             new_results_history = allure_results_dir / "history"
             if old_report_history.exists() and old_report_history.is_dir():
@@ -575,7 +621,7 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
             cmd_result = await asyncio.to_thread(
                 subprocess.run,
                 ["allure", "generate", str(allure_results_dir), "-o", str(report_dir), "--clean"],
-                capture_output=True, 
+                capture_output=True,
             )
             report_url = f"/reports/report_{history_id}/index.html" if cmd_result.returncode == 0 else None
         except Exception:
@@ -586,11 +632,14 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
         # 更新历史记录
         async with AsyncSessionLocal() as session:
             from sqlalchemy import update
+
             stmt = update(AutoTestHistory).where(AutoTestHistory.id == history_id)
             if user_id is not None:
                 stmt = stmt.where(AutoTestHistory.user_id == user_id)
             await session.execute(
-                stmt.values(status="success" if success else "failed", execution_time=execution_time, report_url=report_url)
+                stmt.values(
+                    status="success" if success else "failed", execution_time=execution_time, report_url=report_url
+                )
             )
             await session.commit()
 
@@ -606,7 +655,7 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
             "execution_time": execution_time,
             "report_url": report_url,
             "output": result.stdout,
-            "error": result.stderr if not success else None
+            "error": result.stderr if not success else None,
         }
 
     except subprocess.TimeoutExpired:
@@ -615,6 +664,7 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
         try:
             async with AsyncSessionLocal() as session:
                 from sqlalchemy import update
+
                 stmt = update(AutoTestHistory).where(AutoTestHistory.id == history_id)
                 if user_id is not None:
                     stmt = stmt.where(AutoTestHistory.user_id == user_id)
@@ -630,6 +680,7 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
                 yaml_file.unlink()
             if allure_results_dir and allure_results_dir.exists():
                 import shutil
+
                 shutil.rmtree(allure_results_dir, ignore_errors=True)
         except Exception:
             pass
@@ -641,12 +692,11 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
         try:
             async with AsyncSessionLocal() as session:
                 from sqlalchemy import update
+
                 stmt = update(AutoTestHistory).where(AutoTestHistory.id == history_id)
                 if user_id is not None:
                     stmt = stmt.where(AutoTestHistory.user_id == user_id)
-                await session.execute(
-                    stmt.values(status="error", execution_time=execution_time, error_message=str(e))
-                )
+                await session.execute(stmt.values(status="error", execution_time=execution_time, error_message=str(e)))
                 await session.commit()
         except Exception as db_err:
             _logger.error(f"异常处理中更新历史记录也失败了: {db_err}")
@@ -656,6 +706,7 @@ async def run_case_with_pytest(case: AutoTestCase, env: Optional[AutoTestEnviron
                 yaml_file.unlink()
             if allure_results_dir and allure_results_dir.exists():
                 import shutil
+
                 shutil.rmtree(allure_results_dir, ignore_errors=True)
         except Exception:
             pass

@@ -3,6 +3,7 @@ AutoTest 统一路由 - 全局变量管理
 
 路径前缀: /api/auto-test/global-variables
 """
+
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -28,6 +29,7 @@ class GlobalVariableUpdate(BaseModel):
     is_encrypted: Optional[bool] = None
     description: Optional[str] = None
 
+
 router = APIRouter(prefix="/api/auto-test/global-variables", tags=["AutoTest-全局变量"])
 
 
@@ -40,7 +42,7 @@ def _variable_to_dict(variable):
             value = decrypt(value)
         except Exception:
             value = "[解密失败]"
-    
+
     return {
         "id": variable.id,
         "name": variable.name,
@@ -74,7 +76,11 @@ async def get_global_variable(
     db: AsyncSession = Depends(get_db),
 ):
     """获取单个全局变量"""
-    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id))
+    result = await db.execute(
+        select(AutoTestGlobalVariable).filter(
+            AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id
+        )
+    )
     variable = result.scalar_one_or_none()
     if not variable:
         raise HTTPException(status_code=404, detail="全局变量不存在")
@@ -119,7 +125,11 @@ async def update_global_variable(
     db: AsyncSession = Depends(get_db),
 ):
     """更新全局变量"""
-    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id))
+    result = await db.execute(
+        select(AutoTestGlobalVariable).filter(
+            AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id
+        )
+    )
     variable = result.scalar_one_or_none()
     if not variable:
         raise HTTPException(status_code=404, detail="全局变量不存在")
@@ -167,7 +177,11 @@ async def delete_global_variable(
     db: AsyncSession = Depends(get_db),
 ):
     """删除全局变量"""
-    result = await db.execute(select(AutoTestGlobalVariable).filter(AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id))
+    result = await db.execute(
+        select(AutoTestGlobalVariable).filter(
+            AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id
+        )
+    )
     variable = result.scalar_one_or_none()
     if not variable:
         raise HTTPException(status_code=404, detail="全局变量不存在")

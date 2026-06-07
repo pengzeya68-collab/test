@@ -8,14 +8,12 @@
 - 支持并行执行（可选）
 """
 
-import asyncio
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
 from fastapi_backend.models.autotest import (
@@ -64,9 +62,7 @@ class SuiteRunner:
 
             # 加载套件内的用例
             result = await db.execute(
-                select(TestSuiteCase)
-                .where(TestSuiteCase.suite_id == self.suite_id)
-                .order_by(TestSuiteCase.sort_order)
+                select(TestSuiteCase).where(TestSuiteCase.suite_id == self.suite_id).order_by(TestSuiteCase.sort_order)
             )
             suite_cases = result.scalars().all()
 
@@ -93,7 +89,7 @@ class SuiteRunner:
                     "env_name": env.env_name,
                     "base_url": env.base_url,
                     "variables": env.variables if isinstance(env.variables, dict) else {},
-                    "headers": env.headers if isinstance(getattr(env, 'headers', None), dict) else {},
+                    "headers": env.headers if isinstance(getattr(env, "headers", None), dict) else {},
                 }
 
             # 创建执行记录
@@ -129,11 +125,13 @@ class SuiteRunner:
                     case = result.scalar_one_or_none()
 
                     if not case:
-                        case_results.append({
-                            "case_id": case_id,
-                            "status": "error",
-                            "error": "用例不存在",
-                        })
+                        case_results.append(
+                            {
+                                "case_id": case_id,
+                                "status": "error",
+                                "error": "用例不存在",
+                            }
+                        )
                         failed += 1
                         continue
 
@@ -166,23 +164,27 @@ class SuiteRunner:
                     else:
                         failed += 1
 
-                    case_results.append({
-                        "case_id": case.id,
-                        "case_name": case.name,
-                        "status": "success" if run_result["success"] else "failed",
-                        "execution_time": run_result.get("execution_time", 0),
-                        "status_code": run_result.get("status_code"),
-                        "error": run_result.get("error"),
-                    })
+                    case_results.append(
+                        {
+                            "case_id": case.id,
+                            "case_name": case.name,
+                            "status": "success" if run_result["success"] else "failed",
+                            "execution_time": run_result.get("execution_time", 0),
+                            "status_code": run_result.get("status_code"),
+                            "error": run_result.get("error"),
+                        }
+                    )
 
             except Exception as e:
                 _logger.error(f"用例 {case_id} 执行异常: {e}")
                 failed += 1
-                case_results.append({
-                    "case_id": case_id,
-                    "status": "error",
-                    "error": str(e),
-                })
+                case_results.append(
+                    {
+                        "case_id": case_id,
+                        "status": "error",
+                        "error": str(e),
+                    }
+                )
 
             if self.progress_callback:
                 self.progress_callback(idx + 1, len(suite_cases_data), f"完成用例 {idx + 1}/{len(suite_cases_data)}")
@@ -192,9 +194,7 @@ class SuiteRunner:
 
         # 更新执行记录
         async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(TestSuiteExecution).where(TestSuiteExecution.id == execution_id)
-            )
+            result = await db.execute(select(TestSuiteExecution).where(TestSuiteExecution.id == execution_id))
             exec_record = result.scalar_one_or_none()
             if exec_record:
                 exec_record.status = status
