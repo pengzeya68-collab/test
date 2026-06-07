@@ -358,7 +358,7 @@ import {
   TrendCharts, Key, Search
 } from '@element-plus/icons-vue'
 import JsonEditor from '@/views/JsonEditor.vue'
-import request from '@/utils/request'
+import { autoTestRequest } from '@/utils/request'
 
 const router = useRouter()
 
@@ -388,7 +388,7 @@ const treeProps = {
 const loadApiDoc = async () => {
   loading.value = true
   try {
-    const response = await request.post('/auto-test/api-docs/enhanced', {})
+    const response = await autoTestRequest.post('/auto-test/api-docs/enhanced', {})
     apiDoc.value = response.doc
     apiStats.value = response.stats
     
@@ -783,7 +783,7 @@ const handleShare = async () => {
   sharing.value = true
   try {
     // 分享当前文档（包含所有用例）
-    const response = await request.post('/auto-test/api-docs/share', {
+    const response = await autoTestRequest.post('/auto-test/api-docs/share', {
       case_ids: [],
       expires_hours: shareExpires.value
     })

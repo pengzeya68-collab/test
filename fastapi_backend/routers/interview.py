@@ -436,7 +436,7 @@ async def create_batch_interview_session(
             ).bindparams(
                 uid=current_user.id,
                 pos=body.position,
-                title_pattern=f"%{body.position.replace('%', '\\%').replace('_', '\\_')}%",
+                title_pattern="%{}%".format(body.position.replace('%', '\\%').replace('_', '\\_')),
             )
         )
         await db.commit()
