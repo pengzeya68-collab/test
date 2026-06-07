@@ -359,25 +359,25 @@ class ScenarioExecutionEngine:
                 except Exception as e:
                     _logger.error(f"保存执行记录失败: {e}", exc_info=True)
 
-            # 报告生成
-            temp_pytest_dir = AUTOTEST_DATA_DIR / "temp_pytest_tests"
-            allure_results_dir = AUTOTEST_DATA_DIR / "allure-results" / f"scenario_{self.scenario_id}_{history_id}"
-            report_dir = AUTOTEST_DATA_DIR / "reports" / f"scenario_{self.scenario_id}_{history_id}"
+            # 报告生成（子引擎/干跑模式跳过）
+            report_url = None
+            if not self._skip_record:
+                temp_pytest_dir = AUTOTEST_DATA_DIR / "temp_pytest_tests"
+                allure_results_dir = AUTOTEST_DATA_DIR / "allure-results" / f"scenario_{self.scenario_id}_{history_id}"
+                report_dir = AUTOTEST_DATA_DIR / "reports" / f"scenario_{self.scenario_id}_{history_id}"
 
-            temp_pytest_dir.mkdir(parents=True, exist_ok=True)
-            allure_results_dir.mkdir(parents=True, exist_ok=True)
-            report_dir.mkdir(parents=True, exist_ok=True)
+                temp_pytest_dir.mkdir(parents=True, exist_ok=True)
+                allure_results_dir.mkdir(parents=True, exist_ok=True)
+                report_dir.mkdir(parents=True, exist_ok=True)
 
-            test_file_path = self._generate_pytest_test_file(temp_pytest_dir, scenario_name, history_id)
-            report_generated = await self._run_pytest_and_generate_report(test_file_path, str(allure_results_dir), str(report_dir))
-            if not report_generated:
-                self._write_fallback_report(report_dir, scenario_name, env_name, overall_duration)
+                test_file_path = self._generate_pytest_test_file(temp_pytest_dir, scenario_name, history_id)
+                report_generated = await self._run_pytest_and_generate_report(test_file_path, str(allure_results_dir), str(report_dir))
+                if not report_generated:
+                    self._write_fallback_report(report_dir, scenario_name, env_name, overall_duration)
 
-            index_html = report_dir / "index.html"
-            if index_html.exists():
-                report_url = f"/reports/scenario_{self.scenario_id}_{history_id}/index.html"
-            else:
-                report_url = None
+                index_html = report_dir / "index.html"
+                if index_html.exists():
+                    report_url = f"/reports/scenario_{self.scenario_id}_{history_id}/index.html"
 
             # 更新记录中的 report_url
             if record and not self._skip_record:
@@ -394,35 +394,36 @@ class ScenarioExecutionEngine:
                 except Exception as e:
                     _logger.warning(f"更新报告URL失败: {e}")
 
-            # 邮件通知（移到报告生成之后，确保 report_url 不为 None）
-            try:
-                settings = get_settings()
-                admin_email = getattr(settings, "EMAIL_ADMIN_TO", None)
-                if admin_email and report_url:
-                    notifier = get_email_notifier()
-                    email_task = asyncio.create_task(
-                        notifier.send_scenario_result(
-                            to_email=admin_email,
-                            scenario_name=scenario_name,
-                            scenario_id=self.scenario_id,
-                            status=status,
-                            total_steps=total_steps,
-                            success_steps=success_steps,
-                            failed_steps=failed_steps,
-                            skipped_steps=skipped_steps,
-                            total_time=overall_duration,
-                            report_url=report_url,
-                            base_url=getattr(settings, "AUTO_TEST_BASE_URL", ""),
+            # 邮件通知（移到报告生成之后，确保 report_url 不为 None；子引擎跳过）
+            if not self._skip_record:
+                try:
+                    settings = get_settings()
+                    admin_email = getattr(settings, "EMAIL_ADMIN_TO", None)
+                    if admin_email and report_url:
+                        notifier = get_email_notifier()
+                        email_task = asyncio.create_task(
+                            notifier.send_scenario_result(
+                                to_email=admin_email,
+                                scenario_name=scenario_name,
+                                scenario_id=self.scenario_id,
+                                status=status,
+                                total_steps=total_steps,
+                                success_steps=success_steps,
+                                failed_steps=failed_steps,
+                                skipped_steps=skipped_steps,
+                                total_time=overall_duration,
+                                report_url=report_url,
+                                base_url=getattr(settings, "AUTO_TEST_BASE_URL", ""),
+                            )
                         )
-                    )
-                    def _on_email_done(t: asyncio.Task):
-                        if not t.cancelled():
-                            exc = t.exception()
-                            if exc:
-                                _logger.warning(f"邮件通知发送失败: {exc}")
-                    email_task.add_done_callback(_on_email_done)
-            except Exception as e:
-                _logger.warning(f"邮件通知创建失败: {e}")
+                        def _on_email_done(t: asyncio.Task):
+                            if not t.cancelled():
+                                exc = t.exception()
+                                if exc:
+                                    _logger.warning(f"邮件通知发送失败: {exc}")
+                        email_task.add_done_callback(_on_email_done)
+                except Exception as e:
+                    _logger.warning(f"邮件通知创建失败: {e}")
 
         return {
             "scenario_id": self.scenario_id,
@@ -1223,7 +1224,6 @@ class TestScenario{scenario_id}:
             # 对断言规则中的变量占位符做替换（支持dict/list类型）
             if assertions:
                 if isinstance(assertions, (dict, list)):
-                    import json
                     assertions_str = json.dumps(assertions, ensure_ascii=False)
                     assertions_str = replace_variables(assertions_str, all_vars)
                     try:

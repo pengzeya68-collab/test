@@ -306,7 +306,6 @@ async def quick_run_case(
 
         # 处理 payload 为字符串的情况
         if isinstance(payload, str) and payload:
-            import json
             try:
                 payload = json.loads(payload)
             except json.JSONDecodeError:
