@@ -189,8 +189,8 @@ class SubmissionHistoryItem(BaseModel):
     session_id: int
     question_id: int
     question_source: str = "interview_question"
-    question_title: str
-    question_difficulty: str
+    question_title: Optional[str] = None
+    question_difficulty: Optional[str] = None
     language: str
     execution_status: str
     ai_evaluation_status: str
