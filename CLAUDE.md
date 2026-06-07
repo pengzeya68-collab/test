@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-TestMaster 是基于 FastAPI + Vue 3 的全栈智能测试管理平台，采用 AGPL-3.0 许可证。
+TestMaster 是基于 FastAPI + Vue 3 的全栈智能测试管理平台，采用商业许可协议。
 
 ## 常用命令
 

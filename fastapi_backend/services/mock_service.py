@@ -32,6 +32,19 @@ _logger = logging.getLogger(__name__)
 class MockEngine:
     """Mock 服务引擎"""
 
+    _faker_instance = None  # 缓存 Faker 实例，避免每次请求重新加载 zh_CN 语言包
+
+    @classmethod
+    def _get_faker(cls):
+        """获取或创建 Faker 单例"""
+        if cls._faker_instance is None:
+            try:
+                from faker import Faker
+                cls._faker_instance = Faker('zh_CN')
+            except ImportError:
+                cls._faker_instance = False  # 标记为不可用
+        return cls._faker_instance if cls._faker_instance is not False else None
+
     async def match_rule(
         self, db: AsyncSession, project_slug: str, method: str, path: str, request_params: dict = None
     ) -> Optional[MockRule]:
@@ -295,6 +308,33 @@ class MockEngine:
             return expr
 
         name = expr[1:].lower()
+
+        # 带参数的表达式: @integer(1,100)
+        param_match = re.match(r'^(\w+)\(([^)]*)\)$', name)
+        if param_match:
+            func_name = param_match.group(1)
+            args_str = param_match.group(2)
+            if func_name == 'integer':
+                try:
+                    parts = [int(x.strip()) for x in args_str.split(',')]
+                    lo, hi = parts[0], parts[1] if len(parts) > 1 else parts[0]
+                    return random.randint(lo, hi)
+                except (ValueError, IndexError):
+                    return random.randint(0, 100)
+            elif func_name == 'float':
+                try:
+                    parts = [float(x.strip()) for x in args_str.split(',')]
+                    lo, hi = parts[0], parts[1] if len(parts) > 1 else parts[0]
+                    return round(random.uniform(lo, hi), 2)
+                except (ValueError, IndexError):
+                    return round(random.uniform(0, 100), 2)
+            elif func_name == 'string':
+                try:
+                    length = int(args_str.strip())
+                    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+                except (ValueError, IndexError):
+                    return ''.join(random.choices(string.ascii_letters, k=8))
+
         # 基础表达式
         generators = {
             "phone": self._gen_phone,
@@ -314,32 +354,8 @@ class MockEngine:
 
     def _faker_generate(self, name: str) -> str:
         """使用 faker 生成中文数据"""
-        try:
-            from faker import Faker
-            fake = Faker('zh_CN')
-            faker_map = {
-                "name": fake.name,
-                "address": fake.address,
-                "id_card": fake.ssn,
-                "company": fake.company,
-                "sentence": lambda: fake.sentence(nb_words=6),
-                "paragraph": lambda: fake.paragraph(nb_sentences=3),
-                "word": fake.word,
-                "text": lambda: fake.text(max_nb_chars=200),
-                "job": fake.job,
-                "phone_number": fake.phone_number,
-                "zipcode": fake.postcode,
-                "city": fake.city,
-                "province": fake.province,
-                "country": fake.country,
-                "url": fake.url,
-                "ipv4": fake.ipv4,
-                "color": fake.color_name,
-            }
-            gen_fn = faker_map.get(name)
-            if gen_fn:
-                return gen_fn()
-        except ImportError:
+        fake = self._get_faker()
+        if fake is None:
             # faker 未安装时回退到简单随机
             fallback = {
                 "name": lambda: f"用户{random.randint(1000, 9999)}",
@@ -355,6 +371,30 @@ class MockEngine:
             gen_fn = fallback.get(name)
             if gen_fn:
                 return gen_fn()
+            raise ValueError(f"faker 未安装且无回退数据: @{name}")
+
+        faker_map = {
+            "name": fake.name,
+            "address": fake.address,
+            "id_card": fake.ssn,
+            "company": fake.company,
+            "sentence": lambda: fake.sentence(nb_words=6),
+            "paragraph": lambda: fake.paragraph(nb_sentences=3),
+            "word": fake.word,
+            "text": lambda: fake.text(max_nb_chars=200),
+            "job": fake.job,
+            "phone_number": fake.phone_number,
+            "zipcode": fake.postcode,
+            "city": fake.city,
+            "province": fake.province,
+            "country": fake.country,
+            "url": fake.url,
+            "ipv4": fake.ipv4,
+            "color": fake.color_name,
+        }
+        gen_fn = faker_map.get(name)
+        if gen_fn:
+            return gen_fn()
         raise ValueError(f"未知的 faker 表达式: @{name}")
 
     def _resolve_dynamic_values(self, body: Any) -> Any:

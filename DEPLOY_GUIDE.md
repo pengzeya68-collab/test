@@ -14,7 +14,7 @@
 | 前端 | Vue 3 + Vite + Element Plus |
 | 数据库 | SQLite（生产也用，足够了） |
 | GitHub | `https://github.com/pengzeya68-collab/test` |
-| 协议 | AGPL-3.0 |
+| 协议 | 商业许可 |
 
 ---
 

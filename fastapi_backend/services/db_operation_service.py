@@ -128,7 +128,7 @@ async def _exec_redis(
     r = aioredis.Redis(host=host, port=port, password=password, decode_responses=True, socket_timeout=10)
     try:
         # 简单命令解析: GET key, HGETALL key, KEYS pattern 等
-        parts = query.strip().split(None, 2)
+        parts = query.strip().split()
         cmd = parts[0].upper() if parts else ""
         args = parts[1:] if len(parts) > 1 else []
 
