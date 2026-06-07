@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-import { getUserToken, getAdminToken, clearAllAuth, clearUserAuth, clearAdminAuth, setToken as saveToken, isValidTokenFormat } from '@/utils/auth'
+import { getUserToken, getAdminToken, clearUserAuth, clearAdminAuth, setToken as saveToken, isValidTokenFormat } from '@/utils/auth'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL
 const AUTO_TEST_BASE_URL = import.meta.env.VITE_AUTO_TEST_BASE_URL || '/api'
