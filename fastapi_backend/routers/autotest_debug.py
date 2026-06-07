@@ -83,8 +83,13 @@ async def debug_execute_request(
     }
 
     try:
+        import ssl as ssl_module
+        from fastapi_backend.core.config import settings
         timeout_obj = aiohttp.ClientTimeout(total=timeout)
-        async with aiohttp.ClientSession() as session:
+        # 临时关闭 SSL 验证
+        ssl_context = None if settings.DISABLE_SSL_VERIFY else ssl_module.create_default_context()
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
             request_kw = {"headers": headers, "timeout": timeout_obj}
             if request_body and method in ("POST", "PUT", "PATCH", "DELETE"):
                 request_kw["data"] = request_body

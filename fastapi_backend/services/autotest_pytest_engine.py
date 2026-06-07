@@ -19,6 +19,8 @@ from typing import Dict, Any, List
 from datetime import datetime, timezone
 import subprocess
 
+from fastapi_backend.core.config import settings
+
 _logger = logging.getLogger(__name__)
 
 # 项目根目录
@@ -285,15 +287,15 @@ def test_scenario_iteration(test_data, allure_dir, request):
             response = None
             try:
                 if method == "GET":
-                    response = requests.get(url, headers=headers, timeout=30)
+                    response = requests.get(url, headers=headers, timeout=30, verify=not settings.DISABLE_SSL_VERIFY)
                 elif method == "POST":
-                    response = requests.post(url, headers=headers, json=payload, timeout=30)
+                    response = requests.post(url, headers=headers, json=payload, timeout=30, verify=not settings.DISABLE_SSL_VERIFY)
                 elif method == "PUT":
-                    response = requests.put(url, headers=headers, json=payload, timeout=30)
+                    response = requests.put(url, headers=headers, json=payload, timeout=30, verify=not settings.DISABLE_SSL_VERIFY)
                 elif method == "DELETE":
-                    response = requests.delete(url, headers=headers, timeout=30)
+                    response = requests.delete(url, headers=headers, timeout=30, verify=not settings.DISABLE_SSL_VERIFY)
                 elif method == "PATCH":
-                    response = requests.patch(url, headers=headers, json=payload, timeout=30)
+                    response = requests.patch(url, headers=headers, json=payload, timeout=30, verify=not settings.DISABLE_SSL_VERIFY)
                 else:
                     raise ValueError(f"不支持的请求方法: {{method}}")
 

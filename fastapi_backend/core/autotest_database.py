@@ -6,12 +6,19 @@ AutoTest 数据库模块（已合并到主数据库）
 """
 
 import logging
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import (
     engine,
+    AsyncSessionLocal,
+    get_db,
+    async_session,
 )
 
 _logger = logging.getLogger(__name__)
+
+# 向后兼容别名，供所有 autotest 路由使用
+get_autotest_db = get_db
 
 
 async def init_autotest_db() -> None:

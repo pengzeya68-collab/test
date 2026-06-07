@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import get_current_user
@@ -28,6 +29,20 @@ async def get_favorites(
     base = select(Favorite).where(Favorite.user_id == current_user.id)
     if item_type:
         base = base.where(Favorite.item_type == item_type)
+
+    # 预加载关联对象，避免异步session中访问懒加载关系属性报错
+    if item_type == "post":
+        base = base.options(selectinload(Favorite.post))
+    elif item_type == "exercise":
+        base = base.options(selectinload(Favorite.exercise))
+    elif item_type == "note":
+        base = base.options(selectinload(Favorite.note))
+    else:
+        base = base.options(
+            selectinload(Favorite.post),
+            selectinload(Favorite.exercise),
+            selectinload(Favorite.note),
+        )
 
     count_q = select(func.count()).select_from(base.subquery())
     total = (await db.execute(count_q)).scalar() or 0

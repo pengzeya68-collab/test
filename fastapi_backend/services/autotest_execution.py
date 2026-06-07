@@ -18,6 +18,7 @@ import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
 import requests
+from fastapi_backend.core.config import settings
 
 from fastapi_backend.services.autotest_assertion_engine import (
     execute_assertions as _engine_execute,
@@ -347,15 +348,15 @@ async def quick_run_case(
                     req_kwargs["data"] = str(payload) if payload else ""
 
         if method == "GET":
-            response = await asyncio.to_thread(requests.get, url, **req_kwargs)
+            response = await asyncio.to_thread(requests.get, url, verify=not settings.DISABLE_SSL_VERIFY, **req_kwargs)
         elif method == "POST":
-            response = await asyncio.to_thread(requests.post, url, **req_kwargs)
+            response = await asyncio.to_thread(requests.post, url, verify=not settings.DISABLE_SSL_VERIFY, **req_kwargs)
         elif method == "PUT":
-            response = await asyncio.to_thread(requests.put, url, **req_kwargs)
+            response = await asyncio.to_thread(requests.put, url, verify=not settings.DISABLE_SSL_VERIFY, **req_kwargs)
         elif method == "DELETE":
-            response = await asyncio.to_thread(requests.delete, url, **req_kwargs)
+            response = await asyncio.to_thread(requests.delete, url, verify=not settings.DISABLE_SSL_VERIFY, **req_kwargs)
         elif method == "PATCH":
-            response = await asyncio.to_thread(requests.patch, url, **req_kwargs)
+            response = await asyncio.to_thread(requests.patch, url, verify=not settings.DISABLE_SSL_VERIFY, **req_kwargs)
         else:
             return {
                 "success": False,

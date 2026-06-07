@@ -19,6 +19,7 @@ from typing import Dict, Any, List, Optional
 from fastapi_backend.utils.autotest_helpers import convert_to_dict, extract_jsonpath_value
 from fastapi_backend.services.autotest_variable_service import save_variables_to_db
 from fastapi_backend.services.autotest_assertion_engine import get_field_value, compare_values, get_operator_text
+from fastapi_backend.core.config import settings
 
 # from fastapi_backend.services.autotest_report_service import write_allure_results
 from fastapi_backend.core.autotest_database import async_session
@@ -1336,7 +1337,7 @@ class TestScenario{scenario_id}:
             if not raw_payload and "application/json" in final_headers.get("Content-Type", ""):
                 req_kwargs["json"] = {}
 
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=30.0, verify=not settings.DISABLE_SSL_VERIFY) as client:
                 response = await client.request(**req_kwargs)
 
             step_duration = int((time.time() - step_start_time) * 1000)

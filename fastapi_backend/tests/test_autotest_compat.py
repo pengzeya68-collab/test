@@ -6,7 +6,8 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from fastapi_backend.core.autotest_database import AutoTestBase, get_autotest_db
+from fastapi_backend.core.autotest_database import get_autotest_db
+from fastapi_backend.core.database import Base as AutoTestBase
 from fastapi_backend.main import app
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestGroup, AutoTestScenario
 from fastapi_backend.services.autotest_execution import execute_assertions

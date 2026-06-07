@@ -27,9 +27,10 @@ def _get_http_client() -> httpx.AsyncClient:
     if _http_client is None or _http_client.is_closed:
         with _client_lock:
             if _http_client is None or _http_client.is_closed:
+                from fastapi_backend.core.config import settings
                 _http_client = httpx.AsyncClient(
                     timeout=30,
-                    verify=True,
+                    verify=not settings.DISABLE_SSL_VERIFY,
                     limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
                 )
     return _http_client

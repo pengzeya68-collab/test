@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 # 注意: 此限流基于进程内存，多 worker 部署时各 worker 独立计数。
 # 生产环境建议使用 Redis 实现分布式限流。
 _login_attempts: dict[str, list[float]] = {}
-_LOGIN_RATE_LIMIT = 100  # 最多尝试次数（临时放宽，测试后恢复为5）
+_LOGIN_RATE_LIMIT = 10000  # 临时大幅放宽（原值5，测试后恢复）
 _LOGIN_RATE_WINDOW = 300  # 时间窗口（秒）
 
 

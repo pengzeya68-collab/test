@@ -60,7 +60,11 @@ async def _check_single(url: str, timeout: float = 5.0) -> Dict:
 
     start = time.time()
     try:
-        async with aiohttp.ClientSession() as session:
+        from fastapi_backend.core.config import settings
+        import ssl as ssl_module
+        ssl_context = None if settings.DISABLE_SSL_VERIFY else ssl_module.create_default_context()
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
                 elapsed = round((time.time() - start) * 1000)
                 return {

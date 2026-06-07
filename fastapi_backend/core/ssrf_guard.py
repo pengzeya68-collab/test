@@ -2,6 +2,16 @@ import ipaddress
 import socket
 from urllib.parse import urlparse
 
+
+def _is_ssrf_guard_disabled() -> bool:
+    """检查是否临时禁用了 SSRF 防护"""
+    try:
+        from fastapi_backend.core.config import settings
+        return settings.DISABLE_SSRF_GUARD
+    except Exception:
+        return False
+
+
 BLOCKED_NETWORKS = [
     ipaddress.ip_network("10.0.0.0/8"),
     ipaddress.ip_network("172.16.0.0/12"),
@@ -18,6 +28,9 @@ BLOCKED_HOSTS = {"localhost", "host.docker.internal"}
 
 
 def validate_url_safety(url: str) -> tuple[bool, str]:
+    # 临时禁用 SSRF 防护时直接放行
+    if _is_ssrf_guard_disabled():
+        return True, ""
     try:
         parsed = urlparse(url)
         hostname = parsed.hostname

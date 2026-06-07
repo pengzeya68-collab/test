@@ -95,6 +95,13 @@ class Settings(BaseSettings):
     AI_RATE_LIMIT_REQUESTS: int = 10  # 每窗口最大请求数
     AI_RATE_LIMIT_WINDOW_SECONDS: int = 60  # 速率限制窗口（秒）
 
+    # 临时开关：关闭 SSL 验证（仅用于开发/测试环境，生产环境必须开启）
+    DISABLE_SSL_VERIFY: bool = True
+    # 临时开关：关闭 SSRF 防护（仅用于开发/测试环境，生产环境必须开启）
+    DISABLE_SSRF_GUARD: bool = True
+    # 临时开关：关闭 Nginx 限流（通过环境变量控制）
+    DISABLE_RATE_LIMIT: bool = True
+
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",

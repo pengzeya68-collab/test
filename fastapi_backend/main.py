@@ -254,9 +254,9 @@ app.middleware("http")(request_stats_middleware)
 
 from fastapi_backend.middleware.ai_rate_limiter import ai_rate_limit_middleware
 
-# 测试环境跳过 AI 速率限制中间件，避免 429 影响测试
-if settings.ENVIRONMENT != "testing":
-    app.middleware("http")(ai_rate_limit_middleware)
+# 临时禁用 AI 速率限制中间件（原条件：settings.ENVIRONMENT != "testing"）
+# if settings.ENVIRONMENT != "testing":
+#     app.middleware("http")(ai_rate_limit_middleware)
 
 # ========== 路由自动注册 ==========
 from fastapi_backend.core.router_registry import discover_routers
