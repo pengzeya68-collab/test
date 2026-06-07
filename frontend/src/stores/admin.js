@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import request, { clearTokenHeader, restoreActiveTokenHeader } from '@/utils/request'
-import { setAdminToken, setAdminInfo as saveAdminInfo, clearAdminAuth, ADMIN_TOKEN_KEY, ADMIN_INFO_KEY, safeJsonParse, isValidTokenFormat, getUserToken } from '@/utils/auth'
+import { setAdminToken, setAdminInfo as saveAdminInfo, clearAdminAuth, ADMIN_TOKEN_KEY, ADMIN_INFO_KEY, safeJsonParse, isValidTokenFormat } from '@/utils/auth'
 
 export const useAdminStore = defineStore('admin', () => {
   const adminInfo = ref(safeJsonParse(localStorage.getItem(ADMIN_INFO_KEY) || 'null'))

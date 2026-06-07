@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import request, { clearTokenHeader, restoreActiveTokenHeader } from '@/utils/request'
 import { ElNotification } from 'element-plus'
-import { setToken, setUserInfo, clearUserAuth, TOKEN_KEY, USER_KEY, ASSESSMENT_KEY, SKILL_PROFILE_KEY, safeJsonParse, isValidTokenFormat, getAdminToken } from '@/utils/auth'
+import { setToken, setUserInfo, clearUserAuth, TOKEN_KEY, USER_KEY, ASSESSMENT_KEY, SKILL_PROFILE_KEY, safeJsonParse, isValidTokenFormat } from '@/utils/auth'
 import { resetAICostsCache } from '@/composables/useAICosts'
 
 export const useUserStore = defineStore('user', () => {
@@ -10,7 +10,6 @@ export const useUserStore = defineStore('user', () => {
   const userInfo = ref(safeJsonParse(localStorage.getItem(USER_KEY) || 'null'))
   const assessmentCompleted = ref(localStorage.getItem(ASSESSMENT_KEY) === 'true')
   const skillProfile = ref(safeJsonParse(localStorage.getItem(SKILL_PROFILE_KEY) || 'null'))
-  const isLoading = ref(false)
   let assessmentPromise = null
 
   const isLoggedIn = computed(() => !!token.value && isValidTokenFormat(token.value))

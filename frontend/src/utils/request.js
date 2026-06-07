@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-import { getUserToken, getAdminToken, clearAllAuth, clearUserAuth, clearAdminAuth, isAdminRoute, setToken as saveToken, isValidTokenFormat } from '@/utils/auth'
+import { getUserToken, getAdminToken, clearAllAuth, clearUserAuth, clearAdminAuth, setToken as saveToken, isValidTokenFormat } from '@/utils/auth'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL
 const AUTO_TEST_BASE_URL = import.meta.env.VITE_AUTO_TEST_BASE_URL || '/api'
@@ -52,22 +52,6 @@ const setAdminTokenHeader = (newToken) => {
 }
 
 let isLoggingOut = false
-
-const syncClientAuthState = async () => {
-  clearAllAuth()
-
-  try {
-    const [{ useUserStore }, { useAdminStore }] = await Promise.all([
-      import('@/stores/user'),
-      import('@/stores/admin'),
-    ])
-
-    useUserStore().resetSession()
-    useAdminStore().resetSession()
-  } catch (error) {
-    console.warn('重置客户端状态失败:', error)
-  }
-}
 
 // 请求拦截器：根据请求来源选择 token
 // /admin 路径使用管理员token；其他路径（包括/auto-test）优先使用用户token
