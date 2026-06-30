@@ -137,7 +137,7 @@ _migrate_data.py
 # Root-level temporary/one-shot scripts
 fix_*.py
 check_*.py
-audit_*.py
+/audit_*.py
 batch_*.py
 build_*.py
 clean*.py
