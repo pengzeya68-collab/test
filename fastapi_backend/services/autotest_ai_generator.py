@@ -1249,8 +1249,13 @@ def ai_generate_task(self, task_id: str, swagger_data: dict, options: dict):
                     "message": f"生成失败: {str(e)[:200]}",
                 }
             )
-            import asyncio as _aio
-
-            _aio.run(update_task(task_id, stored))
+            # 检查是否有运行中的事件循环，避免嵌套 asyncio.run 报 "event loop already running"
+            try:
+                asyncio.get_running_loop()
+                # 已有事件循环运行，使用 create_task
+                asyncio.create_task(update_task(task_id, stored))
+            except RuntimeError:
+                # 没有事件循环，可以安全使用 asyncio.run
+                asyncio.run(update_task(task_id, stored))
         except Exception:
             pass

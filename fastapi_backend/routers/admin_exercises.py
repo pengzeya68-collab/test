@@ -6,12 +6,12 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy import select, func, or_, desc
+from sqlalchemy import select, func, or_, desc, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Exercise
+from fastapi_backend.models.models import User, Exercise, ExerciseSubmissionRecord
 from fastapi_backend.schemas.admin import AdminExerciseCreate, AdminExerciseUpdate
 from fastapi import UploadFile, File
 
@@ -41,17 +41,40 @@ async def list_exercises(
     result = await db.execute(query)
     exercises = result.scalars().all()
 
+    # 真实统计：批量查询当前页习题的提交总数与通过数
+    exercise_ids = [e.id for e in exercises]
+    stats = {}
+    if exercise_ids:
+        stats_result = await db.execute(
+            select(
+                ExerciseSubmissionRecord.exercise_id,
+                func.count(ExerciseSubmissionRecord.id),
+                func.coalesce(
+                    func.sum((ExerciseSubmissionRecord.result == "pass").cast(Integer)), 0
+                ),
+            )
+            .where(ExerciseSubmissionRecord.exercise_id.in_(exercise_ids))
+            .group_by(ExerciseSubmissionRecord.exercise_id)
+        )
+        for row in stats_result.all():
+            stats[row[0]] = {"total": row[1], "pass": row[2]}
+
     exercise_list = []
     for e in exercises:
+        stat = stats.get(e.id, {"total": 0, "pass": 0})
+        total_sub = stat["total"]
+        pass_sub = stat["pass"]
+        pass_rate = round(pass_sub * 100 / total_sub, 1) if total_sub else 0
         exercise_list.append(
             {
                 "id": e.id,
                 "title": e.title,
                 "category": e.category if hasattr(e, "category") else "",
                 "difficulty": e.difficulty,
+                "language": e.language if hasattr(e, "language") else "通用",
                 "content": e.description if hasattr(e, "description") else "",
                 "answer": e.solution if hasattr(e, "solution") else "",
-                "passRate": 0,
+                "passRate": pass_rate,
                 "createTime": e.created_at.isoformat() if e.created_at else "",
             }
         )
@@ -104,6 +127,8 @@ async def update_exercise(
         exercise.difficulty = update_data["difficulty"]
     if "category" in update_data:
         exercise.category = update_data["category"]
+    if update_data.get("language") is not None:
+        exercise.language = update_data["language"]
 
     await db.commit()
     return {"message": "更新成功"}

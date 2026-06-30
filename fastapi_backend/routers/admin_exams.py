@@ -8,12 +8,12 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, delete, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Exam, ExamQuestion
+from fastapi_backend.models.models import User, Exam, ExamQuestion, ExamAttempt, ExamAnswer
 from fastapi_backend.schemas.admin import AdminExamCreate, AdminExamUpdate, AdminExamPublishToggle
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-考试管理"])
@@ -46,9 +46,29 @@ async def list_exams(
         result = await db.execute(query)
         exams = result.scalars().all()
 
+        # 真实统计：批量查询当前页考试的尝试数与通过数
+        exam_ids = [e.id for e in exams]
+        stats = {}
+        if exam_ids:
+            stats_result = await db.execute(
+                select(
+                    ExamAttempt.exam_id,
+                    func.count(ExamAttempt.id),
+                    func.coalesce(func.sum(ExamAttempt.is_passed.cast(Integer)), 0),
+                )
+                .where(ExamAttempt.exam_id.in_(exam_ids))
+                .group_by(ExamAttempt.exam_id)
+            )
+            for row in stats_result.all():
+                stats[row[0]] = {"attempt_count": row[1], "pass_count": row[2]}
+
         exam_list = []
         for e in exams:
             try:
+                stat = stats.get(e.id, {"attempt_count": 0, "pass_count": 0})
+                attempt_count = stat["attempt_count"]
+                pass_count = stat["pass_count"]
+                pass_rate = round(pass_count * 100 / attempt_count, 1) if attempt_count else 0
                 exam_list.append(
                     {
                         "id": e.id,
@@ -60,8 +80,8 @@ async def list_exams(
                         "pass_score": getattr(e, "pass_score", 60),
                         "is_published": getattr(e, "is_published", False),
                         "question_count": len(getattr(e, "questions", []) or []),
-                        "attempt_count": 0,
-                        "pass_rate": 0,
+                        "attempt_count": attempt_count,
+                        "pass_rate": pass_rate,
                         "created_at": e.created_at.isoformat() if e.created_at else "",
                     }
                 )
@@ -202,23 +222,47 @@ async def update_exam(
     if "is_published" in update_data and hasattr(exam, "is_published"):
         exam.is_published = update_data["is_published"]
 
-    # 更新题目（简单策略：先删后加）
+    # 更新题目（diff 策略：仅删除真正不再需要且无答题记录的题目，保留 ExamAnswer FK）
     if data.questions is not None:
-        old_q_result = await db.execute(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id))
-        for old_q in old_q_result.scalars().all():
-            await db.delete(old_q)
+        existing_result = await db.execute(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id))
+        existing_questions = {q.id: q for q in existing_result.scalars().all()}
+        new_question_ids = {q.id for q in data.questions if q.id is not None}
 
+        # 删除被移除且无答题记录的题目
+        for q_id, q in existing_questions.items():
+            if q_id not in new_question_ids:
+                answer_count_result = await db.execute(
+                    select(func.count(ExamAnswer.id)).where(ExamAnswer.question_id == q_id)
+                )
+                if answer_count_result.scalar() == 0:
+                    await db.delete(q)
+                # 否则保留题目（已有答题记录，不能删除以免破坏 FK）
+
+        # 更新或创建题目
         for q_data in data.questions:
-            new_q = ExamQuestion(
-                exam_id=exam_id,
-                question_type=q_data.question_type,
-                content=q_data.content,
-                correct_answer=q_data.correct_answer,
-                score=q_data.score,
-                analysis=q_data.analysis,
-                options=json.dumps(q_data.options, ensure_ascii=False) if q_data.options else None,
-            )
-            db.add(new_q)
+            if q_data.id is not None:
+                # 更新已有题目
+                q = existing_questions.get(q_data.id)
+                if q is not None:
+                    q.question_type = q_data.question_type
+                    q.content = q_data.content
+                    q.correct_answer = q_data.correct_answer
+                    q.score = q_data.score
+                    q.analysis = q_data.analysis
+                    if q_data.options is not None:
+                        q.options = json.dumps(q_data.options, ensure_ascii=False)
+            else:
+                # 新建题目
+                new_q = ExamQuestion(
+                    exam_id=exam_id,
+                    question_type=q_data.question_type,
+                    content=q_data.content,
+                    correct_answer=q_data.correct_answer,
+                    score=q_data.score,
+                    analysis=q_data.analysis,
+                    options=json.dumps(q_data.options, ensure_ascii=False) if q_data.options else None,
+                )
+                db.add(new_q)
 
     try:
         await db.commit()
@@ -241,11 +285,13 @@ async def delete_exam(
     if not exam:
         raise HTTPException(status_code=404, detail="考试不存在")
 
-    # 删除关联题目
-    q_result = await db.execute(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id))
-    for q in q_result.scalars().all():
-        await db.delete(q)
-
+    # 先查所有 ExamQuestion.id，按顺序清理关联数据以保护外键
+    q_ids_result = await db.execute(select(ExamQuestion.id).where(ExamQuestion.exam_id == exam_id))
+    question_ids = [row[0] for row in q_ids_result.all()]
+    if question_ids:
+        await db.execute(delete(ExamAnswer).where(ExamAnswer.question_id.in_(question_ids)))
+    await db.execute(delete(ExamQuestion).where(ExamQuestion.exam_id == exam_id))
+    await db.execute(delete(ExamAttempt).where(ExamAttempt.exam_id == exam_id))
     await db.delete(exam)
     try:
         await db.commit()

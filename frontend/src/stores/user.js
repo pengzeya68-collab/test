@@ -4,6 +4,7 @@ import request, { clearTokenHeader, restoreActiveTokenHeader } from '@/utils/req
 import { ElNotification } from 'element-plus'
 import { setToken, setUserInfo, clearUserAuth, TOKEN_KEY, USER_KEY, ASSESSMENT_KEY, SKILL_PROFILE_KEY, safeJsonParse, isValidTokenFormat } from '@/utils/auth'
 import { resetAICostsCache } from '@/composables/useAICosts'
+import { usePermissionStore } from '@/stores/permission'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem(TOKEN_KEY) || '')
@@ -102,6 +103,12 @@ export const useUserStore = defineStore('user', () => {
     clearTokenHeader()
     resetAICostsCache()
     clearUserAuth()
+    // 清空 RBAC 权限缓存，避免登出后残留权限
+    try {
+      usePermissionStore().reset()
+    } catch (e) {
+      // permission store 未加载时忽略
+    }
     // 用户登出后恢复管理员token（如果管理员仍登录）
     restoreActiveTokenHeader()
   }
@@ -116,6 +123,12 @@ export const useUserStore = defineStore('user', () => {
     clearTokenHeader()
     resetAICostsCache()
     clearUserAuth()
+    // 清空 RBAC 权限缓存，避免登出后残留权限
+    try {
+      usePermissionStore().reset()
+    } catch (e) {
+      // permission store 未加载时忽略
+    }
     restoreActiveTokenHeader()
   }
 

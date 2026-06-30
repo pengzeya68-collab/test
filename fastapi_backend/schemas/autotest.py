@@ -18,12 +18,37 @@ def empty_str_to_none(v):
 OptionalInt = Annotated[Optional[int], BeforeValidator(empty_str_to_none)]
 
 
+# ========== 断言 target / operator 枚举 ==========
+
+# 断言目标类型：标识从响应的哪个部分取值或做何种校验
+ASSERTION_TARGET_TYPES = frozenset(
+    {
+        "status_code",  # HTTP 状态码
+        "response_time",  # 响应时间（毫秒）
+        "headers",  # 响应头整体
+        "headers.<name>",  # 指定响应头字段
+        "body",  # 响应体整体
+        "response_body",
+        "json_body",
+        "json_body.<jsonpath>",  # 响应体 JSONPath 字段
+        "response.<jsonpath>",
+        "body.<jsonpath>",
+        "json_schema",  # JSON Schema 断言：对整个响应体做 Schema 校验
+    }
+)
+
+# JSON Schema 断言（target=json_schema）支持的操作符
+JSON_SCHEMA_OPERATORS = frozenset({"matches", "not_matches"})
+
+
 # ========== AutoTestGroup Schema ==========
 
 
 class AutoTestGroupBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="分组名称")
-    parent_id: OptionalInt = Field(None, description="父级分组ID")
+    parent_id: OptionalInt = Field(None, description="父级分组ID(null=根分组)")
+    description: Optional[str] = Field(None, max_length=1000, description="分组描述")
+    sort_order: int = Field(0, ge=0, description="同级排序(越小越靠前)")
 
 
 class AutoTestGroupCreate(AutoTestGroupBase):
@@ -33,11 +58,21 @@ class AutoTestGroupCreate(AutoTestGroupBase):
 class AutoTestGroupUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     parent_id: OptionalInt = None
+    description: Optional[str] = Field(None, max_length=1000)
+    sort_order: Optional[int] = Field(None, ge=0)
+
+
+class AutoTestGroupMove(BaseModel):
+    """移动分组请求：改变 parent_id 和/或 sort_order"""
+
+    parent_id: OptionalInt = Field(None, description="目标父分组ID(null=移到根)")
+    sort_order: Optional[int] = Field(None, ge=0, description="新排序值")
 
 
 class AutoTestGroupResponse(AutoTestGroupBase):
     id: int
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -60,12 +95,23 @@ class AutoTestCaseBase(BaseModel):
     params: Optional[Dict[str, Any]] = Field(None, description="请求参数")
     body_type: Optional[str] = Field(None, description="body类型: none/raw/form-data")
     content_type: Optional[str] = Field(None, description="Content-Type")
-    payload: Optional[Dict[str, Any]] = Field(None, description="请求体")
-    assert_rules: Optional[Dict[str, Any]] = Field(None, alias="assertions", description="断言规则")
+    payload: Optional[Any] = Field(None, description="请求体（JSON 类型为 dict，XML/Text 类型为 str）")
+    assert_rules: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        alias="assertions",
+        description=(
+            "断言规则列表，每条规则形如 {target, operator, expected}。"
+            "target 取值见 ASSERTION_TARGET_TYPES，含 json_schema（JSON Schema 断言）。"
+            "当 target=json_schema 时，使用 expected_schema 字段存储 JSON Schema，"
+            "operator 取 matches/not_matches，见 JSON_SCHEMA_OPERATORS。"
+        ),
+    )
     extractors: Optional[List[Dict[str, Any]]] = Field(None, description="变量提取规则")
     description: Optional[str] = Field(None, description="用例描述")
-    pre_script: Optional[str] = Field(None, description="前置JS脚本")
-    post_script: Optional[str] = Field(None, description="后置JS脚本")
+    pre_script: Optional[str] = Field(None, description="前置脚本（JS/Python）")
+    post_script: Optional[str] = Field(None, description="后置脚本（JS/Python）")
+    pre_script_language: str = Field("javascript", description="前置脚本语言: javascript/python")
+    post_script_language: str = Field("javascript", description="后置脚本语言: javascript/python")
     response_schema: Optional[Dict[str, Any]] = Field(None, description="响应JSON Schema")
 
     model_config = ConfigDict(populate_by_name=True)
@@ -90,14 +136,25 @@ class AutoTestCaseUpdate(BaseModel):
     params: Optional[Dict[str, Any]] = None
     body_type: Optional[str] = None
     content_type: Optional[str] = None
-    payload: Optional[Dict[str, Any]] = None
-    assert_rules: Optional[Dict[str, Any]] = Field(None, alias="assertions", description="断言规则")
+    payload: Optional[Any] = None
+    assert_rules: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        alias="assertions",
+        description=(
+            "断言规则列表，每条规则形如 {target, operator, expected}。"
+            "target 取值见 ASSERTION_TARGET_TYPES，含 json_schema（JSON Schema 断言）。"
+            "当 target=json_schema 时，使用 expected_schema 字段存储 JSON Schema，"
+            "operator 取 matches/not_matches，见 JSON_SCHEMA_OPERATORS。"
+        ),
+    )
     extractors: Optional[List[Dict[str, Any]]] = Field(None, description="变量提取规则")
     description: Optional[str] = None
     folder_id: Optional[Any] = None
     group_id: Optional[Any] = None
     pre_script: Optional[str] = None
     post_script: Optional[str] = None
+    pre_script_language: Optional[str] = "javascript"
+    post_script_language: Optional[str] = "javascript"
     response_schema: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(populate_by_name=True)
@@ -122,6 +179,8 @@ class AutoTestEnvironmentBase(BaseModel):
     variables: Dict[str, Any] = Field(default_factory=dict, description="全局变量")
     is_default: bool = Field(False, description="是否为默认环境")
     services: Optional[List[Dict[str, Any]]] = Field(None, description="多服务URL配置")
+    # 父环境ID，用于变量继承（子环境覆盖父环境同名变量），最大继承深度 5 层
+    parent_id: OptionalInt = Field(None, description="父环境ID(用于变量继承)")
 
     @model_validator(mode="before")
     @classmethod
@@ -141,6 +200,7 @@ class AutoTestEnvironmentUpdate(BaseModel):
     variables: Optional[Dict[str, Any]] = None
     is_default: Optional[bool] = None
     services: Optional[List[Dict[str, Any]]] = None
+    parent_id: OptionalInt = Field(None, description="父环境ID(用于变量继承)")
 
     @model_validator(mode="before")
     @classmethod
@@ -158,6 +218,8 @@ class AutoTestEnvironmentResponse(BaseModel):
     variables: Dict[str, Any] = Field(default_factory=dict)
     is_default: bool = False
     services: Optional[List[Dict[str, Any]]] = None
+    parent_id: Optional[int] = None
+    parent_name: Optional[str] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -175,12 +237,52 @@ class AutoTestEnvironmentResponse(BaseModel):
             env_name = getattr(data, "env_name", None)
             if env_name:
                 data_dict = {}
-                for field in ["id", "base_url", "variables", "is_default", "services", "created_at"]:
+                for field in [
+                    "id",
+                    "base_url",
+                    "variables",
+                    "is_default",
+                    "services",
+                    "parent_id",
+                    "created_at",
+                ]:
                     data_dict[field] = getattr(data, field, None)
                 data_dict["name"] = env_name
                 data_dict["env_name"] = env_name
+                # 父环境名称（若已加载关系则取，否则为 None）
+                parent = getattr(data, "parent", None)
+                data_dict["parent_name"] = getattr(parent, "env_name", None) if parent else None
                 return data_dict
         return data
+
+
+# ========== 环境变量继承 Schema ==========
+
+
+class EffectiveVariableResponse(BaseModel):
+    """合并后的有效变量（标注来源环境）"""
+
+    name: str = Field(..., description="变量名")
+    value: Any = Field(..., description="变量值（合并后）")
+    source_environment_id: int = Field(..., description="变量来源环境ID")
+    source_environment_name: str = Field(..., description="变量来源环境名称")
+    is_overridden: bool = Field(
+        False, description="是否被子环境覆盖（仅当此变量在更上层环境中也存在时为 True）"
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InheritanceChainItemResponse(BaseModel):
+    """继承链中的单个环境条目"""
+
+    id: int
+    env_name: str
+    name: Optional[str] = None
+    parent_id: Optional[int] = None
+    depth: int = Field(..., description="继承深度：0=根环境，逐层递增")
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ========== AutoTestHistory Schema ==========
@@ -235,8 +337,10 @@ class ScenarioStepBase(BaseModel):
     )
     step_config: Optional[Dict[str, Any]] = Field(None, description="类型专属配置")
     parent_step_id: Optional[int] = Field(None, description="父步骤ID")
-    pre_script: Optional[str] = Field(None, description="前置JS脚本")
-    post_script: Optional[str] = Field(None, description="后置JS脚本")
+    pre_script: Optional[str] = Field(None, description="前置脚本（JS/Python）")
+    post_script: Optional[str] = Field(None, description="后置脚本（JS/Python）")
+    pre_script_language: str = Field("javascript", description="前置脚本语言: javascript/python")
+    post_script_language: str = Field("javascript", description="后置脚本语言: javascript/python")
 
 
 class ScenarioStepCreate(ScenarioStepBase):
@@ -253,6 +357,8 @@ class ScenarioStepUpdate(BaseModel):
     parent_step_id: Optional[int] = None
     pre_script: Optional[str] = None
     post_script: Optional[str] = None
+    pre_script_language: Optional[str] = "javascript"
+    post_script_language: Optional[str] = "javascript"
 
 
 class ScenarioStepResponse(ScenarioStepBase):
@@ -294,7 +400,7 @@ class AutoTestScenarioResponse(AutoTestScenarioBase):
     schedule_is_active: Optional[bool] = None
     project_id: Optional[int] = None
     fail_fast: Optional[bool] = None
-    is_active: Optional[bool] = True
+    is_active: Optional[bool] = None
 
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
@@ -578,3 +684,53 @@ class DBConnectionResponse(BaseModel):
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ========== 用例版本管理 Schema ==========
+
+
+class CaseVersionCreate(BaseModel):
+    """创建版本请求：version_number 留空时自动递增生成 v1/v2/v3..."""
+
+    version_number: Optional[str] = Field(
+        None, max_length=50, description="版本号(留空自动递增 v1/v2/v3...)"
+    )
+    version_label: Optional[str] = Field(None, max_length=200, description="版本标签")
+
+
+class CaseVersionResponse(BaseModel):
+    """版本响应（列表与详情共用，详情额外携带 snapshot 字段）"""
+
+    id: int
+    case_id: int
+    version_number: str
+    version_label: Optional[str] = None
+    snapshot: Optional[Dict[str, Any]] = Field(
+        None, description="完整用例快照(列表接口不返回,详情接口返回)"
+    )
+    created_by: Optional[int] = None
+    created_at: datetime
+    is_current: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CaseVersionDiffItem(BaseModel):
+    """单个字段差异"""
+
+    field: str = Field(..., description="字段路径,如 headers.Authorization / payload.username")
+    old_value: Any = Field(None, description="旧版本值(被删除时为 None)")
+    new_value: Any = Field(None, description="新版本值(被删除时为 None)")
+    change_type: str = Field(
+        ..., description="变更类型: added(新增) / removed(删除) / modified(修改)"
+    )
+
+
+class CaseVersionDiffResponse(BaseModel):
+    """两个版本对比结果"""
+
+    v1: Dict[str, Any] = Field(..., description="旧版本摘要 {id, version_number, version_label}")
+    v2: Dict[str, Any] = Field(..., description="新版本摘要 {id, version_number, version_label}")
+    diffs: List[CaseVersionDiffItem] = Field(..., description="差异列表")
+    total_changes: int = Field(..., description="差异总数")
+    is_identical: bool = Field(..., description="两版本是否完全一致")

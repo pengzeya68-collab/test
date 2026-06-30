@@ -5,12 +5,12 @@
     "max_size": 1000
   },
   "rate_limit": {
-    "enabled": true,
+    "enabled": false,
     "requests_per_minute": 60,
     "burst_size": 10
   },
   "ai_rate_limit": {
-    "enabled": true,
+    "enabled": false,
     "requests_per_window": 10,
     "window_seconds": 60
   },

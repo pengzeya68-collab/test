@@ -281,9 +281,15 @@ const fetchBackups = async () => {
 const fetchAuditLogs = async (page = 1) => {
   try {
     auditPage.value = page
-    const res = await request.get(`/admin/audit-logs?page=${page}&size=${auditSize.value}`)
+    const res = await request.get('/admin/audit-logs', { params: { page, page_size: auditSize.value } })
     const data = res.data || res || {}
-    auditLogs.value = data.logs || []
+    auditLogs.value = (data.items || []).map(log => ({
+      ...log,
+      createTime: log.created_at,
+      user: log.username || '系统',
+      ip: log.ip_address || '-',
+      detail: log.detail ? (typeof log.detail === 'string' ? log.detail : JSON.stringify(log.detail)) : '',
+    }))
     auditTotal.value = data.total || 0
   } catch (error) {
     console.error('获取审计日志失败:', error)

@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
+# 模块级后台任务集合，持有 task 引用避免被 GC 回收
+_background_tasks: set = set()
+
 from fastapi_backend.core.database import get_db
 from fastapi_backend.core.exceptions import NotFoundException
 from fastapi_backend.deps.auth import get_current_active_user, require_admin
@@ -867,9 +870,10 @@ async def create_submission(
                 exc_info=True,
             )
 
-    # 保存 task 引用，防止 GC 回收导致任务丢失
-    _bg_task = asyncio.create_task(_execute_and_evaluate_safe())
-    _bg_task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.exception() else None)
+    # 保存 task 引用至模块级集合，防止 GC 回收导致任务丢失
+    task = asyncio.create_task(_execute_and_evaluate_safe())
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
     return SuccessResponse(
         data=SubmissionDetail.model_validate(new_submission),

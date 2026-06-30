@@ -17,6 +17,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from fastapi.responses import StreamingResponse
 
+# aiohttp 为压测可选依赖，顶部统一导入避免每个 worker 重复 import
+try:
+    import aiohttp
+except ImportError:
+    aiohttp = None
+
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import (
@@ -546,7 +552,6 @@ async def export_tree_to_jmx(body: Dict[str, Any] = Body(...), current_user: Use
 import asyncio
 import time
 import uuid
-import aiohttp
 import httpx
 
 # 压测任务状态存储（内存，不持久化）
@@ -600,6 +605,7 @@ async def quick_benchmark_submit(
             "result": None,
             "snapshots": [],
             "user_id": current_user.id,
+            "cancelled": False,
         }
 
     # 后台异步执行，不阻塞当前请求
@@ -648,6 +654,45 @@ async def quick_benchmark_status(task_id: str, current_user: User = Depends(get_
     }
 
 
+@router.post("/bench/stop")
+async def stop_benchmark(
+    body: Dict[str, Any] = Body(...), current_user: User = Depends(get_current_active_user)
+):
+    """
+    停止正在运行的压测任务
+
+    Request Body:
+        task_id: 任务ID
+
+    Response:
+        message, task_id, status
+    """
+    task_id = body.get("task_id")
+    if not task_id:
+        raise HTTPException(status_code=400, detail="请提供 task_id")
+
+    task = _bench_tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+
+    # 校验任务归属
+    if task.get("user_id") and task["user_id"] != current_user.id:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+
+    async with _bench_lock:
+        task["cancelled"] = True
+        # 仅在任务尚未完成时才标记为 stopped，避免覆盖 done 状态
+        if task["status"] != "done":
+            task["status"] = "stopped"
+            task["progress"] = "用户已停止"
+
+    return {
+        "message": "任务已停止",
+        "task_id": task_id,
+        "status": task["status"],
+    }
+
+
 async def _run_bench(task_id: str, config: dict):
     """后台执行压测任务"""
     targets = config["targets"]
@@ -671,8 +716,12 @@ async def _run_bench(task_id: str, config: dict):
             while True:
                 if time.time() - start_time > duration:
                     break
+                if _bench_tasks.get(task_id, {}).get("cancelled"):
+                    break
                 for target in targets:
                     if time.time() - start_time > duration:
+                        break
+                    if _bench_tasks.get(task_id, {}).get("cancelled"):
                         break
                     req_start = time.time()
                     req_start_iso = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(req_start))
@@ -1010,8 +1059,12 @@ async def _run_bench(task_id: str, config: dict):
         }
 
     async with _bench_lock:
-        _bench_tasks[task_id]["status"] = "done"
-        _bench_tasks[task_id]["progress"] = f"完成：{result['total']} 请求，{result['failed']} 失败"
+        # 若用户已停止，保留 stopped 状态但仍存储已采集的（部分）结果
+        if not _bench_tasks[task_id].get("cancelled"):
+            _bench_tasks[task_id]["status"] = "done"
+            _bench_tasks[task_id]["progress"] = f"完成：{result['total']} 请求，{result['failed']} 失败"
+        else:
+            _bench_tasks[task_id]["progress"] = f"已停止：共 {result['total']} 请求"
         _bench_tasks[task_id]["percent"] = 100
         _bench_tasks[task_id]["result"] = result
 
@@ -1073,12 +1126,10 @@ async def analyze_bench_result(
         api_key = config.api_key
         base_url = config.base_url
         model = config.model
-        config.provider.lower() if config.provider else "openai"
     elif settings.AI_API_KEY and not _is_placeholder_api_key(settings.AI_API_KEY):
         api_key = settings.AI_API_KEY
         base_url = settings.AI_BASE_URL
         model = settings.AI_MODEL
-        getattr(settings, "AI_PROVIDER", "openai").lower()
 
     if not api_key:
         return {"analysis": _build_offline_analysis(req)}
@@ -1224,7 +1275,6 @@ def _build_offline_analysis(req) -> str:
     r = req.result
     total = r.get("total", 0)
     failed = r.get("failed", 0)
-    r.get("success", 0)
     tps = r.get("tps", 0)
     avg = r.get("avg_ms", 0)
     p95 = r.get("p95_ms", 0)

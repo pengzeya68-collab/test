@@ -371,10 +371,10 @@ const pollTaskStatus = (taskId) => {
         stopPolling()
         isRunning.value = false
         if (state === 'REVOKED') {
-          ElMessage.warning('⛔ 任务已被终止')
           dialogVisible.value = false
         } else {
-          ElMessage.error('执行失败: ' + (res.error || '未知错误'))
+          submitError.value = '执行失败: ' + (res.error || '未知错误')
+          ElMessage.error(submitError.value)
         }
       }
     } catch (error) {
@@ -405,13 +405,21 @@ const handleCancel = async () => {
   }
 }
 
-const handleClose = () => {
+const handleClose = async () => {
+  // 如果任务正在运行，静默取消任务（不阻塞关闭）
+  if (isRunning.value && currentTaskId) {
+    try {
+      await autoTestRequest.post(`/auto-test/tasks/${currentTaskId}/cancel`).catch(() => {})
+    } catch (e) {
+      // 静默处理
+    }
+  }
   stopPolling()
   isRunning.value = false
-  runResult.value = null
   progress.value = null
-  expandedSteps.value = []
+  runResult.value = null
   submitError.value = ''
+  expandedSteps.value = []
   currentTaskId = null
 }
 

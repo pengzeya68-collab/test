@@ -152,7 +152,7 @@
         <div class="tab-item coverage-tab" @click="$router.push('/test-coverage')">
           <span>📐 覆盖率看板</span>
         </div>
-        <div class="tab-item docs-tab" @click="$router.push('/api-docs')">
+        <div class="tab-item docs-tab" @click="$router.push('/api-doc-preview')">
           <el-icon><Document /></el-icon>
           <span>接口文档</span>
           <el-tag size="small" type="success" class="new-tag">新</el-tag>

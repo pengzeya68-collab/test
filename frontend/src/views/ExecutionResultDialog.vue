@@ -187,14 +187,112 @@ const rawResponseBody = computed(() => {
 const formattedHighlightedBody = computed(() => {
   const raw = rawResponseBody.value
   if (raw === '无响应体') return '<span class="json-empty">无响应体</span>'
+  // 1. 优先尝试 JSON 解析（含高亮）
   try {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
     const formatted = JSON.stringify(parsed, null, 2)
     return syntaxHighlight(formatted)
   } catch {
-    return escapeHtml(String(raw))
+    // 非 JSON，继续走 XML/HTML 美化分支
   }
+  // 2. 🔥 体验8：XML / HTML 响应做 pretty print（缩进美化 + 简单高亮）
+  const rawStr = typeof raw === 'string' ? raw : String(raw)
+  const trimmed = rawStr.trim()
+  const looksLikeXmlHtml = /^<[^>]+>/.test(trimmed) || /^\s*<\?xml/.test(trimmed)
+  if (looksLikeXmlHtml) {
+    try {
+      const pretty = prettyPrintXmlHtml(trimmed)
+      return highlightXmlHtml(pretty)
+    } catch {
+      // 美化失败则原样转义输出
+      return escapeHtml(rawStr)
+    }
+  }
+  // 3. 兜底：原样转义输出
+  return escapeHtml(rawStr)
 })
+
+/**
+ * 对 XML / HTML 字符串做缩进美化：
+ * - 自闭合标签、文本节点独立成行
+ * - 标签按嵌套深度缩进
+ * 注意：不使用 DOMParser（浏览器对 HTML 解析会"修正"结构，破坏原始内容），
+ *       采用基于正则的轻量 token 化方案，保证可逆且不丢内容。
+ */
+const prettyPrintXmlHtml = (src) => {
+  // 把标签和文本拆成 token
+  const tokens = []
+  const re = /<[^>]+>|[^<]+/g
+  let m
+  while ((m = re.exec(src)) !== null) {
+    tokens.push(m[0])
+  }
+  let indent = 0
+  const lines = []
+  const INDENT_STR = '  '
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i]
+    if (!tok) continue
+    // 注释节点
+    if (/^<!--[\s\S]*-->$/.test(tok)) {
+      lines.push(INDENT_STR.repeat(indent) + tok.trim())
+      continue
+    }
+    // 处理指令 <?xml ... ?>
+    if (/^<\?[\s\S]*\?>$/.test(tok)) {
+      lines.push(INDENT_STR.repeat(indent) + tok.trim())
+      continue
+    }
+    // CDATA
+    if (/^<!\[CDATA\[[\s\S]*\]\]>$/.test(tok)) {
+      lines.push(INDENT_STR.repeat(indent) + tok.trim())
+      continue
+    }
+    // 自闭合标签 <.../>
+    if (/^<[^>]+\/>$/.test(tok)) {
+      lines.push(INDENT_STR.repeat(indent) + tok.trim())
+      continue
+    }
+    // 闭合标签 </xxx>
+    if (/^<\/[^>]+>$/.test(tok)) {
+      indent = Math.max(0, indent - 1)
+      lines.push(INDENT_STR.repeat(indent) + tok.trim())
+      continue
+    }
+    // 开始标签 <xxx ...>
+    if (/^<[^>]+>$/.test(tok) && !/^<\//.test(tok)) {
+      lines.push(INDENT_STR.repeat(indent) + tok.trim())
+      indent += 1
+      continue
+    }
+    // 文本节点
+    const text = tok.replace(/\s+/g, ' ').trim()
+    if (text) {
+      lines.push(INDENT_STR.repeat(indent) + text)
+    }
+  }
+  return lines.join('\n')
+}
+
+/**
+ * XML / HTML 简单高亮：标签名/属性名/属性值/注释分别上色
+ * 输入需先经过 escapeHtml，避免 XSS
+ */
+const highlightXmlHtml = (xml) => {
+  const escaped = escapeHtml(xml)
+  return escaped.replace(
+    /(&lt;!--[\s\S]*?--&gt;|&lt;\/?[\w:-]+|[\w:-]+(?==)|"[^"]*"|'[^']*'|\/?&gt;)/g,
+    (match) => {
+      let cls = 'xml-text'
+      if (/^&lt;!--/.test(match)) cls = 'xml-comment'
+      else if (/^&lt;\/?[\w:-]+/.test(match)) cls = 'xml-tag'
+      else if (/^[\w:-]+$/.test(match)) cls = 'xml-attr'
+      else if (/^"[^"]*"$/.test(match) || /^'[^']*'$/.test(match)) cls = 'xml-attr-value'
+      else if (/^\/?&gt;$/.test(match)) cls = 'xml-tag'
+      return `<span class="${cls}">${match}</span>`
+    }
+  )
+}
 
 const escapeHtml = (str) => {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -363,6 +461,24 @@ const copyResponseBody = () => {
 .response-display :deep(.json-empty) {
   color: var(--tm-text-secondary);
   font-style: italic;
+}
+
+/* 🔥 体验8：XML / HTML 高亮配色 */
+.response-display :deep(.xml-tag) {
+  color: #e06c75;
+}
+.response-display :deep(.xml-attr) {
+  color: #d19a66;
+}
+.response-display :deep(.xml-attr-value) {
+  color: #98c379;
+}
+.response-display :deep(.xml-comment) {
+  color: #7f848e;
+  font-style: italic;
+}
+.response-display :deep(.xml-text) {
+  color: var(--tm-text-primary);
 }
 
 .collapsible-item {

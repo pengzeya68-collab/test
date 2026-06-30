@@ -1,7 +1,7 @@
 from typing import Optional
 import logging
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy import select, func, or_, case
+from sqlalchemy import select, func, or_, case, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
 
@@ -276,6 +276,9 @@ async def delete_interview_question(
             status_code=400,
             detail=f"题目无法删除，已有 {session_count} 个会话和 {submission_count} 个提交记录",
         )
+
+    # 先删除关联的 TestCase，避免外键约束失败
+    await db.execute(delete(TestCase).where(TestCase.question_id == question_id))
 
     await db.delete(question)
     await db.commit()

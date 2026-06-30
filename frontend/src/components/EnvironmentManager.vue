@@ -299,8 +299,16 @@ const handleEdit = (env) => {
   } else {
     vars.value = entries.map(([key, value]) => ({ key, value }))
   }
-  // 加载多服务配置
-  services.value = Array.isArray(env.services) ? env.services.map(s => ({ ...s })) : []
+  // 加载多服务配置，处理后端可能返回 JSON 字符串的情况
+  let servicesData = env.services
+  if (typeof servicesData === 'string') {
+    try {
+      servicesData = JSON.parse(servicesData)
+    } catch (e) {
+      servicesData = []
+    }
+  }
+  services.value = Array.isArray(servicesData) ? servicesData.map(s => ({ ...s })) : []
   dialogVisible.value = true
 }
 
@@ -317,6 +325,11 @@ const handleSave = async () => {
     services: services.value.filter(s => s.name && s.base_url).length > 0
       ? services.value.filter(s => s.name && s.base_url)
       : null,
+  }
+
+  // 将 services 序列化为 JSON 字符串，兼容后端
+  if (payload.services && typeof payload.services === 'object') {
+    payload.services = JSON.stringify(payload.services)
   }
 
   try {

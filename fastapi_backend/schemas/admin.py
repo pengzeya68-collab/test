@@ -50,6 +50,7 @@ class AdminUserStatusUpdate(BaseModel):
 
 
 class AdminExamQuestionCreate(BaseModel):
+    id: Optional[int] = Field(None, description="已有题目ID，更新时传入以保留答题记录")
     question_type: str = Field("single_choice", description="题目类型")
     content: str = Field("", description="题目内容")
     options: Optional[List[Any]] = Field(None, description="选项列表")

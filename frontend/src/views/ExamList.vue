@@ -15,10 +15,10 @@
       <div class="filter-bar">
         <el-row :gutter="16">
           <el-col :span="6">
-            <el-select 
-              v-model="filters.type" 
-              placeholder="考试类型" 
-              @change="fetchExams"
+            <el-select
+              v-model="filters.type"
+              placeholder="考试类型"
+              @change="handleFilterChange"
               style="width: 100%;"
               clearable
             >
@@ -28,10 +28,10 @@
             </el-select>
           </el-col>
           <el-col :span="6">
-            <el-select 
-              v-model="filters.difficulty" 
-              placeholder="难度" 
-              @change="fetchExams"
+            <el-select
+              v-model="filters.difficulty"
+              placeholder="难度"
+              @change="handleFilterChange"
               style="width: 100%;"
               clearable
             >
@@ -44,7 +44,7 @@
             <el-input
               v-model="filters.search"
               placeholder="搜索考试名称..."
-              @keyup.enter="fetchExams"
+              @keyup.enter="handleFilterChange"
               style="width: 100%;"
             >
               <template #prefix>
@@ -53,7 +53,7 @@
             </el-input>
           </el-col>
           <el-col :span="4">
-            <el-button type="primary" @click="fetchExams" style="width: 100%;">
+            <el-button type="primary" @click="handleFilterChange" style="width: 100%;">
               <el-icon><Search /></el-icon>
               搜索
             </el-button>
@@ -276,6 +276,11 @@ const openGenerateDialog = () => {
   showGenerateDialog.value = true
 }
 
+const handleFilterChange = () => {
+  currentPage.value = 1
+  fetchExams()
+}
+
 const fetchExams = async () => {
   loading.value = true
   try {
@@ -293,7 +298,7 @@ const fetchExams = async () => {
       ...exam,
       difficultyLevel: exam.difficulty === 'easy' ? 1 : exam.difficulty === 'medium' ? 2 : exam.difficulty === 'hard' ? 3 : 2
     }))
-    total.value = res.total || 0
+    total.value = res.total ?? (Array.isArray(res) ? res.length : 0)
   } catch (error) {
     console.error('获取考试列表失败:', error)
     ElMessage.error('获取考试列表失败')

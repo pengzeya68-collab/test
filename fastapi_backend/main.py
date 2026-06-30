@@ -92,9 +92,8 @@ async def init_auto_test_runtime() -> None:
         restore_scheduler_jobs_from_db,
     )
 
-    # 初始化 AutoTest 独立数据库（受环境变量控制）
-    if settings.AUTO_CREATE_TABLES_ON_STARTUP:
-        await init_autotest_db()
+    # 初始化 AutoTest 数据库（含运行时迁移，必须执行，不受 AUTO_CREATE_TABLES_ON_STARTUP 控制）
+    await init_autotest_db()
     await ensure_schedule_columns_on_db()
 
     # 确保目录存在
@@ -147,6 +146,13 @@ async def lifespan(_: FastAPI):
     except Exception as e:
         _logger.warning("AutoTest 初始化失败（不影响主服务）: %s", e)
         _cleanup_needed = False
+    # RBAC 预置数据初始化（幂等，失败不阻塞主服务）
+    try:
+        from fastapi_backend.core.rbac_init import init_rbac_data
+
+        await init_rbac_data()
+    except Exception as e:
+        _logger.warning("RBAC 预置数据初始化失败（不影响主服务）: %s", e)
     try:
         yield
     finally:

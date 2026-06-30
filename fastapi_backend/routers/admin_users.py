@@ -22,6 +22,7 @@ from fastapi_backend.models.models import (
     Like,
     Favorite,
     AuditLog,
+    ExerciseSubmissionRecord,
 )
 from fastapi_backend.schemas.admin import (
     AdminUserCreate,
@@ -115,6 +116,24 @@ async def list_users(
     result = await db.execute(query)
     users = result.scalars().all()
 
+    # 真实统计：批量查询每个用户已完成的习题数（去重，result=pass）
+    user_ids = [u.id for u in users]
+    completed_map = {}
+    if user_ids:
+        completed_result = await db.execute(
+            select(
+                ExerciseSubmissionRecord.user_id,
+                func.count(func.distinct(ExerciseSubmissionRecord.exercise_id)),
+            )
+            .where(
+                ExerciseSubmissionRecord.user_id.in_(user_ids),
+                ExerciseSubmissionRecord.result == "pass",
+            )
+            .group_by(ExerciseSubmissionRecord.user_id)
+        )
+        for row in completed_result.all():
+            completed_map[row[0]] = row[1]
+
     user_list = []
     for u in users:
         user_list.append(
@@ -128,7 +147,7 @@ async def list_users(
                 "level": u.level,
                 "score": u.score,
                 "studyTime": u.study_time or 0,
-                "completedExercises": 0,
+                "completedExercises": completed_map.get(u.id, 0),
                 "registerTime": u.created_at.isoformat() if u.created_at else "",
             }
         )
@@ -256,7 +275,10 @@ async def delete_user(
         try:
             await db.execute(sql_delete(model).where(model.user_id == user_id))
         except Exception as e:
-            logging.getLogger(__name__).warning(f"删除用户时清理 {model.__name__} 关联数据失败: {e}")
+            # 清理失败不应静默吞掉，否则会返回成功但实际未删除干净
+            logging.getLogger(__name__).exception("清理用户 %s 关联数据(%s)失败: %s", user_id, model.__name__, e)
+            await db.rollback()
+            raise HTTPException(status_code=500, detail=f"清理关联数据失败（{model.__name__}），删除已回滚")
 
     # 删除用户帖子关联的 Like 和 Favorite，再删帖子
     user_post_ids = (await db.execute(select(Post.id).where(Post.user_id == user_id))).scalars().all()
@@ -283,8 +305,8 @@ async def delete_user(
         )
         db.add(log)
         await db.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger(__name__).warning("写入删除用户审计日志失败: %s", e)
     return {"message": "删除成功"}
 
 

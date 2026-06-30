@@ -11,15 +11,18 @@ import subprocess
 import uuid
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, BackgroundTasks, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
+from fastapi_backend.core.audit_decorator import audit_log
+from fastapi_backend.core.rbac import require_permissions
 from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import (
     AutoTestCase,
@@ -48,6 +51,9 @@ router = APIRouter(prefix="/api/auto-test", tags=["AutoTest-执行与工具"])
 
 # 项目根目录（routers/autotest_execution.py -> fastapi_backend/ -> TestMasterProject/）
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+# 模块级后台任务集合，持有 task 引用避免被 GC 回收
+_background_tasks: set = set()
 AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 TASKS_DIR = AUTOTEST_DATA_DIR / "tasks"
 
@@ -469,10 +475,12 @@ async def preview_variables(
 
 
 @router.post("/cases/{case_id}/run")
+@audit_log(action="execute", resource_type="case", resource_id_param="case_id")
 async def run_case(
     case_id: int,
+    request: Request,
     body: CaseRunRequest = None,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions("case:execute")),
     db: AsyncSession = Depends(get_db),
 ):
     """执行用例并保存历史记录，返回完整执行结果"""
@@ -609,14 +617,20 @@ async def quick_run(
     return CaseExecutionResult(**result_data)
 
 
+class BatchRunRequest(BaseModel):
+    case_ids: List[int]
+    env_id: Optional[int] = None
+
+
 @router.post("/cases/batch-run")
 async def batch_run(
-    case_ids: List[int],
-    env_id: int = None,
+    body: BatchRunRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """批量执行多个用例（并发执行）"""
+    case_ids = body.case_ids
+    env_id = body.env_id
     if not case_ids:
         raise HTTPException(status_code=400, detail="请提供至少一个用例ID")
     if len(case_ids) > 50:
@@ -682,10 +696,12 @@ async def batch_run(
                 user_id=current_user.id,
             )
         else:
+            _et = result.get("execution_time")
+            execution_time = _et if _et is not None else result.get("response_time", 0)
             history = AutoTestHistory(
                 case_id=case.id,
                 status="success" if result.get("success", False) else "failed",
-                execution_time=result.get("execution_time") or result.get("response_time", 0),
+                execution_time=execution_time,
                 response_data=result.get("response"),
                 error_message=result.get("error"),
                 user_id=current_user.id,
@@ -774,11 +790,13 @@ async def get_history_detail(
 
 
 @router.post("/scenarios/{scenario_id}/run")
+@audit_log(action="execute", resource_type="scenario", resource_id_param="scenario_id")
 async def run_scenario(
     scenario_id: int,
+    request: Request,
     body: CaseRunRequest = None,
     background: bool = True,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions("scenario:execute")),
 ):
     """执行测试场景，使用Celery异步任务"""
     env_id = body.env_id if body else None
@@ -841,6 +859,7 @@ async def run_scenario(
 
         if use_local_runner:
             task = asyncio.create_task(_run_scenario_locally(task_id, scenario_id, env_id, user_id=current_user.id))
+            _background_tasks.add(task)
 
             # 添加回调追踪异常，防止任务静默失败
             def _on_task_done(t: asyncio.Task):
@@ -850,6 +869,7 @@ async def run_scenario(
                 if exc:
                     logger.error(f"本地异步任务 {task_id} 执行异常: {exc}", exc_info=exc)
 
+            task.add_done_callback(_background_tasks.discard)
             task.add_done_callback(_on_task_done)
             logger.info(f"本地异步任务已启动，任务ID: {task_id}")
         else:
@@ -905,14 +925,14 @@ async def get_scenario_execution_history(
     # 日期范围筛选
     if start_date:
         try:
-            start_datetime = datetime.fromisoformat(start_date + "T00:00:00")
+            start_datetime = datetime.fromisoformat(start_date + "T00:00:00").replace(tzinfo=timezone.utc)
             query = query.where(AutoTestScenarioExecutionRecord.created_at >= start_datetime)
         except ValueError:
             raise HTTPException(status_code=400, detail=f"起始日期格式无效: {start_date}")
 
     if end_date:
         try:
-            end_datetime = datetime.fromisoformat(end_date + "T23:59:59")
+            end_datetime = datetime.fromisoformat(end_date + "T23:59:59").replace(tzinfo=timezone.utc)
             query = query.where(AutoTestScenarioExecutionRecord.created_at <= end_datetime)
         except ValueError:
             raise HTTPException(status_code=400, detail=f"结束日期格式无效: {end_date}")
@@ -935,13 +955,13 @@ async def get_scenario_execution_history(
         count_base = count_base.where(AutoTestScenarioExecutionRecord.status == normalized_status)
     if start_date:
         try:
-            start_datetime = datetime.fromisoformat(start_date + "T00:00:00")
+            start_datetime = datetime.fromisoformat(start_date + "T00:00:00").replace(tzinfo=timezone.utc)
             count_base = count_base.where(AutoTestScenarioExecutionRecord.created_at >= start_datetime)
         except ValueError:
             pass
     if end_date:
         try:
-            end_datetime = datetime.fromisoformat(end_date + "T23:59:59")
+            end_datetime = datetime.fromisoformat(end_date + "T23:59:59").replace(tzinfo=timezone.utc)
             count_base = count_base.where(AutoTestScenarioExecutionRecord.created_at <= end_datetime)
         except ValueError:
             pass
@@ -1013,12 +1033,12 @@ async def delete_scenario_execution_history(
 @router.post("/scenarios/{scenario_id}/run-data-driven")
 async def run_scenario_data_driven(
     scenario_id: int,
-    body: CaseRunRequest = None,
+    body: CaseRunRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
 ):
     """数据驱动执行测试场景"""
-    env_id = body.env_id if body else None
-    from fastapi_backend.services.autotest_scenario_runner import run_scenario_data_driven as execute_data_driven
+    env_id = body.env_id
     from fastapi_backend.core.autotest_database import AsyncSessionLocal
 
     # 校验场景归属
@@ -1033,8 +1053,32 @@ async def run_scenario_data_driven(
         if scenario is None:
             raise HTTPException(status_code=404, detail="场景不存在")
 
+    # 改为后台任务执行，避免在 HTTP 请求处理器内同步运行导致超时
+    task_id = str(uuid.uuid4())
+    await update_task(
+        task_id,
+        {
+            "task_id": task_id,
+            "scenario_id": scenario_id,
+            "user_id": current_user.id,
+            "status": "running",
+            "progress": 0,
+            "info": "数据驱动执行已启动",
+            "created_at": time.time(),
+        },
+    )
+    background_tasks.add_task(
+        run_scenario_data_driven_task, scenario_id, env_id, task_id, current_user.id
+    )
+    return {"task_id": task_id, "status": "running", "message": "数据驱动执行已启动"}
+
+
+async def run_scenario_data_driven_task(scenario_id: int, env_id, task_id: str, user_id: int):
+    """后台执行数据驱动测试场景并生成 Allure 报告"""
+    from fastapi_backend.services.autotest_scenario_runner import run_scenario_data_driven as execute_data_driven
+
     try:
-        result_data = await execute_data_driven(scenario_id, env_id, user_id=current_user.id)
+        result_data = await execute_data_driven(scenario_id, env_id, user_id=user_id)
 
         allure_results_dir = AUTOTEST_DATA_DIR / "allure-results" / f"scenario_{scenario_id}"
         report_dir = AUTOTEST_DATA_DIR / "reports" / f"scenario_{scenario_id}"
@@ -1080,13 +1124,32 @@ async def run_scenario_data_driven(
         except Exception:
             result_data["report_url"] = None
 
-        return result_data
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except HTTPException:
-        raise
+        await update_task(
+            task_id,
+            {
+                "task_id": task_id,
+                "scenario_id": scenario_id,
+                "user_id": user_id,
+                "status": "completed",
+                "info": "数据驱动执行完成",
+                "result": result_data,
+                "completed_at": time.time(),
+            },
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"执行失败: {str(e)}")
+        logging.getLogger(__name__).error(f"数据驱动执行失败 task_id={task_id}: {e}", exc_info=True)
+        await update_task(
+            task_id,
+            {
+                "task_id": task_id,
+                "scenario_id": scenario_id,
+                "user_id": user_id,
+                "status": "failed",
+                "info": f"执行失败: {str(e)[:100]}",
+                "error": str(e),
+                "completed_at": time.time(),
+            },
+        )
 
 
 # ========== 定时任务管理接口 ==========
@@ -1216,6 +1279,7 @@ async def run_scheduler_task_now(
         raise HTTPException(status_code=404, detail="任务不存在")
 
     scenario_id = task.get("scenario_id")
+    user_id = None
     if scenario_id:
         from fastapi_backend.core.autotest_database import AsyncSessionLocal
         from fastapi_backend.models.autotest import AutoTestScenario
@@ -1230,12 +1294,14 @@ async def run_scheduler_task_now(
             scenario = result.scalar_one_or_none()
             if not scenario or not scenario.is_active:
                 raise HTTPException(status_code=400, detail="场景已停用，禁止执行")
+            # 从场景中获取 user_id 并传递给执行任务，避免丢失执行归属
+            user_id = scenario.user_id
 
     try:
 
         async def _execute_job_safe():
             try:
-                await execute_scenario_job(task["scenario_id"], task.get("env_id"), task_id)
+                await execute_scenario_job(task["scenario_id"], task.get("env_id"), task_id, user_id=user_id)
             except Exception as e:
                 import logging
 
@@ -1410,13 +1476,30 @@ async def import_postman(
                 body_type = "none"
                 content_type = "application/json"
                 body = req.get("body")
-                if body and body.get("mode") == "raw":
+                body_mode = body.get("mode", "") if body else ""
+                if body_mode == "raw":
                     body_type = "raw"
                     content_type = "application/json"
                     try:
                         payload = json.loads(body.get("raw", "{}"))
                     except Exception:
                         payload = {"raw": body.get("raw", "")}
+                elif body_mode == "urlencoded":
+                    payload = {
+                        field["key"]: field.get("value", "")
+                        for field in body.get("urlencoded", [])
+                        if field.get("key")
+                    }
+                    body_type = "form"
+                    content_type = "application/x-www-form-urlencoded"
+                elif body_mode == "formdata":
+                    payload = {
+                        field["key"]: field.get("value", "")
+                        for field in body.get("formdata", [])
+                        if field.get("key")
+                    }
+                    body_type = "form-data"
+                    content_type = "multipart/form-data"
 
                 case_data = {
                     "name": item.get("name", "Unnamed"),
@@ -1432,7 +1515,7 @@ async def import_postman(
                 else:
                     case = AutoTestCase(group_id=parent_id, user_id=current_user.id, **case_data)
                     db.add(case)
-                imported_count += 1
+                    imported_count += 1
 
     if dry_run:
         await _import_items(data.get("item", []))
@@ -1467,6 +1550,44 @@ async def import_postman(
     await db.commit()
 
     return {"message": f"导入成功，共导入 {imported_count} 个用例", "imported_count": imported_count}
+
+
+def _resolve_ref(ref, full_spec):
+    """解析 Swagger $ref 引用，如 #/components/schemas/Pet"""
+    if not ref or not ref.startswith("#/"):
+        return None
+    parts = ref.lstrip("#/").split("/")
+    current = full_spec
+    for part in parts:
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        else:
+            return None
+    return current
+
+
+def _generate_example_from_schema(schema, full_spec, depth=0):
+    """从 Swagger schema 生成示例数据，递归解析 $ref"""
+    if depth > 5:
+        return None
+    if not schema:
+        return {}
+    if "$ref" in schema:
+        schema = _resolve_ref(schema["$ref"], full_spec) or {}
+    if schema.get("type") == "object":
+        result = {}
+        for prop_name, prop_schema in (schema.get("properties") or {}).items():
+            result[prop_name] = _generate_example_from_schema(prop_schema, full_spec, depth + 1)
+        return result
+    if schema.get("type") == "array":
+        return [_generate_example_from_schema(schema.get("items", {}), full_spec, depth + 1)]
+    if schema.get("type") == "string":
+        return schema.get("example", "string")
+    if schema.get("type") == "integer":
+        return schema.get("example", 0)
+    if schema.get("type") == "boolean":
+        return schema.get("example", False)
+    return schema.get("example", {})
 
 
 @router.post("/import/swagger")
@@ -1536,18 +1657,44 @@ async def import_swagger(
             url = re.sub(r"\{(\w+)\}", r"{{\1}}", url)
 
             headers = {}
-            for param in details.get("parameters", []):
-                if param.get("in") == "header":
-                    headers[param.get("name", "")] = f"{{{{{param.get('name', '')}}}}}"
+            query_params = {}
+            # 合并 path 级别与 operation 级别的参数
+            all_params = list(methods.get("parameters", [])) + list(details.get("parameters", []))
+            for param in all_params:
+                # 解析参数的 $ref 引用
+                if "$ref" in param:
+                    param = _resolve_ref(param["$ref"], data) or {}
+                param_in = param.get("in")
+                param_name = param.get("name", "")
+                if param_in == "header":
+                    headers[param_name] = f"{{{{{param_name}}}}}"
+                elif param_in == "query":
+                    param_schema = param.get("schema", {}) or {}
+                    if param_schema.get("type") == "string":
+                        query_params[param_name] = param_schema.get("example", "string")
+                    elif param_schema.get("type") == "integer":
+                        query_params[param_name] = param_schema.get("example", 0)
+                    else:
+                        query_params[param_name] = param_schema.get("example", "")
+            # 将 query 参数拼接到 URL
+            if query_params:
+                from urllib.parse import urlencode
+
+                url = f"{url}?{urlencode(query_params)}"
 
             payload = None
             request_body = details.get("requestBody")
             if request_body:
+                # 解析 requestBody 的 $ref 引用
+                if "$ref" in request_body:
+                    request_body = _resolve_ref(request_body["$ref"], data) or {}
                 content_obj = request_body.get("content", {})
                 for ct, ct_details in content_obj.items():
                     headers["Content-Type"] = ct
-                    if ct_details.get("schema"):
-                        payload = {"schema": ct_details["schema"]}
+                    schema = ct_details.get("schema")
+                    if schema:
+                        # 从 schema 生成示例 payload，避免直接存储 schema dict
+                        payload = _generate_example_from_schema(schema, data)
                     break
 
             case_data = {

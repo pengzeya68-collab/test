@@ -113,6 +113,9 @@ class PytestDataDrivenEngine:
         _name_for_doc = (self.scenario_name or "").replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
         _name_for_code = repr(self.scenario_name or "")
 
+        # 在生成代码时计算 SSL_VERIFY 字面值，避免生成的代码依赖 settings 导入
+        ssl_verify = not getattr(settings, 'DISABLE_SSL_VERIFY', False)
+
         code = f'''"""
 自动生成的场景测试文件
 场景: {_name_for_doc}
@@ -133,6 +136,7 @@ SCENARIO_NAME = {_name_for_code}
 ENV_VARS = {env_vars_json}
 STEPS = {steps_json}
 COLUMNS = {json.dumps(columns)}
+SSL_VERIFY = {ssl_verify}
 
 
 def find_variables(text):
@@ -287,15 +291,15 @@ def test_scenario_iteration(test_data, allure_dir, request):
             response = None
             try:
                 if method == "GET":
-                    response = requests.get(url, headers=headers, timeout=30, verify=not settings.DISABLE_SSL_VERIFY)
+                    response = requests.get(url, headers=headers, timeout=30, verify=SSL_VERIFY)
                 elif method == "POST":
-                    response = requests.post(url, headers=headers, json=payload, timeout=30, verify=not settings.DISABLE_SSL_VERIFY)
+                    response = requests.post(url, headers=headers, json=payload, timeout=30, verify=SSL_VERIFY)
                 elif method == "PUT":
-                    response = requests.put(url, headers=headers, json=payload, timeout=30, verify=not settings.DISABLE_SSL_VERIFY)
+                    response = requests.put(url, headers=headers, json=payload, timeout=30, verify=SSL_VERIFY)
                 elif method == "DELETE":
-                    response = requests.delete(url, headers=headers, timeout=30, verify=not settings.DISABLE_SSL_VERIFY)
+                    response = requests.delete(url, headers=headers, timeout=30, verify=SSL_VERIFY)
                 elif method == "PATCH":
-                    response = requests.patch(url, headers=headers, json=payload, timeout=30, verify=not settings.DISABLE_SSL_VERIFY)
+                    response = requests.patch(url, headers=headers, json=payload, timeout=30, verify=SSL_VERIFY)
                 else:
                     raise ValueError(f"不支持的请求方法: {{method}}")
 

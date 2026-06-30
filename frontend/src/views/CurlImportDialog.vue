@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import autoTestRequest from '@/utils/autoTestRequest'
 
@@ -47,18 +47,14 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'import'])
 
-const visible = ref(false)
+const visible = computed({
+  get: () => props.modelValue,
+  set: (val) => emit('update:modelValue', val)
+})
+
 const curlString = ref('')
 const parsing = ref(false)
 const parsedResult = ref(null)
-
-watch(() => props.modelValue, (val) => {
-  visible.value = val
-})
-
-watch(visible, (val) => {
-  emit('update:modelValue', val)
-})
 
 const handleClose = () => {
   visible.value = false

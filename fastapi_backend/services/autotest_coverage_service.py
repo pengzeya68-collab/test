@@ -163,7 +163,11 @@ async def get_coverage_heatmap(db: AsyncSession, days: int = 30, user_id: int = 
         api_idx = api_idx_map.get(url_key)
         if api_idx is None:
             continue
-        date_str = h.created_at.date().isoformat()
+        # 确保 naive datetime 按 UTC 处理，避免与 UTC 日期不一致
+        created_at = h.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        date_str = created_at.astimezone(timezone.utc).date().isoformat()
         date_idx = date_idx_map.get(date_str)
         if date_idx is None:
             continue

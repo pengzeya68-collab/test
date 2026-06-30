@@ -638,10 +638,10 @@ const startGenerate = async () => {
 
   try {
     const formData = new FormData()
-    formData.append('max_cases_per_api', options.max_cases_per_api)
-    formData.append('include_boundary', options.include_boundary)
-    formData.append('include_auth', options.include_auth)
-    formData.append('include_chain', options.include_chain)
+    formData.append('max_cases_per_api', String(options.max_cases_per_api))
+    formData.append('include_boundary', String(options.include_boundary))
+    formData.append('include_auth', String(options.include_auth))
+    formData.append('include_chain', String(options.include_chain))
 
     let resp
     if (swaggerFile.value) {

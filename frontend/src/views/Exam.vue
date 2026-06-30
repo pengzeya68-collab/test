@@ -263,6 +263,7 @@ let examTimer = null
 const showSubmitConfirm = ref(false)
 const showTimeWarning = ref(false)
 const submitting = ref(false)
+let timeWarningShown = false
 
 const currentQuestion = computed(() => {
   return questions.value[currentQuestionIndex.value]
@@ -348,7 +349,8 @@ const startTimer = () => {
     const elapsed = Math.floor((Date.now() - _startAt) / 1000)
     remainingTime.value = Math.max(_totalSeconds - elapsed, 0)
 
-    if (remainingTime.value <= 600 && remainingTime.value > 595) {
+    if (!timeWarningShown && remainingTime.value <= 600) {
+      timeWarningShown = true
       showTimeWarning.value = true
     }
 
@@ -461,6 +463,10 @@ const submitExam = async () => {
     const res = await request.post(`/exams/attempts/${attemptId.value}/submit`, {
       answers
     })
+    if (res && res.success === false) {
+      ElMessage.error(res.message || '考试提交失败')
+      return
+    }
 
     ElMessage.success('考试提交成功！')
 
@@ -468,9 +474,12 @@ const submitExam = async () => {
     router.push(`/exam/result/${attemptId.value}`)
   } catch (error) {
     console.error('提交考试失败:', error)
-    ElMessage.error('提交失败，请稍后重试')
-    // 提交失败时重启计时器，防止考试状态冻结
-    startTimer()
+    if (remainingTime.value > 0) {
+      ElMessage.error('提交失败，正在重试...')
+      startTimer()
+    } else {
+      ElMessage.error('自动提交失败，请点击"提交试卷"按钮手动重试')
+    }
   } finally {
     submitting.value = false
     showSubmitConfirm.value = false

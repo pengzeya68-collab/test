@@ -31,7 +31,7 @@ def convert_to_dict(data) -> dict:
 def extract_jsonpath_value(data: Any, path: str, default: Any = None) -> Any:
     """
     从 JSON 数据中提取值（简化版 JSONPath）
-    支持: $.data.id, $.items[0].name, data.id, items[0].name
+    支持: $.data.id, $.items[0].name, data.id, items[0].name, $.items[*].name
     """
     if not path:
         return default
@@ -58,7 +58,9 @@ def extract_jsonpath_value(data: Any, path: str, default: Any = None) -> Any:
             try:
                 keys.append(int(index_str))
             except ValueError:
-                pass
+                # 支持 [*] 通配符语法
+                if index_str == "*":
+                    keys.append("*")
             i = j
         elif char == "]":
             pass
@@ -69,18 +71,29 @@ def extract_jsonpath_value(data: Any, path: str, default: Any = None) -> Any:
     if current:
         keys.append(current)
 
-    value = data
-    for key in keys:
-        if isinstance(key, int):
-            if isinstance(value, list) and 0 <= key < len(value):
+    def _apply(value, remaining_keys):
+        """递归应用路径键，支持通配符"""
+        for idx, key in enumerate(remaining_keys):
+            if key == "*":
+                # 通配符：对 list/dict 的所有元素应用剩余路径
+                rest = remaining_keys[idx + 1:]
+                if isinstance(value, list):
+                    return [_apply(item, rest) for item in value]
+                elif isinstance(value, dict):
+                    return [_apply(item, rest) for item in value.values()]
+                else:
+                    return default
+            elif isinstance(key, int):
+                if isinstance(value, list) and 0 <= key < len(value):
+                    value = value[key]
+                else:
+                    return default
+            elif isinstance(value, dict):
+                if key not in value:
+                    return default
                 value = value[key]
             else:
                 return default
-        elif isinstance(value, dict):
-            if key not in value:
-                return default
-            value = value[key]
-        else:
-            return default
+        return value
 
-    return value
+    return _apply(data, keys)

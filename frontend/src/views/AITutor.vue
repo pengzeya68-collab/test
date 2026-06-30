@@ -293,7 +293,9 @@ const sendMessage = async () => {
 
   try {
     const res = await aiChat({ question, type: 'general' })
+    const last = messages.value[messages.value.length - 1]
     messages.value[messages.value.length - 1] = {
+      id: last.id,
       role: 'assistant',
       content: res.answer,
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
@@ -323,7 +325,9 @@ const reviewCode = async () => {
 
   try {
     const res = await aiCodeReview({ code, language: codeLanguage.value })
+    const last = messages.value[messages.value.length - 1]
     messages.value[messages.value.length - 1] = {
+      id: last.id,
       role: 'assistant',
       content: res.review_result,
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
@@ -348,7 +352,9 @@ const getLearningAdvice = async () => {
 
   try {
     const res = await aiGetLearningAdvice()
+    const last = messages.value[messages.value.length - 1]
     messages.value[messages.value.length - 1] = {
+      id: last.id,
       role: 'assistant',
       content: res.advice,
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
@@ -378,7 +384,9 @@ const startInterview = async () => {
       experience: interviewForm.years_of_experience,
       round: interviewForm.interview_round
     })
+    const last = messages.value[messages.value.length - 1]
     messages.value[messages.value.length - 1] = {
+      id: last.id,
       role: 'assistant',
       content: res.answer,
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
@@ -409,7 +417,9 @@ const sendInterviewAnswer = async () => {
 
   try {
     const res = await aiChat({ question: answer, type: 'interview' })
+    const last = messages.value[messages.value.length - 1]
     messages.value[messages.value.length - 1] = {
+      id: last.id,
       role: 'assistant',
       content: res.answer,
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),

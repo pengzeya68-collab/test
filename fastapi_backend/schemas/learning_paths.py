@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -32,8 +32,11 @@ class ExerciseBrief(BaseModel):
 class LearningPathCreate(BaseModel):
     title: str
     description: Optional[str] = ""
-    language: str
+    language: str = "通用"
     difficulty: Optional[str] = "beginner"
+    level: Optional[str] = None  # 前端兼容字段，自动映射到 difficulty
+    exerciseIds: Optional[List[int]] = None  # 前端兼容字段，关联习题ID
+    exercise_ids: Optional[List[int]] = None  # 兼容 snake_case
     stage: Optional[int] = 1
     estimated_hours: Optional[int] = 10
     is_public: Optional[bool] = True
@@ -44,6 +47,9 @@ class LearningPathUpdate(BaseModel):
     description: Optional[str] = None
     language: Optional[str] = None
     difficulty: Optional[str] = None
+    level: Optional[str] = None  # 前端兼容字段，自动映射到 difficulty
+    exerciseIds: Optional[List[int]] = None  # 前端兼容字段，关联习题ID
+    exercise_ids: Optional[List[int]] = None  # 兼容 snake_case
     stage: Optional[int] = None
     estimated_hours: Optional[int] = None
     is_public: Optional[bool] = None

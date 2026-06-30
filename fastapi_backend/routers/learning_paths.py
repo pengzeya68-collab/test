@@ -7,6 +7,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -15,6 +16,7 @@ from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.models import (
     Exercise,
     LearningPath,
+    LearningPathCollection,
     User,
     Progress,
     LessonSection,
@@ -259,6 +261,58 @@ async def delete_learning_path(
     await db.delete(path)
     await db.commit()
     return {"message": "Learning path deleted successfully"}
+
+
+# ── Collection (favorite a learning path) ────────────────
+
+
+@router.post("/{path_id}/collect")
+async def collect_learning_path(
+    path_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """收藏学习路径。幂等：重复收藏不会报错。"""
+    path_result = await db.execute(select(LearningPath).filter(LearningPath.id == path_id))
+    path = path_result.scalar_one_or_none()
+    if not path:
+        raise HTTPException(status_code=404, detail="Learning path not found")
+
+    existing = await db.execute(
+        select(LearningPathCollection).where(
+            LearningPathCollection.user_id == current_user.id,
+            LearningPathCollection.learning_path_id == path_id,
+        )
+    )
+    if not existing.scalar_one_or_none():
+        db.add(LearningPathCollection(user_id=current_user.id, learning_path_id=path_id))
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+
+    return {"collected": True, "message": "收藏成功"}
+
+
+@router.delete("/{path_id}/collect")
+async def uncollect_learning_path(
+    path_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """取消收藏学习路径。幂等：未收藏时也不会报错。"""
+    existing = await db.execute(
+        select(LearningPathCollection).where(
+            LearningPathCollection.user_id == current_user.id,
+            LearningPathCollection.learning_path_id == path_id,
+        )
+    )
+    fav = existing.scalar_one_or_none()
+    if fav:
+        await db.delete(fav)
+        await db.commit()
+
+    return {"collected": False, "message": "取消收藏成功"}
 
 
 # ── Exercises in a learning path ──────────────────────────

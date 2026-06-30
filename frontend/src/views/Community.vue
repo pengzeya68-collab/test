@@ -50,7 +50,7 @@
               <div 
                 class="sort-item" 
                 :class="{ active: currentSort === 'hot' }"
-                @click="currentSort = 'hot'; fetchPosts()"
+                @click="currentSort = 'hot'; handleFilterChange()"
               >
                 <el-icon size="16"><Promotion /></el-icon>
                 <span>热门推荐</span>
@@ -89,7 +89,7 @@
             <el-input
               v-model="searchKeyword"
               placeholder="搜索帖子标题或内容..."
-              @keyup.enter="fetchPosts"
+              @keyup.enter="handleFilterChange"
             >
               <template #prefix>
                 <el-icon><Search /></el-icon>
@@ -371,6 +371,11 @@ const fetchCategories = async () => {
 
 let fetchAbortController = null
 
+const handleFilterChange = () => {
+  currentPage.value = 1
+  fetchPosts()
+}
+
 const fetchPosts = async () => {
   // 取消上一次未完成的请求，防止竞态
   if (fetchAbortController) fetchAbortController.abort()
@@ -397,7 +402,7 @@ const fetchPosts = async () => {
 
     const res = await request.get('/community/posts', { params, signal })
     posts.value = res.list || res.items || res || []
-    total.value = res.total || 0
+    total.value = res.total ?? (Array.isArray(res) ? res.length : 0)
   } catch (error) {
     if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
     console.error('获取帖子列表失败:', error)
@@ -457,7 +462,7 @@ const toggleFavorite = async (post) => {
   try {
     const res = await request.post(`/community/posts/${post.id}/favorite`)
     post.is_favorited = res.action === 'favorited'
-    ElMessage.success(res.message)
+    ElMessage.success(res.message || (res.action === 'favorited' ? '收藏成功' : '操作成功'))
   } catch (error) {
     console.error('收藏失败:', error)
     ElMessage.error('操作失败')

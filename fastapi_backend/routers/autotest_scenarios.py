@@ -6,15 +6,19 @@ AutoTest 统一路由 - 场景管理
 """
 
 import uuid
+import logging
 from typing import List, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
+from fastapi_backend.core.audit_decorator import audit_log
+from fastapi_backend.core.rbac import require_permissions
 from fastapi_backend.deps.auth import get_current_active_user
+from fastapi_backend.services.audit_service import AuditService
 from fastapi_backend.models.autotest import (
     AutoTestScenario,
     AutoTestScenarioStep,
@@ -37,6 +41,8 @@ from fastapi_backend.schemas.autotest import (
 
 router = APIRouter(prefix="/api/auto-test/scenarios", tags=["AutoTest-场景"])
 
+_logger = logging.getLogger(__name__)
+
 
 # ========== 场景 CRUD ==========
 
@@ -47,7 +53,7 @@ async def list_scenarios(
     limit: int = 20,
     keyword: Optional[str] = None,
     is_active: Optional[bool] = None,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions("scenario:read")),
     db: AsyncSession = Depends(get_db),
 ):
     """获取场景列表（分页 + 搜索 + 筛选）"""
@@ -155,9 +161,11 @@ async def get_scenario(
 
 
 @router.post("", response_model=AutoTestScenarioResponse)
+@audit_log(action="create", resource_type="scenario")
 async def create_scenario(
     scenario: AutoTestScenarioCreate,
-    current_user: User = Depends(get_current_active_user),
+    request: Request,
+    current_user: User = Depends(require_permissions("scenario:create")),
     db: AsyncSession = Depends(get_db),
 ):
     """创建场景"""
@@ -181,6 +189,7 @@ async def create_scenario(
 async def update_scenario(
     scenario_id: int,
     scenario: AutoTestScenarioUpdate,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -196,6 +205,9 @@ async def update_scenario(
     if not db_scenario.webhook_token and "webhook_token" not in update_data:
         update_data["webhook_token"] = str(uuid.uuid4())
     PROTECTED_FIELDS = {"id", "user_id", "created_at"}
+    # 捕获变更前快照（仅记录将被更新的非保护字段）
+    audit_keys = [k for k in update_data.keys() if k not in PROTECTED_FIELDS]
+    before = {k: getattr(db_scenario, k, None) for k in audit_keys}
     for key, value in update_data.items():
         if key in PROTECTED_FIELDS:
             continue
@@ -203,6 +215,20 @@ async def update_scenario(
 
     await db.commit()
     await db.refresh(db_scenario)
+
+    # 记录变更后快照并写入审计日志（手动调用，含 before/after）
+    after = {k: getattr(db_scenario, k, None) for k in audit_keys}
+    await AuditService.log(
+        db=db,
+        user_id=current_user.id,
+        username=current_user.username,
+        action="update",
+        resource_type="scenario",
+        resource_id=scenario_id,
+        resource_name=getattr(db_scenario, "name", None),
+        detail={"before": before, "after": after},
+        request=request,
+    )
 
     result = await db.execute(
         select(AutoTestScenario)
@@ -235,25 +261,37 @@ async def update_scenario_status(
     await db.commit()
     await db.refresh(db_scenario)
 
-    if not db_scenario.is_active:
-        from fastapi_backend.services.autotest_scheduler import get_scheduler
+    from fastapi_backend.services.autotest_scheduler import get_scheduler
+    from fastapi_backend.services.autotest_schedule_persistence import persist_schedule_is_active_db
 
-        sched = get_scheduler()
-        task_id = f"auto_sched_{scenario_id}"
+    sched = get_scheduler()
+    task_id = f"auto_sched_{scenario_id}"
+    if not db_scenario.is_active:
         try:
             sched.pause_job(task_id)
         except Exception as e:
             import logging
 
             logging.getLogger(__name__).warning(f"暂停定时任务失败: {e}")
+        await persist_schedule_is_active_db(scenario_id, False, user_id=current_user.id)
+    else:
+        try:
+            sched.resume_job(task_id)
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).warning(f"恢复定时任务失败: {e}")
+        await persist_schedule_is_active_db(scenario_id, True, user_id=current_user.id)
 
     return {"id": db_scenario.id, "is_active": db_scenario.is_active}
 
 
 @router.delete("/{scenario_id}")
+@audit_log(action="delete", resource_type="scenario", resource_id_param="scenario_id")
 async def delete_scenario(
     scenario_id: int,
-    current_user: User = Depends(get_current_active_user),
+    request: Request,
+    current_user: User = Depends(require_permissions("scenario:delete")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -293,6 +331,18 @@ async def delete_scenario(
 
         logging.getLogger(__name__).error(f"删除场景失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="删除失败，事务已回滚")
+
+    # 清理 JSON 套件中的 scenario_ids 引用
+    try:
+        from fastapi_backend.routers.autotest_suites import _suites, _suites_lock, _save_suites
+
+        async with _suites_lock:
+            for suite in _suites.values():
+                if scenario_id in suite.get("scenario_ids", []):
+                    suite["scenario_ids"] = [sid for sid in suite["scenario_ids"] if sid != scenario_id]
+            _save_suites(_suites)
+    except Exception as e:
+        _logger.warning(f"清理JSON套件引用失败: {e}")
     return {"message": "删除成功"}
 
 
@@ -323,6 +373,18 @@ async def add_step(
                 raise HTTPException(status_code=404, detail="指定的接口不存在")
         else:
             raise HTTPException(status_code=400, detail="API 请求类型步骤必须指定 api_case_id")
+
+    # 对非 api_request 类型的 step_config 进行基本校验
+    step_config = step.step_config or {}
+    if step.step_type == "if":
+        if not step_config.get("condition"):
+            raise HTTPException(status_code=400, detail="if步骤必须包含condition")
+    elif step.step_type == "for":
+        if not step_config.get("loop_var") or not step_config.get("items"):
+            raise HTTPException(status_code=400, detail="for步骤必须包含loop_var和items")
+    elif step.step_type == "group":
+        if not step_config.get("steps"):
+            raise HTTPException(status_code=400, detail="group步骤必须包含steps")
 
     db_step = AutoTestScenarioStep(
         scenario_id=scenario_id,
@@ -467,11 +529,17 @@ async def reorder_steps(
     )
     steps_map = {step.id: step for step in steps_result.scalars().all()}
 
+    # 第一步：先将所有步骤设为临时负值，避免交换顺序时违反 uq_scenario_step_order 唯一约束
+    for item in step_orders:
+        step = steps_map.get(item.step_id)
+        if step:
+            step.step_order = -item.step_order - 1
+    await db.flush()
+    # 第二步：设为目标值
     for item in step_orders:
         step = steps_map.get(item.step_id)
         if step:
             step.step_order = item.step_order
-
     await db.commit()
     return {"message": "排序更新成功"}
 
@@ -520,9 +588,14 @@ async def create_or_update_dataset(
     existing_dataset = result.scalar_one_or_none()
 
     if existing_dataset:
-        existing_dataset.name = dataset_data.name
-        existing_dataset.data_matrix = dataset_data.data_matrix.model_dump()
-        existing_dataset.description = dataset_data.description
+        # 仅更新显式传入的字段，避免未传 description 时用 None 覆盖已有值
+        update_data = dataset_data.model_dump(exclude_unset=True)
+        if "name" in update_data:
+            existing_dataset.name = update_data["name"]
+        if "data_matrix" in update_data:
+            existing_dataset.data_matrix = update_data["data_matrix"]
+        if "description" in update_data:
+            existing_dataset.description = update_data["description"]
         await db.commit()
         await db.refresh(existing_dataset)
         return existing_dataset

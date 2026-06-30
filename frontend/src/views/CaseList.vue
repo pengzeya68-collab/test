@@ -1,5 +1,15 @@
 <template>
-  <el-card class="case-list-card" shadow="never">
+  <div class="case-list-layout">
+    <!-- 左侧分组树侧边栏（占 25%） -->
+    <div class="case-list-sidebar">
+      <CaseTreeSidebar
+        ref="sidebarRef"
+        :current-group-id="currentGroupId"
+        @select-group="handleSelectGroup"
+      />
+    </div>
+    <!-- 中间：用例列表表格 -->
+    <el-card class="case-list-card" shadow="never">
     <div class="case-list-container">
       <!-- 顶部工具栏 -->
       <div class="list-toolbar">
@@ -14,6 +24,7 @@
           </el-select>
           <el-button type="primary" plain icon="Setting" @click="openEnvManager" />
           <el-button size="default" @click="showHelp = true">❓ 使用说明</el-button>
+          <el-button type="primary" plain :icon="FolderAdd" @click="handleCreateGroup">新建分组</el-button>
         </div>
         <div class="toolbar-right">
           <el-input
@@ -68,9 +79,25 @@
         </div>
       </div>
 
+      <!-- 🔥 体验7：批量操作工具栏（有选中时显示） -->
+      <div v-if="selectedCaseRows.length > 0" class="batch-toolbar">
+        <span class="batch-info">已选 {{ selectedCaseRows.length }} 项</span>
+        <el-button size="small" type="primary" plain :icon="VideoPlay" @click="handleBatchRun" :loading="batchRunning">
+          批量运行
+        </el-button>
+        <el-button size="small" type="warning" plain :icon="Rank" @click="handleBatchMove">
+          移动到分组
+        </el-button>
+        <el-button size="small" type="danger" plain :icon="Delete" @click="handleBatchDelete">
+          批量删除
+        </el-button>
+        <el-button size="small" text @click="clearSelection">取消选择</el-button>
+      </div>
+
       <!-- 用例列表表格 -->
       <div class="case-table">
         <el-table
+          ref="caseTableRef"
           :data="filteredCases"
           style="width: 100%"
           stripe
@@ -80,7 +107,7 @@
           @row-dblclick="handleRowDblClick"
           @selection-change="handleSelectionChange"
         >
-          <el-table-column v-if="exportSelectMode" type="selection" width="45" />
+          <el-table-column type="selection" width="45" />
           <el-table-column prop="method" label="请求方法" width="100">
             <template #default="{ row }">
               <span :class="['api-method-tag', (row.method || '').toLowerCase()]">{{ row.method }}</span>
@@ -96,7 +123,7 @@
               <span v-else class="no-run">未执行</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="280" fixed="right">
+          <el-table-column label="操作" width="320" fixed="right">
             <template #default="{ row }">
               <div style="display: flex; gap: 12px; align-items: center;">
                 <el-tooltip content="运行用例" placement="top" popper-class="action-tooltip">
@@ -105,6 +132,10 @@
 
                 <el-tooltip content="编辑用例" placement="top" popper-class="action-tooltip">
                   <span><el-button type="primary" link :icon="Edit" @click="handleEdit(row)" /></span>
+                </el-tooltip>
+
+                <el-tooltip content="复制用例（深拷贝后在新 Tab 编辑）" placement="top" popper-class="action-tooltip">
+                  <span><el-button type="info" link :icon="DocumentCopy" @click="handleCopyCase(row)" /></span>
                 </el-tooltip>
 
                 <el-tooltip content="执行历史" placement="top" popper-class="action-tooltip">
@@ -151,16 +182,6 @@
       </div>
     </div>
 
-    <!-- 编辑抽屉 -->
-    <CaseEditorDrawer
-      v-model="drawerVisible"
-      :case-data="currentCase"
-      :group-id="currentGroupId"
-      :is-edit="isEdit"
-      @success="handleDrawerSuccess"
-      @run="handleRunCase"
-    />
-
     <!-- 环境管理抽屉 -->
     <EnvironmentManager v-model="envManagerVisible" @changed="handleEnvListChange" />
 
@@ -202,7 +223,7 @@
             </el-upload>
           </el-form-item>
 
-          <el-form-item label="默认分组" v-if="!props.groupId">
+          <el-form-item label="默认分组" v-if="!currentGroupId">
             <el-alert title="如果在根目录导入，将自动创建与文件结构对应的根分组" type="warning" :closable="false"/>
           </el-form-item>
 
@@ -324,10 +345,22 @@
       :sections="helpData.sections"
     />
   </el-card>
+
+  <!-- 右侧：多 Tab 接口编辑器（常驻面板，对标 Apifox） -->
+  <div class="editor-panel">
+    <EditorTabContainer
+      :env-id="selectedEnvId"
+      :group-id="currentGroupId"
+      @saved="handleTabSaved"
+      @run="handleTabRun"
+    />
+  </div>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus,
@@ -341,9 +374,14 @@ import {
   UploadFilled,
   Download,
   Timer,
-  Connection
+  Connection,
+  FolderAdd,
+  DocumentCopy,
+  Rank
 } from '@element-plus/icons-vue'
-import CaseEditorDrawer from './CaseEditorDrawer.vue'
+import CaseTreeSidebar from '@/components/CaseTreeSidebar.vue'
+import EditorTabContainer from '@/components/EditorTabContainer.vue'
+import { useEditorTabsStore } from '@/stores/editorTabs'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
@@ -376,11 +414,27 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 const selectedEnvId = ref(null)
-const drawerVisible = ref(false)
 const envManagerVisible = ref(false)
-const currentCase = ref(null)
-const isEdit = ref(false)
+// 多 Tab 编辑器 store（与 EditorTabContainer 共享同一 Pinia 实例）
+const editorTabs = useEditorTabsStore()
 const currentGroupId = ref(null)
+const sidebarRef = ref(null)
+
+// 选中分组时触发（由侧边栏 emit），更新当前分组并重新加载用例
+const handleSelectGroup = (groupId) => {
+  currentGroupId.value = groupId
+  currentPage.value = 1
+  loadCases()
+}
+
+// 顶部工具栏"新建分组"按钮：委托给侧边栏组件打开新建根分组弹窗
+const handleCreateGroup = () => {
+  if (sidebarRef.value?.openCreateRoot) {
+    sidebarRef.value.openCreateRoot()
+  } else {
+    ElMessage.info('请使用左侧分组树顶部按钮或右键菜单创建分组')
+  }
+}
 
 // ===== 导入相关变量 =====
 const importDialogVisible = ref(false)
@@ -423,12 +477,22 @@ const openEnvManager = () => {
 
 // 环境列表变化
 const handleEnvListChange = (envs) => {
-  // props.environmentList 是父组件传入的，这里不需要处理，父组件会重新加载
+  // 环境列表变化时，若当前选中的环境已不存在则重置，并刷新用例列表
+  if (selectedEnvId.value && Array.isArray(envs) && !envs.some(e => e.id === selectedEnvId.value)) {
+    selectedEnvId.value = null
+  }
+  loadCases()
 }
 
-// 过滤后的用例（服务端已分页，直接使用）
+// 过滤后的用例（前端按搜索关键字过滤）
 const filteredCases = computed(() => {
-  return cases.value
+  if (!searchKeyword.value) return cases.value
+  const keyword = searchKeyword.value.toLowerCase()
+  return cases.value.filter(c =>
+    c.name?.toLowerCase().includes(keyword) ||
+    c.url?.toLowerCase().includes(keyword) ||
+    c.method?.toLowerCase().includes(keyword)
+  )
 })
 
 // 获取状态对应的 Tag 类型
@@ -473,8 +537,8 @@ const loadCases = async () => {
       page: currentPage.value,
       page_size: pageSize.value
     }
-    if (props.groupId) {
-      params.group_id = props.groupId
+    if (currentGroupId.value) {
+      params.group_id = currentGroupId.value
     }
     if (searchKeyword.value) {
       params.keyword = searchKeyword.value
@@ -496,27 +560,31 @@ const loadCases = async () => {
   }
 }
 
-// 监听 groupId 变化，重新加载
+// 监听外部传入的 groupId 变化（向后兼容），同步到内部状态并重新加载
 watch(() => props.groupId, (newVal) => {
   currentGroupId.value = newVal
   currentPage.value = 1
   loadCases()
 }, { immediate: true })
 
-// 监听 curlData 变化，自动打开创建对话框
+// 监听 curlData 变化，自动在新 Tab 中打开 cURL 转换的用例
 watch(() => props.curlData, (newVal) => {
   if (newVal && newVal.method) {
-    currentCase.value = {
+    const caseData = {
       name: `${newVal.method} ${newVal.url || ''}`,
       method: newVal.method || 'GET',
       url: newVal.url || '',
       headers: newVal.headers || {},
       payload: newVal.body || null,
-      body_type: newVal.body ? 'json' : 'none'
+      body_type: newVal.body ? 'json' : 'none',
+      group_id: currentGroupId.value
     }
-    isEdit.value = false
-    currentGroupId.value = props.groupId
-    drawerVisible.value = true
+    editorTabs.openTab({
+      id: `case-new-${Date.now()}`,
+      title: caseData.name,
+      type: 'case',
+      data: caseData
+    })
   }
 })
 
@@ -549,34 +617,64 @@ const handleEnvChange = () => {
   // 环境变化不需要重新加载列表，运行时会用到
 }
 
-// 新建用例
+// 新建用例：在多 Tab 编辑器中打开一个新建 Tab
 const handleCreate = () => {
-  if (!props.groupId) {
+  if (!currentGroupId.value) {
     ElMessage.warning('请先从左侧分组树选择一个分组再创建用例')
     return
   }
-  currentCase.value = null
-  isEdit.value = false
-  currentGroupId.value = props.groupId
-  drawerVisible.value = true
+  editorTabs.openTab({
+    id: `case-new-${Date.now()}`,
+    title: '新建用例',
+    type: 'case',
+    data: { group_id: currentGroupId.value, new: true }
+  })
 }
 
-// 编辑用例
+// 编辑用例：在多 Tab 编辑器中打开（同一用例重复点击仅激活已有 Tab）
 const handleEdit = (row) => {
   // 保留后端原始结构，避免对象型 headers/assert_rules 在编辑时被误清空
   const safeRow = JSON.parse(JSON.stringify(row))
-
-  currentCase.value = {
-    ...safeRow
-  }
-  isEdit.value = true
-  currentGroupId.value = props.groupId
-  drawerVisible.value = true
+  editorTabs.openTab({
+    id: `case-${safeRow.id}`,
+    title: safeRow.name || '未命名用例',
+    type: 'case',
+    data: { ...safeRow }
+  })
 }
 
 // 双击行编辑
 const handleRowDblClick = (row) => {
   handleEdit(row)
+}
+
+// 🔥 体验6：复制用例 — 深拷贝用例数据后在新 Tab 中打开"新建"模式，去掉 id 让保存走 POST
+const handleCopyCase = async (row) => {
+  try {
+    // 优先从后端拉取完整数据，保证 headers/assertions/extractors 等完整
+    let fullCase
+    try {
+      fullCase = await autoTestRequest.get(`/auto-test/cases/${row.id}`)
+    } catch (e) {
+      console.warn('拉取用例详情失败，使用列表数据兜底', e)
+      fullCase = JSON.parse(JSON.stringify(row))
+    }
+    // 深拷贝并清除 id，使其成为新建用例
+    const cloned = JSON.parse(JSON.stringify(fullCase))
+    delete cloned.id
+    cloned.name = `${cloned.name || '未命名用例'} (副本)`
+    cloned.group_id = cloned.group_id || currentGroupId.value
+    editorTabs.openTab({
+      id: `case-new-${Date.now()}`,
+      title: cloned.name,
+      type: 'case',
+      data: { ...cloned, new: true }
+    })
+    ElMessage.success('已复制用例，请在 Tab 中保存以创建新用例')
+  } catch (error) {
+    console.error('复制用例失败:', error)
+    ElMessage.error('复制用例失败: ' + (error.response?.data?.detail || error.message))
+  }
 }
 
 // 运行用例
@@ -604,6 +702,7 @@ const handleDelete = async (id) => {
     await autoTestRequest.delete(`/auto-test/cases/${id}`)
     ElMessage.success('清理完毕！')
     loadCases()
+    sidebarRef.value?.loadGroups?.()
   } catch (error) {
     const realError = error.response?.data?.message || error.response?.data?.error || error.message || '删除遭遇异常'
     console.error('👉 删除接口失败详情:', error.response?.data)
@@ -611,14 +710,16 @@ const handleDelete = async (id) => {
   }
 }
 
-// 抽屉成功后刷新
-const handleDrawerSuccess = () => {
+// 多 Tab 编辑器保存成功后刷新用例列表与分组树
+const handleTabSaved = () => {
   loadCases()
+  // 用例增删后刷新分组树的 case_count
+  sidebarRef.value?.loadGroups?.()
 }
 
-// 从抽屉运行
-const handleRunCase = (caseData) => {
-  handleRun(caseData)
+// 多 Tab 编辑器中“保存并运行”：复用列表运行链路，转发给父组件执行
+const handleTabRun = (caseData) => {
+  emit('run', caseData, selectedEnvId.value)
 }
 
 // ===== 导入逻辑 =====
@@ -662,8 +763,8 @@ const handleJMeterImport = async () => {
   try {
     const formData = new FormData()
     formData.append('file', jmeterImportFile.value)
-    if (props.groupId) {
-      formData.append('group_id', props.groupId)
+    if (currentGroupId.value) {
+      formData.append('group_id', currentGroupId.value)
     }
 
     const res = await autoTestRequest.post('/auto-test/import/jmeter', formData, {
@@ -686,6 +787,10 @@ const handleJMeterImport = async () => {
 
 const exportSelectMode = ref(false)
 const selectedCaseIds = ref([])
+// 🔥 体验7：批量操作相关状态（保留选中行的完整数据，便于批量运行/移动）
+const selectedCaseRows = ref([])
+const caseTableRef = ref(null)
+const batchRunning = ref(false)
 
 const startExportSelect = () => {
   exportSelectMode.value = true
@@ -699,6 +804,150 @@ const cancelExportSelect = () => {
 
 const handleSelectionChange = (selection) => {
   selectedCaseIds.value = selection.map(item => item.id)
+  selectedCaseRows.value = selection
+}
+
+// 清空表格选择
+const clearSelection = () => {
+  caseTableRef.value?.clearSelection?.()
+  selectedCaseRows.value = []
+  selectedCaseIds.value = []
+}
+
+// 🔥 体验7：批量运行（顺序执行，逐条调用运行接口；结果汇总在最终提示）
+const handleBatchRun = async () => {
+  if (selectedCaseRows.value.length === 0) {
+    ElMessage.warning('请先勾选要运行的用例')
+    return
+  }
+  if (!selectedEnvId.value) {
+    ElMessage.warning('请先在顶部选择环境后再批量运行')
+    return
+  }
+  batchRunning.value = true
+  let successCount = 0
+  let failCount = 0
+  try {
+    for (const row of selectedCaseRows.value) {
+      try {
+        await autoTestRequest.post(`/auto-test/cases/${row.id}/run`, { env_id: selectedEnvId.value })
+        successCount++
+      } catch (e) {
+        failCount++
+        console.error(`用例 ${row.name} 运行失败:`, e)
+      }
+    }
+    ElMessage.success(`批量运行完成：成功 ${successCount} 个，失败 ${failCount} 个`)
+  } finally {
+    batchRunning.value = false
+    loadCases()
+  }
+}
+
+// 🔥 体验7：批量删除
+const handleBatchDelete = async () => {
+  if (selectedCaseIds.value.length === 0) {
+    ElMessage.warning('请先勾选要删除的用例')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedCaseIds.value.length} 个用例吗？此操作不可逆。`,
+      '批量删除确认',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  let okCount = 0
+  let failCount = 0
+  for (const id of selectedCaseIds.value) {
+    try {
+      await autoTestRequest.delete(`/auto-test/cases/${id}`)
+      okCount++
+    } catch (e) {
+      failCount++
+      console.error(`删除用例 ${id} 失败:`, e)
+    }
+  }
+  ElMessage.success(`批量删除完成：成功 ${okCount} 个，失败 ${failCount} 个`)
+  clearSelection()
+  loadCases()
+  sidebarRef.value?.loadGroups?.()
+}
+
+// 🔥 体验7：批量移动到分组
+const handleBatchMove = async () => {
+  if (selectedCaseIds.value.length === 0) {
+    ElMessage.warning('请先勾选要移动的用例')
+    return
+  }
+  // 拉取分组树作为目标选项
+  let groupTree = []
+  try {
+    groupTree = await autoTestRequest.get('/auto-test/groups/tree') || []
+  } catch (e) {
+    ElMessage.error('加载分组树失败：' + (e.response?.data?.detail || e.message))
+    return
+  }
+  // 用 ElMessageBox.prompt 不适合树形选择，这里用 ElMessageBox + 自定义内容较复杂，
+  // 简化方案：用 window.prompt 让用户输入分组 ID（或留空移到根级）
+  let targetGroupId = null
+  try {
+    const flat = []
+    const walk = (nodes, depth) => {
+      nodes.forEach(n => {
+        flat.push({ id: n.id, label: '  '.repeat(depth) + n.name })
+        if (n.children?.length) walk(n.children, depth + 1)
+      })
+    }
+    walk(groupTree, 0)
+    const { value } = await ElMessageBox.prompt(
+      `可选分组：\n${flat.map(f => `${f.id}: ${f.label}`).join('\n')}\n\n请输入目标分组 ID（留空则移到根级）：`,
+      '移动到分组',
+      { confirmButtonText: '移动', cancelButtonText: '取消', inputPlaceholder: '目标分组 ID（可留空）' }
+    )
+    targetGroupId = value ? Number(value) : null
+  } catch {
+    return
+  }
+  let okCount = 0
+  let failCount = 0
+  for (const id of selectedCaseIds.value) {
+    try {
+      // 复用用例的 PUT 接口更新 group_id（先 GET 再 PUT，避免覆盖其他字段）
+      const caseData = await autoTestRequest.get(`/auto-test/cases/${id}`)
+      caseData.group_id = targetGroupId
+      // 后端 PUT 接收的是 snake_case 字段，但 caseData 已是后端结构，直接 PUT
+      await autoTestRequest.put(`/auto-test/cases/${id}`, {
+        group_id: targetGroupId,
+        method: caseData.method,
+        name: caseData.name,
+        url: caseData.url,
+        description: caseData.description || '',
+        body_type: caseData.body_type || 'none',
+        content_type: caseData.content_type || 'application/json',
+        payload: caseData.payload,
+        form_data: caseData.form_data || {},
+        headers: caseData.headers || {},
+        params: caseData.params || {},
+        extractors: caseData.extractors || [],
+        assertions: caseData.assertions || caseData.assert_rules || [],
+        pre_script: caseData.pre_script || null,
+        post_script: caseData.post_script || null,
+        pre_script_language: caseData.pre_script_language || 'javascript',
+        post_script_language: caseData.post_script_language || 'javascript',
+        response_schema: caseData.response_schema || null,
+      })
+      okCount++
+    } catch (e) {
+      failCount++
+      console.error(`移动用例 ${id} 失败:`, e)
+    }
+  }
+  ElMessage.success(`批量移动完成：成功 ${okCount} 个，失败 ${failCount} 个`)
+  clearSelection()
+  loadCases()
 }
 
 const doExportJmx = async (caseIds) => {
@@ -735,33 +984,13 @@ const handleExportJmx = () => {
 }
 
 const handleExportAllJmx = async () => {
-  jmeterExporting.value = true
-  try {
-    const params = {}
-    if (props.groupId) {
-      params.group_id = props.groupId
-    }
-    if (searchKeyword.value) {
-      params.keyword = searchKeyword.value
-    }
-    const res = await autoTestRequest.post('/auto-test/export/jmeter/cases', params, { responseType: 'blob' })
-
-    const blob = new Blob([res], { type: 'application/octet-stream' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `TestMaster_Export_All_${new Date().getTime()}.jmx`
-    link.click()
-    URL.revokeObjectURL(link.href)
-
-    ElMessage.success('已导出全部用例')
-    exportSelectMode.value = false
-    selectedCaseIds.value = []
-  } catch (error) {
-    console.error('JMeter 导出失败:', error)
-    ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
-  } finally {
-    jmeterExporting.value = false
+  // 收集所有当前过滤后的用例 ID，复用 doExportJmx 进行导出
+  const caseIds = filteredCases.value.map(c => c.id)
+  if (caseIds.length === 0) {
+    ElMessage.warning('没有可导出的用例')
+    return
   }
+  await doExportJmx(caseIds)
 }
 
 // 导出单个用例到 JMeter
@@ -816,8 +1045,8 @@ const handleParseFile = async () => {
 
   try {
     const formData = new FormData()
-    if (props.groupId) {
-      formData.append('target_group_id', props.groupId)
+    if (currentGroupId.value) {
+      formData.append('target_group_id', currentGroupId.value)
     }
 
     if (!importFile.value) {
@@ -863,8 +1092,8 @@ const handleConfirmImport = async () => {
   importing.value = true
   try {
     const formData = new FormData()
-    if (props.groupId) {
-      formData.append('target_group_id', props.groupId)
+    if (currentGroupId.value) {
+      formData.append('target_group_id', currentGroupId.value)
     }
 
     formData.append('file', importFile.value)
@@ -898,23 +1127,88 @@ const handleConfirmImport = async () => {
 
 onMounted(() => {
   // loadCases 已由 watch immediate 触发，无需重复调用
+  // 🔥 Bug 3 修复：刷新页面时若有未保存 Tab，提示用户
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+const handleBeforeUnload = (e) => {
+  if (editorTabs.hasUnsavedChanges) {
+    // 现代浏览器会忽略自定义文案，仅展示通用提示
+    e.preventDefault()
+    e.returnValue = '存在未保存的修改，确定离开吗？'
+    return e.returnValue
+  }
+}
+
+// 🔥 Bug 3 修复：路由切换时若有未保存 Tab，弹确认框拦截
+onBeforeRouteLeave(async (to, from, next) => {
+  if (!editorTabs.hasUnsavedChanges) {
+    next()
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      '存在未保存的修改，离开将丢失这些修改，确定离开吗？',
+      '未保存的修改',
+      { type: 'warning', confirmButtonText: '离开', cancelButtonText: '留下' }
+    )
+    next()
+  } catch {
+    next(false)
+  }
 })
 
 // 暴露方法给父组件
 defineExpose({
-  loadCases
+  loadCases,
+  // 刷新分组树（用例增删后调用以更新 case_count）
+  refreshGroups: () => sidebarRef.value?.loadGroups?.(),
+  // 选中指定分组
+  selectGroup: (groupId) => handleSelectGroup(groupId)
 })
 </script>
 
 <style scoped>
+/* 左右布局：侧边栏 25% + 列表 75% */
+.case-list-layout {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+.case-list-sidebar {
+  width: 25%;
+  min-width: 220px;
+  max-width: 340px;
+  flex-shrink: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .case-list-card {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 360px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
   border-radius: 8px;
   border: 1px solid var(--tm-border-light);
+}
+
+/* 右侧多 Tab 编辑器面板（常驻） */
+.editor-panel {
+  flex: 1.3 1 0;
+  min-width: 480px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .case-list-card :deep(.el-card__body) {
   flex: 1;
@@ -935,6 +1229,8 @@ defineExpose({
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   padding: 16px 20px;
   margin-bottom: 20px;
 }
@@ -953,6 +1249,25 @@ defineExpose({
   flex: 1;
   padding: 0 12px 16px;
   overflow: auto;
+}
+
+/* 🔥 体验7：批量操作工具栏 */
+.batch-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  margin: 0 12px 8px;
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.2);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.batch-info {
+  color: var(--tm-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  margin-right: 4px;
 }
 
 /* 操作图标按钮 */

@@ -7,13 +7,12 @@ API Mock 服务路由（DB 持久化版）
 - 动态 Mock 端点
 - 请求日志查看
 - 从 Swagger 导入规则
-- 兼容旧版内存 Mock 接口
+- 零配置智能 Mock 兜底
 """
 
-import random
-import string
+import json
+import logging
 import time
-from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -26,6 +25,8 @@ from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import MockProject, MockRule, MockRequestLog
 from fastapi_backend.models.models import User
 from fastapi_backend.services.mock_service import mock_engine
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/mock",
@@ -464,13 +465,14 @@ async def import_swagger(
 
 
 @mock_public_router.api_route(
-    "/api/{slug}/{rest_of_path:path}",
+    "/{slug}/{rest_of_path:path}",
     methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
 )
 async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
     """
     动态 Mock 端点 - 根据项目 slug 匹配规则并返回。
-    URL格式: /mock/api/{project_slug}/{path}
+    URL格式: /api/mock/{project_slug}/{path}
+    （路由前缀为 /api/mock，此处路径为 /{slug}/{rest_of_path}，避免出现 /api/mock/api/{slug}/{path} 的双重前缀）
     """
     method = request.method
     path = f"/{rest_of_path}"
@@ -484,7 +486,8 @@ async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
     except Exception:
         pass
 
-    request_headers = dict(request.headers)
+    # M6: 统一小写化 header key，便于条件匹配大小写不敏感查找
+    request_headers = {str(k).lower(): v for k, v in request.headers.items()}
 
     async with AsyncSessionLocal() as db:
         # 构建完整的请求参数字典，支持 query/body/header 条件匹配
@@ -500,14 +503,33 @@ async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
             "header": request_headers,
         }
         # 匹配规则
+        match_start = time.time()
         rule = await mock_engine.match_rule(db, slug, method, path, _full_request_params)
+        match_elapsed = int((time.time() - match_start) * 1000)
 
+        # M10: 零配置智能 Mock 兜底 —— 未命中规则时不再直接 404
         if not rule:
+            # 查询项目（即便未命中规则，也需要项目存在）
+            project = await mock_engine.get_project_by_slug(db, slug)
+            if not project:
+                # 项目不存在或不活跃，仍返回 404
+                elapsed = int((time.time() - start_time) * 1000)
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "Mock project not found", "path": path, "method": method, "slug": slug},
+                )
+            # 生成兜底响应
+            fallback_start = time.time()
+            response_info = await mock_engine.generate_fallback_response(db, project, method, path)
+            delay_elapsed = int((time.time() - fallback_start) * 1000)
             elapsed = int((time.time() - start_time) * 1000)
-            # 记录未匹配的请求
-            project_result = await db.execute(select(MockProject).where(MockProject.base_url_slug == slug))
-            project = project_result.scalar_one_or_none()
-            if project:
+            # 记录请求日志（失败时不阻塞响应 - M7）
+            try:
+                import json as json_lib
+
+                response_body_str = (
+                    json_lib.dumps(response_info["body"], ensure_ascii=False) if response_info.get("body") else ""
+                )
                 await mock_engine.log_request(
                     db,
                     project.id,
@@ -516,36 +538,51 @@ async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
                     path,
                     request_headers,
                     body_text,
-                    404,
-                    '{"error": "No mock rule found"}',
+                    response_info["status"],
+                    response_body_str,
                     elapsed,
+                    "(zero-config fallback)",
                 )
+            except Exception as log_exc:
+                _logger.warning("Mock fallback log_request failed: %s", log_exc)
             return JSONResponse(
-                status_code=404,
-                content={"error": "No mock rule found", "path": path, "method": method, "slug": slug},
+                status_code=response_info["status"],
+                content=response_info["body"],
+                headers=response_info.get("headers", {}),
             )
 
-        # 生成响应
+        # 生成响应（M9: 单独计算"延迟耗时"，避免 delay_ms 污染整体统计）
+        gen_start = time.time()
         response_info = await mock_engine.generate_response(rule)
+        delay_elapsed = int((time.time() - gen_start) * 1000)
         elapsed = int((time.time() - start_time) * 1000)
+        # 总响应耗时 = 匹配耗时 + 延迟耗时 + 其他（IO/序列化等极小开销）
+        # 这里仍以 wall-clock elapsed 作为 response_time_ms 记录，
+        # 但保留 match_elapsed 与 delay_elapsed 便于后续日志扩展
+        _ = (match_elapsed, delay_elapsed)
 
-        # 记录请求日志
-        import json as json_lib
+        # 记录请求日志（M7: 失败时仅记录日志不抛出，避免阻塞响应）
+        try:
+            import json as json_lib
 
-        response_body_str = json_lib.dumps(response_info["body"], ensure_ascii=False) if response_info["body"] else ""
-        await mock_engine.log_request(
-            db,
-            rule.project_id,
-            rule.id,
-            method,
-            path,
-            request_headers,
-            body_text,
-            response_info["status"],
-            response_body_str,
-            elapsed,
-            rule.name,
-        )
+            response_body_str = (
+                json_lib.dumps(response_info["body"], ensure_ascii=False) if response_info.get("body") else ""
+            )
+            await mock_engine.log_request(
+                db,
+                rule.project_id,
+                rule.id,
+                method,
+                path,
+                request_headers,
+                body_text,
+                response_info["status"],
+                response_body_str,
+                elapsed,
+                rule.name,
+            )
+        except Exception as log_exc:
+            _logger.warning("Mock log_request failed: %s", log_exc)
 
         return JSONResponse(
             status_code=response_info["status"],
@@ -554,92 +591,17 @@ async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
         )
 
 
-# ========== 兼容旧版内存 Mock 接口 ==========
+# ========== 兼容旧版内存 Mock 接口（已废弃） ==========
+#
+# 说明（M11 / M12）：
+#   旧版内存 Mock 接口与新版 DB 持久化接口互不相通，且删除接口使用复合 key
+#   （f"{user_id}:{method}:{path}"）存在越权风险（路径中含 ':' 时 key 解析歧义，
+#   亦无法在多用户场景下安全隔离）。统一改为新版基于 DB 的 MockProject/MockRule
+#   CRUD 接口。如需"内存级"零配置 Mock，请使用项目级 swagger_source + 零配置
+#   智能兜底（M10）。
+#
+# 已删除的接口：
+#   POST   /api/mock/rules                     -> 改用 POST /api/mock/projects/{project_id}/rules
+#   GET    /api/mock/rules                     -> 改用 GET  /api/mock/projects/{project_id}/rules
+#   DELETE /api/mock/rules/{rule_key:path}     -> 改用 DELETE /api/mock/projects/{project_id}/rules/{rule_id}
 
-
-_mock_rules_legacy: Dict[str, dict] = {}
-
-
-def _legacy_rule_key(method: str, path: str, user_id: int) -> str:
-    """生成带用户隔离的规则 key"""
-    return f"{user_id}:{method}:{path}"
-
-
-def _generate_mock_data(schema: dict) -> Any:
-    """根据 schema 生成 Mock 数据（旧版兼容）"""
-    stype = schema.get("type", "string")
-    if stype == "string":
-        return schema.get(
-            "value",
-            "mock_string_" + "".join(random.choices(string.ascii_lowercase, k=6)),
-        )
-    elif stype == "number":
-        vmin, vmax = schema.get("min", 0), schema.get("max", 100)
-        return schema.get("value", random.randint(vmin, vmax))
-    elif stype == "boolean":
-        return schema.get("value", random.choice([True, False]))
-    elif stype == "array":
-        count = schema.get("count", 3)
-        item_schema = schema.get("items", {"type": "string"})
-        return [_generate_mock_data(item_schema) for _ in range(count)]
-    elif stype == "object":
-        props = schema.get("properties", {})
-        return {k: _generate_mock_data(v) for k, v in props.items()}
-    elif stype == "uuid":
-        import uuid
-
-        return str(uuid.uuid4())
-    elif stype == "timestamp":
-        return int(datetime.now(timezone.utc).timestamp())
-    elif stype == "email":
-        return f"user{random.randint(1, 9999)}@test.com"
-    elif stype == "phone":
-        return f"1{random.randint(30, 99)}{random.randint(10000000, 99999999)}"
-    return None
-
-
-@router.post("/rules", tags=["Mock旧版兼容"])
-async def create_mock_rule_legacy(
-    body: Dict[str, Any],
-    current_user: User = Depends(get_current_active_user),
-):
-    """创建 Mock 规则（旧版兼容）"""
-    path = body.get("path", "").strip()
-    if not path:
-        raise HTTPException(status_code=400, detail="path 不能为空")
-    method = body.get("method", "GET").upper()
-    key = _legacy_rule_key(method, path, current_user.id)
-    _mock_rules_legacy[key] = {
-        "key": key,
-        "path": path,
-        "method": method,
-        "status_code": body.get("status_code", 200),
-        "response_schema": body.get("response_schema", {}),
-        "delay_ms": body.get("delay_ms", 0),
-        "description": body.get("description", ""),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "user_id": current_user.id,
-    }
-    return {"message": "Mock 规则已创建", "key": key}
-
-
-@router.get("/rules", tags=["Mock旧版兼容"])
-async def list_mock_rules_legacy(current_user: User = Depends(get_current_active_user)):
-    """列出当前用户的 Mock 规则（旧版兼容）"""
-    user_rules = [v for v in _mock_rules_legacy.values() if v.get("user_id") == current_user.id]
-    return {"rules": user_rules}
-
-
-@router.delete("/rules/{rule_key:path}", tags=["Mock旧版兼容"])
-async def delete_mock_rule_legacy(
-    rule_key: str,
-    current_user: User = Depends(get_current_active_user),
-):
-    """删除 Mock 规则（旧版兼容）"""
-    rule = _mock_rules_legacy.get(rule_key)
-    if not rule:
-        raise HTTPException(status_code=404, detail="规则不存在")
-    if rule.get("user_id") != current_user.id:
-        raise HTTPException(status_code=404, detail="规则不存在")
-    del _mock_rules_legacy[rule_key]
-    return {"message": "已删除"}

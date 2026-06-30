@@ -172,6 +172,18 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/api-doc-preview',
+    name: 'ApiDocPreview',
+    component: () => import(/* webpackChunkName: "autotest" */ '@/views/ApiDocPreview.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/api-docs-shared/:token',
+    name: 'ApiDocShared',
+    component: () => import(/* webpackChunkName: "autotest" */ '@/views/ApiDocShared.vue')
+    // 公开访问页面，无需 requiresAuth
+  },
+  {
     path: '/assessment',
     name: 'OnboardingAssessment',
     component: () => import(/* webpackChunkName: "learning" */ '@/views/OnboardingAssessment.vue'),

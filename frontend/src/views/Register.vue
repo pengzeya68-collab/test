@@ -52,33 +52,33 @@
         <el-form-item
           prop="phone"
           :rules="[
-            { required: true, message: '请输入手机号', trigger: 'blur' },
             { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
           ]"
         >
-          <el-input 
-            v-model="registerForm.phone" 
-            placeholder="手机号" 
-            size="large"
+          <el-input
+          v-model="registerForm.phone"
+          placeholder="手机号（可选）"
+          size="large"
           >
             <template #prefix>
               <el-icon><Phone /></el-icon>
             </template>
           </el-input>
         </el-form-item>
-        
+
         <el-form-item
           prop="password"
           :rules="[
             { required: true, message: '请输入密码', trigger: 'blur' },
-            { min: 6, max: 32, message: '密码长度在 6 到 32 个字符', trigger: 'blur' }
+            { min: 8, max: 32, message: '密码长度在 8 到 32 个字符', trigger: 'blur' },
+            { validator: validatePasswordStrength, trigger: 'blur' }
           ]"
         >
-          <el-input 
-            v-model="registerForm.password" 
-            type="password" 
-            placeholder="密码" 
-            size="large"
+          <el-input
+          v-model="registerForm.password"
+          type="password"
+          placeholder="密码（至少8位，需含字母和数字）"
+          size="large"
           >
             <template #prefix>
               <el-icon><Lock /></el-icon>
@@ -185,6 +185,15 @@ onBeforeUnmount(() => {
 const validateConfirmPassword = (rule, value, callback) => {
   if (value !== registerForm.value.password) {
     callback(new Error('两次输入的密码不一致'))
+  } else {
+    callback()
+  }
+}
+
+const validatePasswordStrength = (rule, value, callback) => {
+  if (!value) return callback()
+  if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+    callback(new Error('密码必须同时包含字母和数字'))
   } else {
     callback()
   }

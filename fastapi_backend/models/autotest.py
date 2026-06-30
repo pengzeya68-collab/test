@@ -24,19 +24,28 @@ from fastapi_backend.core.database import Base
 
 
 class AutoTestGroup(Base):
-    """接口分组表（auto_test_platform 原始表）"""
+    """接口分组表（auto_test_platform 原始表），支持树形层级"""
 
     __tablename__ = "api_groups"
     __table_args__ = (
         Index("idx_api_groups_parent_id", "parent_id"),
         Index("idx_api_groups_user_id", "user_id"),
+        Index("idx_api_groups_sort_order", "sort_order"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, comment="分组名称")
-    parent_id = Column(Integer, ForeignKey("api_groups.id", ondelete="SET NULL"), nullable=True, comment="父级分组ID")
+    parent_id = Column(Integer, ForeignKey("api_groups.id", ondelete="SET NULL"), nullable=True, comment="父级分组ID(null=根分组)")
+    description = Column(Text, nullable=True, comment="分组描述")
+    sort_order = Column(Integer, nullable=False, default=0, comment="同级排序(越小越靠前)")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )
 
     parent = relationship("AutoTestGroup", remote_side=[id], backref="children")
     cases = relationship("AutoTestCase", back_populates="group", passive_deletes=True)
@@ -64,9 +73,13 @@ class AutoTestCase(Base):
     assert_rules = Column(JSON, nullable=True, comment="断言规则")
     extractors = Column(JSON, nullable=True, comment="变量提取规则")
     description = Column(Text, nullable=True, comment="用例描述")
-    pre_script = Column(Text, nullable=True, comment="前置JS脚本")
-    post_script = Column(Text, nullable=True, comment="后置JS脚本")
+    pre_script = Column(Text, nullable=True, comment="前置脚本（JS/Python）")
+    post_script = Column(Text, nullable=True, comment="后置脚本（JS/Python）")
+    pre_script_language = Column(String(20), nullable=False, default="javascript", comment="前置脚本语言: javascript/python")
+    post_script_language = Column(String(20), nullable=False, default="javascript", comment="后置脚本语言: javascript/python")
     response_schema = Column(JSON, nullable=True, comment="响应JSON Schema")
+    # 当前版本号（冗余字段，方便查询，与最新一条 is_current=True 的 CaseVersion.version_number 同步）
+    current_version = Column(String(50), nullable=True, comment="当前版本号(冗余,与最新版本快照同步)")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(
@@ -78,6 +91,43 @@ class AutoTestCase(Base):
 
     group = relationship("AutoTestGroup", back_populates="cases")
     history = relationship("AutoTestHistory", back_populates="case", cascade="all, delete-orphan")
+    versions = relationship(
+        "CaseVersion",
+        back_populates="case",
+        cascade="all, delete-orphan",
+        order_by="desc(CaseVersion.id)",
+    )
+
+
+class CaseVersion(Base):
+    """用例版本快照表 - 存储用例的版本历史快照，支持版本回滚与对比"""
+
+    __tablename__ = "case_versions"
+    __table_args__ = (
+        # 同一 case 下版本号唯一
+        UniqueConstraint("case_id", "version_number", name="uq_case_version_number"),
+        # 按 case_id + is_current 快速查询当前版本
+        Index("idx_case_versions_case_current", "case_id", "is_current"),
+        Index("idx_case_versions_case_id", "case_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    case_id = Column(
+        Integer,
+        ForeignKey("api_cases.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="关联用例ID",
+    )
+    version_number = Column(String(50), nullable=False, comment="版本号,如 1.0.0 / v1 / v2")
+    version_label = Column(String(200), nullable=True, comment="版本标签,如 初始版本/修复登录Bug")
+    # 完整用例数据快照（JSON 字符串），保存创建版本时刻的用例全部字段
+    snapshot = Column(Text, nullable=False, comment="版本快照JSON(完整用例数据)")
+    created_by = Column(Integer, nullable=True, comment="创建者用户ID(跨库引用,非FK)")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
+    # 是否为当前版本（每个 case 仅一条 is_current=True）
+    is_current = Column(Boolean, nullable=False, default=False, comment="是否为当前版本")
+
+    case = relationship("AutoTestCase", back_populates="versions")
 
 
 class AutoTestGlobalVariable(Base):
@@ -111,6 +161,7 @@ class AutoTestEnvironment(Base):
     __table_args__ = (
         Index("idx_environments_is_default", "is_default"),
         Index("idx_environments_user_id", "user_id"),
+        Index("idx_environments_parent_id", "parent_id"),
         UniqueConstraint("env_name", "user_id", name="uq_env_name_user"),
     )
 
@@ -120,8 +171,23 @@ class AutoTestEnvironment(Base):
     variables = Column(JSON, nullable=True, default=dict, comment="环境变量")
     is_default = Column(Boolean, default=False, comment="是否默认环境")
     services = Column(JSON, nullable=True, comment="多服务URL配置列表")
+    # 父环境ID，支持环境变量继承（A 继承 B 的变量），最大深度 5 层，由服务层校验
+    parent_id = Column(
+        Integer,
+        ForeignKey("environments.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="父环境ID(用于变量继承，最大深度5层)",
+    )
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
+
+    # 自引用关系：parent 指向父环境，children 为直接子环境列表
+    parent = relationship(
+        "AutoTestEnvironment",
+        remote_side=[id],
+        backref="children",
+        foreign_keys=[parent_id],
+    )
 
 
 class AutoTestHistory(Base):
@@ -219,8 +285,10 @@ class AutoTestScenarioStep(Base):
     )
     step_config = Column(JSON, nullable=True, comment="类型专属配置")
     parent_step_id = Column(Integer, ForeignKey("scenario_steps.id"), nullable=True, comment="父步骤ID(嵌套)")
-    pre_script = Column(Text, nullable=True, comment="前置JS脚本")
-    post_script = Column(Text, nullable=True, comment="后置JS脚本")
+    pre_script = Column(Text, nullable=True, comment="前置脚本（JS/Python）")
+    post_script = Column(Text, nullable=True, comment="后置脚本（JS/Python）")
+    pre_script_language = Column(String(20), nullable=False, default="javascript", comment="前置脚本语言: javascript/python")
+    post_script_language = Column(String(20), nullable=False, default="javascript", comment="后置脚本语言: javascript/python")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
 
     scenario = relationship("AutoTestScenario", back_populates="steps")
@@ -672,3 +740,30 @@ class AutoTestDBConnection(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         comment="更新时间",
     )
+
+
+# ========== API 文档分享模型 ==========
+
+
+class ApiDocShare(Base):
+    """API 文档分享记录表 - 持久化分享链接，支持过期与浏览统计"""
+
+    __tablename__ = "api_doc_shares"
+    __table_args__ = (
+        Index("idx_api_doc_shares_token", "token", unique=True),
+        Index("idx_api_doc_shares_created_by", "created_by"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String(64), nullable=False, unique=True, index=True, comment="访问令牌(secrets.token_urlsafe)")
+    title = Column(String(200), nullable=True, comment="文档标题")
+    # JSON 数组字符串，为空表示分享全部用例
+    case_ids = Column(Text, nullable=True, comment="用例ID JSON数组,为空表示全部")
+    group_id = Column(Integer, nullable=True, comment="按分组分享(与case_ids二选一)")
+    fmt = Column(String(20), nullable=False, default="html", comment="文档格式: html/markdown/openapi")
+    expires_at = Column(DateTime(timezone=True), nullable=True, comment="过期时间(null=永久)")
+    created_by = Column(Integer, nullable=True, index=True, comment="创建者用户ID(跨库引用,非FK)")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
+    view_count = Column(Integer, nullable=False, default=0, comment="浏览次数")
+    # 可选密码保护：bcrypt 哈希后的密码，为空表示公开访问
+    password_hash = Column(Text, nullable=True, comment="访问密码的bcrypt哈希(null=无密码保护)")

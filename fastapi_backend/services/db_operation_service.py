@@ -10,6 +10,27 @@ from typing import Any, Dict, Optional, Tuple
 
 _logger = logging.getLogger(__name__)
 
+# MySQL 连接池（按 host:port:db 复用，避免每次查询新建连接）
+_mysql_pools: Dict[str, Any] = {}
+
+
+async def _get_mysql_pool(host: str, port: int, database: str, username: str, password: str):
+    """获取或创建 MySQL 连接池（按连接配置复用）"""
+    import aiomysql
+
+    key = f"{host}:{port}:{database}"
+    if key not in _mysql_pools:
+        _mysql_pools[key] = await aiomysql.create_pool(
+            host=host,
+            port=port,
+            db=database,
+            user=username,
+            password=password,
+            connect_timeout=10,
+            maxsize=10,
+        )
+    return _mysql_pools[key]
+
 
 async def execute_db_query(
     connection_id: int,
@@ -55,7 +76,7 @@ async def execute_db_query(
         database = conn.database_name or ""
         username = conn.username or ""
 
-    int((time.time() - start_time) * 1000)
+    elapsed_ms = int((time.time() - start_time) * 1000)
 
     if db_type == "postgresql":
         return await _exec_postgresql(host, port, database, username, password, query, start_time)
@@ -109,28 +130,19 @@ async def _exec_mysql(
     query: str,
     start_time: float,
 ) -> Tuple[Any, int]:
-    """执行 MySQL 查询"""
+    """执行 MySQL 查询（使用连接池复用连接）"""
     try:
         import aiomysql
     except ImportError:
         raise RuntimeError("aiomysql 未安装，无法连接 MySQL")
 
-    conn = await aiomysql.connect(
-        host=host,
-        port=port,
-        db=database,
-        user=username,
-        password=password,
-        connect_timeout=10,
-    )
-    try:
+    pool = await _get_mysql_pool(host, port, database, username, password)
+    async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(query)
             rows = await cur.fetchall()
             elapsed = int((time.time() - start_time) * 1000)
             return list(rows) if rows else [], elapsed
-    finally:
-        conn.close()
 
 
 async def _exec_redis(

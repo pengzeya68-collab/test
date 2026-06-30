@@ -65,16 +65,52 @@ const chartRef = ref(null)
 async function refreshSystemInfo() {
   try {
     const res = await request.get('/admin/system/system-info')
-    systemInfo.value = res
+    // 后端返回嵌套结构：cpu/memory/disk/boot_time，这里映射为前端扁平字段
+    systemInfo.value = {
+      hostname: res.hostname || 'unknown',
+      platform: res.platform || 'unknown',
+      python_version: res.python_version || 'unknown',
+      cpu_count: res.cpu?.cores ?? 'unknown',
+      memory_total: res.memory?.total_gb != null ? res.memory.total_gb + ' GB' : 'unknown',
+      disk_total: res.disk?.total_gb != null ? res.disk.total_gb + ' GB' : 'unknown',
+      cpu_percent: res.cpu?.percent ?? 0,
+      memory_percent: res.memory?.percent ?? 0,
+      disk_percent: res.disk?.percent ?? 0,
+      boot_time: res.boot_time,
+    }
   } catch (e) {
     console.error('获取系统信息失败', e)
   }
 }
 
+function formatUptime(createTimeIso) {
+  if (!createTimeIso) return '-'
+  const start = new Date(createTimeIso).getTime()
+  if (isNaN(start)) return '-'
+  const seconds = Math.floor((Date.now() - start) / 1000)
+  if (seconds < 0) return '-'
+  const d = Math.floor(seconds / 86400)
+  const h = Math.floor((seconds % 86400) / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const parts = []
+  if (d > 0) parts.push(`${d}天`)
+  if (h > 0) parts.push(`${h}小时`)
+  parts.push(`${m}分钟`)
+  return parts.join(' ')
+}
+
 async function refreshProcessInfo() {
   try {
     const res = await request.get('/admin/system/process-info')
-    processInfo.value = res
+    // 后端返回 memory_info.rss_mb / threads / create_time，映射为前端字段
+    processInfo.value = {
+      pid: res.pid,
+      cpu_percent: res.cpu_percent,
+      memory_mb: res.memory_info?.rss_mb ?? 0,
+      thread_count: res.threads ?? 0,
+      start_time: res.create_time || '-',
+      uptime: formatUptime(res.create_time),
+    }
   } catch (e) {
     console.error('获取进程信息失败', e)
   }

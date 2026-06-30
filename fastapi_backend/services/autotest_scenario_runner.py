@@ -172,10 +172,39 @@ class ScenarioExecutionEngine:
                         result = await db.execute(fallback_query)
                         env = result.scalars().first()
 
+                # 加载全局变量（优先级最低：global → env → session → temp）
+                # 全局变量先加载，后续环境变量可覆盖同名全局变量
+                try:
+                    from fastapi_backend.services.autotest_execution import (
+                        _get_global_variables_cached,
+                    )
+
+                    global_vars = await _get_global_variables_cached(self.user_id)
+                    if global_vars:
+                        self.context_vars.update(global_vars)
+                except Exception as e:
+                    _logger.warning(f"场景执行加载全局变量失败: {e}")
+
                 if env:
                     self.env = env
                     env_name = env.env_name or ""
-                    if isinstance(env.variables, dict):
+                    # 🔥 修复：环境变量继承——当 env 设置了 parent_id 时，需要合并整条继承链上的变量
+                    # （子环境覆盖父环境同名变量），否则场景执行时拿不到父环境的变量
+                    if getattr(env, "parent_id", None) is not None:
+                        try:
+                            from fastapi_backend.services.autotest_variable_service import (
+                                get_effective_variables,
+                            )
+                            effective_vars = await get_effective_variables(db, env.id)
+                            for v in effective_vars:
+                                self.context_vars[v["name"]] = v["value"]
+                        except Exception as e:
+                            _logger.warning(
+                                f"场景执行合并环境继承变量失败，回退到仅当前环境变量: {e}"
+                            )
+                            if isinstance(env.variables, dict):
+                                self.context_vars.update(env.variables)
+                    elif isinstance(env.variables, dict):
                         self.context_vars.update(env.variables)
                     if env.base_url:
                         self.base_url = env.base_url
@@ -205,6 +234,8 @@ class ScenarioExecutionEngine:
                         "parent_step_id": getattr(step, "parent_step_id", None),
                         "pre_script": getattr(step, "pre_script", None),
                         "post_script": getattr(step, "post_script", None),
+                        "pre_script_language": getattr(step, "pre_script_language", None) or "javascript",
+                        "post_script_language": getattr(step, "post_script_language", None) or "javascript",
                     }
                     if step.api_case:
                         step_info["api_case_name"] = step.api_case.name
@@ -218,6 +249,8 @@ class ScenarioExecutionEngine:
                         step_info["api_case_extractors"] = step.api_case.extractors
                         step_info["api_case_pre_script"] = getattr(step.api_case, "pre_script", None)
                         step_info["api_case_post_script"] = getattr(step.api_case, "post_script", None)
+                        step_info["api_case_pre_script_language"] = getattr(step.api_case, "pre_script_language", None) or "javascript"
+                        step_info["api_case_post_script_language"] = getattr(step.api_case, "post_script_language", None) or "javascript"
                         step_info["api_case_response_schema"] = getattr(step.api_case, "response_schema", None)
                     steps_data.append(step_info)
 
@@ -246,6 +279,12 @@ class ScenarioExecutionEngine:
                         consumed_step_orders.add(order)
 
             failed_encountered = False
+            self.fail_fast = fail_fast_enabled
+            self.failed_encountered = False
+            # 创建共享HTTP客户端，保持Cookie/Session跨步骤
+            self._shared_client = httpx.AsyncClient(
+                timeout=30.0, verify=not settings.DISABLE_SSL_VERIFY, follow_redirects=True
+            )
             for idx, step_info in enumerate(steps_data):
                 # 跳过已被流控步骤引用的子步骤
                 if step_info["step_order"] in consumed_step_orders:
@@ -289,6 +328,7 @@ class ScenarioExecutionEngine:
                         self.step_results.append(step_result)
                         self.total_duration += step_result.get("duration", 0)
                         failed_encountered = True
+                        self.failed_encountered = True
                     else:
                         step_result["status"] = "success"
                         self.step_results.append(step_result)
@@ -314,6 +354,7 @@ class ScenarioExecutionEngine:
                         }
                     )
                     failed_encountered = True
+                    self.failed_encountered = True
 
                     if self.progress_callback:
                         self.progress_callback(idx + 1, total_steps, f"失败: {step_name}")
@@ -334,19 +375,29 @@ class ScenarioExecutionEngine:
                         }
                     )
                     failed_encountered = True
+                    self.failed_encountered = True
 
                     if self.progress_callback:
                         self.progress_callback(idx + 1, total_steps, f"异常: {step_name}")
 
         finally:
+            # 关闭共享HTTP客户端
+            if self._shared_client:
+                try:
+                    await self._shared_client.aclose()
+                except Exception as e:
+                    _logger.warning(f"关闭共享HTTP客户端失败: {e}")
+                self._shared_client = None
+
             overall_duration = int((time.time() - start_time) * 1000)
             history_id = str(uuid.uuid4())[:8]
 
-            # 统计
-            total_steps = len(self.step_results)
-            success_steps = len([r for r in self.step_results if r.get("status") == "success"])
-            failed_steps = len([r for r in self.step_results if r.get("status") == "failed"])
-            skipped_steps = len([r for r in self.step_results if r.get("status") == "skipped"])
+            # 统计（排除子步骤，避免父子步骤重复计数）
+            parent_step_results = [r for r in self.step_results if not r.get("is_sub_step")]
+            total_steps = len(parent_step_results)
+            success_steps = len([r for r in parent_step_results if r.get("status") == "success"])
+            failed_steps = len([r for r in parent_step_results if r.get("status") == "failed"])
+            skipped_steps = len([r for r in parent_step_results if r.get("status") == "skipped"])
 
             if failed_steps > 0:
                 status = "failed"
@@ -874,12 +925,28 @@ class TestScenario{scenario_id}:
 
     async def _run_sub_step(self, sub_step: Dict, all_steps: List[Dict]):
         """执行子步骤并将结果记入报告"""
+        # fail_fast 检查：如果已遇到失败且启用 fail_fast，跳过子步骤
+        if self.fail_fast and self.failed_encountered:
+            self.step_results.append(
+                {
+                    "step_id": sub_step.get("id"),
+                    "step_order": sub_step.get("step_order"),
+                    "step_type": sub_step.get("step_type", "api_request"),
+                    "success": False,
+                    "status": "skipped",
+                    "response_time": 0,
+                    "error": "因 fail_fast 触发，跳过此子步骤",
+                    "is_sub_step": True,
+                }
+            )
+            return
         try:
             sub_result = await self._dispatch_step(sub_step, all_steps, 0)
             if not sub_result.get("success", False):
                 sub_result["status"] = "failed"
             else:
                 sub_result["status"] = "success"
+            sub_result["is_sub_step"] = True  # 标记为子步骤，统计时排除
             self.step_results.append(sub_result)
         except Exception as e:
             self.step_results.append(
@@ -891,6 +958,7 @@ class TestScenario{scenario_id}:
                     "status": "failed",
                     "response_time": 0,
                     "error": f"子步骤执行异常: {str(e)}",
+                    "is_sub_step": True,
                 }
             )
 
@@ -989,7 +1057,15 @@ class TestScenario{scenario_id}:
                 if isinstance(parsed, list):
                     collection = parsed
             except (json.JSONDecodeError, TypeError):
-                pass
+                # 尝试修复单引号JSON（Python str(list)格式）
+                try:
+                    import ast
+
+                    parsed = ast.literal_eval(resolved)
+                    if isinstance(parsed, list):
+                        collection = parsed
+                except (ValueError, SyntaxError):
+                    collection = [resolved]
         count = 0
         for idx, item in enumerate(collection[: self._max_loop_iterations]):
             self.context_vars[item_var] = item
@@ -1182,6 +1258,10 @@ class TestScenario{scenario_id}:
 
             if step_info.get("variable_overrides"):
                 overrides = step_info["variable_overrides"]
+                # 处理变量覆盖（在字段覆盖前应用，确保后续变量替换使用新值）
+                if "variables" in overrides:
+                    for var_name, var_value in overrides["variables"].items():
+                        self.context_vars[var_name] = var_value
                 if "url" in overrides:
                     request_config["url"] = overrides["url"]
                 if "headers" in overrides:
@@ -1195,20 +1275,28 @@ class TestScenario{scenario_id}:
                     # 同步更新 body，确保后续 raw_payload 取值一致
                     request_config["body"] = request_config["payload"]
 
-            all_vars = {**self.context_vars, **self.session_vars}
+            # 🔥 修复：变量优先级——context_vars（含提取变量）应优先于 session_vars
+            all_vars = {**self.session_vars, **self.context_vars}
 
-            # 执行前置JS脚本
-            pre_script = step_info.get("pre_script") or step_info.get("api_case_pre_script")
+            # 执行前置脚本（依据脚本来源决定语言：优先步骤自身脚本，其次引用用例脚本）
+            if step_info.get("pre_script"):
+                pre_script = step_info["pre_script"]
+                pre_script_language = step_info.get("pre_script_language") or "javascript"
+            else:
+                pre_script = step_info.get("api_case_pre_script")
+                pre_script_language = step_info.get("api_case_pre_script_language") or "javascript"
             if pre_script:
                 try:
                     from fastapi_backend.services.script_engine import ScriptEngine
 
                     script_ctx = ScriptEngine.build_context(self.context_vars, self.session_vars, self.user_id)
-                    script_ctx = ScriptEngine.run_pre_script(pre_script, script_ctx)
+                    script_ctx = ScriptEngine.run_pre_script(pre_script, script_ctx, language=pre_script_language)
                     # 将脚本中设置的变量回写到引擎
                     self.context_vars.update(script_ctx.get("env_vars", {}))
                     self.session_vars.update(script_ctx.get("session_vars", {}))
                     all_vars = {**self.context_vars, **self.session_vars}
+                    # 持久化脚本中 pm.globals.set 的变量到数据库
+                    await ScriptEngine.persist_globals_to_db(script_ctx)
                 except Exception as e:
                     _logger.warning(f"前置脚本执行失败: {e}")
 
@@ -1337,8 +1425,14 @@ class TestScenario{scenario_id}:
             if not raw_payload and "application/json" in final_headers.get("Content-Type", ""):
                 req_kwargs["json"] = {}
 
-            async with httpx.AsyncClient(timeout=30.0, verify=not settings.DISABLE_SSL_VERIFY) as client:
-                response = await client.request(**req_kwargs)
+            # 使用共享HTTP客户端，保持Cookie/Session跨步骤
+            if self._shared_client:
+                response = await self._shared_client.request(**req_kwargs)
+            else:
+                async with httpx.AsyncClient(
+                    timeout=30.0, verify=not settings.DISABLE_SSL_VERIFY, follow_redirects=True
+                ) as client:
+                    response = await client.request(**req_kwargs)
 
             step_duration = int((time.time() - step_start_time) * 1000)
 
@@ -1434,9 +1528,9 @@ class TestScenario{scenario_id}:
                     else:
                         failed_assertions.append({"assertion": assertion, "reason": reason})
 
-            # 提取变量
+            # 提取变量（每步独立记录，不使用累积值）
             extractors = step_info.get("api_case_extractors") or []
-            await self._extract_variables(extractors, response_data)
+            step_extracted_vars = await self._extract_variables(extractors, response_data)
 
             # JSON Schema 响应自动校验
             response_schema = step_info.get("api_case_response_schema")
@@ -1456,8 +1550,12 @@ class TestScenario{scenario_id}:
                         {"assertion": {"type": "json_schema"}, "reason": f"Schema校验异常: {str(ve)}"}
                     )
 
-            # 执行后置JS脚本
+            # 执行后置脚本（依据脚本来源决定语言：优先步骤自身脚本，其次引用用例脚本）
             post_script = step_info.get("post_script") or step_info.get("api_case_post_script")
+            if step_info.get("post_script"):
+                post_script_language = step_info.get("post_script_language") or "javascript"
+            else:
+                post_script_language = step_info.get("api_case_post_script_language") or "javascript"
             if post_script:
                 try:
                     from fastapi_backend.services.script_engine import ScriptEngine
@@ -1470,9 +1568,11 @@ class TestScenario{scenario_id}:
                         status_code=response.status_code,
                         response_headers=dict(response.headers),
                     )
-                    script_result = ScriptEngine.run_post_script(post_script, script_ctx)
+                    script_result = ScriptEngine.run_post_script(post_script, script_ctx, language=post_script_language)
                     self.context_vars.update(script_result.get("env_vars", {}))
                     self.session_vars.update(script_result.get("session_vars", {}))
+                    # 持久化脚本中 pm.globals.set 的变量到数据库
+                    await ScriptEngine.persist_globals_to_db(script_result)
                     # 合并脚本中的 pm.test 结果到断言
                     for test_result in script_result.get("test_results", []):
                         if test_result.get("passed"):
@@ -1518,7 +1618,7 @@ class TestScenario{scenario_id}:
                 "response_time": step_duration,
                 "response": response_data,
                 "assertions": {"total": total_assertions, "passed": passed_assertions, "failed": failed_assertions},
-                "extracted_vars": {k: v for k, v in self.context_vars.items() if k not in self._get_initial_vars()},
+                "extracted_vars": step_extracted_vars or {},
             }
 
             return step_result
@@ -1569,9 +1669,10 @@ class TestScenario{scenario_id}:
         except Exception as e:
             return False, f"断言检查异常: {str(e)}"
 
-    async def _extract_variables(self, extractors: List[Dict], response_data: Dict):
+    async def _extract_variables(self, extractors: List[Dict], response_data: Dict) -> Dict[str, Any]:
+        """提取变量并返回本步骤新提取的变量字典"""
         if not extractors:
-            return
+            return {}
 
         body = response_data.get("body", "")
         new_vars = {}  # 只记录本步骤新提取的变量
@@ -1626,6 +1727,8 @@ class TestScenario{scenario_id}:
                 await _invalidate_global_vars_cache(self.user_id)
             except Exception as e:
                 _logger.warning(f"变量持久化失败: {e}")
+
+        return new_vars
 
 
 class DataDrivenScenarioExecutionEngine:
@@ -1690,8 +1793,39 @@ class DataDrivenScenarioExecutionEngine:
                     result = await db.execute(fallback_query)
                     env = result.scalars().first()
 
+            env_config = {}
+            # 加载全局变量（优先级最低：global → env → session → temp）
+            try:
+                from fastapi_backend.services.autotest_execution import (
+                    _get_global_variables_cached,
+                )
+
+                global_vars = await _get_global_variables_cached(self.user_id)
+                if global_vars:
+                    env_config.update(global_vars)
+            except Exception as e:
+                _logger.warning(f"数据驱动场景加载全局变量失败: {e}")
+
             if env:
-                env_config = env.variables if isinstance(env.variables, dict) else {}
+                # 🔥 修复：环境变量继承——当 env 设置了 parent_id 时，合并整条继承链上的变量
+                # （子环境覆盖父环境同名变量），否则数据驱动场景拿不到父环境的变量
+                if getattr(env, "parent_id", None) is not None:
+                    try:
+                        from fastapi_backend.services.autotest_variable_service import (
+                            get_effective_variables,
+                        )
+
+                        effective_vars = await get_effective_variables(db, env.id)
+                        for v in effective_vars:
+                            env_config[v["name"]] = v["value"]
+                    except Exception as e:
+                        _logger.warning(
+                            f"数据驱动场景合并环境继承变量失败，回退到仅当前环境变量: {e}"
+                        )
+                        if isinstance(env.variables, dict):
+                            env_config.update(env.variables)
+                elif isinstance(env.variables, dict):
+                    env_config.update(env.variables)
                 if env.base_url:
                     env_config["base_url"] = env.base_url
 
@@ -1781,26 +1915,16 @@ class DataDrivenScenarioExecutionEngine:
                 "error": str(e),
             }
         finally:
-            # 清理本次迭代新增的全局变量，避免影响下一次迭代
+            # 数据驱动变量是临时的，只清理内存缓存，不从DB删除（避免误删既有变量）
             try:
                 post_global_var_keys = set((await _get_global_variables_cached(self.user_id)).keys())
                 new_var_keys = post_global_var_keys - pre_global_var_keys
                 if new_var_keys:
-                    from sqlalchemy import delete as sa_delete
-
-                    async with async_session() as cleanup_session:
-                        for var_name in new_var_keys:
-                            del_stmt = sa_delete(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == var_name)
-                            if self.user_id is not None:
-                                del_stmt = del_stmt.where(AutoTestGlobalVariable.user_id == self.user_id)
-                            else:
-                                del_stmt = del_stmt.where(AutoTestGlobalVariable.user_id.is_(None))
-                            await cleanup_session.execute(del_stmt)
-                        await cleanup_session.commit()
+                    # 只使缓存失效，下次访问时从DB重新加载；不从DB删除，避免误删既有变量
                     await _invalidate_global_vars_cache(self.user_id)
-                    _logger.info(f"迭代 {row_index} 清理了 {len(new_var_keys)} 个新增全局变量: {new_var_keys}")
+                    _logger.info(f"迭代 {row_index} 识别到 {len(new_var_keys)} 个新增变量，已清理内存缓存")
             except Exception as cleanup_err:
-                _logger.warning(f"清理迭代 {row_index} 新增全局变量失败: {cleanup_err}")
+                _logger.warning(f"清理迭代 {row_index} 全局变量缓存失败: {cleanup_err}")
 
 
 async def run_scenario_data_driven(

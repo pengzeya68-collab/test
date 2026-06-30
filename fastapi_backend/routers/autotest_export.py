@@ -10,8 +10,6 @@ AutoTest 导出路由
 """
 
 import json
-import secrets
-from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -69,20 +67,9 @@ class ExportRequest(BaseModel):
         return v
 
 
-class ShareDocRequest(BaseModel):
-    case_ids: List[int] = []
-    group_id: Optional[int] = None
-    expires_hours: int = 72
-
-    def model_post_init(self, __context):
-        # 限制有效期在 1-720 小时之间（最多 30 天）
-        if self.expires_hours < 1:
-            self.expires_hours = 1
-        elif self.expires_hours > 720:
-            self.expires_hours = 720
-
-
 # ========== cURL 导入 ==========
+
+
 
 
 @router.post("/import/curl")
@@ -194,85 +181,12 @@ async def generate_api_doc(
     return {"doc": doc, "message": "文档生成成功"}
 
 
-# ========== 分享链接（内存存储，带自动清理） ==========
-import asyncio
-
-_share_tokens: Dict[str, dict] = {}
-_share_tokens_lock: Optional[asyncio.Lock] = None
-_share_tokens_lock_loop: Optional[asyncio.AbstractEventLoop] = None
-_MAX_SHARE_TOKENS = 1000
-
-
-def _get_share_tokens_lock() -> asyncio.Lock:
-    """懒初始化 asyncio.Lock，跨事件循环自动重建"""
-    global _share_tokens_lock, _share_tokens_lock_loop
-    try:
-        current_loop = asyncio.get_running_loop()
-    except RuntimeError:
-        current_loop = None
-    if _share_tokens_lock is None or _share_tokens_lock_loop is not current_loop:
-        _share_tokens_lock = asyncio.Lock()
-        _share_tokens_lock_loop = current_loop
-    return _share_tokens_lock
-
-
-def _cleanup_expired_tokens():
-    """清理过期的分享 token，防止内存泄漏（非线程安全，需在锁内调用）"""
-    now = datetime.now(timezone.utc)
-    expired = [k for k, v in _share_tokens.items() if datetime.fromisoformat(v["expires"]) < now]
-    for k in expired:
-        _share_tokens.pop(k, None)
-
-
-@router.post("/api-docs/share")
-async def create_share_link(
-    body: ShareDocRequest,
-    current_user: User = Depends(get_current_active_user),
-):
-    """创建 API 文档分享链接"""
-    cases = await _get_cases(current_user.id, body.case_ids, body.group_id)
-    if not cases:
-        raise HTTPException(status_code=400, detail="没有找到用例")
-
-    # 清理过期 token 并检查上限（在锁内操作，避免竞态条件）
-    async with _get_share_tokens_lock():
-        _cleanup_expired_tokens()
-        if len(_share_tokens) >= _MAX_SHARE_TOKENS:
-            raise HTTPException(status_code=429, detail="分享链接数量已达上限，请稍后再试")
-
-        doc = export_openapi(cases)
-        token = secrets.token_urlsafe(16)
-        expires = datetime.now(timezone.utc) + timedelta(hours=body.expires_hours)
-
-        _share_tokens[token] = {
-            "doc": doc,
-            "expires": expires.isoformat(),
-            "case_count": len(cases),
-        }
-
-    return {
-        "token": token,
-        "url": f"/api-docs/view/{token}",
-        "expires": expires.isoformat(),
-        "case_count": len(cases),
-    }
-
-
-@router.get("/api-docs/shared/{token}", dependencies=[])
-async def get_shared_doc(token: str):
-    """获取分享的 API 文档（无需登录）"""
-    async with _get_share_tokens_lock():
-        info = _share_tokens.get(token)
-        if not info:
-            raise HTTPException(status_code=404, detail="分享链接不存在或已过期")
-
-        # 检查过期
-        expires = datetime.fromisoformat(info["expires"])
-        if datetime.now(timezone.utc) > expires:
-            _share_tokens.pop(token, None)
-            raise HTTPException(status_code=410, detail="分享链接已过期")
-
-    return {"doc": info["doc"], "case_count": info["case_count"]}
+# ========== 分享链接 ==========
+# 分享功能已迁移至独立路由 fastapi_backend/routers/autotest_api_docs.py
+# （持久化 DB 存储，支持过期与浏览统计，替代原内存存储方案）
+# 端点：
+#   POST /api/auto-test/api-docs/share        生成分享链接
+#   GET  /api/auto-test/api-docs/shared/{token}  公开访问分享文档
 
 
 # ========== 增强版 API 文档生成 ==========
@@ -497,6 +411,8 @@ async def generate_enhanced_api_doc(
         return {
             "doc": doc,
             "message": "增强版文档生成成功",
+            # D7: 返回当前文档涵盖的用例 ID 列表，供前端分享时显式传参
+            "case_ids": case_ids,
             "stats": {
                 "total_cases": len(cases_data),
                 "cases_with_history": len(execution_history),

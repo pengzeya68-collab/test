@@ -6,6 +6,7 @@ Interview 统计与报告服务
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, func, case, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,10 +19,13 @@ from fastapi_backend.models.models import (
 
 _logger = logging.getLogger(__name__)
 
+CN_TZ = ZoneInfo("Asia/Shanghai")
+
 
 async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[str, Any]:
     now = datetime.now(timezone.utc)
-    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    now_local = datetime.now(CN_TZ)
+    today_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
     seven_days_ago = now - timedelta(days=7)
 
     total_result = await db.execute(select(func.count(Submission.id)).where(Submission.user_id == user_id))
@@ -83,7 +87,7 @@ async def get_user_interview_statistics(user_id: int, db: AsyncSession) -> Dict[
 
     daily_submissions = []
     for i in range(6, -1, -1):
-        day_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc) - timedelta(days=i)
+        day_start = today_start - timedelta(days=i)
         day_end = day_start + timedelta(days=1)
         day_result = await db.execute(
             select(func.count(Submission.id)).where(

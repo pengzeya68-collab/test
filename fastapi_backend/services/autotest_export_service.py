@@ -421,7 +421,7 @@ def export_enhanced_api_doc(
                     "enabled": True,
                     "project_name": mock_info.get("project_name"),
                     "rule_name": mock_info.get("rule_name"),
-                    "mock_url": f"/mock/{mock_info.get('base_url_slug')}{path}",
+                    "mock_url": f"/api/mock/{mock_info.get('base_url_slug')}{path}",
                 }
 
         # 2. 场景流程关联
@@ -473,7 +473,8 @@ def export_enhanced_api_doc(
 
             for var in global_variables:
                 var_name = var.get("name", "")
-                if f"${{{var_name}}}" in all_text or f"${var_name}" in all_text:
+                # 匹配系统实际使用的 {{var_name}} 格式
+                if f"{{{{{var_name}}}}}" in all_text or f"{{var_name}}" in all_text:
                     var_refs.append(
                         {
                             "name": var_name,

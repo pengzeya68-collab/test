@@ -130,7 +130,7 @@ async function loadLogs() {
         keyword: filterKeyword.value || undefined,
       },
     })
-    logContent.value = res.logs
+    logContent.value = (res.logs || []).join('\n')
   } catch (e) {
     ElMessage.error('加载日志内容失败')
   } finally {

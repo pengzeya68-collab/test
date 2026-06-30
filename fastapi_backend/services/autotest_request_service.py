@@ -52,6 +52,7 @@ async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any], us
     from fastapi_backend.core.autotest_database import AsyncSessionLocal
     from fastapi_backend.models.autotest import AutoTestGlobalVariable, AutoTestEnvironment
     from fastapi_backend.utils.encryption import decrypt
+    from fastapi_backend.services.autotest_variable_service import deserialize_var_value
 
     variables = dict(variables)
 
@@ -65,6 +66,8 @@ async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any], us
             value = var.value
             if var.is_encrypted:
                 value = decrypt(value)
+            # 反序列化以还原原始类型（int/float/bool/dict/list 等）
+            value = deserialize_var_value(value)
             global_vars[var.name] = value
         variables.update(global_vars)
 
@@ -74,8 +77,23 @@ async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any], us
                 env_query = env_query.where(AutoTestEnvironment.user_id == user_id)
             result = await session.execute(env_query)
             env = result.scalar_one_or_none()
-            if env and env.variables and isinstance(env.variables, dict):
-                variables.update(env.variables)
+            if env:
+                # 🔥 修复：环境变量继承——当 env 设置了 parent_id 时，合并整条继承链上的变量
+                # （子环境覆盖父环境同名变量），与 replace_case_variables 保持一致
+                if getattr(env, "parent_id", None) is not None:
+                    try:
+                        from fastapi_backend.services.autotest_variable_service import (
+                            get_effective_variables,
+                        )
+
+                        effective_vars = await get_effective_variables(session, env.id)
+                        for v in effective_vars:
+                            variables[v["name"]] = v["value"]
+                    except Exception:
+                        if env.variables and isinstance(env.variables, dict):
+                            variables.update(env.variables)
+                elif env.variables and isinstance(env.variables, dict):
+                    variables.update(env.variables)
 
     return variables
 

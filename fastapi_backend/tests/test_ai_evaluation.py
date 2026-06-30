@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import patch
 import asyncio
 
-from fastapi_backend.schemas.interview import CodeSubmission
+from fastapi_backend.schemas.interview import CodeSubmission, AIEvaluationResponse
 from fastapi_backend.services.ai_tutor_service import AITutorService
 
 
@@ -21,12 +21,13 @@ class TestAIEvaluation:
     @pytest.mark.asyncio
     async def test_evaluate_code_with_mock(self, mock_evaluate):
         """测试代码评估功能 - 使用mock"""
-        mock_evaluate.return_value = {
-            "is_correct": True,
-            "score": 85,
-            "feedback": "代码逻辑清晰",
-            "optimized_code": None,
-        }
+        # mock 应返回 AIEvaluationResponse 对象而非 dict，与真实方法签名一致
+        mock_evaluate.return_value = AIEvaluationResponse(
+            is_correct=True,
+            score=85,
+            feedback="代码逻辑清晰",
+            optimized_code=None,
+        )
 
         submission = CodeSubmission(
             source_code="print('hello')",

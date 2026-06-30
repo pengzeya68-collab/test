@@ -23,6 +23,7 @@ _ROUTER_MODULES = {
     ],
     "autotest": [
         "fastapi_backend.routers.autotest_cases",
+        "fastapi_backend.routers.autotest_case_versions",
         "fastapi_backend.routers.autotest_scenarios",
         "fastapi_backend.routers.autotest_execution",
         "fastapi_backend.routers.autotest_groups",
@@ -40,6 +41,7 @@ _ROUTER_MODULES = {
         "fastapi_backend.routers.autotest_export",
         "fastapi_backend.routers.performance_report",
         "fastapi_backend.routers.autotest_db_connections",
+        "fastapi_backend.routers.autotest_api_docs",
     ],
     "learning": [
         "fastapi_backend.routers.learning_paths",
@@ -72,6 +74,7 @@ _ROUTER_MODULES = {
         "fastapi_backend.routers.report",
         "fastapi_backend.routers.reports",
         "fastapi_backend.routers.user_points",
+        "fastapi_backend.routers.audit_logs",
     ],
 }
 

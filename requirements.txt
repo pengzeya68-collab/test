@@ -30,3 +30,6 @@ python-docx>=0.8.11
 matplotlib>=3.7.0
 numpy>=1.24.0
 jsonpath-ng>=1.6.0
+jsonschema>=4.0.0
+dukpy>=0.4.0
+RestrictedPython>=7.0

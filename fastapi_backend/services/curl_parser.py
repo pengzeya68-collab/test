@@ -46,6 +46,7 @@ def parse_curl(curl_string: str) -> Dict[str, Any]:
         tokens = curl_string.split()
 
     method = "GET"
+    method_explicitly_set = False
     url = ""
     headers = {}
     body = None
@@ -61,6 +62,7 @@ def parse_curl(curl_string: str) -> Dict[str, Any]:
             i += 1
             if i < len(tokens):
                 method = tokens[i].upper()
+                method_explicitly_set = True
 
         elif token in ("-H", "--header"):
             i += 1
@@ -74,8 +76,8 @@ def parse_curl(curl_string: str) -> Dict[str, Any]:
             i += 1
             if i < len(tokens):
                 data_str = tokens[i]
-                if method == "GET":
-                    method = "POST"  # 有 body 时默认改为 POST
+                if method == "GET" and not method_explicitly_set:
+                    method = "POST"  # 有 body 时默认改为 POST（但不覆盖用户显式设置的 -X）
 
                 # 合并多个 -d 参数
                 if body_str:

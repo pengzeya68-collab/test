@@ -37,6 +37,14 @@ def _case_to_dict(case):
         "assert_rules": case.assert_rules,
         "extractors": case.extractors,
         "description": case.description,
+        # 🔥 修复：必须返回脚本相关字段，否则前端重新加载时 pre_script/post_script 丢失，
+        # 版本恢复后再次拉取用例也无法看到恢复的脚本内容
+        "pre_script": getattr(case, "pre_script", None),
+        "post_script": getattr(case, "post_script", None),
+        "pre_script_language": getattr(case, "pre_script_language", "javascript"),
+        "post_script_language": getattr(case, "post_script_language", "javascript"),
+        "response_schema": getattr(case, "response_schema", None),
+        "current_version": getattr(case, "current_version", None),
         "updated_at": case.updated_at.isoformat() if case.updated_at else None,
     }
 
@@ -265,14 +273,12 @@ async def delete_case(
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
 
-    # 删除引用该用例的场景步骤（仅删除当前用户自己的步骤，避免跨用户数据篡改）
+    # 先把所有引用该 case 的场景步骤的 api_case_id 置空（不限 user_id），避免跨用户步骤 api_case_id 悬空
     steps_result = await db.execute(
-        select(AutoTestScenarioStep)
-        .join(AutoTestScenario, AutoTestScenarioStep.scenario_id == AutoTestScenario.id)
-        .where(AutoTestScenarioStep.api_case_id == case_id, AutoTestScenario.user_id == current_user.id)
+        select(AutoTestScenarioStep).where(AutoTestScenarioStep.api_case_id == case_id)
     )
     for step in steps_result.scalars().all():
-        await db.delete(step)
+        step.api_case_id = None
 
     await db.delete(case)
     await db.commit()

@@ -29,6 +29,7 @@ AUTOTEST_DATA_DIR = PROJECT_ROOT / "fastapi_backend" / "autotest_data"
 scheduler: Optional[AsyncIOScheduler] = None
 _scheduler_lock = threading.Lock()
 
+# 注意：scheduled_tasks是进程内字典，多Worker部署时需配合分布式锁使用
 scheduled_tasks: Dict[str, Dict[str, Any]] = {}
 _scheduled_tasks_lock = threading.Lock()
 
@@ -166,7 +167,9 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
         _logger.info(f"[Scheduler] Celery任务已发送，任务ID: {celery_task_id}")
 
         # 等待任务完成（异步等待）
-        max_wait_time = 300  # 5分钟超时
+        # 注意：APScheduler线程中阻塞轮询会占用调度器线程池，超时设为30秒，
+        # 超时后记录警告并让任务在后台继续执行，不阻塞调度器线程
+        max_wait_time = 30  # 30秒超时（原5分钟会长时间阻塞调度器线程池）
         wait_interval = 2  # 每2秒检查一次
         result = None
 
@@ -197,7 +200,16 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                         error_msg = str(task_result.result) if task_result.result else "任务执行失败"
                         raise Exception(f"Celery任务执行失败: {error_msg}")
             else:
-                raise TimeoutError(f"Celery任务超时: {celery_task_id}")
+                # 超时：不阻塞调度器线程，记录警告并让任务在后台继续执行
+                _logger.warning(
+                    f"[Scheduler] Celery任务 {celery_task_id} 等待 {max_wait_time}秒 未完成，"
+                    f"放行后台执行，任务 {task_id} 状态置为 running_in_background"
+                )
+                with _scheduled_tasks_lock:
+                    if task_id in scheduled_tasks:
+                        scheduled_tasks[task_id]["last_status"] = "running_in_background"
+                        scheduled_tasks[task_id]["status"] = "idle"
+                return  # 不继续执行后续结果处理逻辑，任务在后台继续
         except asyncio.CancelledError:
             _logger.info(f"[Scheduler] 任务 {task_id} 执行被完全取消")
             with _scheduled_tasks_lock:
@@ -206,48 +218,9 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                     scheduled_tasks[task_id]["status"] = "idle"
             return  # 直接返回，不继续执行后续代码
 
-        # 生成Allure报告
-        allure_results_dir = AUTOTEST_DATA_DIR / "allure-results" / f"scenario_{scenario_id}"
-        report_dir = AUTOTEST_DATA_DIR / "reports" / f"scenario_{scenario_id}"
-
-        import shutil
-
-        if allure_results_dir.exists():
-            try:
-                shutil.rmtree(str(allure_results_dir))
-            except Exception as e:
-                _logger.warning(f"清理 allure-results 目录失败: {e}")
-        allure_results_dir.mkdir(parents=True, exist_ok=True)
-
-        history_id = str(uuid.uuid4())[:8]
-        write_allure_results(allure_results_dir, scenario_id, result, history_id)
-
-        try:
-            import shutil
-
-            old_report_history = report_dir / "history"
-            new_results_history = allure_results_dir / "history"
-            if old_report_history.exists() and old_report_history.is_dir():
-                if new_results_history.exists():
-                    shutil.rmtree(str(new_results_history))
-                shutil.copytree(str(old_report_history), str(new_results_history))
-
-            cmd_result = await asyncio.to_thread(
-                subprocess.run,
-                ["allure", "generate", str(allure_results_dir), "-o", str(report_dir), "--clean"],
-                capture_output=True,
-                timeout=60,
-                text=True,
-                encoding="utf-8",
-                errors="ignore",
-            )
-            if cmd_result.returncode == 0:
-                report_url = f"/reports/scenario_{scenario_id}/index.html"
-            else:
-                report_url = None
-        except (FileNotFoundError, Exception):
-            report_url = None
-
+        # Webhook和Allure报告由tasks.py和scenario_runner处理，调度器不再重复生成
+        # - Webhook 通知：由 tasks.py 的 notify_scenario_schedule_webhook_from_db 统一发送
+        # - Allure 报告：由 scenario_runner 在执行过程中生成
         with _scheduled_tasks_lock:
             if task_id in scheduled_tasks:
                 if result:
@@ -262,42 +235,7 @@ async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id:
                 else:
                     scheduled_tasks[task_id]["last_status"] = "unknown"
                     scheduled_tasks[task_id]["last_result"] = None
-                scheduled_tasks[task_id]["report_url"] = report_url
                 scheduled_tasks[task_id]["status"] = "idle"
-
-                webhook_url = scheduled_tasks[task_id].get("webhook_url")
-                last_status = scheduled_tasks[task_id]["last_status"]
-            else:
-                webhook_url = None
-                last_status = "unknown"
-
-        if webhook_url:
-            try:
-                webhook_payload = {
-                    "scenario_id": scenario_id,
-                    "status": last_status,
-                    "report_url": report_url,
-                    "total_steps": result.get("total_steps", 0) if result else 0,
-                    "failed_steps": _failed_step_count(result),
-                }
-
-                def _post_webhook(url: str, payload: dict) -> None:
-                    """使用 stdlib urllib 发送 webhook，避免 requests 依赖不可用"""
-                    import urllib.request
-
-                    data = json.dumps(payload).encode("utf-8")
-                    req = urllib.request.Request(
-                        url,
-                        data=data,
-                        headers={"Content-Type": "application/json"},
-                        method="POST",
-                    )
-                    with urllib.request.urlopen(req, timeout=10) as resp:
-                        resp.read()
-
-                await asyncio.to_thread(_post_webhook, webhook_url, webhook_payload)
-            except Exception as wh_err:
-                _logger.warning(f"Webhook 通知失败 {webhook_url}: {wh_err}")
 
     except asyncio.CancelledError:
         _logger.info(f"[Scheduler] 任务 {task_id} 被取消执行")
@@ -325,6 +263,18 @@ def add_scheduled_task(
 ) -> Dict[str, Any]:
     """添加定时任务"""
     global scheduled_tasks
+
+    # 多Worker部署防护：以DB中schedule_is_active为准，避免重复调度或恢复已停用任务
+    try:
+        meta = _schedule_meta_from_db(scenario_id, user_id=user_id)
+        db_is_active = meta.get("is_active")
+        if db_is_active is False and is_active is not False:
+            _logger.info(
+                f"[Scheduler] DB显示场景 {scenario_id} 调度已停用，按DB状态添加为暂停"
+            )
+            is_active = False
+    except Exception as e:
+        _logger.warning(f"[Scheduler] 读取DB调度状态失败 {scenario_id}: {e}")
 
     parts = cron_expression.split()
     if len(parts) != 5:
@@ -375,6 +325,58 @@ def add_scheduled_task(
     return task_info
 
 
+def _scenario_id_from_task_id(task_id: str) -> Optional[int]:
+    """从task_id解析scenario_id（格式: auto_sched_{scenario_id}）"""
+    prefix = "auto_sched_"
+    if task_id.startswith(prefix):
+        try:
+            return int(task_id[len(prefix):])
+        except ValueError:
+            return None
+    return None
+
+
+def _clear_schedule_status_in_db(task_id: str) -> None:
+    """同步清空DB中场景的schedule_is_active状态（供remove_scheduled_task调用）。
+
+    使用线程池执行async DB操作，避免在同步调度器上下文中嵌套事件循环。
+    """
+    import asyncio
+
+    from fastapi_backend.core.autotest_database import AsyncSessionLocal
+    from fastapi_backend.models.autotest import AutoTestScenario
+    from sqlalchemy import update
+
+    scenario_id = _scenario_id_from_task_id(task_id)
+    if scenario_id is None:
+        return
+
+    async def _clear() -> None:
+        # 清空DB中的调度状态，避免重启后恢复已删除的任务
+        async with AsyncSessionLocal() as db:
+            await db.execute(
+                update(AutoTestScenario.__table__)
+                .where(AutoTestScenario.id == scenario_id)
+                .values(schedule_is_active=False)
+            )
+            await db.commit()
+
+    try:
+        try:
+            asyncio.get_running_loop()
+            # 已在事件循环中，使用线程池隔离执行，避免嵌套 asyncio.run
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(asyncio.run, _clear())
+                future.result(timeout=5)
+        except RuntimeError:
+            # 无运行中的事件循环，安全使用 asyncio.run
+            asyncio.run(_clear())
+    except Exception as e:
+        _logger.warning(f"清空DB调度状态失败 {task_id}: {e}")
+
+
 def remove_scheduled_task(task_id: str) -> bool:
     """删除定时任务"""
     global scheduled_tasks
@@ -384,6 +386,8 @@ def remove_scheduled_task(task_id: str) -> bool:
         with _scheduled_tasks_lock:
             if task_id in scheduled_tasks:
                 del scheduled_tasks[task_id]
+        # 清空DB中的调度状态，避免重启后恢复已删除的任务
+        _clear_schedule_status_in_db(task_id)
         return True
     except Exception as e:
         _logger.error(f"删除定时任务失败 {task_id}: {e}")
@@ -391,32 +395,48 @@ def remove_scheduled_task(task_id: str) -> bool:
 
 
 def toggle_task_status(task_id: str) -> Dict[str, Any]:
-    """切换定时任务的启用/暂停状态"""
+    """切换定时任务的启用/暂停状态（使用乐观锁避免TOCTOU竞态）"""
     global scheduled_tasks
-    with _scheduled_tasks_lock:
-        task_info = scheduled_tasks.get(task_id)
-    if not task_info:
-        raise ValueError(f"任务 {task_id} 不存在")
+    from fastapi import HTTPException
 
-    is_active = task_info.get("is_active", True)
     sched = get_scheduler()
 
-    _logger.info(f"[Scheduler] 切换任务状态: {task_id}, 当前is_active={is_active}, 调度器运行状态: {sched.running}")
+    # 读取调用方预期的当前状态（代表调用方基于该状态发起切换）
+    with _scheduled_tasks_lock:
+        task_info = scheduled_tasks.get(task_id)
+        if not task_info:
+            raise ValueError(f"任务 {task_id} 不存在")
+        current_is_active = task_info.get("is_active", True)
 
-    if is_active:
-        # 暂停任务
-        _logger.info(f"[Scheduler] 暂停任务: {task_id}")
-        sched.pause_job(task_id)
-        with _scheduled_tasks_lock:
-            task_info["is_active"] = False
-            task_info["status"] = "paused"
-    else:
+    new_is_active = not current_is_active
+
+    _logger.info(
+        f"[Scheduler] 切换任务状态: {task_id}, 当前is_active={current_is_active}, "
+        f"目标is_active={new_is_active}, 调度器运行状态: {sched.running}"
+    )
+
+    # 原子更新：使用乐观锁，仅在状态未被并发请求修改时才写入
+    with _scheduled_tasks_lock:
+        task_info = scheduled_tasks.get(task_id)
+        if not task_info:
+            raise ValueError(f"任务 {task_id} 不存在")
+        # 乐观锁校验：当前值必须与调用方读取的预期值一致
+        if task_info.get("is_active", True) != current_is_active:
+            raise HTTPException(
+                status_code=409, detail="任务状态已被其他请求修改，请重试"
+            )
+        task_info["is_active"] = new_is_active
+        task_info["status"] = "idle" if new_is_active else "paused"
+
+    # 锁外操作调度器（APScheduler 自身线程安全，避免长时间持锁）
+    if new_is_active:
         # 恢复任务
         _logger.info(f"[Scheduler] 恢复任务: {task_id}")
         sched.resume_job(task_id)
-        with _scheduled_tasks_lock:
-            task_info["is_active"] = True
-            task_info["status"] = "idle"
+    else:
+        # 暂停任务
+        _logger.info(f"[Scheduler] 暂停任务: {task_id}")
+        sched.pause_job(task_id)
 
     # 验证作业状态
     job = sched.get_job(task_id)

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿<template>
+﻿﻿<template>
   <div class="global-variable-manager">
     <el-card>
       <template #header>
@@ -63,7 +63,6 @@
               v-model="editForm.value"
               :type="row.is_encrypted ? 'password' : 'text'"
               placeholder="变量值"
-              @blur="handleSaveEdit(row.id)"
             />
             <span v-else>{{ row.is_encrypted ? '******' : row.value }}</span>
           </template>
@@ -74,7 +73,6 @@
               v-if="editingRowId === row.id"
               v-model="editForm.description"
               placeholder="描述"
-              @blur="handleSaveEdit(row.id)"
             />
             <span v-else>{{ row.description || '-' }}</span>
           </template>
@@ -389,8 +387,9 @@ const handleImport = async (file) => {
       const variablesToImport = []
       const skippedItems = []
 
+      const isEmpty = (v) => v === undefined || v === null || v === ''
       for (const item of data) {
-        if (!item.name || !item.value) {
+        if (isEmpty(item.name) || isEmpty(item.value)) {
           skippedItems.push({ name: item.name || '(无名)', reason: '缺少变量名或变量值' })
           continue
         }
@@ -494,8 +493,12 @@ const handleReplaceVariables = () => {
   })
 
   // 动态变量映射
+  const now = new Date()
   const dynamicVars = {
-    '$timestamp': String(Math.floor(Date.now() / 1000)),
+    '$timestamp': String(Math.floor(now.getTime() / 1000)),
+    '$datetime': now.toISOString().slice(0, 19).replace('T', ' '),
+    '$date': now.toISOString().slice(0, 10),
+    '$time': now.toTimeString().slice(0, 8),
     '$random_int': String(Math.floor(Math.random() * 10000)),
     '$random_string': Math.random().toString(36).substring(2, 10),
     '$uuid': crypto.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -506,9 +509,9 @@ const handleReplaceVariables = () => {
   Object.entries(dynamicVars).forEach(([key, value]) => {
     varMap.set(key, value)
   })
-  
-  // 替换变量
-  result = result.replace(/\{\{\s*(\$\w+|\w+)\s*\}\}/g, (match, varName) => {
+
+  // 替换变量（支持中文变量名）
+  result = result.replace(/\{\{\s*(\$[\w\u4e00-\u9fa5]+|[\w\u4e00-\u9fa5]+)\s*\}\}/g, (match, varName) => {
     return varMap.get(varName) || match
   })
   

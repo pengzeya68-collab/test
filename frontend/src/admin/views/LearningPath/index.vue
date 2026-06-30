@@ -92,6 +92,14 @@
             <el-option label="高级" value="advanced" />
           </el-select>
         </el-form-item>
+        <el-form-item label="编程语言" prop="language">
+          <el-select v-model="form.language" style="width: 100%;" class="dark-select">
+            <el-option label="Python" value="Python" />
+            <el-option label="Java" value="Java" />
+            <el-option label="JavaScript" value="JavaScript" />
+            <el-option label="通用" value="通用" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="路径描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入路径描述" class="dark-input" />
         </el-form-item>
@@ -134,6 +142,7 @@ const form = reactive({
   id: null,
   title: '',
   level: 'beginner',
+  language: '通用',
   description: '',
   exerciseIds: []
 })
@@ -195,7 +204,11 @@ const handleSizeChange = () => {
 const handleAdd = () => {
   isEdit.value = false
   Object.keys(form).forEach(key => {
-    form[key] = key === 'id' ? null : key === 'level' ? 'beginner' : key === 'exerciseIds' ? [] : ''
+    if (key === 'id') form[key] = null
+    else if (key === 'level') form[key] = 'beginner'
+    else if (key === 'language') form[key] = '通用'
+    else if (key === 'exerciseIds') form[key] = []
+    else form[key] = ''
   })
   fetchExerciseOptions()
   dialogVisible.value = true
@@ -205,10 +218,12 @@ const handleEdit = async (row) => {
   isEdit.value = true
   try {
     const res = await request.get(`/admin/paths/${row.id}`)
-    Object.assign(form, row)
-    if (res && res.exerciseIds) {
-      form.exerciseIds = res.exerciseIds
-    }
+    form.id = row.id
+    form.title = row.title || ''
+    form.level = row.level || 'beginner'
+    form.language = (res && res.language) || row.language || '通用'
+    form.description = row.description || ''
+    form.exerciseIds = (res && res.exerciseIds) ? res.exerciseIds : []
   } catch (e) {
     ElMessage.error('获取路径详情失败')
     return
@@ -219,11 +234,18 @@ const handleEdit = async (row) => {
 
 const handleSubmit = async () => {
   try {
+    const payload = {
+      title: form.title,
+      level: form.level,
+      language: form.language || '通用',
+      description: form.description,
+      exerciseIds: form.exerciseIds || []
+    }
     if (isEdit.value) {
-      await request.put(`/admin/paths/${form.id}`, form)
+      await request.put(`/admin/paths/${form.id}`, payload)
       ElMessage.success('更新成功')
     } else {
-      await request.post('/admin/paths', form)
+      await request.post('/admin/paths', payload)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false

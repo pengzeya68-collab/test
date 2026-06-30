@@ -179,7 +179,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Timer, Document, Collection, Loading, CircleCheck, Reading, DataAnalysis } from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -279,6 +279,7 @@ const languageIconMap = {
   '性能测试': '⚡', '接口测试': '🔌', '自动化': '🤖',
 }
 
+let animationFrameId = null
 const animateValue = (refVar, target, duration = 800) => {
   const start = refVar.value
   const diff = target - start
@@ -289,9 +290,9 @@ const animateValue = (refVar, target, duration = 800) => {
     const progress = Math.min(elapsed / duration, 1)
     const eased = 1 - Math.pow(1 - progress, 3)
     refVar.value = Math.round(start + diff * eased)
-    if (progress < 1) requestAnimationFrame(step)
+    if (progress < 1) animationFrameId = requestAnimationFrame(step)
   }
-  requestAnimationFrame(step)
+  animationFrameId = requestAnimationFrame(step)
 }
 
 onMounted(() => {
@@ -304,6 +305,10 @@ onMounted(() => {
     fetchAllPaths()
     fetchAllProgress()
   }
+})
+
+onBeforeUnmount(() => {
+  if (animationFrameId) cancelAnimationFrame(animationFrameId)
 })
 
 const fetchLearningPaths = async () => {
@@ -329,7 +334,8 @@ const fetchLearningPaths = async () => {
 const fetchAllPaths = async () => {
   try {
     const res = await request.get('/learning-paths')
-    allPaths.value = res
+    const arr = Array.isArray(res) ? res : (res?.list || res?.items || [])
+    allPaths.value = arr
   } catch (error) {
     console.error('获取所有路径失败:', error)
   }

@@ -1,5 +1,6 @@
 import io
 import json
+from types import SimpleNamespace
 
 import pytest
 import pytest_asyncio
@@ -46,7 +47,16 @@ def autotest_client(client, autotest_session_factory):
             yield session
 
     async def _override_current_user():
-        return {"id": 1, "username": "tester"}
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            id=1,
+            username="tester",
+            is_admin=False,
+            is_super_admin=False,
+            is_active=True,
+            role_id=None,
+        )
 
     app.dependency_overrides[get_autotest_db] = _override_get_autotest_db
     app.dependency_overrides[get_current_user] = _override_current_user
@@ -59,7 +69,7 @@ def autotest_client(client, autotest_session_factory):
 
 async def _create_group(session_factory, name="默认分组"):
     async with session_factory() as session:
-        group = AutoTestGroup(name=name, parent_id=None)
+        group = AutoTestGroup(name=name, parent_id=None, user_id=1)
         session.add(group)
         await session.commit()
         await session.refresh(group)
@@ -68,7 +78,7 @@ async def _create_group(session_factory, name="默认分组"):
 
 async def _create_scenario(session_factory, name="默认场景"):
     async with session_factory() as session:
-        scenario = AutoTestScenario(name=name, description="desc", is_active=True)
+        scenario = AutoTestScenario(name=name, description="desc", is_active=True, user_id=1)
         session.add(scenario)
         await session.commit()
         await session.refresh(scenario)
@@ -164,6 +174,7 @@ class TestAutoTestCompatibility:
                 url="http://example.com/api/export",
                 headers={},
                 params={},
+                user_id=1,
             )
             session.add(case)
             await session.commit()

@@ -449,6 +449,7 @@ const stopPolling = () => {
 }
 
 const pollTaskStatus = async (taskId, scenarioName) => {
+  currentTaskId = taskId
   stopPolling()
   pollingAbortController = new AbortController()
   const signal = pollingAbortController.signal

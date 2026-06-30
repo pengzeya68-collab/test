@@ -89,7 +89,7 @@ class SuiteRunner:
                     "env_name": env.env_name,
                     "base_url": env.base_url,
                     "variables": env.variables if isinstance(env.variables, dict) else {},
-                    "headers": env.headers if isinstance(getattr(env, "headers", None), dict) else {},
+                    "headers": env.variables.get("_headers", {}) if isinstance(env.variables, dict) else {},
                 }
 
             # 创建执行记录
@@ -99,7 +99,6 @@ class SuiteRunner:
                 status="running",
                 total_cases=len(suite_cases),
                 started_at=datetime.now(timezone.utc),
-                user_id=self.user_id,
             )
             db.add(execution)
             await db.commit()

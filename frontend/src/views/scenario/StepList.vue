@@ -334,8 +334,15 @@ const loadOverrides = (step) => {
   const overrides = step.variable_overrides || {}
   overrideForm.value = {
     url: overrides.url || '',
-    headers: Object.entries(overrides.headers || {}).map(([key, value]) => ({ key, value })),
-    payloads: Object.entries(overrides.payload || {}).map(([key, value]) => ({ key, value }))
+    // 非字符串值（数组/对象）需 JSON.stringify 序列化，避免渲染异常
+    headers: Object.entries(overrides.headers || {}).map(([key, value]) => ({
+      key,
+      value: typeof value === 'string' ? value : JSON.stringify(value)
+    })),
+    payloads: Object.entries(overrides.payload || {}).map(([key, value]) => ({
+      key,
+      value: typeof value === 'string' ? value : JSON.stringify(value)
+    }))
   }
 }
 
@@ -390,7 +397,11 @@ const loadExtractors = (step) => {
   currentExtractorStep.value = step
   const extractors = step.api_case?.extractors || step.extractors || []
   if (extractors.length > 0) {
-    extractorForm.value = extractors.map(e => ({ ...e }))
+    // 兼容旧数据：extractorType 字段映射为 type
+    extractorForm.value = extractors.map(e => {
+      const { extractorType, ...rest } = e
+      return { ...rest, type: e.type || extractorType || 'jsonpath' }
+    })
   } else {
     extractorForm.value = []
   }
@@ -400,7 +411,7 @@ const addExtractor = () => {
   extractorForm.value.push({
     variableName: '',
     expression: '',
-    extractorType: 'jsonpath'
+    type: 'jsonpath'
   })
 }
 
@@ -416,26 +427,36 @@ const saveExtractors = async () => {
   )
 
   try {
-    // 提取器属于 API 用例，需保存到 case 端点而非 step 端点
-    const caseId = currentExtractorStep.value.api_case_id
-    if (!caseId) {
-      ElMessage.error('此步骤未关联接口用例')
-      return
-    }
-    await autoTestRequest.put(`/auto-test/cases/${caseId}`, {
-      extractors: validExtractors.length > 0 ? validExtractors : null
-    })
-    if (currentExtractorStep.value.api_case) {
-      currentExtractorStep.value.api_case.extractors = validExtractors.length > 0 ? validExtractors : null
+    const step = currentExtractorStep.value
+    const caseId = step.api_case_id
+    if (caseId) {
+      // API 请求步骤：提取器保存到关联的 case
+      await autoTestRequest.put(`/auto-test/cases/${caseId}`, {
+        extractors: validExtractors.length > 0 ? validExtractors : null
+      })
+      if (step.api_case) {
+        step.api_case.extractors = validExtractors.length > 0 ? validExtractors : null
+      }
+    } else {
+      // 流控步骤：提取器保存到 step
+      await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}/steps/${step.id}`, {
+        extractors: validExtractors.length > 0 ? validExtractors : null
+      })
+      step.extractors = validExtractors.length > 0 ? validExtractors : null
     }
     ElMessage.success('保存成功')
-    emit('edit-overrides', { step: currentExtractorStep.value, extractors: validExtractors })
+    emit('edit-overrides', { step, extractors: validExtractors })
   } catch (error) {
     ElMessage.error('保存失败')
   }
 }
 
 const handleDragEnd = () => {
+  // 检查顺序是否实际发生变化，避免未拖拽也触发 reorder
+  const newOrders = localSteps.value.map(step => step.id)
+  const oldOrders = props.steps.map(step => step.id)
+  const changed = newOrders.some((id, idx) => id !== oldOrders[idx])
+  if (!changed) return
   const stepOrders = localSteps.value.map((step, index) => ({
     step_id: step.id,
     step_order: index

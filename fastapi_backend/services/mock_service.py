@@ -80,8 +80,46 @@ class MockEngine:
 
         return None
 
+    async def get_project_by_slug(self, db: AsyncSession, project_slug: str) -> Optional[MockProject]:
+        """根据 slug 查询激活的 Mock 项目"""
+        result = await db.execute(
+            select(MockProject).where(MockProject.base_url_slug == project_slug, MockProject.is_active)
+        )
+        return result.scalar_one_or_none()
+
+    async def generate_fallback_response(
+        self, db: AsyncSession, project: MockProject, method: str, path: str
+    ) -> Dict[str, Any]:
+        """
+        零配置智能 Mock 兜底：
+        - 若项目关联了 swagger_source_id，则尝试从该数据源中查找 path+method 对应的 schema，
+          用 _mock_value 生成响应。
+        - 否则返回一个基本的 200 响应，避免直接 404。
+        """
+        # 尝试基于 swagger_source_id 查找 schema（当前系统未持久化 swagger 数据源结构，
+        # 此处保留扩展点；若未来引入 SwaggerSource 表，可在此查询并生成结构化 mock 数据）
+        # 当无法获取 schema 时，回退为基本响应
+        body = self._generate_basic_fallback_body(method, path)
+        return {
+            "status": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": body,
+        }
+
+    def _generate_basic_fallback_body(self, method: str, path: str) -> dict:
+        """生成基本的兜底响应体"""
+        return {
+            "message": "ok (zero-config mock fallback)",
+            "method": method.upper(),
+            "path": path,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
     def _match_path(self, pattern: str, path: str) -> bool:
         """路径匹配，支持通配符 * 和 ?"""
+        # 统一处理尾部斜杠：'/users/' 与 '/users' 视为同一路径，但保留根路径 '/'
+        path = path.rstrip("/") or "/"
+        pattern = pattern.rstrip("/") or "/"
         # 精确匹配
         if pattern == path:
             return True
@@ -96,20 +134,53 @@ class MockEngine:
     def _evaluate_condition(self, condition: dict, request_params: dict) -> bool:
         """
         评估条件响应规则。
-        condition 格式: {"param": "name", "operator": "eq", "value": "test"}
-        支持从 query/body/header 中取值
+
+        支持两种格式：
+        1. 旧版单条件（向后兼容）:
+            {"param": "name", "operator": "eq", "value": "test", "source": "query"}
+        2. 新版多条件组合:
+            {"logic": "AND"/"OR", "rules": [{...}, {...}]}
+          每条 rule 仍为单条件结构。
+
+        source 取值：query / body / header
         """
         if not condition or not isinstance(condition, dict):
             return True
 
+        # 新版多条件组合
+        if "rules" in condition and isinstance(condition["rules"], list):
+            logic = (condition.get("logic") or "AND").upper()
+            rules = condition["rules"]
+            if not rules:
+                return True
+            if logic == "OR":
+                return any(self._evaluate_condition(r, request_params) for r in rules)
+            # 默认 AND
+            return all(self._evaluate_condition(r, request_params) for r in rules)
+
+        # 旧版单条件
         param_name = condition.get("param", "")
         operator = condition.get("operator", "eq")
         expected = condition.get("value", "")
         source = condition.get("source", "query")  # query / body / header
 
-        # 根据 source 从对应子字典中取值
-        source_map = request_params.get(source, request_params) if isinstance(request_params, dict) else request_params
-        actual = source_map.get(param_name) if isinstance(source_map, dict) else request_params.get(param_name)
+        # 根据 source 从对应子字典中取值；source 不存在时回退为空字典，避免误用顶层 request_params
+        source_map = request_params.get(source, {}) if isinstance(request_params, dict) else {}
+
+        if isinstance(source_map, dict):
+            if source == "header":
+                # header 大小写不敏感：构造小写 key -> value 的映射
+                actual = None
+                for k, v in source_map.items():
+                    if str(k).lower() == str(param_name).lower():
+                        actual = v
+                        break
+            else:
+                actual = source_map.get(param_name)
+        elif isinstance(request_params, dict):
+            actual = request_params.get(param_name)
+        else:
+            actual = None
 
         try:
             if operator in ("eq", "equals", "=="):
@@ -184,6 +255,7 @@ class MockEngine:
         )
         db.add(log)
         await db.flush()
+        await db.commit()  # 确保日志持久化
 
     async def import_from_swagger(self, db: AsyncSession, project_id: int, swagger_data: dict) -> int:
         """
@@ -205,10 +277,13 @@ class MockEngine:
                 # 尝试从 schema 生成 mock 数据
                 response_body = self._generate_mock_from_schema(ok_response)
 
+                # OpenAPI 路径形如 /users/{id}，将 {xxx} 转换为通配符 * 以便 _match_path 匹配
+                normalized_path = re.sub(r"\{[^}]+\}", "*", path)
+
                 rule = MockRule(
                     project_id=project_id,
                     method=method.upper(),
-                    path=path,
+                    path=normalized_path,
                     name=spec.get("summary", f"{method.upper()} {path}"),
                     description=spec.get("description", ""),
                     response_status=200,
@@ -428,8 +503,16 @@ class MockEngine:
     def _resolve_dynamic_values(self, body: Any) -> Any:
         """递归替换响应体中的 @表达式"""
         if isinstance(body, str):
-            if body.startswith("@") and len(body) < 50:
+            # 整串以 @ 开头时按整表达式解析，保持向后兼容（含参数表达式 @integer(1,100)）
+            if body.startswith("@"):
                 return self._resolve_expression(body)
+            # 否则对字符串中所有 @expr 或 @expr(args) 子串做替换，移除长度限制
+            if "@" in body:
+                return re.sub(
+                    r"@\w+(\([^)]*\))?",
+                    lambda m: str(self._resolve_expression(m.group(0))),
+                    body,
+                )
             return body
         elif isinstance(body, dict):
             return {k: self._resolve_dynamic_values(v) for k, v in body.items()}

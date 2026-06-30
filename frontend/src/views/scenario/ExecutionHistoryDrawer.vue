@@ -88,6 +88,8 @@
         <el-tag type="info">共 {{ executionHistory.total }} 次执行</el-tag>
         <el-tag type="success">成功 {{ executionHistory.success_count }} 次</el-tag>
         <el-tag type="danger">失败 {{ executionHistory.failed_count }} 次</el-tag>
+        <el-tag v-if="executionHistory.running_count > 0" type="primary">运行中 {{ executionHistory.running_count }} 次</el-tag>
+        <el-tag v-if="executionHistory.cancelled_count > 0" type="warning">已取消 {{ executionHistory.cancelled_count }} 次</el-tag>
         <el-button size="small" @click="refreshExecutionHistory" style="margin-left: 12px">
           <el-icon><Refresh /></el-icon> 刷新
         </el-button>
@@ -302,11 +304,15 @@
                       {{ step.status_code || '无' }}
                     </el-tag>
                   </div>
-                  <div class="info-row" v-if="step.response.headers && Object.keys(step.response.headers).length > 0">
+                  <div class="info-row" v-if="typeof step.response === 'object' && step.response?.headers && Object.keys(step.response.headers).length > 0">
                     <span class="info-label">响应头:</span>
                     <pre class="code-block">{{ formatResponseBody(step.response.headers) }}</pre>
                   </div>
-                  <div class="info-row" v-if="step.response.body">
+                  <div class="info-row" v-else-if="typeof step.response === 'string'">
+                    <span class="info-label">响应内容:</span>
+                    <pre class="code-block">{{ formatResponseBody(step.response) }}</pre>
+                  </div>
+                  <div class="info-row" v-if="typeof step.response === 'object' && step.response?.body">
                     <span class="info-label">响应体:</span>
                     <pre class="code-block">{{ step.response.body }}</pre>
                   </div>
@@ -346,6 +352,8 @@ const executionHistory = ref({
   total: 0,
   success_count: 0,
   failed_count: 0,
+  running_count: 0,
+  cancelled_count: 0,
   items: []
 })
 
@@ -479,10 +487,14 @@ const loadExecutionHistory = async () => {
 
     const successCount = items.filter(item => item.status === 'success' || item.status === 'completed').length
     const failedCount = items.filter(item => item.status === 'failed' || item.status === 'error').length
+    const runningCount = items.filter(item => item.status === 'running').length
+    const cancelledCount = items.filter(item => item.status === 'cancelled').length
     executionHistory.value = {
       total: res.total || 0,
       success_count: successCount,
       failed_count: failedCount,
+      running_count: runningCount,
+      cancelled_count: cancelledCount,
       items: items
     }
   } catch (error) {

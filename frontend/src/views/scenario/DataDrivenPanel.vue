@@ -236,7 +236,7 @@ const saveDataset = async () => {
   datasetSaving = true
   try {
     await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/dataset`, {
-      name: '默认数据集',
+      name: `场景_${props.scenarioId}_数据集`,
       data_matrix: {
         columns: datasetColumns.value,
         rows: datasetRows.value
@@ -263,11 +263,12 @@ const flushDatasetSave = async () => {
 const handleDatasetChange = () => {
   datasetDirty = true
   clearTimeout(datasetSaveTimer)
+  // 500ms 防抖，避免丢失中间状态
   datasetSaveTimer = setTimeout(() => {
     if (!datasetSaving) {
       saveDataset()
     }
-  }, 300)
+  }, 500)
   emit('dataset-changed', {
     columns: datasetColumns.value,
     rows: datasetRows.value
@@ -384,7 +385,10 @@ const processFileData = (data) => {
     return columns.map((_, colIndex) => {
       const cellValue = row[colIndex]
       if (cellValue && typeof cellValue === 'object' && cellValue instanceof Date) {
-        return cellValue.toISOString().slice(0, 10)
+        // 保留完整时间信息，而非仅日期
+        const isoStr = cellValue.toISOString()
+        // 如果时间部分全为 0，则只返回日期；否则返回完整时间字符串
+        return isoStr.endsWith('00:00:00.000Z') ? isoStr.slice(0, 10) : isoStr.slice(0, 19).replace('T', ' ')
       }
       return String(cellValue ?? '')
     })
@@ -409,6 +413,8 @@ const handleRunDataDriven = async () => {
     return
   }
   try {
+    // 确保数据集已保存，避免执行旧数据
+    await flushDatasetSave()
     const payload = {}
     if (props.envId) payload.env_id = props.envId
     const res = await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/run-data-driven`, payload)

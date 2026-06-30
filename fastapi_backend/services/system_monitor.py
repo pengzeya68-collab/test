@@ -5,6 +5,7 @@
 """
 
 import time
+import platform
 import psutil
 import logging
 from datetime import datetime, timezone

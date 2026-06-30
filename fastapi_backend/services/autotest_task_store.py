@@ -22,12 +22,29 @@ _async_lock_create_lock = threading.Lock()  # 保护 _async_lock 创建的线程
 
 
 def _get_async_lock():
-    """延迟创建 asyncio.Lock，避免模块导入时绑定到错误的事件循环，线程安全"""
+    """延迟创建 asyncio.Lock，避免模块导入时绑定到错误的事件循环，线程安全。
+
+    asyncio.Lock() 会绑定到第一次创建时的事件循环，切换循环后使用会报错，
+    因此在获取时检测当前事件循环是否与 lock 绑定的循环一致，不一致则重建。
+    """
     global _async_lock
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
+
     if _async_lock is None:
         with _async_lock_create_lock:
             if _async_lock is None:
                 _async_lock = asyncio.Lock()
+    elif current_loop is not None:
+        # 检查lock是否绑定到当前事件循环，若不一致则重建
+        try:
+            lock_loop = _async_lock._loop if hasattr(_async_lock, "_loop") else None
+            if lock_loop is not current_loop:
+                _async_lock = asyncio.Lock()
+        except Exception:
+            _async_lock = asyncio.Lock()
     return _async_lock
 
 

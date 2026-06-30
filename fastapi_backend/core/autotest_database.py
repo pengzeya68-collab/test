@@ -40,6 +40,7 @@ async def init_autotest_db() -> None:
                 "environments",
                 "test_history",
                 "test_scenarios",
+                "api_doc_shares",
             }
             return bool(autotest_tables & set(existing))
 
@@ -63,7 +64,7 @@ async def init_autotest_db() -> None:
                         sync_conn.execute(text("ALTER TABLE scenario_execution_records ADD COLUMN user_id INTEGER"))
                         _logger.info("已为 scenario_execution_records 表添加 user_id 列")
 
-                # scenario_steps: step_type, step_config, parent_step_id, pre_script, post_script
+                # scenario_steps: step_type, step_config, parent_step_id, pre_script, post_script, pre_script_language, post_script_language
                 if "scenario_steps" in existing_tables:
                     cols = [c["name"] for c in insp.get_columns("scenario_steps")]
                     migrations = [
@@ -72,19 +73,24 @@ async def init_autotest_db() -> None:
                         ("parent_step_id", "INTEGER"),
                         ("pre_script", "TEXT"),
                         ("post_script", "TEXT"),
+                        ("pre_script_language", "VARCHAR(20) DEFAULT 'javascript'"),
+                        ("post_script_language", "VARCHAR(20) DEFAULT 'javascript'"),
                     ]
                     for col_name, col_type in migrations:
                         if col_name not in cols:
                             sync_conn.execute(text(f"ALTER TABLE scenario_steps ADD COLUMN {col_name} {col_type}"))
                             _logger.info(f"已为 scenario_steps 表添加 {col_name} 列")
 
-                # api_cases: pre_script, post_script, response_schema
+                # api_cases: pre_script, post_script, response_schema, current_version, pre_script_language, post_script_language
                 if "api_cases" in existing_tables:
                     cols = [c["name"] for c in insp.get_columns("api_cases")]
                     migrations = [
                         ("pre_script", "TEXT"),
                         ("post_script", "TEXT"),
                         ("response_schema", "JSON"),
+                        ("current_version", "VARCHAR(50)"),
+                        ("pre_script_language", "VARCHAR(20) DEFAULT 'javascript'"),
+                        ("post_script_language", "VARCHAR(20) DEFAULT 'javascript'"),
                     ]
                     for col_name, col_type in migrations:
                         if col_name not in cols:
@@ -97,19 +103,115 @@ async def init_autotest_db() -> None:
                     if "services" not in cols:
                         sync_conn.execute(text("ALTER TABLE environments ADD COLUMN services JSON"))
                         _logger.info("已为 environments 表添加 services 列")
+                    # environments: parent_id（环境变量继承机制）
+                    if "parent_id" not in cols:
+                        sync_conn.execute(
+                            text("ALTER TABLE environments ADD COLUMN parent_id INTEGER")
+                        )
+                        _logger.info("已为 environments 表添加 parent_id 列（环境变量继承）")
+                        # 尝试添加外键约束（PostgreSQL/MySQL 支持，SQLite 跳过）
+                        if sync_conn.dialect.name != "sqlite":
+                            try:
+                                sync_conn.execute(
+                                    text(
+                                        "ALTER TABLE environments ADD CONSTRAINT "
+                                        "fk_environments_parent FOREIGN KEY (parent_id) "
+                                        "REFERENCES environments(id) ON DELETE SET NULL"
+                                    )
+                                )
+                            except Exception:
+                                # FK 已存在或不支持，忽略
+                                pass
+                        # 添加索引加速继承链查询
+                        try:
+                            sync_conn.execute(
+                                text(
+                                    "CREATE INDEX IF NOT EXISTS idx_environments_parent_id "
+                                    "ON environments(parent_id)"
+                                )
+                            )
+                        except Exception:
+                            pass
 
-                # scenario_steps: parent_step_id FK (only add if table and column exist but no FK)
-                if "scenario_steps" in existing_tables:
+                # api_groups: description, sort_order, updated_at（树形分组管理）
+                if "api_groups" in existing_tables:
+                    cols = [c["name"] for c in insp.get_columns("api_groups")]
+                    group_migrations = [
+                        ("description", "TEXT"),
+                        ("sort_order", "INTEGER DEFAULT 0"),
+                        ("updated_at", "DATETIME"),
+                    ]
+                    for col_name, col_type in group_migrations:
+                        if col_name not in cols:
+                            sync_conn.execute(text(f"ALTER TABLE api_groups ADD COLUMN {col_name} {col_type}"))
+                            _logger.info(f"已为 api_groups 表添加 {col_name} 列")
+                    # 补齐 sort_order 索引（加速排序查询）
                     try:
                         sync_conn.execute(
                             text(
-                                "ALTER TABLE scenario_steps ADD CONSTRAINT fk_scenario_steps_parent "
-                                "FOREIGN KEY (parent_step_id) REFERENCES scenario_steps(id)"
+                                "CREATE INDEX IF NOT EXISTS idx_api_groups_sort_order "
+                                "ON api_groups(sort_order)"
                             )
                         )
                     except Exception:
-                        # FK already exists or not supported, ignore
                         pass
+
+                # audit_logs: 补齐审计日志新增列（username/resource_type/resource_id/
+                # resource_name/user_agent/request_path/request_method/error_message）
+                if "audit_logs" in existing_tables:
+                    cols = [c["name"] for c in insp.get_columns("audit_logs")]
+                    audit_migrations = [
+                        ("username", "VARCHAR(80)"),
+                        ("resource_type", "VARCHAR(50)"),
+                        ("resource_id", "INTEGER"),
+                        ("resource_name", "VARCHAR(500)"),
+                        ("user_agent", "VARCHAR(500)"),
+                        ("request_path", "VARCHAR(500)"),
+                        ("request_method", "VARCHAR(10)"),
+                        ("error_message", "TEXT"),
+                    ]
+                    for col_name, col_type in audit_migrations:
+                        if col_name not in cols:
+                            sync_conn.execute(text(f"ALTER TABLE audit_logs ADD COLUMN {col_name} {col_type}"))
+                            _logger.info(f"已为 audit_logs 表添加 {col_name} 列")
+
+                # scenario_steps: parent_step_id FK (only add if table and column exist but no FK)
+                if "scenario_steps" in existing_tables:
+                    if sync_conn.dialect.name != "sqlite":
+                        # SQLite不支持ADD CONSTRAINT，PostgreSQL/MySQL支持
+                        # SQLite的FK约束在CREATE TABLE时定义，这里跳过
+                        try:
+                            sync_conn.execute(
+                                text(
+                                    "ALTER TABLE scenario_steps ADD CONSTRAINT fk_scenario_steps_parent "
+                                    "FOREIGN KEY (parent_step_id) REFERENCES scenario_steps(id)"
+                                )
+                            )
+                        except Exception:
+                            # FK already exists or not supported, ignore
+                            pass
+
+                # ============ RBAC 列迁移 ============
+                # roles: code 列（角色代码，大写唯一）
+                if "roles" in existing_tables:
+                    cols = [c["name"] for c in insp.get_columns("roles")]
+                    if "code" not in cols:
+                        sync_conn.execute(text("ALTER TABLE roles ADD COLUMN code VARCHAR(50)"))
+                        _logger.info("已为 roles 表添加 code 列（角色代码）")
+
+                # permissions: action 列（操作类型）
+                if "permissions" in existing_tables:
+                    cols = [c["name"] for c in insp.get_columns("permissions")]
+                    if "action" not in cols:
+                        sync_conn.execute(text("ALTER TABLE permissions ADD COLUMN action VARCHAR(50)"))
+                        _logger.info("已为 permissions 表添加 action 列（操作类型）")
+
+                # api_doc_shares: password_hash 列（可选密码保护）
+                if "api_doc_shares" in existing_tables:
+                    cols = [c["name"] for c in insp.get_columns("api_doc_shares")]
+                    if "password_hash" not in cols:
+                        sync_conn.execute(text("ALTER TABLE api_doc_shares ADD COLUMN password_hash TEXT"))
+                        _logger.info("已为 api_doc_shares 表添加 password_hash 列（分享密码保护）")
 
             await conn.run_sync(_migrate_columns)
             return

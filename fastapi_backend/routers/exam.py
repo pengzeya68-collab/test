@@ -155,10 +155,16 @@ async def _calculate_score(attempt: ExamAttempt, db: AsyncSession) -> int:
     ans_result = await db.execute(ans_stmt)
     answers = ans_result.scalars().all()
 
-    for answer in answers:
-        q_stmt = select(ExamQuestion).where(ExamQuestion.id == answer.question_id)
+    # 批量查询所有题目，避免循环内 N+1 查询
+    question_ids = [a.question_id for a in answers]
+    questions: dict[int, ExamQuestion] = {}
+    if question_ids:
+        q_stmt = select(ExamQuestion).where(ExamQuestion.id.in_(question_ids))
         q_result = await db.execute(q_stmt)
-        question = q_result.scalar_one_or_none()
+        questions = {q.id: q for q in q_result.scalars().all()}
+
+    for answer in answers:
+        question = questions.get(answer.question_id)
         if not question:
             continue
 
@@ -671,11 +677,8 @@ async def submit_exam(
         total_score = await _calculate_score(attempt, db)
         await db.commit()
     except Exception as e:
-        # 评分失败时回退状态，同时删除已写入的答案记录，避免重复提交时产生重复答案
+        # 评分失败时仅回滚，不再操作 ORM 对象，避免再次失败
         await db.rollback()
-        attempt.status = "in_progress"
-        attempt.end_time = None
-        await db.commit()
         raise HTTPException(status_code=500, detail=f"评分失败，请重新提交: {str(e)}")
 
     return ExamSubmitResponse(
@@ -707,11 +710,17 @@ async def get_exam_result(
     ans_result = await db.execute(ans_stmt)
     answers = ans_result.scalars().all()
 
+    # 批量查询所有题目，避免循环内 N+1 查询
+    question_ids = [a.question_id for a in answers]
+    questions: dict[int, ExamQuestion] = {}
+    if question_ids:
+        q_stmt = select(ExamQuestion).where(ExamQuestion.id.in_(question_ids))
+        q_result = await db.execute(q_stmt)
+        questions = {q.id: q for q in q_result.scalars().all()}
+
     result_items = []
     for ans in answers:
-        q_stmt = select(ExamQuestion).where(ExamQuestion.id == ans.question_id)
-        q_result = await db.execute(q_stmt)
-        question = q_result.scalar_one_or_none()
+        question = questions.get(ans.question_id)
         if not question:
             continue
         result_items.append(

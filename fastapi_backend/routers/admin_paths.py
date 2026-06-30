@@ -6,12 +6,12 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy import select, func, or_, desc
+from sqlalchemy import select, func, or_, desc, update, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
 from fastapi_backend.deps.auth import require_admin
-from fastapi_backend.models.models import User, Exercise, LearningPath
+from fastapi_backend.models.models import User, Exercise, LearningPath, ExerciseSubmissionRecord
 from fastapi_backend.schemas.learning_paths import (
     LearningPathCreate,
     LearningPathUpdate,
@@ -49,17 +49,54 @@ async def list_paths(
     result = await db.execute(query)
     paths = result.scalars().all()
 
+    # 真实统计：批量查询每个路径的习题数、学习人数、通过率
+    path_ids = [p.id for p in paths]
+    exercise_counts = {}
+    learn_stats = {}  # path_id -> {learn_count, total_sub, pass_sub}
+    if path_ids:
+        # 习题数
+        ex_count_result = await db.execute(
+            select(Exercise.learning_path_id, func.count(Exercise.id))
+            .where(Exercise.learning_path_id.in_(path_ids))
+            .group_by(Exercise.learning_path_id)
+        )
+        for row in ex_count_result.all():
+            exercise_counts[row[0]] = row[1]
+
+        # 学习人数与提交通过情况（关联习题提交记录）
+        sub_result = await db.execute(
+            select(
+                Exercise.learning_path_id,
+                func.count(func.distinct(ExerciseSubmissionRecord.user_id)),
+                func.count(ExerciseSubmissionRecord.id),
+                func.coalesce(
+                    func.sum((ExerciseSubmissionRecord.result == "pass").cast(Integer)), 0
+                ),
+            )
+            .join(ExerciseSubmissionRecord, ExerciseSubmissionRecord.exercise_id == Exercise.id)
+            .where(Exercise.learning_path_id.in_(path_ids))
+            .group_by(Exercise.learning_path_id)
+        )
+        for row in sub_result.all():
+            learn_stats[row[0]] = {"learn_count": row[1], "total_sub": row[2], "pass_sub": row[3]}
+
     path_list = []
     for p in paths:
+        ex_count = exercise_counts.get(p.id, 0)
+        stat = learn_stats.get(p.id, {"learn_count": 0, "total_sub": 0, "pass_sub": 0})
+        total_sub = stat["total_sub"]
+        pass_sub = stat["pass_sub"]
+        completion_rate = round(pass_sub * 100 / total_sub, 1) if total_sub else 0
         path_list.append(
             {
                 "id": p.id,
                 "title": p.title,
                 "description": p.description or "",
                 "level": p.difficulty if hasattr(p, "difficulty") else "beginner",
-                "exerciseCount": 0,
-                "learnCount": 0,
-                "completionRate": 0,
+                "language": p.language if hasattr(p, "language") else "通用",
+                "exerciseCount": ex_count,
+                "learnCount": stat["learn_count"],
+                "completionRate": completion_rate,
             }
         )
 
@@ -78,12 +115,19 @@ async def get_path(
     if not path:
         raise HTTPException(status_code=404, detail="路径不存在")
 
+    # 查询真实关联的习题ID列表
+    exercise_ids_result = await db.execute(
+        select(Exercise.id).where(Exercise.learning_path_id == path_id)
+    )
+    exercise_ids = [row[0] for row in exercise_ids_result.all()]
+
     return {
         "id": path.id,
         "title": path.title,
         "description": path.description or "",
         "level": path.difficulty if hasattr(path, "difficulty") else "beginner",
-        "exerciseIds": [],
+        "language": path.language if hasattr(path, "language") else "通用",
+        "exerciseIds": exercise_ids,
     }
 
 
@@ -103,13 +147,33 @@ async def create_path(
     db: AsyncSession = Depends(get_db),
 ):
     """创建学习路径"""
+    path_data_dict = data.model_dump(exclude_unset=True)
+
+    # 前端兼容：level 字段映射到 difficulty
+    difficulty = path_data_dict.get("difficulty") or path_data_dict.get("level") or "beginner"
+
     new_path = LearningPath(
         title=data.title,
         description=data.description,
-        difficulty=data.difficulty,
+        difficulty=difficulty,
         language=data.language,
     )
     db.add(new_path)
+    await db.flush()  # 获取 new_path.id
+
+    # 处理关联习题
+    exercise_ids = path_data_dict.get("exerciseIds") or path_data_dict.get("exercise_ids")
+    if exercise_ids is not None:
+        # 先清除旧关联（保险起见）
+        await db.execute(
+            update(Exercise).where(Exercise.learning_path_id == new_path.id).values(learning_path_id=None)
+        )
+        # 再设置新关联
+        if exercise_ids:
+            await db.execute(
+                update(Exercise).where(Exercise.id.in_(exercise_ids)).values(learning_path_id=new_path.id)
+            )
+
     await db.commit()
     await db.refresh(new_path)
     return {"message": "创建成功", "id": new_path.id}
@@ -128,10 +192,33 @@ async def update_path(
     if not path:
         raise HTTPException(status_code=404, detail="路径不存在")
 
-    update_data = data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
+    path_data_dict = data.model_dump(exclude_unset=True)
+
+    # 前端兼容：level 字段映射到 difficulty
+    if "level" in path_data_dict:
+        if not path_data_dict.get("difficulty"):
+            path.difficulty = path_data_dict.get("level")
+        path_data_dict.pop("level", None)
+
+    # 应用其余字段
+    for key, value in path_data_dict.items():
+        if key in ("exerciseIds", "exercise_ids"):
+            continue
         if hasattr(path, key):
             setattr(path, key, value)
+
+    # 处理关联习题
+    exercise_ids = path_data_dict.get("exerciseIds") or path_data_dict.get("exercise_ids")
+    if exercise_ids is not None:
+        # 先清除旧关联
+        await db.execute(
+            update(Exercise).where(Exercise.learning_path_id == path_id).values(learning_path_id=None)
+        )
+        # 再设置新关联
+        if exercise_ids:
+            await db.execute(
+                update(Exercise).where(Exercise.id.in_(exercise_ids)).values(learning_path_id=path_id)
+            )
 
     await db.commit()
     return {"message": "更新成功"}

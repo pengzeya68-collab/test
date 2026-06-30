@@ -9,7 +9,15 @@ JMeter 脚本导出/导入服务
 import xml.etree.ElementTree as ET
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
+import re
 import time
+
+
+def _convert_var_format(text):
+    """将系统变量格式 {{var}} 转换为 JMeter 变量格式 ${var}"""
+    if not text:
+        return text
+    return re.sub(r"\{\{(\w+)\}\}", r"${\1}", str(text))
 
 
 def export_cases_to_jmx(
@@ -1054,6 +1062,10 @@ def _add_http_sampler(parent, case, index):
     if parsed.query:
         path += "?" + parsed.query
 
+    # 将系统变量格式 {{var}} 转换为 JMeter 变量格式 ${var}
+    domain = _convert_var_format(domain)
+    path = _convert_var_format(path)
+
     _add_element_prop(sampler, "HTTPSampler.domain", domain)
     _add_element_prop(sampler, "HTTPSampler.port", port)
     _add_element_prop(sampler, "HTTPSampler.protocol", protocol)
@@ -1107,6 +1119,14 @@ def _add_http_sampler(parent, case, index):
             _add_element_prop(header_elem, "Header.value", str(value))
 
         ET.SubElement(sampler_hash_tree, "hashTree")
+
+    # 添加 case 自带的断言
+    for rule in (case.get("assert_rules") or []):
+        _add_case_assertion(sampler_hash_tree, case, index, rule)
+
+    # 添加 case 自带的提取器
+    for extractor in (case.get("extractors") or []):
+        _add_case_extractor(sampler_hash_tree, case, index, extractor)
 
     return sampler_hash_tree
 
@@ -1167,6 +1187,86 @@ def _add_response_assertion(parent, case, index, assert_type, expected):
     ET.SubElement(parent, "hashTree")
 
 
+def _add_case_assertion(parent, case, index, rule):
+    """将 case 的断言规则转换为 JMeter 断言元素"""
+    if not isinstance(rule, dict):
+        return
+    field = rule.get("field") or rule.get("target", "")
+    operator = rule.get("operator") or rule.get("condition", "equals")
+    expected = rule.get("expectedValue")
+    if expected is None:
+        expected = rule.get("expected")
+    if expected is None:
+        expected = rule.get("value")
+    if expected is None:
+        expected = rule.get("eq")
+    expected = "" if expected is None else expected
+
+    case_name = case.get("name", f"Req {index}")
+
+    # 状态码断言 -> ResponseAssertion (response_code)
+    if field == "status_code":
+        _add_response_assertion(parent, case, index, "status_code", expected)
+        return
+
+    # JSONPath 断言 -> JSONPathAssertion
+    if field and (field.startswith("$") or field.startswith("json_path") or field.startswith("body")):
+        assertion = ET.SubElement(parent, "JSONPathAssertion")
+        assertion.set("guiclass", "JSONPathAssertionGui")
+        assertion.set("testclass", "JSONPathAssertion")
+        assertion.set("testname", f"{case_name} - JSONPath Assertion")
+        assertion.set("enabled", "true")
+        _add_element_prop(assertion, "JSON_PATH", field)
+        _add_element_prop(assertion, "EXPECTED_VALUE", str(expected))
+        _add_element_prop(assertion, "JSONVALIDATION", "true")
+        _add_element_prop(assertion, "EXPECT_NULL", "false")
+        _add_element_prop(assertion, "INVERT", "false")
+        _add_element_prop(assertion, "ISREGEX", "false")
+        ET.SubElement(parent, "hashTree")
+        return
+
+    # 其他字段 -> ResponseAssertion (response_data, contains)
+    _add_response_assertion(parent, case, index, "contains", expected)
+
+
+def _add_case_extractor(parent, case, index, extractor):
+    """将 case 的提取器转换为 JMeter 后置处理器"""
+    if not isinstance(extractor, dict):
+        return
+    var_name = extractor.get("variableName") or extractor.get("var_name")
+    if not var_name:
+        return
+    extractor_type = extractor.get("extractorType") or extractor.get("type", "jsonpath")
+    expression = extractor.get("expression") or extractor.get("path", "")
+    case_name = case.get("name", f"Req {index}")
+
+    if extractor_type == "jsonpath":
+        processor = ET.SubElement(parent, "JSONPostProcessor")
+        processor.set("guiclass", "JSONPostProcessorGui")
+        processor.set("testclass", "JSONPostProcessor")
+        processor.set("testname", f"{case_name} - JSON Extractor")
+        processor.set("enabled", "true")
+        _add_element_prop(processor, "JSONPostProcessor.referenceNames", var_name)
+        _add_element_prop(processor, "JSONPostProcessor.jsonPathExprs", expression)
+        _add_element_prop(processor, "JSONPostProcessor.match_numbers", "1")
+        _add_element_prop(processor, "JSONPostProcessor.defaultValues", "")
+        ET.SubElement(parent, "hashTree")
+    elif extractor_type == "regex":
+        regex_extractor = ET.SubElement(parent, "RegexExtractor")
+        regex_extractor.set("guiclass", "RegexExtractorGui")
+        regex_extractor.set("testclass", "RegexExtractor")
+        regex_extractor.set("testname", f"{case_name} - Regex Extractor")
+        regex_extractor.set("enabled", "true")
+        _add_element_prop(regex_extractor, "RegexExtractor.useHeaders", "false")
+        _add_element_prop(regex_extractor, "RegexExtractor.refname", var_name)
+        _add_element_prop(regex_extractor, "RegexExtractor.regex", expression)
+        _add_element_prop(regex_extractor, "RegexExtractor.template", "$1$")
+        _add_element_prop(regex_extractor, "RegexExtractor.default", "")
+        _add_element_prop(regex_extractor, "RegexExtractor.match_number", "1")
+        ET.SubElement(parent, "hashTree")
+    # header 类型提取器 JMeter 无直接对应，跳过
+
+
 def _iter_http_samplers(parent):
     children = list(parent)
     for index, child in enumerate(children):
@@ -1176,6 +1276,104 @@ def _iter_http_samplers(parent):
             )
             yield child, sampler_hash_tree
         yield from _iter_http_samplers(child)
+
+
+def _parse_response_assertion(elem):
+    """解析 ResponseAssertion 元素为断言规则"""
+    try:
+        field_prop = elem.find(".//stringProp[@name='Assertion.test_field']")
+        test_field = field_prop.text if field_prop is not None else "Assertion.response_data"
+
+        test_type_prop = elem.find(".//stringProp[@name='Assertion.test_type']")
+        test_type = test_type_prop.text if test_type_prop is not None else "2"
+
+        string_prop = elem.find(".//collectionProp[@name='Assertion.test_strings']/stringProp")
+        expected = string_prop.text if string_prop is not None else ""
+
+        # test_type: 2=Contains, 8=Equals, 6=Not Contains, 14=Not Equals
+        if test_type == "8":
+            operator = "equals"
+        elif test_type == "6":
+            operator = "not_contains"
+        elif test_type == "14":
+            operator = "not_equals"
+        else:
+            operator = "contains"
+
+        field = "status_code" if test_field == "Assertion.response_code" else "response_body"
+
+        return {
+            "field": field,
+            "operator": operator,
+            "expected": expected,
+            "expectedValue": expected,
+        }
+    except Exception:
+        return None
+
+
+def _parse_jsonpath_assertion(elem):
+    """解析 JSONPathAssertion 元素为断言规则"""
+    try:
+        path_prop = elem.find(".//stringProp[@name='JSON_PATH']")
+        expected_prop = elem.find(".//stringProp[@name='EXPECTED_VALUE']")
+        path = path_prop.text if path_prop is not None else ""
+        expected = expected_prop.text if expected_prop is not None else ""
+
+        return {
+            "field": path,
+            "operator": "equals",
+            "expected": expected,
+            "expectedValue": expected,
+        }
+    except Exception:
+        return None
+
+
+def _parse_json_post_processor(elem):
+    """解析 JSONPostProcessor 元素为提取器"""
+    try:
+        ref_prop = elem.find(".//stringProp[@name='JSONPostProcessor.referenceNames']")
+        path_prop = elem.find(".//stringProp[@name='JSONPostProcessor.jsonPathExprs']")
+        default_prop = elem.find(".//stringProp[@name='JSONPostProcessor.defaultValues']")
+        var_name = ref_prop.text if ref_prop is not None else ""
+        expression = path_prop.text if path_prop is not None else ""
+        default_value = default_prop.text if default_prop is not None else ""
+
+        return {
+            "variableName": var_name,
+            "var_name": var_name,
+            "extractorType": "jsonpath",
+            "type": "jsonpath",
+            "expression": expression,
+            "path": expression,
+            "defaultValue": default_value,
+        }
+    except Exception:
+        return None
+
+
+def _parse_regex_extractor(elem):
+    """解析 RegexExtractor 元素为提取器"""
+    try:
+        ref_prop = elem.find(".//stringProp[@name='RegexExtractor.refname']")
+        regex_prop = elem.find(".//stringProp[@name='RegexExtractor.regex']")
+        default_prop = elem.find(".//stringProp[@name='RegexExtractor.default']")
+        var_name = ref_prop.text if ref_prop is not None else ""
+        expression = regex_prop.text if regex_prop is not None else ""
+        default_value = default_prop.text if default_prop is not None else ""
+
+        return {
+            "variableName": var_name,
+            "var_name": var_name,
+            "extractorType": "regex",
+            "type": "regex",
+            "expression": expression,
+            "path": expression,
+            "defaultValue": default_value,
+        }
+    except Exception:
+        return None
 
 
 def _parse_http_sampler(sampler, sampler_hash_tree=None):
@@ -1234,8 +1432,31 @@ def _parse_http_sampler(sampler, sampler_hash_tree=None):
 
         _ct_val = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
         case["body_type"] = "json" if _ct_val.startswith("application/json") else "none"
-        case["assert_rules"] = []
-        case["extractors"] = []
+
+        # 从 hashTree 中解析断言和提取器
+        assert_rules = []
+        extractors = []
+        if sampler_hash_tree is not None:
+            for child in sampler_hash_tree:
+                if child.tag == "ResponseAssertion":
+                    rule = _parse_response_assertion(child)
+                    if rule:
+                        assert_rules.append(rule)
+                elif child.tag == "JSONPathAssertion":
+                    rule = _parse_jsonpath_assertion(child)
+                    if rule:
+                        assert_rules.append(rule)
+                elif child.tag == "JSONPostProcessor":
+                    extractor = _parse_json_post_processor(child)
+                    if extractor:
+                        extractors.append(extractor)
+                elif child.tag == "RegexExtractor":
+                    extractor = _parse_regex_extractor(child)
+                    if extractor:
+                        extractors.append(extractor)
+
+        case["assert_rules"] = assert_rules
+        case["extractors"] = extractors
 
         return case
 

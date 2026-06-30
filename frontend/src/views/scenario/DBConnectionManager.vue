@@ -116,6 +116,14 @@ const getDbTypeTag = (type) => {
   return map[type] || 'info'
 }
 
+// 监听 db_type 变化自动更新默认端口（仅在端口未被自定义时）
+watch(() => formData.value.db_type, (newType) => {
+  const allDefaultPorts = Object.values(DEFAULT_PORTS)
+  if (allDefaultPorts.includes(formData.value.port)) {
+    formData.value.port = DEFAULT_PORTS[newType] || 5432
+  }
+})
+
 const fetchConnections = async () => {
   loading.value = true
   try {
@@ -167,8 +175,9 @@ const handleSave = async () => {
   }
 
   const payload = { ...formData.value }
+  // 编辑模式下，密码为空表示不修改，移除 password 字段避免被后端当作新密码保存
   if (isEdit.value && !payload.password) {
-    payload.password = '****' // 不修改密码
+    delete payload.password
   }
 
   try {

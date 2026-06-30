@@ -244,11 +244,16 @@ class EmailNotifier:
 
 # 单例实例
 _email_notifier_instance: Optional[EmailNotifier] = None
+_email_config_version: Optional[str] = None
 
 
 def get_email_notifier() -> EmailNotifier:
-    """获取邮件通知器单例"""
-    global _email_notifier_instance
-    if _email_notifier_instance is None:
+    """获取邮件通知器单例，SMTP 配置变化时自动重建"""
+    global _email_notifier_instance, _email_config_version
+    settings = get_settings()
+    # 基于 SMTP 关键配置生成版本标识，配置变化时重建实例
+    current_version = f"{getattr(settings, 'EMAIL_SMTP_HOST', '')}:{getattr(settings, 'EMAIL_SMTP_PORT', '')}:{getattr(settings, 'EMAIL_SMTP_USER', '')}"
+    if _email_notifier_instance is None or _email_config_version != current_version:
         _email_notifier_instance = EmailNotifier()
+        _email_config_version = current_version
     return _email_notifier_instance

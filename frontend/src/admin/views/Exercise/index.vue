@@ -49,14 +49,14 @@
           :show-file-list="true"
           :limit="1"
           :auto-upload="false"
-          accept=".json,.csv,.xlsx,.xls"
+          accept=".json"
           :on-success="handleImportSuccess"
           :on-error="handleImportError"
         >
           <el-button type="primary">选择文件</el-button>
           <template #tip>
             <div class="el-upload__tip">
-              支持JSON/CSV/Excel格式，<a @click="downloadTemplate" class="link-text">下载导入模板</a>
+              支持JSON格式，<a @click="downloadTemplate" class="link-text">下载导入模板</a>
             </div>
           </template>
         </el-upload>
@@ -152,6 +152,15 @@
             <el-option label="困难" value="hard" />
           </el-select>
         </el-form-item>
+        <el-form-item label="语言" prop="language">
+          <el-select v-model="form.language" style="width: 100%;" class="dark-select">
+            <el-option label="Python" value="Python" />
+            <el-option label="Java" value="Java" />
+            <el-option label="JavaScript" value="JavaScript" />
+            <el-option label="C++" value="C++" />
+            <el-option label="通用" value="通用" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="内容" prop="content">
           <el-input v-model="form.content" type="textarea" :rows="6" placeholder="请输入习题内容" class="dark-input" />
         </el-form-item>
@@ -190,6 +199,7 @@ const form = reactive({
   title: '',
   category: '',
   difficulty: 'easy',
+  language: '通用',
   content: '',
   answer: ''
 })
@@ -263,14 +273,23 @@ const handleDifficultyChange = () => {
 const handleAdd = () => {
   isEdit.value = false
   Object.keys(form).forEach(key => {
-    form[key] = key === 'id' ? null : key === 'difficulty' ? 'easy' : ''
+    if (key === 'id') form[key] = null
+    else if (key === 'difficulty') form[key] = 'easy'
+    else if (key === 'language') form[key] = '通用'
+    else form[key] = ''
   })
   dialogVisible.value = true
 }
 
 const handleEdit = (row) => {
   isEdit.value = true
-  Object.assign(form, row)
+  form.id = row.id
+  form.title = row.title || ''
+  form.category = row.category || ''
+  form.difficulty = row.difficulty || 'easy'
+  form.language = row.language || '通用'
+  form.content = row.content || ''
+  form.answer = row.answer || ''
   dialogVisible.value = true
 }
 
@@ -281,11 +300,19 @@ const handleSubmit = async () => {
     return
   }
   try {
+    const payload = {
+      title: form.title,
+      category: form.category,
+      difficulty: form.difficulty,
+      language: form.language || '通用',
+      content: form.content,
+      answer: form.answer
+    }
     if (isEdit.value) {
-      await request.put(`/admin/exercises/${form.id}`, form)
+      await request.put(`/admin/exercises/${form.id}`, payload)
       ElMessage.success('更新成功')
     } else {
-      await request.post('/admin/exercises', form)
+      await request.post('/admin/exercises', payload)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false

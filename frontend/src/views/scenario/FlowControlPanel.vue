@@ -142,7 +142,7 @@ const dbConnections = ref([])
 const scenarios = ref([])
 
 const loadConnections = async (visible) => {
-  if (!visible || dbConnections.value.length > 0) return
+  if (!visible) return
   try {
     const res = await autoTestRequest.get('/auto-test/db-connections')
     dbConnections.value = Array.isArray(res) ? res : []
@@ -152,7 +152,7 @@ const loadConnections = async (visible) => {
 }
 
 const loadScenarios = async (visible) => {
-  if (!visible || scenarios.value.length > 0) return
+  if (!visible) return
   try {
     const res = await autoTestRequest.get('/auto-test/scenarios')
     scenarios.value = Array.isArray(res) ? res : (res.items || [])
@@ -163,8 +163,11 @@ const loadScenarios = async (visible) => {
 
 const handleSave = () => {
   const output = { ...config.value }
-  // if_condition 时将 field/operator/value 嵌套到 condition 对象，与后端对齐
   if (props.stepType === 'if_condition') {
+    // 同时保留 field 字段（前端显示用）和 condition 对象（后端使用）
+    output.field = config.value.field || ''
+    output.operator = config.value.operator || '=='
+    output.value = config.value.value || ''
     output.condition = {
       variable: config.value.field || '',
       operator: config.value.operator || '==',

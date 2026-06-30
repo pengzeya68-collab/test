@@ -5,7 +5,22 @@
         <h2>测试套件管理</h2>
         <p class="subtitle">创建和管理测试套件，批量执行用例</p>
       </div>
-      <el-button @click="showHelp = true">❓ 使用说明</el-button>
+      <div class="header-actions">
+        <el-select
+          v-model="selectedEnvId"
+          placeholder="选择执行环境"
+          clearable
+          style="width: 180px"
+        >
+          <el-option
+            v-for="env in environments"
+            :key="env.id"
+            :label="env.name || env.env_name"
+            :value="env.id"
+          />
+        </el-select>
+        <el-button @click="showHelp = true">❓ 使用说明</el-button>
+      </div>
     </div>
 
     <!-- 套件列表 -->
@@ -64,7 +79,7 @@
         <p class="description">{{ currentSuite.description || '暂无描述' }}</p>
 
         <h4>关联用例</h4>
-        <el-table :data="currentSuite.cases || []" stripe size="small">
+        <el-table :data="currentSuite.scenarios || currentSuite.cases || []" stripe size="small">
           <el-table-column prop="case_name" label="用例名称" min-width="200" />
           <el-table-column prop="method" label="方法" width="100">
             <template #default="{ row }">
@@ -88,18 +103,18 @@
         </el-form-item>
         <el-form-item label="关联用例">
           <el-select
-            v-model="suiteForm.case_ids"
+            v-model="suiteForm.scenario_ids"
             multiple
             filterable
             remote
-            :remote-method="searchCases"
-            placeholder="搜索并选择用例"
+            :remote-method="searchScenarios"
+            placeholder="搜索并选择场景"
             style="width: 100%"
           >
             <el-option
               v-for="c in availableCases"
               :key="c.id"
-              :label="`${c.method} ${c.name}`"
+              :label="c.name"
               :value="c.id"
             />
           </el-select>
@@ -153,7 +168,7 @@ import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
 
 const API_BASE = '/auto-test/suites'
-const CASES_API = '/auto-test/cases'
+const SCENARIOS_API = '/auto-test/scenarios'
 
 // 状态
 const loading = ref(false)
@@ -173,12 +188,14 @@ const executionResult = ref(null)
 const availableCases = ref([])
 const showHelp = ref(false)
 const helpData = helpContent.suiteManager
+const selectedEnvId = ref(null)
+const environments = ref([])
 
 // 表单数据
 const suiteForm = ref({
   name: '',
   description: '',
-  case_ids: []
+  scenario_ids: []
 })
 
 // 加载套件列表
@@ -202,21 +219,31 @@ const handlePageSizeChange = () => {
   loadSuites()
 }
 
-// 搜索用例
-const searchCases = async (query) => {
+// 搜索场景
+const searchScenarios = async (query) => {
   try {
-    const res = await autoTestRequest.get(CASES_API, { params: { keyword: query, page_size: 100 } })
+    const res = await autoTestRequest.get(SCENARIOS_API, { params: { keyword: query, page_size: 100 } })
     availableCases.value = Array.isArray(res) ? res : (res.items || [])
   } catch (err) {
-    console.error('搜索用例失败:', err)
+    console.error('搜索场景失败:', err)
     availableCases.value = []
+  }
+}
+
+// 加载环境列表
+const loadEnvironments = async () => {
+  try {
+    const res = await autoTestRequest.get('/auto-test/environments')
+    environments.value = Array.isArray(res) ? res : []
+  } catch (err) {
+    console.error('加载环境列表失败:', err)
   }
 }
 
 // 打开新建对话框（重置表单）
 const openCreateDialog = () => {
   editingSuite.value = null
-  suiteForm.value = { name: '', description: '', case_ids: [] }
+  suiteForm.value = { name: '', description: '', scenario_ids: [] }
   showCreateDialog.value = true
 }
 
@@ -240,10 +267,10 @@ const editSuite = async (suite) => {
     suiteForm.value = {
       name: detail.name,
       description: detail.description,
-      case_ids: (detail.cases || []).map(c => c.case_id || c.id)
+      scenario_ids: (detail.scenarios || detail.cases || []).map(c => c.scenario_id || c.case_id || c.id)
     }
-    // 加载用例选项
-    await searchCases('')
+    // 加载场景选项
+    await searchScenarios('')
     showCreateDialog.value = true
   } catch (err) {
     ElMessage.error('获取套件详情失败')
@@ -262,7 +289,7 @@ const saveSuite = async () => {
       await autoTestRequest.put(`${API_BASE}/${editingSuite.value.id}`, {
         name: suiteForm.value.name,
         description: suiteForm.value.description,
-        case_ids: suiteForm.value.case_ids
+        scenario_ids: suiteForm.value.scenario_ids
       })
       ElMessage.success('套件更新成功')
     } else {
@@ -271,7 +298,7 @@ const saveSuite = async () => {
     }
     showCreateDialog.value = false
     editingSuite.value = null
-    suiteForm.value = { name: '', description: '', case_ids: [] }
+    suiteForm.value = { name: '', description: '', scenario_ids: [] }
     await loadSuites()
   } catch (err) {
     ElMessage.error('保存失败: ' + (err.response?.data?.detail || err.message))
@@ -282,9 +309,14 @@ const saveSuite = async () => {
 
 // 执行套件
 const runSuite = async (suite) => {
+  if (!selectedEnvId.value) {
+    ElMessage.warning('请先选择执行环境')
+    return
+  }
   suite.running = true
   try {
-    const res = await autoTestRequest.post(`${API_BASE}/${suite.id}/run`)
+    const payload = { env_id: selectedEnvId.value }
+    const res = await autoTestRequest.post(`${API_BASE}/${suite.id}/run`, payload)
     executionResult.value = res
     showResultDialog.value = true
     await loadSuites() // 刷新状态
@@ -323,7 +355,8 @@ const formatDate = (dateStr) => {
 // 初始化
 onMounted(() => {
   loadSuites()
-  searchCases('')
+  searchScenarios('')
+  loadEnvironments()
 })
 </script>
 
@@ -351,6 +384,12 @@ onMounted(() => {
   margin: 0;
   color: #909399;
   font-size: 14px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .section {

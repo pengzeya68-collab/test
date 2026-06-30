@@ -326,6 +326,15 @@
             <el-option label="7 天" :value="168" />
           </el-select>
         </el-form-item>
+        <el-form-item label="访问密码">
+          <el-input
+            v-model="sharePassword"
+            placeholder="留空表示公开访问"
+            show-password
+            clearable
+          />
+          <div class="form-tip">设置后访问分享链接需输入密码</div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showShareDialog = false">取消</el-button>
@@ -372,7 +381,10 @@ const showShareDialog = ref(false)
 const showShareResult = ref(false)
 const sharing = ref(false)
 const shareExpires = ref(24)
+const sharePassword = ref('')
 const shareUrl = ref('')
+// D7: 当前文档涵盖的全部用例 ID，分享时显式传给后端
+const loadedCaseIds = ref([])
 const apiDoc = ref(null)
 const groupTree = ref([])
 const originalGroupTree = ref([]) // 保存原始树数据，搜索时基于此过滤
@@ -391,10 +403,12 @@ const loadApiDoc = async () => {
     const response = await autoTestRequest.post('/auto-test/api-docs/enhanced', {})
     apiDoc.value = response.doc
     apiStats.value = response.stats
-    
+    // D7: 保存当前文档涵盖的用例 ID 列表，供分享时显式传参
+    loadedCaseIds.value = Array.isArray(response.case_ids) ? response.case_ids : []
+
     // 构建树形导航
     buildGroupTree(response.doc)
-    
+
     ElMessage.success('文档加载成功')
   } catch (error) {
     ElMessage.error('文档加载失败: ' + (error.response?.data?.detail || error.message))
@@ -775,21 +789,145 @@ const copyCode = () => {
   copyToClipboard(generatedCode.value)
 }
 
-const handleExport = (command) => {
-  ElMessage.info(`导出为 ${command} 格式（功能开发中）`)
+// D11: 接入真实导出端点，下载文件
+const handleExport = async (command) => {
+  // 没有可用用例时直接提示
+  if (!loadedCaseIds.value.length) {
+    ElMessage.warning('当前没有可导出的用例，请先加载文档')
+    return
+  }
+  const caseIdsParam = loadedCaseIds.value.join(',')
+  try {
+    if (command === 'openapi') {
+      // 调用 /api/auto-test/api-docs/openapi 拿 OpenAPI JSON 并下载
+      const spec = await autoTestRequest.get('/auto-test/api-docs/openapi', {
+        params: { case_ids: caseIdsParam },
+        responseType: 'json',
+        transformResponse: [(data) => data], // 保留原始 JSON 字符串
+      })
+      // autoTestRequest 响应拦截器已取 response.data，这里 spec 即为 JSON 对象或字符串
+      const text = typeof spec === 'string' ? spec : JSON.stringify(spec, null, 2)
+      downloadFile(text, 'api-doc-openapi.json', 'application/json')
+      ElMessage.success('已导出 OpenAPI 3.0 文档')
+    } else if (command === 'curl') {
+      // 复制当前选中接口的 cURL 命令到剪贴板
+      if (!selectedApi.value) {
+        ElMessage.warning('请先选择一个接口')
+        return
+      }
+      const curl = generateCurlCode(selectedApi.value.method, selectedApi.value.url || selectedApi.value.path)
+      copyToClipboard(curl)
+      ElMessage.success('cURL 命令已复制到剪贴板')
+    } else if (command === 'python') {
+      // 导出当前文档全部用例的 Python 脚本（基于 OpenAPI 生成）
+      const spec = await autoTestRequest.get('/auto-test/api-docs/openapi', {
+        params: { case_ids: caseIdsParam },
+        responseType: 'json',
+        transformResponse: [(data) => data],
+      })
+      const specObj = typeof spec === 'string' ? JSON.parse(spec) : spec
+      const script = buildPythonScriptFromOpenAPI(specObj)
+      downloadFile(script, 'api-doc-requests.py', 'text/x-python')
+      ElMessage.success('已导出 Python 请求脚本')
+    } else {
+      ElMessage.info(`暂不支持的导出格式: ${command}`)
+    }
+  } catch (error) {
+    ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
+  }
+}
+
+// 通用文件下载（避免引入额外依赖）
+const downloadFile = (content, filename, mimeType) => {
+  const blob = new Blob([content], { type: mimeType + ';charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  // 释放对象 URL，避免内存泄漏
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+// 从 OpenAPI 规范生成简单的 Python requests 脚本
+const buildPythonScriptFromOpenAPI = (spec) => {
+  const baseUrl = (spec.servers && spec.servers[0] && spec.servers[0].url) || ''
+  const paths = spec.paths || {}
+  let code = '# -*- coding: utf-8 -*-\n'
+  code += '"""由 TestMaster 自动生成的 API 请求脚本（基于 OpenAPI 3.0）"""\n\n'
+  code += 'import requests\n\n'
+  if (baseUrl) {
+    code += `BASE_URL = "${baseUrl}"\n\n`
+  }
+  let idx = 0
+  for (const [path, methods] of Object.entries(paths)) {
+    for (const [method, operation] of Object.entries(methods)) {
+      idx += 1
+      const summary = (operation.summary || path).replace(/"/g, '\\"')
+      code += `# ${idx}. ${summary}\n`
+      const fullUrl = baseUrl ? `BASE_URL + "${path}"` : `"${path}"`
+      code += `def case_${idx}():\n`
+      code += `    url = ${fullUrl}\n`
+      // query 参数
+      const queryParams = (operation.parameters || []).filter(p => p.in === 'query')
+      if (queryParams.length) {
+        code += `    params = {\n`
+        queryParams.forEach(p => {
+          code += `        "${p.name}": ${JSON.stringify(p.example ?? '')},\n`
+        })
+        code += `    }\n`
+      }
+      // 请求体
+      const content = operation.requestBody?.content || {}
+      const jsonContent = content['application/json']
+      if (jsonContent) {
+        const example = jsonContent.example ?? jsonContent.schema ?? {}
+        code += `    payload = ${JSON.stringify(example, null, 4).replace(/\n/g, '\n    ')}\n`
+      }
+      code += `    resp = requests.${method}(url`
+      if (queryParams.length) code += `, params=params`
+      if (jsonContent) code += `, json=payload`
+      code += `)\n`
+      code += `    print(resp.status_code, resp.text[:200])\n`
+      code += `    return resp\n\n`
+    }
+  }
+  if (!idx) {
+    code += '# 暂无接口\n'
+  } else {
+    code += `if __name__ == "__main__":\n`
+    for (let i = 1; i <= idx; i++) {
+      code += `    case_${i}()\n`
+    }
+  }
+  return code
 }
 
 const handleShare = async () => {
+  // D7: 必须显式传选中的 case_ids，后端不再允许分享全部用例
+  if (!loadedCaseIds.value.length) {
+    ElMessage.warning('当前没有可分享的用例，请先加载文档')
+    return
+  }
   sharing.value = true
   try {
-    // 分享当前文档（包含所有用例）
-    const response = await autoTestRequest.post('/auto-test/api-docs/share', {
-      case_ids: [],
-      expires_hours: shareExpires.value
-    })
+    const payload = {
+      case_ids: loadedCaseIds.value,
+      expires_hours: shareExpires.value,
+    }
+    // D4: 可选密码保护
+    const pwd = (sharePassword.value || '').trim()
+    if (pwd) {
+      payload.password = pwd
+    }
+    const response = await autoTestRequest.post('/auto-test/api-docs/share', payload)
     shareUrl.value = window.location.origin + response.url
     showShareDialog.value = false
     showShareResult.value = true
+    // 清空密码字段，避免下次复用
+    sharePassword.value = ''
     ElMessage.success('分享链接已生成')
   } catch (error) {
     ElMessage.error('分享失败: ' + (error.response?.data?.detail || error.message))
@@ -1165,6 +1303,13 @@ onMounted(() => {
 .expire-info {
   color: #909399;
   font-size: 12px;
+}
+
+.form-tip {
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 4px;
 }
 
 .badge {

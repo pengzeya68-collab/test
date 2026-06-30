@@ -17,13 +17,19 @@ async def ensure_schedule_columns_on_db() -> None:
     async with async_session() as session:
 
         def _migrate(sync_conn: Any) -> None:
-            r = sync_conn.execute(
-                text(
-                    "SELECT column_name FROM information_schema.columns "
-                    "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
+            if sync_conn.dialect.name == "sqlite":
+                # SQLite: 使用PRAGMA table_info查询列（row[1]为列名）
+                r = sync_conn.execute(text("PRAGMA table_info(test_scenarios)"))
+                existing = {row[1] for row in r.fetchall()}
+            else:
+                # PostgreSQL: information_schema.columns WHERE table_schema='public'
+                r = sync_conn.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_schema = 'public' AND table_name = 'test_scenarios'"
+                    )
                 )
-            )
-            existing = {row[0] for row in r.fetchall()}
+                existing = {row[0] for row in r.fetchall()}
             for col, ddl in _schedule_column_ddl():
                 if col not in existing:
                     sync_conn.execute(text(ddl))

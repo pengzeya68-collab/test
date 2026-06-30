@@ -153,3 +153,37 @@ testmaster_migration.sql.gz
 # IDE/tool directories
 .workbuddy/
 .codebuddy/
+
+# 临时部署/调试/E2E 脚本(无下划线前缀版本)
+/deploy_*.py
+/debug_*.py
+/e2e_*.py
+/final_*.py
+/verify_*.py
+/verify_settings.py
+/deep_check*.py
+/full_deep_check.py
+/port_scan.py
+/proxy_server.py
+/server_check.py
+/ssh_*.py
+/reset_admin*.py
+/browse_site.py
+/pack.py
+/final_check.py
+/ui_check*.py
+/inspect_*.py
+/tatus*
+
+# 临时报告与截图
+/*_report.json
+/check_screenshots/
+/ui_check_screenshots/
+/workspace/
+/e2e/
+/playwright.config.js
+/deploy_package.zip
+/package-lock.json
+
+# Trae 临时文档
+/.trae/

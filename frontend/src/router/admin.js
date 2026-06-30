@@ -63,6 +63,14 @@ const adminRoutes = {
       }
     },
     {
+      path: 'rbac',
+      name: 'RbacManage',
+      component: () => import('@/views/RbacManager.vue'),
+      meta: {
+        title: '角色权限'
+      }
+    },
+    {
       path: 'exams',
       name: 'ExamManage',
       component: () => import('@/admin/views/Exam/index.vue'),

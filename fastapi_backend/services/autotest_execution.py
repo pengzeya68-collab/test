@@ -34,6 +34,7 @@ from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment, A
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
 from sqlalchemy import select
 from fastapi_backend.utils.encryption import decrypt
+from fastapi_backend.services.autotest_variable_service import deserialize_var_value
 from fastapi_backend.core.ssrf_guard import validate_url_safety
 
 _logger = logging.getLogger(__name__)
@@ -110,6 +111,8 @@ async def _get_global_variables_cached(user_id: int = None) -> Dict[str, Any]:
                 value = var.value
                 if var.is_encrypted:
                     value = decrypt(value)
+                # 反序列化以还原原始类型（int/float/bool/dict/list 等）
+                value = deserialize_var_value(value)
                 global_vars[var.name] = value
 
         async with _get_global_vars_lock():
@@ -156,8 +159,15 @@ def _validate_url(url: str) -> bool:
     return False
 
 
-def _smart_type_convert(obj: Any) -> Any:
+def _smart_type_convert(obj: Any, is_header: bool = False) -> Any:
     """递归遍历 dict/list，将变量替换后丢失的类型恢复（字符串→数值）"""
+    if is_header:
+        # headers 的值必须是 str，不做类型转换
+        if isinstance(obj, dict):
+            return {k: _smart_type_convert(v, is_header=True) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [_smart_type_convert(item, is_header=True) for item in obj]
+        return str(obj) if obj is not None else obj
     if isinstance(obj, dict):
         return {k: _smart_type_convert(v) for k, v in obj.items()}
     elif isinstance(obj, list):
@@ -192,7 +202,26 @@ async def replace_case_variables(
             variables["base_url"] = env.base_url.rstrip("/")
         variables["api_prefix"] = ""
 
-    if env and env.variables and isinstance(env.variables, dict):
+    # 🔥 修复：环境变量继承——当 env 设置了 parent_id 时，需要合并整条继承链上的变量
+    # （子环境覆盖父环境同名变量），否则场景/用例执行时拿不到父环境的变量。
+    if env and getattr(env, "parent_id", None) is not None:
+        try:
+            from fastapi_backend.services.autotest_variable_service import get_effective_variables
+
+            async with AsyncSessionLocal() as session:
+                effective_vars = await get_effective_variables(session, env.id)
+            # effective_vars 是 [{name, value, source_environment_id, ...}, ...]
+            for v in effective_vars:
+                variables[v["name"]] = v["value"]
+            # 子环境自身的 base_url 已经在前面覆盖到 variables["base_url"]，
+            # 这里若 effective 中包含父环境的 base_url 也不要覆盖（子优先）
+            if env.base_url:
+                variables["base_url"] = env.base_url.rstrip("/")
+        except Exception as e:
+            _logger.warning(f"合并环境继承变量失败，回退到仅当前环境变量: {e}")
+            if env.variables and isinstance(env.variables, dict):
+                variables.update(env.variables)
+    elif env and env.variables and isinstance(env.variables, dict):
         variables.update(env.variables)
 
     url = case.url
@@ -207,7 +236,7 @@ async def replace_case_variables(
             headers_str = json.dumps(headers, ensure_ascii=False)
             headers_str = replace_variables(headers_str, variables)
             headers = json.loads(headers_str)
-            headers = _smart_type_convert(headers)
+            headers = _smart_type_convert(headers, is_header=True)
         else:
             headers = replace_variables(headers, variables)
             if isinstance(headers, str):
@@ -315,6 +344,35 @@ async def quick_run_case(
             except json.JSONDecodeError:
                 pass
 
+        # 执行前置脚本
+        pre_script = getattr(case, "pre_script", None)
+        pre_script_language = getattr(case, "pre_script_language", "javascript") or "javascript"
+        if pre_script:
+            try:
+                from fastapi_backend.services.script_engine import ScriptEngine
+
+                script_ctx = ScriptEngine.build_context({}, {}, user_id)
+                script_ctx = ScriptEngine.run_pre_script(pre_script, script_ctx, language=pre_script_language)
+                env_vars = script_ctx.get("env_vars", {})
+                if isinstance(env_vars, dict) and env_vars:
+                    # 用脚本设置的变量重新替换 headers 和 payload
+                    if isinstance(headers, dict):
+                        headers_str = json.dumps(headers, ensure_ascii=False)
+                        headers_str = replace_variables(headers_str, env_vars)
+                        try:
+                            headers = json.loads(headers_str)
+                        except json.JSONDecodeError:
+                            pass
+                    if payload and isinstance(payload, dict):
+                        payload_str = json.dumps(payload, ensure_ascii=False)
+                        payload_str = replace_variables(payload_str, env_vars)
+                        try:
+                            payload = json.loads(payload_str)
+                        except json.JSONDecodeError:
+                            pass
+            except Exception as e:
+                _logger.warning(f"前置脚本执行失败: {e}")
+
         # 构建请求 kwargs
         req_kwargs = {"headers": headers, "timeout": 30}
 
@@ -375,20 +433,65 @@ async def quick_run_case(
         except Exception:
             response_data = {"raw": response.text}
 
-        # 🔥 修复：无论状态码如何，都执行变量提取
-        extractors = None
-        if hasattr(case, "extractors"):
-            extractors = case.extractors
-        extracted_vars = await extract_variables_from_response(
-            extractors, response_data, response.text, dict(response.headers)
-        )
-        if extracted_vars:
-            await _save_variables_to_db_safe(extracted_vars, user_id=user_id)
-
         # 执行断言（不再提前拦截 status_code >= 400，让断言引擎根据用户配置判断）
         assert_result = execute_assertions(
             case_data["assert_rules"], response.status_code, response_data, execution_time, dict(response.headers)
         )
+
+        # 执行后置脚本
+        post_script = getattr(case, "post_script", None)
+        post_script_language = getattr(case, "post_script_language", "javascript") or "javascript"
+        # 🔥 修复：保留后置脚本执行结果（test_results/assertions/python_error），
+        # 否则 pm.expect / pm.test 的断言结果被丢弃，前端无法看到脚本断言结果
+        script_test_results: list = []
+        script_error: Optional[str] = None
+        script_extracted_vars: Dict[str, Any] = {}
+        if post_script:
+            try:
+                from fastapi_backend.services.script_engine import ScriptEngine
+
+                script_ctx = ScriptEngine.build_context(
+                    {}, {}, user_id,
+                    response_body=response_data,
+                    status_code=response.status_code,
+                    response_headers=dict(response.headers),
+                )
+                script_ctx = ScriptEngine.run_post_script(post_script, script_ctx, language=post_script_language)
+                # 合并脚本断言结果（JS 路径写入 test_results，Python 路径同时写入 assertions）
+                script_test_results = list(script_ctx.get("test_results", []))
+                py_assertions = script_ctx.get("assertions")
+                if py_assertions:
+                    # Python 引擎额外写入 assertions 键，合并去重
+                    for a in py_assertions:
+                        if a not in script_test_results:
+                            script_test_results.append(a)
+                if script_ctx.get("python_error"):
+                    script_error = script_ctx["python_error"]
+                # 合并脚本中 pm.extract 提取的变量
+                sx = script_ctx.get("extracted_vars") or {}
+                if isinstance(sx, dict):
+                    script_extracted_vars = sx
+            except Exception as e:
+                _logger.warning(f"后置脚本执行失败: {e}")
+                script_error = str(e)
+
+        # 只有断言成功时才提取变量，避免失败用例污染全局变量
+        extracted_vars = {}
+        if assert_result["passed"]:
+            extractors = None
+            if hasattr(case, "extractors"):
+                extractors = case.extractors
+            if extractors:
+                extracted_vars = await extract_variables_from_response(
+                    extractors, response_data, response.text, dict(response.headers)
+                )
+                if extracted_vars:
+                    await _save_variables_to_db_safe(extracted_vars, user_id=user_id)
+
+        # 合并后置脚本 pm.extract 提取的变量（与提取器结果合并，脚本优先级低）
+        if script_extracted_vars:
+            for k, v in script_extracted_vars.items():
+                extracted_vars.setdefault(k, v)
 
         return {
             "success": assert_result["passed"],
@@ -403,6 +506,9 @@ async def quick_run_case(
             "request_headers": headers,
             "request_params": params,
             "extracted_variables": extracted_vars,
+            # 🔥 新增：后置脚本断言结果与错误信息（Flow 5 关键）
+            "script_test_results": script_test_results,
+            "script_error": script_error,
         }
 
     except requests.exceptions.Timeout:
@@ -517,6 +623,7 @@ async def run_case_with_pytest(
 
     start_time = time.time()
     yaml_file = None  # 预初始化，防止异常处理中 NameError
+    allure_results_dir = None  # 预初始化，防止异常处理中 NameError
 
     try:
         case_data = await replace_case_variables(case, env, user_id=user_id)

@@ -54,6 +54,8 @@ class User(Base):
 
     # RBAC 关联
     role_obj = relationship("Role", back_populates="users")
+    # 多角色关联（与 role_id 单角色并存，向后兼容）
+    user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
 
     @property
     def role(self) -> str:
@@ -680,6 +682,25 @@ class Favorite(Base):
     )
 
 
+class LearningPathCollection(Base):
+    """学习路径收藏表 - 记录用户对学习路径的收藏关系"""
+
+    __tablename__ = "learning_path_collections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    learning_path_id = Column(Integer, ForeignKey("learning_paths.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", backref="learning_path_collections")
+    learning_path = relationship("LearningPath", backref="collections")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "learning_path_id", name="uq_learning_path_collection_user_path"),
+        Index("idx_learning_path_collection_user_id", "user_id"),
+    )
+
+
 class TestCase(Base):
     """面试题测试用例表"""
 
@@ -944,6 +965,12 @@ class Role(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False, comment="角色标识: admin/tester/viewer")
+    code = Column(
+        String(50),
+        unique=True,
+        nullable=True,
+        comment="角色代码(大写唯一): ADMIN/TESTER/VIEWER，为空时回退到 name",
+    )
     display_name = Column(String(100), nullable=False, comment="角色显示名称")
     description = Column(Text, nullable=True, comment="角色描述")
     is_system = Column(Boolean, default=False, comment="是否为系统内置角色（不可删除）")
@@ -956,6 +983,7 @@ class Role(Base):
 
     users = relationship("User", back_populates="role_obj")
     permissions = relationship("Permission", secondary="role_permissions", back_populates="roles")
+    user_assignments = relationship("UserRole", back_populates="role", cascade="all, delete-orphan")
 
 
 class Permission(Base):
@@ -968,6 +996,11 @@ class Permission(Base):
     name = Column(String(100), nullable=False, comment="权限名称")
     description = Column(Text, nullable=True, comment="权限描述")
     module = Column(String(50), nullable=False, comment="所属模块: exercise/user/exam等")
+    action = Column(
+        String(50),
+        nullable=True,
+        comment="操作类型: create/read/update/delete/execute/import/export",
+    )
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     roles = relationship("Role", secondary="role_permissions", back_populates="permissions")
@@ -984,6 +1017,38 @@ class RolePermissionMapping(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (Index("idx_rbac_role_perm", "role_id", "permission_id", unique=True),)
+
+
+class UserRole(Base):
+    """用户-角色关联表（多对多，支持一个用户拥有多个角色）
+
+    与 User.role_id（单角色，向后兼容）并存：
+    - 权限聚合时同时考虑 role_id 指向的角色与本表中的所有角色。
+    - assigned_by 记录分配者 user_id，便于审计。
+    """
+
+    __tablename__ = "user_roles"
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+        comment="用户ID",
+    )
+    role_id = Column(
+        Integer,
+        ForeignKey("roles.id", ondelete="CASCADE"),
+        primary_key=True,
+        comment="角色ID",
+    )
+    assigned_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    assigned_by = Column(Integer, nullable=True, comment="分配者 user_id")
+
+    user = relationship("User", back_populates="user_roles")
+    role = relationship("Role", back_populates="user_assignments")
+
+    def __repr__(self):
+        return f"<UserRole user_id={self.user_id} role_id={self.role_id}>"
 
 
 class TokenBlacklist(Base):
@@ -1300,20 +1365,28 @@ class AIUsageLog(Base):
 
 
 class AuditLog(Base):
-    """高危操作审计日志表"""
+    """操作审计日志表（记录用户对关键资源的操作，兼容原有高危操作审计）"""
 
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, comment="操作用户ID")
-    admin_id = Column(Integer, nullable=True, comment="管理员ID")
-    action = Column(String(200), nullable=False, comment="操作描述")
+    admin_id = Column(Integer, nullable=True, comment="管理员ID(兼容字段)")
+    username = Column(String(80), nullable=True, comment="操作者用户名(冗余存储,便于查询)")
+    action = Column(String(200), nullable=False, comment="操作类型/描述: create/update/delete/execute/import/export 或具体描述")
     action_type = Column(
-        String(50), nullable=False, default="other", comment="操作类型: backup/user_management/system/other"
+        String(50), nullable=False, default="other", comment="操作分类: backup/user_management/system/other(兼容字段)"
     )
-    detail = Column(Text, nullable=True, comment="操作详情")
-    ip_address = Column(String(50), nullable=True, comment="操作IP地址")
+    resource_type = Column(String(50), nullable=True, comment="资源类型: case/scenario/suite/environment/variable/mock_rule/db_connection/schedule")
+    resource_id = Column(Integer, nullable=True, comment="资源ID")
+    resource_name = Column(String(500), nullable=True, comment="资源名称(冗余存储)")
+    detail = Column(Text, nullable=True, comment="变更详情(JSON字符串,记录before/after)")
+    ip_address = Column(String(100), nullable=True, comment="操作IP地址")
+    user_agent = Column(String(500), nullable=True, comment="User-Agent")
+    request_path = Column(String(500), nullable=True, comment="请求路径")
+    request_method = Column(String(10), nullable=True, comment="HTTP方法")
     status = Column(String(20), nullable=True, default="success", comment="操作状态: success/failed")
+    error_message = Column(Text, nullable=True, comment="失败原因")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="操作时间")
 
     user = relationship("User", backref="audit_logs", foreign_keys=[user_id])
@@ -1321,4 +1394,7 @@ class AuditLog(Base):
     __table_args__ = (
         Index("idx_audit_created", "created_at"),
         Index("idx_audit_action_type", "action_type"),
+        Index("idx_audit_logs_user_created", "user_id", "created_at"),
+        Index("idx_audit_logs_resource_created", "resource_type", "resource_id", "created_at"),
+        Index("idx_audit_logs_action_created", "action", "created_at"),
     )

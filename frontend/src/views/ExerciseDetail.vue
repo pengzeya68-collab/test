@@ -617,7 +617,11 @@ const hasNextExercise = computed(() => !!nextExerciseId.value)
 
 const totalCount = computed(() => 1 + relatedExercises.value.length)
 
-const currentIndex = ref(0)
+const currentIndex = computed(() => {
+  const allIds = [exercise.value?.id, ...relatedExercises.value.map(e => e.id)]
+  const idx = allIds.indexOf(exerciseId.value)
+  return idx >= 0 ? idx : 0
+})
 
 const formattedTime = computed(() => {
   const mins = Math.floor(elapsedSeconds.value / 60)
@@ -920,7 +924,7 @@ const runSql = async () => {
   sqlRunning.value = true
   sqlResult.value = null
   try {
-    const res = await request.post('/exercise/execute-sql', {
+    const res = await request.post('/exercises/execute-sql', {
       setup_sql: exercise.value.setup_sql || '',
       user_sql: userCode.value
     })

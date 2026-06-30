@@ -821,13 +821,16 @@ async def get_exercise_progress(
     """获取当前用户所有习题的完成进度（支持分页）"""
     from sqlalchemy import func
 
+    # total 与 items 使用相同的 WHERE 条件，确保分页计数一致
+    base_filter = Progress.user_id == current_user.id
+
     # 获取总数
-    count_stmt = select(func.count()).select_from(Progress).where(Progress.user_id == current_user.id)
+    count_stmt = select(func.count()).select_from(Progress).where(base_filter)
     total_result = await db.execute(count_stmt)
     total = total_result.scalar()
 
     # 分页查询
-    stmt = select(Progress).where(Progress.user_id == current_user.id)
+    stmt = select(Progress).where(base_filter)
     stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
     progresses = result.scalars().all()
@@ -1002,11 +1005,13 @@ async def get_daily_tasks(
     db: AsyncSession = Depends(get_db),
 ):
     """获取今日任务和完成情况（使用数据库聚合优化）"""
-    from datetime import datetime, timezone
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
     from sqlalchemy import func, Integer
 
-    now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    CN_TZ = ZoneInfo("Asia/Shanghai")
+    now_local = datetime.now(CN_TZ)
+    today_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
 
     # 使用数据库聚合查询今日提交统计
     today_stats_stmt = select(

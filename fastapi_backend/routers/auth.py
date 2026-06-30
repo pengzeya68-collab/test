@@ -251,6 +251,38 @@ async def forgot_password(
     return {"message": "如果该手机号已注册，密码已重置"}
 
 
+class SendCodeRequest(BaseModel):
+    phone: str = ""
+    email: str = ""
+
+
+@router.post("/send-code")
+async def send_verification_code(body: SendCodeRequest):
+    """
+    发送忘记密码验证码。
+
+    与 ``/auth/forgot-password`` 配合使用：先调用本接口“发送”验证码，
+    再携带验证码调用 forgot-password 完成重置。
+
+    - 开发环境：返回固定验证码 ``888888``，便于联调测试。
+    - 生产环境：暂未接入短信/邮件通道，返回 503 避免误导用户。
+    """
+    from fastapi_backend.core.config import settings
+
+    if not body.phone and not body.email:
+        raise ValidationException("请提供手机号或邮箱")
+
+    if settings.ENVIRONMENT == "production":
+        raise HTTPException(status_code=503, detail="验证码服务暂不可用，请稍后再试")
+
+    # 开发环境使用固定验证码，与 forgot-password 保持一致
+    dev_code = "888888"
+    return {
+        "message": "验证码已发送",
+        "dev_code": dev_code,
+    }
+
+
 @router.post("/wechat-login", response_model=TokenResponse)
 async def wechat_login(
     body: WechatLoginRequest,

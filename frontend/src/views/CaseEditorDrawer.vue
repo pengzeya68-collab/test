@@ -1,12 +1,9 @@
 <template>
-  <el-drawer
+  <component
+    :is="embedded ? 'div' : ElDrawer"
+    v-bind="embedded ? {} : drawerBindings"
+    :class="embedded ? 'case-editor-embedded' : ''"
     ref="mainDrawerRef"
-    :model-value="modelValue"
-    :title="isEdit ? '编辑用例' : '新建用例'"
-    direction="rtl"
-    :size="drawerSize"
-    :close-on-click-modal="true"
-    :close-on-press-escape="true"
     @close="handleClose"
   >
     <div class="drawer-content">
@@ -34,7 +31,6 @@
             style="flex: 1; margin-left: 10px;"
             :trigger-on-focus="false"
             @select="handleSelectVar($event, 'url')"
-            @input="handleUrlInput"
           >
             <template #default="{ item }">
               <div class="var-suggestion">
@@ -44,6 +40,10 @@
             </template>
           </el-autocomplete>
           <el-button size="small" @click="showHelp = true" style="margin-left: 10px;">❓ 使用说明</el-button>
+          <el-button v-if="isEdit" size="small" @click="openVersionManager" style="margin-left: 8px;">
+            <el-icon><Clock /></el-icon>
+            版本管理
+          </el-button>
         </div>
       </div>
 
@@ -315,13 +315,14 @@
                     <div class="assertion-cell">
                       <el-select v-model="element.target" style="width: 100%;">
                         <el-option label="状态码" value="status_code" />
-                        <el-option label="JSON体" value="json_body" />
+                        <el-option label="JSON体" value="response_body" />
+                        <el-option label="响应头" value="response_header" />
                         <el-option label="响应时间(ms)" value="response_time" />
                       </el-select>
                     </div>
                     <div class="assertion-cell" v-show="showExpressionColumn">
                       <el-input
-                        v-if="element.target === 'json_body'"
+                        v-if="element.target === 'response_body'"
                         v-model="element.expression"
                         placeholder="JSONPath 表达式，例如 $.data.code"
                         style="width: 100%"
@@ -379,9 +380,18 @@
           <div class="tab-content">
             <div class="table-toolbar">
               <span class="toolbar-title">前置脚本 (请求前执行)</span>
+              <el-select
+                v-model="caseForm.pre_script_language"
+                size="small"
+                style="width: 130px;"
+                placeholder="脚本语言"
+              >
+                <el-option label="JavaScript" value="javascript" />
+                <el-option label="Python" value="python" />
+              </el-select>
             </div>
             <p class="script-hint">支持 pm.* API: pm.environment.get/set, pm.globals.get/set, pm.sessionVariables.get/set</p>
-            <CodeEditor v-model="caseForm.pre_script" language="javascript" :hide-run="true" />
+            <CodeEditor v-model="caseForm.pre_script" :language="caseForm.pre_script_language || 'javascript'" :hide-run="true" />
           </div>
         </el-tab-pane>
 
@@ -390,9 +400,18 @@
           <div class="tab-content">
             <div class="table-toolbar">
               <span class="toolbar-title">后置脚本 (请求后执行)</span>
+              <el-select
+                v-model="caseForm.post_script_language"
+                size="small"
+                style="width: 130px;"
+                placeholder="脚本语言"
+              >
+                <el-option label="JavaScript" value="javascript" />
+                <el-option label="Python" value="python" />
+              </el-select>
             </div>
             <p class="script-hint">支持 pm.* API: pm.response.json(), pm.response.status, pm.test(), pm.expect()</p>
-            <CodeEditor v-model="caseForm.post_script" language="javascript" :hide-run="true" />
+            <CodeEditor v-model="caseForm.post_script" :language="caseForm.post_script_language || 'javascript'" :hide-run="true" />
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -444,7 +463,15 @@
     </el-drawer>
 
     <!-- 底部按钮 -->
-    <template #footer>
+    <div v-if="embedded" class="drawer-footer embedded-footer">
+      <el-button @click="handleClose">取消</el-button>
+      <el-button type="info" @click="handleSave" :loading="saving" :disabled="saving">仅保存</el-button>
+      <el-button type="primary" @click="handleSaveAndRun" :loading="saving" :disabled="saving">
+        <el-icon><VideoPlay /></el-icon>
+        保存并运行
+      </el-button>
+    </div>
+    <template v-if="!embedded" #footer>
       <div class="drawer-footer">
         <el-button @click="handleClose">取消</el-button>
         <el-button type="info" @click="handleSave" :loading="saving" :disabled="saving">仅保存</el-button>
@@ -455,7 +482,13 @@
       </div>
     </template>
     <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
-  </el-drawer>
+    <!-- 用例版本管理面板 -->
+    <CaseVersionManager
+      v-model="showVersionManager"
+      :case-id="versionCaseId"
+      @restored="handleVersionRestored"
+    />
+  </component>
 
   <!-- 断言模板选择对话框 -->
   <el-dialog v-model="assertTemplateDialogVisible" title="选择断言模板" width="650px" destroy-on-close>
@@ -486,27 +519,44 @@
 
 <script setup>
 import { ref, watch, toRaw, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy, Collection } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, ElDrawer } from 'element-plus'
+import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy, Collection, Clock } from '@element-plus/icons-vue'
 import JsonEditor from './JsonEditor.vue'
 import CodeEditor from '@/components/CodeEditor.vue'
 import draggable from 'vuedraggable'
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
+import CaseVersionManager from '@/components/CaseVersionManager.vue'
 import { helpContent } from '@/utils/help-content'
 
 const props = defineProps({
   modelValue: Boolean,
   caseData: Object,
   groupId: [Number, String],
-  isEdit: Boolean
+  isEdit: Boolean,
+  envId: [Number, String],
+  // 内嵌模式：渲染为面板（用于 Tab 编辑器），而非 el-drawer 对话框
+  embedded: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['update:modelValue', 'success', 'run'])
+const emit = defineEmits(['update:modelValue', 'success', 'run', 'close', 'dirty-change', 'title-change', 'version-restored'])
+
+// 非内嵌模式下传给 el-drawer 的属性绑定（内嵌模式下不使用）
+const drawerBindings = computed(() => props.embedded ? {} : {
+  modelValue: props.modelValue,
+  title: props.isEdit ? '编辑用例' : '新建用例',
+  direction: 'rtl',
+  size: drawerSize.value,
+  closeOnClickModal: true,
+  closeOnPressEscape: true,
+})
 
 const activeTab = ref('headers')
 const showHelp = ref(false)
 const helpData = helpContent.caseEditor
+// 版本管理面板状态
+const showVersionManager = ref(false)
+const versionCaseId = ref(null)
 const availableVariables = ref([]) // 用于存储当前所有可用变量
 
 // 动态抽屉宽度：根据屏幕宽度自适应，全屏时更大
@@ -528,8 +578,9 @@ onUnmounted(() => {
   window.removeEventListener('resize', updateDrawerSize)
   document.removeEventListener('fullscreenchange', updateDrawerSize)
 })
-// 绕过 Element Plus 内部缓存，直接强制更新 DOM 宽度
+// 绕过 Element Plus 内部缓存，直接强制更新 DOM 宽度（仅非内嵌模式需要）
 watch([drawerSize, () => props.modelValue], async ([size, visible]) => {
+  if (props.embedded) return
   if (!visible) return
   await nextTick()
   await nextTick() // 等 teleport 渲染完成
@@ -561,8 +612,21 @@ const loadVariables = async () => {
     }
     
     // 2. 加载环境变量（会覆盖全局变量）
-    const res = await autoTestRequest.get('/auto-test/environments')
-    const envs = Array.isArray(res) ? res : []
+    // 如果有当前选中的环境 ID，只加载该环境的变量；否则加载全部环境
+    let envs = []
+    if (props.envId) {
+      try {
+        const env = await autoTestRequest.get(`/auto-test/environments/${props.envId}`)
+        envs = env ? [env] : []
+      } catch (envError) {
+        console.error('加载选中环境变量失败，降级加载全部:', envError)
+        const res = await autoTestRequest.get('/auto-test/environments')
+        envs = Array.isArray(res) ? res : []
+      }
+    } else {
+      const res = await autoTestRequest.get('/auto-test/environments')
+      envs = Array.isArray(res) ? res : []
+    }
     envs.forEach(env => {
       // 获取 base_url
       if (env.base_url) {
@@ -588,6 +652,48 @@ const loadVariables = async () => {
 }
 
 onMounted(() => {
+  loadVariables()
+  // 🔥 体验1：注册 Ctrl+S（保存）和 Ctrl+Enter（保存并运行）快捷键
+  window.addEventListener('keydown', handleGlobalKeydown)
+  // 监听 Tab 容器派发的"保存当前激活 Tab"自定义事件（关闭未保存 Tab 时选择"保存"触发）
+  window.addEventListener('editor-tabs:save-active', handleSaveActiveTab)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown)
+  window.removeEventListener('editor-tabs:save-active', handleSaveActiveTab)
+})
+
+// 全局快捷键处理（仅在嵌入式/抽屉可见时生效，避免影响其他页面输入）
+const handleGlobalKeydown = (e) => {
+  // 只在当前组件可见时响应：内嵌模式或抽屉打开
+  const visible = props.embedded || props.modelValue
+  if (!visible) return
+  const isCtrl = e.ctrlKey || e.metaKey
+  if (!isCtrl) return
+  // Ctrl+S / Cmd+S
+  if (e.key === 's' || e.key === 'S') {
+    e.preventDefault()
+    handleSave({ skipVersionPrompt: true })
+    return
+  }
+  // Ctrl+Enter / Cmd+Enter
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    handleSaveAndRun()
+    return
+  }
+}
+
+// 处理 Tab 容器请求保存当前 Tab 的事件
+const handleSaveActiveTab = (e) => {
+  // 只在嵌入式模式下响应（避免抽屉模式重复保存）
+  if (!props.embedded) return
+  handleSave({ skipVersionPrompt: true })
+}
+
+// 🔥 体验2：环境切换后重新加载变量字典
+watch(() => props.envId, () => {
   loadVariables()
 })
 
@@ -638,6 +744,14 @@ const copyVarToClipboard = async (varName) => {
 }
 
 // 表单数据
+// 🔥 Bug 8 修复：生成稳定且不碰撞的唯一 ID（断言/headers/extractors 行拖拽 key）
+// 优先使用 crypto.randomUUID()，老浏览器降级到 Date.now()+随机串
+const genUniqueId = (prefix = '') => {
+  const rand = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+  return prefix ? `${prefix}_${rand}` : rand
+}
 const caseForm = ref({
   method: 'GET',
   name: '',
@@ -653,6 +767,9 @@ const caseForm = ref({
   assertions: [],
   pre_script: null,
   post_script: null,
+  // 🔥 修复：保留脚本语言字段，否则前端无法触发 Python 脚本执行流程
+  pre_script_language: 'javascript',
+  post_script_language: 'javascript',
   response_schema: null,
 })
 
@@ -708,10 +825,6 @@ const handleSelectVar = (item, targetObj, targetProp) => {
   }
 }
 
-const handleUrlInput = (val) => {
-  // 仅在输入 {{ 时可能有需要，实际 el-autocomplete 在 input 时自动处理
-}
-
 const handleTableInput = (row, prop, val) => {
   row[prop] = val
 }
@@ -756,11 +869,18 @@ const initFormData = (data) => {
     }
     
     // 🔥 深拷贝并解析 form_data
+    // 注意：后端 AutoTestCase 模型没有 form_data 列，form-data 模式下数据保存在 payload 中
+    // 因此当 body_type='form-data' 且 form_data 字段缺失时，需要从 payload 回填
     let parsedFormData = []
-    if (Array.isArray(rawFormData)) {
-      parsedFormData = JSON.parse(JSON.stringify(rawFormData))
-    } else if (rawFormData && typeof rawFormData === 'object') {
-      parsedFormData = Object.entries(rawFormData).map(([key, value], index) => ({
+    const rawBodyTypeForForm = data.body_type || 'none'
+    let effectiveFormData = rawFormData
+    if (!effectiveFormData && (rawBodyTypeForForm === 'form-data' || rawBodyTypeForForm === 'form_data') && data.payload && typeof data.payload === 'object' && !Array.isArray(data.payload)) {
+      effectiveFormData = data.payload
+    }
+    if (Array.isArray(effectiveFormData)) {
+      parsedFormData = JSON.parse(JSON.stringify(effectiveFormData))
+    } else if (effectiveFormData && typeof effectiveFormData === 'object') {
+      parsedFormData = Object.entries(effectiveFormData).map(([key, value], index) => ({
         id: `fd_${Date.now()}_${index}`,
         key,
         value: value || ''
@@ -784,11 +904,13 @@ const initFormData = (data) => {
     if (Array.isArray(rawAssertions)) {
       parsedAssertions = JSON.parse(JSON.stringify(rawAssertions)).map((item, index) => {
         if (item.target) {
-          return { ...item, id: item.id || `ast_${Date.now()}_${index}` }
+          // 兼容旧数据：json_body 映射为 response_body
+          const normalizedTarget = item.target === 'json_body' ? 'response_body' : item.target
+          return { ...item, target: normalizedTarget, id: item.id || `ast_${genUniqueId()}_${index}` }
         }
         return {
-          id: `ast_${Date.now()}_${index}`,
-          target: item.field === 'body' ? 'json_body' : (item.field || 'status_code'),
+          id: `ast_${genUniqueId()}_${index}`,
+          target: item.field === 'body' ? 'response_body' : (item.field || 'status_code'),
           operator: mapOldOperator(item.operator),
           expected: item.expectedValue || item.expected || '',
           expression: item.expression || ''
@@ -830,7 +952,13 @@ const initFormData = (data) => {
       payload: parsedPayload,
       formData: parsedFormData,
       extractors: parsedExtractors,
-      assertions: parsedAssertions
+      assertions: parsedAssertions,
+      pre_script: data.pre_script || '',
+      post_script: data.post_script || '',
+      // 🔥 修复：回填脚本语言字段，否则编辑保存后语言丢失，Python 脚本退化为 JS 执行
+      pre_script_language: data.pre_script_language || 'javascript',
+      post_script_language: data.post_script_language || 'javascript',
+      response_schema: data.response_schema || null,
     }
     
     // 🔥 如果有 body 内容，自动切到 Body Tab 让用户直接看到
@@ -852,7 +980,12 @@ const initFormData = (data) => {
       payload: '',
       formData: [],
       extractors: [],
-      assertions: []
+      assertions: [],
+      pre_script: '',
+      post_script: '',
+      pre_script_language: 'javascript',
+      post_script_language: 'javascript',
+      response_schema: null,
     }
   }
 }
@@ -883,6 +1016,53 @@ watch(() => props.modelValue, async (visible) => {
   }
 })
 
+// ===== 内嵌模式（Tab 编辑器）专用逻辑 =====
+// 内嵌模式下不依赖 modelValue，而是监听 caseData 变化来初始化表单
+// 配合 keep-alive：每个 tab 拥有独立的组件实例，切换 tab 时 caseData 引用变化触发初始化
+let skipDirty = false
+const initFormDataWithDirtyReset = (data) => {
+  skipDirty = true
+  initFormData(data)
+  // 等待表单赋值产生的响应式更新落地后再放开脏标记监听
+  nextTick(() => { skipDirty = false })
+}
+
+watch(
+  () => props.embedded ? props.caseData : null,
+  async (data) => {
+    if (!props.embedded) return
+    // 变量字典由 onMounted 统一加载，此处不再重复请求
+    if (props.isEdit && data?.id) {
+      loadVersion++
+      const currentVersion = loadVersion
+      try {
+        const res = await autoTestRequest.get(`/auto-test/cases/${data.id}`)
+        if (loadVersion !== currentVersion) return
+        initFormDataWithDirtyReset(res)
+      } catch (e) {
+        if (loadVersion !== currentVersion) return
+        console.error('获取用例详情失败', e)
+        initFormDataWithDirtyReset(data)
+      }
+    } else {
+      initFormDataWithDirtyReset(data)
+    }
+  },
+  { immediate: true }
+)
+
+// 内嵌模式下，表单变化时通知父组件标记脏（初始化赋值期间跳过）
+watch(caseForm, () => {
+  if (!props.embedded || skipDirty) return
+  emit('dirty-change', true)
+}, { deep: true })
+
+// 内嵌模式下，用例名称变化时同步 tab 标题
+watch(() => caseForm.value.name, (name) => {
+  if (!props.embedded) return
+  emit('title-change', name || '未命名用例')
+})
+
 // 🔧 通用 JSON 解析工具
 const parseJson = (str, isAssertRules = false) => {
   if (!str) return []
@@ -910,9 +1090,9 @@ const parseJson = (str, isAssertRules = false) => {
       const assertions = []
       if (Array.isArray(str)) {
         return str.map((item, index) => {
-          if (item.target) return { ...item, id: `ast_${Date.now()}_${index}` }
+          if (item.target) return { ...item, id: `ast_${genUniqueId()}_${index}` }
           return {
-            id: `ast_${Date.now()}_${index}`,
+            id: `ast_${genUniqueId()}_${index}`,
             target: item.field === 'body' ? 'json_body' : (item.field || 'status_code'),
             operator: mapOldOperator(item.operator),
             expected: item.expectedValue || '',
@@ -923,7 +1103,7 @@ const parseJson = (str, isAssertRules = false) => {
       let idx = 0
       for (const [field, value] of Object.entries(str)) {
         const newItem = {
-          id: `ast_${Date.now()}_${idx++}`,
+          id: `ast_${genUniqueId()}_${idx++}`,
           target: field === 'body' ? 'json_body' : field,
           operator: '==',
           expected: '',
@@ -948,9 +1128,9 @@ const parseJson = (str, isAssertRules = false) => {
     if (isAssertRules && parsed && typeof parsed === 'object') {
       if (Array.isArray(parsed)) {
         return parsed.map((item, index) => {
-          if (item.target) return { ...item, id: `ast_${Date.now()}_${index}` }
+          if (item.target) return { ...item, id: `ast_${genUniqueId()}_${index}` }
           return {
-            id: `ast_${Date.now()}_${index}`,
+            id: `ast_${genUniqueId()}_${index}`,
             target: item.field === 'body' ? 'json_body' : (item.field || 'status_code'),
             operator: mapOldOperator(item.operator),
             expected: item.expectedValue || '',
@@ -962,7 +1142,7 @@ const parseJson = (str, isAssertRules = false) => {
         let idx = 0
         for (const [field, value] of Object.entries(parsed)) {
           const newItem = {
-            id: `ast_${Date.now()}_${idx++}`,
+            id: `ast_${genUniqueId()}_${idx++}`,
             target: field === 'body' ? 'json_body' : field,
             operator: '==',
             expected: '',
@@ -1058,7 +1238,7 @@ const removeExtractor = (index) => {
 // Assertions
 const addAssertion = () => {
   caseForm.value.assertions.push({
-    id: `ast_${Date.now()}`,
+    id: `ast_${genUniqueId()}`,
     target: 'status_code',
     operator: '==',
     expected: '200',
@@ -1093,7 +1273,7 @@ const applyAssertTemplate = (tpl) => {
   // 应用模板规则到用例
   for (const rule of (tpl.rules || [])) {
     caseForm.value.assertions.push({
-      id: `ast_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: `ast_${genUniqueId()}`,
       target: rule.type || 'status_code',
       operator: rule.operator === 'eq' ? '==' : rule.operator === 'neq' ? '!=' : rule.operator === 'lt' ? '<' : rule.operator === 'gt' ? '>' : rule.operator === 'contains' ? 'contains' : rule.operator,
       expected: String(rule.expected || ''),
@@ -1108,18 +1288,55 @@ const removeAssertion = (index) => {
   caseForm.value.assertions.splice(index, 1)
 }
 
-// 检查是否需要显示表达式列（只要有一个断言目标是 json_body 就显示
+// 检查是否需要显示表达式列（只要有一个断言目标是 response_body 就显示
 const showExpressionColumn = computed(() => {
-  return caseForm.value.assertions.some(a => a.target === 'json_body')
+  return caseForm.value.assertions.some(a => a.target === 'response_body')
 })
+
+// 打开版本管理面板（仅编辑模式可用）
+const openVersionManager = () => {
+  if (!props.isEdit || !props.caseData?.id) {
+    ElMessage.warning('请先保存用例后再管理版本')
+    return
+  }
+  versionCaseId.value = props.caseData.id
+  showVersionManager.value = true
+}
+
+// 版本恢复后回调：重新拉取用例数据以反映恢复的快照内容
+const handleVersionRestored = async () => {
+  if (!props.caseData?.id) return
+  try {
+    const res = await autoTestRequest.get(`/auto-test/cases/${props.caseData.id}`)
+    if (res) {
+      // 复用现有初始化逻辑刷新表单
+      // 内嵌模式下需通过 initFormDataWithDirtyReset 重置脏标记，避免 deep watch 误触发 dirty-change(true)
+      initFormDataWithDirtyReset(res)
+      // 🔥 Bug 6 修复：通知 Tab 容器把最新后端数据写回 tab.data，避免后续切换 Tab 时丢失恢复的内容
+      emit('version-restored', res)
+    }
+  } catch (error) {
+    console.error('恢复后刷新用例失败:', error)
+  }
+}
 
 // 关闭
 const handleClose = () => {
+  // 内嵌模式下通过 close 事件交由 Tab 容器决定是否关闭（含脏数据确认）
+  if (props.embedded) {
+    emit('close')
+    return
+  }
   emit('update:modelValue', false)
 }
 
 // 保存
-const handleSave = async () => {
+const saving = ref(false)
+const handleSave = async (options = {}) => {
+  // 🔥 Bug 4 修复：默认 skipVersionPrompt=true（不弹版本确认框，版本快照在版本管理面板主动触发）
+  const { skipVersionPrompt = true } = options
+  // 并发保护：防止 Ctrl+S 与"保存并运行"重复触发
+  if (saving.value) return
   if (!caseForm.value.name) {
     ElMessage.warning('请输入用例名称')
     return
@@ -1140,6 +1357,7 @@ const handleSave = async () => {
   }
 
   try {
+    saving.value = true
     // 🔥 强制深度拷贝，确保拿到响应式对象的真实原生数据
     const rawForm = JSON.parse(JSON.stringify(toRaw(caseForm.value)))
 
@@ -1235,11 +1453,18 @@ const handleSave = async () => {
       headers: headersObj,
       params: paramsObj,
       extractors: extractorsList,
-      assertions: assertRules
+      assertions: assertRules,
+      pre_script: rawForm.pre_script || null,
+      post_script: rawForm.post_script || null,
+      // 🔥 修复：发送脚本语言字段，否则后端默认按 javascript 执行，Python 脚本流程断裂
+      pre_script_language: rawForm.pre_script_language || 'javascript',
+      post_script_language: rawForm.post_script_language || 'javascript',
+      response_schema: rawForm.response_schema || null,
     }
 
     let createdCaseId = null
-    if (props.isEdit) {
+    const wasEdit = !!props.isEdit
+    if (wasEdit) {
       await autoTestRequest.put(`/auto-test/cases/${props.caseData.id}`, payload)
       ElMessage.success('更新成功')
       createdCaseId = props.caseData.id
@@ -1250,8 +1475,43 @@ const handleSave = async () => {
       createdCaseId = response.id || response.case_id
     }
 
-    emit('success')
-    handleClose()
+    // 🔥 Bug 1 修复：把 createdCaseId 与 wasEdit 一并回传，由 Tab 容器回写 tab.data.id 与 tab.id
+    emit('success', createdCaseId, wasEdit)
+    if (props.embedded) {
+      // 内嵌模式下保存后保持 Tab 打开，仅清除脏标记
+      emit('dirty-change', false)
+    } else {
+      handleClose()
+    }
+
+    // 编辑模式下保存成功后，提示是否保存为新版本快照（保存并运行跳过，避免打断运行流程）
+    if (props.isEdit && !skipVersionPrompt && createdCaseId) {
+      let confirmSaveVersion = false
+      try {
+        await ElMessageBox.confirm(
+          '用例已保存成功，是否同时保存为新版本快照？',
+          '保存为新版本',
+          {
+            confirmButtonText: '保存为新版本',
+            cancelButtonText: '暂不保存',
+            type: 'success',
+            distinguishCancelAndClose: true,
+          }
+        )
+        confirmSaveVersion = true
+      } catch {
+        // 用户点击"暂不保存"或关闭对话框，静默处理
+      }
+      if (confirmSaveVersion) {
+        try {
+          await autoTestRequest.post(`/auto-test/cases/${createdCaseId}/versions`, {})
+          ElMessage.success('已保存为新版本')
+        } catch (err) {
+          console.error('保存新版本失败:', err)
+          ElMessage.warning('保存新版本失败，可在版本管理面板重试')
+        }
+      }
+    }
 
     return createdCaseId
   } catch (error) {
@@ -1260,12 +1520,14 @@ const handleSave = async () => {
       console.error('后端返回的详细错误信息:', error.response.data)
     }
     ElMessage.error(props.isEdit ? '更新失败' : '创建失败')
+  } finally {
+    saving.value = false
   }
 }
 
 // 保存并运行
 const handleSaveAndRun = async () => {
-  const savedCaseId = await handleSave()
+  const savedCaseId = await handleSave({ skipVersionPrompt: true })
   // 保存失败时 savedCaseId 为 undefined，不应继续运行
   if (!savedCaseId) {
     return
@@ -1389,6 +1651,23 @@ const handleSaveAndRun = async () => {
   background: var(--tm-bg-card);
   border-top: 1px solid var(--tm-border-light);
   flex-shrink: 0;
+}
+
+/* 内嵌模式（Tab 编辑器面板）：替代 el-drawer 外壳，撑满父容器 */
+.case-editor-embedded {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--tm-bg-page);
+}
+.case-editor-embedded .drawer-content {
+  flex: 1;
+  min-height: 0;
+}
+.embedded-footer {
+  border-top: 1px solid var(--tm-border-light);
 }
 
 .assertions-hint {

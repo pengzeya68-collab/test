@@ -3,6 +3,7 @@ Celery tasks for TestMaster project.
 """
 
 import logging
+import threading
 import time
 
 from fastapi_backend.celery_config import app
@@ -12,6 +13,36 @@ from celery.exceptions import Ignore
 import fastapi_backend.services.autotest_ai_generator  # noqa: F401
 
 _logger = logging.getLogger(__name__)
+
+
+# 模块级全局共享engine，避免每次Celery任务创建新AsyncEngine
+_celery_engine = None
+_celery_engine_lock = threading.Lock()
+
+
+def _get_celery_engine():
+    """懒加载全局共享AsyncEngine（线程安全），Celery任务复用，不在任务结束时dispose。"""
+    global _celery_engine
+    if _celery_engine is None:
+        with _celery_engine_lock:
+            if _celery_engine is None:
+                from sqlalchemy.ext.asyncio import create_async_engine as _create_async_engine
+
+                from fastapi_backend.core.config import settings as _settings
+
+                def _normalize_url(url):
+                    if url.startswith("postgresql://"):
+                        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+                    return url
+
+                _celery_engine = _create_async_engine(
+                    _normalize_url(_settings.DATABASE_URL),
+                    pool_pre_ping=True,
+                    pool_recycle=3600,
+                    pool_size=2,
+                    max_overflow=4,
+                )
+    return _celery_engine
 
 
 def _persist_task_result(task_id: str, result_data: dict) -> None:
@@ -103,32 +134,29 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
         from fastapi_backend.services.autotest_scenario_runner import (
             run_scenario as execute_scenario_async,
         )
-        from fastapi_backend.core.config import settings as _settings
-        from sqlalchemy.ext.asyncio import create_async_engine as _create_async_engine
 
-        def _normalize_url(url):
-            if url.startswith("postgresql://"):
-                return url.replace("postgresql://", "postgresql+asyncpg://", 1)
-            return url
+        # 复用全局共享engine，不在任务结束时dispose
+        # 内层全部使用await，asyncio.run仅在最外层调用
+        _get_celery_engine()
 
-        _celery_engine = _create_async_engine(
-            _normalize_url(_settings.DATABASE_URL),
-            pool_pre_ping=True,
-            pool_recycle=3600,
-            pool_size=2,
-            max_overflow=4,
-        )
+        async def _run_scenario_async():
+            # 所有async操作内层使用await，禁止在此处再调用asyncio.run
+            return await execute_scenario_async(
+                scenario_id, env_id, progress_callback=on_progress, user_id=user_id
+            )
 
-        async def _run_with_cleanup():
-            try:
-                result = await execute_scenario_async(
-                    scenario_id, env_id, progress_callback=on_progress, user_id=user_id
-                )
-                return result
-            finally:
-                await _celery_engine.dispose()
+        # 确保asyncio.run在最外层；若已在事件循环中（异常情况），使用线程池隔离避免嵌套
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # 无运行中的事件循环，安全使用asyncio.run
+            result = asyncio.run(_run_scenario_async())
+        else:
+            # 已在事件循环中，使用线程池隔离执行，避免嵌套asyncio.run
+            import concurrent.futures
 
-        result = asyncio.run(_run_with_cleanup())
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                result = pool.submit(asyncio.run, _run_scenario_async()).result()
 
         # Force garbage collection to clean up any lingering async references
         gc.collect()

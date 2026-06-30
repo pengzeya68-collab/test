@@ -205,7 +205,7 @@ const saveBasicSettings = () => {
 
 const loadEmailSettings = async () => {
   try {
-    const res = await request.get('/admin/email/config')
+    const res = await autoTestRequest.get('/auto-test/email/config')
     if (res) {
       Object.assign(emailSettings, res)
     }
@@ -217,7 +217,7 @@ const loadEmailSettings = async () => {
 const saveEmailSettings = async () => {
   emailSaving.value = true
   try {
-    await request.post('/admin/email/config', emailSettings)
+    await autoTestRequest.post('/auto-test/email/config', emailSettings)
     ElMessage.success('邮件配置保存成功')
   } catch (error) {
     ElMessage.error('保存失败: ' + (error.response?.data?.detail || error.message))
@@ -233,7 +233,7 @@ const testEmail = async () => {
   }
   emailTesting.value = true
   try {
-    await request.post('/admin/email/test', {
+    await autoTestRequest.post('/auto-test/email/test', {
       to_email: emailSettings.testToEmail
     })
     ElMessage.success('测试邮件发送成功，请查收')

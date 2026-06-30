@@ -236,8 +236,19 @@ const getScheduleLabel = (scenarioId) => {
 
 const handleScheduleSubmit = async () => {
   try {
-    // 先删除旧任务，再创建新任务，避免重复
     const existingTasks = scheduleTasks.value[scheduleForm.value.scenario_id] || []
+
+    // 先创建新任务，成功后再删除旧任务，避免创建失败导致用户失去所有定时任务
+    await autoTestRequest.post('/auto-test/scheduler/tasks', {
+      scenario_id: scheduleForm.value.scenario_id,
+      cron_expression: scheduleForm.value.cron_expression,
+      env_id: scheduleForm.value.env_id,
+      webhook_url: scheduleForm.value.webhook_url,
+      name: scheduleForm.value.name,
+      is_active: scheduleForm.value.is_active
+    })
+
+    // 新任务创建成功后，再删除旧任务
     const deleteErrors = []
     for (const task of existingTasks) {
       try {
@@ -247,15 +258,6 @@ const handleScheduleSubmit = async () => {
         console.warn('删除旧定时任务失败:', e)
       }
     }
-
-    await autoTestRequest.post('/auto-test/scheduler/tasks', {
-      scenario_id: scheduleForm.value.scenario_id,
-      cron_expression: scheduleForm.value.cron_expression,
-      env_id: scheduleForm.value.env_id,
-      webhook_url: scheduleForm.value.webhook_url,
-      name: scheduleForm.value.name,
-      is_active: scheduleForm.value.is_active
-    })
 
     if (deleteErrors.length > 0) {
       ElMessage.warning(`定时任务已创建，但${deleteErrors.length}个旧任务删除失败，请手动清理`)

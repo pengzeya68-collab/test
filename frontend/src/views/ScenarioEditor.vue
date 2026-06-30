@@ -82,7 +82,9 @@
             <span class="history-summary">
               共 {{ executionHistory.total }} 次执行，
               成功: {{ executionHistory.success_count }} 次，
-              失败: {{ executionHistory.failed_count }} 次
+              失败: {{ executionHistory.failed_count }} 次，
+              运行中: {{ executionHistory.running_count }} 次，
+              已取消: {{ executionHistory.cancelled_count }} 次
             </span>
           </div>
 
@@ -233,6 +235,8 @@ const executionHistory = ref({
   total: 0,
   success_count: 0,
   failed_count: 0,
+  running_count: 0,
+  cancelled_count: 0,
   items: []
 })
 
@@ -260,6 +264,8 @@ const resetEditorState = () => {
     total: 0,
     success_count: 0,
     failed_count: 0,
+    running_count: 0,
+    cancelled_count: 0,
     items: []
   }
 }
@@ -392,15 +398,31 @@ const handleStepActiveChange = async (step) => {
 }
 
 const handleDragEnd = async (stepOrders) => {
+  // stepOrders 格式: [{step_id, step_order}, ...]
   try {
-    await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}/steps/reorder`, stepOrders)
+    await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}/steps/reorder`, {
+      step_orders: stepOrders
+    })
+    ElMessage.success('步骤顺序已更新')
+    await loadScenario()
   } catch (error) {
-    ElMessage.error('保存排序失败')
+    ElMessage.error('更新顺序失败: ' + (error.response?.data?.detail || error.message))
     await loadScenario()
   }
 }
 
-const handleEditOverrides = () => {
+const handleEditOverrides = ({ step, overrides, extractors }) => {
+  // 局部更新步骤数据，无需重新加载整个场景
+  if (step && overrides !== undefined) {
+    step.variable_overrides = overrides
+  }
+  if (step && extractors !== undefined) {
+    if (step.api_case) {
+      step.api_case.extractors = extractors
+    } else {
+      step.extractors = extractors
+    }
+  }
 }
 
 // 添加流控类型步骤
@@ -501,10 +523,14 @@ const loadExecutionHistory = async () => {
     const items = res.items || []
     const successCount = items.filter(item => item.status === 'success' || item.status === 'completed').length
     const failedCount = items.filter(item => item.status === 'failed' || item.status === 'error').length
+    const runningCount = items.filter(item => item.status === 'running').length
+    const cancelledCount = items.filter(item => item.status === 'cancelled').length
     executionHistory.value = {
-      total: res.total || 0,
+      total: successCount + failedCount + runningCount + cancelledCount,
       success_count: successCount,
       failed_count: failedCount,
+      running_count: runningCount,
+      cancelled_count: cancelledCount,
       items: items
     }
   } catch (error) {

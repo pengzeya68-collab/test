@@ -136,7 +136,7 @@
         </el-form-item>
         <el-form-item label="URL标识" required>
           <el-input v-model="projectForm.base_url_slug" placeholder="用于 Mock 地址，如: myapi" />
-          <div class="form-tip">Mock 地址: /api/mock/api/{{ projectForm.base_url_slug || '{slug}' }}/*</div>
+          <div class="form-tip">Mock 地址: /api/mock/{{ projectForm.base_url_slug || '{slug}' }}/*</div>
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="projectForm.description" type="textarea" :rows="3" placeholder="请输入项目描述" />
@@ -465,9 +465,11 @@ const toggleRule = async (rule) => {
     await autoTestRequest.put(`${API_BASE}/projects/${currentProject.value.id}/rules/${rule.id}`, {
       is_active: rule.is_active
     })
+    ElMessage.success(`规则已${rule.is_active ? '启用' : '停用'}`)
   } catch (err) {
+    // 失败时回滚状态
     rule.is_active = !rule.is_active
-    ElMessage.error('更新失败')
+    ElMessage.error('状态切换失败: ' + (err.response?.data?.detail || err.message))
   }
 }
 
@@ -489,12 +491,25 @@ const importFromSwagger = () => {
     try {
       const text = await file.text()
       let swaggerData
+      // 先尝试解析为 JSON
       try {
         swaggerData = JSON.parse(text)
-      } catch {
-        // 尝试 YAML（简单处理，依赖后端解析）
-        swaggerData = text
+      } catch (jsonErr) {
+        // JSON 解析失败，尝试 YAML（动态加载 js-yaml）
+        try {
+          const yaml = await import('js-yaml')
+          swaggerData = yaml.load(text)
+        } catch (yamlErr) {
+          // js-yaml 不可用或 YAML 解析失败，提示用户转为 JSON 格式
+          ElMessage.error('内容格式错误，无法解析为 JSON 或 YAML。请将文件转换为 JSON 格式后重试。')
+          return
+        }
+        if (!swaggerData || typeof swaggerData !== 'object') {
+          ElMessage.error('内容格式错误，无法解析为有效的 JSON 或 YAML 对象')
+          return
+        }
       }
+      // 发送解析后的对象，而非原始字符串
       const res = await autoTestRequest.post(
         `${API_BASE}/projects/${currentProject.value.id}/import-swagger`,
         { swagger_data: swaggerData }

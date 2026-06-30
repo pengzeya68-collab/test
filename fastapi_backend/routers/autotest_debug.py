@@ -178,6 +178,14 @@ async def debug_execute_from_case(
 
     # 构造请求参数
     headers = case.headers or {}
+    # 确保 headers 是 dict，字符串时尝试 JSON 解析
+    if isinstance(headers, str):
+        try:
+            headers = json.loads(headers)
+        except (json.JSONDecodeError, ValueError):
+            headers = {}
+    if not isinstance(headers, dict):
+        headers = {}
     if case.content_type:
         headers.setdefault("Content-Type", case.content_type)
 
@@ -195,6 +203,9 @@ async def debug_execute_from_case(
         # 变量替换 payload
         raw_payload = replace_variables(raw_payload, env_vars)
         if isinstance(raw_payload, dict):
+            body_str = json.dumps(raw_payload, ensure_ascii=False)
+        elif isinstance(raw_payload, list):
+            # list 类型使用 JSON 序列化，避免 str() 丢失结构
             body_str = json.dumps(raw_payload, ensure_ascii=False)
         else:
             body_str = str(raw_payload)

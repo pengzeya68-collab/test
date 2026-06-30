@@ -1,0 +1,1 @@
+import{m as t}from"./marked.esm-CURnbxgz.js";import{p as a}from"./purify.es-GoFsRstw.js";t.setOptions({breaks:!0,gfm:!0});function o(r){if(!r)return"";const e=t(r);return a.sanitize(e)}export{o as r};
