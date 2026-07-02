@@ -18,8 +18,7 @@ from fastapi_backend.core.exceptions import BusinessException
 from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import AutoTestEnvironment
 from fastapi_backend.models.models import User
-from fastapi_backend.schemas.autotest import AutoTestEnvironmentCreate
-from fastapi_backend.schemas.environments import EnvironmentUpdate
+from fastapi_backend.schemas.autotest import AutoTestEnvironmentCreate, AutoTestEnvironmentUpdate
 from fastapi_backend.services.autotest_variable_service import (
     CyclicInheritanceError,
     EnvironmentNotFoundError,
@@ -151,7 +150,7 @@ async def create_environment(
 @router.put("/{env_id}")
 async def update_environment(
     env_id: int,
-    env_in: EnvironmentUpdate,
+    env_in: AutoTestEnvironmentUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):

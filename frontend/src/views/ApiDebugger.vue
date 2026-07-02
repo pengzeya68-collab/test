@@ -43,7 +43,7 @@
               </el-select>
               <el-input
                 v-model="debugForm.url"
-                placeholder="请求URL，如 https://api.example.com/users"
+                placeholder="https://api.example.com/users"
                 clearable
                 class="url-input"
               >
@@ -64,7 +64,7 @@
             <el-tabs v-model="debugReqTab" class="req-tabs">
               <el-tab-pane label="请求体" name="body">
                 <div class="body-type-row">
-                  <el-radio-group v-model="debugForm.bodyType" size="small">
+                  <el-radio-group v-model="debugForm.bodyType" size="small" class="body-type-group">
                     <el-radio-button value="json">JSON</el-radio-button>
                     <el-radio-button value="form-data">Form</el-radio-button>
                     <el-radio-button value="text">Text</el-radio-button>
@@ -598,7 +598,7 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: 9999;
-  background: #1a1a2e;
+  background: var(--tm-bg-page);
   padding: 0;
 }
 
@@ -607,14 +607,14 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border-color, #333);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .debug-title {
   margin: 0;
   font-size: 16px;
-  color: #e0e0e0;
+  color: var(--tm-text-primary);
 }
 
 .toolbar-right {
@@ -652,7 +652,7 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
 }
 
 .panels-horizontal .panel-request {
-  border-right: 1px solid var(--border-color, #333);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .panel:not(.panels-horizontal .panel) {
@@ -664,15 +664,15 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
   justify-content: space-between;
   align-items: center;
   padding: 8px 16px;
-  border-bottom: 1px solid var(--border-color, #2a2a2a);
-  background: rgba(255,255,255,.02);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
   flex-shrink: 0;
 }
 
 .panel-title {
   font-size: 13px;
   font-weight: 600;
-  color: #aaa;
+  color: var(--tm-text-secondary);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -704,12 +704,12 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
 
 .url-input {
   flex: 1;
-  min-width: 200px;
+  min-width: 280px;
 }
 
 .timeout-label {
   font-size: 12px;
-  color: #888;
+  color: var(--tm-text-secondary);
   margin-left: -6px;
 }
 
@@ -727,6 +727,24 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
 .body-actions-inline {
   display: flex;
   gap: 4px;
+}
+
+.body-type-group :deep(.el-radio-button__inner) {
+  background: var(--tm-bg-card);
+  border-color: var(--tm-border-light);
+  color: var(--tm-text-secondary);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.body-type-group :deep(.el-radio-button__inner:hover) {
+  color: var(--tm-color-primary);
+  border-color: var(--tm-color-primary);
+}
+
+.body-type-group :deep(.el-radio-button.is-active .el-radio-button__inner) {
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  border-color: var(--tm-color-primary);
+  color: var(--tm-text-primary);
 }
 
 .body-textarea :deep(.el-textarea__inner) {
@@ -754,7 +772,7 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
 .response-empty {
   text-align: center;
   padding: 40px 0;
-  color: #666;
+  color: var(--tm-text-secondary);
 }
 
 .re-icon {
@@ -769,8 +787,8 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
 }
 
 .response-body-pre {
-  background: rgba(0,0,0,.3);
-  color: #e0e0e0;
+  background: var(--bg-elevated);
+  color: var(--tm-text-primary);
   padding: 12px;
   border-radius: 6px;
   font-size: 13px;
@@ -806,8 +824,8 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
 }
 
 .history-item {
-  background: rgba(255,255,255,.03);
-  border: 1px solid var(--border-color, #333);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 8px;
@@ -826,14 +844,14 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(64,158,255,.15);
-  color: #409eff;
+  background: rgba(var(--tm-color-primary-rgb), 0.15);
+  color: var(--tm-color-primary);
 }
 
 .history-url {
   flex: 1;
   font-size: 13px;
-  color: #ccc;
+  color: var(--tm-text-secondary);
   word-break: break-all;
 }
 
@@ -862,7 +880,7 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
 
 .variable-tag:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(64,158,255,.3);
+  box-shadow: 0 2px 8px rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
 .var-value {
@@ -880,7 +898,7 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
   }
   .panels-horizontal .panel-request {
     border-right: none;
-    border-bottom: 1px solid var(--border-color, #333);
+    border-bottom: 1px solid var(--border-subtle);
   }
   .request-line {
     flex-wrap: wrap;

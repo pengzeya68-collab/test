@@ -1,4 +1,4 @@
-﻿﻿<template>
+<template>
   <div class="global-variable-manager">
     <el-card>
       <template #header>
@@ -13,7 +13,7 @@
               type="danger" 
               size="small" 
               @click="handleBatchDelete"
-              :disabled="selectedVariables.length === 0"
+              :disabled="variables.length === 0 || selectedVariables.length === 0"
             >
               <el-icon><Delete /></el-icon>
               批量删除
@@ -30,23 +30,19 @@
       </template>
 
       <!-- 全局变量说明 -->
-      <el-alert
-        title="全局变量说明"
-        type="info"
-        :closable="false"
-        show-icon
-        style="margin-bottom: 16px"
-      >
-        <template #default>
-          <div class="variable-description">
-            <p><strong>什么是全局变量？</strong> 全局变量是在所有环境中都可用的变量，可在多个用例和场景中共享使用。</p>
-            <p><strong>如何使用？</strong> 在URL、Headers、Form Data等输入框中使用 <span v-text="'{{变量名}}'"></span> 格式引用变量。</p>
-            <p><strong>变量优先级：</strong> 环境变量 > 全局变量。当环境变量和全局变量同名时，环境变量会覆盖全局变量。</p>
-            <p><strong>加密变量：</strong> 标记为加密的变量会在存储时加密，显示时会被替换为 ******，保护敏感信息。</p>
-            <p><strong>动态变量：</strong> 支持使用 <span v-text="'{{$timestamp}}'"></span>、<span v-text="'{{$random_int}}'"></span>、<span v-text="'{{$random_string}}'"></span>、<span v-text="'{{$uuid}}'"></span>、<span v-text="'{{$datetime}}'"></span> 等动态变量。</p>
-          </div>
-        </template>
-      </el-alert>
+      <details class="variable-description-card">
+        <summary>
+          <span class="description-icon">ℹ️</span>
+          <span>全局变量说明</span>
+        </summary>
+        <div class="variable-description">
+          <p><strong>什么是全局变量？</strong> 全局变量是在所有环境中都可用的变量，可在多个用例和场景中共享使用。</p>
+          <p><strong>如何使用？</strong> 在URL、Headers、Form Data等输入框中使用 <span v-text="'{{变量名}}'"></span> 格式引用变量。</p>
+          <p><strong>变量优先级：</strong> 环境变量 > 全局变量。当环境变量和全局变量同名时，环境变量会覆盖全局变量。</p>
+          <p><strong>加密变量：</strong> 标记为加密的变量会在存储时加密，显示时会被替换为 ******，保护敏感信息。</p>
+          <p><strong>动态变量：</strong> 支持使用 <span v-text="'{{$timestamp}}'"></span>、<span v-text="'{{$random_int}}'"></span>、<span v-text="'{{$random_string}}'"></span>、<span v-text="'{{$uuid}}'"></span>、<span v-text="'{{$datetime}}'"></span> 等动态变量。</p>
+        </div>
+      </details>
 
       <el-table 
         :data="variables" 
@@ -565,14 +561,66 @@ const insertVariable = (varName) => {
   font-weight: 600;
 }
 
+.variable-description-card {
+  background-color: var(--tm-card-bg, var(--bg-surface));
+  border: 1px solid var(--tm-card-border, var(--border-subtle));
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.variable-description-card summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--tm-text-primary, var(--text-primary));
+  user-select: none;
+  list-style: none;
+}
+
+.variable-description-card summary:hover {
+  color: var(--tm-color-primary, var(--accent-primary));
+}
+
+.variable-description-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.description-icon {
+  font-size: 14px;
+}
+
+.variable-description {
+  margin-top: 12px;
+  color: var(--tm-text-regular, var(--text-secondary));
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.variable-description p {
+  margin: 0 0 8px;
+}
+
+.variable-description strong {
+  color: var(--tm-text-primary, var(--text-primary));
+}
+
+.variable-description span {
+  color: var(--tm-color-primary, var(--accent-primary));
+  font-family: monospace;
+}
+
 .result-box {
   padding: 12px;
-  border: 1px solid var(--tm-border-color);
+  border: 1px solid var(--tm-border-light, var(--border-subtle));
   border-radius: 4px;
-  background-color: var(--tm-bg-elevated);
+  background-color: var(--bg-elevated);
   min-height: 60px;
   white-space: pre-wrap;
   word-break: break-all;
+  color: var(--tm-text-regular, var(--text-secondary));
 }
 
 .variable-list {

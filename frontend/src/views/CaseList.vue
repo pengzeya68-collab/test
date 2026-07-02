@@ -14,7 +14,7 @@
       <!-- 顶部工具栏 -->
       <div class="list-toolbar">
         <div class="toolbar-left">
-          <el-select v-model="selectedEnvId" placeholder="选择环境" size="default" style="width: 200px" @change="handleEnvChange">
+          <el-select v-model="selectedEnvId" placeholder="选择环境" size="default" style="width: 180px" @change="handleEnvChange">
             <el-option
               v-for="env in environmentList"
               :key="env.id"
@@ -22,7 +22,9 @@
               :value="env.id"
             />
           </el-select>
-          <el-button type="primary" plain icon="Setting" @click="openEnvManager" />
+          <el-tooltip content="环境管理" placement="top" popper-class="action-tooltip">
+            <el-button type="primary" plain :icon="Setting" title="环境管理" @click="openEnvManager" />
+          </el-tooltip>
           <el-button size="default" @click="showHelp = true">❓ 使用说明</el-button>
           <el-button type="primary" plain :icon="FolderAdd" @click="handleCreateGroup">新建分组</el-button>
         </div>
@@ -114,7 +116,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="name" label="用例名称" min-width="180" />
-          <el-table-column prop="url" label="URL" min-width="280" show-overflow-tooltip />
+          <el-table-column prop="url" label="URL" min-width="180" show-overflow-tooltip />
           <el-table-column label="最后执行" width="120" align="center">
             <template #default="{ row }">
               <el-tag v-if="row.lastRunStatus" :type="getStatusCodeType(row.lastRunStatus)" size="small">
@@ -123,9 +125,9 @@
               <span v-else class="no-run">未执行</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="320" fixed="right">
+          <el-table-column label="操作" :width="actionColWidth" :fixed="actionColFixed">
             <template #default="{ row }">
-              <div style="display: flex; gap: 12px; align-items: center;">
+              <div class="action-cell">
                 <el-tooltip content="运行用例" placement="top" popper-class="action-tooltip">
                   <span><el-button type="primary" link :icon="VideoPlay" @click="handleRun(row)" /></span>
                 </el-tooltip>
@@ -158,14 +160,11 @@
           </el-table-column>
         </el-table>
 
-        <div v-if="!loading && filteredCases.length === 0" class="empty-state">
-          <div class="empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" fill="currentColor"/>
-            </svg>
-          </div>
-          <div class="empty-text">暂无用例</div>
-        </div>
+        <BaseEmpty
+          v-if="!loading && filteredCases.length === 0"
+          title="暂无用例"
+          description="点击「新建用例」开始你的第一个测试，或从 Postman / Swagger / JMeter 导入"
+        />
       </div>
 
       <!-- 分页 -->
@@ -384,6 +383,7 @@ import EditorTabContainer from '@/components/EditorTabContainer.vue'
 import { useEditorTabsStore } from '@/stores/editorTabs'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
 import HelpDrawer from '@/components/HelpDrawer.vue'
+import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import { helpContent } from '@/utils/help-content'
 import autoTestRequest from '@/utils/autoTestRequest'
 
@@ -419,6 +419,20 @@ const envManagerVisible = ref(false)
 const editorTabs = useEditorTabsStore()
 const currentGroupId = ref(null)
 const sidebarRef = ref(null)
+
+// 响应式操作列宽度：宽屏 320，中屏 260，窄屏 200 启用横向滚动收纳
+const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1920)
+const updateViewportWidth = () => { viewportWidth.value = window.innerWidth }
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', updateViewportWidth)
+}
+const actionColWidth = computed(() => {
+  const w = viewportWidth.value
+  if (w >= 1280) return 320
+  if (w >= 1024) return 260
+  return 200
+})
+const actionColFixed = computed(() => viewportWidth.value < 1280 ? 'right' : undefined)
 
 // 选中分组时触发（由侧边栏 emit），更新当前分组并重新加载用例
 const handleSelectGroup = (groupId) => {
@@ -1133,6 +1147,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  window.removeEventListener('resize', updateViewportWidth)
 })
 
 const handleBeforeUnload = (e) => {
@@ -1176,15 +1191,15 @@ defineExpose({
 /* 左右布局：侧边栏 25% + 列表 75% */
 .case-list-layout {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   height: 100%;
   min-height: 0;
 }
 
 .case-list-sidebar {
-  width: 25%;
-  min-width: 220px;
-  max-width: 340px;
+  width: 20%;
+  min-width: 200px;
+  max-width: 260px;
   flex-shrink: 0;
   min-height: 0;
   overflow: hidden;
@@ -1192,10 +1207,11 @@ defineExpose({
 
 .case-list-card {
   flex: 1 1 0;
-  min-width: 360px;
+  min-width: 340px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--tm-card-bg);
   box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
   border-radius: 8px;
   border: 1px solid var(--tm-border-light);
@@ -1203,8 +1219,8 @@ defineExpose({
 
 /* 右侧多 Tab 编辑器面板（常驻） */
 .editor-panel {
-  flex: 1.3 1 0;
-  min-width: 480px;
+  flex: 1.25 1 0;
+  min-width: 420px;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -1222,6 +1238,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   height: 100%;
+  color: var(--tm-text-primary);
 }
 
 /* 工具栏 */
@@ -1230,16 +1247,38 @@ defineExpose({
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px 20px;
-  margin-bottom: 20px;
+  gap: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb), 0.04), transparent 70%);
+  border-bottom: 1px solid var(--tm-border-light);
+  border-radius: 12px 12px 0 0;
+  position: relative;
+}
+
+.list-toolbar::before {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(var(--tm-color-primary-rgb), 0.4), transparent);
 }
 
 .toolbar-left,
 .toolbar-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+}
+
+.toolbar-left .el-button,
+.toolbar-right .el-button,
+.toolbar-left .el-dropdown,
+.toolbar-right .el-dropdown {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 
@@ -1251,17 +1290,27 @@ defineExpose({
   overflow: auto;
 }
 
-/* 🔥 体验7：批量操作工具栏 */
+/* 🔥 体验7：批量操作工具栏（玻璃拟态强化） */
 .batch-toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 10px 16px;
   margin: 0 12px 8px;
-  background: rgba(var(--tm-color-primary-rgb), 0.06);
-  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.2);
-  border-radius: 8px;
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.25);
+  border-radius: 12px;
   flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(var(--tm-color-primary-rgb), 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: batch-slide-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes batch-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .batch-info {
   color: var(--tm-text-primary);
@@ -1276,6 +1325,15 @@ defineExpose({
   gap: 15px;
   justify-content: center;
   align-items: center;
+}
+
+/* 操作列单元格：flex-wrap 让按钮在窄屏自动换行 */
+.action-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 /* 分页 */
@@ -1305,7 +1363,33 @@ defineExpose({
   color: var(--tm-text-primary);
 }
 
-/* 响应式 */
+/* 响应式：1280 以下编辑器面板下沉到第二行 */
+@media (max-width: 1280px) {
+  .editor-panel {
+    flex: 1 1 100%;
+    order: 3;
+    min-width: 0;
+  }
+  .case-list-sidebar {
+    width: 240px;
+  }
+}
+
+/* 响应式：1024 以下三栏转单栏纵向堆叠 */
+@media (max-width: 1024px) {
+  .case-list-layout {
+    flex-direction: column;
+  }
+  .case-list-sidebar {
+    width: 100%;
+    max-width: none;
+    max-height: 200px;
+  }
+  .case-list-card {
+    min-width: 0;
+  }
+}
+
 @media (max-width: 768px) {
   .list-toolbar {
     flex-direction: column;
@@ -1321,17 +1405,54 @@ defineExpose({
 
 .api-method-tag {
   display: inline-block;
-  width: 60px;
+  width: 64px;
   text-align: center;
-  border-radius: 4px;
-  font-weight: bold;
-  font-size: 12px;
-  padding: 4px 0;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 5px 0;
+  transition: all 0.25s ease;
+  font-family: 'JetBrains Mono', monospace;
 }
-.api-method-tag.get { background: rgba(82, 196, 26, 0.15) !important; color: #52c41a !important; border: 1px solid rgba(82, 196, 26, 0.3) !important; }
-.api-method-tag.post { background: rgba(24, 144, 255, 0.15) !important; color: #1890ff !important; border: 1px solid rgba(24, 144, 255, 0.3) !important; }
-.api-method-tag.put { background: rgba(250, 140, 22, 0.15) !important; color: #fa8c16 !important; border: 1px solid rgba(250, 140, 22, 0.3) !important; }
-.api-method-tag.delete { background: rgba(245, 34, 45, 0.15) !important; color: #f5222d !important; border: 1px solid rgba(245, 34, 45, 0.3) !important; }
+.api-method-tag.get { background: rgba(82, 196, 26, 0.15) !important; color: #52c41a !important; border: 1px solid rgba(82, 196, 26, 0.4) !important; box-shadow: 0 0 12px rgba(82, 196, 26, 0.25), inset 0 0 8px rgba(82, 196, 26, 0.1); }
+.api-method-tag.post { background: rgba(24, 144, 255, 0.15) !important; color: #1890ff !important; border: 1px solid rgba(24, 144, 255, 0.4) !important; box-shadow: 0 0 12px rgba(24, 144, 255, 0.25), inset 0 0 8px rgba(24, 144, 255, 0.1); }
+.api-method-tag.put { background: rgba(250, 140, 22, 0.15) !important; color: #fa8c16 !important; border: 1px solid rgba(250, 140, 22, 0.4) !important; box-shadow: 0 0 12px rgba(250, 140, 22, 0.25), inset 0 0 8px rgba(250, 140, 22, 0.1); }
+.api-method-tag.delete { background: rgba(245, 34, 45, 0.15) !important; color: #f5222d !important; border: 1px solid rgba(245, 34, 45, 0.4) !important; box-shadow: 0 0 12px rgba(245, 34, 45, 0.25), inset 0 0 8px rgba(245, 34, 45, 0.1); }
+.api-method-tag.patch { background: rgba(114, 46, 209, 0.15) !important; color: #722ed1 !important; border: 1px solid rgba(114, 46, 209, 0.4) !important; box-shadow: 0 0 12px rgba(114, 46, 209, 0.25), inset 0 0 8px rgba(114, 46, 209, 0.1); }
+.api-method-tag.head { background: rgba(114, 114, 114, 0.15) !important; color: #727272 !important; border: 1px solid rgba(114, 114, 114, 0.4) !important; }
+.api-method-tag.options { background: rgba(114, 114, 114, 0.15) !important; color: #727272 !important; border: 1px solid rgba(114, 114, 114, 0.4) !important; }
+
+.api-method-tag:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+}
+
+/* 表格行 stagger 入场动画 */
+:deep(.el-table__row) {
+  animation: row-stagger-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+:deep(.el-table__row:nth-child(1)) { animation-delay: 0.02s; }
+:deep(.el-table__row:nth-child(2)) { animation-delay: 0.05s; }
+:deep(.el-table__row:nth-child(3)) { animation-delay: 0.08s; }
+:deep(.el-table__row:nth-child(4)) { animation-delay: 0.11s; }
+:deep(.el-table__row:nth-child(5)) { animation-delay: 0.14s; }
+:deep(.el-table__row:nth-child(6)) { animation-delay: 0.17s; }
+:deep(.el-table__row:nth-child(7)) { animation-delay: 0.2s; }
+:deep(.el-table__row:nth-child(8)) { animation-delay: 0.23s; }
+:deep(.el-table__row:nth-child(n+9)) { animation-delay: 0.26s; }
+
+@keyframes row-stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :deep(.el-table__row),
+  .batch-toolbar {
+    animation: none !important;
+  }
+}
 
 /* 现代化表格样式 */
 .modern-table {
@@ -1354,7 +1475,7 @@ defineExpose({
 }
 
 .modern-table :deep(.el-table__row:hover) {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: var(--bg-surface-hover, rgba(var(--tm-color-primary-rgb), 0.04));
 }
 
 /* 现代化空状态样式 */
@@ -1363,26 +1484,28 @@ defineExpose({
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 64px 24px;
+  padding: 40px 20px;
   text-align: center;
-  min-height: 320px;
+  min-height: 240px;
 }
 
 .empty-icon {
   color: var(--text-muted);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .empty-icon svg {
-  opacity: 0.6;
+  opacity: 0.5;
+  width: 40px;
+  height: 40px;
 }
 
 .empty-text {
   color: var(--text-muted);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 13px;
+  line-height: 18px;
   letter-spacing: -0.01em;
   font-weight: 400;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 </style>

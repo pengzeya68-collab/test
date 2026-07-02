@@ -1,13 +1,13 @@
 <template>
   <div class="home-container">
     <div class="hero-banner">
-      <h1 class="hero-title">TestMaster</h1>
-      <p class="hero-subtitle">测试工程师成长平台</p>
-      <p class="hero-desc">从小白到测试架构师的完整学习路径，一站式提升测试能力</p>
-      <div class="hero-actions">
-        <button class="btn-primary" @click="goToLearningPaths">开始学习</button>
-        <button class="btn-secondary" @click="goToExercises">习题练习</button>
-      </div>
+        <h1 class="hero-title">TestMaster</h1>
+        <p class="hero-subtitle"><span class="typewriter">{{ typedSubtitle }}</span><span class="cursor" v-if="!typingDone">_</span></p>
+        <p class="hero-desc">从小白到测试架构师的完整学习路径，一站式提升测试能力</p>
+        <div class="hero-actions">
+          <button class="btn-primary" v-ripple @click="goToLearningPaths">开始学习</button>
+          <button class="btn-secondary" v-ripple @click="goToExercises">习题练习</button>
+        </div>
       <div class="hero-search">
         <el-input
           v-model="searchKeyword"
@@ -25,13 +25,13 @@
       </div>
     </div>
 
-    <section class="dashboard-section">
+    <section class="dashboard-section" v-fade-in>
       <div class="section-header">
         <h2 class="section-title">5大学习阶段，循序渐进</h2>
         <div class="title-glow-line"></div>
       </div>
       <div class="grid-layout cols-3">
-        <div class="standard-card stage-card" v-for="stage in stages" :key="stage.id" @click="viewStagePaths(stage.id)">
+        <div class="standard-card stage-card" v-for="(stage, idx) in stages" :key="stage.id" v-spotlight v-fade-in="{ stagger: idx * 80 }" @click="viewStagePaths(stage.id)">
           <div class="card-icon">{{ stage.icon }}</div>
           <h3 class="card-title">{{ stage.title }}</h3>
           <p class="card-desc">{{ stage.desc }}</p>
@@ -72,31 +72,31 @@
           <div class="title-glow-line"></div>
         </div>
         <div class="grid-layout cols-2" style="gap: 16px;">
-          <div class="mini-stat-card" @click="router.push('/skill-analysis')">
-            <span class="stat-num">{{ dashboardData.overallScore || '--' }}</span>
+          <div class="mini-stat-card" v-spotlight @click="router.push('/skill-analysis')">
+            <span class="stat-num" v-count-up="dashboardData.overallScore || 0"></span>
             <span class="stat-label">综合得分<span class="stat-sub">({{ dashboardData.overallLevel || '未测评' }})</span></span>
           </div>
-          <div class="mini-stat-card clickable" @click="router.push('/exercises')">
-            <span class="stat-num">{{ dashboardData.exercisesDone }}</span>
+          <div class="mini-stat-card clickable" v-spotlight @click="router.push('/exercises')">
+            <span class="stat-num" v-count-up="dashboardData.exercisesDone"></span>
             <span class="stat-label">完成习题 →</span>
           </div>
-          <div class="mini-stat-card clickable" @click="router.push('/interview')">
-            <span class="stat-num">{{ dashboardData.interviewsDone }}</span>
+          <div class="mini-stat-card clickable" v-spotlight @click="router.push('/interview')">
+            <span class="stat-num" v-count-up="dashboardData.interviewsDone"></span>
             <span class="stat-label">模拟面试 →</span>
           </div>
-          <div class="mini-stat-card clickable" @click="router.push('/profile')">
-            <span class="stat-num">{{ dashboardData.achievementsUnlocked }}</span>
+          <div class="mini-stat-card clickable" v-spotlight @click="router.push('/profile')">
+            <span class="stat-num" v-count-up="dashboardData.achievementsUnlocked"></span>
             <span class="stat-label">成就勋章 →</span>
           </div>
-          <div class="mini-stat-card clickable" @click="router.push('/favorites')">
-            <span class="stat-num">{{ dashboardData.favoritesCount || 0 }}</span>
+          <div class="mini-stat-card clickable" v-spotlight @click="router.push('/favorites')">
+            <span class="stat-num" v-count-up="dashboardData.favoritesCount || 0"></span>
             <span class="stat-label">收藏夹 →</span>
           </div>
-          <div class="mini-stat-card clickable" @click="router.push('/learning-paths')">
-            <span class="stat-num">{{ dashboardData.projectsCount || 0 }}</span>
+          <div class="mini-stat-card clickable" v-spotlight @click="router.push('/learning-paths')">
+            <span class="stat-num" v-count-up="dashboardData.projectsCount || 0"></span>
             <span class="stat-label">项目实战 →</span>
           </div>
-          <div class="mini-stat-card clickable" @click="router.push('/tools')">
+          <div class="mini-stat-card clickable" v-spotlight @click="router.push('/tools')">
             <span class="stat-num">🔧</span>
             <span class="stat-label">测试工具导航 →</span>
           </div>
@@ -207,7 +207,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
@@ -221,6 +221,25 @@ const doSearch = () => {
     router.push({ path: '/search', query: { q: searchKeyword.value } })
   }
 }
+
+// 打字机副标题动画
+const typedSubtitle = ref('')
+const typingDone = ref(false)
+let typingTimer = null
+const FULL_SUBTITLE = '测试工程师成长平台'
+const startTyping = () => {
+  let i = 0
+  const tick = () => {
+    if (i <= FULL_SUBTITLE.length) {
+      typedSubtitle.value = FULL_SUBTITLE.slice(0, i)
+      i++
+      typingTimer = setTimeout(tick, 90)
+    } else {
+      typingDone.value = true
+    }
+  }
+  tick()
+}
 const recommendedPaths = ref([])
 const inProgressPaths = ref([])
 const dailyTasks = ref([])
@@ -233,6 +252,7 @@ const dashboardData = ref({
 })
 
 onMounted(async () => {
+  startTyping()
   await nextTick()
   if (userStore.isLoggedIn) {
     fetchDashboardData()
@@ -275,6 +295,13 @@ onMounted(async () => {
         console.error('获取推荐失败:', e)
       }
     }
+  }
+})
+
+onUnmounted(() => {
+  if (typingTimer) {
+    clearTimeout(typingTimer)
+    typingTimer = null
   }
 })
 
@@ -459,6 +486,27 @@ const viewStagePaths = (stageId) => router.push({ path: '/learning-paths', query
   margin: 0 0 8px;
   position: relative;
   z-index: 1;
+}
+.hero-subtitle .typewriter {
+  display: inline-block;
+  font-weight: 600;
+  color: var(--tm-color-primary);
+  text-shadow: 0 0 12px rgba(var(--tm-color-primary-rgb), 0.5);
+  letter-spacing: 0.02em;
+}
+.hero-subtitle .cursor {
+  display: inline-block;
+  margin-left: 2px;
+  font-weight: 300;
+  color: var(--tm-color-primary);
+  animation: blink 1s steps(2, end) infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-subtitle .cursor { animation: none; }
 }
 
 .hero-desc {

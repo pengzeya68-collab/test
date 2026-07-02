@@ -47,5 +47,6 @@ defineExpose({ refreshCaseList })
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--tm-bg-page);
 }
 </style>

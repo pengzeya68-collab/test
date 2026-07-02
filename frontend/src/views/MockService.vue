@@ -565,8 +565,7 @@ onMounted(() => {
 <style scoped>
 .mock-service-page {
   padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .page-header {
@@ -582,18 +581,19 @@ onMounted(() => {
 .page-header h2 {
   margin: 0 0 8px 0;
   font-size: 24px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .page-header .subtitle {
   margin: 0;
-  color: #909399;
+  color: var(--tm-text-secondary);
   font-size: 14px;
 }
 
 .section {
   margin-bottom: 30px;
-  background: #fff;
+  background: var(--tm-card-bg);
+  border: 1px solid var(--tm-border-light);
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
@@ -609,7 +609,7 @@ onMounted(() => {
 .section-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .header-actions {
@@ -624,7 +624,7 @@ onMounted(() => {
 }
 
 .project-card {
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--tm-border-light);
   border-radius: 8px;
   padding: 16px;
   cursor: pointer;
@@ -632,27 +632,28 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  background: var(--tm-bg-card);
 }
 
 .project-card:hover {
-  border-color: #409eff;
+  border-color: var(--accent-primary);
   box-shadow: 0 2px 12px rgba(64, 158, 255, 0.1);
 }
 
 .project-card.active {
-  border-color: #409eff;
-  background: #f0f7ff;
+  border-color: var(--accent-primary);
+  background: var(--bg-surface-hover);
 }
 
 .project-info h4 {
   margin: 0 0 8px 0;
   font-size: 16px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .project-info p {
   margin: 0 0 12px 0;
-  color: #606266;
+  color: var(--tm-text-secondary);
   font-size: 14px;
 }
 
@@ -663,7 +664,7 @@ onMounted(() => {
 }
 
 .project-meta .time {
-  color: #909399;
+  color: var(--tm-text-secondary);
   font-size: 12px;
 }
 
@@ -675,7 +676,7 @@ onMounted(() => {
 .loading-container {
   text-align: center;
   padding: 40px;
-  color: #909399;
+  color: var(--tm-text-secondary);
 }
 
 .empty-state {
@@ -684,13 +685,13 @@ onMounted(() => {
 
 .form-tip {
   margin-left: 10px;
-  color: #909399;
+  color: var(--tm-text-secondary);
   font-size: 12px;
 }
 
 .dynamic-hint {
   margin: 0 0 8px;
-  color: #606266;
+  color: var(--tm-text-secondary);
   font-size: 12px;
 }
 
@@ -709,7 +710,7 @@ onMounted(() => {
 }
 
 .expr-desc {
-  color: #909399;
+  color: var(--tm-text-secondary);
   margin-left: 4px;
   font-size: 11px;
 }

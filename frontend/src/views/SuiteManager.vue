@@ -26,7 +26,6 @@
     <!-- 套件列表 -->
     <div class="section">
       <div class="section-header">
-        <h3>测试套件</h3>
         <el-button type="primary" @click="openCreateDialog">
           <el-icon><Plus /></el-icon> 新建套件
         </el-button>
@@ -59,7 +58,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pagination">
+      <div v-if="total > 0" class="pagination">
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
@@ -363,8 +362,7 @@ onMounted(() => {
 <style scoped>
 .suite-manager-page {
   padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .page-header {
@@ -377,12 +375,12 @@ onMounted(() => {
 .page-header h2 {
   margin: 0 0 8px 0;
   font-size: 24px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .page-header .subtitle {
   margin: 0;
-  color: #909399;
+  color: var(--tm-text-secondary);
   font-size: 14px;
 }
 
@@ -394,7 +392,8 @@ onMounted(() => {
 
 .section {
   margin-bottom: 30px;
-  background: #fff;
+  background: var(--tm-card-bg);
+  border: 1px solid var(--tm-border-light);
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
@@ -402,7 +401,7 @@ onMounted(() => {
 
 .section-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: 20px;
 }
@@ -410,7 +409,7 @@ onMounted(() => {
 .section-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .pagination {
@@ -419,13 +418,18 @@ onMounted(() => {
   justify-content: flex-end;
 }
 
+:deep(.el-table__header-wrapper th.el-table__cell) {
+  color: var(--tm-text-primary);
+  background: var(--bg-surface-hover);
+}
+
 .description {
-  color: #606266;
+  color: var(--tm-text-secondary);
   margin-bottom: 20px;
 }
 
 .text-muted {
-  color: #909399;
+  color: var(--tm-text-secondary);
 }
 
 .text-success {

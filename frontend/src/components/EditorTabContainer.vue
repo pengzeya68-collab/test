@@ -429,6 +429,20 @@ watch(() => tabs.activeTabId, (id) => {
   justify-content: center;
 }
 
+.empty-state :deep(.el-empty) {
+  padding: 24px;
+}
+
+.empty-state :deep(.el-empty__image) {
+  width: 80px;
+}
+
+.empty-state :deep(.el-empty__description) {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--tm-text-secondary);
+}
+
 .unsupported-tab {
   padding: 32px;
   text-align: center;

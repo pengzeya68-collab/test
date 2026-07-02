@@ -8,12 +8,13 @@
           <router-link to="/" class="logo">
             <span class="logo-text">TestMaster</span>
           </router-link>
-          <div class="nav-menu" v-if="!isLoggedIn">
-            <router-link to="/" class="nav-item" :class="{ 'is-active': activeMenu === '/' }">首页</router-link>
-            <router-link to="/learning-paths" class="nav-item">学习路径</router-link>
-            <router-link to="/exercises" class="nav-item">习题库</router-link>
-            <router-link to="/tools" class="nav-item">工具导航</router-link>
-            <router-link to="/community" class="nav-item">社区</router-link>
+          <el-icon class="nav-burger" @click="navOpen = !navOpen"><Menu /></el-icon>
+          <div class="nav-menu" :class="{ open: navOpen }" v-if="!isLoggedIn">
+            <router-link to="/" class="nav-item" :class="{ 'is-active': activeMenu === '/' }" @click="navOpen = false">首页</router-link>
+            <router-link to="/learning-paths" class="nav-item" @click="navOpen = false">学习路径</router-link>
+            <router-link to="/exercises" class="nav-item" @click="navOpen = false">习题库</router-link>
+            <router-link to="/tools" class="nav-item" @click="navOpen = false">工具导航</router-link>
+            <router-link to="/community" class="nav-item" @click="navOpen = false">社区</router-link>
           </div>
         </div>
         <div class="nav-right">
@@ -76,6 +77,7 @@
               :to="item.path"
               class="sidebar-item"
               :class="{ active: isSidebarActive(item.path) }"
+              :title="item.name"
             >
               <span class="sidebar-icon">{{ item.icon }}</span>
               <span class="sidebar-text">{{ item.name }}</span>
@@ -85,13 +87,21 @@
         </div>
       </aside>
       <main class="main-content-with-sidebar">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <transition name="tm-fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </main>
     </div>
 
     <!-- 未登录主内容 -->
     <main class="main-content" v-if="!isLoggedIn || isAuthPage">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition name="tm-fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </main>
 
     <!-- 页脚 -->
@@ -161,9 +171,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, ArrowDown, Brush, Calendar } from '@element-plus/icons-vue'
+import { User, ArrowDown, Brush, Calendar, Menu } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { themes, loadSavedTheme, applyTheme } from '@/utils/ThemeConfig'
@@ -174,6 +184,12 @@ import request from '@/utils/request'
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+// 移动端汉堡菜单状态
+const navOpen = ref(false)
+const closeNavOnResize = () => {
+  if (window.innerWidth > 768) navOpen.value = false
+}
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const userInfo = computed(() => userStore.userInfo)
@@ -267,6 +283,7 @@ const checkinStatus = ref({
 onMounted(async () => {
   const savedThemeId = loadSavedTheme()
   applyTheme(savedThemeId)
+  window.addEventListener('resize', closeNavOnResize)
   if (userStore.isLoggedIn && !isAuthPage.value) {
     fetchCheckinStatus()
     // 启动时同步测评状态，避免 localStorage 缓存过期
@@ -276,6 +293,10 @@ onMounted(async () => {
       // 路由守卫会处理失败情况
     }
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', closeNavOnResize)
 })
 
 
@@ -484,6 +505,60 @@ body {
   gap: 16px;
 }
 
+/* 移动端汉堡菜单按钮 */
+.nav-burger {
+  display: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--text-primary);
+  align-items: center;
+}
+
+/* 响应式：768px 以下导航栏转汉堡菜单 */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 14px;
+  }
+  .nav-left {
+    gap: 12px;
+  }
+  .nav-burger {
+    display: flex;
+  }
+  .nav-menu {
+    position: absolute;
+    top: var(--tm-navbar-height, 64px);
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 16px;
+    background: var(--tm-sidebar-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--tm-border-light);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    transform: translateY(-8px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s;
+    z-index: 99;
+  }
+  .nav-menu.open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .nav-item {
+    padding: 12px 16px;
+    width: 100%;
+    border-radius: var(--radius-md);
+  }
+  .nav-right {
+    gap: 8px;
+  }
+}
+
 .theme-btn {
   font-size: 20px !important;
   color: var(--text-secondary) !important;
@@ -526,7 +601,8 @@ body {
 
 /* 侧边栏 - 玻璃态 */
 .sidebar {
-  width: 260px;
+  width: 280px;
+  min-width: 280px;
   background: var(--tm-card-bg);
   border: 1px solid var(--tm-border-light);
   border-radius: var(--radius-lg);
@@ -578,6 +654,15 @@ body {
   margin-right: 12px;
   font-size: 18px;
   transition: transform 0.3s;
+  flex-shrink: 0;
+}
+
+.sidebar-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .sidebar-item:hover {

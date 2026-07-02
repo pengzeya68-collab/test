@@ -124,6 +124,7 @@ class ScenarioExecutionEngine:
         self._max_step_executions = 10000  # 单次执行最大步骤数
         self._max_loop_iterations = 1000  # 循环最大迭代次数
         self._env_services = {}  # 多服务URL配置
+        self._shared_client = None  # 共享HTTP客户端，execute() 中延迟创建；预置避免 finally 访问未定义属性
 
     async def execute(self) -> Dict[str, Any]:
         """
@@ -478,8 +479,8 @@ class ScenarioExecutionEngine:
             # 邮件通知（移到报告生成之后，确保 report_url 不为 None；子引擎跳过）
             if not self._skip_record:
                 try:
-                    settings = get_settings()
-                    admin_email = getattr(settings, "EMAIL_ADMIN_TO", None)
+                    email_settings = get_settings()
+                    admin_email = getattr(email_settings, "EMAIL_ADMIN_TO", None)
                     if admin_email and report_url:
                         notifier = get_email_notifier()
                         email_task = asyncio.create_task(
@@ -494,7 +495,7 @@ class ScenarioExecutionEngine:
                                 skipped_steps=skipped_steps,
                                 total_time=overall_duration,
                                 report_url=report_url,
-                                base_url=getattr(settings, "AUTO_TEST_BASE_URL", ""),
+                                base_url=getattr(email_settings, "AUTO_TEST_BASE_URL", ""),
                             )
                         )
 
@@ -1637,6 +1638,8 @@ class TestScenario{scenario_id}:
         field = assertion.get("field") or assertion.get("target", "")
         operator = assertion.get("operator") or assertion.get("condition", "equals")
         expected = assertion.get("expectedValue")
+        if expected is None:
+            expected = assertion.get("expected")
         if expected is None:
             expected = assertion.get("value", "")
 

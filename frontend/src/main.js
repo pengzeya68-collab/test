@@ -5,6 +5,7 @@ import 'element-plus/dist/index.css'
 import App from './App.vue'
 import router from './router'
 import permissionDirective from './directives/permission'
+import { registerDirectives } from './directives'
 
 // 引入全局样式
 import './styles/global.scss'
@@ -16,6 +17,9 @@ const app = createApp(App)
 app.directive('loading', ElLoading.directive)
 // RBAC 权限指令：v-permission="'case:create'" / v-permission.any=[...] / v-permission.all=[...]
 app.directive('permission', permissionDirective)
+
+// 2026 高级微交互指令：v-magnetic / v-spotlight / v-fade-in / v-count-up / v-ripple
+registerDirectives(app)
 
 app.use(createPinia())
 app.use(router)

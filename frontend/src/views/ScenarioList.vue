@@ -37,75 +37,79 @@
           </el-select>
         </div>
         <el-tooltip content="环境管理" placement="top" popper-class="action-tooltip">
-          <el-button :icon="Setting" @click="openEnvManager" />
+          <el-button :icon="Setting" title="环境管理" @click="openEnvManager" />
         </el-tooltip>
-        <el-button type="primary" @click="handleCreate">
+        <el-button type="primary" class="btn-create-scenario" @click="handleCreate">
           <el-icon><Plus /></el-icon>
           新建场景
         </el-button>
-        <el-button @click="showHelp = true">❓ 使用说明</el-button>
+        <el-button class="btn-help" @click="showHelp = true">
+          <span class="help-icon">❓</span>
+          <span class="help-text">使用说明</span>
+        </el-button>
       </div>
     </div>
 
     <!-- 场景列表 -->
-    <div class="scenario-table" v-loading="loading">
-      <el-table
-        :data="filteredScenarios"
-        style="width: 100%"
-        stripe
-        :header-cell-style="{ background: 'var(--tm-bg-card)', color: 'var(--tm-text-primary)' }"
+    <div class="scenario-grid" v-loading="loading">
+      <div
+        v-for="(scenario, idx) in filteredScenarios"
+        :key="scenario.id"
+        class="scenario-card standard-card"
+        v-spotlight
+        v-fade-in="{ stagger: idx * 60 }"
       >
-        <el-table-column prop="name" label="场景名称" min-width="180" />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column label="步骤数" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag type="info" effect="plain" round>{{ row.step_count ?? (row.steps ? row.steps.length : 0) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-switch
-              :model-value="row.is_active"
-              active-text="启用"
-              inactive-text="停用"
-              inline-prompt
-              @change="(val) => handleToggleStatus(row, val)"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column label="定时计划" width="120" align="center">
-          <template #default="{ row }">
-            <el-tooltip content="设置定时计划" placement="top" popper-class="action-tooltip">
-              <el-button type="warning" link :icon="Clock" @click="openScheduleDialog(row)">
-                设置计划
-              </el-button>
-            </el-tooltip>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200" align="center">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <el-tooltip content="运行场景" placement="top" popper-class="action-tooltip">
-                <span><el-button type="primary" link :icon="VideoPlay" @click="handleRun(row)" /></span>
-              </el-tooltip>
-              <el-tooltip content="CI/CD 集成" placement="top" popper-class="action-tooltip">
-                <span><el-button type="success" link :icon="Link" @click="openCiCdDialog(row)" /></span>
-              </el-tooltip>
-              <el-tooltip content="执行历史" placement="top" popper-class="action-tooltip">
-                <span><el-button type="info" link :icon="Timer" @click="openHistoryDrawer(row)" /></span>
-              </el-tooltip>
-              <el-tooltip content="编辑场景" placement="top" popper-class="action-tooltip">
-                <span><el-button type="primary" link :icon="Edit" @click="handleEdit(row)" /></span>
-              </el-tooltip>
-              <el-tooltip content="删除场景" placement="top" popper-class="action-tooltip">
-                <span><el-button type="danger" link :icon="Delete" @click="handleDelete(row.id)" /></span>
-              </el-tooltip>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <el-empty v-if="!loading && filteredScenarios.length === 0" description="暂无场景" />
+        <div class="card-header">
+          <h3 class="card-title" :title="scenario.name">{{ scenario.name }}</h3>
+          <span :class="['status-badge', scenario.is_active ? 'active' : 'inactive']">
+            {{ scenario.is_active ? '启用' : '停用' }}
+          </span>
+        </div>
+        <p class="card-desc">{{ scenario.description || '暂无描述' }}</p>
+        <div class="card-meta">
+          <span class="meta-chip">
+            <el-icon><Coin /></el-icon>
+            {{ scenario.step_count ?? (scenario.steps ? scenario.steps.length : 0) }} 步骤
+          </span>
+          <span class="meta-chip" v-if="scenario.schedule">
+            <el-icon><Clock /></el-icon>
+            {{ scenario.schedule }}
+          </span>
+        </div>
+        <div class="card-actions">
+          <el-tooltip content="运行场景" placement="top" popper-class="action-tooltip">
+            <el-button type="primary" link :icon="VideoPlay" @click="handleRun(scenario)">运行</el-button>
+          </el-tooltip>
+          <el-tooltip content="编辑场景" placement="top" popper-class="action-tooltip">
+            <el-button type="primary" link :icon="Edit" @click="handleEdit(scenario)">编辑</el-button>
+          </el-tooltip>
+          <el-tooltip content="执行历史" placement="top" popper-class="action-tooltip">
+            <el-button type="info" link :icon="Timer" @click="openHistoryDrawer(scenario)">历史</el-button>
+          </el-tooltip>
+          <el-tooltip content="CI/CD 集成" placement="top" popper-class="action-tooltip">
+            <el-button type="success" link :icon="Link" @click="openCiCdDialog(scenario)">CI/CD</el-button>
+          </el-tooltip>
+          <el-tooltip content="定时计划" placement="top" popper-class="action-tooltip">
+            <el-button type="warning" link :icon="Clock" @click="openScheduleDialog(scenario)">计划</el-button>
+          </el-tooltip>
+          <el-tooltip content="启用/停用切换" placement="top" popper-class="action-tooltip">
+            <el-button
+              :type="scenario.is_active ? 'success' : 'info'"
+              link
+              :icon="scenario.is_active ? Open : TurnOff"
+              @click="handleToggleStatus(scenario, !scenario.is_active)"
+            >{{ scenario.is_active ? '停用' : '启用' }}</el-button>
+          </el-tooltip>
+          <el-tooltip content="删除场景" placement="top" popper-class="action-tooltip">
+            <el-button type="danger" link :icon="Delete" @click="handleDelete(scenario.id)">删除</el-button>
+          </el-tooltip>
+        </div>
+      </div>
+      <BaseEmpty
+        v-if="!loading && filteredScenarios.length === 0"
+        title="暂无场景"
+        description="点击「新建场景」开始编排你的第一个测试场景"
+      />
     </div>
 
     <!-- 新建/编辑场景对话框 -->
@@ -152,16 +156,16 @@
     <!-- CI/CD Webhook 配置对话框 -->
     <el-dialog v-model="ciCdDialogVisible" title="CI/CD Webhook 触发配置" width="580px">
       <div class="ci-cd-info">
-        <p style="margin-bottom: 16px;">
+        <p class="ci-cd-tip">
           请将以下 cURL 命令复制到您的 <strong>GitLab CI / Jenkins Pipeline</strong> 中。<br>
           每次代码部署完成后，会自动触发该场景进行回归测试。
         </p>
-        <div style="background: var(--tm-card-bg); padding: 15px; border-radius: 6px; color: #d4d4d4; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; word-break: break-all; margin-bottom: 16px;">
+        <div class="curl-command-box">
           <template v-if="curlCommand">
             {{ curlCommand }}
           </template>
-          <template v-else style="color: #ff9800;">
-            该场景尚未生成 Webhook Token，请先编辑保存场景以生成。
+          <template v-else>
+            <span class="curl-command-tip">该场景尚未生成 Webhook Token，请先编辑保存场景以生成。</span>
           </template>
         </div>
         <el-button type="primary" @click="copyCurlCommand">
@@ -191,6 +195,7 @@
       :title="helpData.title"
       :intro="helpData.intro"
       :sections="helpData.sections"
+      @close="showHelp = false"
     />
   </div>
 </template>
@@ -198,10 +203,11 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, VideoPlay, Delete, Search, Link, DocumentCopy, Clock, Edit, Timer, Setting } from '@element-plus/icons-vue'
+import { Plus, VideoPlay, Delete, Search, Link, DocumentCopy, Clock, Edit, Timer, Setting, Open, TurnOff, Coin } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import { helpContent } from '@/utils/help-content'
 import HelpDrawer from '@/components/HelpDrawer.vue'
+import BaseEmpty from '@/components/base/BaseEmpty.vue'
 
 const helpData = helpContent.scenarioList
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
@@ -631,6 +637,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   padding: 16px 20px;
   background: var(--tm-bg-card);
   border-bottom: 1px solid var(--tm-border-light);
@@ -641,13 +649,20 @@ onUnmounted(() => {
 .toolbar-right {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+  min-width: 0;
+}
+
+.toolbar-right > .el-button,
+.toolbar-right > .env-select-wrapper {
+  flex-shrink: 0;
 }
 
 .env-select-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .env-label {
@@ -656,10 +671,119 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.scenario-table {
+.scenario-grid {
   flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
   padding: 20px;
   overflow: auto;
+  min-height: 200px;
+}
+
+.scenario-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 24px;
+  background: var(--tm-card-bg);
+  border: 1px solid var(--tm-border-light);
+  border-radius: 14px;
+  transition: all 0.3s ease;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+.scenario-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb), 0.04) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.scenario-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(var(--tm-color-primary-rgb), 0.15);
+}
+.scenario-card:hover::before {
+  opacity: 1;
+}
+
+.scenario-card .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.scenario-card .card-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--tm-text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scenario-card .card-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tm-text-secondary);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 42px;
+}
+.scenario-card .card-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.scenario-card .meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--tm-text-secondary);
+}
+.scenario-card .card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.status-badge.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+.status-badge.inactive {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
 .running-status {
@@ -671,11 +795,57 @@ onUnmounted(() => {
   text-align: center;
 }
 
-.action-buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
+.ci-cd-info .ci-cd-tip {
+  margin-bottom: 16px;
+  color: var(--tm-text-regular);
+  line-height: 1.6;
+}
+
+.ci-cd-info .curl-command-box {
+  background: var(--tm-card-bg);
+  padding: 15px;
+  border-radius: 6px;
+  color: var(--tm-text-regular);
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-all;
+  margin-bottom: 16px;
+  border: 1px solid var(--tm-border-light);
+}
+
+.ci-cd-info .curl-command-tip {
+  color: var(--el-color-warning);
+}
+
+.btn-create-scenario {
+  flex-shrink: 0;
+}
+
+.btn-help {
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .env-label {
+    display: none;
+  }
+
+  .env-select-wrapper :deep(.el-select) {
+    width: 120px !important;
+  }
+
+  .env-select-wrapper .el-select {
+    width: 120px !important;
+  }
+
+  .btn-help .help-text {
+    display: none;
+  }
+
+  .btn-help .help-icon {
+    margin: 0;
+  }
 }
 
 @media (max-width: 768px) {
@@ -688,6 +858,21 @@ onUnmounted(() => {
   .toolbar-left,
   .toolbar-right {
     justify-content: center;
+  }
+
+  .scenario-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .scenario-card .card-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .scenario-card .card-actions .el-button {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 </style>

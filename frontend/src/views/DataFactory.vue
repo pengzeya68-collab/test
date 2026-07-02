@@ -44,16 +44,6 @@
           <div class="welcome-icon">🧪</div>
           <h3>测试数据工厂</h3>
           <p>快速生成各种测试数据，支持数据驱动测试执行</p>
-          <div class="welcome-actions">
-            <el-button type="primary" size="large" @click="showPresetDialog = true">
-              <el-icon><MagicStick /></el-icon>
-              从预设模板创建
-            </el-button>
-            <el-button size="large" @click="startCreate">
-              <el-icon><Plus /></el-icon>
-              空白模板
-            </el-button>
-          </div>
           <div class="welcome-features">
             <div class="wf-item">
               <span class="wf-icon">📋</span>
@@ -865,7 +855,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;
-  border-bottom: 1px solid var(--border-color, #333);
+  border-bottom: 1px solid var(--border-color, var(--border-subtle));
 }
 
 .df-header-left {
@@ -877,12 +867,12 @@ onMounted(() => {
 .df-title {
   margin: 0;
   font-size: 18px;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .df-subtitle {
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .df-header-right {
@@ -897,8 +887,8 @@ onMounted(() => {
 }
 
 .df-sidebar {
-  width: 220px;
-  border-right: 1px solid var(--border-color, #333);
+  width: 280px;
+  border-right: 1px solid var(--border-color, var(--border-subtle));
   padding: 12px;
   overflow-y: auto;
   flex-shrink: 0;
@@ -906,7 +896,7 @@ onMounted(() => {
 
 .sidebar-title {
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -927,36 +917,36 @@ onMounted(() => {
 }
 
 .tpl-item:hover {
-  background: rgba(64, 158, 255, .08);
-  border-color: rgba(64, 158, 255, .2);
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.2);
 }
 
 .tpl-item.active {
-  background: rgba(64, 158, 255, .12);
-  border-color: #409eff;
+  background: rgba(var(--tm-color-primary-rgb), 0.12);
+  border-color: var(--accent-primary);
 }
 
 .tpl-name {
   font-size: 14px;
-  color: #e0e0e0;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .tpl-meta {
   font-size: 11px;
-  color: #777;
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
 .tpl-empty {
   text-align: center;
   padding: 30px 0;
-  color: #666;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
 .tpl-empty-hint {
-  color: #409eff;
+  color: var(--accent-primary);
   margin-top: 4px;
   font-size: 12px;
 }
@@ -969,49 +959,43 @@ onMounted(() => {
 
 .welcome {
   text-align: center;
-  padding: 60px 0;
-  color: #ccc;
+  padding: 32px 0;
+  color: var(--tm-text-regular, var(--text-secondary));
 }
 
 .welcome-icon {
-  font-size: 56px;
-  margin-bottom: 16px;
+  font-size: 40px;
+  margin-bottom: 12px;
 }
 
 .welcome h3 {
-  font-size: 22px;
+  font-size: 18px;
   margin: 0 0 8px;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .welcome p {
-  color: #888;
-  margin: 0 0 24px;
-}
-
-.welcome-actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 32px;
+  color: var(--text-secondary);
+  margin: 0 0 20px;
 }
 
 .welcome-features {
   display: flex;
   justify-content: center;
-  gap: 32px;
+  gap: 24px;
+  flex-wrap: wrap;
 }
 
 .wf-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #999;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
 .wf-icon {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .editor {
@@ -1026,7 +1010,7 @@ onMounted(() => {
   align-items: flex-start;
   gap: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color, #333);
+  border-bottom: 1px solid var(--border-color, var(--border-subtle));
 }
 
 .editor-info {
@@ -1044,16 +1028,17 @@ onMounted(() => {
 .name-input :deep(.el-input__inner) {
   font-size: 18px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .editor-name {
   margin: 0;
   font-size: 18px;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .desc-input :deep(.el-input__inner) {
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .editor-actions {
@@ -1063,8 +1048,8 @@ onMounted(() => {
 }
 
 .editor-config {
-  background: rgba(255, 255, 255, .03);
-  border: 1px solid var(--border-color, #333);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color, var(--border-subtle));
   border-radius: 8px;
   padding: 12px 16px;
 }
@@ -1083,13 +1068,13 @@ onMounted(() => {
 
 .config-item label {
   font-size: 13px;
-  color: #aaa;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .editor-fields {
-  background: rgba(255, 255, 255, .02);
-  border: 1px solid var(--border-color, #333);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color, var(--border-subtle));
   border-radius: 8px;
   padding: 16px;
 }
@@ -1103,14 +1088,14 @@ onMounted(() => {
 
 .fields-title {
   font-size: 14px;
-  color: #ccc;
+  color: var(--tm-text-regular, var(--text-primary));
   font-weight: 600;
 }
 
 .fields-empty {
   text-align: center;
   padding: 24px 0;
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .fields-empty p {
@@ -1131,12 +1116,12 @@ onMounted(() => {
 
 .quick-tag:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(64, 158, 255, .3);
+  box-shadow: 0 2px 8px rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
 .quick-add-label {
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   line-height: 24px;
   margin-right: 4px;
 }
@@ -1148,15 +1133,15 @@ onMounted(() => {
 }
 
 .field-card {
-  background: rgba(255, 255, 255, .03);
-  border: 1px solid var(--border-color, #2a2a2a);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color, var(--border-subtle));
   border-radius: 8px;
   padding: 12px;
   transition: border-color .15s;
 }
 
 .field-card:hover {
-  border-color: rgba(64, 158, 255, .3);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
 .fc-top {
@@ -1192,7 +1177,7 @@ onMounted(() => {
 
 .fc-hint {
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
@@ -1205,13 +1190,13 @@ onMounted(() => {
 
 .fc-preview-label {
   font-size: 11px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .fc-preview-val {
   font-size: 12px;
-  color: #67c23a;
-  background: rgba(103, 194, 58, .08);
+  color: var(--tm-color-primary, var(--accent-primary));
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
   padding: 1px 6px;
   border-radius: 3px;
 }
@@ -1221,8 +1206,8 @@ onMounted(() => {
 }
 
 .editor-preview {
-  background: rgba(255, 255, 255, .02);
-  border: 1px solid var(--border-color, #333);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color, var(--border-subtle));
   border-radius: 8px;
   padding: 16px;
 }
@@ -1236,7 +1221,7 @@ onMounted(() => {
 
 .preview-title {
   font-size: 14px;
-  color: #ccc;
+  color: var(--tm-text-regular, var(--text-primary));
   font-weight: 600;
 }
 
@@ -1251,7 +1236,7 @@ onMounted(() => {
 
 .preview-meta {
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   margin-top: 6px;
 }
 
@@ -1259,7 +1244,7 @@ onMounted(() => {
 .preview-empty {
   text-align: center;
   padding: 24px 0;
-  color: #888;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -1293,12 +1278,12 @@ onMounted(() => {
 .rc-title {
   font-size: 14px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .rc-detail {
   font-size: 12px;
-  color: #999;
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
@@ -1314,7 +1299,7 @@ onMounted(() => {
 
 .preset-card {
   padding: 16px;
-  border: 1px solid var(--border-color, #333);
+  border: 1px solid var(--border-color, var(--border-subtle));
   border-radius: 8px;
   cursor: pointer;
   transition: all .15s;
@@ -1322,8 +1307,8 @@ onMounted(() => {
 }
 
 .preset-card:hover {
-  border-color: #409eff;
-  background: rgba(64, 158, 255, .06);
+  border-color: var(--accent-primary);
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
   transform: translateY(-1px);
 }
 
@@ -1335,22 +1320,22 @@ onMounted(() => {
 .pc-name {
   font-size: 15px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .pc-desc {
   font-size: 12px;
-  color: #999;
+  color: var(--text-secondary);
   margin-bottom: 6px;
 }
 
 .pc-fields {
   font-size: 11px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .dark-dialog {
-  background: #1e1e1e;
+  background: var(--tm-bg-page, var(--bg-surface));
 }
 </style>

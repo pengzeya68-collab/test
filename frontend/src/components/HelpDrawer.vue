@@ -3,10 +3,11 @@
     v-model="visible"
     :title="title"
     direction="rtl"
-    size="540px"
+    :size="drawerSize"
     :with-header="true"
-    :destroy-on-close="false"
-    custom-class="help-drawer"
+    :destroy-on-close="true"
+    class="help-drawer"
+    @close="handleClose"
   >
     <div class="help-drawer-content">
       <el-alert
@@ -76,7 +77,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import DOMPurify from 'dompurify'
 
 const props = defineProps({
@@ -88,12 +89,41 @@ const props = defineProps({
   sections: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'close'])
+
+const isMobile = ref(false)
+
+const updateViewport = () => {
+  isMobile.value = typeof window !== 'undefined' && window.innerWidth < 768
+}
+
+onMounted(() => {
+  updateViewport()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateViewport)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateViewport)
+  }
+})
+
+const drawerSize = computed(() => (isMobile.value ? '92vw' : '540px'))
 
 const visible = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val)
 })
+
+const handleClose = () => {
+  emit('update:modelValue', false)
+  emit('close')
+  if (typeof document !== 'undefined' && document.activeElement && document.activeElement.blur) {
+    document.activeElement.blur()
+  }
+}
 
 const renderRich = (text) => {
   if (!text || typeof text !== 'string') return ''

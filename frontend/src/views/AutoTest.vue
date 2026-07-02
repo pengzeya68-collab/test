@@ -10,7 +10,7 @@
         <div class="guide-steps">
           <div
             class="guide-step"
-            :class="{ active: guideStep >= 1, done: guideStep > 1 }"
+            :class="{ active: activeTab === 'debug', done: false }"
             @click="goToGuideStep(1)"
           >
             <span class="step-num">1</span>
@@ -19,7 +19,7 @@
           <div class="guide-arrow">→</div>
           <div
             class="guide-step"
-            :class="{ active: guideStep >= 2, done: guideStep > 2 }"
+            :class="{ active: activeTab === 'interfaces', done: activeTab !== 'interfaces' && ['scenarios', 'jmeter'].includes(activeTab) }"
             @click="goToGuideStep(2)"
           >
             <span class="step-num">2</span>
@@ -28,7 +28,7 @@
           <div class="guide-arrow">→</div>
           <div
             class="guide-step"
-            :class="{ active: guideStep >= 3, done: guideStep > 3 }"
+            :class="{ active: activeTab === 'scenarios', done: activeTab === 'jmeter' }"
             @click="goToGuideStep(3)"
           >
             <span class="step-num">3</span>
@@ -37,7 +37,7 @@
           <div class="guide-arrow">→</div>
           <div
             class="guide-step"
-            :class="{ active: guideStep >= 4, done: guideStep > 4 }"
+            :class="{ active: activeTab === 'scenarios', done: false }"
             @click="goToGuideStep(4)"
           >
             <span class="step-num">4</span>
@@ -46,7 +46,7 @@
           <div class="guide-arrow">→</div>
           <div
             class="guide-step"
-            :class="{ active: guideStep >= 5, done: guideStep > 5 }"
+            :class="{ active: activeTab === 'jmeter', done: false }"
             @click="goToGuideStep(5)"
           >
             <span class="step-num">5</span>
@@ -157,6 +157,7 @@
           <span>接口文档</span>
           <el-tag size="small" type="success" class="new-tag">新</el-tag>
         </div>
+        <div class="tab-indicator" ref="tabIndicatorRef"></div>
       </div>
     </div>
 
@@ -223,7 +224,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, FolderOpened, Position, DataAnalysis, Coin, Connection, Monitor, Collection } from '@element-plus/icons-vue'
@@ -302,6 +303,22 @@ const handleTabChange = (val) => {
   if (val === 'scenarios' && scenarioListRef.value) {
     scenarioListRef.value.loadScenarios()
   }
+}
+
+// tab-nav 滑动指示器：跟随 active tab 平滑滑动
+const tabIndicatorRef = ref(null)
+const updateTabIndicator = () => {
+  if (!tabIndicatorRef.value) return
+  const nav = tabIndicatorRef.value.parentElement
+  if (!nav) return
+  const active = nav.querySelector('.tab-item.active')
+  if (!active) {
+    tabIndicatorRef.value.style.opacity = '0'
+    return
+  }
+  tabIndicatorRef.value.style.opacity = '1'
+  tabIndicatorRef.value.style.width = `${active.offsetWidth}px`
+  tabIndicatorRef.value.style.transform = `translateX(${active.offsetLeft}px)`
 }
 
 const handleRunCases = async (caseData, envId) => {
@@ -416,7 +433,16 @@ const guideTips = {
   },
 }
 
-const guideTip = computed(() => guideTips[guideStep.value])
+const guideTip = computed(() => {
+  const tabToStep = {
+    debug: 1,
+    interfaces: 2,
+    scenarios: 3,
+    jmeter: 5,
+  }
+  const step = tabToStep[activeTab.value]
+  return step ? guideTips[step] : null
+})
 
 const initGuide = () => {
   const dismissed = localStorage.getItem('autotest_guide_dismissed')
@@ -456,6 +482,16 @@ onMounted(() => {
     currentScenarioId.value = parseScenarioId(route.query.scenarioId)
   }
   initGuide()
+  nextTick(updateTabIndicator)
+  window.addEventListener('resize', updateTabIndicator)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateTabIndicator)
+})
+
+watch(activeTab, () => {
+  nextTick(updateTabIndicator)
 })
 
 watch(
@@ -478,7 +514,7 @@ watch(
 
 <style scoped>
 .beginner-guide-banner {
-  background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb), 0.15), rgba(217, 70, 239, 0.1));
+  background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb), 0.15), rgba(var(--tm-color-primary-rgb), 0.08));
   border-bottom: 1px solid rgba(var(--tm-color-primary-rgb), 0.2);
   padding: 16px 24px;
 }
@@ -528,7 +564,23 @@ watch(
 }
 
 .guide-step:hover {
-  border-color: rgba(var(--tm-color-primary-rgb), 0.2);
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.3);
+}
+
+.guide-step.active {
+  background: rgba(var(--tm-color-primary-rgb), 0.12);
+  border-color: var(--tm-color-primary);
+}
+
+.guide-step.active .step-label {
+  color: var(--tm-color-primary);
+  font-weight: 600;
+}
+
+.guide-step.done {
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.5);
 }
 
 .step-num {
@@ -546,12 +598,12 @@ watch(
 
 .guide-step.active .step-num {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
-  color: white;
+  color: var(--tm-text-primary);
 }
 
 .guide-step.done .step-num {
   background: var(--tm-color-primary);
-  color: white;
+  color: var(--tm-text-primary);
 }
 
 .step-label {
@@ -648,27 +700,88 @@ watch(
 
 .tab-nav {
   display: flex;
-  gap: 12px;
-  padding: 0 12px;
+  gap: 6px;
+  padding: 0 8px;
   border-bottom: 1px solid transparent;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+  position: relative;
+}
+.tab-nav::-webkit-scrollbar {
+  height: 4px;
+}
+.tab-nav::-webkit-scrollbar-thumb {
+  background: var(--tm-border-light);
+  border-radius: 2px;
+}
+/* 左右渐隐蒙层：指示可滚动 */
+.tab-nav::before,
+.tab-nav::after {
+  content: '';
+  position: sticky;
+  min-width: 12px;
+  z-index: 2;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+.tab-nav::before {
+  left: 0;
+  background: linear-gradient(to right, var(--tm-bg-page), transparent);
+}
+.tab-nav::after {
+  right: 0;
+  background: linear-gradient(to left, var(--tm-bg-page), transparent);
+}
+
+/* 2026 tab 滑动指示器：渐变发光条跟随 active tab 平滑滑动 */
+.tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  opacity: 0;
+  background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 0 12px rgba(var(--tm-color-primary-rgb), 0.7),
+              0 -2px 8px rgba(var(--tm-color-primary-rgb), 0.4);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-indicator {
+    transition: none !important;
+  }
 }
 
 .tab-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
+  gap: 5px;
+  padding: 10px 12px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 10px 10px 0 0;
+  border-radius: 8px 8px 0 0;
   position: relative;
   bottom: -1px;
   background: var(--tm-card-bg);
   border: 1px solid var(--tm-border-light);
   border-bottom: none;
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: fit-content;
+  scroll-snap-align: start;
 }
 
 .tab-item:hover {
@@ -719,7 +832,7 @@ watch(
 .tab-group :deep(.el-radio-button.is-active .el-radio-button__inner) {
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
   border-color: var(--tm-color-primary);
-  color: white;
+  color: var(--tm-text-primary);
   box-shadow: 0 0 15px rgba(var(--tm-color-primary-rgb), 0.5);
   transform: translateY(-1px);
 }
@@ -742,7 +855,7 @@ watch(
   padding: 24px;
   min-height: 100%;
   border: 1px solid var(--tm-border-light);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(var(--tm-color-primary-rgb), 0.08);
 }
 
 .dark-divider {
@@ -812,6 +925,31 @@ watch(
   background-color: rgba(var(--tm-color-primary-rgb), 0.15) !important;
 }
 
+/* 1024 紧凑模式：tab 缩小 padding 和字号，确保更多 tab 可见 */
+@media (max-width: 1024px) {
+  .tab-item {
+    padding: 8px 10px;
+    font-size: 12px;
+    gap: 4px;
+  }
+  .tab-item .new-tag {
+    font-size: 9px;
+  }
+  /* 次级 tab（AI生成/覆盖率/接口文档）在窄屏下隐藏文字仅留图标 */
+  .tab-item.ai-tab span:first-child,
+  .tab-item.coverage-tab span:first-child {
+    font-size: 0;
+  }
+  .tab-item.ai-tab span:first-child::after {
+    content: '🧪';
+    font-size: 14px;
+  }
+  .tab-item.coverage-tab span:first-child::after {
+    content: '📐';
+    font-size: 14px;
+  }
+}
+
 @media (max-width: 768px) {
   .tab-nav {
     overflow-x: auto;
@@ -879,7 +1017,7 @@ watch(
   background: var(--tm-bg-card) !important;
   border: 1px solid var(--tm-border-light) !important;
   border-radius: 10px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 32px rgba(var(--tm-color-primary-rgb), 0.08) !important;
   backdrop-filter: blur(15px) !important;
   -webkit-backdrop-filter: blur(15px) !important;
 }

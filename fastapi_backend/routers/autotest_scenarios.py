@@ -410,6 +410,52 @@ async def add_step(
     return result.scalar_one()
 
 
+class StepOrderItem(BaseModel):
+    step_id: int
+    step_order: int
+
+
+@router.put("/{scenario_id}/steps/reorder")
+async def reorder_steps(
+    scenario_id: int,
+    step_orders: List[StepOrderItem],
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量更新步骤顺序"""
+    # 先校验场景归属
+    scenario_result = await db.execute(
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id,
+            AutoTestScenario.user_id == current_user.id,
+        )
+    )
+    if not scenario_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="场景不存在")
+
+    # 一次性查询该场景的所有步骤，避免 N+1 查询
+    steps_result = await db.execute(
+        select(AutoTestScenarioStep).where(
+            AutoTestScenarioStep.scenario_id == scenario_id,
+        )
+    )
+    steps_map = {step.id: step for step in steps_result.scalars().all()}
+
+    # 第一步：先将所有步骤设为临时负值，避免交换顺序时违反 uq_scenario_step_order 唯一约束
+    for item in step_orders:
+        step = steps_map.get(item.step_id)
+        if step:
+            step.step_order = -item.step_order - 1
+    await db.flush()
+    # 第二步：设为目标值
+    for item in step_orders:
+        step = steps_map.get(item.step_id)
+        if step:
+            step.step_order = item.step_order
+    await db.commit()
+    return {"message": "排序更新成功"}
+
+
 @router.put("/{scenario_id}/steps/{step_id}", response_model=ScenarioStepResponse)
 async def update_step(
     scenario_id: int,
@@ -496,52 +542,6 @@ async def delete_step(
         step.step_order = index
     await db.commit()
     return {"message": "删除成功"}
-
-
-class StepOrderItem(BaseModel):
-    step_id: int
-    step_order: int
-
-
-@router.put("/{scenario_id}/steps/reorder")
-async def reorder_steps(
-    scenario_id: int,
-    step_orders: List[StepOrderItem],
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """批量更新步骤顺序"""
-    # 先校验场景归属
-    scenario_result = await db.execute(
-        select(AutoTestScenario).where(
-            AutoTestScenario.id == scenario_id,
-            AutoTestScenario.user_id == current_user.id,
-        )
-    )
-    if not scenario_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="场景不存在")
-
-    # 一次性查询该场景的所有步骤，避免 N+1 查询
-    steps_result = await db.execute(
-        select(AutoTestScenarioStep).where(
-            AutoTestScenarioStep.scenario_id == scenario_id,
-        )
-    )
-    steps_map = {step.id: step for step in steps_result.scalars().all()}
-
-    # 第一步：先将所有步骤设为临时负值，避免交换顺序时违反 uq_scenario_step_order 唯一约束
-    for item in step_orders:
-        step = steps_map.get(item.step_id)
-        if step:
-            step.step_order = -item.step_order - 1
-    await db.flush()
-    # 第二步：设为目标值
-    for item in step_orders:
-        step = steps_map.get(item.step_id)
-        if step:
-            step.step_order = item.step_order
-    await db.commit()
-    return {"message": "排序更新成功"}
 
 
 # ========== 数据集管理 ==========

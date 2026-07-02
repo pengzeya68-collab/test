@@ -1,5 +1,6 @@
-﻿// ============================================
-// 鍏ㄥ眬鏍峰紡 - TestMaster 涓婚绯荤粺 (Cyberpunk & Glassmorphism)
+@charset "UTF-8";
+// ============================================
+// 全局样式 - TestMaster 主题系统 (Cyberpunk & Glassmorphism)
 // ============================================
 @use './variables.scss' as *;
 
@@ -37,6 +38,9 @@
   --tm-primary-dark: var(--accent-hover);
   --tm-color-primary: var(--accent-primary);
   --tm-color-primary-dark: var(--accent-hover);
+  --tm-color-primary-rgb: 189, 0, 255;
+  --tm-color-primary-glow: rgba(189, 0, 255, 0.45);
+  --tm-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5);
 
   --tm-bg-color: var(--bg-base);
   --tm-bg-page: var(--bg-base);
@@ -98,11 +102,11 @@ html, body {
 }
 
 // ============================================
-// 婊氬姩鏉＄編鍖?- 缁嗙嚎娣辩伆鍗婇€忔槑
+// 滚动条美化 - 细线深灰半透明（统一 6px）
 // ============================================
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: var(--tm-scrollbar-size);
+  height: var(--tm-scrollbar-size);
 }
 
 ::-webkit-scrollbar-track {
@@ -110,19 +114,19 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 2px;
+  background: var(--tm-scrollbar-thumb);
+  border-radius: 3px;
   transition: background 0.2s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--tm-scrollbar-thumb-hover);
   }
 }
 
-/* Firefox 婊氬姩鏉?*/
+/* Firefox 滚动条 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-color: var(--tm-scrollbar-thumb) transparent;
 }
 
 // ============================================
@@ -1375,5 +1379,271 @@ html, body {
 [data-theme="cyberpunk"] .action-tooltip *,
 [data-theme="deep-ocean"] .action-tooltip * {
   color: #ffffff !important;
+}
+
+// ============================================
+// 2026 现代化设计动效（微交互层）
+// ============================================
+
+// 卡片悬浮微交互：抬升 + 发光
+.tm-card {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s, border-color 0.3s;
+  will-change: transform;
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--tm-shadow-hover), 0 0 20px rgba(var(--tm-color-primary-rgb), 0.15);
+    border-color: rgba(var(--tm-color-primary-rgb), 0.25);
+  }
+}
+
+// 主按钮 shimmer 光泽划过动效
+.el-button--primary {
+  position: relative;
+  overflow: hidden;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.25) 50%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+  &:hover::after {
+    transform: translateX(120%);
+  }
+}
+
+// 表格行左侧高亮条（hover 时渐显）
+.el-table__row td:first-child {
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(var(--tm-color-primary), var(--tm-color-primary-dark));
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1;
+  }
+}
+.el-table__row:hover td:first-child::before {
+  transform: scaleY(1);
+  box-shadow: 0 0 8px rgba(var(--tm-color-primary-rgb), 0.5);
+}
+
+// 输入框渐变边框动画（focus 时流动渐变边框）
+.el-input__wrapper {
+  position: relative;
+  background-clip: padding-box;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  &.is-focus::before {
+    opacity: 1;
+  }
+}
+
+// 背景噪点纹理（增加质感，极低透明度）
+html::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+// 页面切换过渡动画
+.tm-fade-enter-active,
+.tm-fade-leave-active {
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tm-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.tm-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+// ============================================
+// 2026 高级工具类系统（E2）
+// ============================================
+
+// 玻璃拟态卡片工具类
+.glass-card {
+  background: var(--tm-glass-bg, rgba(24, 24, 27, 0.8));
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--tm-border-light, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg, 16px);
+}
+
+// 渐变边框工具类（mask-composite 实现）
+.gradient-border {
+  position: relative;
+  background-clip: padding-box;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+// 文字发光工具类
+.glow-text {
+  text-shadow: 0 0 10px rgba(var(--tm-color-primary-rgb), 0.6),
+               0 0 20px rgba(var(--tm-color-primary-rgb), 0.4),
+               0 0 30px rgba(var(--tm-color-primary-rgb), 0.2);
+}
+
+// 骨架屏通用类（shimmer）
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.08) 20%,
+    rgba(255, 255, 255, 0.04) 40%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+  display: inline-block;
+}
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// stagger 入场动画工具类（配合 v-fade-in 指令）
+.stagger-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  &.in-view {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// 数字滚动动画
+.count-up {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+// ripple 涟漪效果
+.ripple-host {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(0);
+  animation: rippleExpand 0.6s ease-out;
+  pointer-events: none;
+}
+@keyframes rippleExpand {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+// Spotlight 光晕跟随（配合 v-spotlight 指令）
+.spotlight-host {
+  position: relative;
+  overflow: hidden;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle 200px at var(--mx, 50%) var(--my, 50%),
+      rgba(var(--tm-color-primary-rgb), 0.15),
+      transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+  &:hover::before {
+    opacity: 1;
+  }
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+// 磁吸效果过渡（配合 v-magnetic 指令）
+.magnetic-host {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+// ============================================
+// A4 变量别名归一（消除三套冗余）
+// ============================================
+:root {
+  // --accent-* 别名归一到 --tm-*
+  --accent-primary: var(--tm-color-primary);
+  --accent-hover: var(--tm-color-primary-dark);
+  --accent-glow: rgba(var(--tm-color-primary-rgb), 0.4);
+  --accent-purple: var(--tm-color-primary-dark);
+
+  // --text-* 别名归一到 --tm-*
+  --text-primary: var(--tm-text-primary);
+  --text-secondary: var(--tm-text-secondary);
+  --text-muted: var(--tm-text-secondary);
+
+  // 缺失的发光变量
+  --tm-color-primary-glow: rgba(var(--tm-color-primary-rgb), 0.5);
+  --tm-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+// ============================================
+// 无障碍：尊重 prefers-reduced-motion
+// ============================================
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 

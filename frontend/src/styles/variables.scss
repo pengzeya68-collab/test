@@ -207,7 +207,23 @@ $tm-spacing-xl: $--spacing-xl;
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
+
+  // 响应式与基础设施 token（2026 现代化）
+  --tm-scrollbar-size: 6px;
+  --tm-scrollbar-thumb: rgba(255, 255, 255, 0.14);
+  --tm-scrollbar-thumb-hover: rgba(var(--tm-color-primary-rgb), 0.5);
+  --tm-navbar-height: 64px;
+  --tm-tab-height: 44px;
 }
+
+// ============================================
+// 响应式断点（SCSS 变量，用于 @media 查询）
+// ============================================
+$tm-bp-sm: 480px;   // 手机
+$tm-bp-md: 768px;   // 平板竖
+$tm-bp-lg: 1024px;  // 平板横/小笔记本
+$tm-bp-xl: 1280px;  // 桌面
+$tm-bp-2xl: 1536px; // 大屏
 
 // ============================================
 // Mixins
@@ -217,6 +233,35 @@ $tm-spacing-xl: $--spacing-xl;
   border-radius: 16px;
   box-shadow: var(--tm-shadow-card);
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+// 响应式断点 mixin：@include respond-to(1024px) { ... }
+@mixin respond-to($bp) {
+  @media (max-width: $bp) {
+    @content;
+  }
+}
+
+// 统一滚动条样式 mixin
+@mixin scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tm-scrollbar-thumb) transparent;
+  &::-webkit-scrollbar {
+    width: var(--tm-scrollbar-size);
+    height: var(--tm-scrollbar-size);
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--tm-scrollbar-thumb);
+    border-radius: 3px;
+    transition: background 0.3s ease;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--tm-scrollbar-thumb-hover);
+  }
 }
 
 @mixin focus-ring {
