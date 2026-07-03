@@ -23,6 +23,7 @@
           <span class="stat-num">{{ filteredExercises.length }}</span>
           <span class="stat-label">当前筛选</span>
         </div>
+        <LayoutPresetDropdown size="small" @change="applyLayoutPreset" />
       </div>
     </div>
 
@@ -324,10 +325,26 @@ import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import CodeEditor from '@/components/CodeEditor.vue'
 import BaseSplitter from '@/components/base/BaseSplitter.vue'
+import LayoutPresetDropdown from '@/components/LayoutPresetDropdown.vue'
 import request from '@/utils/request'
 
 // 左侧题目列表宽度（带 localStorage 持久化）
 const leftPanelWidth = ref(320)
+
+// 布局预设：调整左侧题目列表宽度
+const applyLayoutPreset = (preset) => {
+  const presets = {
+    compact: 260,
+    default: 320,
+    wide: 480,
+    'editor-focus': 220,
+    reset: 320
+  }
+  const width = presets[preset] ?? 320
+  leftPanelWidth.value = Math.max(220, Math.min(560, width))
+  try { localStorage.setItem('tm-codeplayground-sidebar-width', String(leftPanelWidth.value)) } catch {}
+  ElMessage?.success?.(`布局已切换：题目列表 ${leftPanelWidth.value}px`)
+}
 
 const exercises = ref([])
 const loading = ref(false)

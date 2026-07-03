@@ -767,3 +767,30 @@ class ApiDocShare(Base):
     view_count = Column(Integer, nullable=False, default=0, comment="浏览次数")
     # 可选密码保护：bcrypt 哈希后的密码，为空表示公开访问
     password_hash = Column(Text, nullable=True, comment="访问密码的bcrypt哈希(null=无密码保护)")
+
+
+class AssertTemplate(Base):
+    """断言模板表 - 内置 + 用户自定义，rules 为 [{type, operator, expected, expression}]"""
+
+    __tablename__ = "autotest_assert_templates"
+    __table_args__ = (
+        Index("idx_assert_tpl_user_id", "user_id"),
+        Index("idx_assert_tpl_category", "category"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(128), nullable=False, comment="模板名称")
+    description = Column(Text, nullable=True, comment="模板描述")
+    category = Column(String(64), nullable=False, default="自定义", comment="分类")
+    rules = Column(JSON, nullable=False, default=list, comment="断言规则数组")
+    code_snippet = Column(Text, nullable=True, comment="代码示例")
+    is_builtin = Column(Boolean, default=False, comment="是否内置模板")
+    user_id = Column(Integer, nullable=True, comment="创建者用户ID(跨库引用,非FK,NULL=系统内置)")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        comment="更新时间",
+    )
+

@@ -27,6 +27,7 @@
         <el-button size="small" @click="showHelp = true">
           ❓ 使用说明
         </el-button>
+        <LayoutPresetDropdown size="small" @change="applyLayoutPreset" />
       </div>
     </div>
 
@@ -303,11 +304,27 @@ import { Right, Delete, Clock, Timer, MagicStick, DocumentCopy, DataAnalysis, Do
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import BaseSplitter from '@/components/base/BaseSplitter.vue'
+import LayoutPresetDropdown from '@/components/LayoutPresetDropdown.vue'
 import { helpContent } from '@/utils/help-content'
 import CurlImportDialog from './CurlImportDialog.vue'
 
 // 横向模式下请求面板宽度（带 localStorage 持久化）
 const requestPanelWidth = ref(560)
+
+// 布局预设：调整请求面板宽度
+const applyLayoutPreset = (preset) => {
+  const presets = {
+    compact: 420,
+    default: 560,
+    wide: 760,
+    'editor-focus': 320,
+    reset: 560
+  }
+  const width = presets[preset] ?? 560
+  requestPanelWidth.value = Math.max(320, Math.min(960, width))
+  try { localStorage.setItem('tm-apidebugger-panel-width', String(requestPanelWidth.value)) } catch {}
+  ElMessage?.success?.(`布局已切换：请求面板 ${requestPanelWidth.value}px`)
+}
 
 const props = defineProps({
   environmentList: { type: Array, default: () => [] }

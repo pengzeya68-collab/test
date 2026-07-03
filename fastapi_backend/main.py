@@ -153,6 +153,15 @@ async def lifespan(_: FastAPI):
         await init_rbac_data()
     except Exception as e:
         _logger.warning("RBAC 预置数据初始化失败（不影响主服务）: %s", e)
+    # 断言模板库种子化（幂等，失败不阻塞主服务）
+    try:
+        from fastapi_backend.routers.assert_templates import seed_builtin_templates
+        from fastapi_backend.core.database import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as db:
+            await seed_builtin_templates(db)
+    except Exception as e:
+        _logger.warning("断言模板种子化失败（不影响主服务）: %s", e)
     try:
         yield
     finally:

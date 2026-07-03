@@ -15,6 +15,7 @@
           <el-icon><Plus /></el-icon>
           新建模板
         </el-button>
+        <LayoutPresetDropdown size="default" @change="applyLayoutPreset" />
       </div>
     </div>
 
@@ -384,10 +385,26 @@ import { Plus, Delete, Refresh, Download, VideoPlay, MagicStick, Loading } from 
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import BaseSplitter from '@/components/base/BaseSplitter.vue'
+import LayoutPresetDropdown from '@/components/LayoutPresetDropdown.vue'
 import { helpContent } from '@/utils/help-content'
 
 // 左侧模板列表宽度（带 localStorage 持久化）
 const sidebarWidth = ref(280)
+
+// 布局预设：调整左侧模板列表宽度
+const applyLayoutPreset = (preset) => {
+  const presets = {
+    compact: 220,
+    default: 280,
+    wide: 420,
+    'editor-focus': 200,
+    reset: 280
+  }
+  const width = presets[preset] ?? 280
+  sidebarWidth.value = Math.max(200, Math.min(520, width))
+  try { localStorage.setItem('tm-datafactory-sidebar-width', String(sidebarWidth.value)) } catch {}
+  ElMessage?.success?.(`布局已切换：模板列表 ${sidebarWidth.value}px`)
+}
 
 const commonRules = [
   { type: 'fixed', label: '固定值', icon: '📌' },

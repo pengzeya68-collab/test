@@ -24,6 +24,8 @@ except ImportError:
     aiohttp = None
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
+from fastapi_backend.core.config import settings
+from fastapi_backend.core.jmeter_settings import is_jmeter_available, JMETER_ENGINE_ENABLED
 from fastapi_backend.deps.auth import get_current_active_user
 from fastapi_backend.models.autotest import (
     AutoTestCase,
@@ -35,6 +37,18 @@ from fastapi_backend.services.autotest_jmeter_service import (
     export_cases_to_jmx,
     import_jmx_to_cases,
     import_jmx_to_full_tree,
+)
+from fastapi_backend.services.jmeter_bench_service import (
+    submit_bench as jmeter_submit_bench,
+    get_run as jmeter_get_run,
+    list_runs as jmeter_list_runs,
+    get_snapshots as jmeter_get_snapshots,
+    stop_run as jmeter_stop_run,
+    get_html_report as jmeter_get_html_report,
+    compare_runs as jmeter_compare_runs,
+    create_baseline as jmeter_create_baseline,
+    list_baselines as jmeter_list_baselines,
+    delete_baseline as jmeter_delete_baseline,
 )
 from fastapi_backend.core.ssrf_guard import validate_url_safety
 from fastapi_backend.deps.ai_points import require_ai_points
@@ -591,9 +605,10 @@ async def quick_benchmark_submit(
     task_id = str(uuid.uuid4())
     config = {
         "targets": targets,
-        "concurrency": max(min(int(body.get("concurrency", 10)), 200), 1),
-        "duration": max(min(int(body.get("duration", 10)), 60), 1),
-        "ramp_up": max(min(int(body.get("ramp_up", 2)), 10), 0),
+        # 上限从 settings 读取，保持现状 200/60/10，可由 .env 覆盖
+        "concurrency": max(min(int(body.get("concurrency", 10)), settings.JMETER_QUICK_MAX_CONCURRENCY), 1),
+        "duration": max(min(int(body.get("duration", 10)), settings.JMETER_QUICK_MAX_DURATION), 1),
+        "ramp_up": max(min(int(body.get("ramp_up", 2)), settings.JMETER_QUICK_MAX_RAMPUP), 0),
     }
 
     async with _bench_lock:
@@ -1424,3 +1439,225 @@ def _count_elements(tree):
 
     walk(tree)
     return counts
+
+
+# ============================================================
+# 真实 JMeter 引擎压测端点（Stage C）
+# 旧 /jmeter/quick-bench 端点完全保留作为"快速预览"模式
+# ============================================================
+
+
+@router.post("/jmeter/run")
+async def submit_jmeter_run(
+    body: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """提交真实 JMeter 压测任务（走 Celery + 真实 JMeter 5.6.3）
+
+    Request Body:
+    - plan_name: 计划名称
+    - jmx_content: JMX 文件内容（或 script_tree 由前端构造）
+    - concurrency/duration/ramp_up（可选，由 JMX 中的 ThreadGroup 决定）
+    - props: JMeter 属性（-J key=value，可选）
+
+    Returns:
+    - run_id: 数据库运行记录 ID
+    - task_id: Celery 任务 ID
+    - status: pending
+    """
+    if not is_jmeter_available():
+        raise HTTPException(
+            status_code=503,
+            detail="JMeter 引擎未启用或可执行文件不存在。请在 .env 中设置 JMETER_ENGINE_ENABLED=true 并安装 JMeter 5.6.3",
+        )
+
+    from datetime import datetime as _dt_now
+    plan_name = body.get("plan_name") or f"JMeter Run {_dt_now.utcnow().strftime('%Y-%m-%d %H:%M')}"
+    jmx_content = body.get("jmx_content") or ""
+    if not jmx_content:
+        # 兼容前端传 script_tree 的情况：通过 export_tree_to_jmx 生成 JMX
+        script_tree = body.get("script_tree")
+        if script_tree:
+            try:
+                # 注意:必须用 service 中的同步函数,避免解析到本模块 L540 的 async router 函数
+                from fastapi_backend.services.autotest_jmeter_service import export_tree_to_jmx as _export_tree_to_jmx
+                jmx_content = _export_tree_to_jmx(script_tree)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"JMX 生成失败: {e}")
+        else:
+            raise HTTPException(status_code=400, detail="jmx_content 或 script_tree 至少提供一个")
+
+    config = {
+        "concurrency": int(body.get("concurrency", 1)),
+        "duration": int(body.get("duration", 30)),
+        "ramp_up": int(body.get("ramp_up", 0)),
+        "props": body.get("props", {}),
+        "jmx_content": jmx_content,
+    }
+
+    result = await jmeter_submit_bench(
+        db=db,
+        user_id=current_user.id,
+        plan_name=plan_name,
+        jmx_content=jmx_content,
+        config=config,
+        engine_type="jmeter",
+    )
+
+    if result.get("status") == "failed":
+        raise HTTPException(status_code=500, detail=result.get("error", "提交失败"))
+
+    return result
+
+
+@router.get("/jmeter/runs/{run_id}")
+async def get_jmeter_run(
+    run_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询单次压测任务的状态 + 最新 snapshot"""
+    result = await jmeter_get_run(db, run_id, user_id=current_user.id)
+    if not result:
+        raise HTTPException(status_code=404, detail="运行记录不存在")
+    return result
+
+
+@router.get("/jmeter/runs/{run_id}/report")
+async def get_jmeter_report(
+    run_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """返回 HTML 报告内容（前端新窗口渲染）"""
+    html = await jmeter_get_html_report(db, run_id)
+    if html is None:
+        raise HTTPException(status_code=404, detail="报告尚未生成或不存在")
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html)
+
+
+@router.get("/jmeter/runs/{run_id}/snapshots")
+async def get_jmeter_snapshots(
+    run_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """返回时序快照数组，前端轮询绘制实时图表"""
+    # 先验证所有权
+    run = await jmeter_get_run(db, run_id, user_id=current_user.id)
+    if not run:
+        raise HTTPException(status_code=404, detail="运行记录不存在")
+    return await jmeter_get_snapshots(db, run_id)
+
+
+@router.post("/jmeter/runs/{run_id}/stop")
+async def stop_jmeter_run(
+    run_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """停止压测任务（Celery revoke + 子进程 SIGTERM）"""
+    result = await jmeter_stop_run(db, run_id, user_id=current_user.id)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error", "停止失败"))
+    return result
+
+
+@router.get("/jmeter/runs")
+async def list_jmeter_runs(
+    limit: int = 20,
+    offset: int = 0,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """历史压测结果列表（持久化）"""
+    if limit < 1 or limit > 100:
+        limit = 20
+    if offset < 0:
+        offset = 0
+    return await jmeter_list_runs(db, user_id=current_user.id, limit=limit, offset=offset)
+
+
+@router.get("/jmeter/runs/compare")
+async def compare_jmeter_runs(
+    ids: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """对比多次压测结果，ids 为逗号分隔的 run_id"""
+    try:
+        run_ids = [int(x.strip()) for x in ids.split(",") if x.strip()]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ids 参数格式错误，应为逗号分隔的数字")
+    if not run_ids or len(run_ids) > 20:
+        raise HTTPException(status_code=400, detail="至少 1 个、最多 20 个 run_id")
+    return await jmeter_compare_runs(db, run_ids)
+
+
+@router.get("/jmeter/engine-status")
+async def jmeter_engine_status(
+    current_user: User = Depends(get_current_active_user),
+):
+    """返回 JMeter 引擎可用性，供前端决定是否显示 JMeter 引擎选项"""
+    return {
+        "enabled": is_jmeter_available(),
+        "engine_flag": JMETER_ENGINE_ENABLED,
+        "quick_max_concurrency": settings.JMETER_QUICK_MAX_CONCURRENCY,
+        "quick_max_duration": settings.JMETER_QUICK_MAX_DURATION,
+        "quick_max_rampup": settings.JMETER_QUICK_MAX_RAMPUP,
+    }
+
+
+# ============================================================
+# 性能基线管理端点（Stage E 提前接入，依赖 Stage C 创建的表）
+# ============================================================
+
+
+@router.post("/jmeter/baselines")
+async def create_baseline(
+    body: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """创建性能基线"""
+    name = body.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="name 必填")
+    script_hash = body.get("script_hash")
+    if not script_hash:
+        raise HTTPException(status_code=400, detail="script_hash 必填（JMX 内容 SHA256）")
+    return await jmeter_create_baseline(
+        db=db,
+        user_id=current_user.id,
+        name=name,
+        script_hash=script_hash,
+        p95_threshold_ms=body.get("p95_threshold_ms"),
+        p99_threshold_ms=body.get("p99_threshold_ms"),
+        tps_threshold=body.get("tps_threshold"),
+        error_rate_threshold=body.get("error_rate_threshold"),
+    )
+
+
+@router.get("/jmeter/baselines")
+async def list_baselines(
+    script_hash: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """列出性能基线（支持按 script_hash 过滤）"""
+    return await jmeter_list_baselines(db, user_id=current_user.id, script_hash=script_hash)
+
+
+@router.delete("/jmeter/baselines/{baseline_id}")
+async def delete_baseline(
+    baseline_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除性能基线"""
+    ok = await jmeter_delete_baseline(db, baseline_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="基线不存在")
+    return {"ok": True}

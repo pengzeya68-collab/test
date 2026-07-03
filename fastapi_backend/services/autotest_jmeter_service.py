@@ -362,6 +362,25 @@ _JMX_TYPE_MAP = {
 
 _IGNORED_TYPES = {"ResultCollector", "PropertyDisplay", "Arguments", "hashTree"}
 
+# 生成端类型别名归一化:将旧别名/前端别名映射到 importer 输出的规范名
+# 在 _build_tree_node 入口处先归一化,确保导入-导出往返不丢失元素
+_TYPE_BUILD_ALIASES = {
+    # 断言
+    "JsonAssertion": "JSONPathAssertion",
+    # 提取器(importer 输出 JSONExtractor,见 _JMX_TYPE_MAP L322)
+    "JsonExtractor": "JSONExtractor",
+    # 定时器(importer 输出 SynchronizingTimer,见 _JMX_TYPE_MAP L360)
+    "SyncTimer": "SynchronizingTimer",
+    # 配置(importer 输出 CsvDataSource/HttpCacheManager/HttpAuthManager/HttpHeaderManager/HTTPCookieManager)
+    "CSVDataSet": "CsvDataSource",
+    "CacheManager": "HttpCacheManager",
+    "AuthManager": "HttpAuthManager",
+    "HeaderManager": "HttpHeaderManager",
+    "CookieManager": "HTTPCookieManager",
+    # 大小写兼容(HTTP Header Manager 旧名)
+    "HTTPHeaderManager": "HttpHeaderManager",
+}
+
 
 def import_jmx_to_full_tree(xml_content: str) -> Dict[str, Any]:
     """解析完整JMX文件为树形结构"""
@@ -1516,6 +1535,8 @@ def export_tree_to_jmx(tree: List[Dict], plan_name: str = "Test Plan", plan_vars
 def _build_tree_node(parent_hash_tree, node: Dict):
     """递归构建 JMeter 元素树"""
     ntype = node.get("type", "")
+    # 别名归一化:将旧别名/前端别名统一为 importer 输出的规范名
+    ntype = _TYPE_BUILD_ALIASES.get(ntype, ntype)
     props = node.get("props", {})
     name = node.get("name", ntype)
     children = node.get("children", [])
@@ -1528,8 +1549,8 @@ def _build_tree_node(parent_hash_tree, node: Dict):
         _build_assertion(parent_hash_tree, name, props)
     elif ntype == "DurationAssertion":
         _build_duration_assertion(parent_hash_tree, name, props)
-    elif ntype == "JsonAssertion":
-        _build_json_assertion(parent_hash_tree, name, props)
+    elif ntype == "JSONPathAssertion":
+        _build_jsonpath_assertion(parent_hash_tree, name, props)
     elif ntype == "BeanShellAssertion":
         _build_beanshell_assertion(parent_hash_tree, name, props)
     elif ntype == "JSR223Assertion":
@@ -1542,18 +1563,28 @@ def _build_tree_node(parent_hash_tree, node: Dict):
         _build_compare_assertion(parent_hash_tree, name, props)
     elif ntype == "XMLAssertion":
         _build_xml_assertion(parent_hash_tree, name, props)
-    elif ntype in ("RegexExtractor", "JsonExtractor"):
+    elif ntype in ("RegexExtractor", "JSONExtractor"):
         _build_extractor(parent_hash_tree, ntype, name, props)
+    elif ntype == "BoundaryExtractor":
+        _build_boundary_extractor(parent_hash_tree, name, props)
+    elif ntype == "CSSSelectorExtractor":
+        _build_css_extractor(parent_hash_tree, name, props)
+    elif ntype == "XPathExtractor":
+        _build_xpath_extractor(parent_hash_tree, name, props)
     elif ntype == "ConstantTimer":
         _build_constant_timer(parent_hash_tree, name, props)
     elif ntype == "UniformRandomTimer":
         _build_uniform_random_timer(parent_hash_tree, name, props)
     elif ntype == "GaussianRandomTimer":
         _build_gaussian_timer(parent_hash_tree, name, props)
-    elif ntype == "SyncTimer":
-        _build_sync_timer(parent_hash_tree, name, props)
-    elif ntype == "CSVDataSet":
-        _build_csv_dataset(parent_hash_tree, name, props)
+    elif ntype == "SynchronizingTimer":
+        _build_synchronizing_timer(parent_hash_tree, name, props)
+    elif ntype == "ConstantThroughputTimer":
+        _build_constant_throughput_timer(parent_hash_tree, name, props)
+    elif ntype == "PoissonRandomTimer":
+        _build_poisson_timer(parent_hash_tree, name, props)
+    elif ntype == "CsvDataSource":
+        _build_csv_data_source(parent_hash_tree, name, props)
     elif ntype == "BeanShellPreProcessor":
         _build_beanshell(parent_hash_tree, name, props, "pre")
     elif ntype == "BeanShellPostProcessor":
@@ -1566,10 +1597,14 @@ def _build_tree_node(parent_hash_tree, node: Dict):
         _build_jdbc_connection(parent_hash_tree, name, props)
     elif ntype == "JDBCSampler":
         _build_jdbc_sampler(parent_hash_tree, name, props)
-    elif ntype == "HTTPHeaderManager":
+    elif ntype == "HttpHeaderManager":
         _build_header_manager(parent_hash_tree, name, props)
     elif ntype == "HTTPCookieManager":
         _build_cookie_manager(parent_hash_tree, name, props)
+    elif ntype == "HttpCacheManager":
+        _build_cache_manager(parent_hash_tree, name, props)
+    elif ntype == "HttpAuthManager":
+        _build_auth_manager(parent_hash_tree, name, props)
     elif ntype == "HTTPRequestDefaults":
         _build_http_request_defaults(parent_hash_tree, name, props)
     elif ntype == "IfController":
@@ -1584,6 +1619,10 @@ def _build_tree_node(parent_hash_tree, node: Dict):
         _build_throughput_controller(parent_hash_tree, name, props, children)
     elif ntype == "OnceOnlyController":
         _build_once_only_controller(parent_hash_tree, name, props, children)
+    elif ntype == "ModuleController":
+        _build_module_controller(parent_hash_tree, name, props)
+    elif ntype == "RunTimeController":
+        _build_runtime_controller(parent_hash_tree, name, props, children)
     elif ntype == "ViewResultsTree":
         _build_listener(parent_hash_tree, name, "ViewResultsFullVisualizer", "ResultCollector")
     elif ntype == "SummaryReport":
@@ -1594,10 +1633,14 @@ def _build_tree_node(parent_hash_tree, node: Dict):
         _build_listener(parent_hash_tree, name, "StatAggregateVisualizer", "ResultCollector")
     elif ntype == "ResponseTimeGraph":
         _build_listener(parent_hash_tree, name, "RespTimeGraphVisualizer", "ResultCollector")
+    elif ntype == "Summariser":
+        _build_summariser(parent_hash_tree, name, props)
     elif ntype == "InfluxDBBackendListener":
         _build_influxdb_backend_listener(parent_hash_tree, name, props)
     elif ntype == "UserParameters":
         _build_user_parameters(parent_hash_tree, name, props)
+    elif ntype == "RandomVariableConfig":
+        _build_random_variable_config(parent_hash_tree, name, props)
     elif ntype == "DebugSampler":
         _build_debug_sampler(parent_hash_tree, name)
     elif ntype == "ForEachController":
@@ -1608,6 +1651,16 @@ def _build_tree_node(parent_hash_tree, node: Dict):
         _build_random_interleave_controller(parent_hash_tree, ntype, name, children)
     elif ntype == "IncludeController":
         _build_include_controller(parent_hash_tree, name, props)
+    else:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "Unknown JMeter element type '%s', generating generic placeholder", ntype
+        )
+        # 生成通用占位元素,避免静默丢失
+        ph = ET.SubElement(parent_hash_tree, "GenericController")
+        ph.set("testname", name or ntype)
+        ph.set("enabled", "true")
+        ET.SubElement(parent_hash_tree, "hashTree")
 
 
 def _build_thread_group(parent, name, props, children):
@@ -1694,15 +1747,67 @@ def _build_http_sampler(parent, name, props, children):
     path_q = (parsed.path or "/") + ("?" + parsed.query if parsed.query else "")
     _add_element_prop(sampler, "HTTPSampler.path", path_q)
     _add_element_prop(sampler, "HTTPSampler.method", props.get("method", "GET"))
-    _add_element_prop(sampler, "HTTPSampler.contentEncoding", "UTF-8")
+    # contentEncoding 可由用户配置(默认 UTF-8,向后兼容)
+    _add_element_prop(sampler, "HTTPSampler.contentEncoding", props.get("contentEncoding", "UTF-8"))
     _add_element_prop(sampler, "HTTPSampler.follow_redirects", "true")
     _add_element_prop(sampler, "HTTPSampler.auto_redirects", "false")
     _add_element_prop(sampler, "HTTPSampler.use_keepalive", "true")
-    _add_element_prop(sampler, "HTTPSampler.DO_MULTIPART_POST", "false")
+    # multipart 支持由用户配置(默认 false,向后兼容)
+    is_multipart = bool(props.get("multipart", False))
+    _add_element_prop(sampler, "HTTPSampler.DO_MULTIPART_POST", "true" if is_multipart else "false")
+    # 代理配置(可选)
+    if props.get("proxyHost"):
+        _add_element_prop(sampler, "HTTPSampler.proxyHost", props.get("proxyHost", ""))
+        _add_element_prop(sampler, "HTTPSampler.proxyPort", str(props.get("proxyPort", "")))
+        _add_element_prop(sampler, "HTTPSampler.proxyUser", props.get("proxyUser", ""))
+        _add_element_prop(sampler, "HTTPSampler.proxyPass", props.get("proxyPass", ""))
 
+    # Parameters 表单参数(JMeter 5.1+ 原生 Arguments 子节点)
+    params = props.get("params") or []
     body = props.get("body", "")
-    if body and props.get("method", "GET") != "GET":
+
+    if params:
+        # 生成 Arguments 节点
+        args_prop = ET.SubElement(sampler, "elementProp")
+        args_prop.set("name", "HTTPsampler.Arguments")
+        args_prop.set("elementType", "Arguments")
+        args_prop.set("guiclass", "HTTPArgumentsPanel")
+        args_prop.set("testclass", "Arguments")
+        args_prop.set("testname", "User Defined Variables")
+        args_prop.set("enabled", "true")
+        cp_args = ET.SubElement(args_prop, "collectionProp")
+        cp_args.set("name", "Arguments.arguments")
+        for p in params:
+            if not p.get("name"):
+                continue
+            ep = ET.SubElement(cp_args, "elementProp")
+            ep.set("name", p.get("name", ""))
+            ep.set("elementType", "HTTPArgument")
+            ep.set("enabled", "true")
+            _add_element_prop(ep, "Argument.name", p.get("name", ""))
+            _add_element_prop(ep, "Argument.value", str(p.get("value", "")))
+            _add_element_prop(ep, "Argument.metadata", "=")
+            _add_element_prop(ep, "HTTPArgument.use_equals", "true" if p.get("useEquals", True) else "false")
+            _add_element_prop(ep, "HTTPArgument.always_encode", "true" if p.get("encoded", False) else "false")
+    elif body and props.get("method", "GET") != "GET":
+        # 兼容旧逻辑:无 params 时用 postBodyRaw
         _add_element_prop(sampler, "HTTPSampler.postBodyRaw", str(body))
+
+    # 文件上传(multipart 模式)
+    files = props.get("files") or []
+    if files and is_multipart:
+        file_args = ET.SubElement(sampler, "elementProp")
+        file_args.set("name", "HTTPsampler.Files")
+        file_args.set("elementType", "HTTPFileArgs")
+        cp_files = ET.SubElement(file_args, "collectionProp")
+        cp_files.set("name", "HTTPFileArgs.files")
+        for f in files:
+            if not f.get("path"):
+                continue
+            fe = ET.SubElement(cp_files, "HTTPFileArg")
+            _add_element_prop(fe, "File.path", f.get("path", ""))
+            _add_element_prop(fe, "File.paramname", f.get("param", "file"))
+            _add_element_prop(fe, "File.mimetype", f.get("mime", "application/octet-stream"))
 
     sh = ET.SubElement(parent, "hashTree")
 
@@ -1736,7 +1841,7 @@ def _build_assertion(parent, name, props):
         _build_duration_assertion(parent, name, props)
         return
     if at == "jsonpath":
-        _build_json_assertion(parent, name, props)
+        _build_jsonpath_assertion(parent, name, props)
         return
 
     a = ET.SubElement(parent, "ResponseAssertion")
@@ -1744,7 +1849,11 @@ def _build_assertion(parent, name, props):
     a.set("testclass", "ResponseAssertion")
     a.set("testname", name or "Assertion")
     a.set("enabled", "true")
-    _add_element_prop(a, "Assertion.scope", "all")
+    # Scope 支持(JMeter 5.1+ 原生字段: all/main/sub/jmeter_variable)
+    scope = props.get("scope", "all")
+    _add_element_prop(a, "Assertion.scope", scope)
+    if scope == "jmeter_variable":
+        _add_element_prop(a, "Assertion.variable", props.get("variable", ""))
     _add_element_prop(
         a, "Assertion.test_field", "Assertion.response_code" if at == "status_code" else "Assertion.response_data"
     )
@@ -1768,28 +1877,36 @@ def _build_duration_assertion(parent, name, props):
     ET.SubElement(parent, "hashTree")
 
 
-def _build_json_assertion(parent, name, props):
+def _build_jsonpath_assertion(parent, name, props):
+    """JSON Path Assertion - JMeter 原生 tag 为 JSONPathAssertion"""
     a = ET.SubElement(parent, "JSONPathAssertion")
     a.set("guiclass", "JSONPathAssertionGui")
     a.set("testclass", "JSONPathAssertion")
-    a.set("testname", name or "JSON Assertion")
+    a.set("testname", name or "JSON Path Assertion")
     a.set("enabled", "true")
     _add_element_prop(a, "JSON_PATH", props.get("jsonPath", "$"))
     _add_element_prop(a, "EXPECTED_VALUE", str(props.get("expected", "")))
-    _add_element_prop(a, "JSONVALIDATION", "true")
-    _add_element_prop(a, "EXPECT_NULL", "false")
-    _add_element_prop(a, "INVERT", "false")
+    _add_element_prop(a, "JSONVALIDATION", "true" if props.get("jsonValidation", True) else "false")
+    _add_element_prop(a, "EXPECT_NULL", "true" if props.get("expectNull", False) else "false")
+    _add_element_prop(a, "INVERT", "true" if props.get("invert", False) else "false")
+    # Scope 支持(JMeter 5.1+ 原生字段)
+    scope = props.get("scope", "all")
+    _add_element_prop(a, "Assertion.scope", scope)
+    if scope == "jmeter_variable":
+        _add_element_prop(a, "Assertion.variable", props.get("variable", ""))
     ET.SubElement(parent, "hashTree")
 
 
 def _build_extractor(parent, ntype, name, props):
-    if ntype == "JsonExtractor":
+    # 规范化后 ntype 为 JSONExtractor(旧别名 JsonExtractor 由 _TYPE_BUILD_ALIASES 归一化)
+    if ntype in ("JSONExtractor", "JsonExtractor"):
         e = ET.SubElement(parent, "JSONPostProcessor")
         e.set("guiclass", "JSONPostProcessorGui")
         e.set("testclass", "JSONPostProcessor")
         _add_element_prop(e, "JSONPostProcessor.referenceNames", props.get("varName", ""))
         _add_element_prop(e, "JSONPostProcessor.jsonPathExprs", props.get("jsonPath", "$"))
         _add_element_prop(e, "JSONPostProcessor.defaultValues", props.get("defaultValue", "NOT_FOUND"))
+        _add_element_prop(e, "JSONPostProcessor.match_numbers", str(props.get("matchNumber", 1)))
     else:
         e = ET.SubElement(parent, "RegexExtractor")
         e.set("guiclass", "RegexExtractorGui")
@@ -1838,29 +1955,33 @@ def _build_gaussian_timer(parent, name, props):
     ET.SubElement(parent, "hashTree")
 
 
-def _build_sync_timer(parent, name, props):
-    t = ET.SubElement(parent, "SyncTimer")
-    t.set("guiclass", "SyncTimerGui")
-    t.set("testclass", "SyncTimer")
-    t.set("testname", name or "Sync Timer")
+def _build_synchronizing_timer(parent, name, props):
+    """Synchronizing Timer - JMeter 5.1+ 原生 tag 为 SynchronizingTimer(非 SyncTimer)"""
+    t = ET.SubElement(parent, "SynchronizingTimer")
+    t.set("guiclass", "SynchronizingTimerGui")
+    t.set("testclass", "SynchronizingTimer")
+    t.set("testname", name or "Synchronizing Timer")
     t.set("enabled", "true")
-    _add_element_prop(t, "SyncTimer.groupSize", str(props.get("groupSize", 100)))
-    _add_element_prop(t, "SyncTimer.timeoutInMs", "0")
+    _add_element_prop(t, "SynchronizingTimer.groupSize", str(props.get("groupSize", 100)))
+    _add_element_prop(t, "SynchronizingTimer.timeoutInMs", str(props.get("timeoutInMs", 0)))
     ET.SubElement(parent, "hashTree")
 
 
-def _build_csv_dataset(parent, name, props):
+def _build_csv_data_source(parent, name, props):
+    """CSV Data Set Config - JMeter 原生 tag 为 CSVDataSet,前端类型名为 CsvDataSource"""
     c = ET.SubElement(parent, "CSVDataSet")
     c.set("guiclass", "TestBeanGUI")
     c.set("testclass", "CSVDataSet")
-    c.set("testname", name or "CSV Data")
+    c.set("testname", name or "CSV Data Set Config")
     c.set("enabled", "true")
     _add_element_prop(c, "filename", props.get("filename", "data.csv"))
     _add_element_prop(c, "variableNames", props.get("variableNames", ""))
     _add_element_prop(c, "delimiter", props.get("delimiter", ","))
+    _add_element_prop(c, "ignoreFirstLine", "true" if props.get("ignoreFirstLine", True) else "false")
+    _add_element_prop(c, "quotedData", "true" if props.get("quotedData", False) else "false")
     _add_element_prop(c, "recycle", "true" if props.get("recycle", True) else "false")
-    _add_element_prop(c, "stopThread", "false")
-    _add_element_prop(c, "ignoreFirstLine", "true")
+    _add_element_prop(c, "stopThread", "true" if props.get("stopThread", False) else "false")
+    _add_element_prop(c, "shareMode", props.get("shareMode", "shareMode.all"))
     ET.SubElement(parent, "hashTree")
 
 
@@ -2273,4 +2394,179 @@ def _build_include_controller(parent, name, props):
     c.set("testname", name or "Include Controller")
     c.set("enabled", "true")
     _add_element_prop(c, "IncludeController.includepath", props.get("includePath", ""))
+    ET.SubElement(parent, "hashTree")
+
+
+# ========== Stage D 新增元素支持(11 个新 _build_* 函数)==========
+
+
+def _build_boundary_extractor(parent, name, props):
+    """Boundary Extractor - JMeter 5.1+ 原生 tag 为 BoundaryExtractor"""
+    e = ET.SubElement(parent, "BoundaryExtractor")
+    e.set("guiclass", "BoundaryExtractorGui")
+    e.set("testclass", "BoundaryExtractor")
+    e.set("testname", name or "Boundary Extractor")
+    e.set("enabled", "true")
+    _add_element_prop(e, "BoundaryExtractor.refName", props.get("referenceName", ""))
+    _add_element_prop(e, "BoundaryExtractor.lboundary", props.get("leftBoundary", ""))
+    _add_element_prop(e, "BoundaryExtractor.rboundary", props.get("rightBoundary", ""))
+    _add_element_prop(e, "BoundaryExtractor.match_number", str(props.get("matchNumber", 1)))
+    _add_element_prop(e, "BoundaryExtractor.default", props.get("defaultValue", ""))
+    # Scope 支持
+    scope = props.get("scope", "all")
+    _add_element_prop(e, "BoundaryExtractor.scope", scope)
+    if scope == "jmeter_variable":
+        _add_element_prop(e, "BoundaryExtractor.variable", props.get("variable", ""))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_css_extractor(parent, name, props):
+    """CSS Selector Extractor - JMeter 5.1+ 原生 tag 为 CSSSelectorExtractor"""
+    e = ET.SubElement(parent, "CSSSelectorExtractor")
+    e.set("guiclass", "CSSSelectorExtractorGui")
+    e.set("testclass", "CSSSelectorExtractor")
+    e.set("testname", name or "CSS Selector Extractor")
+    e.set("enabled", "true")
+    _add_element_prop(e, "CSSSelectorExtractor.refName", props.get("referenceName", ""))
+    _add_element_prop(e, "CSSSelectorExtractor.cssSelector", props.get("cssSelector", ""))
+    _add_element_prop(e, "CSSSelectorExtractor.attribute", props.get("attribute", ""))
+    _add_element_prop(e, "CSSSelectorExtractor.match_number", str(props.get("matchNumber", 1)))
+    _add_element_prop(e, "CSSSelectorExtractor.default", props.get("defaultValue", ""))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_xpath_extractor(parent, name, props):
+    """XPath Extractor - JMeter 5.1+ 原生 tag 为 XPathExtractor"""
+    e = ET.SubElement(parent, "XPathExtractor")
+    e.set("guiclass", "XPathExtractorGui")
+    e.set("testclass", "XPathExtractor")
+    e.set("testname", name or "XPath Extractor")
+    e.set("enabled", "true")
+    _add_element_prop(e, "XPathExtractor.refName", props.get("referenceName", ""))
+    _add_element_prop(e, "XPathExtractor.xpathQuery", props.get("xpathQuery", "/"))
+    _add_element_prop(e, "XPathExtractor.match_number", str(props.get("matchNumber", 1)))
+    _add_element_prop(e, "XPathExtractor.default", props.get("defaultValue", ""))
+    _add_element_prop(e, "XPathExtractor.namespaces", props.get("namespace", ""))
+    _add_element_prop(e, "XPathExtractor.tolerant", "true" if props.get("tolerant", False) else "false")
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_cache_manager(parent, name, props):
+    """HTTP Cache Manager - JMeter 原生 tag 为 CacheManager"""
+    cm = ET.SubElement(parent, "CacheManager")
+    cm.set("guiclass", "CacheManagerGui")
+    cm.set("testclass", "CacheManager")
+    cm.set("testname", name or "HTTP Cache Manager")
+    cm.set("enabled", "true")
+    _add_element_prop(cm, "CacheManager.clearEachIteration", "true" if props.get("clearEachIteration", True) else "false")
+    _add_element_prop(cm, "CacheManager.useCacheControlHeader", "true" if props.get("useCacheControlHeaders", True) else "false")
+    _add_element_prop(cm, "CacheManager.maxAge", str(props.get("maxAge", 0)))
+    _add_element_prop(cm, "CacheManager.useExpires", "true" if props.get("useExpires", True) else "false")
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_auth_manager(parent, name, props):
+    """HTTP Authorization Manager - JMeter 原生 tag 为 AuthManager"""
+    am = ET.SubElement(parent, "AuthManager")
+    am.set("guiclass", "AuthPanel")
+    am.set("testclass", "AuthManager")
+    am.set("testname", name or "HTTP Authorization Manager")
+    am.set("enabled", "true")
+    _add_element_prop(am, "AuthManager.clearEachIteration", "true" if props.get("clearEachIteration", False) else "false")
+    cp = ET.SubElement(am, "collectionProp")
+    cp.set("name", "AuthManager.auth_list")
+    for auth in props.get("authList") or []:
+        ae = ET.SubElement(cp, "elementProp")
+        ae.set("name", "")
+        ae.set("elementType", "Authorization")
+        _add_element_prop(ae, "Authorization.url", auth.get("url", ""))
+        _add_element_prop(ae, "Authorization.username", auth.get("username", ""))
+        _add_element_prop(ae, "Authorization.password", auth.get("password", ""))
+        _add_element_prop(ae, "Authorization.domain", auth.get("domain", ""))
+        _add_element_prop(ae, "Authorization.realm", auth.get("realm", ""))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_module_controller(parent, name, props):
+    """Module Controller - JMeter 原生 tag 为 ModuleController"""
+    c = ET.SubElement(parent, "ModuleController")
+    c.set("guiclass", "ModuleControllerGui")
+    c.set("testclass", "ModuleController")
+    c.set("testname", name or "Module Controller")
+    c.set("enabled", "true")
+    # nodePath 是节点路径数组,转换为 collectionProp
+    node_path = props.get("nodePath") or []
+    cp = ET.SubElement(c, "collectionProp")
+    cp.set("name", "ModuleController.node_path")
+    for i, segment in enumerate(node_path):
+        sp = ET.SubElement(cp, "stringProp")
+        sp.set("name", str(i))
+        sp.text = str(segment)
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_runtime_controller(parent, name, props, children):
+    """Runtime Controller - JMeter 原生 tag 为 RunTimeController"""
+    c = ET.SubElement(parent, "RunTimeController")
+    c.set("guiclass", "RunTimeControllerGui")
+    c.set("testclass", "RunTimeController")
+    c.set("testname", name or "Runtime Controller")
+    c.set("enabled", "true")
+    _add_element_prop(c, "RunTimeController.seconds", str(props.get("runtime", props.get("seconds", 1))))
+    sh = ET.SubElement(parent, "hashTree")
+    for child in children:
+        _build_tree_node(sh, child)
+
+
+def _build_summariser(parent, name, props):
+    """Summariser - JMeter 原生 tag 为 Summariser(摘要报告生成器)"""
+    s = ET.SubElement(parent, "Summariser")
+    s.set("guiclass", "SummariserGui")
+    s.set("testclass", "Summariser")
+    s.set("testname", name or "Summariser")
+    s.set("enabled", "true")
+    _add_element_prop(s, "summariser.name", props.get("summaryName", "summary"))
+    _add_element_prop(s, "summariser.log", "true" if props.get("logToConsole", True) else "false")
+    _add_element_prop(s, "summariser.interval", str(props.get("interval", 30)))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_constant_throughput_timer(parent, name, props):
+    """Constant Throughput Timer - JMeter 原生 tag 为 ConstantThroughputTimer"""
+    t = ET.SubElement(parent, "ConstantThroughputTimer")
+    t.set("guiclass", "TestBeanGUI")
+    t.set("testclass", "ConstantThroughputTimer")
+    t.set("testname", name or "Constant Throughput Timer")
+    t.set("enabled", "true")
+    _add_element_prop(t, "throughput", str(props.get("throughput", 60.0)))
+    # calcMode: 0=this thread only, 1=all active threads in thread group, 2=all active threads
+    _add_element_prop(t, "calcMode", str(props.get("calcMode", 1)))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_poisson_timer(parent, name, props):
+    """Poisson Random Timer - JMeter 原生 tag 为 PoissonRandomTimer"""
+    t = ET.SubElement(parent, "PoissonRandomTimer")
+    t.set("guiclass", "PoissonRandomTimerGui")
+    t.set("testclass", "PoissonRandomTimer")
+    t.set("testname", name or "Poisson Random Timer")
+    t.set("enabled", "true")
+    _add_element_prop(t, "PoissonRandomTimer.delay", str(props.get("delay", 300)))
+    _add_element_prop(t, "PoissonRandomTimer.range", str(props.get("range", 100)))
+    ET.SubElement(parent, "hashTree")
+
+
+def _build_random_variable_config(parent, name, props):
+    """Random Variable Config - JMeter 原生 tag 为 RandomVariableConfig"""
+    r = ET.SubElement(parent, "RandomVariableConfig")
+    r.set("guiclass", "TestBeanGUI")
+    r.set("testclass", "RandomVariableConfig")
+    r.set("testname", name or "Random Variable")
+    r.set("enabled", "true")
+    _add_element_prop(r, "variableName", props.get("variableName", "randomVar"))
+    _add_element_prop(r, "outputFormat", props.get("outputFormat", ""))
+    _add_element_prop(r, "minimumValue", str(props.get("minValue", 1)))
+    _add_element_prop(r, "maximumValue", str(props.get("maxValue", 100)))
+    _add_element_prop(r, "randomSeed", str(props.get("randomSeed", "")))
+    _add_element_prop(r, "perThread", "true" if props.get("perThread", True) else "false")
     ET.SubElement(parent, "hashTree")

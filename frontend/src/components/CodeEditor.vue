@@ -16,8 +16,16 @@
           <el-icon><VideoPlay /></el-icon>
           运行代码
         </el-button>
-        <el-button 
-          size="small" 
+        <el-button
+          v-if="allowTemplate"
+          size="small"
+          @click="insertTemplate"
+        >
+          <el-icon><DocumentAdd /></el-icon>
+          插入模板
+        </el-button>
+        <el-button
+          size="small"
           @click="resetCode"
         >
           <el-icon><Refresh /></el-icon>
@@ -95,13 +103,9 @@ import { defaultKeymap } from '@codemirror/commands'
 import { python } from '@codemirror/lang-python'
 import { sql } from '@codemirror/lang-sql'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
+import { javascript as javascriptLang } from '@codemirror/lang-javascript'
 
-let _jsExtension = null
-try {
-  const jsMod = await import('@codemirror/lang-javascript')
-  _jsExtension = jsMod.javascript()
-} catch(e) { console.warn('JavaScript lang not loaded, install @codemirror/lang-javascript') }
-import { VideoPlay, Refresh, Loading } from '@element-plus/icons-vue'
+import { VideoPlay, Refresh, Loading, DocumentAdd } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 
@@ -129,6 +133,10 @@ const props = defineProps({
   hideRun: {
     type: Boolean,
     default: false
+  },
+  allowTemplate: {
+    type: Boolean,
+    default: true
   },
   submitting: {
     type: Boolean,
@@ -158,7 +166,7 @@ const langLabel = computed(() => {
 const languageExtensions = {}
 try { languageExtensions.python = python() } catch(e) { console.warn('Python lang not loaded') }
 try { languageExtensions.sql = sql() } catch(e) { console.warn('SQL lang not loaded') }
-if (_jsExtension) { languageExtensions.javascript = _jsExtension }
+languageExtensions.javascript = javascriptLang()
 // shell 使用 Python 语法高亮作为回退，但保持 shell 标识
 languageExtensions.shell = languageExtensions.python
 
@@ -196,7 +204,8 @@ const createEditor = () => {
     })
   ].filter(Boolean)
 
-  const startDoc = props.modelValue || props.template || getDefaultTemplate(currentLanguage.value)
+  // 仅当外部传入非空 modelValue/template 时使用；否则显示空内容，避免预填模板未同步回父组件
+  const startDoc = props.modelValue || props.template || ''
   const startState = EditorState.create({
     doc: startDoc,
     extensions: extList
@@ -277,8 +286,8 @@ const runCode = async () => {
 // 重置代码
 const resetCode = () => {
   if (!editorView.value) return
-  
-  const template = props.template || getDefaultTemplate(currentLanguage.value)
+
+  const template = props.template || ''
   editorView.value.dispatch({
     changes: {
       from: 0,
@@ -287,6 +296,22 @@ const resetCode = () => {
     }
   })
   emit('update:modelValue', template)
+}
+
+// 插入默认模板（用户主动点击时才插入，并立即同步回父组件）
+const insertTemplate = () => {
+  if (!editorView.value) return
+
+  const template = getDefaultTemplate(currentLanguage.value)
+  editorView.value.dispatch({
+    changes: {
+      from: 0,
+      to: editorView.value.state.doc.length,
+      insert: template
+    }
+  })
+  emit('update:modelValue', template)
+  ElMessage.success('已插入代码模板')
 }
 
 // 监听外部modelValue变化

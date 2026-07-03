@@ -102,6 +102,13 @@ class Settings(BaseSettings):
     # 临时开关：关闭 Nginx 限流（通过环境变量控制）
     DISABLE_RATE_LIMIT: bool = True
 
+    # JMeter 快速预览模式上限（保持现状 200/60/10，可由 .env 覆盖）
+    JMETER_QUICK_MAX_CONCURRENCY: int = 200
+    JMETER_QUICK_MAX_DURATION: int = 60
+    JMETER_QUICK_MAX_RAMPUP: int = 10
+    # JMeter 引擎 feature flag（默认关，灰度切流时设为 true）
+    JMETER_ENGINE_ENABLED: bool = False
+
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",

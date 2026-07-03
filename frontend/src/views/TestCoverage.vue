@@ -1,9 +1,14 @@
 <template>
   <div class="coverage-page">
     <div class="page-header">
-      <h2>测试覆盖率看板</h2>
+      <el-button link class="back-btn" @click="$router.push('/auto-test')">
+        <el-icon><ArrowLeft /></el-icon> 返回工作台
+      </el-button>
+      <div class="header-title-row">
+        <h2>测试覆盖率看板</h2>
+        <el-button class="help-btn" @click="showHelp = true">❓ 使用说明</el-button>
+      </div>
       <p class="subtitle">接口 × 用例 × 执行 热力图，一目了然掌握测试覆盖情况</p>
-      <el-button class="help-btn" @click="showHelp = true">❓ 使用说明</el-button>
     </div>
 
     <!-- 汇总卡片 -->
@@ -154,7 +159,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { Search, ArrowLeft } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
@@ -300,14 +305,38 @@ onMounted(() => {
 }
 .page-header {
   margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.back-btn {
+  align-self: flex-start;
+  padding: 0;
+  height: auto;
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.back-btn:hover {
+  color: var(--el-color-primary);
+}
+.header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 .page-header h2 {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 22px;
 }
 .subtitle {
   color: var(--el-text-color-secondary);
   font-size: 14px;
+  margin: 0;
 }
 .summary-cards {
   display: grid;

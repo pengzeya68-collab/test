@@ -43,6 +43,8 @@ app.conf.task_routes = {
     "fastapi_backend.tasks.run_scenario": {"queue": "celery"},
     "fastapi_backend.tasks.send_email": {"queue": "celery"},
     "fastapi_backend.services.autotest_ai_generator.ai_generate_task": {"queue": "celery"},
+    # JMeter 真实引擎压测任务，独立队列避免阻塞常规 Celery 任务
+    "fastapi_backend.tasks.run_jmeter_bench": {"queue": "jmeter"},
 }
 
 app.conf.task_track_started = True

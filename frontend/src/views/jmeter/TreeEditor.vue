@@ -23,13 +23,21 @@
         v-for="(node, idx) in filteredTreeChildren"
         :key="node.uid"
         :node="node"
-        :depth="node._depth || 0"
+        :depth="0"
         :selected-uid="selectedUid"
         :search-query="treeSearchQuery"
+        :clipboard-node="clipboardNode"
         @select="(uid) => $emit('select-node', uid)"
         @remove="(uid) => $emit('remove-node', uid)"
         @add-child="(uid, type) => $emit('add-child', uid, type)"
         @duplicate="(uid) => $emit('duplicate-node', uid)"
+        @cut="(uid) => $emit('cut-node', uid)"
+        @copy="(uid) => $emit('copy-node', uid)"
+        @paste="(uid) => $emit('paste-node', uid)"
+        @move-to="(uid) => $emit('move-to', uid)"
+        @toggle-enabled="(uid) => $emit('toggle-enabled', uid)"
+        @move-node="(movedUid, parentUid, idx) => $emit('move-node', movedUid, parentUid, idx)"
+        @tree-changed="() => $emit('tree-changed')"
       />
       <div v-if="modelValue.children.length === 0" class="tree-empty">
         还没有线程组，点击上方「添加线程组」或返回第1步导入接口
@@ -49,27 +57,44 @@ const props = defineProps({
   totalSamplers: { type: Number, default: 0 },
   totalNodes: { type: Number, default: 0 },
   treeWidth: { type: Number, default: 280 },
+  clipboardNode: { type: Object, default: null },
 })
 
-const emit = defineEmits(['update:modelValue', 'select-node', 'add-root-element', 'add-child', 'remove-node', 'duplicate-node'])
+const emit = defineEmits([
+  'update:modelValue', 'select-node', 'add-root-element', 'add-child',
+  'remove-node', 'duplicate-node',
+  'cut-node', 'copy-node', 'paste-node', 'move-to', 'toggle-enabled',
+  'move-node', 'tree-changed',
+])
 
 const treeSearchQuery = ref('')
 
+// 搜索时保留树结构:仅标记匹配节点(_matched=true),由 JmeterTreeNode 高亮显示
+// 当有搜索词时,自动展开所有节点(便于查看匹配项的层级归属)
 const filteredTreeChildren = computed(() => {
   const q = (treeSearchQuery.value || '').toLowerCase().trim()
-  if (!q) return props.modelValue.children
-  const matches = []
-  const search = (nodes, depth = 0) => {
-    nodes.forEach(node => {
-      if ((node.name || '').toLowerCase().includes(q)) {
-        matches.push(node)
-        node._depth = depth
-      }
-      if (node.children) search(node.children, depth + 1)
+  if (!q) {
+    // 清空搜索时清除所有 _matched 标记
+    const clearMatched = (nodes) => {
+      nodes.forEach(n => {
+        n._matched = false
+        if (n.children) clearMatched(n.children)
+      })
+    }
+    clearMatched(props.modelValue.children || [])
+    return props.modelValue.children
+  }
+  // 标记匹配项,但不改变树结构
+  const markMatches = (nodes) => {
+    nodes.forEach(n => {
+      n._matched = (n.name || '').toLowerCase().includes(q)
+      // 搜索时自动展开节点,便于查看匹配项的层级
+      n._expanded = true
+      if (n.children) markMatches(n.children)
     })
   }
-  search(props.modelValue.children)
-  return matches
+  markMatches(props.modelValue.children || [])
+  return props.modelValue.children
 })
 
 const expandAllNodes = () => {

@@ -507,14 +507,38 @@
           @click="applyAssertTemplate(tpl)"
         >
           <div class="template-header">
-            <el-tag size="small">{{ tpl.category }}</el-tag>
+            <el-tag size="small" :type="tpl.is_builtin ? 'info' : 'success'">
+              {{ tpl.is_builtin ? '内置' : '自定义' }}
+            </el-tag>
             <span class="template-name">{{ tpl.name }}</span>
+            <el-button
+              v-if="!tpl.is_builtin"
+              class="template-delete-btn"
+              type="danger"
+              size="small"
+              text
+              :icon="Delete"
+              @click.stop="deleteAssertTemplate(tpl)"
+            />
           </div>
           <p class="template-desc">{{ tpl.description }}</p>
           <pre class="template-code">{{ tpl.code_snippet }}</pre>
         </div>
       </div>
     </div>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="assertTemplateDialogVisible = false">关闭</el-button>
+        <el-button
+          type="primary"
+          :icon="Collection"
+          :disabled="!caseForm.assertions || caseForm.assertions.length === 0"
+          @click="saveCurrentAsTemplate"
+        >
+          保存当前断言为模板
+        </el-button>
+      </div>
+    </template>
   </el-dialog>
 </template>
 
@@ -1271,18 +1295,116 @@ const loadAssertTemplates = async () => {
 }
 
 const applyAssertTemplate = (tpl) => {
-  // 应用模板规则到用例
+  // 应用模板规则到用例（后端模板已统一用前端下拉值，无需 operator 映射）
+  const validTargets = ['status_code', 'response_body', 'response_header', 'response_time']
   for (const rule of (tpl.rules || [])) {
+    const target = rule.type || rule.target || 'status_code'
+    if (!validTargets.includes(target)) {
+      console.warn(`[applyAssertTemplate] 跳过未知 target: ${target}`, rule)
+      continue
+    }
     caseForm.value.assertions.push({
       id: `ast_${genUniqueId()}`,
-      target: rule.type || 'status_code',
-      operator: rule.operator === 'eq' ? '==' : rule.operator === 'neq' ? '!=' : rule.operator === 'lt' ? '<' : rule.operator === 'gt' ? '>' : rule.operator === 'contains' ? 'contains' : rule.operator,
-      expected: String(rule.expected || ''),
+      target,
+      operator: rule.operator || '==',
+      expected: String(rule.expected ?? ''),
       expression: rule.expression || rule.json_path || ''
     })
   }
   assertTemplateDialogVisible.value = false
   ElMessage.success(`已应用断言模板: ${tpl.name}`)
+}
+
+const deleteAssertTemplate = async (tpl) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除模板「${tpl.name}」吗？此操作不可恢复。`,
+      '删除断言模板',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await autoTestRequest.delete(`/v1/assert-templates/${tpl.id}`)
+    assertTemplates.value = assertTemplates.value.filter(t => t.id !== tpl.id)
+    ElMessage.success('已删除断言模板')
+  } catch (e) {
+    console.error('删除断言模板失败', e)
+    ElMessage.error(e?.response?.data?.detail || '删除断言模板失败')
+  }
+}
+
+const saveCurrentAsTemplate = async () => {
+  const assertions = caseForm.value.assertions || []
+  if (assertions.length === 0) {
+    ElMessage.warning('当前用例没有断言规则，无法保存为模板')
+    return
+  }
+  let name = ''
+  let category = '自定义'
+  let description = ''
+  try {
+    const { value: inputName } = await ElMessageBox.prompt('请输入模板名称', '保存为断言模板', {
+      confirmButtonText: '保存',
+      cancelButtonText: '取消',
+      inputPlaceholder: '例如：登录接口断言模板',
+      inputValidator: (v) => (v && v.trim() ? true : '模板名称不能为空'),
+    })
+    name = inputName.trim()
+  } catch {
+    return
+  }
+  try {
+    const { value: inputCategory } = await ElMessageBox.prompt('请输入分类（可留空）', '分类', {
+      confirmButtonText: '确定',
+      cancelButtonText: '跳过',
+      inputValue: '自定义',
+      inputPlaceholder: '例如：业务逻辑 / 性能 / 响应结构',
+    })
+    category = (inputCategory || '自定义').trim() || '自定义'
+  } catch {
+    // 用户跳过分类，使用默认值
+  }
+  try {
+    const { value: inputDesc } = await ElMessageBox.prompt('请输入描述（可留空）', '描述', {
+      confirmButtonText: '确定',
+      cancelButtonText: '跳过',
+      inputPlaceholder: '可选，描述模板用途',
+    })
+    description = (inputDesc || '').trim()
+  } catch {
+    // 用户跳过描述
+  }
+  // 前端断言结构 {target, operator, expected, expression} → 后端 {type, operator, expected, expression}
+  const rules = assertions.map(a => ({
+    type: a.target,
+    operator: a.operator,
+    expected: String(a.expected ?? ''),
+    expression: a.expression || '',
+  }))
+  try {
+    const res = await autoTestRequest.post('/v1/assert-templates', {
+      name,
+      category,
+      description,
+      rules,
+    })
+    assertTemplates.value.push({
+      id: res.id,
+      name,
+      description,
+      category,
+      rules,
+      code_snippet: null,
+      is_builtin: false,
+      user_id: res.user_id,
+    })
+    ElMessage.success(`已保存断言模板: ${name}`)
+  } catch (e) {
+    console.error('保存断言模板失败', e)
+    ElMessage.error(e?.response?.data?.detail || '保存断言模板失败')
+  }
 }
 
 const removeAssertion = (index) => {
@@ -1920,11 +2042,12 @@ const handleSaveAndRun = async () => {
 .template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
 .template-card {
   border: 1px solid #e4e7ed; border-radius: 8px; padding: 14px; cursor: pointer;
-  transition: all .2s; background: #fafafa;
+  transition: all .2s; background: #fafafa; position: relative;
 }
 .template-card:hover { border-color: #409EFF; box-shadow: 0 2px 8px rgba(64,158,255,.1); transform: translateY(-1px); background: #fff; }
 .template-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.template-name { font-weight: 600; font-size: 13px; }
+.template-name { font-weight: 600; font-size: 13px; flex: 1; }
+.template-delete-btn { margin-left: auto; padding: 4px; }
 .template-desc { font-size: 12px; color: #909399; margin-bottom: 8px; }
 .template-code {
   background: #2d3436; color: #dfe6e9; padding: 8px 10px; border-radius: 4px;

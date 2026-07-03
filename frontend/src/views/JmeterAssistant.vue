@@ -31,6 +31,7 @@
           <el-icon><QuestionFilled /></el-icon> 帮助
         </el-button>
         <el-button size="small" @click="showHelp = true">❓ 使用说明</el-button>
+        <LayoutPresetDropdown size="small" @change="applyLayoutPreset" />
       </div>
     </div>
 
@@ -195,11 +196,19 @@
             :total-samplers="totalSamplers"
             :total-nodes="totalNodes"
             :tree-width="treeWidth"
+            :clipboard-node="jmeterClipboard.node"
             @select-node="selectNode"
             @add-root-element="addRootElement"
             @add-child="addChildNode"
             @remove-node="removeNodeByUid"
-            @duplicate-node="duplicateNode"
+            @duplicate-node="(uid) => duplicateNode(uid)"
+            @cut-node="handleCutNode"
+            @copy-node="handleCopyNode"
+            @paste-node="handlePasteNode"
+            @move-to="openMoveToDialog"
+            @toggle-enabled="handleToggleEnabled"
+            @move-node="handleMoveNode"
+            @tree-changed="handleTreeChanged"
           />
           <BaseSplitter
             v-show="!treeCollapsed"
@@ -268,7 +277,7 @@
                   <el-button size="small" @click="addChildToCurrent('SummaryReport')">📈 聚合报告</el-button>
                   <el-button size="small" @click="addChildToCurrent('AggregateReport')">📊 聚合报告(高级)</el-button>
                   <el-button size="small" @click="addChildToCurrent('ResponseTimeGraph')">📉 响应时间图</el-button>
-                  <el-button size="small" @click="addChildToCurrent('CSVDataSet')">📄 CSV 数据源</el-button>
+                  <el-button size="small" @click="addChildToCurrent('CsvDataSource')">📄 CSV 数据源</el-button>
                   <el-button size="small" @click="addChildToCurrent('JDBCSampler')">🗄️ JDBC 请求</el-button>
                 </div>
               </div>
@@ -287,7 +296,7 @@
                 <div class="section-hint"><el-icon><Setting /></el-icon> 配置元件：全局设置 HTTP 默认值、请求头、Cookie 等</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <el-button size="small" @click="addChildToCurrent('HTTPRequestDefaults')">🎯 HTTP 请求默认值</el-button>
-                  <el-button size="small" @click="addChildToCurrent('HTTPHeaderManager')">📨 HTTP 信息头管理器</el-button>
+                  <el-button size="small" @click="addChildToCurrent('HttpHeaderManager')">📨 HTTP 信息头管理器</el-button>
                   <el-button size="small" @click="addChildToCurrent('HTTPCookieManager')">🍪 HTTP Cookie 管理器</el-button>
                 </div>
               </div>
@@ -317,12 +326,48 @@
                     <el-button size="small" @click="addHeader">+ 添加请求头</el-button>
                   </el-collapse-item>
                   <el-collapse-item v-if="selectedNode.props.method !== 'GET'" title="请求体 (Body)" name="body">
-                    <div class="form-group"><label>Body 类型</label>
-                      <el-select v-model="selectedNode.props.bodyType" size="small">
-                        <el-option v-for="b in ['none','json','form-data','x-www-form-urlencoded']" :key="b" :label="b" :value="b" />
-                      </el-select>
+                    <div class="form-row">
+                      <div class="form-group" style="flex:1;"><label>Body 类型</label>
+                        <el-select v-model="selectedNode.props.bodyType" size="small">
+                          <el-option v-for="b in ['none','json','form-data','x-www-form-urlencoded','raw']" :key="b" :label="b" :value="b" />
+                        </el-select>
+                      </div>
+                      <div class="form-group" style="flex:1;"><label>内容编码</label>
+                        <el-input v-model="selectedNode.props.contentEncoding" placeholder="UTF-8" size="small" />
+                      </div>
                     </div>
-                    <el-input v-model="selectedNode.props.body" type="textarea" :rows="4" size="small" placeholder='{"key":"value"}' />
+                    <el-input v-if="selectedNode.props.bodyType !== 'form-data' && selectedNode.props.bodyType !== 'none'" v-model="selectedNode.props.body" type="textarea" :rows="4" size="small" placeholder='{"key":"value"}' />
+                  </el-collapse-item>
+                  <el-collapse-item title="Parameters (URL/表单参数)" name="params">
+                    <div class="section-hint" style="margin-bottom:6px;">URL 查询参数或 x-www-form-urlencoded 表单参数(自动 URL 编码)</div>
+                    <div v-for="(p, pi) in (selectedNode.props.parameters || [])" :key="pi" class="kv-row">
+                      <el-input v-model="p.name" placeholder="参数名" size="small" style="width:35%;" />
+                      <el-input v-model="p.value" placeholder="值" size="small" style="width:40%;" />
+                      <el-checkbox v-model="p.encoded" size="small">编码</el-checkbox>
+                      <el-button link size="small" type="danger" @click="selectedNode.props.parameters.splice(pi,1)">×</el-button>
+                    </div>
+                    <el-button size="small" @click="(selectedNode.props.parameters = selectedNode.props.parameters || []).push({name:'',value:'',encoded:false})">+ 添加参数</el-button>
+                  </el-collapse-item>
+                  <el-collapse-item v-if="selectedNode.props.bodyType === 'form-data'" title="文件上传" name="files">
+                    <div class="section-hint" style="margin-bottom:6px;">multipart/form-data 模式下的文件列表</div>
+                    <div v-for="(f, fi) in (selectedNode.props.files || [])" :key="fi" class="kv-row">
+                      <el-input v-model="f.path" placeholder="文件路径(D:/test.jpg)" size="small" style="width:36%;" />
+                      <el-input v-model="f.paramname" placeholder="参数名(file)" size="small" style="width:24%;" />
+                      <el-input v-model="f.mimetype" placeholder="MIME(image/jpeg)" size="small" style="width:28%;" />
+                      <el-button link size="small" type="danger" @click="selectedNode.props.files.splice(fi,1)">×</el-button>
+                    </div>
+                    <el-button size="small" @click="(selectedNode.props.files = selectedNode.props.files || []).push({path:'',paramname:'file',mimetype:''})">+ 添加文件</el-button>
+                  </el-collapse-item>
+                  <el-collapse-item title="代理服务器 (高级)" name="proxy">
+                    <div class="section-hint" style="margin-bottom:6px;">通过代理服务器发送请求,适合抓包调试或内网代理场景</div>
+                    <div class="form-row">
+                      <div class="form-group" style="flex:2;"><label>代理主机</label><el-input v-model="selectedNode.props.proxyHost" placeholder="127.0.0.1" size="small" /></div>
+                      <div class="form-group" style="flex:1;"><label>代理端口</label><el-input-number v-model="selectedNode.props.proxyPort" :min="1" :max="65535" size="small" /></div>
+                    </div>
+                    <div class="form-row">
+                      <div class="form-group" style="flex:1;"><label>代理用户名</label><el-input v-model="selectedNode.props.proxyUser" placeholder="可选" size="small" /></div>
+                      <div class="form-group" style="flex:1;"><label>代理密码</label><el-input v-model="selectedNode.props.proxyPass" type="password" show-password placeholder="可选" size="small" /></div>
+                    </div>
                   </el-collapse-item>
                 </el-collapse>
               </div>
@@ -330,7 +375,7 @@
                 <div class="section-hint"><el-icon><Coin /></el-icon> 断言：验证返回结果是否正确（点击展开更多类型）</div>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;">
                   <el-button size="small" @click="addChildToCurrent('ResponseAssertion')">✅ 响应断言</el-button>
-                  <el-button size="small" @click="addChildToCurrent('JsonAssertion')">📋 JSON断言</el-button>
+                  <el-button size="small" @click="addChildToCurrent('JSONPathAssertion')">📋 JSON断言</el-button>
                   <el-button size="small" @click="addChildToCurrent('DurationAssertion')">⏱️ 持续时间</el-button>
                   <el-button size="small" @click="addChildToCurrent('BeanShellAssertion')">💻 BeanShell</el-button>
                   <el-button size="small" @click="addChildToCurrent('JSR223Assertion')">🔥 JSR223</el-button>
@@ -343,7 +388,7 @@
               <div class="form-section">
                 <div class="section-hint"><el-icon><Coin /></el-icon> 提取器：从响应中提取数据传给下一个请求</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                  <el-button size="small" @click="addChildToCurrent('JsonExtractor')">📤 JSON 提取器</el-button>
+                  <el-button size="small" @click="addChildToCurrent('JSONExtractor')">📤 JSON 提取器</el-button>
                   <el-button size="small" @click="addChildToCurrent('RegexExtractor')">🔍 正则提取器</el-button>
                 </div>
               </div>
@@ -363,6 +408,9 @@
                 <el-button size="small" @click="saveSamplerToCase(selectedNode)" :loading="savingToCase">
                   💾 保存到接口库
                 </el-button>
+                <el-button size="small" type="warning" plain @click="aiParameterize(selectedNode)" :loading="aiParamLoading">
+                  🤖 AI 参数化
+                </el-button>
               </div>
             </template>
 
@@ -370,6 +418,15 @@
             <template v-if="selectedNode.type === 'ResponseAssertion'">
               <div class="form-section">
                 <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>断言范围</label>
+                  <el-radio-group v-model="selectedNode.props.scope" size="small">
+                    <el-radio-button label="all">主+子样本</el-radio-button>
+                    <el-radio-button label="main">仅主样本</el-radio-button>
+                    <el-radio-button label="sub">仅子样本</el-radio-button>
+                    <el-radio-button label="jmeter_variable">变量</el-radio-button>
+                  </el-radio-group>
+                  <el-input v-if="selectedNode.props.scope === 'jmeter_variable'" v-model="selectedNode.props.variable" placeholder="变量名" size="small" style="margin-top:6px;" />
+                </div>
                 <div class="form-group"><label>断言类型</label>
                   <el-select v-model="selectedNode.props.assertType" size="small">
                     <el-option label="状态码" value="status_code" />
@@ -389,9 +446,18 @@
               </div>
             </template>
 
-            <template v-if="selectedNode.type === 'JsonAssertion'">
+            <template v-if="selectedNode.type === 'JSONPathAssertion'">
               <div class="form-section">
                 <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>断言范围</label>
+                  <el-radio-group v-model="selectedNode.props.scope" size="small">
+                    <el-radio-button label="all">主+子样本</el-radio-button>
+                    <el-radio-button label="main">仅主样本</el-radio-button>
+                    <el-radio-button label="sub">仅子样本</el-radio-button>
+                    <el-radio-button label="jmeter_variable">变量</el-radio-button>
+                  </el-radio-group>
+                  <el-input v-if="selectedNode.props.scope === 'jmeter_variable'" v-model="selectedNode.props.variable" placeholder="变量名" size="small" style="margin-top:6px;" />
+                </div>
                 <div class="form-group"><label>JSON Path</label><el-input v-model="selectedNode.props.jsonPath" placeholder="$.data.token" size="small" /></div>
                 <div class="form-group"><label>期望值</label><el-input v-model="selectedNode.props.expected" placeholder="12345" size="small" /></div>
                 <div class="form-row">
@@ -533,6 +599,15 @@
             <template v-if="selectedNode.type === 'SizeAssertion'">
               <div class="form-section">
                 <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>断言范围</label>
+                  <el-radio-group v-model="selectedNode.props.scope" size="small">
+                    <el-radio-button label="all">主+子样本</el-radio-button>
+                    <el-radio-button label="main">仅主样本</el-radio-button>
+                    <el-radio-button label="sub">仅子样本</el-radio-button>
+                    <el-radio-button label="jmeter_variable">变量</el-radio-button>
+                  </el-radio-group>
+                  <el-input v-if="selectedNode.props.scope === 'jmeter_variable'" v-model="selectedNode.props.variable" placeholder="变量名" size="small" style="margin-top:6px;" />
+                </div>
                 <div class="form-row">
                   <div class="form-group">
                     <label>比较方式</label>
@@ -553,6 +628,15 @@
             <template v-if="selectedNode.type === 'XPathAssertion'">
               <div class="form-section">
                 <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>断言范围</label>
+                  <el-radio-group v-model="selectedNode.props.scope" size="small">
+                    <el-radio-button label="all">主+子样本</el-radio-button>
+                    <el-radio-button label="main">仅主样本</el-radio-button>
+                    <el-radio-button label="sub">仅子样本</el-radio-button>
+                    <el-radio-button label="jmeter_variable">变量</el-radio-button>
+                  </el-radio-group>
+                  <el-input v-if="selectedNode.props.scope === 'jmeter_variable'" v-model="selectedNode.props.variable" placeholder="变量名" size="small" style="margin-top:6px;" />
+                </div>
                 <div class="form-group"><label>XPath 表达式</label><el-input v-model="selectedNode.props.xpath" placeholder="/html/body/h1 或 //result[@status='ok']" size="small" /></div>
                 <div class="form-group"><label>取反（不存在才通过）</label><el-switch v-model="selectedNode.props.negate" size="small" /></div>
               </div>
@@ -563,6 +647,15 @@
             <template v-if="selectedNode.type === 'CompareAssertion'">
               <div class="form-section">
                 <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>断言范围</label>
+                  <el-radio-group v-model="selectedNode.props.scope" size="small">
+                    <el-radio-button label="all">主+子样本</el-radio-button>
+                    <el-radio-button label="main">仅主样本</el-radio-button>
+                    <el-radio-button label="sub">仅子样本</el-radio-button>
+                    <el-radio-button label="jmeter_variable">变量</el-radio-button>
+                  </el-radio-group>
+                  <el-input v-if="selectedNode.props.scope === 'jmeter_variable'" v-model="selectedNode.props.variable" placeholder="变量名" size="small" style="margin-top:6px;" />
+                </div>
                 <div class="form-group"><label>检查范围</label>
                   <el-select v-model="selectedNode.props.testField" size="small">
                     <el-option label="响应数据" value="Assertion.response_data" />
@@ -593,13 +686,13 @@
               </div>
               <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：自动验证响应体是否为合法XML。如果接口返回XML格式数据，加上这个断言确保格式正确</div>
             </template>
-            <template v-if="selectedNode.type === 'RegexExtractor' || selectedNode.type === 'JsonExtractor'">
+            <template v-if="selectedNode.type === 'RegexExtractor' || selectedNode.type === 'JSONExtractor'">
               <div class="form-section">
                 <div class="form-group"><label>提取器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-group"><label>变量名</label><el-input v-model="selectedNode.props.varName" placeholder="token" size="small" /></div>
                 <div class="form-hint">后续请求中用 <code>{'{'+'$'+'{'+'}'+'}变量名'}</code> 引用</div>
                 <div class="form-group" v-if="selectedNode.type === 'RegexExtractor'"><label>正则表达式</label><el-input v-model="selectedNode.props.regex" placeholder='"token":"(.*?)"' size="small" /></div>
-                <div class="form-group" v-if="selectedNode.type === 'JsonExtractor'"><label>JSON Path</label><el-input v-model="selectedNode.props.jsonPath" placeholder="$.data.token" size="small" /></div>
+                <div class="form-group" v-if="selectedNode.type === 'JSONExtractor'"><label>JSON Path</label><el-input v-model="selectedNode.props.jsonPath" placeholder="$.data.token" size="small" /></div>
                 <div class="form-group"><label>默认值</label><el-input v-model="selectedNode.props.defaultValue" placeholder="NOT_FOUND" size="small" /></div>
               </div>
             </template>
@@ -612,16 +705,40 @@
             <template v-if="selectedNode.type === 'GaussianRandomTimer'">
               <div class="form-section"><div class="form-row"><div class="form-group"><label>偏差 (ms)</label><el-input-number v-model="selectedNode.props.deviation" :min="0" :max="60000" size="small" /></div><div class="form-group"><label>偏移 (ms)</label><el-input-number v-model="selectedNode.props.offset" :min="0" :max="60000" size="small" /></div></div></div>
             </template>
-            <template v-if="selectedNode.type === 'SyncTimer'">
-              <div class="form-section"><div class="form-group"><label>集合点并发数</label><el-input-number v-model="selectedNode.props.groupSize" :min="2" :max="10000" size="small" /></div></div>
-            </template>
-            <template v-if="selectedNode.type === 'CSVDataSet'">
+            <template v-if="selectedNode.type === 'SynchronizingTimer'">
               <div class="form-section">
+                <div class="form-group"><label>定时器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>集合点并发数</label><el-input-number v-model="selectedNode.props.groupSize" :min="2" :max="10000" size="small" /></div>
+                  <div class="form-group"><label>超时 (ms)</label><el-input-number v-model="selectedNode.props.timeoutInMs" :min="0" :max="600000" size="small" /></div>
+                </div>
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 模拟真实用户同时到达场景:集合 N 个线程后统一释放,实现"集合点"效果</div>
+              </div>
+            </template>
+            <template v-if="selectedNode.type === 'CsvDataSource'">
+              <div class="form-section">
+                <div class="form-group"><label>配置名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-group"><label>CSV 文件名</label><el-input v-model="selectedNode.props.filename" placeholder="users.csv" size="small" /></div>
                 <div class="form-group"><label>变量名 (逗号分隔)</label><el-input v-model="selectedNode.props.variableNames" placeholder="username,password" size="small" /></div>
-                <div class="form-row"><div class="form-group"><label>分隔符</label><el-input v-model="selectedNode.props.delimiter" size="small" style="width:60px;" /></div><div class="form-group"><label>循环</label><el-switch v-model="selectedNode.props.recycle" size="small" /></div></div>
+                <div class="form-row">
+                  <div class="form-group"><label>分隔符</label><el-input v-model="selectedNode.props.delimiter" size="small" style="width:60px;" placeholder="," /></div>
+                  <div class="form-group"><label>是否循环</label><el-switch v-model="selectedNode.props.recycle" size="small" /></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>忽略首行</label><el-switch v-model="selectedNode.props.ignoreFirstLine" size="small" /></div>
+                  <div class="form-group"><label>允许引号</label><el-switch v-model="selectedNode.props.quotedData" size="small" /></div>
+                  <div class="form-group"><label>遇 EOF 停线程</label><el-switch v-model="selectedNode.props.stopThread" size="small" /></div>
+                </div>
+                <div class="form-group"><label>共享模式</label>
+                  <el-select v-model="selectedNode.props.shareMode" size="small">
+                    <el-option label="所有线程共享" value="shareMode.all" />
+                    <el-option label="线程组共享" value="shareMode.group" />
+                    <el-option label="每线程独立" value="shareMode.thread" />
+                  </el-select>
+                </div>
                 <div class="form-group"><label>CSV 内容 (随 .jmx 导出)</label><el-input v-model="selectedNode.props.csvContent" type="textarea" :rows="4" placeholder="username,password&#10;user1,pass1" size="small" /></div>
               </div>
+              <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示:CSV 数据文件用于参数化测试,每行数据轮流给每个虚拟用户使用。建议把 CSV 文件放在脚本同目录</div>
             </template>
             <template v-if="selectedNode.type === 'JDBCConnection'">
               <div class="form-section">
@@ -800,7 +917,7 @@
                 </div>
               </div>
             </template>
-            <template v-if="selectedNode.type === 'HTTPHeaderManager'">
+            <template v-if="selectedNode.type === 'HttpHeaderManager'">
               <div class="form-section">
                 <div class="section-hint"><el-icon><InfoFilled /></el-icon> 为所有 HTTP 请求统一添加请求头，自动继承到子元素</div>
                 <div class="form-group"><label>管理器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
@@ -1039,6 +1156,165 @@
                 <div class="section-hint"><el-icon><InfoFilled /></el-icon> 引入外部 .jmx 文件片段，实现模块化脚本复用。适合把公共逻辑（登录、公共请求头等）抽取为独立文件</div>
                 <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-group"><label>.jmx 文件路径</label><el-input v-model="selectedNode.props.includePath" placeholder="common/login.jmx" size="small" /></div>
+              </div>
+            </template>
+
+            <!-- ===== 边界提取器 ===== -->
+            <template v-if="selectedNode.type === 'BoundaryExtractor'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 通过左右边界字符提取内容,适合非结构化响应(HTML/纯文本),比正则更快更简单</div>
+                <div class="form-group"><label>提取器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>变量名 (引用名)</label><el-input v-model="selectedNode.props.referenceName" placeholder="token" size="small" /></div>
+                <div class="form-group"><label>左边界</label><el-input v-model="selectedNode.props.leftBoundary" placeholder='&lt;token&gt;' size="small" /></div>
+                <div class="form-group"><label>右边界</label><el-input v-model="selectedNode.props.rightBoundary" placeholder='&lt;/token&gt;' size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>匹配序号</label><el-input-number v-model="selectedNode.props.matchNumber" :min="-1" :max="9999" size="small" /></div>
+                  <div class="form-group"><label>默认值</label><el-input v-model="selectedNode.props.defaultValue" placeholder="NOT_FOUND" size="small" /></div>
+                </div>
+                <div class="form-hint">匹配序号: 0=随机, 1=第一个, -1=全部(逗号分隔)</div>
+              </div>
+            </template>
+
+            <!-- ===== CSS 选择器提取器 ===== -->
+            <template v-if="selectedNode.type === 'CSSSelectorExtractor'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 通过 CSS 选择器从 HTML 响应中提取数据,适合网页爬虫场景</div>
+                <div class="form-group"><label>提取器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>变量名</label><el-input v-model="selectedNode.props.referenceName" placeholder="title" size="small" /></div>
+                <div class="form-group"><label>CSS 选择器</label><el-input v-model="selectedNode.props.selector" placeholder="h1.title" size="small" /></div>
+                <div class="form-group"><label>属性 (空=取文本)</label><el-input v-model="selectedNode.props.attribute" placeholder="href 或留空" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>匹配序号</label><el-input-number v-model="selectedNode.props.matchNumber" :min="-1" :max="9999" size="small" /></div>
+                  <div class="form-group"><label>默认值</label><el-input v-model="selectedNode.props.defaultValue" placeholder="NOT_FOUND" size="small" /></div>
+                </div>
+              </div>
+            </template>
+
+            <!-- ===== XPath 提取器 ===== -->
+            <template v-if="selectedNode.type === 'XPathExtractor'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 通过 XPath 从 XML/HTML 响应中提取数据,适合 Web Service 接口</div>
+                <div class="form-group"><label>提取器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>变量名</label><el-input v-model="selectedNode.props.referenceName" placeholder="userId" size="small" /></div>
+                <div class="form-group"><label>XPath 表达式</label><el-input v-model="selectedNode.props.xPath" placeholder="//user/@id" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>匹配序号</label><el-input-number v-model="selectedNode.props.matchNumber" :min="-1" :max="9999" size="small" /></div>
+                  <div class="form-group"><label>默认值</label><el-input v-model="selectedNode.props.defaultValue" placeholder="NOT_FOUND" size="small" /></div>
+                </div>
+              </div>
+            </template>
+
+            <!-- ===== 恒定吞吐量定时器 ===== -->
+            <template v-if="selectedNode.type === 'ConstantThroughputTimer'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 控制测试吞吐量恒定(每分钟采样数),适合 SLA 验证场景</div>
+                <div class="form-group"><label>定时器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>吞吐量 (每分钟)</label><el-input-number v-model="selectedNode.props.throughput" :min="1" :max="600000" size="small" /></div>
+                  <div class="form-group"><label>计算模式</label>
+                    <el-select v-model="selectedNode.props.calcMode" size="small">
+                      <el-option label="每线程" value="1" />
+                      <el-option label="所有线程(活跃)" value="2" />
+                      <el-option label="所有线程(全部)" value="3" />
+                    </el-select>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- ===== 泊松随机定时器 ===== -->
+            <template v-if="selectedNode.type === 'PoissonRandomTimer'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 基于泊松分布的随机延迟,模拟真实用户操作间隔(更接近自然行为)</div>
+                <div class="form-group"><label>定时器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>固定延迟 (ms)</label><el-input-number v-model="selectedNode.props.delay" :min="0" :max="60000" size="small" /></div>
+                  <div class="form-group"><label>随机范围 (ms)</label><el-input-number v-model="selectedNode.props.range" :min="0" :max="60000" size="small" /></div>
+                </div>
+                <div class="form-group"><label>随机因子</label><el-input-number v-model="selectedNode.props.factor" :min="0.1" :max="10" :step="0.1" size="small" /></div>
+              </div>
+            </template>
+
+            <!-- ===== HTTP 缓存管理器 ===== -->
+            <template v-if="selectedNode.type === 'HttpCacheManager'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 模拟浏览器缓存行为,自动处理 ETag/Last-Modified 等缓存控制头</div>
+                <div class="form-group"><label>管理器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>每次循环清空缓存</label><el-switch v-model="selectedNode.props.clearEachIteration" size="small" /></div>
+                  <div class="form-group"><label>使用 Expires 头</label><el-switch v-model="selectedNode.props.useExpires" size="small" /></div>
+                </div>
+                <div class="form-group"><label>最大缓存条目数</label><el-input-number v-model="selectedNode.props.maxSize" :min="0" :max="10000" size="small" /></div>
+              </div>
+            </template>
+
+            <!-- ===== HTTP 授权管理器 ===== -->
+            <template v-if="selectedNode.type === 'HttpAuthManager'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 自动为匹配 URL 的请求添加 Basic/Digest 认证头,适合测试受保护接口</div>
+                <div class="form-group"><label>管理器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>授权用户列表</label>
+                  <div v-for="(u, ui) in (selectedNode.props.users || [])" :key="ui" class="kv-row">
+                    <el-input v-model="u.name" placeholder="用户名" size="small" style="width:22%;" />
+                    <el-input v-model="u.user" placeholder="账号" size="small" style="width:22%;" />
+                    <el-input v-model="u.pass" type="password" show-password placeholder="密码" size="small" style="width:22%;" />
+                    <el-input v-model="u.url" placeholder="URL(前缀,如 http://api.com)" size="small" style="width:26%;" />
+                    <el-button link size="small" type="danger" @click="selectedNode.props.users.splice(ui,1)">×</el-button>
+                  </div>
+                  <el-button size="small" @click="(selectedNode.props.users = selectedNode.props.users || []).push({name:'',user:'',pass:'',url:''})">+ 添加授权</el-button>
+                </div>
+              </div>
+            </template>
+
+            <!-- ===== 模块控制器 ===== -->
+            <template v-if="selectedNode.type === 'ModuleController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 引用并执行另一个控制器模块,实现测试片段复用(类似 IncludeController,但调用当前测试计划内的片段)</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>目标模块路径</label>
+                  <el-input v-model="selectedNode.props.nodePath" placeholder="Test Plan / 登录线程组 / 登录请求" size="small" />
+                  <div class="form-hint">输入要调用的控制器在树中的路径,用 / 分隔</div>
+                </div>
+              </div>
+            </template>
+
+            <!-- ===== 运行时控制器 ===== -->
+            <template v-if="selectedNode.type === 'RunTimeController'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 在指定秒数内循环执行子元素,时间到自动停止(与 LoopController 的次数控制不同,这里是按时间)</div>
+                <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>运行时长 (秒)</label><el-input-number v-model="selectedNode.props.runtime" :min="1" :max="86400" size="small" /></div>
+                <div class="form-hint">子元素将在设定的秒数内重复执行,模拟"持续 N 秒"的并发场景</div>
+              </div>
+            </template>
+
+            <!-- ===== 汇总器 (Summariser) ===== -->
+            <template v-if="selectedNode.type === 'Summariser'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 周期性输出汇总信息到控制台/日志,便于运行时监控测试进度(无需打开 HTML 报告)</div>
+                <div class="form-group"><label>汇总器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>汇总间隔 (秒)</label><el-input-number v-model="selectedNode.props.interval" :min="1" :max="3600" size="small" /></div>
+                  <div class="form-group"><label>忽略事务控制器</label><el-switch v-model="selectedNode.props.ignoreTCGA" size="small" /></div>
+                </div>
+              </div>
+            </template>
+
+            <!-- ===== 随机变量配置 ===== -->
+            <template v-if="selectedNode.type === 'RandomVariableConfig'">
+              <div class="form-section">
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 生成随机数并写入变量,用于模拟随机用户ID、订单号等场景</div>
+                <div class="form-group"><label>配置名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+                <div class="form-group"><label>变量名</label><el-input v-model="selectedNode.props.variableName" placeholder="userId" size="small" /></div>
+                <div class="form-row">
+                  <div class="form-group"><label>最小值</label><el-input-number v-model="selectedNode.props.minimumValue" :min="0" size="small" /></div>
+                  <div class="form-group"><label>最大值</label><el-input-number v-model="selectedNode.props.maximumValue" :min="0" size="small" /></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>输出格式</label><el-input v-model="selectedNode.props.outputFormat" placeholder="000000 (零填充 6 位)" size="small" /></div>
+                  <div class="form-group"><label>随机种子 (空=随机)</label><el-input v-model="selectedNode.props.randomSeed" placeholder="留空" size="small" /></div>
+                </div>
+                <div class="form-group"><label>每次迭代重新生成</label><el-switch v-model="selectedNode.props.perIteration" size="small" /></div>
               </div>
             </template>
           </div>
@@ -1437,7 +1713,83 @@
       <el-button type="primary" @click="copyAiAnalysis">📋 复制结果</el-button>
     </template>
   </el-dialog>
+
+  <!-- AI 参数化结果弹窗(Stage E.4) -->
+  <el-dialog v-model="aiParamDialogVisible" title="🤖 AI 参数化结果" width="720px" destroy-on-close>
+    <el-alert v-if="aiParamResult?.extracted_vars?.length > 0" type="success" :closable="false" show-icon
+      :title="`已识别 ${aiParamResult.extracted_vars.length} 个变量`" style="margin-bottom:12px;" />
+    <el-form label-width="140px" size="small">
+      <el-form-item label="参数化后 URL">
+        <el-input v-model="aiParamResult.parameterized_url" type="textarea" :rows="2" readonly />
+      </el-form-item>
+      <el-form-item v-if="aiParamResult.parameterized_body" label="参数化后 Body">
+        <el-input v-model="aiParamResult.parameterized_body" type="textarea" :rows="4" readonly />
+      </el-form-item>
+      <el-form-item v-if="aiParamResult.extracted_vars?.length > 0" label="提取的变量">
+        <el-table :data="aiParamResult.extracted_vars" size="small" stripe border>
+          <el-table-column prop="name" label="变量名" width="120" />
+          <el-table-column prop="source" label="来源" width="80" />
+          <el-table-column prop="original_value" label="原始值" />
+        </el-table>
+      </el-form-item>
+      <el-form-item v-if="aiParamResult.suggested_extractions?.length > 0" label="建议的提取器">
+        <el-table :data="aiParamResult.suggested_extractions" size="small" stripe border>
+          <el-table-column prop="varName" label="变量名" width="120" />
+          <el-table-column prop="jsonPath" label="JSONPath" width="220" />
+          <el-table-column prop="description" label="说明" />
+        </el-table>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="aiParamDialogVisible = false">关闭</el-button>
+      <el-button type="primary" @click="applyParameterization">应用参数化</el-button>
+      <el-button type="success" @click="applyParameterizationAndAddExtractors">应用并添加提取器</el-button>
+    </template>
+  </el-dialog>
   <HelpDrawer v-model="showHelp" :title="helpData.title" :intro="helpData.intro" :sections="helpData.sections" />
+
+  <!-- 移动到...对话框(跨线程组移动节点) -->
+  <el-dialog v-model="moveToDialog.visible" title="📤 移动节点到..." width="520px" append-to-body>
+    <div v-if="moveToDialog.sourceUid" style="margin-bottom: 12px;">
+      <span style="color: var(--tm-text-secondary); font-size: 12px;">将被移动的节点:</span>
+      <span style="margin-left: 8px; font-weight: 500;">
+        {{ findNode(scriptTree, moveToDialog.sourceUid)?.name || '(未知)' }}
+        <span style="color: var(--tm-text-secondary); font-size: 11px;">
+          ({{ nodeTypeInfo(findNode(scriptTree, moveToDialog.sourceUid)?.type)?.label || findNode(scriptTree, moveToDialog.sourceUid)?.type }})
+        </span>
+      </span>
+    </div>
+    <el-form label-position="top">
+      <el-form-item label="选择目标父节点">
+        <el-tree-select
+          v-model="moveToDialog.targetUid"
+          :data="treeSelectData"
+          :props="{ label: 'label', value: 'value', children: 'children' }"
+          :filterable="true"
+          :check-strictly="true"
+          placeholder="请选择目标父节点"
+          style="width: 100%;"
+          empty-text="无可选节点"
+        />
+        <div v-if="moveToDialog.targetUid && moveToDialog.sourceUid && !canMoveTo(moveToDialog.sourceUid, moveToDialog.targetUid)" style="color: #F87171; font-size: 12px; margin-top: 6px;">
+          ⚠ 该目标不可用(类型不匹配或为自身子节点)
+        </div>
+        <div v-else-if="moveToDialog.targetUid && moveToDialog.sourceUid && canMoveTo(moveToDialog.sourceUid, moveToDialog.targetUid)" style="color: #67C23A; font-size: 12px; margin-top: 6px;">
+          ✓ 目标可用
+        </div>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="moveToDialog.visible = false">取消</el-button>
+      <el-button
+        type="primary"
+        :disabled="!moveToDialog.targetUid || (moveToDialog.sourceUid && !canMoveTo(moveToDialog.sourceUid, moveToDialog.targetUid))"
+        @click="confirmMoveTo"
+      >
+        确定移动
+      </el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -1454,7 +1806,11 @@ import ScriptHistory from '@/views/jmeter/ScriptHistory.vue'
 import TreeEditor from '@/views/jmeter/TreeEditor.vue'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import BaseSplitter from '@/components/base/BaseSplitter.vue'
+import LayoutPresetDropdown from '@/components/LayoutPresetDropdown.vue'
 import { helpContent } from '@/utils/help-content'
+import { NODE_TYPES as _SHARED_NODE_TYPES, TYPE_ALIASES, nodeTypeInfo, isValidParentChild, reassignUids, newUid as sharedNewUid } from './jmeter/shared/nodeTypes'
+import { findNode, findParent, isDescendant, deepCopyWithNewUids } from './jmeter/shared/useJmeterTreeOps'
+import { useJmeterClipboard } from './jmeter/shared/useJmeterClipboard'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -1465,72 +1821,14 @@ const helpData = helpContent.jmeterAssistant
 
 const benchRunnerRef = ref(null)
 
-// ===== 组件类型定义 =====
-const NODE_TYPES = {
-  TestPlan: { label: '测试计划', icon: '📋' },
-  ThreadGroup: { label: '线程组', icon: '👥', parent: 'TestPlan' },
-  HttpSampler: { label: 'HTTP 请求', icon: '🌐', parent: 'ThreadGroup' },
-  IfController: { label: '如果(If)控制器', icon: '🔀', parent: 'ThreadGroup' },
-  LoopController: { label: '循环控制器', icon: '🔄', parent: 'ThreadGroup' },
-  WhileController: { label: 'While 控制器', icon: '🔁', parent: 'ThreadGroup' },
-  TransactionController: { label: '事务控制器', icon: '📦', parent: 'ThreadGroup' },
-  ThroughputController: { label: '吞吐量控制器', icon: '⏱️', parent: 'ThreadGroup' },
-  OnceOnlyController: { label: '仅一次控制器', icon: '1️⃣', parent: 'ThreadGroup' },
-  ResponseAssertion: { label: '响应断言', icon: '✅', parent: 'HttpSampler' },
-  DurationAssertion: { label: '持续时间断言', icon: '⏱️', parent: 'HttpSampler' },
-  JsonAssertion: { label: 'JSON 断言', icon: '📋', parent: 'HttpSampler' },
-  BeanShellAssertion: { label: 'BeanShell 断言', icon: '💻', parent: 'HttpSampler' },
-  JSR223Assertion: { label: 'JSR223 断言', icon: '🔥', parent: 'HttpSampler' },
-  SizeAssertion: { label: '响应大小断言', icon: '📏', parent: 'HttpSampler' },
-  XPathAssertion: { label: 'XPath 断言', icon: '🗂️', parent: 'HttpSampler' },
-  CompareAssertion: { label: '比较断言', icon: '⚖️', parent: 'HttpSampler' },
-  XMLAssertion: { label: 'XML 断言', icon: '📜', parent: 'HttpSampler' },
-  RegexExtractor: { label: '正则提取器', icon: '🔍', parent: 'HttpSampler' },
-  JsonExtractor: { label: 'JSON 提取器', icon: '📤', parent: 'HttpSampler' },
-  ConstantTimer: { label: '固定定时器', icon: '⏰', parent: 'HttpSampler' },
-  UniformRandomTimer: { label: '均匀随机定时器', icon: '🎲', parent: 'HttpSampler' },
-  GaussianRandomTimer: { label: '高斯随机定时器', icon: '📊', parent: 'HttpSampler' },
-  SyncTimer: { label: '同步定时器(集合点)', icon: '🔄', parent: 'HttpSampler' },
-  BeanShellPreProcessor: { label: 'BeanShell 前置', icon: '⚙️', parent: 'HttpSampler' },
-  BeanShellPostProcessor: { label: 'BeanShell 后置', icon: '⚙️', parent: 'HttpSampler' },
-  JSR223PreProcessor: { label: 'JSR223 前置处理器', icon: '🔥', parent: 'HttpSampler' },
-  JSR223PostProcessor: { label: 'JSR223 后置处理器', icon: '🔥', parent: 'HttpSampler' },
-  CSVDataSet: { label: 'CSV 数据源', icon: '📄', parent: 'ThreadGroup' },
-  JDBCConnection: { label: 'JDBC 连接', icon: '🗄️', parent: 'TestPlan' },
-  JDBCSampler: { label: 'JDBC 请求', icon: '🗄️', parent: 'ThreadGroup' },
-  HTTPHeaderManager: { label: 'HTTP 信息头管理器', icon: '📨', parent: 'ThreadGroup' },
-  HTTPCookieManager: { label: 'HTTP Cookie 管理器', icon: '🍪', parent: 'ThreadGroup' },
-  HTTPRequestDefaults: { label: 'HTTP 请求默认值', icon: '🎯', parent: 'ThreadGroup' },
-  ViewResultsTree: { label: '查看结果树', icon: '👁️', parent: 'ThreadGroup' },
-  SummaryReport: { label: '聚合报告', icon: '📈', parent: 'ThreadGroup' },
-  AggregateGraph: { label: '聚合图表', icon: '📉', parent: 'ThreadGroup' },
-  AggregateReport: { label: '聚合报告(高级)', icon: '📊', parent: 'ThreadGroup' },
-  ResponseTimeGraph: { label: '响应时间图', icon: '📉', parent: 'ThreadGroup' },
-  InfluxDBBackendListener: { label: 'InfluxDB 后端监听器', icon: '📡', parent: 'TestPlan' },
-  UserParameters: { label: '用户参数(多账号)', icon: '👤', parent: 'ThreadGroup' },
-  DebugSampler: { label: '调试采样器', icon: '🐛', parent: 'ThreadGroup' },
-  ForEachController: { label: 'ForEach 控制器', icon: '🔁', parent: 'ThreadGroup' },
-  IncludeController: { label: 'Include 控制器', icon: '📂', parent: 'ThreadGroup' },
-  SwitchController: { label: 'Switch 控制器', icon: '🔀', parent: 'ThreadGroup' },
-  RandomController: { label: '随机控制器', icon: '🎲', parent: 'ThreadGroup' },
-  InterleaveController: { label: '交替控制器', icon: '🔃', parent: 'ThreadGroup' },
-  JSONPathAssertion: { label: 'JSON Path 断言', icon: '📋', parent: 'HttpSampler' },
-  BoundaryExtractor: { label: '边界提取器', icon: '📐', parent: 'HttpSampler' },
-  CSSSelectorExtractor: { label: 'CSS 选择器提取器', icon: '🎨', parent: 'HttpSampler' },
-  XPathExtractor: { label: 'XPath 提取器', icon: '🗂️', parent: 'HttpSampler' },
-  HttpHeaderManager: { label: 'HTTP 信息头管理器', icon: '📨', parent: 'ThreadGroup' },
-  HTTPCookieManager: { label: 'HTTP Cookie 管理器', icon: '🍪', parent: 'ThreadGroup' },
-  HttpCacheManager: { label: 'HTTP 缓存管理器', icon: '💾', parent: 'ThreadGroup' },
-  HttpAuthManager: { label: 'HTTP 授权管理器', icon: '🔐', parent: 'ThreadGroup' },
-  CsvDataSource: { label: 'CSV 数据文件', icon: '📄', parent: 'ThreadGroup' },
-  RandomVariableConfig: { label: '随机变量', icon: '🎲', parent: 'ThreadGroup' },
-  ModuleController: { label: '模块控制器', icon: '🧩', parent: 'ThreadGroup' },
-  RunTimeController: { label: '运行时间控制器', icon: '⏱️', parent: 'ThreadGroup' },
-  Summariser: { label: '汇总器', icon: '📊', parent: 'TestPlan' },
-  ConstantThroughputTimer: { label: '常数吞吐量定时器', icon: '📈', parent: 'HttpSampler' },
-  SynchronizingTimer: { label: '同步定时器', icon: '🔄', parent: 'HttpSampler' },
-  PoissonRandomTimer: { label: '泊松随机定时器', icon: '📊', parent: 'HttpSampler' },
-}
+// ===== 组件类型定义(从共享模块导入,并合并别名以保证向后兼容) =====
+// 共享 nodeTypes.js 只含规范类型名;此处合并别名(NODE_TYPES['JSONPathAssertion'] 仍可访问)
+const NODE_TYPES = { ..._SHARED_NODE_TYPES }
+Object.entries(TYPE_ALIASES).forEach(([alias, canonical]) => {
+  if (NODE_TYPES[canonical] && !NODE_TYPES[alias]) {
+    NODE_TYPES[alias] = NODE_TYPES[canonical]
+  }
+})
 
 // ===== 工具函数 =====
 let uidCounter = 1
@@ -1612,23 +1910,7 @@ const createElement = (type, overrides = {}) => {
   })
 }
 
-const findNode = (parent, uid) => {
-  if (parent.uid === uid) return parent
-  for (const child of parent.children || []) {
-    const found = findNode(child, uid)
-    if (found) return found
-  }
-  return null
-}
-
-const findParent = (parent, uid) => {
-  for (const child of parent.children || []) {
-    if (child.uid === uid) return { parent, index: parent.children.indexOf(child) }
-    const found = findParent(child, uid)
-    if (found) return found
-  }
-  return null
-}
+// findNode / findParent 已从共享模块 ./jmeter/shared/useJmeterTreeOps 导入,此处不再重复定义
 
 const serializeTree = () => {
   const walk = (node) => ({
@@ -1698,6 +1980,68 @@ const scriptHistory = ref(loadScriptsList())
 const scriptTree = reactive(createElement('TestPlan', { name: 'TestMaster 性能测试' }))
 const selectedUid = ref(null)
 const selectedNode = ref(null)
+
+// ===== 剪贴板与跨节点操作(从共享 composable 引入) =====
+const {
+  clipboard: jmeterClipboard,
+  cutNode: _cutNode,
+  copyToClipboard: _copyToClipboard,
+  copyNodeTo: _copyNodeTo,
+  pasteNode: _pasteNode,
+  moveNode: _moveNode,
+  toggleEnabled: _toggleEnabled,
+} = useJmeterClipboard(scriptTree, {
+  onTreeChanged: () => {
+    // 树变更时触发持久化(复用现有 saveCurrentScript)
+    if (typeof saveCurrentScript === 'function') saveCurrentScript()
+  },
+})
+
+// "移动到..." 对话框状态
+const moveToDialog = ref({
+  visible: false,
+  sourceUid: null,
+  targetUid: null,
+})
+
+// 树选择器数据(供"移动到..."对话框使用)
+const treeSelectData = computed(() => {
+  const build = (node) => {
+    const item = { value: node.uid, label: node.name || '(未命名)', children: [] }
+    if (Array.isArray(node.children) && node.children.length > 0) {
+      item.children = node.children.map(build)
+    }
+    return item
+  }
+  return [build(scriptTree)]
+})
+
+// 校验目标父节点是否可接收源节点
+const canMoveTo = (sourceUid, targetUid) => {
+  if (!sourceUid || !targetUid || sourceUid === targetUid) return false
+  const source = findNode(scriptTree, sourceUid)
+  const target = findNode(scriptTree, targetUid)
+  if (!source || !target) return false
+  if (isDescendant(source, targetUid)) return false
+  return isValidParentChild(target.type, source.type)
+}
+
+// 打开"移动到..."对话框
+const openMoveToDialog = (uid) => {
+  moveToDialog.value = { visible: true, sourceUid: uid, targetUid: null }
+}
+
+// 确认移动
+const confirmMoveTo = () => {
+  if (!moveToDialog.value.sourceUid || !moveToDialog.value.targetUid) {
+    ElMessage.warning('请选择目标父节点')
+    return
+  }
+  const ok = _moveNode(moveToDialog.value.sourceUid, moveToDialog.value.targetUid, -1)
+  if (ok) {
+    moveToDialog.value.visible = false
+  }
+}
 
 // 恢复上次会话
 const restoreLastSession = () => {
@@ -1808,7 +2152,7 @@ const totalSamplers = computed(() => {
 const totalAssertions = computed(() => {
   let count = 0
   const walk = (node) => {
-    if (['ResponseAssertion','DurationAssertion','JsonAssertion','BeanShellAssertion','JSR223Assertion','SizeAssertion','XPathAssertion','CompareAssertion','XMLAssertion'].includes(node.type)) count++
+    if (['ResponseAssertion','DurationAssertion','JSONPathAssertion','BeanShellAssertion','JSR223Assertion','SizeAssertion','XPathAssertion','CompareAssertion','XMLAssertion'].includes(node.type)) count++
     ;(node.children || []).forEach(walk)
   }
   walk(scriptTree)
@@ -1818,7 +2162,7 @@ const totalAssertions = computed(() => {
 const totalExtractors = computed(() => {
   let count = 0
   const walk = (node) => {
-    if (['RegexExtractor','JsonExtractor'].includes(node.type)) count++
+    if (['RegexExtractor','JSONExtractor'].includes(node.type)) count++
     ;(node.children || []).forEach(walk)
   }
   walk(scriptTree)
@@ -1828,7 +2172,7 @@ const totalExtractors = computed(() => {
 const totalTimers = computed(() => {
   let count = 0
   const walk = (node) => {
-    if (['ConstantTimer','UniformRandomTimer','GaussianRandomTimer','SyncTimer'].includes(node.type)) count++
+    if (['ConstantTimer','UniformRandomTimer','GaussianRandomTimer','SynchronizingTimer'].includes(node.type)) count++
     ;(node.children || []).forEach(walk)
   }
   walk(scriptTree)
@@ -1898,11 +2242,11 @@ const naturalLanguageSummary = computed(() => {
     // 添加额外组件描述
     const extras = []
     const countExtras = (node) => {
-      if (['ResponseAssertion','DurationAssertion','JsonAssertion','BeanShellAssertion','JSR223Assertion','SizeAssertion','XPathAssertion','CompareAssertion','XMLAssertion'].includes(node.type)) { if (!extras.includes('断言')) extras.push('断言') }
-      if (['RegexExtractor','JsonExtractor'].includes(node.type)) { if (!extras.includes('提取器')) extras.push('提取器') }
+      if (['ResponseAssertion','DurationAssertion','JSONPathAssertion','BeanShellAssertion','JSR223Assertion','SizeAssertion','XPathAssertion','CompareAssertion','XMLAssertion'].includes(node.type)) { if (!extras.includes('断言')) extras.push('断言') }
+      if (['RegexExtractor','JSONExtractor'].includes(node.type)) { if (!extras.includes('提取器')) extras.push('提取器') }
       if (['ConstantTimer','UniformRandomTimer','GaussianRandomTimer'].includes(node.type)) { if (!extras.includes('定时器')) extras.push('定时器') }
-      if (node.type === 'SyncTimer') { if (!extras.includes('集合点')) extras.push('集合点') }
-      if (node.type === 'CSVDataSet') { if (!extras.includes('CSV数据驱动')) extras.push('CSV数据驱动') }
+      if (node.type === 'SynchronizingTimer') { if (!extras.includes('集合点')) extras.push('集合点') }
+      if (node.type === 'CsvDataSource') { if (!extras.includes('CSV数据驱动')) extras.push('CSV数据驱动') }
       if (['ViewResultsTree','SummaryReport','AggregateGraph'].includes(node.type)) { if (!extras.includes('报告')) extras.push('报告') }
       (node.children || []).forEach(countExtras)
     }
@@ -1954,19 +2298,52 @@ const removeNodeByUid = (uid) => {
   }
 }
 
-const duplicateNode = (uid) => {
+const duplicateNode = (uid, targetParentUid = null) => {
   const source = findNode(scriptTree, uid)
   if (!source) return
-  const pInfo = findParent(scriptTree, uid)
-  if (!pInfo) return
   const copy = JSON.parse(JSON.stringify(source))
-  // 递归为所有节点重新分配UID，避免重复
-  const reassignUids = (node) => {
-    node.uid = newUid()
-    if (node.children) node.children.forEach(reassignUids)
-  }
+  // 使用共享的 reassignUids 递归重新分配 UID
   reassignUids(copy)
-  pInfo.parent.children.splice(pInfo.index + 1, 0, reactive(copy))
+
+  if (targetParentUid) {
+    // 复制到指定父节点
+    const targetParent = findNode(scriptTree, targetParentUid)
+    if (!targetParent) return
+    if (!isValidParentChild(targetParent.type, source.type)) {
+      const srcLabel = nodeTypeInfo(source.type)?.label || source.type
+      const tgtLabel = nodeTypeInfo(targetParent.type)?.label || targetParent.type
+      ElMessage.warning(`${srcLabel} 不能放在 ${tgtLabel} 下`)
+      return
+    }
+    if (!targetParent.children) targetParent.children = []
+    targetParent.children.push(reactive(copy))
+    ElMessage.success(`已复制 ${source.name} 到 ${targetParent.name}`)
+    if (typeof saveCurrentScript === 'function') saveCurrentScript()
+  } else {
+    // 原地复制(保持向后兼容)
+    const pInfo = findParent(scriptTree, uid)
+    if (!pInfo) return
+    pInfo.parent.children.splice(pInfo.index + 1, 0, reactive(copy))
+    if (typeof saveCurrentScript === 'function') saveCurrentScript()
+  }
+}
+
+// ===== 跨线程组操作的事件处理(委托给共享 composable) =====
+const handleCutNode = (uid) => _cutNode(uid)
+const handleCopyNode = (uid) => _copyToClipboard(uid)
+const handlePasteNode = (targetParentUid) => _pasteNode(targetParentUid)
+const handleToggleEnabled = (uid) => _toggleEnabled(uid)
+const handleMoveNode = (movedUid, newParentUid, newIndex) => {
+  // 拖拽触发的移动:composable 中已校验,这里只需更新选中状态
+  const moved = findNode(scriptTree, movedUid)
+  if (moved) {
+    selectedUid.value = movedUid
+    selectedNode.value = moved
+  }
+  if (typeof saveCurrentScript === 'function') saveCurrentScript()
+}
+const handleTreeChanged = () => {
+  if (typeof saveCurrentScript === 'function') saveCurrentScript()
 }
 
 const addVar = () => { if (!scriptTree.props.variables) scriptTree.props.variables = []; scriptTree.props.variables.push({ name: '', value: '' }) }
@@ -2058,7 +2435,7 @@ const applyTemplate = (tpl) => {
   } else if (tpl.key === 'login-flow') {
     const tg = createElement('ThreadGroup', { name: '登录流程', props: { threads: 10, rampUp: 5, loops: 1, duration: 60 } })
     const login = createElement('HttpSampler', { name: '登录请求', props: { method: 'POST', url: 'https://api.example.com/auth/login', body: '{"username":"admin","password":"123456"}', bodyType: 'json', headers: [{ key: 'Content-Type', value: 'application/json' }] } })
-    login.children.push(createElement('JsonExtractor', { name: '提取 Token', props: { varName: 'token', jsonPath: '$.data.token', defaultValue: 'NOT_FOUND' } }))
+    login.children.push(createElement('JSONExtractor', { name: '提取 Token', props: { varName: 'token', jsonPath: '$.data.token', defaultValue: 'NOT_FOUND' } }))
     const api = createElement('HttpSampler', { name: '业务请求', props: { method: 'GET', url: 'https://api.example.com/users/me', headers: [{ key: 'Authorization', value: 'Bearer ${token}' }] } })
     tg.children.push(login, api, createElement('ViewResultsTree'))
     scriptTree.children.push(tg)
@@ -2075,7 +2452,7 @@ const applyTemplate = (tpl) => {
   } else if (tpl.key === 'data-driven') {
     const tg = createElement('ThreadGroup', { name: 'CSV 数据驱动', props: { threads: 5, rampUp: 2, loops: 3, duration: 120 } })
     tg.children.push(
-      createElement('CSVDataSet', { name: '用户数据', props: { filename: 'users.csv', variableNames: 'username,password', delimiter: ',', recycle: true, csvContent: 'username,password\nuser1,pass1\nuser2,pass2' } }),
+      createElement('CsvDataSource', { name: '用户数据', props: { filename: 'users.csv', variableNames: 'username,password', delimiter: ',', recycle: true, csvContent: 'username,password\nuser1,pass1\nuser2,pass2' } }),
       createElement('HttpSampler', { name: '参数化登录', props: { method: 'POST', url: 'https://api.example.com/auth/login', body: '{"username":"${username}","password":"${password}"}', bodyType: 'json', headers: [{ key: 'Content-Type', value: 'application/json' }] } }),
       createElement('ViewResultsTree')
     )
@@ -2268,6 +2645,39 @@ watch(step3SidebarWidth, (v) => {
   step3SidebarCollapsed.value = v < PANEL_COLLAPSED
 })
 
+// 布局预设：根据当前步骤调整对应侧面板宽度
+const applyLayoutPreset = (preset) => {
+  const isStep1 = currentStep.value === 1
+  const isStep2 = currentStep.value === 2
+  const isStep3 = currentStep.value === 3
+  const presets = {
+    compact: { step1: 220, tree: 200, step3: 240 },
+    default: { step1: 300, tree: 280, step3: 320 },
+    wide: { step1: 420, tree: 400, step3: 440 },
+    'editor-focus': { step1: 0, tree: 0, step3: 0 },
+    reset: { step1: getDefaultPanelWidth(300, 220, 400), tree: getDefaultPanelWidth(280, 200, 400), step3: getDefaultPanelWidth(320, 260, 420) }
+  }
+  const cfg = presets[preset] || presets.default
+  if (isStep1 || preset === 'reset') {
+    step1LeftWidth.value = cfg.step1
+    step1LeftCollapsed.value = cfg.step1 < PANEL_COLLAPSED
+  }
+  if (isStep2 || preset === 'reset') {
+    treeWidth.value = cfg.tree
+    treeCollapsed.value = cfg.tree < PANEL_COLLAPSED
+  }
+  if (isStep3 || preset === 'reset') {
+    step3SidebarWidth.value = cfg.step3
+    step3SidebarCollapsed.value = cfg.step3 < PANEL_COLLAPSED
+  }
+  try {
+    if (isStep1 || preset === 'reset') localStorage.setItem('tm-jmeter-step1-left-width', String(step1LeftWidth.value))
+    if (isStep2 || preset === 'reset') localStorage.setItem('tm-jmeter-tree-width', String(treeWidth.value))
+    if (isStep3 || preset === 'reset') localStorage.setItem('tm-jmeter-step3-sidebar-width', String(step3SidebarWidth.value))
+  } catch {}
+  ElMessage?.success?.(`布局已切换：${preset === 'compact' ? '紧凑' : preset === 'wide' ? '宽屏' : preset === 'editor-focus' ? '编辑器专注' : preset === 'reset' ? '默认' : '默认'}`)
+}
+
 const bottomPanelVisible = ref(true)
 const bottomPanelHeight = ref(320)
 const bottomResultTab = ref('samples')
@@ -2367,6 +2777,17 @@ const debugTab = ref('dsampler')
 const debugReqTab = ref('drbody')
 const debugResTab = ref('drsbody')
 
+// AI 参数化(Stage E.4)
+const aiParamLoading = ref(false)
+const aiParamDialogVisible = ref(false)
+const aiParamResult = ref({
+  parameterized_url: '',
+  parameterized_body: '',
+  extracted_vars: [],
+  suggested_extractions: [],
+  raw_ai_answer: '',
+})
+
 const debugRequest = async (node) => {
   if (!node || node.type !== 'HttpSampler') return
   debugLoading.value = true
@@ -2387,6 +2808,60 @@ const debugRequest = async (node) => {
     ElMessage.success(`调试完成: ${res.response?.status_code || 'ERR'} | ${res.response?.elapsed_ms || 0}ms`)
   } catch (e) { ElMessage.error('调试失败: ' + (e.message || '未知错误')) }
   finally { debugLoading.value = false }
+}
+
+// AI 参数化:调用 /ai/jmeter/parameterize 识别 URL/Body 中的变量并生成 ${var} 引用(Stage E.4)
+const aiParameterize = async (node) => {
+  if (!node || node.type !== 'HttpSampler') return
+  aiParamLoading.value = true
+  try {
+    const headers = (node.props.headers || []).filter(h => h.key).map(h => ({ key: h.key, value: h.value }))
+    const res = await autoTestRequest.post('/ai/jmeter/parameterize', {
+      url: node.props.url || '',
+      method: node.props.method || 'GET',
+      body: node.props.method !== 'GET' ? (node.props.body || '') : '',
+      headers,
+    })
+    aiParamResult.value = res
+    aiParamDialogVisible.value = true
+    ElMessage.success(`识别到 ${res.extracted_vars?.length || 0} 个变量,${res.suggested_extractions?.length || 0} 个建议提取器`)
+  } catch (e) {
+    ElMessage.error('AI 参数化失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    aiParamLoading.value = false
+  }
+}
+
+const applyParameterization = () => {
+  if (!selectedNode.value || selectedNode.value.type !== 'HttpSampler') return
+  if (aiParamResult.value.parameterized_url) {
+    selectedNode.value.props.url = aiParamResult.value.parameterized_url
+  }
+  if (aiParamResult.value.parameterized_body) {
+    selectedNode.value.props.body = aiParamResult.value.parameterized_body
+  }
+  ElMessage.success('已应用参数化到当前节点')
+  aiParamDialogVisible.value = false
+}
+
+const applyParameterizationAndAddExtractors = () => {
+  applyParameterization()
+  const suggestions = aiParamResult.value.suggested_extractions || []
+  if (suggestions.length === 0) {
+    ElMessage.info('没有建议的提取器')
+    return
+  }
+  suggestions.forEach(s => {
+    addChildToCurrent('JSONExtractor')
+    if (selectedNode.value && selectedNode.value.children) {
+      const lastChild = selectedNode.value.children[selectedNode.value.children.length - 1]
+      if (lastChild && lastChild.type === 'JSONExtractor') {
+        lastChild.props.referenceName = s.varName
+        lastChild.props.jsonPath = s.jsonPath
+      }
+    }
+  })
+  ElMessage.success(`已添加 ${suggestions.length} 个 JSON 提取器`)
 }
 
 const formatHeaders = (h) => {
@@ -2510,10 +2985,10 @@ watch(benchResult, (newVal, oldVal) => {
 const projectVariables = computed(() => {
   const vars = []
   const walk = (node) => {
-    if (node.type === 'JsonExtractor' || node.type === 'RegexExtractor') {
-      if (node.props.varName) vars.push({ name: node.props.varName, source: `${node.name} (${node.type === 'JsonExtractor' ? 'JSON提取' : '正则提取'})` })
+    if (node.type === 'JSONExtractor' || node.type === 'RegexExtractor') {
+      if (node.props.varName) vars.push({ name: node.props.varName, source: `${node.name} (${node.type === 'JSONExtractor' ? 'JSON提取' : '正则提取'})` })
     }
-    if (node.type === 'CSVDataSet' && node.props.variableNames) {
+    if (node.type === 'CsvDataSource' && node.props.variableNames) {
       node.props.variableNames.split(',').forEach(n => {
         const trimmed = n.trim()
         if (trimmed) vars.push({ name: trimmed, source: `${node.name} (CSV数据源)` })

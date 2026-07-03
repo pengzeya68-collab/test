@@ -72,90 +72,48 @@
     </div>
 
     <div class="page-tabs">
-      <div class="tab-nav">
+      <!-- 一级分组 + 快捷入口 -->
+      <div class="tab-nav-primary">
+        <div class="tab-groups">
+          <div
+            v-for="group in tabGroups"
+            :key="group.key"
+            class="tab-group-btn"
+            :class="{ active: activeGroup === group.key }"
+            @click="switchGroup(group.key)"
+          >
+            <el-icon class="group-icon"><component :is="group.icon" /></el-icon>
+            <span class="group-label">{{ group.label }}</span>
+            <el-icon class="dropdown-arrow"><ArrowDown /></el-icon>
+          </div>
+        </div>
+        <!-- 跳转型快捷入口 -->
+        <div class="quick-entries">
+          <el-button class="quick-btn" @click="$router.push('/ai-generate-cases')">
+            <span>🧪 AI生成用例</span>
+            <el-tag size="small" type="warning" class="new-tag">新</el-tag>
+          </el-button>
+          <el-button class="quick-btn" @click="$router.push('/test-coverage')">
+            <span>📐 覆盖率看板</span>
+          </el-button>
+          <el-button class="quick-btn" @click="$router.push('/api-doc-preview')">
+            <el-icon><Document /></el-icon>
+            <span>接口文档</span>
+            <el-tag size="small" type="success" class="new-tag">新</el-tag>
+          </el-button>
+        </div>
+      </div>
+      <!-- 二级 tab 栏（仅当前分组） -->
+      <div class="tab-nav-secondary">
         <div
+          v-for="tab in currentGroupTabs"
+          :key="tab.key"
           class="tab-item"
-          :class="{ 'active': activeTab === 'debug' }"
-          @click="activeTab = 'debug'; handleTabChange('debug')"
+          :class="{ 'active': activeTab === tab.key }"
+          @click="activeTab = tab.key; handleTabChange(tab.key)"
         >
-          <el-icon><Position /></el-icon>
-          <span>接口调试</span>
-        </div>
-        <div
-          class="tab-item"
-          :class="{ 'active': activeTab === 'interfaces' }"
-          @click="activeTab = 'interfaces'; handleTabChange('interfaces')"
-        >
-          <el-icon><Document /></el-icon>
-          <span>接口库</span>
-        </div>
-        <div
-          class="tab-item"
-          :class="{ 'active': activeTab === 'scenarios' }"
-          @click="activeTab = 'scenarios'; handleTabChange('scenarios')"
-        >
-          <el-icon><FolderOpened /></el-icon>
-          <span>场景管理</span>
-        </div>
-        <div
-          class="tab-item"
-          :class="{ 'active': activeTab === 'variables' }"
-          @click="activeTab = 'variables'; handleTabChange('variables')"
-        >
-          <el-icon><DataAnalysis /></el-icon>
-          <span>变量管理</span>
-        </div>
-        <div
-          class="tab-item"
-          :class="{ 'active': activeTab === 'dataFactory' }"
-          @click="activeTab = 'dataFactory'; handleTabChange('dataFactory')"
-        >
-          <el-icon><Coin /></el-icon>
-          <span>测试数据工厂</span>
-        </div>
-        <div
-          class="tab-item jmeter-tab"
-          :class="{ 'active': activeTab === 'jmeter' }"
-          @click="activeTab = 'jmeter'; handleTabChange('jmeter')"
-        >
-          <el-icon><Connection /></el-icon>
-          <span>JMeter 助手 <el-tag size="small" type="danger" class="new-tag">新</el-tag></span>
-        </div>
-        <div
-          class="tab-item"
-          :class="{ 'active': activeTab === 'mock' }"
-          @click="activeTab = 'mock'; handleTabChange('mock')"
-        >
-          <el-icon><Monitor /></el-icon>
-          <span>Mock 服务</span>
-        </div>
-        <div
-          class="tab-item"
-          :class="{ 'active': activeTab === 'suites' }"
-          @click="activeTab = 'suites'; handleTabChange('suites')"
-        >
-          <el-icon><Collection /></el-icon>
-          <span>测试套件</span>
-        </div>
-        <div
-          class="tab-item"
-          :class="{ 'active': activeTab === 'dbConnections' }"
-          @click="activeTab = 'dbConnections'; handleTabChange('dbConnections')"
-        >
-          <el-icon><Coin /></el-icon>
-          <span>数据库连接</span>
-        </div>
-        <div class="tab-item ai-tab" @click="$router.push('/ai-generate-cases')">
-          <span>🧪 AI生成用例</span>
-          <el-tag size="small" type="warning" class="new-tag">新</el-tag>
-        </div>
-        <div class="tab-item coverage-tab" @click="$router.push('/test-coverage')">
-          <span>📐 覆盖率看板</span>
-        </div>
-        <div class="tab-item docs-tab" @click="$router.push('/api-doc-preview')">
-          <el-icon><Document /></el-icon>
-          <span>接口文档</span>
-          <el-tag size="small" type="success" class="new-tag">新</el-tag>
+          <el-icon><component :is="tab.icon" /></el-icon>
+          <span>{{ tab.label }}</span>
         </div>
         <div class="tab-indicator" ref="tabIndicatorRef"></div>
       </div>
@@ -219,6 +177,7 @@
     <ExecutionResultDialog
       v-model="resultDialogVisible"
       :result="runResult"
+      @apply-assertions="handleApplyAssertions"
     />
   </div>
 </template>
@@ -227,7 +186,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Document, FolderOpened, Position, DataAnalysis, Coin, Connection, Monitor, Collection } from '@element-plus/icons-vue'
+import { Document, FolderOpened, Position, DataAnalysis, Coin, Connection, Monitor, Collection, ArrowDown } from '@element-plus/icons-vue'
 import ScenarioList from './ScenarioList.vue'
 import ScenarioEditor from './ScenarioEditor.vue'
 import GlobalVariableManager from '../components/GlobalVariableManager.vue'
@@ -245,6 +204,54 @@ const route = useRoute()
 const router = useRouter()
 const activeTab = ref(route.query.tab || 'debug')
 const visitedTabs = ref(new Set([route.query.tab || 'debug']))
+
+// ===== 分组导航配置 =====
+const tabGroups = [
+  {
+    key: 'execution',
+    label: '测试执行',
+    icon: Position,
+    tabs: [
+      { key: 'debug', label: '接口调试', icon: Position },
+      { key: 'interfaces', label: '接口库', icon: Document },
+      { key: 'scenarios', label: '场景管理', icon: FolderOpened },
+      { key: 'suites', label: '测试套件', icon: Collection }
+    ]
+  },
+  {
+    key: 'data',
+    label: '数据管理',
+    icon: DataAnalysis,
+    tabs: [
+      { key: 'variables', label: '变量管理', icon: DataAnalysis },
+      { key: 'dataFactory', label: '测试数据工厂', icon: Coin },
+      { key: 'mock', label: 'Mock 服务', icon: Monitor },
+      { key: 'dbConnections', label: '数据库连接', icon: Coin }
+    ]
+  },
+  {
+    key: 'tools',
+    label: '工具',
+    icon: Connection,
+    tabs: [
+      { key: 'jmeter', label: 'JMeter 助手', icon: Connection }
+    ]
+  }
+]
+
+const findGroupByTab = (tabKey) => {
+  for (const g of tabGroups) {
+    if (g.tabs.some(t => t.key === tabKey)) return g.key
+  }
+  return 'execution'
+}
+
+const activeGroup = ref(findGroupByTab(activeTab.value))
+
+const currentGroupTabs = computed(() => {
+  const g = tabGroups.find(g => g.key === activeGroup.value)
+  return g ? g.tabs : []
+})
 const parseScenarioId = (value) => {
   if (value === undefined || value === null || value === '') return null
   const parsed = Number(value)
@@ -257,10 +264,13 @@ const scenarioListRef = ref(null)
 const interfaceLibraryRef = ref(null)
 
 const resultDialogVisible = ref(false)
+const currentRunCaseId = ref(null)
+const currentRunCaseName = ref('')
 const runResult = ref({
   passed: false,
   status: 200,
   time: 0,
+  caseId: null,
   request: {
     method: 'GET',
     url: '',
@@ -268,7 +278,9 @@ const runResult = ref({
     body: ''
   },
   response: {
-    data: ''
+    data: '',
+    headers: {},
+    parsedBody: null
   },
   passedAssertions: 0,
   totalAssertions: 0,
@@ -299,6 +311,7 @@ const syncRouteState = (tab = activeTab.value, scenarioId = currentScenarioId.va
 const handleTabChange = (val) => {
   visitedTabs.value = new Set([...visitedTabs.value, val])
   activeTab.value = val
+  activeGroup.value = findGroupByTab(val)
   syncRouteState(val, val === 'scenarios' ? currentScenarioId.value : null)
   if (val === 'scenarios' && scenarioListRef.value) {
     scenarioListRef.value.loadScenarios()
@@ -321,6 +334,29 @@ const updateTabIndicator = () => {
   tabIndicatorRef.value.style.transform = `translateX(${active.offsetLeft}px)`
 }
 
+// 切换一级分组：自动激活该分组的第一个 tab（若当前 tab 不在该分组）
+const switchGroup = (groupKey) => {
+  activeGroup.value = groupKey
+  const g = tabGroups.find(g => g.key === groupKey)
+  if (g && g.tabs.length > 0 && !g.tabs.some(t => t.key === activeTab.value)) {
+    const firstTab = g.tabs[0].key
+    handleTabChange(firstTab)
+  } else {
+    nextTick(updateTabIndicator)
+  }
+}
+
+// activeTab 变化时同步分组并刷新指示器
+watch(activeTab, (newTab) => {
+  activeGroup.value = findGroupByTab(newTab)
+  nextTick(updateTabIndicator)
+})
+
+// activeGroup 变化时（二级 tab 栏重渲染）刷新指示器
+watch(activeGroup, () => {
+  nextTick(updateTabIndicator)
+})
+
 const handleRunCases = async (caseData, envId) => {
   try {
     const runRes = await autoTestRequest.post(`/auto-test/cases/${caseData.id}/run`, {
@@ -336,10 +372,28 @@ const handleRunCases = async (caseData, envId) => {
       ? (typeof runRes.response === 'string' ? runRes.response : JSON.stringify(runRes.response, null, 2))
       : ''
 
+    // 解析响应体为对象，供"从响应生成断言"使用
+    let parsedBody = null
+    if (runRes.response) {
+      if (typeof runRes.response === 'object') {
+        parsedBody = runRes.response
+      } else {
+        try {
+          parsedBody = JSON.parse(runRes.response)
+        } catch {
+          parsedBody = null
+        }
+      }
+    }
+
+    currentRunCaseId.value = caseData.id
+    currentRunCaseName.value = caseData.name || ''
+
     runResult.value = {
       passed: runRes.success,
       status: runRes.status_code || 0,
       time: runRes.execution_time || 0,
+      caseId: caseData.id,
       request: {
         method: runRes.request_method || caseData.method || 'GET',
         url: finalUrl,
@@ -348,7 +402,9 @@ const handleRunCases = async (caseData, envId) => {
         body: typeof finalBody === 'string' ? finalBody : JSON.stringify(finalBody || '')
       },
       response: {
-        data: responseData
+        data: responseData,
+        headers: runRes.response_headers || {},
+        parsedBody
       },
       hasError: !runRes.success,
       errorMessage: runRes.error || null,
@@ -383,6 +439,57 @@ const handleRunCases = async (caseData, envId) => {
 const onCaseSaved = () => {
   if (interfaceLibraryRef.value) {
     interfaceLibraryRef.value.refreshCaseList()
+  }
+}
+
+const handleApplyAssertions = async ({ assertions, saveAsTemplate, caseId }) => {
+  if (!caseId || !assertions || assertions.length === 0) {
+    ElMessage.warning('无可应用的断言')
+    return
+  }
+  try {
+    // 1. 获取当前用例的已有断言
+    const caseDetail = await autoTestRequest.get(`/auto-test/cases/${caseId}`)
+    const existingAssertions = Array.isArray(caseDetail.assert_rules) ? caseDetail.assert_rules : []
+    // 2. 合并断言（已有 + 新增）
+    const mergedAssertions = [...existingAssertions, ...assertions]
+    // 3. PUT 更新用例（仅更新 assertions 字段）
+    await autoTestRequest.put(`/auto-test/cases/${caseId}`, { assertions: mergedAssertions })
+    ElMessage.success(`已追加 ${assertions.length} 条断言到用例`)
+    // 4. 刷新用例列表
+    if (interfaceLibraryRef.value) {
+      interfaceLibraryRef.value.refreshCaseList()
+    }
+    // 5. 可选：保存为断言模板
+    if (saveAsTemplate) {
+      try {
+        const ts = new Date()
+        const pad = (n) => String(n).padStart(2, '0')
+        const stamp = `${pad(ts.getMonth() + 1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}`
+        const tplName = `${currentRunCaseName.value || '用例'}-响应断言-${stamp}`
+        const rules = assertions.map(a => ({
+          type: a.target,
+          operator: a.operator,
+          expected: String(a.expected ?? ''),
+          expression: a.expression || '',
+        }))
+        await autoTestRequest.post('/v1/assert-templates', {
+          name: tplName,
+          category: '自动生成',
+          description: `由用例「${currentRunCaseName.value || ''}」的响应自动生成`,
+          rules,
+        })
+        ElMessage.success(`已保存为断言模板: ${tplName}`)
+      } catch (e) {
+        console.error('保存断言模板失败', e)
+        ElMessage.warning('断言已追加到用例，但保存为模板失败')
+      }
+    }
+    // 6. 关闭执行结果对话框
+    resultDialogVisible.value = false
+  } catch (e) {
+    console.error('应用断言失败', e)
+    ElMessage.error(e?.response?.data?.detail || '应用断言失败')
   }
 }
 
@@ -488,10 +595,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateTabIndicator)
-})
-
-watch(activeTab, () => {
-  nextTick(updateTabIndicator)
 })
 
 watch(
@@ -700,43 +803,106 @@ watch(
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.tab-nav {
+/* ===== 一级分组导航栏 ===== */
+.tab-nav-primary {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 8px 0;
+  flex-wrap: wrap;
+}
+
+.tab-groups {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tab-group-btn {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  padding: 0 8px;
-  border-bottom: 1px solid transparent;
-  overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  flex-wrap: nowrap;
-  scrollbar-width: thin;
-  scroll-snap-type: x proximity;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: var(--tm-card-bg);
+  border: 1px solid var(--tm-border-light);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
   position: relative;
 }
-.tab-nav::-webkit-scrollbar {
-  height: 4px;
+
+.tab-group-btn .group-icon {
+  font-size: 16px;
 }
-.tab-nav::-webkit-scrollbar-thumb {
-  background: var(--tm-border-light);
-  border-radius: 2px;
+
+.tab-group-btn .dropdown-arrow {
+  font-size: 12px;
+  opacity: 0.6;
+  transition: transform 0.3s ease;
 }
-/* 左右渐隐蒙层：指示可滚动 */
-.tab-nav::before,
-.tab-nav::after {
-  content: '';
-  position: sticky;
-  min-width: 12px;
-  z-index: 2;
-  pointer-events: none;
-  flex-shrink: 0;
+
+.tab-group-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--tm-color-primary);
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--tm-color-primary-rgb), 0.15);
 }
-.tab-nav::before {
-  left: 0;
-  background: linear-gradient(to right, var(--tm-bg-page), transparent);
+
+.tab-group-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  border-color: var(--tm-color-primary);
+  box-shadow: 0 4px 16px rgba(var(--tm-color-primary-rgb), 0.4);
 }
-.tab-nav::after {
-  right: 0;
-  background: linear-gradient(to left, var(--tm-bg-page), transparent);
+
+.tab-group-btn.active .dropdown-arrow {
+  opacity: 0.9;
+  transform: rotate(180deg);
+}
+
+/* ===== 快捷入口（跳转型） ===== */
+.quick-entries {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--tm-card-bg);
+  border: 1px solid var(--tm-border-light);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  height: auto;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quick-btn:hover {
+  color: var(--tm-color-primary);
+  border-color: var(--tm-color-primary);
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--tm-color-primary-rgb), 0.15);
+}
+
+/* ===== 二级 tab 栏 ===== */
+.tab-nav-secondary {
+  display: flex;
+  gap: 6px;
+  padding: 8px 8px 0;
+  position: relative;
+  flex-wrap: wrap;
 }
 
 /* 2026 tab 滑动指示器：渐变发光条跟随 active tab 平滑滑动 */
@@ -768,7 +934,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
@@ -783,7 +949,6 @@ watch(
   flex-shrink: 0;
   white-space: nowrap;
   min-width: fit-content;
-  scroll-snap-align: start;
 }
 
 .tab-item:hover {
@@ -937,30 +1102,26 @@ watch(
   .tab-item .new-tag {
     font-size: 9px;
   }
-  /* 次级 tab（AI生成/覆盖率/接口文档）在窄屏下隐藏文字仅留图标 */
-  .tab-item.ai-tab span:first-child,
-  .tab-item.coverage-tab span:first-child {
-    font-size: 0;
-  }
-  .tab-item.ai-tab span:first-child::after {
-    content: '🧪';
-    font-size: 14px;
-  }
-  .tab-item.coverage-tab span:first-child::after {
-    content: '📐';
-    font-size: 14px;
-  }
 }
 
 @media (max-width: 768px) {
-  .tab-nav {
-    overflow-x: auto;
-    padding-bottom: 10px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+  .tab-nav-primary {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
-  .tab-nav::-webkit-scrollbar {
+  .tab-groups,
+  .quick-entries {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex-wrap: nowrap;
+  }
+
+  .tab-groups::-webkit-scrollbar,
+  .quick-entries::-webkit-scrollbar {
     display: none;
   }
 

@@ -10,17 +10,24 @@
 
       <!-- 配置项: 仅在未运行时显示 -->
       <div v-if="!benching && !benchResult" class="bcp-header-center">
+        <div class="bcp-config-item bcp-engine-select">
+          <label>引擎</label>
+          <el-select v-model="benchEngine" size="small" style="width:130px;">
+            <el-option label="⚡ 快速预览" value="quick" />
+            <el-option label="🎯 JMeter 引擎" value="jmeter" :disabled="!jmeterEngineAvailable" />
+          </el-select>
+        </div>
         <div class="bcp-config-item">
           <label>并发数</label>
-          <el-input-number v-model="benchConcurrency" :min="1" :max="200" size="small" controls-position="right" style="width:90px;" />
+          <el-input-number v-model="benchConcurrency" :min="1" :max="benchEngine === 'jmeter' ? 10000 : 200" size="small" controls-position="right" style="width:90px;" />
         </div>
         <div class="bcp-config-item">
           <label>持续(秒)</label>
-          <el-input-number v-model="benchDuration" :min="3" :max="60" size="small" controls-position="right" style="width:90px;" />
+          <el-input-number v-model="benchDuration" :min="3" :max="benchEngine === 'jmeter' ? 3600 : 60" size="small" controls-position="right" style="width:90px;" />
         </div>
         <div class="bcp-config-item">
           <label>预热(秒)</label>
-          <el-input-number v-model="benchRampUp" :min="0" :max="10" size="small" controls-position="right" style="width:90px;" />
+          <el-input-number v-model="benchRampUp" :min="0" :max="benchEngine === 'jmeter' ? 600 : 10" size="small" controls-position="right" style="width:90px;" />
         </div>
       </div>
 
@@ -34,15 +41,19 @@
 
       <div class="bcp-header-right">
         <el-button v-if="!benching" type="danger" @click.stop="startBench" size="default" class="bcp-start-btn">
-          ⚡ 启动压测（{{ benchConcurrency }}并发 × {{ benchDuration }}秒）
+          {{ benchEngine === 'jmeter' ? '🎯 JMeter 压测' : '⚡ 快速预览' }}（{{ benchConcurrency }}并发 × {{ benchDuration }}秒）
         </el-button>
         <el-button v-else :icon="SwitchButton" @click.stop="stopBench" size="default" type="danger">停止</el-button>
 
         <!-- 结果操作按钮 -->
+        <el-button v-if="benchResult && benchResult.html_report_available" size="small" type="primary" plain @click.stop="openHtmlReport">📊 查看 HTML 报告</el-button>
+        <el-tag v-if="benchResult && benchResult.regression" size="small" type="danger" effect="dark">⚠️ 性能回归</el-tag>
         <el-button v-if="benchResult && !analyzing" size="small" type="primary" plain @click.stop="analyzeBenchResult">🤖 AI 分析</el-button>
         <span v-if="getCostText('bench_ai_analysis')" class="ai-cost-hint">{{ getCostText('bench_ai_analysis') }}</span>
         <el-button v-if="analyzing" size="small" type="warning" plain loading @click.stop>分析中...</el-button>
         <el-button v-if="benchResult" size="small" type="success" plain @click.stop="exportReport">📄 导出报告</el-button>
+        <el-button v-if="benchResult" size="small" type="primary" plain @click.stop="openTrendChart">📊 趋势对比</el-button>
+        <el-button size="small" type="warning" plain @click.stop="openBaselineDialog">🏷️ 基线管理</el-button>
 
         <el-button size="default" @click.stop="showBenchHistory = !showBenchHistory">
           📋 历史{{ benchHistory.length > 0 ? '(' + benchHistory.length + ')' : '' }}
@@ -243,16 +254,77 @@
       </div>
     </div>
   </div>
+
+  <!-- 趋势对比对话框 -->
+  <TrendChart v-model="showTrendChart" :history-runs="historyRunsForTrend" @close="showTrendChart = false" />
+
+  <!-- 基线管理对话框 -->
+  <el-dialog v-model="showBaselineDialog" title="🏷️ 性能基线管理" width="780px" destroy-on-close>
+    <div class="baseline-toolbar" style="display:flex;gap:8px;margin-bottom:12px;">
+      <el-button size="small" type="primary" @click="openCreateBaselineDialog" :disabled="!benchResult">
+        + 新建基线(基于当前结果)
+      </el-button>
+      <el-button size="small" @click="loadBaselines" :loading="baselinesLoading">🔄 刷新</el-button>
+    </div>
+    <el-table :data="baselines" size="small" stripe v-loading="baselinesLoading" empty-text="暂无基线">
+      <el-table-column prop="id" label="#" width="60" />
+      <el-table-column prop="name" label="名称" min-width="160" show-overflow-tooltip />
+      <el-table-column label="P95阈值(ms)" width="110" align="right">
+        <template #default="{ row }">{{ row.p95_threshold_ms ?? '-' }}</template>
+      </el-table-column>
+      <el-table-column label="P99阈值(ms)" width="110" align="right">
+        <template #default="{ row }">{{ row.p99_threshold_ms ?? '-' }}</template>
+      </el-table-column>
+      <el-table-column label="TPS下限" width="90" align="right">
+        <template #default="{ row }">{{ row.tps_threshold ?? '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="created_at" label="创建时间" width="160" />
+      <el-table-column label="操作" width="80" align="center">
+        <template #default="{ row }">
+          <el-button link size="small" type="danger" @click="deleteBaseline(row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+  </el-dialog>
+
+  <!-- 新建基线对话框 -->
+  <el-dialog v-model="showCreateBaseline" title="➕ 新建性能基线" width="480px" append-to-body>
+    <el-form :model="newBaseline" label-width="120px" size="small">
+      <el-form-item label="名称" required>
+        <el-input v-model="newBaseline.name" placeholder="如:用户登录接口_基线_v1" />
+      </el-form-item>
+      <el-form-item label="P95 阈值(ms)">
+        <el-input-number v-model="newBaseline.p95_threshold_ms" :min="1" :max="60000" />
+        <span style="margin-left:8px;font-size:12px;color:var(--tm-text-secondary);">当前 P95: {{ benchResult?.p95_ms || '-' }} ms</span>
+      </el-form-item>
+      <el-form-item label="P99 阈值(ms)">
+        <el-input-number v-model="newBaseline.p99_threshold_ms" :min="1" :max="60000" />
+        <span style="margin-left:8px;font-size:12px;color:var(--tm-text-secondary);">当前 P99: {{ benchResult?.p99_ms || '-' }} ms</span>
+      </el-form-item>
+      <el-form-item label="TPS 下限">
+        <el-input-number v-model="newBaseline.tps_threshold" :min="0.1" :step="10" />
+        <span style="margin-left:8px;font-size:12px;color:var(--tm-text-secondary);">当前 TPS: {{ benchResult?.tps || '-' }}</span>
+      </el-form-item>
+      <el-form-item label="错误率上限(%)">
+        <el-input-number v-model="newBaseline.error_rate_threshold" :min="0" :max="100" :step="0.1" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="showCreateBaseline = false">取消</el-button>
+      <el-button type="primary" @click="createBaseline" :loading="creatingBaseline">创建</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted, shallowRef } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { SwitchButton, ArrowDown } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import autoTestRequest from '@/utils/autoTestRequest'
 import { useAICosts } from '@/composables/useAICosts'
 import { useUserStore } from '@/stores/user'
+import TrendChart from './TrendChart.vue'
 
 const props = defineProps({
   scriptTree: { type: Object, required: true },
@@ -266,6 +338,9 @@ const props = defineProps({
 const benchConcurrency = ref(10)
 const benchDuration = ref(10)
 const benchRampUp = ref(2)
+const benchEngine = ref('quick') // 'quick' | 'jmeter'
+const benchRunId = ref(null) // JMeter 引擎模式返回的 run_id
+const jmeterEngineAvailable = ref(false) // 通过 /jmeter/engine-status 探测
 const benchResult = ref(null)
 const benchProgress = ref('')
 const benchPercent = ref(0)
@@ -301,6 +376,131 @@ const benchStartTime = ref(null)
 let benchPollTimer = null
 let benchRetryCount = 0
 
+// 趋势对比 + 基线管理(Stage E.3)
+const showTrendChart = ref(false)
+const showBaselineDialog = ref(false)
+const showCreateBaseline = ref(false)
+const historyRunsForTrend = ref([])
+const baselines = ref([])
+const baselinesLoading = ref(false)
+const creatingBaseline = ref(false)
+const newBaseline = ref({
+  name: '',
+  p95_threshold_ms: null,
+  p99_threshold_ms: null,
+  tps_threshold: null,
+  error_rate_threshold: null,
+})
+
+const openTrendChart = async () => {
+  showTrendChart.value = true
+  if (historyRunsForTrend.value.length === 0) {
+    try {
+      const res = await autoTestRequest.get('/auto-test/jmeter/runs', { params: { limit: 20 } })
+      historyRunsForTrend.value = res || []
+    } catch (e) {
+      ElMessage.error('加载历史运行失败: ' + (e.response?.data?.detail || e.message))
+    }
+  }
+}
+
+const openBaselineDialog = async () => {
+  showBaselineDialog.value = true
+  await loadBaselines()
+}
+
+const loadBaselines = async () => {
+  baselinesLoading.value = true
+  try {
+    const res = await autoTestRequest.get('/auto-test/jmeter/baselines')
+    baselines.value = res || []
+  } catch (e) {
+    ElMessage.error('加载基线失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    baselinesLoading.value = false
+  }
+}
+
+const openCreateBaselineDialog = () => {
+  if (!benchResult.value) {
+    ElMessage.warning('请先执行压测,基线需要基于当前压测结果')
+    return
+  }
+  newBaseline.value = {
+    name: `${props.planName || 'JMeter'}_基线_${new Date().toISOString().slice(0, 10)}`,
+    p95_threshold_ms: Math.ceil((benchResult.value.p95_ms || 500) * 1.2),
+    p99_threshold_ms: Math.ceil((benchResult.value.p99_ms || 800) * 1.2),
+    tps_threshold: Math.floor((benchResult.value.tps || 100) * 0.8),
+    error_rate_threshold: 1.0,
+  }
+  showCreateBaseline.value = true
+}
+
+const _computeScriptHash = async () => {
+  const samplers = []
+  const walk = (node) => {
+    if (node.type === 'HttpSampler') {
+      samplers.push({ name: node.name, method: node.props.method || 'GET', url: node.props.url })
+    }
+    ;(node.children || []).forEach(walk)
+  }
+  walk(props.scriptTree)
+  const scriptHashSource = JSON.stringify(samplers)
+  try {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(scriptHashSource)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
+  } catch (e) {
+    // crypto.subtle 不可用时降级为简单字符串 hash(非安全场景)
+    let h = 0
+    for (let i = 0; i < scriptHashSource.length; i++) {
+      h = ((h << 5) - h) + scriptHashSource.charCodeAt(i)
+      h |= 0
+    }
+    return 'fallback_' + Math.abs(h).toString(16).padStart(16, '0').repeat(4).slice(0, 64)
+  }
+}
+
+const createBaseline = async () => {
+  if (!newBaseline.value.name) {
+    ElMessage.warning('请填写基线名称')
+    return
+  }
+  creatingBaseline.value = true
+  try {
+    const scriptHash = await _computeScriptHash()
+    await autoTestRequest.post('/auto-test/jmeter/baselines', {
+      name: newBaseline.value.name,
+      script_hash: scriptHash,
+      p95_threshold_ms: newBaseline.value.p95_threshold_ms,
+      p99_threshold_ms: newBaseline.value.p99_threshold_ms,
+      tps_threshold: newBaseline.value.tps_threshold,
+      error_rate_threshold: newBaseline.value.error_rate_threshold,
+    })
+    ElMessage.success('基线创建成功')
+    showCreateBaseline.value = false
+    await loadBaselines()
+  } catch (e) {
+    ElMessage.error('创建基线失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    creatingBaseline.value = false
+  }
+}
+
+const deleteBaseline = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确认删除基线 "${row.name}"?`, '删除确认', { type: 'warning' })
+    await autoTestRequest.delete(`/auto-test/jmeter/baselines/${row.id}`)
+    ElMessage.success('已删除')
+    await loadBaselines()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.response?.data?.detail || e.message))
+    }
+  }
+}
+
 const shortUrl = (url) => {
   try { const u = new URL(url); return u.pathname + u.search || '/' } catch { return url.length > 50 ? url.substring(0, 50) + '...' : url }
 }
@@ -320,11 +520,26 @@ const startBench = async () => {
   if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
   benching.value = true; runStatus.value = 'running'; benchStartTime.value = new Date()
   benchResult.value = null; benchProgress.value = '提交任务...'; benchPercent.value = 0
-  benchTaskId.value = null; benchRetryCount = 0; benchSnapshots.value = []
+  benchTaskId.value = null; benchRunId.value = null; benchRetryCount = 0; benchSnapshots.value = []
   try {
-    const res = await autoTestRequest.post('/auto-test/jmeter/quick-bench', { requests: samplers, concurrency: benchConcurrency.value, duration: benchDuration.value, ramp_up: benchRampUp.value })
-    benchTaskId.value = res.task_id; benchProgress.value = '任务已提交，正在执行...'
-    benchPollTimer = setInterval(pollBench, 1500)
+    if (benchEngine.value === 'jmeter') {
+      // JMeter 引擎模式：调用 /jmeter/run 提交真实 JMeter 压测任务
+      const res = await autoTestRequest.post('/auto-test/jmeter/run', {
+        plan_name: props.planName || 'JMeter Run',
+        script_tree: props.scriptTree,
+        concurrency: benchConcurrency.value,
+        duration: benchDuration.value,
+        ramp_up: benchRampUp.value,
+      })
+      benchRunId.value = res.run_id; benchTaskId.value = res.task_id
+      benchProgress.value = `JMeter 任务已提交（run_id=${res.run_id}），等待执行...`
+      benchPollTimer = setInterval(pollBench, 2000)
+    } else {
+      // 快速预览模式：保持原有行为不变
+      const res = await autoTestRequest.post('/auto-test/jmeter/quick-bench', { requests: samplers, concurrency: benchConcurrency.value, duration: benchDuration.value, ramp_up: benchRampUp.value })
+      benchTaskId.value = res.task_id; benchProgress.value = '任务已提交，正在执行...'
+      benchPollTimer = setInterval(pollBench, 1500)
+    }
   } catch (e) {
     ElMessage.error('提交失败: ' + (e.response?.data?.detail || e.message))
     benchProgress.value = ''; benchPercent.value = 0; runStatus.value = ''; benching.value = false; benchResult.value = null
@@ -332,6 +547,56 @@ const startBench = async () => {
 }
 
 const pollBench = async () => {
+  // JMeter 引擎模式：轮询 /jmeter/runs/{run_id} + /jmeter/runs/{run_id}/snapshots
+  if (benchEngine.value === 'jmeter' && benchRunId.value) {
+    try {
+      const res = await autoTestRequest.get(`/auto-test/jmeter/runs/${benchRunId.value}`)
+      benchRetryCount = 0
+      benchProgress.value = res.status === 'running' ? 'JMeter 正在执行...' : (res.status === 'pending' ? '排队中...' : '处理中')
+      if (res.latest_snapshot) {
+        benchPercent.value = res.latest_snapshot.percent || 0
+        // 拉取完整快照序列
+        const snaps = await autoTestRequest.get(`/auto-test/jmeter/runs/${benchRunId.value}/snapshots`)
+        if (Array.isArray(snaps) && snaps.length > 0) {
+          benchSnapshots.value = snaps.map(s => ({
+            t: snaps.indexOf(s) + 1,
+            tps: s.tps || 0,
+            avg: s.avg_ms || 0,
+            p95: s.p95_ms || 0,
+            p99: 0,
+            errors: 0,
+          }))
+          updateAllBenchCharts()
+        }
+      }
+      if (['success', 'failed', 'stopped'].includes(res.status)) {
+        if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
+        benchResult.value = {
+          ...res.summary,
+          html_report_available: res.html_report_available,
+          regression: res.regression,
+        }
+        benching.value = false; runStatus.value = 'idle'
+        if (res.status === 'success') {
+          ElMessage.success(`JMeter 压测完成：${res.summary?.total || 0} 请求，TPS ${res.summary?.tps || 0}`)
+        } else if (res.status === 'failed') {
+          ElMessage.error('JMeter 压测失败：' + (res.error_msg || '未知错误').substring(0, 200))
+        } else {
+          ElMessage.info('已停止')
+        }
+      }
+    } catch (e) {
+      benchRetryCount++
+      if (benchRetryCount >= 3) {
+        if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
+        benching.value = false; benchRetryCount = 0
+        ElMessage.error('查询失败: ' + (e.response?.data?.detail || e.message))
+      }
+    }
+    return
+  }
+
+  // 快速预览模式：保持原有行为
   if (!benchTaskId.value) return
   try {
     const res = await autoTestRequest.get(`/auto-test/jmeter/quick-bench/${benchTaskId.value}`)
@@ -354,8 +619,47 @@ const pollBench = async () => {
 const stopBench = async () => {
   if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
   benching.value = false; runStatus.value = 'idle'
-  if (benchTaskId.value) { try { await autoTestRequest.post('/auto-test/bench/stop', { task_id: benchTaskId.value }) } catch (e) { console.warn('停止压测任务失败:', e) } }
+  if (benchEngine.value === 'jmeter' && benchRunId.value) {
+    try { await autoTestRequest.post(`/auto-test/jmeter/runs/${benchRunId.value}/stop`) }
+    catch (e) { console.warn('停止 JMeter 任务失败:', e) }
+  } else if (benchTaskId.value) {
+    try { await autoTestRequest.post('/auto-test/bench/stop', { task_id: benchTaskId.value }) }
+    catch (e) { console.warn('停止压测任务失败:', e) }
+  }
   ElMessage.info('已停止')
+}
+
+const openHtmlReport = async () => {
+  if (!benchRunId.value) {
+    ElMessage.warning('无 JMeter 报告可用')
+    return
+  }
+  // 新窗口打开 HTML 报告（通过 GET /jmeter/runs/{id}/report 获取内容并写入新窗口）
+  try {
+    const html = await autoTestRequest.get(`/auto-test/jmeter/runs/${benchRunId.value}/report`, { responseType: 'text', transformResponse: [(data) => data] })
+    const newWin = window.open('', '_blank')
+    if (newWin) {
+      newWin.document.write(typeof html === 'string' ? html : (html?.data || String(html)))
+      newWin.document.close()
+    } else {
+      ElMessage.warning('浏览器拦截了新窗口，请允许弹窗')
+    }
+  } catch (e) {
+    ElMessage.error('打开 HTML 报告失败: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+const fetchJmeterEngineStatus = async () => {
+  try {
+    const res = await autoTestRequest.get('/auto-test/jmeter/engine-status')
+    jmeterEngineAvailable.value = !!res.enabled
+    if (!res.enabled) {
+      benchEngine.value = 'quick' // 引擎不可用时回退到快速预览
+    }
+  } catch (e) {
+    jmeterEngineAvailable.value = false
+    benchEngine.value = 'quick'
+  }
 }
 
 const saveBenchHistory = (result) => {
@@ -443,6 +747,7 @@ watch(BENCH_HISTORY_KEY, (newKey) => {
 })
 onMounted(() => {
   fetchCosts()
+  fetchJmeterEngineStatus()
   window.addEventListener('resize', resizeAllBenchCharts)
 })
 onBeforeUnmount(() => {
@@ -453,7 +758,7 @@ onBeforeUnmount(() => {
   })
 })
 
-defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurrency, benchDuration, benchRampUp, benchStartTime, aiAnalysisText, aiAnalysisDialogVisible, startBench, stopBench, shortUrl, resizeAllBenchCharts })
+defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurrency, benchDuration, benchRampUp, benchStartTime, benchEngine, benchRunId, jmeterEngineAvailable, aiAnalysisText, aiAnalysisDialogVisible, startBench, stopBench, openHtmlReport, fetchJmeterEngineStatus, shortUrl, resizeAllBenchCharts })
 </script>
 
 <style scoped>

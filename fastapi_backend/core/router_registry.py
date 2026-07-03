@@ -55,6 +55,7 @@ _ROUTER_MODULES = {
     ],
     "ai_tools": [
         "fastapi_backend.routers.ai_tutor",
+        "fastapi_backend.routers.ai_jmeter",
         "fastapi_backend.routers.sandbox",
         "fastapi_backend.routers.mock_api",
     ],

@@ -254,4 +254,216 @@ def task_send_email(self, to_email: str, subject: str, body: str, html_body: str
         raise self.retry(exc=e, countdown=30)
 
 
+@app.task(bind=True, name="fastapi_backend.tasks.run_jmeter_bench")
+def task_run_jmeter_bench(self, run_id: int):
+    """执行真实 JMeter 压测任务
+
+    流程:
+    1. 同步加载 JmeterBenchRun（用 _get_celery_engine 创建同步 session）
+    2. 更新状态 running + started_at
+    3. 调用 JmeterEngine.run(jmx_content, run_id, props)
+    4. 解析 .jtl → 聚合指标
+    5. 写入 JmeterBenchRun.summary_json + html_report_path + jtl_path + finished_at
+    6. 自动匹配基线检查回归
+    7. 更新状态 success/failed
+    """
+    task_id = self.request.id
+
+    try:
+        import asyncio
+        import gc
+        import json as _json
+        from datetime import datetime as _dt
+        from sqlalchemy import create_engine as _create_sync_engine
+        from sqlalchemy.orm import sessionmaker as _sessionmaker
+        from fastapi_backend.core.config import settings as _settings
+        from fastapi_backend.core.jmeter_settings import is_jmeter_available, JMETER_REPORT_DIR
+        from fastapi_backend.services.jmeter_engine import JmeterEngine, JtlParser
+        from fastapi_backend.services.autotest_jmeter_service import export_tree_to_jmx
+        from fastapi_backend.services.jmeter_bench_service import check_regression
+        from fastapi_backend.models.autotest_jmeter_models import (
+            JmeterBenchRun, JmeterBenchSnapshot, JmeterPerformanceBaseline,
+        )
+
+        def _normalize_url(url: str) -> str:
+            if url.startswith("postgresql+asyncpg://"):
+                return url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+            if url.startswith("postgresql://"):
+                return url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            return url
+
+        # 创建同步 engine 供 Celery 任务使用
+        sync_engine = _create_sync_engine(
+            _normalize_url(_settings.DATABASE_URL),
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            pool_size=2,
+            max_overflow=4,
+        )
+        SyncSession = _sessionmaker(bind=sync_engine, expire_on_commit=False)
+
+        # 1. 加载 run 记录 + 更新状态为 running
+        with SyncSession() as sync_db:
+            run = sync_db.query(JmeterBenchRun).filter(JmeterBenchRun.id == run_id).one_or_none()
+            if not run:
+                raise RuntimeError(f"JmeterBenchRun not found: {run_id}")
+            if run.status in ("stopped", "cancelled"):
+                _logger.info("[JMeter] run_id=%s 已被停止,跳过", run_id)
+                return {"status": "skipped", "run_id": run_id}
+            run.task_id = task_id
+            run.status = "running"
+            run.started_at = _dt.utcnow()
+            sync_db.commit()
+
+            config = _json.loads(run.config_json) if run.config_json else {}
+            # 若无 jmx_path，从 config 中的 script_tree 重新生成 JMX
+            jmx_content = config.get("jmx_content", "")
+
+        # 2. 执行 JMeter（async）
+        async def _run_jmeter_async():
+            # 写 snapshot 的 helper（用新同步 session 避免跨线程）
+            def _write_snapshot(percent: int, tps: float, avg_ms: float, p95_ms: float, error_rate: float, active: int):
+                try:
+                    with SyncSession() as snap_db:
+                        snap = JmeterBenchSnapshot(
+                            run_id=run_id, percent=percent, tps=tps,
+                            avg_ms=avg_ms, p95_ms=p95_ms, error_rate=error_rate,
+                            active_threads=active,
+                        )
+                        snap_db.add(snap)
+                        snap_db.commit()
+                except Exception as e:
+                    _logger.warning("[JMeter] 写 snapshot 失败: %s", e)
+
+            # 进度心跳（JMeter subprocess 期间无法精确进度，这里仅做存活心跳）
+            _write_snapshot(10, 0, 0, 0, 0, config.get("concurrency", 1))
+            self.update_state(state="PROGRESS", meta={"percent": 10, "status": "running"})
+
+            engine_result = await JmeterEngine.run(
+                jmx_content=jmx_content,
+                run_id=str(run_id),
+                props=config.get("props", {}),
+            )
+
+            _write_snapshot(90, 0, 0, 0, 0, config.get("concurrency", 1))
+            return engine_result
+
+        # 在最外层用 asyncio.run，处理已存在事件循环的情况
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            engine_result = asyncio.run(_run_jmeter_async())
+        else:
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                engine_result = pool.submit(asyncio.run, _run_jmeter_async()).result()
+
+        gc.collect()
+
+        # 3. 检查停止信号
+        with SyncSession() as sync_db:
+            run = sync_db.query(JmeterBenchRun).filter(JmeterBenchRun.id == run_id).one_or_none()
+            if run and run.status == "stopped":
+                _logger.info("[JMeter] run_id=%s 执行中收到停止信号,放弃结果", run_id)
+                return {"status": "stopped", "run_id": run_id}
+
+        # 4. 解析 .jtl → 聚合指标
+        summary = {}
+        if engine_result.get("jtl_path"):
+            summary = JtlParser.parse(engine_result["jtl_path"])
+
+        # 5. 写入最终结果 + 基线检查
+        with SyncSession() as sync_db:
+            run = sync_db.query(JmeterBenchRun).filter(JmeterBenchRun.id == run_id).one_or_none()
+            if not run:
+                raise RuntimeError(f"JmeterBenchRun disappeared: {run_id}")
+
+            run.jmx_path = engine_result.get("jmx_path")
+            run.jtl_path = engine_result.get("jtl_path")
+            run.html_report_path = engine_result.get("report_dir")
+            run.summary_json = _json.dumps(summary, ensure_ascii=False)
+            run.finished_at = _dt.utcnow()
+
+            # 基线检查（Stage E 提前接入，避免后续再次修改）- 同步查询避免 async/sync 混用
+            if run.script_hash:
+                baseline = (
+                    sync_db.query(JmeterPerformanceBaseline)
+                    .filter(JmeterPerformanceBaseline.script_hash == run.script_hash)
+                    .order_by(JmeterPerformanceBaseline.created_at.desc())
+                    .first()
+                )
+                if baseline:
+                    is_regression = check_regression(summary, baseline)
+                    run.regression = 1 if is_regression else 0
+
+            # 状态判定
+            if engine_result.get("exit_code") == 0 and summary.get("total", 0) > 0:
+                run.status = "success"
+            else:
+                run.status = "failed"
+                run.error_msg = (
+                    f"JMeter exit_code={engine_result.get('exit_code')}\n"
+                    f"stderr={engine_result.get('stderr', '')[:2000]}"
+                )
+            sync_db.commit()
+
+            # 最终 snapshot
+            snap = JmeterBenchSnapshot(
+                run_id=run_id, percent=100,
+                tps=summary.get("tps", 0), avg_ms=summary.get("avg_ms", 0),
+                p95_ms=summary.get("p95_ms", 0), error_rate=summary.get("error_rate", 0),
+                active_threads=0,
+            )
+            sync_db.add(snap)
+            sync_db.commit()
+
+        sync_engine.dispose()
+        _logger.info("[JMeter] run_id=%s 完成: status=%s", run_id, run.status)
+
+        return {
+            "run_id": run_id,
+            "task_id": task_id,
+            "status": run.status,
+            "summary": summary,
+        }
+
+    except Exception as e:
+        _logger.error("[JMeter] run_id=%s 失败: %s", run_id, e, exc_info=True)
+        fail_payload = {
+            "run_id": run_id,
+            "task_id": task_id,
+            "status": "failed",
+            "error": str(e),
+        }
+        # 更新 DB 状态
+        try:
+            from sqlalchemy import create_engine as _ce
+            from sqlalchemy.orm import sessionmaker as _sm
+            from fastapi_backend.core.config import settings as _s
+            from datetime import datetime as _dt_fail
+            _url = _s.DATABASE_URL
+            if _url.startswith("postgresql+asyncpg://"):
+                _url = _url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+            elif _url.startswith("postgresql://"):
+                _url = _url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            _eng = _ce(_url, pool_pre_ping=True)
+            _SS = _sm(bind=_eng)
+            with _SS() as _db:
+                _r = _db.query(JmeterBenchRun).filter(JmeterBenchRun.id == run_id).one_or_none()
+                if _r:
+                    _r.status = "failed"
+                    _r.error_msg = str(e)[:5000]
+                    _r.finished_at = _dt_fail.utcnow()
+                    _db.commit()
+            _eng.dispose()
+        except Exception as inner:
+            _logger.error("[JMeter] 写失败状态到 DB 出错: %s", inner)
+
+        try:
+            self.update_state(state="FAILURE", meta=fail_payload)
+        except Exception:
+            pass
+        raise Ignore()
+
+
 celery_app = app

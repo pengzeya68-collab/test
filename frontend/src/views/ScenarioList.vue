@@ -58,6 +58,7 @@
         class="scenario-card standard-card"
         v-spotlight
         v-fade-in="{ stagger: idx * 60 }"
+        @click="handleEdit(scenario)"
       >
         <div class="card-header">
           <h3 class="card-title" :title="scenario.name">{{ scenario.name }}</h3>
@@ -76,33 +77,47 @@
             {{ scenario.schedule }}
           </span>
         </div>
-        <div class="card-actions">
+        <div class="card-actions" @click.stop>
           <el-tooltip content="运行场景" placement="top" popper-class="action-tooltip">
-            <el-button type="primary" link :icon="VideoPlay" @click="handleRun(scenario)">运行</el-button>
+            <el-button
+              class="action-btn action-run"
+              size="small"
+              :icon="VideoPlay"
+              @click.stop="handleRun(scenario)"
+            >运行</el-button>
           </el-tooltip>
           <el-tooltip content="编辑场景" placement="top" popper-class="action-tooltip">
-            <el-button type="primary" link :icon="Edit" @click="handleEdit(scenario)">编辑</el-button>
+            <el-button
+              class="action-btn action-edit"
+              size="small"
+              :icon="Edit"
+              @click.stop="handleEdit(scenario)"
+            >编辑</el-button>
           </el-tooltip>
           <el-tooltip content="执行历史" placement="top" popper-class="action-tooltip">
-            <el-button type="info" link :icon="Timer" @click="openHistoryDrawer(scenario)">历史</el-button>
-          </el-tooltip>
-          <el-tooltip content="CI/CD 集成" placement="top" popper-class="action-tooltip">
-            <el-button type="success" link :icon="Link" @click="openCiCdDialog(scenario)">CI/CD</el-button>
-          </el-tooltip>
-          <el-tooltip content="定时计划" placement="top" popper-class="action-tooltip">
-            <el-button type="warning" link :icon="Clock" @click="openScheduleDialog(scenario)">计划</el-button>
-          </el-tooltip>
-          <el-tooltip content="启用/停用切换" placement="top" popper-class="action-tooltip">
             <el-button
-              :type="scenario.is_active ? 'success' : 'info'"
-              link
-              :icon="scenario.is_active ? Open : TurnOff"
-              @click="handleToggleStatus(scenario, !scenario.is_active)"
-            >{{ scenario.is_active ? '停用' : '启用' }}</el-button>
+              class="action-btn action-history"
+              size="small"
+              :icon="Timer"
+              @click.stop="openHistoryDrawer(scenario)"
+            >历史</el-button>
           </el-tooltip>
-          <el-tooltip content="删除场景" placement="top" popper-class="action-tooltip">
-            <el-button type="danger" link :icon="Delete" @click="handleDelete(scenario.id)">删除</el-button>
-          </el-tooltip>
+          <el-dropdown trigger="click" class="action-more-dropdown" @command="(cmd) => handleMoreAction(cmd, scenario)">
+            <el-button class="action-btn action-more" size="small" :icon="MoreFilled">
+              更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="cicd"><el-icon><Link /></el-icon> CI/CD 集成</el-dropdown-item>
+                <el-dropdown-item command="schedule"><el-icon><Clock /></el-icon> 定时计划</el-dropdown-item>
+                <el-dropdown-item command="toggle">
+                  <el-icon><component :is="scenario.is_active ? TurnOff : Open" /></el-icon>
+                  {{ scenario.is_active ? '停用场景' : '启用场景' }}
+                </el-dropdown-item>
+                <el-dropdown-item divided command="delete"><el-icon><Delete /></el-icon> 删除场景</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </div>
       <BaseEmpty
@@ -203,7 +218,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, VideoPlay, Delete, Search, Link, DocumentCopy, Clock, Edit, Timer, Setting, Open, TurnOff, Coin } from '@element-plus/icons-vue'
+import { Plus, VideoPlay, Delete, Search, Link, DocumentCopy, Clock, Edit, Timer, Setting, Open, TurnOff, Coin, MoreFilled, ArrowDown } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import { helpContent } from '@/utils/help-content'
 import HelpDrawer from '@/components/HelpDrawer.vue'
@@ -278,6 +293,13 @@ const curlCommand = computed(() => {
 const openCiCdDialog = (row) => {
   currentCiCdScene.value = row
   ciCdDialogVisible.value = true
+}
+
+const handleMoreAction = (cmd, row) => {
+  if (cmd === 'cicd') openCiCdDialog(row)
+  else if (cmd === 'schedule') openScheduleDialog(row)
+  else if (cmd === 'toggle') handleToggleStatus(row, !row.is_active)
+  else if (cmd === 'delete') handleDelete(row.id)
 }
 
 const copyCurlCommand = async () => {
@@ -675,10 +697,12 @@ onUnmounted(() => {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-auto-rows: min-content;
   gap: 20px;
   padding: 20px;
   overflow: auto;
   min-height: 200px;
+  align-content: start;
 }
 
 .scenario-card {
@@ -690,9 +714,10 @@ onUnmounted(() => {
   border: 1px solid var(--tm-border-light);
   border-radius: 14px;
   transition: all 0.3s ease;
-  cursor: default;
+  cursor: pointer;
   position: relative;
   overflow: hidden;
+  min-height: min-content;
 }
 .scenario-card::before {
   content: '';
@@ -710,6 +735,9 @@ onUnmounted(() => {
 }
 .scenario-card:hover::before {
   opacity: 1;
+}
+.scenario-card:active {
+  transform: translateY(-1px);
 }
 
 .scenario-card .card-header {
@@ -756,12 +784,64 @@ onUnmounted(() => {
   color: var(--tm-text-secondary);
 }
 .scenario-card .card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
   margin-top: 4px;
   padding-top: 12px;
   border-top: 1px solid var(--tm-border-light);
+}
+.scenario-card .card-actions .action-btn {
+  width: 100%;
+  justify-content: center;
+  font-size: 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+.scenario-card .card-actions .action-btn:hover {
+  transform: translateY(-1px);
+}
+.scenario-card .card-actions .action-run {
+  color: var(--el-color-primary);
+  background: rgba(var(--el-color-primary-rgb), 0.08);
+  border: 1px solid rgba(var(--el-color-primary-rgb), 0.2);
+}
+.scenario-card .card-actions .action-run:hover {
+  background: rgba(var(--el-color-primary-rgb), 0.16);
+  border-color: rgba(var(--el-color-primary-rgb), 0.4);
+}
+.scenario-card .card-actions .action-edit {
+  color: var(--tm-text-secondary);
+  background: rgba(var(--tm-text-secondary-rgb), 0.06);
+  border: 1px solid rgba(var(--tm-text-secondary-rgb), 0.15);
+}
+.scenario-card .card-actions .action-edit:hover {
+  background: rgba(var(--tm-text-secondary-rgb), 0.12);
+  border-color: rgba(var(--tm-text-secondary-rgb), 0.3);
+}
+.scenario-card .card-actions .action-history {
+  color: var(--el-color-info);
+  background: rgba(var(--el-color-info-rgb), 0.08);
+  border: 1px solid rgba(var(--el-color-info-rgb), 0.2);
+}
+.scenario-card .card-actions .action-history:hover {
+  background: rgba(var(--el-color-info-rgb), 0.16);
+  border-color: rgba(var(--el-color-info-rgb), 0.4);
+}
+.scenario-card .action-more-dropdown {
+  width: 100%;
+}
+.scenario-card .action-more-dropdown .el-button {
+  width: 100%;
+}
+.scenario-card .card-actions .action-more {
+  color: var(--tm-text-secondary);
+  background: rgba(var(--tm-text-secondary-rgb), 0.06);
+  border: 1px solid rgba(var(--tm-text-secondary-rgb), 0.15);
+}
+.scenario-card .card-actions .action-more:hover {
+  background: rgba(var(--tm-text-secondary-rgb), 0.12);
+  border-color: rgba(var(--tm-text-secondary-rgb), 0.3);
 }
 
 .status-badge {
@@ -867,12 +947,7 @@ onUnmounted(() => {
 
 @media (max-width: 480px) {
   .scenario-card .card-actions {
-    flex-direction: column;
-    gap: 6px;
-  }
-  .scenario-card .card-actions .el-button {
-    width: 100%;
-    justify-content: flex-start;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
