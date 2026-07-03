@@ -49,6 +49,7 @@ from fastapi_backend.services.jmeter_bench_service import (
     create_baseline as jmeter_create_baseline,
     list_baselines as jmeter_list_baselines,
     delete_baseline as jmeter_delete_baseline,
+    list_samples as jmeter_list_samples,
 )
 from fastapi_backend.core.ssrf_guard import validate_url_safety
 from fastapi_backend.deps.ai_points import require_ai_points
@@ -1553,6 +1554,30 @@ async def get_jmeter_snapshots(
     if not run:
         raise HTTPException(status_code=404, detail="运行记录不存在")
     return await jmeter_get_snapshots(db, run_id)
+
+
+@router.get("/jmeter/runs/{run_id}/samples")
+async def get_jmeter_samples(
+    run_id: int,
+    limit: int = 100,
+    only_failures: bool = False,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """返回指定 run 的采样器详情(请求/响应/状态码/耗时)。
+    修复 BUG 2:之前前端"采样器列表"全 200 + 空响应,根因是 JMeter JTL
+    没存 responseData + 后端没存 samples。现在从 jmeter_bench_samples 表查。
+    """
+    # 先验证所有权(防止越权访问他人 run)
+    run = await jmeter_get_run(db, run_id, user_id=current_user.id)
+    if not run:
+        raise HTTPException(status_code=404, detail="运行记录不存在")
+    if limit < 1 or limit > 500:
+        limit = 100
+    return await jmeter_list_samples(
+        db, run_id, current_user.id,
+        limit=limit, only_failures=only_failures,
+    )
 
 
 @router.post("/jmeter/runs/{run_id}/stop")

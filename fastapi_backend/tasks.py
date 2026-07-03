@@ -367,12 +367,18 @@ def task_run_jmeter_bench(self, run_id: int):
                 _logger.info("[JMeter] run_id=%s 执行中收到停止信号,放弃结果", run_id)
                 return {"status": "stopped", "run_id": run_id}
 
-        # 4. 解析 .jtl → 聚合指标
+        # 4. 解析 .jtl → 聚合指标 + 详细样本(Stage F.4 修复 BUG 2)
         summary = {}
+        samples = []
         if engine_result.get("jtl_path"):
-            summary = JtlParser.parse(engine_result["jtl_path"])
+            try:
+                summary, samples = JtlParser.parse_with_samples(engine_result["jtl_path"])
+            except Exception as parse_err:
+                # 解析失败不影响主流程,降级到旧 parse
+                _logger.warning("[JMeter] parse_with_samples 失败,降级: %s", parse_err)
+                summary = JtlParser.parse(engine_result["jtl_path"])
 
-        # 5. 写入最终结果 + 基线检查
+        # 5. 写入最终结果 + 基线检查 + 样本详情落库
         with SyncSession() as sync_db:
             run = sync_db.query(JmeterBenchRun).filter(JmeterBenchRun.id == run_id).one_or_none()
             if not run:
@@ -406,6 +412,45 @@ def task_run_jmeter_bench(self, run_id: int):
                     f"stderr={engine_result.get('stderr', '')[:2000]}"
                 )
             sync_db.commit()
+
+            # 落库样本详情(Stage F.4 修复 BUG 2) - 用同步 ORM 直接插入,避免 async/sync 混用
+            if samples:
+                try:
+                    from fastapi_backend.models.autotest_jmeter_models import JmeterBenchSample
+                    MAX_SAMPLES_PER_RUN = 500
+                    truncated = samples[:MAX_SAMPLES_PER_RUN]
+                    sample_rows = [
+                        JmeterBenchSample(
+                            run_id=run_id,
+                            user_id=run.user_id,
+                            label=(s.get("label") or "")[:500],
+                            method=(s.get("method") or "")[:20],
+                            url=(s.get("url") or "")[:2000],
+                            response_code=(s.get("response_code") or "")[:20],
+                            response_message=(s.get("response_message") or "")[:255],
+                            elapsed_ms=int(s.get("elapsed", 0) or 0),
+                            latency_ms=int(s.get("latency", 0) or 0),
+                            bytes_received=int(s.get("bytes", 0) or 0),
+                            bytes_sent=int(s.get("sent_bytes", 0) or 0),
+                            success=bool(s.get("success", True)),
+                            failure_message=(s.get("failure_message") or "")[:2000],
+                            request_data=(s.get("request_data") or "")[:2000],
+                            response_data=(s.get("response_data") or "")[:2000],
+                            request_headers=(s.get("request_headers") or "")[:2000],
+                            response_headers=(s.get("response_headers") or "")[:2000],
+                            thread_name=(s.get("thread_name") or "")[:255],
+                        )
+                        for s in truncated
+                    ]
+                    sync_db.bulk_save_objects(sample_rows)
+                    sync_db.commit()
+                    _logger.info(
+                        "[JMeter] run_id=%s 写入 %d/%d 条样本到 jmeter_bench_samples",
+                        run_id, len(sample_rows), len(samples),
+                    )
+                except Exception as sample_err:
+                    _logger.warning("[JMeter] 写样本表失败(忽略): %s", sample_err)
+                    sync_db.rollback()
 
             # 最终 snapshot
             snap = JmeterBenchSnapshot(

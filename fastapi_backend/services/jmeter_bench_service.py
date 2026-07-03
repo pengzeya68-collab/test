@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.jmeter_settings import is_jmeter_available
 from fastapi_backend.models.autotest_jmeter_models import (
-    JmeterBenchRun, JmeterBenchSnapshot, JmeterPerformanceBaseline,
+    JmeterBenchRun, JmeterBenchSample, JmeterBenchSnapshot, JmeterPerformanceBaseline,
 )
 
 _logger = logging.getLogger(__name__)
@@ -328,3 +328,100 @@ def check_regression(summary: Dict[str, Any], baseline: JmeterPerformanceBaselin
     if baseline.error_rate_threshold is not None and summary.get("error_rate", 0) > baseline.error_rate_threshold:
         return True
     return False
+
+
+# ===== 采样器详情(Stage F.4 修复 BUG 2 引入)=====
+
+async def save_samples(
+    db: AsyncSession,
+    run_id: int,
+    user_id: int,
+    samples: List[Dict[str, Any]],
+    max_samples: int = 500,
+) -> int:
+    """把 JtlParser 解析出的每条 sample 写入 jmeter_bench_samples 表。
+
+    Args:
+        samples: JtlParser._parse_csv_full / _parse_xml_full 返回的样本列表
+        max_samples: 最多落库条数,防止 10w+ 请求把表撑爆
+
+    Returns:
+        实际写入条数
+    """
+    if not samples:
+        return 0
+    # 截断:保留前 max_samples 条 + 失败/错误的所有条目
+    truncated = samples[:max_samples] if len(samples) > max_samples else samples
+    rows = [
+        JmeterBenchSample(
+            run_id=run_id,
+            user_id=user_id,
+            label=(s.get("label") or "")[:500],
+            method=(s.get("method") or "")[:20],
+            url=(s.get("url") or "")[:2000],
+            response_code=(s.get("response_code") or "")[:20],
+            response_message=(s.get("response_message") or "")[:255],
+            elapsed_ms=int(s.get("elapsed", 0) or 0),
+            latency_ms=int(s.get("latency", 0) or 0),
+            bytes_received=int(s.get("bytes", 0) or 0),
+            bytes_sent=int(s.get("sent_bytes", 0) or 0),
+            success=bool(s.get("success", True)),
+            failure_message=(s.get("failure_message") or "")[:2000],
+            request_data=(s.get("request_data") or "")[:2000],
+            response_data=(s.get("response_data") or "")[:2000],
+            request_headers=(s.get("request_headers") or "")[:2000],
+            response_headers=(s.get("response_headers") or "")[:2000],
+            thread_name=(s.get("thread_name") or "")[:255],
+        )
+        for s in truncated
+    ]
+    db.add_all(rows)
+    await db.commit()
+    return len(rows)
+
+
+async def list_samples(
+    db: AsyncSession,
+    run_id: int,
+    user_id: int,
+    limit: int = 100,
+    only_failures: bool = False,
+) -> List[Dict[str, Any]]:
+    """查询某次压测的采样器详情(供前端"采样器列表"面板使用)。
+
+    Args:
+        limit: 返回最多条数
+        only_failures: True 时只返回失败采样(便于定位 500 错误)
+    """
+    stmt = select(JmeterBenchSample).where(
+        JmeterBenchSample.run_id == run_id,
+        JmeterBenchSample.user_id == user_id,
+    )
+    if only_failures:
+        stmt = stmt.where(JmeterBenchSample.success == False)  # noqa: E712
+    stmt = stmt.order_by(desc(JmeterBenchSample.id)).limit(min(limit, 500))
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    return [
+        {
+            "id": r.id,
+            "label": r.label,
+            "method": r.method,
+            "url": r.url,
+            "status": r.response_code,  # 前端用 bs.status
+            "response_message": r.response_message,
+            "elapsed_ms": r.elapsed_ms,
+            "latency_ms": r.latency_ms,
+            "bytes_received": r.bytes_received,
+            "bytes_sent": r.bytes_sent,
+            "success": r.success,
+            "failure_message": r.failure_message,
+            "request_body": r.request_data,
+            "response_body": r.response_data,
+            "request_headers": r.request_headers,
+            "response_headers": r.response_headers,
+            "thread_name": r.thread_name,
+            "ts": r.ts.isoformat() if r.ts else None,
+        }
+        for r in rows
+    ]

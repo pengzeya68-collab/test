@@ -55,7 +55,7 @@
         <el-button v-if="benchResult" size="small" type="primary" plain @click.stop="openTrendChart">📊 趋势对比</el-button>
         <el-button size="small" type="warning" plain @click.stop="openBaselineDialog">🏷️ 基线管理</el-button>
 
-        <el-button size="default" @click.stop="showBenchHistory = !showBenchHistory">
+        <el-button size="default" @click.stop="openHistoryDialog">
           📋 历史{{ benchHistory.length > 0 ? '(' + benchHistory.length + ')' : '' }}
         </el-button>
         <el-icon class="bcp-toggle-icon" :class="{ rotate: benchPanelExpanded }"><ArrowDown /></el-icon>
@@ -240,20 +240,43 @@
     </div>
   </div>
 
-  <!-- 历史面板 -->
-  <div v-if="showBenchHistory && benchHistory.length > 0" class="bench-history-panel">
-    <div class="bh-header">
-      <span>📋 执行历史 ({{ benchHistory.length }})</span>
-      <el-button link size="small" @click="benchHistory = []; showBenchHistory = false">清空全部</el-button>
+  <!-- 历史对话框(Stage F.4 修复 BUG 1:不再只读 localStorage,改为从后端 /jmeter/runs 拉真实历史) -->
+  <el-dialog v-model="showBenchHistory" title="📋 JMeter 压测历史" width="880px" destroy-on-close>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <el-button size="small" type="primary" @click="loadBenchHistoryFromServer" :loading="historyLoading">🔄 刷新</el-button>
+      <el-button size="small" @click="clearBenchHistoryLocal">清空本地缓存</el-button>
+      <span style="margin-left:auto;font-size:12px;color:var(--tm-text-secondary);align-self:center;">
+        共 {{ benchHistory.length }} 条(本地 {{ localBenchHistory.length }} + 服务端 {{ serverBenchHistory.length }})
+      </span>
     </div>
-    <div class="bh-list">
-      <div v-for="(h, hi) in benchHistory" :key="hi" class="bh-item" @click="restoreHistoryResult(h)">
-        <span class="bh-time">{{ h.time }}</span><span class="bh-name">{{ h.planName }}</span>
-        <span class="bh-total">{{ h.total }}次</span><span class="bh-tps">{{ h.tps }}TPS</span>
-        <span :class="h.failed > 0 ? 'bh-err' : 'bh-ok'">{{ h.failed }}失败</span>
-      </div>
-    </div>
-  </div>
+    <el-table :data="benchHistory" v-loading="historyLoading" empty-text="暂无历史记录,请先跑一次压测" size="small" stripe>
+      <el-table-column prop="id" label="#" width="60" />
+      <el-table-column prop="time" label="时间" width="170" />
+      <el-table-column prop="planName" label="计划名称" min-width="180" show-overflow-tooltip />
+      <el-table-column label="总请求" width="80" align="right">
+        <template #default="{ row }">{{ row.total || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="成功" width="70" align="right">
+        <template #default="{ row }">{{ row.success || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="失败" width="70" align="right">
+        <template #default="{ row }">
+          <span :style="{ color: (row.failed || 0) > 0 ? '#f56c6c' : '#67c23a' }">{{ row.failed || 0 }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="TPS" width="80" align="right">
+        <template #default="{ row }">{{ row.tps || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="P95(ms)" width="90" align="right">
+        <template #default="{ row }">{{ row.p95_ms || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="100" align="center">
+        <template #default="{ row }">
+          <el-button v-if="row.id" link size="small" type="primary" @click="restoreHistoryResult(row)">查看</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+  </el-dialog>
 
   <!-- 趋势对比对话框 -->
   <TrendChart v-model="showTrendChart" :history-runs="historyRunsForTrend" @close="showTrendChart = false" />
@@ -357,7 +380,25 @@ const userStore = useUserStore()
 const { fetchCosts, getCostText, getCost } = useAICosts()
 const _uid = computed(() => userStore.userId || 'anon')
 const BENCH_HISTORY_KEY = computed(() => `benchHistory_${_uid.value}`)
-const benchHistory = ref(JSON.parse(localStorage.getItem(BENCH_HISTORY_KEY.value) || '[]'))
+// Stage F.4 修复 BUG 1:历史分两层,localBenchHistory 来自 localStorage(quick-bench 模式),
+// serverBenchHistory 来自后端 /jmeter/runs(JMeter 引擎模式,持久化到数据库)。
+// benchHistory 用 computed 合并,展示时按时间倒序。
+const localBenchHistory = ref(JSON.parse(localStorage.getItem(BENCH_HISTORY_KEY.value) || '[]'))
+const serverBenchHistory = ref([])
+const historyLoading = ref(false)
+const benchHistory = computed(() => {
+  // 合并:用 planName + time 简单去重(同一次跑不会同时来自两端)
+  const seen = new Set()
+  const merged = []
+  for (const h of [...localBenchHistory.value, ...serverBenchHistory.value]) {
+    const key = `${h.planName}|${h.time}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      merged.push(h)
+    }
+  }
+  return merged
+})
 const analyzing = ref(false)
 const aiAnalysisText = ref('')
 const aiAnalysisDialogVisible = ref(false)
@@ -576,9 +617,32 @@ const pollBench = async () => {
           html_report_available: res.html_report_available,
           regression: res.regression,
         }
+        // Stage F.4 修复 BUG 2:从 /jmeter/runs/{id}/samples 拉真实采样器详情,
+        // 填充 benchResult.body_samples(模板 v-if 检查这个字段)
+        if (res.status === 'success' && benchRunId.value) {
+          try {
+            const samples = await autoTestRequest.get(`/auto-test/jmeter/runs/${benchRunId.value}/samples`, {
+              params: { limit: 10, only_failures: false },
+            })
+            if (Array.isArray(samples) && samples.length > 0) {
+              benchResult.value.body_samples = samples.map(s => ({
+                status: parseInt(s.status) || 0,
+                url: s.url || s.label || '',
+                method: s.method || 'GET',
+                body: s.response_body || '',
+                request_body: s.request_body || '',
+                elapsed_ms: s.elapsed_ms || 0,
+              }))
+            }
+          } catch (e) {
+            console.warn('加载采样器详情失败(忽略):', e)
+          }
+        }
         benching.value = false; runStatus.value = 'idle'
         if (res.status === 'success') {
           ElMessage.success(`JMeter 压测完成：${res.summary?.total || 0} 请求，TPS ${res.summary?.tps || 0}`)
+          // 同步刷新历史列表(下次打开对话框立即可见)
+          loadBenchHistoryFromServer()
         } else if (res.status === 'failed') {
           ElMessage.error('JMeter 压测失败：' + (res.error_msg || '未知错误').substring(0, 200))
         } else {
@@ -664,9 +728,49 @@ const fetchJmeterEngineStatus = async () => {
 
 const saveBenchHistory = (result) => {
   const entry = { time: new Date().toLocaleString(), planName: props.planName || '未命名', concurrency: benchConcurrency.value, duration: benchDuration.value, total: result.total, success: result.success, failed: result.failed, tps: result.tps, avg_ms: result.avg_ms, p95_ms: result.p95_ms, p99_ms: result.p99_ms, min_ms: result.min_ms, max_ms: result.max_ms, p50_ms: result.p50_ms, p90_ms: result.p90_ms, stddev_ms: result.stddev_ms, rt_distribution: result.rt_distribution, throughput_trend: result.throughput_trend, body_samples: result.body_samples, statusDistribution: result.status_distribution, perUrl: result.per_url, errors: result.errors, samples: result.samples }
-  benchHistory.value.unshift(entry)
-  if (benchHistory.value.length > 50) benchHistory.value = benchHistory.value.slice(0, 50)
-  try { localStorage.setItem(BENCH_HISTORY_KEY.value, JSON.stringify(benchHistory.value)) } catch (e) { benchHistory.value.pop(); try { localStorage.setItem(BENCH_HISTORY_KEY.value, JSON.stringify(benchHistory.value)) } catch (e2) {} }
+  localBenchHistory.value.unshift(entry)
+  if (localBenchHistory.value.length > 50) localBenchHistory.value = localBenchHistory.value.slice(0, 50)
+  try { localStorage.setItem(BENCH_HISTORY_KEY.value, JSON.stringify(localBenchHistory.value)) } catch (e) { localBenchHistory.value.pop(); try { localStorage.setItem(BENCH_HISTORY_KEY.value, JSON.stringify(localBenchHistory.value)) } catch (e2) {} }
+}
+
+const openHistoryDialog = () => {
+  showBenchHistory.value = true
+  loadBenchHistoryFromServer()
+}
+
+const loadBenchHistoryFromServer = async () => {
+  historyLoading.value = true
+  try {
+    const runs = await autoTestRequest.get('/auto-test/jmeter/runs', { params: { limit: 50 } })
+    serverBenchHistory.value = (runs || []).map(r => {
+      const s = r.summary || {}
+      return {
+        id: r.id,
+        time: r.created_at ? new Date(r.created_at).toLocaleString() : '-',
+        planName: r.plan_name || '未命名',
+        engine: r.engine_type || 'jmeter',
+        status: r.status,
+        total: s.total || 0,
+        success: s.success || 0,
+        failed: s.failure || (s.total ? s.total - (s.success || 0) : 0),
+        tps: s.tps || 0,
+        avg_ms: s.avg_ms || 0,
+        p95_ms: s.p95_ms || 0,
+        p99_ms: s.p99_ms || 0,
+      }
+    })
+  } catch (e) {
+    console.warn('加载服务端历史失败:', e)
+    ElMessage.warning('加载服务端历史失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+const clearBenchHistoryLocal = () => {
+  localBenchHistory.value = []
+  try { localStorage.removeItem(BENCH_HISTORY_KEY.value) } catch (e) {}
+  ElMessage.success('本地历史已清空')
 }
 
 const initAllBenchCharts = () => {
@@ -710,6 +814,23 @@ const resizeAllBenchCharts = () => { [benchChartInstance, benchChartInstance2, b
 const restoreHistoryResult = (h) => {
   benchResult.value = { total: h.total, success: h.success, failed: h.failed, tps: h.tps, avg_ms: h.avg_ms, min_ms: h.min_ms || 0, max_ms: h.max_ms || 0, p50_ms: h.p50_ms || 0, p95_ms: h.p95_ms, p99_ms: h.p99_ms, status_distribution: h.statusDistribution, per_url: h.perUrl, errors: h.errors, samples: h.samples || [] }
   benching.value = false; showBenchHistory.value = false
+  // Stage F.4 修复 BUG 2:如果是从服务端来的历史(有 id),同时拉采样器详情填充 body_samples
+  if (h.id) {
+    autoTestRequest.get(`/auto-test/jmeter/runs/${h.id}/samples`, { params: { limit: 10 } })
+      .then(samples => {
+        if (Array.isArray(samples) && samples.length > 0 && benchResult.value) {
+          benchResult.value.body_samples = samples.map(s => ({
+            status: parseInt(s.status) || 0,
+            url: s.url || s.label || '',
+            method: s.method || 'GET',
+            body: s.response_body || '',
+            request_body: s.request_body || '',
+            elapsed_ms: s.elapsed_ms || 0,
+          }))
+        }
+      })
+      .catch(e => console.warn('加载历史采样器详情失败:', e))
+  }
 }
 
 let analyzingMsg = null
