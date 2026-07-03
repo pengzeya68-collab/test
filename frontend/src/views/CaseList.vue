@@ -1,13 +1,22 @@
 <template>
   <div class="case-list-layout">
-    <!-- 左侧分组树侧边栏（占 25%） -->
-    <div class="case-list-sidebar">
+    <!-- 左侧分组树侧边栏（可拖拽调整宽度） -->
+    <div class="case-list-sidebar" :style="{ width: sidebarWidth + 'px', flex: 'none' }">
       <CaseTreeSidebar
         ref="sidebarRef"
         :current-group-id="currentGroupId"
         @select-group="handleSelectGroup"
       />
     </div>
+    <!-- 拖拽分隔条 1：侧边栏 ↔ 列表 -->
+    <BaseSplitter
+      v-model:size="sidebarWidth"
+      direction="horizontal"
+      :min-size="180"
+      :max-size="420"
+      storage-key="tm-caselist-sidebar-width"
+      container-selector=".case-list-layout"
+    />
     <!-- 中间：用例列表表格 -->
     <el-card class="case-list-card" shadow="never">
     <div class="case-list-container">
@@ -26,14 +35,16 @@
             <el-button type="primary" plain :icon="Setting" title="环境管理" @click="openEnvManager" />
           </el-tooltip>
           <el-button size="default" @click="showHelp = true">❓ 使用说明</el-button>
-          <el-button type="primary" plain :icon="FolderAdd" @click="handleCreateGroup">新建分组</el-button>
+          <el-button type="primary" plain :icon="FolderAdd" @click="handleCreateGroup" class="toolbar-btn-icon">
+            <span class="toolbar-text-hide">新建分组</span>
+          </el-button>
         </div>
         <div class="toolbar-right">
           <el-input
             v-model="searchKeyword"
             placeholder="搜索用例名称或URL"
             size="default"
-            style="width: 240px"
+            style="width: 200px"
             clearable
             @input="handleSearch"
           >
@@ -42,10 +53,10 @@
             </template>
           </el-input>
           <!-- 批量导入下拉菜单 -->
-          <el-dropdown trigger="click" @command="handleImportCommand">
+          <el-dropdown trigger="click" @command="handleImportCommand" class="toolbar-btn-icon">
             <el-button type="success" plain>
               <el-icon><Upload /></el-icon>
-              导入用例
+              <span class="toolbar-text-hide">导入用例</span>
               <el-icon class="el-icon--right"><ArrowDown /></el-icon>
             </el-button>
             <template #dropdown>
@@ -57,26 +68,27 @@
             </template>
           </el-dropdown>
 
-          <el-button v-if="!exportSelectMode" type="warning" plain @click="startExportSelect" :disabled="filteredCases.length === 0">
+          <el-button v-if="!exportSelectMode" type="warning" plain @click="startExportSelect" :disabled="filteredCases.length === 0" class="toolbar-btn-icon">
             <el-icon><Download /></el-icon>
-            导出 JMX
+            <span class="toolbar-text-hide">导出 JMX</span>
           </el-button>
           <template v-else>
-            <el-button type="warning" @click="handleExportJmx" :loading="jmeterExporting" :disabled="selectedCaseIds.length === 0">
+            <el-button type="warning" @click="handleExportJmx" :loading="jmeterExporting" :disabled="selectedCaseIds.length === 0" class="toolbar-btn-icon">
               <el-icon><Download /></el-icon>
-              导出选中 ({{ selectedCaseIds.length }})
+              <span class="toolbar-text-hide">导出选中</span>
+              <span>({{ selectedCaseIds.length }})</span>
             </el-button>
-            <el-button plain @click="handleExportAllJmx" :loading="jmeterExporting">
-              导出全部
+            <el-button plain @click="handleExportAllJmx" :loading="jmeterExporting" class="toolbar-btn-icon">
+              <span class="toolbar-text-hide">导出全部</span>
             </el-button>
             <el-button plain @click="cancelExportSelect">
               取消
             </el-button>
           </template>
 
-          <el-button type="primary" @click="handleCreate">
+          <el-button type="primary" @click="handleCreate" class="toolbar-btn-icon">
             <el-icon><Plus /></el-icon>
-            新建用例
+            <span class="toolbar-text-hide">新建用例</span>
           </el-button>
         </div>
       </div>
@@ -109,15 +121,15 @@
           @row-dblclick="handleRowDblClick"
           @selection-change="handleSelectionChange"
         >
-          <el-table-column type="selection" width="45" />
-          <el-table-column prop="method" label="请求方法" width="100">
+          <el-table-column type="selection" width="40" />
+          <el-table-column prop="method" label="方法" width="84">
             <template #default="{ row }">
               <span :class="['api-method-tag', (row.method || '').toLowerCase()]">{{ row.method }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="name" label="用例名称" min-width="180" />
-          <el-table-column prop="url" label="URL" min-width="180" show-overflow-tooltip />
-          <el-table-column label="最后执行" width="120" align="center">
+          <el-table-column prop="name" label="用例名称" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="url" label="URL" min-width="240" show-overflow-tooltip />
+          <el-table-column label="最后执行" width="100" align="center">
             <template #default="{ row }">
               <el-tag v-if="row.lastRunStatus" :type="getStatusCodeType(row.lastRunStatus)" size="small">
                 {{ formatStatus(row.lastRunStatus) }}
@@ -136,25 +148,24 @@
                   <span><el-button type="primary" link :icon="Edit" @click="handleEdit(row)" /></span>
                 </el-tooltip>
 
-                <el-tooltip content="复制用例（深拷贝后在新 Tab 编辑）" placement="top" popper-class="action-tooltip">
-                  <span><el-button type="info" link :icon="DocumentCopy" @click="handleCopyCase(row)" /></span>
-                </el-tooltip>
-
                 <el-tooltip content="执行历史" placement="top" popper-class="action-tooltip">
                   <span><el-button type="warning" link :icon="Timer" @click="handleShowHistory(row)" /></span>
-                </el-tooltip>
-
-                <el-tooltip content="导出 JMX · 兼容 5.1.1+" placement="top" popper-class="action-tooltip">
-                  <span><el-button type="warning" link :icon="Download" @click="handleExportSingleCase(row)" /></span>
-                </el-tooltip>
-
-                <el-tooltip content="打开 JMeter IDE" placement="top" popper-class="action-tooltip">
-                  <span><el-button type="success" link :icon="Connection" @click="openJmeterIde" /></span>
                 </el-tooltip>
 
                 <el-tooltip content="删除用例" placement="top" popper-class="action-tooltip">
                   <span><el-button type="danger" link :icon="Delete" @click="handleDelete(row.id)" /></span>
                 </el-tooltip>
+
+                <el-dropdown trigger="click" class="action-more" @command="(cmd) => handleMoreAction(cmd, row)">
+                  <span class="action-more-trigger"><el-icon><MoreFilled /></el-icon></span>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="copy"><el-icon><DocumentCopy /></el-icon> 复制用例</el-dropdown-item>
+                      <el-dropdown-item command="export"><el-icon><Download /></el-icon> 导出 JMX</el-dropdown-item>
+                      <el-dropdown-item command="jmeter"><el-icon><Connection /></el-icon> 打开 JMeter IDE</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </div>
             </template>
           </el-table-column>
@@ -345,8 +356,18 @@
     />
   </el-card>
 
+  <!-- 拖拽分隔条 2：列表 ↔ 编辑器 -->
+  <BaseSplitter
+    v-model:size="editorWidth"
+    direction="horizontal"
+    :min-size="400"
+    :max-size="1200"
+    storage-key="tm-caselist-editor-width-v2"
+    container-selector=".case-list-layout"
+  />
+
   <!-- 右侧：多 Tab 接口编辑器（常驻面板，对标 Apifox） -->
-  <div class="editor-panel">
+  <div class="editor-panel" :style="{ width: editorWidth + 'px', flex: 'none' }">
     <EditorTabContainer
       :env-id="selectedEnvId"
       :group-id="currentGroupId"
@@ -376,7 +397,8 @@ import {
   Connection,
   FolderAdd,
   DocumentCopy,
-  Rank
+  Rank,
+  MoreFilled
 } from '@element-plus/icons-vue'
 import CaseTreeSidebar from '@/components/CaseTreeSidebar.vue'
 import EditorTabContainer from '@/components/EditorTabContainer.vue'
@@ -384,8 +406,23 @@ import { useEditorTabsStore } from '@/stores/editorTabs'
 import EnvironmentManager from '@/components/EnvironmentManager.vue'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
+import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import { helpContent } from '@/utils/help-content'
 import autoTestRequest from '@/utils/autoTestRequest'
+
+// 三栏可拖拽布局宽度（带 localStorage 持久化）
+const sidebarWidth = ref(220)
+// 根据窗口宽度给出合理的默认编辑器宽度，避免全屏/笔记本下挤压中间列表
+const getDefaultEditorWidth = () => {
+  if (typeof window === 'undefined') return 720
+  const w = window.innerWidth
+  if (w >= 1920) return 720
+  if (w >= 1600) return 640
+  if (w >= 1440) return 560
+  if (w >= 1280) return 480
+  return 400
+}
+const editorWidth = ref(getDefaultEditorWidth())
 
 const props = defineProps({
   groupId: {
@@ -420,7 +457,7 @@ const editorTabs = useEditorTabsStore()
 const currentGroupId = ref(null)
 const sidebarRef = ref(null)
 
-// 响应式操作列宽度：宽屏 320，中屏 260，窄屏 200 启用横向滚动收纳
+// 响应式操作列宽度：宽屏 220（仅保留核心操作+更多菜单），中屏 180，窄屏固定右侧
 const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1920)
 const updateViewportWidth = () => { viewportWidth.value = window.innerWidth }
 if (typeof window !== 'undefined') {
@@ -428,9 +465,9 @@ if (typeof window !== 'undefined') {
 }
 const actionColWidth = computed(() => {
   const w = viewportWidth.value
-  if (w >= 1280) return 320
-  if (w >= 1024) return 260
-  return 200
+  if (w >= 1440) return 220
+  if (w >= 1280) return 180
+  return 160
 })
 const actionColFixed = computed(() => viewportWidth.value < 1280 ? 'right' : undefined)
 
@@ -1036,6 +1073,13 @@ const handleExportSingleCase = async (row) => {
   }
 }
 
+// 操作列「更多」下拉菜单
+const handleMoreAction = (cmd, row) => {
+  if (cmd === 'copy') handleCopyCase(row)
+  else if (cmd === 'export') handleExportSingleCase(row)
+  else if (cmd === 'jmeter') openJmeterIde()
+}
+
 const handleFileChange = (file) => {
   importFile.value = file.raw
 }
@@ -1188,18 +1232,15 @@ defineExpose({
 </script>
 
 <style scoped>
-/* 左右布局：侧边栏 25% + 列表 75% */
+/* 左右布局：侧边栏 25% + 列表 75%（gap:0 由 BaseSplitter 提供间距） */
 .case-list-layout {
   display: flex;
-  gap: 12px;
+  gap: 0;
   height: 100%;
   min-height: 0;
 }
 
 .case-list-sidebar {
-  width: 20%;
-  min-width: 200px;
-  max-width: 260px;
   flex-shrink: 0;
   min-height: 0;
   overflow: hidden;
@@ -1219,8 +1260,7 @@ defineExpose({
 
 /* 右侧多 Tab 编辑器面板（常驻） */
 .editor-panel {
-  flex: 1.25 1 0;
-  min-width: 420px;
+  flex-shrink: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -1246,14 +1286,15 @@ defineExpose({
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
-  padding: 14px 16px;
-  margin-bottom: 16px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
   background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb), 0.04), transparent 70%);
   border-bottom: 1px solid var(--tm-border-light);
   border-radius: 12px 12px 0 0;
   position: relative;
+  min-height: 52px;
 }
 
 .list-toolbar::before {
@@ -1271,6 +1312,8 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .toolbar-left .el-button,
@@ -1281,13 +1324,79 @@ defineExpose({
   flex-shrink: 0;
 }
 
+/* 工具栏按钮文字在紧凑模式下隐藏，仅保留图标 */
+.toolbar-btn-icon :deep(.el-icon) + span,
+.toolbar-btn-icon span:not(.el-icon) {
+  margin-left: 4px;
+}
+
+@media (max-width: 1600px) {
+  .list-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toolbar-left,
+  .toolbar-right {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1600px) {
+  .toolbar-text-hide {
+    display: none;
+  }
+  .toolbar-right .el-input {
+    width: 140px !important;
+  }
+}
+
+@media (max-width: 1366px) {
+  .list-toolbar {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .toolbar-left,
+  .toolbar-right {
+    gap: 5px;
+  }
+  .toolbar-right .el-input {
+    width: 120px !important;
+  }
+  .toolbar-left .el-button,
+  .toolbar-right .el-button {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
 
 
-/* 表格区域 */
+
 .case-table {
   flex: 1;
   padding: 0 12px 16px;
   overflow: auto;
+  min-width: 0;
+}
+
+/* 表格强制横向滚动，避免列被无限压缩 */
+.case-table :deep(.el-table) {
+  min-width: 700px;
+}
+@media (max-width: 1366px) {
+  .case-table :deep(.el-table) { min-width: 560px; }
+}
+@media (max-width: 1024px) {
+  .case-table :deep(.el-table) { min-width: 0; }
+}
+
+/* 表头文字不换行 */
+.case-table :deep(.el-table__header th) {
+  white-space: nowrap;
+}
+
+/* 表格内容行垂直居中 */
+.case-table :deep(.el-table__cell) {
+  padding: 8px 0 !important;
 }
 
 /* 🔥 体验7：批量操作工具栏（玻璃拟态强化） */
@@ -1330,10 +1439,26 @@ defineExpose({
 /* 操作列单元格：flex-wrap 让按钮在窄屏自动换行 */
 .action-cell {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 8px;
+  flex-wrap: nowrap;
+  gap: 4px;
   align-items: center;
   justify-content: flex-end;
+}
+
+.action-more-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--tm-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.action-more-trigger:hover {
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
+  color: var(--tm-color-primary);
 }
 
 /* 分页 */
@@ -1363,30 +1488,75 @@ defineExpose({
   color: var(--tm-text-primary);
 }
 
-/* 响应式：1280 以下编辑器面板下沉到第二行 */
-@media (max-width: 1280px) {
-  .editor-panel {
-    flex: 1 1 100%;
-    order: 3;
-    min-width: 0;
+/* 响应式：1366 以下缩小各栏最小宽度，并用 max-width 限制持久化的宽度，避免三栏总宽超过视口 */
+@media (max-width: 1366px) {
+  .case-list-card {
+    min-width: 280px;
   }
   .case-list-sidebar {
-    width: 240px;
+    max-width: 240px !important;
+  }
+  .editor-panel {
+    min-width: 320px;
+    max-width: 460px !important;
+  }
+}
+@media (max-width: 1280px) {
+  .case-list-sidebar {
+    max-width: none !important;
+  }
+  .editor-panel {
+    max-width: none !important;
   }
 }
 
-/* 响应式：1024 以下三栏转单栏纵向堆叠 */
-@media (max-width: 1024px) {
+/* 响应式：1366 以下编辑器面板下沉到第二行，三栏转两栏+堆叠，保证表格有足够宽度 */
+@media (max-width: 1366px) {
+  .editor-panel {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    order: 3;
+    min-width: 0;
+    height: 460px;
+  }
+  /* 编辑器下沉时隐藏列表↔编辑器之间的拖拽手柄 */
+  .case-list-card + :deep(.base-splitter) {
+    display: none;
+  }
   .case-list-layout {
-    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
+
+/* 响应式：1024 以下编辑器面板下沉到第二行，三栏转两栏+堆叠 */
+@media (max-width: 1024px) {
+  .editor-panel {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    order: 3;
+    min-width: 0;
+    height: 500px;
+  }
+  /* 编辑器下沉时隐藏列表↔编辑器之间的拖拽手柄（紧跟在 card 后的 splitter） */
+  .case-list-card + :deep(.base-splitter) {
+    display: none;
+  }
+  .case-list-layout {
+    flex-wrap: wrap;
+    gap: 12px;
   }
   .case-list-sidebar {
-    width: 100%;
-    max-width: none;
+    width: 100% !important;
     max-height: 200px;
+  }
+  /* 纵向堆叠时隐藏所有横向拖拽手柄 */
+  .case-list-layout > :deep(.base-splitter) {
+    display: none;
   }
   .case-list-card {
     min-width: 0;
+    width: 100%;
   }
 }
 
@@ -1415,13 +1585,13 @@ defineExpose({
   transition: all 0.25s ease;
   font-family: 'JetBrains Mono', monospace;
 }
-.api-method-tag.get { background: rgba(82, 196, 26, 0.15) !important; color: #52c41a !important; border: 1px solid rgba(82, 196, 26, 0.4) !important; box-shadow: 0 0 12px rgba(82, 196, 26, 0.25), inset 0 0 8px rgba(82, 196, 26, 0.1); }
-.api-method-tag.post { background: rgba(24, 144, 255, 0.15) !important; color: #1890ff !important; border: 1px solid rgba(24, 144, 255, 0.4) !important; box-shadow: 0 0 12px rgba(24, 144, 255, 0.25), inset 0 0 8px rgba(24, 144, 255, 0.1); }
-.api-method-tag.put { background: rgba(250, 140, 22, 0.15) !important; color: #fa8c16 !important; border: 1px solid rgba(250, 140, 22, 0.4) !important; box-shadow: 0 0 12px rgba(250, 140, 22, 0.25), inset 0 0 8px rgba(250, 140, 22, 0.1); }
-.api-method-tag.delete { background: rgba(245, 34, 45, 0.15) !important; color: #f5222d !important; border: 1px solid rgba(245, 34, 45, 0.4) !important; box-shadow: 0 0 12px rgba(245, 34, 45, 0.25), inset 0 0 8px rgba(245, 34, 45, 0.1); }
-.api-method-tag.patch { background: rgba(114, 46, 209, 0.15) !important; color: #722ed1 !important; border: 1px solid rgba(114, 46, 209, 0.4) !important; box-shadow: 0 0 12px rgba(114, 46, 209, 0.25), inset 0 0 8px rgba(114, 46, 209, 0.1); }
-.api-method-tag.head { background: rgba(114, 114, 114, 0.15) !important; color: #727272 !important; border: 1px solid rgba(114, 114, 114, 0.4) !important; }
-.api-method-tag.options { background: rgba(114, 114, 114, 0.15) !important; color: #727272 !important; border: 1px solid rgba(114, 114, 114, 0.4) !important; }
+.api-method-tag.get { background: rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.15) !important; color: var(--tm-method-get, #4ade80) !important; border: 1px solid rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.25), inset 0 0 8px rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.1); }
+.api-method-tag.post { background: rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.15) !important; color: var(--tm-method-post, #ec4899) !important; border: 1px solid rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.25), inset 0 0 8px rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.1); }
+.api-method-tag.put { background: rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.15) !important; color: var(--tm-method-put, #facc15) !important; border: 1px solid rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.25), inset 0 0 8px rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.1); }
+.api-method-tag.delete { background: rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.15) !important; color: var(--tm-method-delete, #f87171) !important; border: 1px solid rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.25), inset 0 0 8px rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.1); }
+.api-method-tag.patch { background: rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.15) !important; color: var(--tm-method-patch, #71717a) !important; border: 1px solid rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.25), inset 0 0 8px rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.1); }
+.api-method-tag.head { background: rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.15) !important; color: var(--tm-method-patch, #71717a) !important; border: 1px solid rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.4) !important; }
+.api-method-tag.options { background: rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.15) !important; color: var(--tm-method-patch, #71717a) !important; border: 1px solid rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.4) !important; }
 
 .api-method-tag:hover {
   transform: translateY(-1px);

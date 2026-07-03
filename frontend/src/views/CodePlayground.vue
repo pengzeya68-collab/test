@@ -28,7 +28,7 @@
 
     <div class="playground-container">
       <!-- 左侧题目列表 -->
-      <div class="left-panel">
+      <div class="left-panel" :style="{ width: leftPanelWidth + 'px', flex: 'none' }">
         <!-- 语言筛选标签 -->
         <div class="filter-tabs">
           <button
@@ -93,6 +93,16 @@
           <button class="empty-reset-btn" @click="currentLanguageFilter = ''">查看全部习题</button>
         </div>
       </div>
+
+      <!-- 拖拽分隔条：题目列表 ↔ 编程区域 -->
+      <BaseSplitter
+        v-model:size="leftPanelWidth"
+        direction="horizontal"
+        :min-size="220"
+        :max-size="560"
+        storage-key="tm-codeplayground-sidebar-width"
+        container-selector=".playground-container"
+      />
 
       <!-- 右侧编程区域 -->
       <div class="right-panel">
@@ -313,7 +323,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import CodeEditor from '@/components/CodeEditor.vue'
+import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import request from '@/utils/request'
+
+// 左侧题目列表宽度（带 localStorage 持久化）
+const leftPanelWidth = ref(320)
 
 const exercises = ref([])
 const loading = ref(false)
@@ -509,7 +523,7 @@ const renderDescription = (text) => {
   align-items: center;
   justify-content: center;
   color: white;
-  box-shadow: 0 4px 16px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 4px 16px rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
 .page-title {
@@ -555,11 +569,10 @@ const renderDescription = (text) => {
   color: var(--tm-text-secondary);
 }
 
-/* ===== 主布局 ===== */
+/* ===== 主布局（gap:0 由 BaseSplitter 提供间距） ===== */
 .playground-container {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 20px;
+  display: flex;
+  gap: 0;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -567,6 +580,7 @@ const renderDescription = (text) => {
 
 /* ===== 左侧面板 ===== */
 .left-panel {
+  flex-shrink: 0;
   background: var(--tm-card-bg);
   border-radius: 16px;
   border: 1px solid var(--tm-border-light);
@@ -607,7 +621,7 @@ const renderDescription = (text) => {
 .filter-tab:hover {
   background: var(--tm-bg-hover);
   color: var(--tm-text-primary);
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--tm-border-light);
 }
 
 .filter-tab.active {
@@ -638,7 +652,7 @@ const renderDescription = (text) => {
 }
 
 .exercise-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--tm-border-light);
   border-radius: 4px;
 }
 
@@ -679,21 +693,21 @@ const renderDescription = (text) => {
 }
 
 .exercise-lang-badge.lang-python {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: rgba(var(--tm-color-primary-rgb), 0.15);
+  color: var(--tm-color-primary);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.25);
 }
 
 .exercise-lang-badge.lang-sql {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.25);
+  background: rgba(var(--el-color-warning-rgb), 0.15);
+  color: var(--el-color-warning);
+  border: 1px solid rgba(var(--el-color-warning-rgb), 0.25);
 }
 
 .exercise-lang-badge.lang-shell {
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
-  border: 1px solid rgba(74, 222, 128, 0.25);
+  background: rgba(var(--el-color-success-rgb), 0.15);
+  color: var(--el-color-success);
+  border: 1px solid rgba(var(--el-color-success-rgb), 0.25);
 }
 
 .exercise-difficulty {
@@ -704,20 +718,20 @@ const renderDescription = (text) => {
 
 .exercise-difficulty.diff-easy,
 .exercise-difficulty.diff-beginner {
-  background: rgba(74, 222, 128, 0.1);
-  color: #4ade80;
+  background: rgba(var(--el-color-success-rgb), 0.1);
+  color: var(--el-color-success);
 }
 
 .exercise-difficulty.diff-medium,
 .exercise-difficulty.diff-intermediate {
-  background: rgba(251, 191, 36, 0.1);
-  color: #fbbf24;
+  background: rgba(var(--el-color-warning-rgb), 0.1);
+  color: var(--el-color-warning);
 }
 
 .exercise-difficulty.diff-hard,
 .exercise-difficulty.diff-advanced {
-  background: rgba(248, 113, 113, 0.1);
-  color: #f87171;
+  background: rgba(var(--el-color-danger-rgb), 0.1);
+  color: var(--el-color-danger);
 }
 
 .exercise-title {
@@ -788,6 +802,8 @@ const renderDescription = (text) => {
 
 /* ===== 右侧面板 ===== */
 .right-panel {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -805,7 +821,7 @@ const renderDescription = (text) => {
 }
 
 .right-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--tm-border-light);
   border-radius: 4px;
 }
 
@@ -902,21 +918,21 @@ const renderDescription = (text) => {
 }
 
 .problem-lang-badge.lang-python {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: rgba(var(--tm-color-primary-rgb), 0.15);
+  color: var(--tm-color-primary);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.25);
 }
 
 .problem-lang-badge.lang-sql {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.25);
+  background: rgba(var(--el-color-warning-rgb), 0.15);
+  color: var(--el-color-warning);
+  border: 1px solid rgba(var(--el-color-warning-rgb), 0.25);
 }
 
 .problem-lang-badge.lang-shell {
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
-  border: 1px solid rgba(74, 222, 128, 0.25);
+  background: rgba(var(--el-color-success-rgb), 0.15);
+  color: var(--el-color-success);
+  border: 1px solid rgba(var(--el-color-success-rgb), 0.25);
 }
 
 .problem-tags {
@@ -929,36 +945,36 @@ const renderDescription = (text) => {
   font-size: 12px;
   padding: 3px 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--tm-color-primary-rgb), 0.05);
   color: var(--tm-text-secondary);
   border: 1px solid var(--tm-border-light);
 }
 
 .problem-tag.diff-tag.diff-easy,
 .problem-tag.diff-tag.diff-beginner {
-  background: rgba(74, 222, 128, 0.1);
-  color: #4ade80;
-  border-color: rgba(74, 222, 128, 0.2);
+  background: rgba(var(--el-color-success-rgb), 0.1);
+  color: var(--el-color-success);
+  border-color: rgba(var(--el-color-success-rgb), 0.2);
 }
 
 .problem-tag.diff-tag.diff-medium,
 .problem-tag.diff-tag.diff-intermediate {
-  background: rgba(251, 191, 36, 0.1);
-  color: #fbbf24;
-  border-color: rgba(251, 191, 36, 0.2);
+  background: rgba(var(--el-color-warning-rgb), 0.1);
+  color: var(--el-color-warning);
+  border-color: rgba(var(--el-color-warning-rgb), 0.2);
 }
 
 .problem-tag.diff-tag.diff-hard,
 .problem-tag.diff-tag.diff-advanced {
-  background: rgba(248, 113, 113, 0.1);
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.2);
+  background: rgba(var(--el-color-danger-rgb), 0.1);
+  color: var(--el-color-danger);
+  border-color: rgba(var(--el-color-danger-rgb), 0.2);
 }
 
 .problem-tag.time-tag {
-  background: rgba(139, 92, 246, 0.1);
-  color: #a78bfa;
-  border-color: rgba(139, 92, 246, 0.2);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
+  color: var(--tm-color-primary);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.2);
 }
 
 .problem-body {
@@ -999,7 +1015,7 @@ const renderDescription = (text) => {
 .problem-instructions pre,
 .problem-testcases pre,
 .ai-optimized pre {
-  background: #0d0d14;
+  background: var(--bg-surface);
   padding: 14px 16px;
   border-radius: 10px;
   font-size: 13px;
@@ -1008,7 +1024,7 @@ const renderDescription = (text) => {
   white-space: pre-wrap;
   word-wrap: break-word;
   margin: 0;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--tm-border-light);
   color: var(--tm-text-regular);
 }
 
@@ -1037,11 +1053,11 @@ const renderDescription = (text) => {
 }
 
 .result-card.result-success {
-  border-color: rgba(74, 222, 128, 0.2);
+  border-color: rgba(var(--el-color-success-rgb), 0.2);
 }
 
 .result-card.result-error {
-  border-color: rgba(248, 113, 113, 0.2);
+  border-color: rgba(var(--el-color-danger-rgb), 0.2);
 }
 
 .result-header {
@@ -1053,11 +1069,11 @@ const renderDescription = (text) => {
 }
 
 .result-success .result-header {
-  background: rgba(74, 222, 128, 0.06);
+  background: rgba(var(--el-color-success-rgb), 0.06);
 }
 
 .result-error .result-header {
-  background: rgba(248, 113, 113, 0.06);
+  background: rgba(var(--el-color-danger-rgb), 0.06);
 }
 
 .result-status {
@@ -1073,13 +1089,13 @@ const renderDescription = (text) => {
 }
 
 .dot-success {
-  background: #4ade80;
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+  background: var(--el-color-success);
+  box-shadow: 0 0 8px rgba(var(--el-color-success-rgb), 0.5);
 }
 
 .dot-error {
-  background: #f87171;
-  box-shadow: 0 0 8px rgba(248, 113, 113, 0.5);
+  background: var(--el-color-danger);
+  box-shadow: 0 0 8px rgba(var(--el-color-danger-rgb), 0.5);
 }
 
 .status-text {
@@ -1117,11 +1133,11 @@ const renderDescription = (text) => {
 }
 
 .error-label {
-  color: #f87171;
+  color: var(--el-color-danger);
 }
 
 .result-output {
-  background: #0d0d14;
+  background: var(--bg-surface);
   padding: 12px 14px;
   border-radius: 8px;
   font-size: 13px;
@@ -1129,13 +1145,13 @@ const renderDescription = (text) => {
   white-space: pre-wrap;
   word-wrap: break-word;
   margin: 0;
-  color: #a6e3a1;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--el-color-success);
+  border: 1px solid var(--tm-border-light);
 }
 
 .error-output {
-  color: #f38ba8;
-  background: rgba(243, 139, 168, 0.04);
+  color: var(--el-color-danger);
+  background: rgba(var(--el-color-danger-rgb), 0.04);
 }
 
 .no-output-block {
@@ -1144,8 +1160,8 @@ const renderDescription = (text) => {
     align-items: flex-start;
     gap: 10px;
     padding: 12px 14px;
-    background: rgba(74, 222, 128, 0.06);
-    border: 1px solid rgba(74, 222, 128, 0.15);
+    background: rgba(var(--el-color-success-rgb), 0.06);
+    border: 1px solid rgba(var(--el-color-success-rgb), 0.15);
     border-radius: 8px;
     font-size: 13px;
     color: var(--tm-text-regular);
@@ -1153,7 +1169,7 @@ const renderDescription = (text) => {
   }
 
   .no-output-icon {
-    color: #4ade80;
+    color: var(--el-color-success);
     font-weight: 700;
     font-size: 16px;
     flex-shrink: 0;
@@ -1195,7 +1211,7 @@ const renderDescription = (text) => {
   align-items: center;
   padding: 12px 16px;
   border-bottom: 1px solid var(--tm-border-light);
-  background: rgba(139, 92, 246, 0.06);
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
 }
 
 .submit-status {
@@ -1211,8 +1227,8 @@ const renderDescription = (text) => {
 }
 
 .dot-submitted {
-  background: #a78bfa;
-  box-shadow: 0 0 8px rgba(167, 139, 250, 0.5);
+  background: var(--tm-color-primary);
+  box-shadow: 0 0 8px rgba(var(--tm-color-primary-rgb), 0.5);
 }
 
 .submit-text {
@@ -1255,13 +1271,13 @@ const renderDescription = (text) => {
 }
 
 .testcase-item.tc-pass {
-  background: rgba(74, 222, 128, 0.06);
-  border: 1px solid rgba(74, 222, 128, 0.15);
+  background: rgba(var(--el-color-success-rgb), 0.06);
+  border: 1px solid rgba(var(--el-color-success-rgb), 0.15);
 }
 
 .testcase-item.tc-fail {
-  background: rgba(248, 113, 113, 0.06);
-  border: 1px solid rgba(248, 113, 113, 0.15);
+  background: rgba(var(--el-color-danger-rgb), 0.06);
+  border: 1px solid rgba(var(--el-color-danger-rgb), 0.15);
 }
 
 .testcase-icon {
@@ -1276,11 +1292,11 @@ const renderDescription = (text) => {
 }
 
 .testcase-item.tc-pass .testcase-label {
-  color: #4ade80;
+  color: var(--el-color-success);
 }
 
 .testcase-item.tc-fail .testcase-label {
-  color: #f87171;
+  color: var(--el-color-danger);
 }
 
 .testcase-detail {
@@ -1303,9 +1319,9 @@ const renderDescription = (text) => {
   gap: 6px;
   padding: 8px 20px;
   border-radius: 8px;
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  background: rgba(139, 92, 246, 0.15);
-  color: #a78bfa;
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.3);
+  background: rgba(var(--tm-color-primary-rgb), 0.15);
+  color: var(--tm-color-primary);
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
@@ -1313,9 +1329,9 @@ const renderDescription = (text) => {
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.25);
-  border-color: rgba(139, 92, 246, 0.5);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+  background: rgba(var(--tm-color-primary-rgb), 0.25);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.5);
+  box-shadow: 0 0 12px rgba(var(--tm-color-primary-rgb), 0.2);
 }
 
 .submit-btn:disabled {
@@ -1327,8 +1343,8 @@ const renderDescription = (text) => {
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(139, 92, 246, 0.3);
-  border-top-color: #a78bfa;
+  border: 2px solid rgba(var(--tm-color-primary-rgb), 0.3);
+  border-top-color: var(--tm-color-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -1383,7 +1399,7 @@ const renderDescription = (text) => {
 /* ===== AI评估结果 ===== */
 .ai-result-card {
   border-radius: 12px;
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.2);
   background: var(--tm-card-bg);
   overflow: hidden;
 }
@@ -1393,8 +1409,8 @@ const renderDescription = (text) => {
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  background: rgba(139, 92, 246, 0.06);
-  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
+  border-bottom: 1px solid rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .ai-avatar {
@@ -1416,18 +1432,18 @@ const renderDescription = (text) => {
 }
 
 .ai-score-badge.score-high {
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
+  background: rgba(var(--el-color-success-rgb), 0.15);
+  color: var(--el-color-success);
 }
 
 .ai-score-badge.score-mid {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
+  background: rgba(var(--el-color-warning-rgb), 0.15);
+  color: var(--el-color-warning);
 }
 
 .ai-score-badge.score-low {
-  background: rgba(248, 113, 113, 0.15);
-  color: #f87171;
+  background: rgba(var(--el-color-danger-rgb), 0.15);
+  color: var(--el-color-danger);
 }
 
 .ai-score-bar {
@@ -1437,7 +1453,7 @@ const renderDescription = (text) => {
 
 .score-bar-track {
   height: 6px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--tm-text-secondary-rgb), 0.1);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -1449,15 +1465,15 @@ const renderDescription = (text) => {
 }
 
 .score-bar-fill.score-high {
-  background: linear-gradient(90deg, #4ade80, #22c55e);
+  background: linear-gradient(90deg, var(--el-color-success), rgba(var(--el-color-success-rgb), 0.7));
 }
 
 .score-bar-fill.score-mid {
-  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  background: linear-gradient(90deg, var(--el-color-warning), rgba(var(--el-color-warning-rgb), 0.7));
 }
 
 .score-bar-fill.score-low {
-  background: linear-gradient(90deg, #f87171, #ef4444);
+  background: linear-gradient(90deg, var(--el-color-danger), rgba(var(--el-color-danger-rgb), 0.7));
 }
 
 .ai-feedback-text {
@@ -1474,14 +1490,21 @@ const renderDescription = (text) => {
 /* ===== 响应式 ===== */
 @media (max-width: 1200px) {
   .playground-container {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    gap: 16px;
     height: auto;
     overflow: visible;
   }
 
   .left-panel {
+    width: 100% !important;
     max-height: 400px;
     height: auto;
+  }
+
+  /* 纵向堆叠时隐藏拖拽手柄（用 :deep 穿透 scoped 样式） */
+  .playground-container > :deep(.base-splitter) {
+    display: none;
   }
 
   .right-panel {

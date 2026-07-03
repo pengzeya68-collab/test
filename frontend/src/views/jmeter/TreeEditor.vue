@@ -97,12 +97,12 @@ const collapseAllNodes = () => {
 .tree-root-label {
   display: flex; align-items: center; gap: 8px; padding: 10px 12px;
   border-radius: 9px; font-weight: 700; font-size: 13px; cursor: pointer;
-  transition: all .2s; color: #1e293b;
+  transition: all .2s; color: var(--tm-text-primary);
 }
 .tree-root-label:hover { background: linear-gradient(90deg, rgba(99,102,241,0.07), transparent); }
 .root-icon { font-size: 17px; }
 .tree-empty {
-  padding: 32px 16px; text-align: center; font-size: 12.5px; color: #94a3b8;
+  padding: 32px 16px; text-align: center; font-size: 12.5px; color: var(--tm-text-secondary);
   line-height: 1.7;
 }
 </style>

@@ -132,6 +132,10 @@ $tm-spacing-xl: $--spacing-xl;
   --tm-text-primary: #FAFAFA;
   --tm-text-regular: #A1A1AA;
   --tm-text-secondary: #71717A;
+  --tm-text-secondary-rgb: 113, 113, 122;
+  --el-color-success-rgb: 103, 194, 58;
+  --el-color-danger-rgb: 245, 108, 108;
+  --el-color-warning-rgb: 250, 204, 21;
 
   // 圆角
   --tm-radius-base: #{$--border-radius-base};

@@ -39,9 +39,9 @@
       <div v-if="showGuide" class="guide-panel">
         <el-alert title="JMeter 压测脚本三步搞定" type="info" :closable="false" show-icon>
           <template #default>
-            <p style="margin:4px 0"><strong>第1步 · 选择接口</strong> — 从接口库导入 API（推荐），或用模板快速创建脚本</p>
-            <p style="margin:4px 0"><strong>第2步 · 配置压测参数</strong> — 设置并发线程数、循环次数、断言、提取器等</p>
-            <p style="margin:4px 0"><strong>第3步 · 导出 JMX</strong> — 生成预览并下载 .jmx 文件，兼容 JMeter 5.1.1+</p>
+            <p style="margin:4px 0;"><strong>第1步 · 选择接口</strong> — 从接口库导入 API（推荐），或用模板快速创建脚本</p>
+            <p style="margin:4px 0;"><strong>第2步 · 配置压测参数</strong> — 设置并发线程数、循环次数、断言、提取器等</p>
+            <p style="margin:4px 0;"><strong>第3步 · 导出 JMX</strong> — 生成预览并下载 .jmx 文件，兼容 JMeter 5.1.1+</p>
           </template>
         </el-alert>
       </div>
@@ -59,8 +59,8 @@
     <!-- ==================== Step 1: 选择接口 ==================== -->
     <div v-show="currentStep === 1" class="step-body">
       <div class="step1-layout">
-        <!-- 左侧：模板 + 导入JMX -->
-        <div class="step1-left">
+        <!-- 左侧：模板 + 导入JMX（可拖拽调整宽度） -->
+        <div class="step1-left" :style="{ width: step1LeftWidth + 'px', flex: 'none' }">
           <div class="panel step1-templates">
             <div class="panel-title">📦 模板快速创建</div>
             <div class="template-grid">
@@ -80,24 +80,33 @@
                 <div class="import-jmx-title">导入 .jmx 文件</div>
                 <div class="import-jmx-desc">已有 JMeter 脚本？直接导入 .jmx 文件解析为接口</div>
               </div>
-              <el-icon size="20" style="color:var(--tm-text-secondary)"><Right /></el-icon>
+              <el-icon size="20" style="color:var(--tm-text-secondary);"><Right /></el-icon>
             </div>
           </div>
         </div>
+        <!-- 拖拽分隔条：左侧模板区 ↔ 右侧导入区 -->
+        <BaseSplitter
+          v-model:size="step1LeftWidth"
+          direction="horizontal"
+          :min-size="220"
+          :max-size="440"
+          storage-key="tm-jmeter-step1-left-width"
+          container-selector=".step1-layout"
+        />
         <!-- 右侧：从接口库导入 -->
         <div class="panel step1-import">
           <div class="panel-title">📋 从接口库导入</div>
           <div class="section-hint"><el-icon><InfoFilled /></el-icon> 勾选已有的 API 接口，点击「导入到脚本」自动创建 HTTP 请求和线程组</div>
           <div class="import-controls">
-            <el-select v-model="importGroupFilter" placeholder="按分组筛选" size="default" clearable filterable style="width:240px">
+            <el-select v-model="importGroupFilter" placeholder="按分组筛选" size="default" clearable filterable style="width:240px;">
               <el-option v-for="g in importGroups" :key="g.id" :label="g.name" :value="g.id" />
             </el-select>
-            <el-input v-model="caseSearch" placeholder="搜索接口名称或URL..." size="default" clearable prefix-icon="Search" style="flex:1" />
+            <el-input v-model="caseSearch" placeholder="搜索接口名称或URL..." size="default" clearable prefix-icon="Search" style="flex:1;" />
           </div>
           <div class="import-case-list">
             <div v-if="allCases.length === 0" class="empty-state">
               <el-icon size="32"><FolderDelete /></el-icon>
-              <p style="margin:8px 0">当前分组没有接口用例</p>
+              <p style="margin:8px 0;">当前分组没有接口用例</p>
               <el-button type="primary" size="small" @click="openInterfaceLib">📝 去接口库创建</el-button>
             </div>
             <el-checkbox-group v-model="selectedImportCases" v-else>
@@ -115,7 +124,7 @@
           </div>
           <div class="import-footer">
             <span class="import-count">已选 {{ selectedImportCases.length }} 个接口</span>
-            <el-button type="primary" size="large" :disabled="selectedImportCases.length === 0" @click="importSelectedCases" style="font-weight:700">
+            <el-button type="primary" size="large" :disabled="selectedImportCases.length === 0" @click="importSelectedCases" style="font-weight:700;">
               🚀 导入到脚本 <el-icon><Right /></el-icon>
             </el-button>
           </div>
@@ -176,10 +185,17 @@
             @remove-node="removeNodeByUid"
             @duplicate-node="duplicateNode"
           />
-          <div class="drag-handle drag-handle-tree" @mousedown="onDragStart('tree', $event)" :class="{ active: draggingCol === 'tree' }"></div>
+          <BaseSplitter
+            v-model:size="treeWidth"
+            direction="horizontal"
+            :min-size="200"
+            :max-size="520"
+            storage-key="tm-jmeter-tree-width"
+            container-selector=".step2-editor-layout"
+          />
 
         <!-- 中：编辑器 -->
-        <div class="panel editor-panel" style="flex:1;min-width:0">
+        <div class="panel editor-panel" style="flex:1;min-width:0;">
           <div class="panel-title">
             <span>✏️ {{ selectedNode ? selectedNode.name : '元素编辑器' }}</span>
             <el-tag v-if="selectedNode" size="small">{{ NODE_TYPES[selectedNode.type]?.label || selectedNode.type }}</el-tag>
@@ -191,8 +207,8 @@
                 <div class="form-group"><label>测试计划名称</label><el-input v-model="selectedNode.name" /></div>
                 <div class="form-group"><label>用户定义变量</label>
                   <div v-for="(v, vi) in (selectedNode.props.variables || [])" :key="vi" class="kv-row">
-                    <el-input v-model="v.name" placeholder="变量名" size="small" style="width:42%" />
-                    <el-input v-model="v.value" placeholder="值" size="small" style="width:42%" />
+                    <el-input v-model="v.name" placeholder="变量名" size="small" style="width:42%;" />
+                    <el-input v-model="v.value" placeholder="值" size="small" style="width:42%;" />
                     <el-button link size="small" type="danger" @click="selectedNode.props.variables.splice(vi,1)">×</el-button>
                   </div>
                   <el-button size="small" @click="addVar">+ 添加变量</el-button>
@@ -218,7 +234,7 @@
               </div>
               <div class="form-section">
                 <div class="section-hint"><el-icon><Monitor /></el-icon> 监听器用于查看测试结果，建议添加「查看结果树」和「聚合报告」</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <el-button size="small" @click="addChildToCurrent('HttpSampler')">🌐 HTTP 请求</el-button>
                   <el-button size="small" @click="addChildToCurrent('ViewResultsTree')">👁️ 查看结果树</el-button>
                   <el-button size="small" @click="addChildToCurrent('SummaryReport')">📈 聚合报告</el-button>
@@ -230,7 +246,7 @@
               </div>
               <div class="form-section">
                 <div class="section-hint"><el-icon><Lollipop /></el-icon> 逻辑控制器：控制请求的执行顺序和条件</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <el-button size="small" @click="addChildToCurrent('IfController')">🔀 如果控制器</el-button>
                   <el-button size="small" @click="addChildToCurrent('LoopController')">🔄 循环控制器</el-button>
                   <el-button size="small" @click="addChildToCurrent('WhileController')">🔁 While 控制器</el-button>
@@ -241,7 +257,7 @@
               </div>
               <div class="form-section">
                 <div class="section-hint"><el-icon><Setting /></el-icon> 配置元件：全局设置 HTTP 默认值、请求头、Cookie 等</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <el-button size="small" @click="addChildToCurrent('HTTPRequestDefaults')">🎯 HTTP 请求默认值</el-button>
                   <el-button size="small" @click="addChildToCurrent('HTTPHeaderManager')">📨 HTTP 信息头管理器</el-button>
                   <el-button size="small" @click="addChildToCurrent('HTTPCookieManager')">🍪 HTTP Cookie 管理器</el-button>
@@ -255,19 +271,19 @@
                 <div class="section-hint"><el-icon><Connection /></el-icon> 配置要压测的接口：选择方法、填写地址、添加请求头和请求体</div>
                 <div class="form-group"><label>请求名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-row">
-                  <div class="form-group" style="flex:0 0 120px"><label>方法</label>
+                  <div class="form-group" style="flex:0 0 120px;"><label>方法</label>
                     <el-select v-model="selectedNode.props.method" size="small">
                       <el-option v-for="m in ['GET','POST','PUT','DELETE','PATCH']" :key="m" :label="m" :value="m" />
                     </el-select>
                   </div>
-                  <div class="form-group" style="flex:1"><label>URL</label><el-input v-model="selectedNode.props.url" size="small" placeholder="https://api.example.com/users" /></div>
+                  <div class="form-group" style="flex:1;"><label>URL</label><el-input v-model="selectedNode.props.url" size="small" placeholder="https://api.example.com/users" /></div>
                 </div>
                 <el-collapse>
                   <el-collapse-item title="请求头 (Headers)" name="headers">
-                    <div class="section-hint" style="margin-bottom:6px">添加请求头，如 Content-Type: application/json、Authorization: Bearer xxx</div>
+                    <div class="section-hint" style="margin-bottom:6px;">添加请求头，如 Content-Type: application/json、Authorization: Bearer xxx</div>
                     <div v-for="(h, hi) in (selectedNode.props.headers || [])" :key="hi" class="kv-row">
-                      <el-input v-model="h.key" placeholder="Header名" size="small" style="width:40%" />
-                      <el-input v-model="h.value" placeholder="值" size="small" style="width:50%" />
+                      <el-input v-model="h.key" placeholder="Header名" size="small" style="width:40%;" />
+                      <el-input v-model="h.value" placeholder="值" size="small" style="width:50%;" />
                       <el-button link size="small" type="danger" @click="selectedNode.props.headers.splice(hi,1)">×</el-button>
                     </div>
                     <el-button size="small" @click="addHeader">+ 添加请求头</el-button>
@@ -284,7 +300,7 @@
               </div>
               <div class="form-section">
                 <div class="section-hint"><el-icon><Coin /></el-icon> 断言：验证返回结果是否正确（点击展开更多类型）</div>
-                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
                   <el-button size="small" @click="addChildToCurrent('ResponseAssertion')">✅ 响应断言</el-button>
                   <el-button size="small" @click="addChildToCurrent('JsonAssertion')">📋 JSON断言</el-button>
                   <el-button size="small" @click="addChildToCurrent('DurationAssertion')">⏱️ 持续时间</el-button>
@@ -298,14 +314,14 @@
               </div>
               <div class="form-section">
                 <div class="section-hint"><el-icon><Coin /></el-icon> 提取器：从响应中提取数据传给下一个请求</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <el-button size="small" @click="addChildToCurrent('JsonExtractor')">📤 JSON 提取器</el-button>
                   <el-button size="small" @click="addChildToCurrent('RegexExtractor')">🔍 正则提取器</el-button>
                 </div>
               </div>
               <div class="form-section">
                 <div class="section-hint"><el-icon><Coin /></el-icon> 定时器与处理器</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <el-button size="small" @click="addChildToCurrent('ConstantTimer')">⏰ 固定定时器</el-button>
                   <el-button size="small" @click="addChildToCurrent('UniformRandomTimer')">🎲 随机定时器</el-button>
                   <el-button size="small" @click="addChildToCurrent('BeanShellPreProcessor')">⚙️ BeanShell前置</el-button>
@@ -337,7 +353,7 @@
                 </div>
                 <div class="form-group" v-if="selectedNode.props.assertType === 'status_code'"><label>期望状态码</label><el-input-number v-model="selectedNode.props.expected" :min="100" :max="599" size="small" /></div>
                 <div class="form-group" v-if="selectedNode.props.assertType === 'contains' || selectedNode.props.assertType === 'matches'"><label>期望值</label><el-input v-model="selectedNode.props.expected" size="small" placeholder="200或success" /></div>
-                <div class="form-group" v-if="selectedNode.props.assertType === 'jsonpath'"><label>JSON Path</label><el-input v-model="selectedNode.props.jsonPath" placeholder="$.data.token" size="small" /><label style="margin-top:4px">期望值</label><el-input v-model="selectedNode.props.expected" size="small" /></div>
+                <div class="form-group" v-if="selectedNode.props.assertType === 'jsonpath'"><label>JSON Path</label><el-input v-model="selectedNode.props.jsonPath" placeholder="$.data.token" size="small" /><label style="margin-top:4px;">期望值</label><el-input v-model="selectedNode.props.expected" size="small" /></div>
                 <div class="form-group" v-if="selectedNode.props.assertType === 'duration'"><label>最大响应时间 (ms)</label><el-input-number v-model="selectedNode.props.maxDuration" :min="1" :max="60000" size="small" /></div>
               </div>
               <div class="form-section">
@@ -357,7 +373,7 @@
               </div>
               <div class="form-section">
                 <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：用于断言JSON响应中的某个字段值。例：$.data.status 期望值 "ok"</div>
-                <el-button size="small" @click="aiGenerateAssert('Json')" :loading="aiGenerating" style="margin-top:4px">
+                <el-button size="small" @click="aiGenerateAssert('Json')" :loading="aiGenerating" style="margin-top:4px;">
                   🤖 AI 帮写
                 </el-button>
                 <span v-if="getCostText('jmeter_ai_assertions')" class="ai-cost-hint">{{ getCostText('jmeter_ai_assertions') }}</span>
@@ -401,16 +417,16 @@
                 </div>
               </div>
               <div class="form-section">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
                   <label>BeanShell 脚本</label>
-                  <div style="display:flex;gap:6px">
+                  <div style="display:flex;gap:6px;">
                     <el-button size="small" type="warning" @click="aiValidateScript('BeanShell')" :loading="aiValidating" plain>🔍 AI 校验</el-button>
                     <el-button size="small" type="primary" @click="aiGenerateAssert('BeanShell')" :loading="aiGenerating" plain>
                       🤖 AI 帮写断言
                     </el-button>
                   </div>
                 </div>
-                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder="// 写你的断言逻辑..." size="small" style="font-family:Consolas,monospace;font-size:12px" />
+                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder="// 写你的断言逻辑..." size="small" style="font-family:Consolas,monospace;font-size:12px;" />
               </div>
               <div class="form-row">
                 <div class="form-group"><label>外部BeanShell文件</label><el-input v-model="selectedNode.props.filename" placeholder="可选" size="small" /></div>
@@ -458,16 +474,16 @@
                 </div>
               </div>
               <div class="form-section">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
                   <label>脚本代码</label>
-                  <div style="display:flex;gap:6px">
+                  <div style="display:flex;gap:6px;">
                     <el-button size="small" type="warning" @click="aiValidateScript('JSR223')" :loading="aiValidating" plain>🔍 AI 校验</el-button>
                     <el-button size="small" type="primary" @click="aiGenerateAssert('JSR223')" :loading="aiGenerating" plain>
                       🤖 AI 帮写断言
                     </el-button>
                   </div>
                 </div>
-                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='// Groovy脚本...' size="small" style="font-family:Consolas,monospace;font-size:12px" />
+                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='// Groovy脚本...' size="small" style="font-family:Consolas,monospace;font-size:12px;" />
               </div>
               <div class="form-section" v-if="projectVariables.length > 0">
                 <div class="vars-panel">
@@ -575,7 +591,7 @@
               <div class="form-section">
                 <div class="form-group"><label>CSV 文件名</label><el-input v-model="selectedNode.props.filename" placeholder="users.csv" size="small" /></div>
                 <div class="form-group"><label>变量名 (逗号分隔)</label><el-input v-model="selectedNode.props.variableNames" placeholder="username,password" size="small" /></div>
-                <div class="form-row"><div class="form-group"><label>分隔符</label><el-input v-model="selectedNode.props.delimiter" size="small" style="width:60px" /></div><div class="form-group"><label>循环</label><el-switch v-model="selectedNode.props.recycle" size="small" /></div></div>
+                <div class="form-row"><div class="form-group"><label>分隔符</label><el-input v-model="selectedNode.props.delimiter" size="small" style="width:60px;" /></div><div class="form-group"><label>循环</label><el-switch v-model="selectedNode.props.recycle" size="small" /></div></div>
                 <div class="form-group"><label>CSV 内容 (随 .jmx 导出)</label><el-input v-model="selectedNode.props.csvContent" type="textarea" :rows="4" placeholder="username,password&#10;user1,pass1" size="small" /></div>
               </div>
             </template>
@@ -610,14 +626,14 @@
                 </div>
               </div>
               <div class="form-section">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
                   <label>BeanShell 脚本</label>
-                  <div style="display:flex;gap:6px">
+                  <div style="display:flex;gap:6px;">
                     <el-button size="small" type="warning" @click="aiValidateScript('BeanShell')" :loading="aiValidating" plain>🔍 AI 校验</el-button>
                     <el-button size="small" type="primary" @click="aiGenerateScript('BeanShellProcessor')" :loading="aiGenerating" plain>🤖 AI 帮写</el-button>
                   </div>
                 </div>
-                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='long ts = System.currentTimeMillis(); vars.put("ts",String.valueOf(ts));' size="small" style="font-family:Consolas,monospace;font-size:12px" />
+                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='long ts = System.currentTimeMillis(); vars.put("ts",String.valueOf(ts));' size="small" style="font-family:Consolas,monospace;font-size:12px;" />
               </div>
               <div class="form-section" v-if="projectVariables.length > 0">
                 <div class="vars-panel">
@@ -660,14 +676,14 @@
                 </div>
               </div>
               <div class="form-section">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
                   <label>脚本代码</label>
-                  <div style="display:flex;gap:6px">
+                  <div style="display:flex;gap:6px;">
                     <el-button size="small" type="warning" @click="aiValidateScript('JSR223')" :loading="aiValidating" plain>🔍 AI 校验</el-button>
                     <el-button size="small" type="primary" @click="aiGenerateScript('JSR223Processor')" :loading="aiGenerating" plain>🤖 AI 帮写</el-button>
                   </div>
                 </div>
-                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='def ts = System.currentTimeMillis(); vars.put("ts", ts.toString())' size="small" style="font-family:Consolas,monospace;font-size:12px" />
+                <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='def ts = System.currentTimeMillis(); vars.put("ts", ts.toString())' size="small" style="font-family:Consolas,monospace;font-size:12px;" />
               </div>
               <div class="form-section" v-if="projectVariables.length > 0">
                 <div class="vars-panel">
@@ -694,7 +710,7 @@
                   <div class="form-group"><label>对所有子级求值</label><el-switch v-model="selectedNode.props.evaluateAll" size="small" /></div>
                 </div>
                 <div class="form-group"><label>添加子元素到控制器中</label>
-                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;">
                     <el-button size="small" @click="addChildToCurrent('HttpSampler')">🌐 HTTP 请求</el-button>
                     <el-button size="small" @click="addChildToCurrent('LoopController')">🔄 循环</el-button>
                     <el-button size="small" @click="addChildToCurrent('IfController')">🔀 如果</el-button>
@@ -750,7 +766,7 @@
                 <div class="section-hint"><el-icon><InfoFilled /></el-icon> 不管循环多少次，子元素只执行一次。常用于登录等只需执行一次的场景</div>
                 <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-group"><label>添加子元素到控制器中</label>
-                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;">
                     <el-button size="small" @click="addChildToCurrent('HttpSampler')">🌐 HTTP 请求</el-button>
                   </div>
                 </div>
@@ -762,8 +778,8 @@
                 <div class="form-group"><label>管理器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-group"><label>请求头</label>
                   <div v-for="(h, hi) in (selectedNode.props.headers || [])" :key="hi" class="kv-row">
-                    <el-input v-model="h.key" placeholder="Header名" size="small" style="width:40%" />
-                    <el-input v-model="h.value" placeholder="值" size="small" style="width:50%" />
+                    <el-input v-model="h.key" placeholder="Header名" size="small" style="width:40%;" />
+                    <el-input v-model="h.value" placeholder="值" size="small" style="width:50%;" />
                     <el-button link size="small" type="danger" @click="selectedNode.props.headers.splice(hi,1)">×</el-button>
                   </div>
                   <el-button size="small" @click="selectedNode.props.headers.push({key:'',value:''})">+ 添加请求头</el-button>
@@ -794,17 +810,17 @@
                 <div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
               </div>
               <div v-if="benchResult && benchResult.samples && benchResult.samples.length > 0" class="form-section vrt-inline-section">
-                <div class="section-hint" style="margin-bottom:8px"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的结果数据</div>
+                <div class="section-hint" style="margin-bottom:8px;"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的结果数据</div>
                 <div class="vrt-container">
                   <div class="vrt-left-col">
                     <div class="vrt-toolbar">
                       <span class="vrt-toolbar-label">查找:</span>
-                      <el-input v-model="sampleSearchQuery" size="small" clearable style="width:150px" @keyup.enter="doVrtSearch" />
+                      <el-input v-model="sampleSearchQuery" size="small" clearable style="width:150px;" @keyup.enter="doVrtSearch" />
                       <el-checkbox v-model="searchCaseSensitive" size="small">区分大小写</el-checkbox>
                       <el-checkbox v-model="searchRegex" size="small">正则表达式</el-checkbox>
                       <el-button size="small" type="primary" plain @click="doVrtSearch">查找</el-button>
                       <el-button size="small" @click="resetVrtSearch">重置</el-button>
-                      <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="全部" style="width:85px;margin-left:auto">
+                      <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="全部" style="width:85px;margin-left:auto;">
                         <el-option label="成功" value="success" />
                         <el-option label="失败" value="error" />
                         <el-option label="异常" value="exception" />
@@ -818,7 +834,7 @@
                         <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
                         <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
                       </div>
-                      <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                      <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:var(--tm-text-secondary);font-size:12px;">无匹配结果</div>
                     </div>
                   </div>
                   <div v-if="selectedSample" class="vrt-detail-panel">
@@ -868,20 +884,20 @@
                 </div>
               </div>
               <div v-else class="form-section">
-                <div class="empty-state" style="padding:24px 0">尚未运行测试<br/><small style="color:#94a3b8">点击上方「启动」运行测试后，结果将在此处显示</small></div>
+                <div class="empty-state" style="padding:24px 0;">尚未运行测试<br/><small style="color:var(--tm-text-secondary);">点击上方「启动」运行测试后，结果将在此处显示</small></div>
               </div>
             </template>
             <template v-if="selectedNode.type === 'SummaryReport' || selectedNode.type === 'AggregateGraph' || selectedNode.type === 'AggregateReport' || selectedNode.type === 'ResponseTimeGraph'">
               <div class="form-section">
                 <div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-                <div v-if="benchResult && benchResult.per_url && benchResult.per_url.length > 0" style="margin-top:12px">
-                  <div class="section-hint" style="margin-bottom:8px"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的聚合数据</div>
-                  <table class="per-url-table" style="width:100%;font-size:12px;border-collapse:collapse">
-                    <thead><tr style="background:#f1f5f9"><th style="padding:4px 8px;text-align:left">URL</th><th style="padding:4px 8px">次数</th><th style="padding:4px 8px">成功</th><th style="padding:4px 8px">失败</th><th style="padding:4px 8px">平均(ms)</th><th style="padding:4px 8px">P95(ms)</th></tr></thead>
-                    <tbody><tr v-for="pu in benchResult.per_url" :key="pu.url" style="border-bottom:1px solid #e2e8f0"><td style="padding:4px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ pu.url }}</td><td style="padding:4px 8px;text-align:center">{{ pu.count }}</td><td style="padding:4px 8px;text-align:center;color:#10b981">{{ pu.success }}</td><td style="padding:4px 8px;text-align:center" :style="{ color: pu.failed > 0 ? '#ef4444' : '#10b981' }">{{ pu.failed }}</td><td style="padding:4px 8px;text-align:center">{{ pu.avg_ms }}</td><td style="padding:4px 8px;text-align:center">{{ pu.p95_ms }}</td></tr></tbody>
+                <div v-if="benchResult && benchResult.per_url && benchResult.per_url.length > 0" style="margin-top:12px;">
+                  <div class="section-hint" style="margin-bottom:8px;"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的聚合数据</div>
+                  <table class="per-url-table theme-table">
+                    <thead><tr><th>URL</th><th>次数</th><th>成功</th><th>失败</th><th>平均(ms)</th><th>P95(ms)</th></tr></thead>
+                    <tbody><tr v-for="pu in benchResult.per_url" :key="pu.url"><td class="col-url" :title="pu.url">{{ pu.url }}</td><td class="col-num">{{ pu.count }}</td><td class="col-num text-success">{{ pu.success }}</td><td class="col-num" :class="pu.failed > 0 ? 'text-danger' : 'text-success'">{{ pu.failed }}</td><td class="col-num">{{ pu.avg_ms }}</td><td class="col-num">{{ pu.p95_ms }}</td></tr></tbody>
                   </table>
                 </div>
-                <div v-else class="empty-state" style="padding:24px 0">尚未运行测试<br/><small style="color:#94a3b8">运行测试后，聚合数据将在此处显示</small></div>
+                <div v-else class="empty-state" style="padding:24px 0;">尚未运行测试<br/><small style="color:var(--tm-text-secondary);">运行测试后，聚合数据将在此处显示</small></div>
               </div>
             </template>
 
@@ -910,8 +926,8 @@
               <div class="form-section">
                 <div class="section-hint"><el-icon><InfoFilled /></el-icon> 真实场景：多账号并发测试。每个线程使用不同的用户凭证，模拟真实多用户访问。比 CSV 数据源更直观地管理账号</div>
                 <div class="form-group"><label>参数名称（每行一个）</label>
-                  <div style="display:flex;flex-direction:column;gap:4px">
-                    <div v-for="(name, ni) in selectedNode.props.names" :key="ni" style="display:flex;gap:4px">
+                  <div style="display:flex;flex-direction:column;gap:4px;">
+                    <div v-for="(name, ni) in selectedNode.props.names" :key="ni" style="display:flex;gap:4px;">
                       <el-input v-model="selectedNode.props.names[ni]" placeholder="如 sid, password" size="small" />
                       <el-button link size="small" type="danger" @click="selectedNode.props.names.splice(ni,1); selectedNode.props.users.forEach(u=>u.splice(ni,1))">×</el-button>
                     </div>
@@ -919,24 +935,24 @@
                   </div>
                 </div>
                 <div class="form-group"><label>用户数据（每行一个用户）</label>
-                  <div style="max-height:200px;overflow-y:auto;border:1px solid rgba(148,163,184,0.2);border-radius:8px;padding:8px;background:rgba(248,250,252,0.5)">
-                    <table style="width:100%;font-size:11.5px;border-collapse:collapse">
-                      <tr style="background:rgba(99,102,241,0.06)">
-                        <th style="padding:3px 6px;text-align:left;font-size:10px;color:#6366f1">用户#</th>
-                        <th v-for="(n, ni) in selectedNode.props.names" :key="'h'+ni" style="padding:3px 6px;text-align:left;font-size:10px;color:#6366f1">{{ n || '参数'+(ni+1) }}</th>
+                  <div style="max-height:200px;overflow-y:auto;border: 1px solid var(--tm-border-light);border-radius:8px;padding:8px;background: var(--bg-surface);">
+                    <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
+                      <tr style="background: rgba(var(--tm-color-primary-rgb), 0.06);">
+                        <th style="padding:3px 6px;text-align:left;font-size:10px;color: var(--tm-color-primary);">用户#</th>
+                        <th v-for="(n, ni) in selectedNode.props.names" :key="'h'+ni" style="padding:3px 6px;text-align:left;font-size:10px;color: var(--tm-color-primary);">{{ n || '参数'+(ni+1) }}</th>
                       </tr>
-                      <tr v-for="(user, ui) in selectedNode.props.users" :key="ui" style="border-top:1px solid rgba(148,163,184,0.1)">
-                        <td style="padding:3px 6px;font-weight:700;color:#94a3b8;font-size:10px">{{ ui+1 }}</td>
-                        <td v-for="(val, vi) in user" :key="vi" style="padding:2px">
-                          <el-input v-model="selectedNode.props.users[ui][vi]" size="small" style="width:100%" />
+                      <tr v-for="(user, ui) in selectedNode.props.users" :key="ui" style="border-top: 1px solid var(--tm-border-light);">
+                        <td style="padding:3px 6px;font-weight:700;color:var(--tm-text-secondary);font-size:10px;">{{ ui+1 }}</td>
+                        <td v-for="(val, vi) in user" :key="vi" style="padding:2px;">
+                          <el-input v-model="selectedNode.props.users[ui][vi]" size="small" style="width:100%;" />
                         </td>
-                        <td style="padding:2px">
-                          <el-button link size="small" type="danger" @click="selectedNode.props.users.splice(ui,1)" style="font-size:11px">×</el-button>
+                        <td style="padding:2px;">
+                          <el-button link size="small" type="danger" @click="selectedNode.props.users.splice(ui,1)" style="font-size:11px;">×</el-button>
                         </td>
                       </tr>
                     </table>
-                    <el-button size="small" @click="selectedNode.props.users.push(selectedNode.props.names.map(()=>''))" style="margin-top:6px;width:100%">+ 添加用户</el-button>
-                    <el-button size="small" @click="selectedNode.props.users = []" type="danger" plain style="margin-top:4px;width:100%">清空全部</el-button>
+                    <el-button size="small" @click="selectedNode.props.users.push(selectedNode.props.names.map(()=>''))" style="margin-top:6px;width:100%;">+ 添加用户</el-button>
+                    <el-button size="small" @click="selectedNode.props.users = []" type="danger" plain style="margin-top:4px;width:100%;">清空全部</el-button>
                   </div>
                 </div>
                 <div class="form-group"><label>每次迭代取下一个</label><el-switch v-model="selectedNode.props.perIteration" size="small" /></div>
@@ -958,7 +974,7 @@
                 <div class="form-group"><label>输出变量名</label><el-input v-model="selectedNode.props.outputVar" placeholder="currentItem" size="small" /><span class="form-hint">循环体内用 ${currentItem} 引用当前值</span></div>
                 <div class="form-row">
                   <div class="form-group"><label>使用分隔符 "_"</label><el-switch v-model="selectedNode.props.useSeparator" size="small" /></div>
-                  <div class="form-group"><label>分隔符</label><el-input v-model="selectedNode.props.separator" placeholder="_" size="small" style="width:60px" /></div>
+                  <div class="form-group"><label>分隔符</label><el-input v-model="selectedNode.props.separator" placeholder="_" size="small" style="width:60px;" /></div>
                 </div>
               </div>
             </template>
@@ -969,7 +985,7 @@
                 <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-group"><label>Switch 值（表达式或数字）</label><el-input v-model="selectedNode.props.switchValue" placeholder="${status}" size="small" /></div>
                 <div class="form-group"><label>添加子元素</label>
-                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;">
                     <el-button size="small" @click="addChildToCurrent('HttpSampler')">🌐 HTTP 请求</el-button>
                     <el-button size="small" @click="addChildToCurrent('IfController')">🔀 如果控制器</el-button>
                   </div>
@@ -982,7 +998,7 @@
                 <div class="section-hint"><el-icon><InfoFilled /></el-icon> {{ selectedNode.type === 'RandomController' ? '每次随机选择一个子元素执行，模拟用户随机行为' : '按顺序轮换子元素执行，每个子元素轮流被选中一次' }}</div>
                 <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-group"><label>添加子元素</label>
-                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;">
                     <el-button size="small" @click="addChildToCurrent('HttpSampler')">🌐 HTTP 请求</el-button>
                     <el-button size="small" @click="addChildToCurrent('IfController')">🔀 如果控制器</el-button>
                   </div>
@@ -1026,10 +1042,10 @@
                   <div class="form-group"><label>持续(秒)</label><el-tooltip content="总共跑多长时间，如 60 = 持续压测 60 秒" placement="top"><el-input-number v-model="benchDuration" :min="3" :max="60" size="small" /></el-tooltip></div>
                   <div class="form-group"><label>预热(秒)</label><el-tooltip content="逐步启动的时间，避免瞬间压垮服务。如 5 = 5 秒内逐步启动完所有并发用户" placement="top"><el-input-number v-model="benchRampUp" :min="0" :max="10" size="small" /></el-tooltip></div>
                 </div>
-                <el-button v-if="!benching" type="danger" size="large" @click="startBench" style="width:100%;margin-bottom:8px;font-size:15px;font-weight:700">
+                <el-button v-if="!benching" type="danger" size="large" @click="startBench" style="width:100%;margin-bottom:8px;font-size:15px;font-weight:700;">
                   ⚡ 开始并发测试（{{ benchConcurrency }} 虚拟用户 × {{ benchDuration }}秒）
                 </el-button>
-                <el-button v-else type="warning" size="large" @click="stopBench" style="width:100%;margin-bottom:8px;font-size:15px;font-weight:700">
+                <el-button v-else type="warning" size="large" @click="stopBench" style="width:100%;margin-bottom:8px;font-size:15px;font-weight:700;">
                   ⏹ 停止轮询（测试仍在后台执行）
                 </el-button>
                 <div v-if="benching || benchProgress" class="bench-progress">
@@ -1076,23 +1092,23 @@
                   </div>
 
                   <!-- 状态码分布 -->
-                  <div v-if="benchResult.status_distribution" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-                    <span style="font-size:11px;color:var(--tm-text-secondary)">状态码：</span>
+                  <div v-if="benchResult.status_distribution" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                    <span style="font-size:11px;color:var(--tm-text-secondary);">状态码：</span>
                     <el-tag v-for="(count, code) in benchResult.status_distribution" :key="code" :type="Number(code) >= 200 && Number(code) < 400 ? 'success' : Number(code) >= 400 || Number(code) === 0 ? 'danger' : 'warning'" size="small">
                       HTTP {{ code }}: {{ count }}
                     </el-tag>
                   </div>
 
                   <!-- 错误信息 -->
-                  <div v-if="benchResult.errors && benchResult.errors.length > 0" style="margin-top:6px">
-                    <el-alert v-for="(err, ei) in benchResult.errors.slice(0,5)" :key="ei" :title="err" type="error" :closable="false" show-icon style="margin-bottom:2px;font-size:11px" />
+                  <div v-if="benchResult.errors && benchResult.errors.length > 0" style="margin-top:6px;">
+                    <el-alert v-for="(err, ei) in benchResult.errors.slice(0,5)" :key="ei" :title="err" type="error" :closable="false" show-icon style="margin-bottom:2px;font-size:11px;" />
                   </div>
 
                   <!-- ===== 按接口统计（聚合报告）直接展开 ===== -->
                   <div v-if="benchResult.per_url && benchResult.per_url.length > 0" class="bench-data-block">
-                    <h4 class="bench-section-title" style="display:flex;justify-content:space-between;align-items:center">
+                    <h4 class="bench-section-title" style="display:flex;justify-content:space-between;align-items:center;">
                       📊 按接口统计（聚合报告）
-                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">共 {{ benchResult.per_url.length }} 个接口</span>
+                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary);">共 {{ benchResult.per_url.length }} 个接口</span>
                     </h4>
                     <div class="per-url-table">
                       <div class="per-url-header">
@@ -1122,20 +1138,20 @@
 
                   <!-- ===== 请求详情（查看结果树）三标签页 ===== -->
                   <div v-if="benchResult.samples && benchResult.samples.length > 0" class="bench-data-block">
-                    <h4 class="bench-section-title" style="display:flex;justify-content:space-between;align-items:center">
+                    <h4 class="bench-section-title" style="display:flex;justify-content:space-between;align-items:center;">
                       🔍 查看结果树
-                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">共 {{ benchResult.samples.length }} 条样本</span>
+                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary);">共 {{ benchResult.samples.length }} 条样本</span>
                     </h4>
                     <div class="vrt-container">
                       <div class="vrt-left-col">
                         <div class="vrt-toolbar">
                           <span class="vrt-toolbar-label">查找:</span>
-                          <el-input v-model="sampleSearchQuery" size="small" clearable style="width:150px" @keyup.enter="doVrtSearch" />
+                          <el-input v-model="sampleSearchQuery" size="small" clearable style="width:150px;" @keyup.enter="doVrtSearch" />
                           <el-checkbox v-model="searchCaseSensitive" size="small">区分大小写</el-checkbox>
                           <el-checkbox v-model="searchRegex" size="small">正则表达式</el-checkbox>
                           <el-button size="small" type="primary" plain @click="doVrtSearch">查找</el-button>
                           <el-button size="small" @click="resetVrtSearch">重置</el-button>
-                          <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="全部" style="width:85px;margin-left:auto">
+                          <el-select v-model="sampleStatusFilter" size="small" clearable placeholder="全部" style="width:85px;margin-left:auto;">
                             <el-option label="成功" value="success" />
                             <el-option label="失败" value="error" />
                             <el-option label="异常" value="exception" />
@@ -1149,7 +1165,7 @@
                             <span class="vrt-name" :title="s.name || s.url">{{ s.name || shortUrl(s.url) }}</span>
                             <span v-if="s.error" class="vrt-err" title="有错误">⚠</span>
                           </div>
-                          <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">无匹配结果</div>
+                          <div v-if="filteredSamples.length === 0" style="padding:12px;text-align:center;color:var(--tm-text-secondary);font-size:12px;">无匹配结果</div>
                         </div>
                       </div>
                       <div v-if="selectedSample" class="vrt-detail-panel">
@@ -1213,14 +1229,14 @@
 
                   <!-- ===== 响应体采样 直接展开 ===== -->
                   <div v-if="benchResult.body_samples && benchResult.body_samples.length > 0" class="bench-data-block">
-                    <h4 class="bench-section-title" style="display:flex;justify-content:space-between;align-items:center">
+                    <h4 class="bench-section-title" style="display:flex;justify-content:space-between;align-items:center;">
                       📄 响应体采样
-                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary)">每个接口前 3 条响应内容，最多 1000 字符</span>
+                      <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary);">每个接口前 3 条响应内容，最多 1000 字符</span>
                     </h4>
-                    <div v-for="(bs, bi) in benchResult.body_samples" :key="bi" style="margin-bottom:6px">
-                      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tm-text-secondary);margin-bottom:3px">
+                    <div v-for="(bs, bi) in benchResult.body_samples" :key="bi" style="margin-bottom:6px;">
+                      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tm-text-secondary);margin-bottom:3px;">
                         <el-tag :type="bs.status >= 200 && bs.status < 400 ? 'success' : 'danger'" size="small">{{ bs.status }}</el-tag>
-                        <span style="word-break:break-all">{{ shortUrl(bs.url) }}</span>
+                        <span style="word-break:break-all;">{{ shortUrl(bs.url) }}</span>
                       </div>
                       <pre class="bench-body-preview">{{ bs.body }}</pre>
                     </div>
@@ -1293,13 +1309,23 @@
           </el-tabs>
         </div>
 
+        <!-- 拖拽分隔条：主区域 ↔ JMX 预览侧边栏 -->
+        <BaseSplitter
+          v-model:size="step3SidebarWidth"
+          direction="horizontal"
+          :min-size="260"
+          :max-size="520"
+          storage-key="tm-jmeter-step3-sidebar-width"
+          container-selector=".step3-layout"
+        />
+
         <!-- 侧边栏：JMX 预览（compact） -->
-        <div class="step3-sidebar">
-          <div class="panel-title" @click="showJmxPreview = !showJmxPreview" style="cursor:pointer;user-select:none">
+        <div class="step3-sidebar" :style="{ width: step3SidebarWidth + 'px', flex: 'none' }">
+          <div class="panel-title" @click="showJmxPreview = !showJmxPreview" style="cursor:pointer;user-select:none;">
             <span>📦 JMX 导出 {{ showJmxPreview ? '▲' : '▼' }}</span>
           </div>
           <div v-if="showJmxPreview" class="jmx-preview-compact">
-            <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+            <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
               <el-button size="small" @click="generatePreview" :loading="generating">
                 🔮 生成预览
               </el-button>
@@ -1308,13 +1334,13 @@
               </el-button>
             </div>
             <pre v-if="jmxContent" class="xml-preview-compact"><code>{{ jmxContent }}</code></pre>
-            <div v-else class="empty-hint" style="padding:16px;font-size:12px">
-              <p>点击「生成预览」<br/>查看 JMX 内容<br/><span style="color:var(--tm-text-secondary);font-size:11px">导出后可导入 JMeter 运行</span></p>
+            <div v-else class="empty-hint" style="padding:16px;font-size:12px;">
+              <p>点击「生成预览」<br/>查看 JMX 内容<br/><span style="color:var(--tm-text-secondary);font-size:11px;">导出后可导入 JMeter 运行</span></p>
             </div>
           </div>
-          <div v-else style="padding:12px;font-size:12px;color:var(--tm-text-secondary)">
+          <div v-else style="padding:12px;font-size:12px;color:var(--tm-text-secondary);">
             📦 JMX 导出功能：生成 .jmx 文件，兼容 <strong>JMeter 5.1.1+</strong>
-            <div style="margin-top:8px;display:flex;gap:6px">
+            <div style="margin-top:8px;display:flex;gap:6px;">
               <el-button size="small" @click="downloadJmx" :disabled="!jmxContent" type="success" title="兼容 JMeter 5.1.1 / 5.2 / 5.3 / 5.4 / 5.5 / 5.6">
                 <el-icon><Download /></el-icon> 直接下载 .jmx
               </el-button>
@@ -1329,7 +1355,7 @@
     <el-dialog v-model="showImportJmxDialog" title="导入 .jmx 文件" width="500px">
       <el-upload drag accept=".jmx" :auto-upload="false" :on-change="handleJmxFileChange" :limit="1">
         <el-icon size="40"><UploadFilled /></el-icon>
-        <div style="margin-top:8px">将 .jmx 文件拖到此处，或点击选择</div>
+        <div style="margin-top:8px;">将 .jmx 文件拖到此处，或点击选择</div>
       </el-upload>
       <template #footer>
         <el-button @click="showImportJmxDialog = false">取消</el-button>
@@ -1361,7 +1387,7 @@
     destroy-on-close
     class="ai-analysis-dialog"
   >
-    <div class="ai-analysis-body" style="white-space: pre-wrap; max-height: 70vh; overflow-y: auto; padding: 16px; background: #f8fafc; border-radius: 8px; line-height: 1.8; font-size: 14px;">
+    <div class="ai-analysis-body" style="white-space: pre-wrap; max-height: 70vh; overflow-y: auto; padding: 16px; background: var(--bg-surface); border-radius: 8px; line-height: 1.8; font-size: 14px;">
       {{ aiAnalysisText }}
     </div>
     <template #footer>
@@ -1385,6 +1411,7 @@ import BenchRunner from '@/views/jmeter/BenchRunner.vue'
 import ScriptHistory from '@/views/jmeter/ScriptHistory.vue'
 import TreeEditor from '@/views/jmeter/TreeEditor.vue'
 import HelpDrawer from '@/components/HelpDrawer.vue'
+import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import { helpContent } from '@/utils/help-content'
 
 const router = useRouter()
@@ -2146,10 +2173,17 @@ const shortUrl = (url) => {
   } catch { return url.length > 50 ? url.substring(0, 50) + '...' : url }
 }
 
-const treeWidth = ref(280)
-const draggingCol = ref(null)
-const dragStartX = ref(0)
-const dragStartW = ref(0)
+// 根据视口动态计算各面板默认宽度，避免全屏/缩放时挤压
+const getDefaultPanelWidth = (base, min, max) => {
+  if (typeof window === 'undefined') return base
+  const w = window.innerWidth
+  const ratio = Math.min(1, Math.max(0.5, w / 1920))
+  return Math.max(min, Math.min(max, Math.round(base * ratio)))
+}
+
+const treeWidth = ref(getDefaultPanelWidth(280, 200, 400))
+const step1LeftWidth = ref(getDefaultPanelWidth(300, 220, 400))
+const step3SidebarWidth = ref(getDefaultPanelWidth(320, 260, 420))
 
 const bottomPanelVisible = ref(true)
 const bottomPanelHeight = ref(320)
@@ -2206,27 +2240,6 @@ const filteredSamples = computed(() => {
   }
   return list
 })
-
-const onDragStart = (col, e) => {
-  draggingCol.value = col
-  dragStartX.value = e.clientX
-  if (col === 'tree') dragStartW.value = treeWidth.value
-  document.addEventListener('mousemove', onDragMove)
-  document.addEventListener('mouseup', onDragEnd)
-  e.preventDefault()
-}
-const onDragMove = (e) => {
-  if (!draggingCol.value) return
-  const delta = e.clientX - dragStartX.value
-  if (draggingCol.value === 'tree') {
-    treeWidth.value = Math.max(180, Math.min(window.innerWidth * 0.55, dragStartW.value + delta))
-  }
-}
-const onDragEnd = () => {
-  draggingCol.value = null
-  document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', onDragEnd)
-}
 
 const onBottomResize = (e) => {
   e.preventDefault()
@@ -2575,9 +2588,6 @@ const findParentSampler = (parent, uid) => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeHandler)
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
-  // 清理可能残留的拖拽事件监听器
-  document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', onDragEnd)
 })
 </script>
 
@@ -2597,21 +2607,21 @@ onBeforeUnmount(() => {
   box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
   position: relative;
 }
-.step { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 7px 14px; border-radius: 10px; font-size: 13px; color: #64748b; border: 1.5px solid transparent; transition: all .25s ease; font-weight: 500; }
-.step:hover { background: rgba(99,102,241,0.05); color: #475569; }
-.step.active { color: #4f46e5; border-color: rgba(79,70,229,0.35); background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.06)); box-shadow: 0 2px 8px rgba(79,70,229,0.1); }
-.step.done { color: #059669; border-color: rgba(5,150,105,0.25); background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.05)); }
-.step-num { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: linear-gradient(135deg, #e2e8f0, #cbd5e1); color: #64748b; box-shadow: inset 0 -1px 0 rgba(0,0,0,0.06); transition: all .25s ease; }
-.step.active .step-num { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; box-shadow: 0 2px 6px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.15); }
-.step.done .step-num { background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 2px 6px rgba(16,185,129,0.25), inset 0 1px 0 rgba(255,255,255,0.15); }
-.step-arrow { color: #cbd5e1; font-weight: 700; font-size: 13px; }
+.step { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 7px 14px; border-radius: 10px; font-size: 13px; color: var(--tm-text-secondary); border: 1.5px solid transparent; transition: all .25s ease; font-weight: 500; }
+.step:hover { background: rgba(var(--tm-color-primary-rgb), 0.05); color: var(--tm-text-primary); }
+.step.active { color: var(--accent-primary); border-color: rgba(var(--tm-color-primary-rgb), 0.35); background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb), 0.08), rgba(var(--tm-color-primary-rgb), 0.06)); box-shadow: 0 2px 8px rgba(var(--tm-color-primary-rgb), 0.1); }
+.step.done { color: var(--el-color-success); border-color: rgba(var(--el-color-success-rgb), 0.25); background: linear-gradient(135deg, rgba(var(--el-color-success-rgb), 0.08), rgba(var(--el-color-success-rgb), 0.05)); }
+.step-num { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: var(--bg-surface-hover); color: var(--tm-text-secondary); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.06); transition: all .25s ease; }
+.step.active .step-num { background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary)); color: var(--tm-text-primary); box-shadow: 0 2px 6px rgba(var(--tm-color-primary-rgb), 0.3), inset 0 1px 0 rgba(var(--text-primary-rgb), 0.15); }
+.step.done .step-num { background: linear-gradient(135deg, var(--el-color-success), var(--el-color-success)); color: var(--tm-text-primary); box-shadow: 0 2px 6px rgba(var(--el-color-success-rgb), 0.25), inset 0 1px 0 rgba(var(--text-primary-rgb), 0.15); }
+.step-arrow { color: var(--tm-text-secondary); font-weight: 700; font-size: 13px; }
 .step-actions { margin-left: auto; display: flex; gap: 8px; }
 
 /* ===== 引导面板 ===== */
 .guide-panel { padding: 8px 20px; }
 
 /* ===== Step 1 布局 ===== */
-.step1-layout { display: grid; grid-template-columns: minmax(260px, 0.4fr) 1fr; gap: 18px; padding: 0; flex: 1; min-height: 0; overflow: hidden; }
+.step1-layout { display: flex; gap: 0; padding: 0; flex: 1; min-height: 0; overflow: hidden; }
 .step1-left { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
 .step1-templates { overflow: visible; }
 .step1-import-jmx { }
@@ -2644,20 +2654,20 @@ onBeforeUnmount(() => {
 }
 .import-jmx-card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at top right, rgba(99,102,241,0.08) 0%, transparent 60%);
+  background: radial-gradient(circle at top right, rgba(var(--tm-color-primary-rgb), 0.08) 0%, transparent 60%);
   opacity: 0; transition: opacity .3s;
 }
 .import-jmx-card:hover::before { opacity: 1; }
 .import-jmx-card:hover {
   border-color: var(--accent-hover); border-style: solid;
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(99,102,241,0.15), 0 2px 6px rgba(99,102,241,0.08);
+  box-shadow: 0 8px 24px rgba(var(--tm-color-primary-rgb), 0.15), 0 2px 6px rgba(var(--tm-color-primary-rgb), 0.08);
 }
 .import-jmx-icon { font-size: 30px; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
 .import-jmx-body { flex: 1; z-index: 1; }
 .import-jmx-title { font-size: 14px; font-weight: 700; color: var(--tm-text-primary); }
 .import-jmx-desc { font-size: 11.5px; color: var(--tm-text-secondary); margin-top: 3px; line-height: 1.5; }
-.step1-import { display: flex; flex-direction: column; overflow: hidden; }
+.step1-import { display: flex; flex-direction: column; overflow: hidden; flex: 1; min-width: 340px; }
 
 .template-grid { display: grid; grid-template-columns: 1fr; gap: 7px; }
 .tpl-card {
@@ -2670,14 +2680,14 @@ onBeforeUnmount(() => {
 }
 .tpl-card::after {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  background: linear-gradient(180deg, #6366f1, #8b5cf6);
+  background: linear-gradient(180deg, var(--tm-color-primary), var(--tm-color-primary));
   border-radius: 0 3px 3px 0; opacity: 0; transition: opacity .25s;
 }
 .tpl-card:hover {
   border-color: var(--accent-primary);
   background: var(--bg-surface-hover);
   transform: translateX(4px);
-  box-shadow: 0 4px 14px rgba(99,102,241,0.1);
+  box-shadow: 0 4px 14px rgba(var(--tm-color-primary-rgb), 0.1);
 }
 .tpl-card:hover::after { opacity: 1; }
 .tpl-icon { font-size: 26px; flex-shrink: 0; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.08)); }
@@ -2690,11 +2700,11 @@ onBeforeUnmount(() => {
 .import-case-item { padding: 5px 8px; border-radius: 8px; cursor: pointer; transition: all .2s; }
 .import-case-item:hover { background: var(--bg-surface-hover); }
 .case-method { font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 5px; margin-right: 8px; letter-spacing: 0.02em; }
-.m-get { background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.1)); color: #059669; }
-.m-post { background: linear-gradient(135deg, rgba(236,72,153,0.15), rgba(219,39,119,0.1)); color: #db2777; }
-.m-put { background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1)); color: #d97706; }
-.m-delete { background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.1)); color: #dc2626; }
-.m-patch { background: linear-gradient(135deg, rgba(129,140,248,0.15), rgba(99,102,241,0.1)); color: #6366f1; }
+.m-get { background: linear-gradient(135deg, color-mix(in srgb, var(--tm-method-get) 15%, transparent), color-mix(in srgb, var(--tm-method-get) 10%, transparent)); color: var(--tm-method-get); }
+.m-post { background: linear-gradient(135deg, color-mix(in srgb, var(--tm-method-post) 15%, transparent), color-mix(in srgb, var(--tm-method-post) 10%, transparent)); color: var(--tm-method-post); }
+.m-put { background: linear-gradient(135deg, color-mix(in srgb, var(--tm-method-put) 15%, transparent), color-mix(in srgb, var(--tm-method-put) 10%, transparent)); color: var(--tm-method-put); }
+.m-delete { background: linear-gradient(135deg, color-mix(in srgb, var(--tm-method-delete) 15%, transparent), color-mix(in srgb, var(--tm-method-delete) 10%, transparent)); color: var(--tm-method-delete); }
+.m-patch { background: linear-gradient(135deg, color-mix(in srgb, var(--tm-method-patch) 15%, transparent), color-mix(in srgb, var(--tm-method-patch) 10%, transparent)); color: var(--tm-method-patch); }
 .case-name { font-size: 13px; font-weight: 600; color: var(--tm-text-primary); }
 .case-url { font-size: 11px; color: var(--tm-text-secondary); margin-left: 8px; }
 
@@ -2719,17 +2729,17 @@ onBeforeUnmount(() => {
 .drag-handle::after {
   content: ''; position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%); width: 2px; height: 32px;
-  background: rgba(148,163,184,0.2); border-radius: 2px; transition: background .2s;
+  background: var(--bg-surface-hover); border-radius: 2px; transition: background .2s;
 }
-.drag-handle:hover, .drag-handle.active { background: rgba(99,102,241,0.06); }
-.drag-handle:hover::after, .drag-handle.active::after { background: rgba(99,102,241,0.5); height: 48px; }
+.drag-handle:hover, .drag-handle.active { background: rgba(var(--tm-color-primary-rgb), 0.06); }
+.drag-handle:hover::after, .drag-handle.active::after { background: rgba(var(--tm-color-primary-rgb), 0.5); height: 48px; }
 .editor-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 .editor-body {
   flex: 1; overflow-y: auto; padding: 16px 18px;
-  scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.2) transparent;
+  scrollbar-width: thin; scrollbar-color: var(--tm-text-secondary) transparent;
 }
 .editor-body::-webkit-scrollbar { width: 6px; }
-.editor-body::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.2); border-radius: 3px; }
+.editor-body::-webkit-scrollbar-thumb { background: var(--bg-surface-hover); border-radius: 3px; }
 .editor-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   flex: 1; color: var(--tm-text-secondary); gap: 12px;
@@ -2738,7 +2748,7 @@ onBeforeUnmount(() => {
 .editor-empty .el-icon { color: var(--tm-text-secondary); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.06)); }
 .editor-empty-tips { display: flex; gap: 10px; margin-top: 8px; }
 .empty-tip { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--bg-surface-hover); border: 1px solid var(--accent-primary); color: var(--accent-primary); transition: all .2s; }
-.empty-tip:hover { background: var(--bg-surface); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(99,102,241,0.1); }
+.empty-tip:hover { background: var(--bg-surface); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(var(--tm-color-primary-rgb), 0.1); }
 
 /* ===== 底部运行结果面板 ===== */
 .bottom-result-panel {
@@ -2760,7 +2770,7 @@ onBeforeUnmount(() => {
 .brp-title { font-weight: 700; font-size: 13px; color: var(--tm-text-primary); }
 .brp-header-right { display: flex; align-items: center; gap: 10px; }
 .brp-badge { font-size: 11px; color: var(--tm-text-secondary); background: var(--bg-surface); padding: 2px 8px; border-radius: 10px; }
-.brp-badge.brp-running { color: #f59e0b; background: #fef3c7; animation: pulse 2s infinite; }
+.brp-badge.brp-running { color: var(--el-color-warning); background: rgba(var(--el-color-warning-rgb), 0.15); animation: pulse 2s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 .brp-body {
   display: flex; flex-direction: column;
@@ -2773,9 +2783,9 @@ onBeforeUnmount(() => {
 }
 .brp-resize-handle::after {
   content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 40px; height: 3px; background: rgba(148,163,184,0.3); border-radius: 2px;
+  width: 40px; height: 3px; background: var(--bg-surface-hover); border-radius: 2px;
 }
-.brp-resize-handle:hover::after { background: rgba(99,102,241,0.5); }
+.brp-resize-handle:hover::after { background: rgba(var(--tm-color-primary-rgb), 0.5); }
 
 /* 底部面板内的 VRT 布局 */
 .vrt-bottom-container {
@@ -2783,7 +2793,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 .vrt-bottom-left {
-  width: 320px; flex-shrink: 0; border-right: 1px solid rgba(148,163,184,0.12);
+  width: 320px; flex-shrink: 0; border-right: 1px solid var(--tm-border-light);
   display: flex; flex-direction: column; overflow: hidden;
 }
 .vrt-bottom-left .vrt-sample-list {
@@ -2794,7 +2804,7 @@ onBeforeUnmount(() => {
 }
 .vrt-bottom-container .vrt-empty-detail {
   flex: 1; display: flex; align-items: center; justify-content: center;
-  color: #94a3b8; font-size: 13px;
+  color: var(--tm-text-secondary); font-size: 13px;
 }
 
 /* 底部面板统计 */
@@ -2809,15 +2819,15 @@ onBeforeUnmount(() => {
   display: flex; align-items: flex-start; gap: 14px;
   padding: 12px 16px; margin: 0 0 12px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.09) 0%, rgba(139,92,246,0.06) 40%, rgba(168,85,247,0.04) 100%);
-  border: 1px solid rgba(99,102,241,0.18);
-  box-shadow: 0 4px 16px rgba(99,102,241,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
+  background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb), 0.09) 0%, rgba(var(--tm-color-primary-rgb), 0.06) 40%, rgba(var(--tm-color-primary-rgb), 0.04) 100%);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.18);
+  box-shadow: 0 4px 16px rgba(var(--tm-color-primary-rgb), 0.06), inset 0 1px 0 rgba(var(--text-primary-rgb), 0.5);
   position: relative; overflow: hidden;
 }
 .summary-banner::before {
   content: ''; position: absolute; top: -30px; right: -30px;
   width: 120px; height: 120px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--tm-color-primary-rgb), 0.1) 0%, transparent 70%);
 }
 .summary-banner-empty {
   background: var(--bg-surface);
@@ -2840,7 +2850,7 @@ onBeforeUnmount(() => {
 /* ===== 编辑器表单（核心美化） ===== */
 .form-section {
   padding: 12px 0;
-  border-bottom: 1px dashed rgba(148,163,184,0.12);
+  border-bottom: 1px dashed var(--tm-border-light);
 }
 .form-section:last-child { border-bottom: none; }
 .section-hint {
@@ -2859,18 +2869,18 @@ onBeforeUnmount(() => {
 .form-row { display: flex; gap: 10px; }
 .form-row .form-group { flex: 1; }
 .kv-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
-.form-hint { font-size: 11px; color: #6b7280; margin-bottom: 8px; }
+.form-hint { font-size: 11px; color: var(--tm-text-secondary); margin-bottom: 8px; }
 .form-hint code {
-  background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.08));
+  background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb), 0.1), rgba(var(--tm-color-primary-rgb), 0.08));
   padding: 2px 6px; border-radius: 4px; font-family: 'Consolas','Monaco',monospace;
-  font-size: 10.5px; color: #6366f1; font-weight: 600;
+  font-size: 10.5px; color: var(--tm-color-primary); font-weight: 600;
 }
 .assertion-teaching {
   padding: 14px 16px;
   background: var(--bg-surface);
   border: 1px solid var(--tm-border-light);
   border-radius: 11px; margin-bottom: 10px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  box-shadow: inset 0 1px 0 rgba(var(--text-primary-rgb), 0.05);
 }
 .teaching-title { font-size: 13px; font-weight: 800; color: var(--accent-primary); margin-bottom: 8px; }
 .teaching-body { font-size: 11.5px; color: var(--tm-text-secondary); line-height: 1.75; }
@@ -2883,31 +2893,32 @@ onBeforeUnmount(() => {
 }
 .teaching-table td:first-child { color: var(--accent-primary); white-space: nowrap; width: 95px; font-weight: 700; }
 .teaching-table code {
-  background: linear-gradient(135deg, rgba(30,41,59,0.06), rgba(51,65,85,0.04));
+  background: linear-gradient(135deg, rgba(var(--tm-text-secondary-rgb), 0.06), rgba(var(--tm-text-secondary-rgb), 0.04));
   padding: 2px 5px; border-radius: 4px;
-  font-family: 'Consolas', monospace; font-size: 10.5px; color: #dc2626;
+  font-family: 'Consolas', monospace; font-size: 10.5px; color: var(--el-color-danger);
   font-weight: 600;
 }
 
 /* ===== Step 3 布局：主区域 + 窄侧边栏 ===== */
-.step3-layout { display: grid; grid-template-columns: 1fr minmax(280px, 0.35fr); gap: 18px; padding: 0; flex: 1; min-height: 0; overflow: hidden; }
-.step3-main { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.step3-layout { display: flex; gap: 0; padding: 0; flex: 1; min-height: 0; overflow: hidden; }
+.step3-main { display: flex; flex-direction: column; overflow: hidden; min-width: 0; flex: 1; }
 .step3-sidebar {
   display: flex; flex-direction: column; overflow: hidden;
   border: 1px solid var(--tm-border-light); border-radius: 14px;
   background: var(--tm-card-bg);
   box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  min-width: 260px;
 }
 .step3-sidebar .panel-title { border-bottom: 1px solid var(--tm-border-light); }
 
 .jmx-preview-compact { flex: 1; overflow-y: auto; padding: 12px; }
 .xml-preview-compact {
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  background: var(--bg-surface);
   border-radius: 8px; padding: 12px; font-size: 10.5px; line-height: 1.5;
   margin: 0; overflow: auto; max-height: 400px;
-  color: #e2e8f0; font-family: 'Consolas','Monaco',monospace;
+  color: var(--tm-text-primary); font-family: 'Consolas','Monaco',monospace;
   white-space: pre-wrap; word-break: break-all;
-  border: 1px solid rgba(148,163,184,0.1);
+  border: 1px solid var(--tm-border-light);
   box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);
 }
 .xml-preview-compact code { font-size: 10.5px; }
@@ -2915,22 +2926,22 @@ onBeforeUnmount(() => {
 .debug-body { flex: 1; overflow-y: auto; padding: 10px; }
 .debug-meta {
   display: flex; gap: 14px; align-items: center; margin-bottom: 10px; padding: 10px 14px;
-  background: linear-gradient(90deg, rgba(16,185,129,0.06), transparent);
-  border-radius: 9px; border: 1px solid rgba(16,185,129,0.12);
+  background: linear-gradient(90deg, rgba(var(--el-color-success-rgb), 0.06), transparent);
+  border-radius: 9px; border: 1px solid rgba(var(--el-color-success-rgb), 0.12);
 }
-.debug-elapsed { font-size: 14px; font-weight: 800; color: #059669; }
-.debug-size { font-size: 12px; color: #64748b; }
+.debug-elapsed { font-size: 14px; font-weight: 800; color: var(--el-color-success); }
+.debug-size { font-size: 12px; color: var(--tm-text-secondary); }
 .debug-json {
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-  padding: 12px; border-radius: 8px; font-size: 11.5px; color: #e2e8f0;
+  background: var(--bg-surface);
+  padding: 12px; border-radius: 8px; font-size: 11.5px; color: var(--tm-text-primary);
   font-family: 'Consolas','Monaco',monospace; max-height: 220px; overflow: auto; margin: 0;
-  border: 1px solid rgba(148,163,184,0.1);
+  border: 1px solid var(--tm-border-light);
   box-shadow: inset 0 2px 6px rgba(0,0,0,0.15);
 }
 .debug-error { margin-top: 10px; }
 .empty-hint {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 240px; color: #94a3b8; gap: 10px; font-size: 13px; text-align: center;
+  height: 240px; color: var(--tm-text-secondary); gap: 10px; font-size: 13px; text-align: center;
   line-height: 1.6;
 }
 
@@ -2938,11 +2949,11 @@ onBeforeUnmount(() => {
 .bench-body { padding: 12px; overflow-y: auto; flex: 1; }
 .bench-controls { display: flex; gap: 12px; margin-bottom: 14px; }
 .bench-controls .form-group { flex: 1; }
-.bench-controls .form-group label { display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 4px; }
+.bench-controls .form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--tm-text-primary); margin-bottom: 4px; }
 .bench-controls :deep(.el-input-number) { width: 100%; }
 .bench-result { margin-top: 8px; }
 .bench-progress { margin-bottom: 14px; text-align: center; }
-.bench-progress-text { font-size: 12px; color: #64748b; margin-top: 6px; display: inline-block; font-weight: 500; }
+.bench-progress-text { font-size: 12px; color: var(--tm-text-secondary); margin-top: 6px; display: inline-block; font-weight: 500; }
 
 .bench-stats {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 10px 0;
@@ -2960,14 +2971,14 @@ onBeforeUnmount(() => {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
   border-radius: 12px 12px 0 0;
 }
-.bench-stat:nth-child(1)::before { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
-.bench-stat:nth-child(2)::before { background: linear-gradient(90deg, #10b981, #34d399); }
-.bench-stat:nth-child(3)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-.bench-stat:nth-child(4)::before { background: linear-gradient(90deg, #ec4899, #f472b6); }
-.bench-stat:nth-child(5)::before { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
-.bench-stat:nth-child(6)::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
-.bench-stat:nth-child(7)::before { background: linear-gradient(90deg, #f97316, #fb923c); }
-.bench-stat:nth-child(8)::before { background: linear-gradient(90deg, #14b8a6, #2dd4bf); }
+.bench-stat:nth-child(1)::before { background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary)); }
+.bench-stat:nth-child(2)::before { background: linear-gradient(90deg, var(--el-color-success), var(--el-color-success)); }
+.bench-stat:nth-child(3)::before { background: linear-gradient(90deg, var(--el-color-warning), var(--el-color-warning)); }
+.bench-stat:nth-child(4)::before { background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary)); }
+.bench-stat:nth-child(5)::before { background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary)); }
+.bench-stat:nth-child(6)::before { background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary)); }
+.bench-stat:nth-child(7)::before { background: linear-gradient(90deg, var(--el-color-warning), var(--el-color-warning)); }
+.bench-stat:nth-child(8)::before { background: linear-gradient(90deg, var(--el-color-success), var(--el-color-success)); }
 .bench-stat-value { display: block; font-size: 22px; font-weight: 800; color: var(--tm-text-primary); margin-top: 4px; }
 .bench-stat-label { display: block; font-size: 10.5px; color: var(--tm-text-secondary); margin-top: 4px; font-weight: 600; }
 
@@ -2983,8 +2994,8 @@ onBeforeUnmount(() => {
   padding: 50px 24px; color: var(--tm-text-secondary); gap: 14px; text-align: center; font-size: 13.5px;
   line-height: 1.6;
 }
-.text-success { color: #059669; font-weight: 700; }
-.text-danger { color: #dc2626; font-weight: 700; }
+.text-success { color: var(--el-color-success); font-weight: 700; }
+.text-danger { color: var(--el-color-danger); font-weight: 700; }
 
 .right-tabs :deep(.el-tabs__content) { overflow: hidden; flex: 1; min-height: 0; }
 .right-tabs :deep(.el-tab-pane) { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
@@ -2994,7 +3005,7 @@ onBeforeUnmount(() => {
 .per-url-table { font-size: 12px; }
 .per-url-header, .per-url-row {
   display: flex; gap: 6px; padding: 7px 8px;
-  border-bottom: 1px solid rgba(148,163,184,0.1);
+  border-bottom: 1px solid var(--tm-border-light);
   border-radius: 6px; margin-bottom: 3px;
   transition: background .15s;
 }
@@ -3002,6 +3013,15 @@ onBeforeUnmount(() => {
 .per-url-row:hover { background: var(--bg-surface-hover); }
 .col-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--tm-text-primary); }
 .col-num { width: 60px; text-align: right; flex-shrink: 0; font-weight: 600; font-size: 11.5px; color: var(--tm-text-secondary); }
+
+/* 监听器里的聚合数据表格（兼容主题） */
+.per-url-table.theme-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+.per-url-table.theme-table th,
+.per-url-table.theme-table td { padding: 4px 8px; border-bottom: 1px solid var(--tm-border-light); }
+.per-url-table.theme-table thead tr { background: var(--bg-surface-hover); }
+.per-url-table.theme-table th { text-align: center; font-weight: 700; color: var(--tm-text-secondary); }
+.per-url-table.theme-table td.col-url { max-width: 200px; text-align: left; }
+.per-url-table.theme-table td.col-num { text-align: center; }
 
 /* ===== 查看结果树 (VRT) ===== */
 .vrt-container { display: flex; gap: 0; border: 1px solid var(--tm-border-light); border-radius: 6px; overflow: hidden; background: var(--tm-card-bg); flex: 1; min-height: 0; }
@@ -3015,13 +3035,13 @@ onBeforeUnmount(() => {
 .vrt-time { font-weight: 700; width: 52px; flex-shrink: 0; color: var(--tm-text-primary); font-size: 11px; }
 .vrt-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tm-text-secondary); font-size: 10px; }
 .vrt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tm-text-primary); font-size: 11px; font-weight: 500; }
-.vrt-err { color: #dc2626; font-size: 10px; flex-shrink: 0; }
+.vrt-err { color: var(--el-color-danger); font-size: 10px; flex-shrink: 0; }
 .vrt-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 6px; background: var(--bg-surface-hover); border-bottom: 1px solid var(--tm-border-light); align-items: center; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
 .vrt-toolbar-label { font-size: 12px; color: var(--tm-text-primary); white-space: nowrap; flex-shrink: 0; }
 .vrt-toolbar .el-checkbox { margin-right: 0; font-size: 11px; height: 24px; }
 .vrt-toolbar .el-checkbox__label { font-size: 11px; padding-left: 3px; }
 .vrt-detail-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-.vrt-empty-detail { display: none; }
+.vrt-empty-detail { display: none; color: var(--tm-text-secondary); }
 .vrt-tabs { height: 100%; display: flex; flex-direction: column; }
 .vrt-tabs :deep(.el-tabs__header) { margin-bottom: 0; background: var(--bg-surface); border-bottom: 1px solid var(--tm-border-light); padding: 0 8px; }
 .vrt-tabs :deep(.el-tabs__content) { flex: 1; overflow-y: auto; padding: 8px 12px; }
@@ -3032,15 +3052,15 @@ onBeforeUnmount(() => {
 .vrt-label { color: var(--tm-text-secondary); font-weight: 600; white-space: nowrap; width: 150px; font-family: 'Consolas','Monaco',monospace; font-size: 11px; }
 .vrt-subheader td { background: var(--bg-surface-hover); padding: 4px 8px !important; font-size: 11px; }
 .indent1 { padding-left: 28px !important; }
-.vrt-code { background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); padding: 12px; border-radius: 8px; font-size: 11.5px; color: #e2e8f0; font-family: 'Consolas','Monaco',monospace; max-height: 300px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid rgba(148,163,184,0.1); box-shadow: inset 0 2px 6px rgba(0,0,0,0.12); }
-.vrt-error-body { color: #fca5a5; }
-.vrt-http-line { padding: 8px 12px; background: rgba(99,102,241,0.04); border-radius: 6px; margin-top: 6px; font-family: 'Consolas','Monaco',monospace; font-size: 11.5px; word-break: break-all; }
+.vrt-code { background: var(--bg-surface); padding: 12px; border-radius: 8px; font-size: 11.5px; color: var(--tm-text-primary); font-family: 'Consolas','Monaco',monospace; max-height: 300px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid var(--tm-border-light); box-shadow: inset 0 2px 6px rgba(0,0,0,0.12); }
+.vrt-error-body { color: var(--el-color-danger); }
+.vrt-http-line { padding: 8px 12px; background: rgba(var(--tm-color-primary-rgb), 0.04); border-radius: 6px; margin-top: 6px; font-family: 'Consolas','Monaco',monospace; font-size: 11.5px; word-break: break-all; }
 .bench-body-preview {
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-  padding: 12px; border-radius: 8px; font-size: 11.5px; color: #e2e8f0;
+  background: var(--bg-surface);
+  padding: 12px; border-radius: 8px; font-size: 11.5px; color: var(--tm-text-primary);
   font-family: 'Consolas','Monaco',monospace; max-height: 160px; overflow: auto; margin: 0;
   white-space: pre-wrap; word-break: break-all;
-  border: 1px solid rgba(148,163,184,0.1);
+  border: 1px solid var(--tm-border-light);
   box-shadow: inset 0 2px 6px rgba(0,0,0,0.15);
 }
 
@@ -3059,7 +3079,7 @@ onBeforeUnmount(() => {
 :deep(.el-button--success) { font-weight: 600; border-radius: 8px; }
 :deep(.el-button--danger) { font-weight: 700; border-radius: 10px; letter-spacing: 0.02em; }
 :deep(.el-input__wrapper) { border-radius: 8px; transition: box-shadow .2s; }
-:deep(.el-input__wrapper:focus-within) { box-shadow: 0 0 0 2px rgba(99,102,241,0.2), 0 2px 8px rgba(99,102,241,0.08) !important; }
+:deep(.el-input__wrapper:focus-within) { box-shadow: 0 0 0 2px rgba(var(--tm-color-primary-rgb), 0.2), 0 2px 8px rgba(var(--tm-color-primary-rgb), 0.08) !important; }
 :deep(.el-select .el-input__wrapper) { border-radius: 8px; }
 :deep(.el-textarea__inner) { border-radius: 8px; font-family: 'Consolas','Monaco',monospace !important; }
 :deep(.el-collapse-item__header) { font-weight: 600; font-size: 12.5px; color: var(--tm-text-primary); border-radius: 8px; }
@@ -3073,13 +3093,13 @@ onBeforeUnmount(() => {
 .vars-panel-title { font-size: 12px; font-weight: 700; color: var(--accent-primary); margin-bottom: 8px; }
 .vars-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .var-chip { display: inline-flex; align-items: center; padding: 3px 10px; background: var(--tm-card-bg); border: 1px solid var(--tm-border-light); border-radius: 6px; font-size: 11.5px; font-weight: 600; color: var(--accent-primary); cursor: pointer; transition: all .2s; font-family: 'Consolas','Monaco',monospace; }
-.var-chip:hover { background: var(--bg-surface-hover); border-color: var(--accent-primary); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(16,185,129,0.15); }
+.var-chip:hover { background: var(--bg-surface-hover); border-color: var(--accent-primary); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(var(--el-color-success-rgb), 0.15); }
 .ai-validation { padding: 12px 14px; border-radius: 10px; margin-top: 4px; }
-.ai-validation-ok { background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(5,150,105,0.03)); border: 1px solid rgba(16,185,129,0.2); }
-.ai-validation-err { background: linear-gradient(135deg, rgba(239,68,68,0.06), rgba(220,38,38,0.03)); border: 1px solid rgba(239,68,68,0.2); }
+.ai-validation-ok { background: linear-gradient(135deg, rgba(var(--el-color-success-rgb), 0.06), rgba(var(--el-color-success-rgb), 0.03)); border: 1px solid rgba(var(--el-color-success-rgb), 0.2); }
+.ai-validation-err { background: linear-gradient(135deg, rgba(var(--el-color-danger-rgb), 0.06), rgba(var(--el-color-danger-rgb), 0.03)); border: 1px solid rgba(var(--el-color-danger-rgb), 0.2); }
 .ai-validation-header { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
-.ai-validation-ok .ai-validation-header { color: #059669; }
-.ai-validation-err .ai-validation-header { color: #dc2626; }
+.ai-validation-ok .ai-validation-header { color: var(--el-color-success); }
+.ai-validation-err .ai-validation-header { color: var(--el-color-danger); }
 .ai-validation-body { font-size: 12px; color: var(--tm-text-secondary); line-height: 1.7; white-space: pre-wrap; }
 
 .ai-cost-hint {
@@ -3087,5 +3107,96 @@ onBeforeUnmount(() => {
   color: var(--accent-primary);
   margin-left: 6px;
   white-space: nowrap;
+}
+
+/* ===== 响应式布局优化 ===== */
+.import-controls { flex-wrap: wrap; }
+.import-controls .el-select { flex-shrink: 0; }
+.form-row { flex-wrap: wrap; }
+.form-row .form-group { flex: 1; min-width: 120px; }
+.kv-row { flex-wrap: wrap; }
+.kv-row .el-input { flex: 1; min-width: 80px; }
+
+@media (max-width: 1600px) {
+  .step-nav { padding: 12px 16px; gap: 6px; }
+  .step { padding: 6px 12px; font-size: 12px; }
+  .step-num { width: 24px; height: 24px; font-size: 11px; }
+  .step-actions { gap: 6px; }
+  .step-actions .el-button { padding-left: 10px; padding-right: 10px; }
+  .step-actions .el-button span:not(.el-icon) { display: none; }
+  .step-body { margin: 0 12px 12px; padding: 12px; }
+  .editor-body { padding: 12px 14px; }
+  .summary-banner { padding: 10px 14px; gap: 10px; }
+  .summary-banner-icon { font-size: 24px; }
+  .summary-banner-title { font-size: 12px; }
+  .summary-banner-text { font-size: 11.5px; }
+}
+
+@media (max-width: 1366px) {
+  .step-nav { flex-wrap: wrap; padding: 10px 14px; }
+  .step-actions { margin-left: 0; width: 100%; justify-content: flex-end; padding-top: 8px; border-top: 1px solid var(--tm-border-light); }
+  .step { padding: 5px 10px; }
+  .step-arrow { font-size: 11px; }
+  .step1-left { min-width: 220px; }
+  .step1-import { min-width: 300px; }
+  .step3-sidebar { min-width: 240px; }
+  .bench-stats { grid-template-columns: repeat(2, 1fr); }
+  .vrt-bottom-left { width: 260px; }
+  .import-controls .el-select { width: 200px !important; }
+}
+
+@media (max-width: 1280px) {
+  .step1-left { min-width: 200px; }
+  .step1-import { min-width: 280px; }
+  .step3-sidebar { min-width: 220px; }
+  .form-row { gap: 8px; }
+  .form-row .form-group { min-width: 100px; }
+  .bench-controls { gap: 8px; flex-wrap: wrap; }
+  .bench-controls .form-group { min-width: 90px; }
+  .vrt-left-col { width: 240px; }
+  .vrt-inline-section .vrt-left-col { width: 200px; }
+}
+
+@media (max-width: 1024px) {
+  .step-body { margin: 0 8px 8px; padding: 10px; }
+  .step-nav { padding: 8px 10px; gap: 4px; }
+  .step { padding: 4px 8px; font-size: 11px; gap: 4px; }
+  .step-num { width: 20px; height: 20px; font-size: 10px; border-radius: 6px; }
+  .step-label { display: none; }
+  .step-arrow { font-size: 10px; }
+  .step-actions { gap: 4px; padding-top: 6px; }
+  .step-actions .el-button { padding-left: 8px; padding-right: 8px; }
+  .guide-panel { padding: 6px 10px; }
+
+  .step1-layout { flex-direction: column; overflow-y: auto; }
+  .step1-layout > .base-splitter--horizontal { display: none; }
+  .step1-left { width: 100% !important; flex: none !important; max-height: 35%; min-width: 0 !important; overflow-y: auto; }
+  .step1-import { min-width: 0; width: 100%; flex: 1; }
+
+  .step2-editor-layout { flex-direction: column; overflow-y: auto; }
+  .step2-editor-layout > .base-splitter--horizontal { display: none; }
+  .step2-editor-layout > .tree-panel { width: 100% !important; min-width: 0 !important; max-height: 32%; border-right: none; border-bottom: 1px solid var(--tm-border-light); }
+  .step2-editor-layout > .editor-panel { width: 100%; flex: 1; min-height: 0; }
+
+  .step3-layout { flex-direction: column; overflow-y: auto; }
+  .step3-layout > .base-splitter--horizontal { display: none; }
+  .step3-main { width: 100%; flex: 1; min-height: 0; }
+  .step3-sidebar { width: 100% !important; flex: none !important; min-width: 0 !important; max-height: 35%; border-radius: 12px; margin-top: 10px; }
+
+  .vrt-bottom-container { flex-direction: column; height: auto; }
+  .vrt-bottom-left { width: 100%; border-right: none; border-bottom: 1px solid var(--tm-border-light); max-height: 40%; }
+  .vrt-left-col { width: 220px; }
+}
+
+@media (max-width: 768px) {
+  .step-nav { padding: 8px; }
+  .step-actions { justify-content: center; }
+  .step-actions .el-button { padding-left: 6px; padding-right: 6px; }
+  .summary-banner { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .summary-banner-stats { gap: 4px; }
+  .bench-stats { grid-template-columns: 1fr; }
+  .bench-controls .form-group { min-width: 80px; }
+  .per-url-header, .per-url-row { flex-wrap: wrap; }
+  .col-num { width: 50px; }
 }
 </style>

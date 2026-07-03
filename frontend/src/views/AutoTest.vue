@@ -525,6 +525,7 @@ watch(
   gap: 20px;
   max-width: 100%;
   margin: 0;
+  flex-wrap: wrap;
 }
 
 .guide-icon {
@@ -550,6 +551,7 @@ watch(
   align-items: center;
   gap: 8px;
   margin-left: auto;
+  flex-wrap: wrap;
 }
 
 .guide-step {
@@ -965,6 +967,16 @@ watch(
   .tab-item {
     white-space: nowrap;
     padding: 12px 16px;
+  }
+
+  .guide-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .guide-steps {
+    margin-left: 0;
+    width: 100%;
   }
 }
 

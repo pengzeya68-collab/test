@@ -10,7 +10,7 @@
       <!-- 顶部：Method + Name + URL -->
       <div class="drawer-header">
         <div class="top-row">
-          <el-select v-model="caseForm.method" style="width: 120px;">
+          <el-select v-model="caseForm.method" class="method-select">
             <el-option label="GET" value="GET" />
             <el-option label="POST" value="POST" />
             <el-option label="PUT" value="PUT" />
@@ -22,7 +22,8 @@
           <el-input
             v-model="caseForm.name"
             placeholder="用例名称"
-            style="width: 200px; margin-left: 10px;"
+            class="name-input"
+            style="margin-left: 10px;"
           />
           <el-autocomplete
             v-model="caseForm.url"
@@ -1574,6 +1575,42 @@ const handleSaveAndRun = async () => {
   gap: 10px;
   align-items: center;
   width: 100%;
+  flex-wrap: nowrap;
+}
+
+.top-row .method-select {
+  width: 120px;
+  flex-shrink: 0;
+}
+.top-row .name-input {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+/* 编辑器宽度较窄时，顶部行换行并占满 */
+@media (max-width: 1480px) {
+  .case-editor-embedded .top-row {
+    flex-wrap: wrap;
+  }
+  .case-editor-embedded .top-row .method-select {
+    flex: 0 0 100px;
+    width: 100px;
+  }
+  .case-editor-embedded .top-row .name-input {
+    flex: 1 1 160px;
+    min-width: 160px;
+    width: auto;
+  }
+  .case-editor-embedded .top-row .el-autocomplete {
+    flex: 2 1 240px;
+    min-width: 240px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .case-editor-embedded .top-row .el-button {
+    margin-left: 0 !important;
+  }
 }
 
 .description-bar {

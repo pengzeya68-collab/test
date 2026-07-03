@@ -53,6 +53,17 @@
   --tm-text-primary: var(--text-primary);
   --tm-text-secondary: var(--text-secondary);
   --tm-text-regular: var(--text-primary);
+  --tm-text-secondary-rgb: 160, 160, 192;
+  --el-color-success-rgb: 103, 194, 58;
+  --el-color-danger-rgb: 245, 108, 108;
+  --el-color-warning-rgb: 250, 204, 21;
+
+  /* HTTP 方法语义色 RGB（供 rgba() 透明叠层使用） */
+  --tm-method-get-rgb: 74, 222, 128;
+  --tm-method-post-rgb: 236, 72, 153;
+  --tm-method-put-rgb: 250, 204, 21;
+  --tm-method-delete-rgb: 248, 113, 113;
+  --tm-method-patch-rgb: 113, 113, 122;
 
   --tm-sidebar-bg: rgba(10, 10, 15, 0.8);
 

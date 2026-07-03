@@ -32,7 +32,13 @@
 
     <div class="debug-body">
       <div class="debug-panels" :class="{ 'panels-horizontal': !isFullscreen }">
-        <div class="panel panel-request" tabindex="0" @keydown.ctrl.enter="sendDebugRequest" @keydown.meta.enter="sendDebugRequest">
+        <div
+          class="panel panel-request"
+          :style="!isFullscreen ? { width: requestPanelWidth + 'px', flex: 'none' } : {}"
+          tabindex="0"
+          @keydown.ctrl.enter="sendDebugRequest"
+          @keydown.meta.enter="sendDebugRequest"
+        >
           <div class="panel-header">
             <span class="panel-title">请求</span>
           </div>
@@ -133,6 +139,17 @@
             </el-tabs>
           </div>
         </div>
+
+        <!-- 拖拽分隔条：请求 ↔ 响应（仅横向模式生效） -->
+        <BaseSplitter
+          v-if="!isFullscreen"
+          v-model:size="requestPanelWidth"
+          direction="horizontal"
+          :min-size="320"
+          :max-size="960"
+          storage-key="tm-apidebugger-panel-width"
+          container-selector=".debug-panels"
+        />
 
         <div class="panel panel-response">
           <div class="panel-header">
@@ -285,8 +302,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Right, Delete, Clock, Timer, MagicStick, DocumentCopy, DataAnalysis, Document, Plus, Search, Edit, FullScreen, Upload } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
+import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import { helpContent } from '@/utils/help-content'
 import CurlImportDialog from './CurlImportDialog.vue'
+
+// 横向模式下请求面板宽度（带 localStorage 持久化）
+const requestPanelWidth = ref(560)
 
 const props = defineProps({
   environmentList: { type: Array, default: () => [] }
@@ -621,6 +642,8 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .debug-body {
@@ -647,16 +670,19 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
   overflow: hidden;
 }
 
-.panels-horizontal .panel {
-  width: 50%;
+/* 横向模式下：请求面板宽度由内联样式控制，响应面板自动占据剩余空间 */
+.panels-horizontal .panel-response {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* 纵向模式（全屏）：两个面板各占一半高度 */
+.panel:not(.panels-horizontal .panel) {
+  flex: 1;
 }
 
 .panels-horizontal .panel-request {
   border-right: 1px solid var(--border-subtle);
-}
-
-.panel:not(.panels-horizontal .panel) {
-  flex: 1;
 }
 
 .panel-header {
@@ -892,13 +918,18 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
 @media (max-width: 900px) {
   .debug-panels.panels-horizontal {
     flex-direction: column;
+    gap: 12px;
   }
-  .panels-horizontal .panel {
-    width: 100%;
-  }
+  /* 纵向堆叠时取消请求面板的内联宽度 */
   .panels-horizontal .panel-request {
+    width: 100% !important;
+    flex: 1 1 0 !important;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
+  }
+  /* 纵向堆叠时隐藏拖拽手柄（用 :deep 穿透 scoped 样式） */
+  .debug-panels > :deep(.base-splitter) {
+    display: none;
   }
   .request-line {
     flex-wrap: wrap;
@@ -909,6 +940,18 @@ onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFulls
   .url-input {
     width: 100%;
     order: 10;
+  }
+}
+
+@media (max-width: 640px) {
+  :deep(.el-dialog) {
+    width: 92vw !important;
+    max-width: 500px;
+  }
+
+  :deep(.el-drawer) {
+    width: 92vw !important;
+    max-width: 500px;
   }
 }
 </style>

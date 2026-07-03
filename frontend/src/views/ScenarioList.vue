@@ -749,8 +749,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--tm-color-primary-rgb), 0.04);
+  border: 1px solid var(--tm-border-light);
   border-radius: 999px;
   font-size: 12px;
   color: var(--tm-text-secondary);
@@ -761,7 +761,7 @@ onUnmounted(() => {
   gap: 4px 8px;
   margin-top: 4px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--tm-border-light);
 }
 
 .status-badge {
@@ -775,15 +775,15 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 .status-badge.active {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+  background: rgba(var(--el-color-success-rgb), 0.15);
+  color: var(--el-color-success);
+  border: 1px solid rgba(var(--el-color-success-rgb), 0.3);
+  box-shadow: 0 0 12px rgba(var(--el-color-success-rgb), 0.25);
 }
 .status-badge.inactive {
-  background: rgba(148, 163, 184, 0.12);
-  color: #94a3b8;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(var(--tm-text-secondary-rgb), 0.12);
+  color: var(--tm-text-secondary);
+  border: 1px solid rgba(var(--tm-text-secondary-rgb), 0.25);
 }
 
 .running-status {
@@ -873,6 +873,13 @@ onUnmounted(() => {
   .scenario-card .card-actions .el-button {
     width: 100%;
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  :deep(.el-dialog) {
+    width: 92vw !important;
+    max-width: 580px;
   }
 }
 </style>

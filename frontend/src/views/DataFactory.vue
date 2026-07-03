@@ -19,7 +19,7 @@
     </div>
 
     <div class="df-body">
-      <div class="df-sidebar">
+      <div class="df-sidebar" :style="{ width: sidebarWidth + 'px', flex: 'none' }">
         <div class="sidebar-title">模板列表</div>
         <div class="template-list">
           <div
@@ -38,6 +38,16 @@
           </div>
         </div>
       </div>
+
+      <!-- 拖拽分隔条：模板列表 ↔ 主区域 -->
+      <BaseSplitter
+        v-model:size="sidebarWidth"
+        direction="horizontal"
+        :min-size="200"
+        :max-size="520"
+        storage-key="tm-datafactory-sidebar-width"
+        container-selector=".df-body"
+      />
 
       <div class="df-main">
         <div v-if="!currentId && !creating" class="welcome">
@@ -373,7 +383,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Refresh, Download, VideoPlay, MagicStick, Loading } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
+import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import { helpContent } from '@/utils/help-content'
+
+// 左侧模板列表宽度（带 localStorage 持久化）
+const sidebarWidth = ref(280)
 
 const commonRules = [
   { type: 'fixed', label: '固定值', icon: '📌' },
@@ -887,11 +901,10 @@ onMounted(() => {
 }
 
 .df-sidebar {
-  width: 280px;
+  flex-shrink: 0;
   border-right: 1px solid var(--border-color, var(--border-subtle));
   padding: 12px;
   overflow-y: auto;
-  flex-shrink: 0;
 }
 
 .sidebar-title {
@@ -952,9 +965,27 @@ onMounted(() => {
 }
 
 .df-main {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   overflow-y: auto;
   padding: 20px;
+}
+
+/* 响应式：768 以下纵向堆叠并隐藏拖拽手柄 */
+@media (max-width: 768px) {
+  .df-body {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .df-sidebar {
+    width: 100% !important;
+    max-height: 240px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color, var(--border-subtle));
+  }
+  .df-body > :deep(.base-splitter) {
+    display: none;
+  }
 }
 
 .welcome {
@@ -1202,7 +1233,7 @@ onMounted(() => {
 }
 
 .is-error :deep(.el-input__inner) {
-  border-color: #f56c6c !important;
+  border-color: var(--el-color-danger) !important;
 }
 
 .editor-preview {
@@ -1258,13 +1289,13 @@ onMounted(() => {
 }
 
 .result-card.success {
-  background: rgba(103, 194, 58, .08);
-  border: 1px solid rgba(103, 194, 58, .25);
+  background: rgba(var(--el-color-success-rgb), 0.08);
+  border: 1px solid rgba(var(--el-color-success-rgb), 0.25);
 }
 
 .result-card.failed {
-  background: rgba(245, 108, 108, .08);
-  border: 1px solid rgba(245, 108, 108, .25);
+  background: rgba(var(--el-color-danger-rgb), 0.08);
+  border: 1px solid rgba(var(--el-color-danger-rgb), 0.25);
 }
 
 .rc-icon {
@@ -1337,5 +1368,12 @@ onMounted(() => {
 
 .dark-dialog {
   background: var(--tm-bg-page, var(--bg-surface));
+}
+
+@media (max-width: 640px) {
+  :deep(.el-dialog) {
+    width: 92vw !important;
+    max-width: 640px;
+  }
 }
 </style>
