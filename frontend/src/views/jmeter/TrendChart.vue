@@ -59,7 +59,7 @@
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import request from '@/utils/request'
+import { autoTestRequest } from '@/utils/request'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -97,7 +97,7 @@ const loadCompare = async () => {
   loading.value = true
   error.value = ''
   try {
-    const res = await request.get(`/auto-test/jmeter/runs/compare`, { params: { ids: selectedRunIds.value.join(',') } })
+    const res = await autoTestRequest.get(`/auto-test/jmeter/runs/compare`, { params: { ids: selectedRunIds.value.join(',') } })
     compareData.value = Array.isArray(res) ? res : (res?.data || [])
     summaryTable.value = compareData.value.map(r => ({
       id: r.id,
@@ -123,7 +123,7 @@ const loadCompare = async () => {
 const loadBaselines = async () => {
   loadingBaselines.value = true
   try {
-    const res = await request.get('/auto-test/jmeter/baselines')
+    const res = await autoTestRequest.get('/auto-test/jmeter/baselines')
     baselines.value = Array.isArray(res) ? res : (res?.data || [])
   } catch (e) {
     error.value = '加载基线失败: ' + (e?.message || e)

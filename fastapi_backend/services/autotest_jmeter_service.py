@@ -1487,15 +1487,19 @@ def _parse_http_sampler(sampler, sampler_hash_tree=None):
 # ========== 树形脚本导出 ==========
 
 
-def export_tree_to_jmx(tree: List[Dict], plan_name: str = "Test Plan", plan_vars: List = None) -> str:
+def export_tree_to_jmx(tree, plan_name: str = "Test Plan", plan_vars: List = None) -> str:
     """
     将树形脚本结构导出为完整 JMX
 
     Args:
-        tree: [{type, name, props, children}, ...]
+        tree: [{type, name, props, children}, ...] 或单个节点 dict (会自动包装为列表)
         plan_name: 测试计划名称
         plan_vars: [{name, value}, ...] 用户定义变量
     """
+    # 兼容前端误传单个节点 dict (如 TestPlan 根对象) 的情况:自动包装为列表
+    if isinstance(tree, dict):
+        tree = [tree]
+
     jmeter_test_plan = ET.Element("jmeterTestPlan")
     jmeter_test_plan.set("version", "1.2")
     jmeter_test_plan.set("properties", "5.0")
@@ -1540,6 +1544,14 @@ def _build_tree_node(parent_hash_tree, node: Dict):
     props = node.get("props", {})
     name = node.get("name", ntype)
     children = node.get("children", [])
+
+    # TestPlan 是 JMX 根节点,export_tree_to_jmx 已在 line 1507 创建过 TestPlan 元素。
+    # 这里将其视为透明容器:直接把其 children 平铺到 parent_hash_tree 中,避免重复
+    # 生成 TestPlan(否则会触发 "Unknown JMeter element type" 警告并产生无效 JMX)。
+    if ntype == "TestPlan":
+        for child in children:
+            _build_tree_node(parent_hash_tree, child)
+        return
 
     if ntype == "ThreadGroup":
         _build_thread_group(parent_hash_tree, name, props, children)

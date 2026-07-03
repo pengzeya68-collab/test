@@ -20,6 +20,9 @@
             <el-tag :type="getDbTypeTag(conn.db_type)" size="small" effect="dark">{{ conn.db_type.toUpperCase() }}</el-tag>
             {{ conn.name }}
             <el-tag v-if="!conn.is_active" type="info" size="small">停用</el-tag>
+            <el-tag v-if="conn.has_password && conn.password_decryptable === false" type="danger" size="small" effect="plain">
+              ⚠️ 密码需重新输入
+            </el-tag>
           </div>
           <el-button-group>
             <el-button size="small" @click="handleTest(conn)" :loading="testingId === conn.id">测试</el-button>
@@ -32,6 +35,15 @@
           <span v-if="conn.database_name"> / {{ conn.database_name }}</span>
           <span v-if="conn.username"> ({{ conn.username }})</span>
         </div>
+        <el-alert
+          v-if="conn.has_password && conn.password_decryptable === false"
+          type="warning"
+          :closable="false"
+          show-icon
+          style="margin-top: 8px;"
+          title="密码解密失败"
+          description="该连接的密码可能因加密密钥更换而无法解密。请点击「编辑」重新输入密码后保存。"
+        />
       </el-card>
     </div>
 
@@ -96,6 +108,7 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const editingId = ref(null)
+const editingConn = ref(null)
 const testingId = ref(null)
 
 const DEFAULT_PORTS = { postgresql: 5432, mysql: 3306, redis: 6379 }
@@ -155,6 +168,7 @@ const handleCreate = () => {
 const handleEdit = (conn) => {
   isEdit.value = true
   editingId.value = conn.id
+  editingConn.value = conn
   formData.value = {
     name: conn.name,
     db_type: conn.db_type,
@@ -166,11 +180,20 @@ const handleEdit = (conn) => {
     is_active: conn.is_active,
   }
   dialogVisible.value = true
+  if (conn.has_password && conn.password_decryptable === false) {
+    ElMessage.warning('该连接密码解密失败,请重新输入密码后保存')
+  }
 }
 
 const handleSave = async () => {
   if (!formData.value.name?.trim()) {
     ElMessage.warning('请输入连接名称')
+    return
+  }
+
+  // 编辑模式下,如果原密码解密失败,必须输入新密码
+  if (isEdit.value && editingConn.value?.has_password && editingConn.value?.password_decryptable === false && !formData.value.password) {
+    ElMessage.warning('该连接密码已失效,必须重新输入密码')
     return
   }
 

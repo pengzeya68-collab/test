@@ -1482,7 +1482,10 @@ async def submit_jmeter_run(
             try:
                 # 注意:必须用 service 中的同步函数,避免解析到本模块 L540 的 async router 函数
                 from fastapi_backend.services.autotest_jmeter_service import export_tree_to_jmx as _export_tree_to_jmx
-                jmx_content = _export_tree_to_jmx(script_tree)
+                # 兼容前端传整个 TestPlan 根对象或子节点列表两种形式
+                # export_tree_to_jmx 已自动处理 dict 输入(包装为列表)和 TestPlan 节点(视为透明容器)
+                plan_vars = body.get("plan_variables") or (script_tree.get("props", {}).get("variables") if isinstance(script_tree, dict) else []) or []
+                jmx_content = _export_tree_to_jmx(script_tree, plan_name, plan_vars)
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"JMX 生成失败: {e}")
         else:

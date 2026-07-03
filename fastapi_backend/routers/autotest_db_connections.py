@@ -16,13 +16,20 @@ from fastapi_backend.schemas.autotest import (
     DBConnectionCreate,
     DBConnectionUpdate,
 )
-from fastapi_backend.utils.encryption import encrypt
+from fastapi_backend.utils.encryption import encrypt, decrypt, DecryptionError
 
 router = APIRouter(prefix="/api/auto-test/db-connections", tags=["AutoTest-数据库连接"])
 
 
 def _conn_to_dict(conn: AutoTestDBConnection) -> dict:
-    """将连接对象转为字典（脱敏密码）"""
+    """将连接对象转为字典（脱敏密码,但会检测密码是否可解密）"""
+    password_decryptable = True
+    if conn.password_encrypted:
+        try:
+            decrypt(conn.password_encrypted)
+        except DecryptionError:
+            password_decryptable = False
+
     return {
         "id": conn.id,
         "name": conn.name,
@@ -34,6 +41,7 @@ def _conn_to_dict(conn: AutoTestDBConnection) -> dict:
         "is_active": conn.is_active,
         "user_id": conn.user_id,
         "has_password": bool(conn.password_encrypted),
+        "password_decryptable": password_decryptable,
         "created_at": conn.created_at.isoformat() if conn.created_at else None,
         "updated_at": conn.updated_at.isoformat() if conn.updated_at else None,
     }

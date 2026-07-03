@@ -68,7 +68,12 @@ async def execute_db_query(
             try:
                 password = decrypt(conn.password_encrypted)
             except Exception:
-                password = conn.password_encrypted
+                # 解密失败说明密钥已更换或数据来自其他环境
+                # 不能用密文当密码(会导致认证失败且令人困惑)
+                raise ValueError(
+                    f"数据库连接 [{conn.name}] 的密码解密失败,可能因加密密钥已更换。"
+                    "请在'数据库连接'管理中重新编辑该连接并输入正确密码,然后重试。"
+                )
 
         db_type = conn.db_type.lower()
         host = conn.host
