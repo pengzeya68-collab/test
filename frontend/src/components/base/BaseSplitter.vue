@@ -58,6 +58,17 @@ const props = defineProps({
     type: Number,
     default: 16
   },
+  // size 控制的是"哪一侧"面板的尺寸
+  // - 'left'（默认）：size 表示 splitter 左侧（horizontal）/ 上方（vertical）面板
+  //                  向光标方向拖动 → size 增大 → 该侧面板变宽
+  // - 'right'：     size 表示 splitter 右侧（horizontal）/ 下方（vertical）面板
+  //                  向光标方向拖动 → size 增大 → 该侧面板变宽
+  // 两种模式下，光标移动方向始终和 size 变化方向一致（所见即所得）
+  target: {
+    type: String,
+    default: 'left',
+    validator: (v) => ['left', 'right'].includes(v)
+  },
   // 容器选择器，用于计算 maxSize 自动值；不传则使用父元素
   containerSelector: {
     type: String,
@@ -149,6 +160,9 @@ const onPointerMove = (e) => {
   const dy = point.clientY - startY
   let next
   if (props.direction === 'horizontal') {
+    // target=right 时，光标右移对应"右侧面板被推开"——但 size 仍取 +dx，
+    // 父组件把 size 解释为右侧面板宽度即可自然变宽。
+    // 视觉上：光标右移，size 增大 = size 指向的面板变宽。
     next = clamp(startSize + dx)
   } else {
     next = clamp(startSize + dy)

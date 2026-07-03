@@ -1,24 +1,27 @@
 <template>
   <div class="case-list-layout">
-    <!-- 左侧分组树侧边栏（可拖拽调整宽度） -->
-    <div class="case-list-sidebar" :style="{ width: sidebarWidth + 'px', flex: 'none' }">
+    <!-- 左侧分组树侧边栏（固定 220px 宽，避免反向拖拽的迷惑） -->
+    <div class="case-list-sidebar" :style="{ width: SIDEBAR_FIXED_WIDTH + 'px', flex: 'none' }">
       <CaseTreeSidebar
         ref="sidebarRef"
         :current-group-id="currentGroupId"
         @select-group="handleSelectGroup"
       />
     </div>
-    <!-- 拖拽分隔条 1：侧边栏 ↔ 列表 -->
+    <!-- 拖拽分隔条 1：侧边栏 ↔ 列表
+         target=right 表示 size 解读为"右侧面板（中间列表）宽度"，
+         拖动时所见即所得：向右拖 → 列表变宽，sidebar 让位。 -->
     <BaseSplitter
-      v-model:size="sidebarWidth"
+      v-model:size="listMinWidth"
+      target="right"
       direction="horizontal"
-      :min-size="180"
-      :max-size="420"
-      storage-key="tm-caselist-sidebar-width"
+      :min-size="320"
+      :max-size="0"
+      storage-key="tm-caselist-list-min-width"
       container-selector=".case-list-layout"
     />
-    <!-- 中间：用例列表表格 -->
-    <el-card class="case-list-card" shadow="never">
+    <!-- 中间：用例列表表格（绝对宽度由 splitter1 控制，flex:none 让拖动立即生效） -->
+    <el-card class="case-list-card" shadow="never" :style="{ width: listMinWidth + 'px', flex: 'none' }">
     <div class="case-list-container">
       <!-- 顶部工具栏 -->
       <div class="list-toolbar">
@@ -410,8 +413,12 @@ import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import { helpContent } from '@/utils/help-content'
 import autoTestRequest from '@/utils/autoTestRequest'
 
-// 三栏可拖拽布局宽度（带 localStorage 持久化）
-const sidebarWidth = ref(220)
+// 三栏可拖拽布局：
+// - sidebar 固定 220px，避免反向拖拽语义困惑
+// - listMinWidth 控制中间列表的最小宽度（splitter1 拖动控制）
+// - editorWidth 控制右侧编辑器宽度（splitter2 拖动控制）
+const SIDEBAR_FIXED_WIDTH = 220
+const listMinWidth = ref(520)
 // 根据窗口宽度给出合理的默认编辑器宽度，避免全屏/笔记本下挤压中间列表
 const getDefaultEditorWidth = () => {
   if (typeof window === 'undefined') return 720
@@ -1488,23 +1495,16 @@ defineExpose({
   color: var(--tm-text-primary);
 }
 
-/* 响应式：1366 以下缩小各栏最小宽度，并用 max-width 限制持久化的宽度，避免三栏总宽超过视口 */
+/* 响应式：1366 以下限制编辑器最大宽度，确保三栏不超视口 */
 @media (max-width: 1366px) {
   .case-list-card {
-    min-width: 280px;
-  }
-  .case-list-sidebar {
-    max-width: 240px !important;
+    min-width: 320px;
   }
   .editor-panel {
-    min-width: 320px;
-    max-width: 460px !important;
+    max-width: 480px !important;
   }
 }
 @media (max-width: 1280px) {
-  .case-list-sidebar {
-    max-width: none !important;
-  }
   .editor-panel {
     max-width: none !important;
   }
