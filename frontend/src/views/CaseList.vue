@@ -25,11 +25,11 @@
     />
     <!-- 中间：用例列表表格
          width = listMaxWidth（由 splitter2 直接控制，target=right），
-         max-width = listMaxAllowed（视口 - sidebar - editor_min - 2 splitter，防止挤压 editor），
+         max-width = listMaxLimitReal（layout 容器实际宽度 - sidebar - editor_min - 2 splitter），
          min-width = LIST_MIN_WIDTH（保证表格可读）。
-         拖动 splitter1 (sidebar) 时，listMaxAllowed 自动变化 → list 弹性调整；
+         拖动 splitter1 (sidebar) 时，listMaxLimitReal 自动变化 → list 弹性调整；
          拖动 splitter2 时，listMaxWidth 变化 → list 直接变化 → editor flex:1 反向让位。 -->
-    <el-card class="case-list-card" shadow="never" :style="{ width: listMaxWidth + 'px', maxWidth: listMaxLimit + 'px', minWidth: LIST_MIN_WIDTH + 'px', flex: 'none' }">
+    <el-card class="case-list-card" shadow="never" :style="{ width: listMaxWidth + 'px', maxWidth: listMaxLimitReal + 'px', minWidth: LIST_MIN_WIDTH + 'px', flex: 'none' }">
     <div class="case-list-container">
       <!-- 顶部工具栏 -->
       <div class="list-toolbar">
@@ -395,15 +395,15 @@
   </el-card>
 
   <!-- 拖拽分隔条 2：列表 ↔ 编辑器
-       target=right 表示 size 解读为"右侧面板（中间列表）的最大宽度"。
-       拖动时所见即所得：向右拖 → listMaxWidth 增大，列表变宽；向左拖 → listMaxWidth 减小，列表变窄。
-       列表使用 flex:1 弹性布局，max-width 受 listMaxWidth 限制，editor 反向让位（flex:1 占满剩余）。 -->
+         target=right 表示 size 解读为"右侧面板（中间列表）的最大宽度"。
+         拖动时所见即所得：向右拖 → listMaxWidth 增大，列表变宽；向左拖 → listMaxWidth 减小，列表变窄。
+         max-size 用 listMaxLimit（基于真实 layout 容器宽度），防止挤压 editor 到 400 以下。 -->
   <BaseSplitter
     v-model:size="listMaxWidth"
     target="right"
     direction="horizontal"
     :min-size="LIST_MIN_WIDTH"
-    :max-size="listMaxLimit"
+    :max-size="listMaxLimitReal"
     storage-key="tm-caselist-list-max-width"
     container-selector=".case-list-layout"
   />
@@ -483,12 +483,40 @@ const _initialLayout = getDefaultLayout()
 const sidebarWidth = ref(_initialLayout.sidebar)
 const listMaxWidth = ref(_initialLayout.listMaxWidth)
 
-// listMaxLimit = 视口 - sidebar - 编辑器最小宽 - 2 个 splitter 宽
+// listMaxLimit = layout 容器实际宽度 - sidebar - 编辑器最小宽 - 2 个 splitter 宽
 // 这是中间列表在不挤压编辑器（min=400）情况下能取到的最大宽度
 // 依赖 viewportWidth 确保视口缩放时能重新计算
 const listMaxLimit = computed(() => {
   const vw = viewportWidth.value
   return Math.max(LIST_MIN_WIDTH, vw - sidebarWidth.value - EDITOR_MIN_WIDTH - SPLITTER_WIDTH * 2 - 20)
+})
+
+// 动态测量 layout 容器实际宽度（页面有左侧导航时,layout 容器宽度 < 视口宽度）
+const layoutWidth = ref(0)
+let _layoutObserver = null
+onMounted(() => {
+  // 初始化时直接测量
+  const layout = document.querySelector('.case-list-layout')
+  if (layout) {
+    layoutWidth.value = layout.getBoundingClientRect().width
+    // 用 ResizeObserver 监听容器尺寸变化（侧边栏折叠/响应式断点）
+    if (typeof ResizeObserver !== 'undefined') {
+      _layoutObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          layoutWidth.value = entry.contentRect.width
+        }
+      })
+      _layoutObserver.observe(layout)
+    }
+  }
+})
+onBeforeUnmount(() => {
+  if (_layoutObserver) _layoutObserver.disconnect()
+})
+
+// 用真实 layout 容器宽度计算 listMaxLimit（避免受左侧导航影响）
+const listMaxLimitReal = computed(() => {
+  return Math.max(LIST_MIN_WIDTH, layoutWidth.value - sidebarWidth.value - EDITOR_MIN_WIDTH - SPLITTER_WIDTH * 2 - 20)
 })
 
 const props = defineProps({
@@ -538,10 +566,12 @@ const actionColWidth = computed(() => {
 })
 const actionColFixed = computed(() => viewportWidth.value < 1280 ? 'right' : undefined)
 
-// 视口缩放时,listMaxWidth 不能超过 listMaxLimit,也不能低于 LIST_MIN_WIDTH
-watch(listMaxLimit, (newLimit) => {
-  if (listMaxWidth.value > newLimit) listMaxWidth.value = newLimit
-  if (listMaxWidth.value < LIST_MIN_WIDTH) listMaxWidth.value = LIST_MIN_WIDTH
+// 视口缩放时,listMaxWidth 不能超过 listMaxLimitReal,也不能低于 LIST_MIN_WIDTH
+watch(listMaxLimitReal, (newLimit) => {
+  if (newLimit > 0) {
+    if (listMaxWidth.value > newLimit) listMaxWidth.value = newLimit
+    if (listMaxWidth.value < LIST_MIN_WIDTH) listMaxWidth.value = LIST_MIN_WIDTH
+  }
 })
 // 视口缩放时,sidebarWidth 也不能超过新的合理范围
 watch(viewportWidth, () => {
@@ -562,7 +592,7 @@ const applyLayoutPreset = (preset) => {
   let target = preset === 'reset' ? getDefaultLayout() : LAYOUT_PRESETS[preset]
   if (!target) return
   sidebarWidth.value = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, target.sidebar))
-  listMaxWidth.value = Math.max(LIST_MIN_WIDTH, Math.min(listMaxLimit.value, target.listMaxWidth))
+  listMaxWidth.value = Math.max(LIST_MIN_WIDTH, Math.min(listMaxLimitReal.value, target.listMaxWidth))
   // 持久化（让 BaseSplitter 的 storageKey 行为一致）
   try {
     localStorage.setItem('tm-caselist-sidebar-width', String(sidebarWidth.value))
