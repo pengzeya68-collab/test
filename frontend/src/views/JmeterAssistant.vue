@@ -59,8 +59,9 @@
     <!-- ==================== Step 1: 选择接口 ==================== -->
     <div v-show="currentStep === 1" class="step-body">
       <div class="step1-layout">
-        <!-- 左侧：模板 + 导入JMX（可拖拽调整宽度） -->
-        <div class="step1-left" :style="{ width: step1LeftWidth + 'px', flex: 'none' }">
+        <!-- 左侧：模板 + 导入JMX（可拖拽调整宽度）
+             拖到 < 50px 自动折叠（step1LeftCollapsed=true），浮动按钮接管展开。 -->
+        <div v-show="!step1LeftCollapsed" class="step1-left" :style="{ width: step1LeftWidth + 'px', flex: 'none' }">
           <div class="panel step1-templates">
             <div class="panel-title">📦 模板快速创建</div>
             <div class="template-grid">
@@ -84,12 +85,26 @@
             </div>
           </div>
         </div>
-        <!-- 拖拽分隔条：左侧模板区 ↔ 右侧导入区 -->
+        <!-- 浮动按钮：step1 左侧折叠后显示在左上角 -->
+        <el-button
+          v-if="step1LeftCollapsed && currentStep === 1"
+          class="panel-expand-fab"
+          type="primary"
+          plain
+          :icon="ArrowRight"
+          title="展开模板区"
+          @click="expandStep1Left"
+        />
+        <!-- 拖拽分隔条：左侧模板区 ↔ 右侧导入区
+             target=left 表示 size 解读为"左侧面板"宽度。
+             min=0 支持完全折叠（浮动按钮接管"展开"操作）。 -->
         <BaseSplitter
+          v-show="!step1LeftCollapsed"
           v-model:size="step1LeftWidth"
+          target="left"
           direction="horizontal"
-          :min-size="220"
-          :max-size="440"
+          :min-size="STEP1_LEFT_MIN"
+          :max-size="STEP1_LEFT_MAX"
           storage-key="tm-jmeter-step1-left-width"
           container-selector=".step1-layout"
         />
@@ -172,8 +187,9 @@
 
         <!-- 两栏布局：树 + 编辑器 -->
         <div class="step2-editor-layout">
-          <!-- 左：树 -->
+          <!-- 左：树（可拖拽到 0 完全折叠，浮动按钮接管展开） -->
           <TreeEditor
+            v-show="!treeCollapsed"
             v-model="scriptTree"
             :selected-uid="selectedUid"
             :total-samplers="totalSamplers"
@@ -186,12 +202,24 @@
             @duplicate-node="duplicateNode"
           />
           <BaseSplitter
+            v-show="!treeCollapsed"
             v-model:size="treeWidth"
+            target="left"
             direction="horizontal"
-            :min-size="200"
-            :max-size="520"
+            :min-size="TREE_MIN"
+            :max-size="TREE_MAX"
             storage-key="tm-jmeter-tree-width"
             container-selector=".step2-editor-layout"
+          />
+          <!-- 浮动按钮：tree 折叠后显示 -->
+          <el-button
+            v-if="treeCollapsed && currentStep === 2"
+            class="panel-expand-fab"
+            type="primary"
+            plain
+            :icon="ArrowRight"
+            title="展开脚本树"
+            @click="expandTree"
           />
 
         <!-- 中：编辑器 -->
@@ -1309,18 +1337,32 @@
           </el-tabs>
         </div>
 
-        <!-- 拖拽分隔条：主区域 ↔ JMX 预览侧边栏 -->
+        <!-- 拖拽分隔条：主区域 ↔ JMX 预览侧边栏
+             target=right 明确 size 控制的是"右侧 JMX 预览"宽度。
+             min=0 支持完全折叠 JMX 预览（浮动按钮接管展开）。 -->
         <BaseSplitter
+          v-show="!step3SidebarCollapsed"
           v-model:size="step3SidebarWidth"
+          target="right"
           direction="horizontal"
-          :min-size="260"
-          :max-size="520"
+          :min-size="STEP3_SIDEBAR_MIN"
+          :max-size="STEP3_SIDEBAR_MAX"
           storage-key="tm-jmeter-step3-sidebar-width"
           container-selector=".step3-layout"
         />
+        <!-- 浮动按钮：step3 sidebar 折叠后显示在右上角 -->
+        <el-button
+          v-if="step3SidebarCollapsed && currentStep === 3"
+          class="panel-expand-fab panel-expand-fab--right"
+          type="primary"
+          plain
+          :icon="ArrowLeft"
+          title="展开 JMX 预览"
+          @click="expandStep3Sidebar"
+        />
 
         <!-- 侧边栏：JMX 预览（compact） -->
-        <div class="step3-sidebar" :style="{ width: step3SidebarWidth + 'px', flex: 'none' }">
+        <div v-show="!step3SidebarCollapsed" class="step3-sidebar" :style="{ width: step3SidebarWidth + 'px', flex: 'none' }">
           <div class="panel-title" @click="showJmxPreview = !showJmxPreview" style="cursor:pointer;user-select:none;">
             <span>📦 JMX 导出 {{ showJmxPreview ? '▲' : '▼' }}</span>
           </div>
@@ -1402,7 +1444,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Refresh, Download, Right, QuestionFilled, VideoPlay, EditPen, FolderDelete, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting } from '@element-plus/icons-vue'
+import { Refresh, Download, Right, ArrowRight, ArrowLeft, QuestionFilled, VideoPlay, EditPen, FolderDelete, UploadFilled, InfoFilled, Monitor, Connection, Coin, Lollipop, Setting } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import { useAICosts } from '@/composables/useAICosts'
 import request from '@/utils/request'
@@ -2185,6 +2227,47 @@ const treeWidth = ref(getDefaultPanelWidth(280, 200, 400))
 const step1LeftWidth = ref(getDefaultPanelWidth(300, 220, 400))
 const step3SidebarWidth = ref(getDefaultPanelWidth(320, 260, 420))
 
+// === 面板可拖拽布局限制（支持完全折叠/展开）===
+const TREE_MIN = 0              // Step2 左侧树最小 0（可完全折叠）
+const TREE_MAX = 800            // Step2 左侧树最大 800
+const STEP1_LEFT_MIN = 0        // Step1 左侧最小 0（可完全折叠）
+const STEP1_LEFT_MAX = 800      // Step1 左侧最大 800
+const STEP3_SIDEBAR_MIN = 0     // Step3 右侧 sidebar 最小 0（可完全折叠）
+const STEP3_SIDEBAR_MAX = 800   // Step3 右侧 sidebar 最大 800
+const PANEL_COLLAPSED = 50      // 拖到 < 50 视为折叠，浮动按钮接管展开
+
+// 折叠状态：拖到 < 50px 时自动隐藏对应面板
+const step1LeftCollapsed = ref(false)
+const treeCollapsed = ref(false)
+const step3SidebarCollapsed = ref(false)
+
+const expandStep1Left = () => {
+  step1LeftWidth.value = Math.max(PANEL_COLLAPSED + 10, 320)
+  step1LeftCollapsed.value = false
+  try { localStorage.setItem('tm-jmeter-step1-left-width', String(step1LeftWidth.value)) } catch {}
+}
+const expandTree = () => {
+  treeWidth.value = Math.max(PANEL_COLLAPSED + 10, 280)
+  treeCollapsed.value = false
+  try { localStorage.setItem('tm-jmeter-tree-width', String(treeWidth.value)) } catch {}
+}
+const expandStep3Sidebar = () => {
+  step3SidebarWidth.value = Math.max(PANEL_COLLAPSED + 10, 360)
+  step3SidebarCollapsed.value = false
+  try { localStorage.setItem('tm-jmeter-step3-sidebar-width', String(step3SidebarWidth.value)) } catch {}
+}
+
+// 监听宽度变化，自动判断折叠/展开
+watch(step1LeftWidth, (v) => {
+  step1LeftCollapsed.value = v < PANEL_COLLAPSED
+})
+watch(treeWidth, (v) => {
+  treeCollapsed.value = v < PANEL_COLLAPSED
+})
+watch(step3SidebarWidth, (v) => {
+  step3SidebarCollapsed.value = v < PANEL_COLLAPSED
+})
+
 const bottomPanelVisible = ref(true)
 const bottomPanelHeight = ref(320)
 const bottomResultTab = ref('samples')
@@ -2597,6 +2680,36 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column; height: 100%;
   background: var(--tm-bg-page);
   color: var(--tm-text-primary);
+  position: relative; /* 为浮动按钮提供定位上下文 */
+}
+
+/* 浮动按钮：panel 折叠后接管"展开"操作 */
+.panel-expand-fab {
+  position: absolute;
+  top: 64px; /* 在 step-nav 下方 */
+  left: 12px;
+  z-index: 100;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.panel-expand-fab:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(var(--tm-color-primary-rgb, 99, 102, 241), 0.3);
+}
+.panel-expand-fab--right {
+  left: auto;
+  right: 12px;
+}
+.panel-expand-fab--right:hover {
+  transform: translateX(-2px);
 }
 
 /* ===== 步骤导航 ===== */

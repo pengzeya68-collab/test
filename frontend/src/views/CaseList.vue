@@ -1,28 +1,40 @@
 <template>
   <div class="case-list-layout">
     <!-- 左侧分组树侧边栏
-         宽度由 splitter1 target=left 直接控制（所见即所得：拖动 → sidebar 变宽/窄），
-         拖到 min=180 时自动隐藏，拖到 min=180+ 时恢复显示（用户体验：完全可调） -->
-    <div class="case-list-sidebar" :style="{ width: sidebarWidth + 'px', flex: 'none' }">
-      <CaseTreeSidebar
-        ref="sidebarRef"
-        :current-group-id="currentGroupId"
-        @select-group="handleSelectGroup"
-      />
-    </div>
-    <!-- 拖拽分隔条 1：侧边栏 ↔ 列表
-         target=left 表示 size 解读为"左侧面板（侧边栏）"的宽度。
-         拖动时所见即所得：向右拖 → sidebar 变宽；向左拖 → sidebar 变窄。
-         list/editor 弹性填充剩余空间（保持总和 = 视口 - sidebar）。 -->
-    <BaseSplitter
-      v-model:size="sidebarWidth"
-      target="left"
-      direction="horizontal"
-      :min-size="SIDEBAR_MIN"
-      :max-size="SIDEBAR_MAX"
-      storage-key="tm-caselist-sidebar-width"
-      container-selector=".case-list-layout"
+       宽度由 splitter1 target=left 直接控制（所见即所得：拖动 → sidebar 变宽/窄）。
+       拖到 < 50px 自动折叠（sidebarCollapsed=true），浮动按钮接管"展开"操作。 -->
+  <div v-show="!sidebarCollapsed" class="case-list-sidebar" :style="{ width: sidebarWidth + 'px', flex: 'none' }">
+    <CaseTreeSidebar
+      ref="sidebarRef"
+      :current-group-id="currentGroupId"
+      @select-group="handleSelectGroup"
     />
+  </div>
+  <!-- 浮动按钮：sidebar 折叠后显示在左上角，点击恢复 sidebar -->
+  <el-button
+    v-if="sidebarCollapsed"
+    class="sidebar-expand-fab"
+    type="primary"
+    plain
+    :icon="Expand"
+    title="展开侧边栏"
+    @click="expandSidebar"
+  />
+  <!-- 拖拽分隔条 1：侧边栏 ↔ 列表
+       target=left 表示 size 解读为"左侧面板（侧边栏）"的宽度。
+       拖动时所见即所得：向右拖 → sidebar 变宽；向左拖 → sidebar 变窄。
+       拖到 SIDEBAR_COLLAPSED 以下自动隐藏 sidebar（浮动按钮重新展开）。
+       list/editor 弹性填充剩余空间。 -->
+  <BaseSplitter
+    v-show="!sidebarCollapsed"
+    v-model:size="sidebarWidth"
+    target="left"
+    direction="horizontal"
+    :min-size="SIDEBAR_MIN"
+    :max-size="SIDEBAR_MAX"
+    storage-key="tm-caselist-sidebar-width"
+    container-selector=".case-list-layout"
+  />
     <!-- 中间：用例列表表格
          width = listMaxWidth（由 splitter2 直接控制，target=right），
          max-width = listMaxLimitReal（layout 容器实际宽度 - sidebar - editor_min - 2 splitter），
@@ -409,8 +421,9 @@
   />
 
   <!-- 右侧：多 Tab 接口编辑器（常驻面板，对标 Apifox）
-       改为 flex:1 弹性占满中间列表让出的空间，min-width 400px 保证可读性。 -->
-  <div class="editor-panel" :style="{ flex: '1 1 0%', minWidth: '400px' }">
+       改为 flex:1 弹性占满中间列表让出的空间，min-width 240px 保证可读性。
+       配合 listMaxLimitReal 的计算，list 区域可以扩展到很大。 -->
+  <div class="editor-panel" :style="{ flex: '1 1 0%', minWidth: EDITOR_MIN_WIDTH + 'px' }">
     <EditorTabContainer
       :env-id="selectedEnvId"
       :group-id="currentGroupId"
@@ -434,6 +447,7 @@ import {
   Setting,
   Upload,
   ArrowDown,
+  ArrowRight,
   UploadFilled,
   Download,
   Timer,
@@ -447,7 +461,9 @@ import {
   Grid,
   FullScreen,
   EditPen,
-  RefreshRight
+  RefreshRight,
+  Expand,
+  Fold
 } from '@element-plus/icons-vue'
 import CaseTreeSidebar from '@/components/CaseTreeSidebar.vue'
 import EditorTabContainer from '@/components/EditorTabContainer.vue'
@@ -459,23 +475,26 @@ import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import { helpContent } from '@/utils/help-content'
 import autoTestRequest from '@/utils/autoTestRequest'
 
-// 三栏可拖拽布局（完全对称、所见即所得）：
+// 三栏可拖拽布局（完全对称、所见即所得 + 任意侧可折叠）：
 // - splitter1 (target=left)  拖动 → sidebarWidth 变化 → 左侧分组树宽度
-// - splitter2 (target=right) 拖动 → listMaxWidth 变化 → 中间列表的最大宽度（实际宽度受 flex:1 弹性影响）
-// - 右侧编辑器：flex:1 自动占满剩余空间（min-width: 400px 保证可读性）
-// 用户可以从两个方向自由调整三栏比例；editor 反向被挤压（list 变宽时 editor 自动让位）
-const SIDEBAR_MIN = 180           // 侧边栏最小宽度（保留可识别的分组树）
-const SIDEBAR_MAX = 500           // 侧边栏最大宽度（避免挤压列表）
-const EDITOR_MIN_WIDTH = 400      // 编辑器最小可读宽度
-const LIST_MIN_WIDTH = 280        // 列表最小宽度（保证表格列可读）
-const SPLITTER_WIDTH = 12         // 单个分隔条宽度
-// 根据窗口宽度计算合理默认布局（list 初始值留 30% 扩展空间,让 splitter2 右拖有效果）
+//                      拖到 < SIDEBAR_COLLAPSED 时自动折叠（显示浮动展开按钮）
+// - splitter2 (target=right) 拖动 → listMaxWidth 变化 → 中间列表宽度
+// - 右侧编辑器：flex:1 自动占满剩余空间（min-width 240px 保证可读性）
+// 用户可以从两个方向自由调整三栏比例；任何一侧都可以被拖到接近 0 来折叠。
+const SIDEBAR_MIN = 0               // 侧边栏最小 0（可完全折叠）
+const SIDEBAR_COLLAPSED = 50        // 拖到 <=50 视为折叠，隐藏 sidebar
+const SIDEBAR_MAX = 800             // 侧边栏最大 800（不再限制）
+const EDITOR_MIN_WIDTH = 240        // 编辑器最小可读宽度（降低到 240 让 list 区域能扩展到更大）
+const LIST_MIN_WIDTH = 280          // 列表最小宽度（保证表格列可读）
+const SPLITTER_WIDTH = 12           // 单个分隔条宽度
+// 根据窗口宽度计算合理默认布局（list 初始值留扩展空间,让 splitter2 右拖有效果）
 const getDefaultLayout = (containerWidth) => {
-  if (typeof window === 'undefined') return { sidebar: 220, listMaxWidth: 500 }
-  // 默认 list 占容器宽度的 45%,这样有足够空间让 splitter2 双向拖动
+  if (typeof window === 'undefined') return { sidebar: 220, listMaxWidth: 600 }
+  // 默认 list 占容器宽度的 50%,这样有足够空间让 splitter2 双向拖动
   const cw = containerWidth || window.innerWidth
   const sidebar = cw >= 1440 ? 220 : cw >= 1280 ? 200 : 180
-  const listMaxWidth = Math.max(400, Math.min(800, Math.floor(cw * 0.45)))
+  // list 初始值不再硬限 800，根据视口动态算（最大 = cw - sidebar - editor_min(240) - 2 splitter）
+  const listMaxWidth = Math.max(400, Math.floor(cw * 0.5))
   return { sidebar, listMaxWidth }
 }
 const _initialLayout = getDefaultLayout()
@@ -508,8 +527,8 @@ onMounted(() => {
       })
       _layoutObserver.observe(layout)
     }
-    // 如果默认 listMaxWidth 超出实际可用空间,自动调整（按容器 45% 重新计算）
-    const proper = Math.max(LIST_MIN_WIDTH, Math.min(800, Math.floor(real * 0.45)))
+    // 如果默认 listMaxWidth 超出实际可用空间,自动调整（按容器 50% 重新计算）
+    const proper = Math.max(LIST_MIN_WIDTH, Math.floor(real * 0.5))
     if (proper < listMaxWidth.value) listMaxWidth.value = proper
   }
 })
@@ -517,9 +536,31 @@ onBeforeUnmount(() => {
   if (_layoutObserver) _layoutObserver.disconnect()
 })
 
-// 用真实 layout 容器宽度计算 listMaxLimit（避免受左侧导航影响）
+// 用真实 layout 容器宽度计算 listMaxLimit（list 可扩展到的最大宽度）
+// 编辑器不再锁死最小 400：editor 自身有 min-width: 240px 弹性约束
+// list 最大 = layout - sidebar - editor_min(240) - 2 splitter 宽
+// 这样最右边 editor 可以被压到 240，list 区域就可以扩展到最大
 const listMaxLimitReal = computed(() => {
   return Math.max(LIST_MIN_WIDTH, layoutWidth.value - sidebarWidth.value - EDITOR_MIN_WIDTH - SPLITTER_WIDTH * 2 - 20)
+})
+
+// sidebar 折叠状态：拖到 < 50px 时自动隐藏，浮动展开按钮出现在左上角
+// 初始根据 sidebarWidth 判断（兼容从 localStorage 恢复的小值）
+const sidebarCollapsed = ref(_initialLayout.sidebar < SIDEBAR_COLLAPSED)
+const expandSidebar = () => {
+  // 恢复到一个合理宽度
+  const restored = Math.max(SIDEBAR_COLLAPSED + 10, 220)
+  sidebarWidth.value = restored
+  sidebarCollapsed.value = false
+  try { localStorage.setItem('tm-caselist-sidebar-width', String(restored)) } catch {}
+}
+// 监听 sidebarWidth 变化，自动判断折叠/展开
+watch(sidebarWidth, (v) => {
+  if (v < SIDEBAR_COLLAPSED) {
+    if (!sidebarCollapsed.value) sidebarCollapsed.value = true
+  } else {
+    if (sidebarCollapsed.value) sidebarCollapsed.value = false
+  }
 })
 
 const props = defineProps({
@@ -1379,6 +1420,29 @@ defineExpose({
   min-height: 0;
   overflow: hidden;
 }
+
+/* 浮动按钮：sidebar 折叠后显示在布局左上角 */
+.sidebar-expand-fab {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 100;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.sidebar-expand-fab:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(var(--tm-color-primary-rgb, 99, 102, 241), 0.3);
+}
+.case-list-layout { position: relative; }
 
 .case-list-card {
   flex: 1 1 0%;
