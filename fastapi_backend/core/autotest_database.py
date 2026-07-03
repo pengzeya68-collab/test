@@ -110,18 +110,28 @@ async def init_autotest_db() -> None:
                         )
                         _logger.info("已为 environments 表添加 parent_id 列（环境变量继承）")
                         # 尝试添加外键约束（PostgreSQL/MySQL 支持，SQLite 跳过）
-                        if sync_conn.dialect.name != "sqlite":
-                            try:
-                                sync_conn.execute(
-                                    text(
-                                        "ALTER TABLE environments ADD CONSTRAINT "
-                                        "fk_environments_parent FOREIGN KEY (parent_id) "
-                                        "REFERENCES environments(id) ON DELETE SET NULL"
-                                    )
+                        # 注意：PG 在事务中执行 ALTER 失败会污染整个事务，必须用 savepoint 隔离
+                        if insp.dialect.name != "sqlite":
+                            existing_env_fk = sync_conn.execute(
+                                text(
+                                    "SELECT 1 FROM pg_constraint WHERE conname = 'fk_environments_parent' "
+                                    "AND conrelid = 'environments'::regclass"
                                 )
-                            except Exception:
-                                # FK 已存在或不支持，忽略
-                                pass
+                            ).scalar()
+                            if not existing_env_fk:
+                                try:
+                                    sp = sync_conn.begin_nested()
+                                    sync_conn.execute(
+                                        text(
+                                            "ALTER TABLE environments ADD CONSTRAINT "
+                                            "fk_environments_parent FOREIGN KEY (parent_id) "
+                                            "REFERENCES environments(id) ON DELETE SET NULL"
+                                        )
+                                    )
+                                    sp.commit()
+                                except Exception:
+                                    sp.rollback()
+                                    pass
                         # 添加索引加速继承链查询
                         try:
                             sync_conn.execute(
@@ -177,19 +187,29 @@ async def init_autotest_db() -> None:
 
                 # scenario_steps: parent_step_id FK (only add if table and column exist but no FK)
                 if "scenario_steps" in existing_tables:
-                    if sync_conn.dialect.name != "sqlite":
-                        # SQLite不支持ADD CONSTRAINT，PostgreSQL/MySQL支持
-                        # SQLite的FK约束在CREATE TABLE时定义，这里跳过
-                        try:
-                            sync_conn.execute(
+                    if insp.dialect.name != "sqlite":
+                        # PostgreSQL/MySQL 支持 ADD CONSTRAINT；SQLite 跳过
+                        # 注意：PG 在事务中执行 ALTER 失败会污染整个事务，必须用 savepoint 隔离
+                        if "parent_step_id" in [c["name"] for c in insp.get_columns("scenario_steps")]:
+                            existing_fk = sync_conn.execute(
                                 text(
-                                    "ALTER TABLE scenario_steps ADD CONSTRAINT fk_scenario_steps_parent "
-                                    "FOREIGN KEY (parent_step_id) REFERENCES scenario_steps(id)"
+                                    "SELECT 1 FROM pg_constraint WHERE conname = 'fk_scenario_steps_parent' "
+                                    "AND conrelid = 'scenario_steps'::regclass"
                                 )
-                            )
-                        except Exception:
-                            # FK already exists or not supported, ignore
-                            pass
+                            ).scalar()
+                            if not existing_fk:
+                                try:
+                                    sp = sync_conn.begin_nested()
+                                    sync_conn.execute(
+                                        text(
+                                            "ALTER TABLE scenario_steps ADD CONSTRAINT fk_scenario_steps_parent "
+                                            "FOREIGN KEY (parent_step_id) REFERENCES scenario_steps(id)"
+                                        )
+                                    )
+                                    sp.commit()
+                                except Exception:
+                                    sp.rollback()
+                                    pass
 
                 # ============ RBAC 列迁移 ============
                 # roles: code 列（角色代码，大写唯一）

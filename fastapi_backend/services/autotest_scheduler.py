@@ -35,51 +35,49 @@ _scheduled_tasks_lock = threading.Lock()
 
 
 def _schedule_meta_from_db(scenario_id: int, user_id: int = None) -> Dict[str, Any]:
-    """从 PostgreSQL 读取定时配置（内存丢失或从 Job 重建时补全 Webhook 等）。"""
-    import asyncio
-    from fastapi_backend.core.autotest_database import async_session
-    from fastapi_backend.models.autotest import AutoTestScenario
-    from sqlalchemy import select
+    """从 PostgreSQL 读取定时配置（内存丢失或从 Job 重建时补全 Webhook 等）。
 
-    async def _read() -> Dict[str, Any]:
-        async with async_session() as session:
-            query = select(
-                AutoTestScenario.schedule_webhook_url,
-                AutoTestScenario.schedule_cron_expression,
-                AutoTestScenario.schedule_env_id,
-                AutoTestScenario.schedule_task_name,
-                AutoTestScenario.schedule_is_active,
-            ).where(AutoTestScenario.id == scenario_id)
-            if user_id is not None:
-                query = query.where(AutoTestScenario.user_id == user_id)
-            res = await session.execute(query)
-            row = res.first()
-            if not row:
-                return {}
-            return {
-                "webhook_url": row[0],
-                "cron_expression": row[1] or "",
-                "env_id": row[2],
-                "name": row[3],
-                "is_active": True if row[4] is None else bool(row[4]),
-            }
+    使用同步 psycopg2 连接，避免在同步上下文中跨事件循环使用 async_session 导致
+    'Task got Future attached to a different loop' 错误。
+    """
+    import re
+    import psycopg2
+    from fastapi_backend.core.config import settings
+
+    # 将 asyncpg URL 转为 psycopg2 格式
+    db_url = settings.DATABASE_URL
+    sync_url = re.sub(r'^postgresql\+asyncpg://', 'postgresql://', db_url)
 
     try:
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop and loop.is_running():
-            # We're inside an existing event loop - use thread pool
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(asyncio.run, _read())
-                return future.result(timeout=5)
+        conn = psycopg2.connect(sync_url, connect_timeout=5)
+        conn.autocommit = True
+        cur = conn.cursor()
+        if user_id is not None:
+            cur.execute(
+                "SELECT schedule_webhook_url, schedule_cron_expression, "
+                "schedule_env_id, schedule_task_name, schedule_is_active "
+                "FROM test_scenarios WHERE id = %s AND user_id = %s",
+                (scenario_id, user_id),
+            )
         else:
-            # No running loop - safe to use asyncio.run
-            return asyncio.run(_read())
+            cur.execute(
+                "SELECT schedule_webhook_url, schedule_cron_expression, "
+                "schedule_env_id, schedule_task_name, schedule_is_active "
+                "FROM test_scenarios WHERE id = %s",
+                (scenario_id,),
+            )
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if not row:
+            return {}
+        return {
+            "webhook_url": row[0],
+            "cron_expression": row[1] or "",
+            "env_id": row[2],
+            "name": row[3],
+            "is_active": True if row[4] is None else bool(row[4]),
+        }
     except Exception as e:
         _logger.warning(f"读取定时配置失败: {e}")
         return {}
@@ -339,40 +337,29 @@ def _scenario_id_from_task_id(task_id: str) -> Optional[int]:
 def _clear_schedule_status_in_db(task_id: str) -> None:
     """同步清空DB中场景的schedule_is_active状态（供remove_scheduled_task调用）。
 
-    使用线程池执行async DB操作，避免在同步调度器上下文中嵌套事件循环。
+    使用同步 psycopg2 连接，避免在同步调度器上下文中嵌套事件循环。
     """
-    import asyncio
-
-    from fastapi_backend.core.autotest_database import AsyncSessionLocal
-    from fastapi_backend.models.autotest import AutoTestScenario
-    from sqlalchemy import update
+    import re
+    import psycopg2
+    from fastapi_backend.core.config import settings
 
     scenario_id = _scenario_id_from_task_id(task_id)
     if scenario_id is None:
         return
 
-    async def _clear() -> None:
-        # 清空DB中的调度状态，避免重启后恢复已删除的任务
-        async with AsyncSessionLocal() as db:
-            await db.execute(
-                update(AutoTestScenario.__table__)
-                .where(AutoTestScenario.id == scenario_id)
-                .values(schedule_is_active=False)
-            )
-            await db.commit()
+    db_url = settings.DATABASE_URL
+    sync_url = re.sub(r'^postgresql\+asyncpg://', 'postgresql://', db_url)
 
     try:
-        try:
-            asyncio.get_running_loop()
-            # 已在事件循环中，使用线程池隔离执行，避免嵌套 asyncio.run
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(asyncio.run, _clear())
-                future.result(timeout=5)
-        except RuntimeError:
-            # 无运行中的事件循环，安全使用 asyncio.run
-            asyncio.run(_clear())
+        conn = psycopg2.connect(sync_url, connect_timeout=5)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE test_scenarios SET schedule_is_active = false WHERE id = %s",
+            (scenario_id,),
+        )
+        cur.close()
+        conn.close()
     except Exception as e:
         _logger.warning(f"清空DB调度状态失败 {task_id}: {e}")
 

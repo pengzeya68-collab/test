@@ -17,7 +17,9 @@ async def ensure_schedule_columns_on_db() -> None:
     async with async_session() as session:
 
         def _migrate(sync_conn: Any) -> None:
-            if sync_conn.dialect.name == "sqlite":
+            # session.run_sync 传入的是同步 Session，需通过 .bind 访问 dialect
+            dialect_name = sync_conn.bind.dialect.name if hasattr(sync_conn, "bind") else sync_conn.dialect.name
+            if dialect_name == "sqlite":
                 # SQLite: 使用PRAGMA table_info查询列（row[1]为列名）
                 r = sync_conn.execute(text("PRAGMA table_info(test_scenarios)"))
                 existing = {row[1] for row in r.fetchall()}

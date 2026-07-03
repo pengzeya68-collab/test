@@ -62,6 +62,10 @@ echo [5/5] 检查服务状态...
 ssh -o StrictHostKeyChecking=accept-new %SERVER_USER%@%SERVER_IP% "cd %SERVER_PATH% && sleep 5 && docker compose ps && curl -s http://localhost:5001/api/health"
 echo.
 
+echo [6/5] 修复静态文件权限（nginx worker 为 www-data）...
+ssh -o StrictHostKeyChecking=accept-new %SERVER_USER%@%SERVER_IP% "chmod -R o+rX /opt/testmaster/frontend/dist 2>/dev/null && echo '✅ 权限已修复'"
+echo.
+
 echo ========================================
 echo   🎉 部署完成！
 echo.
