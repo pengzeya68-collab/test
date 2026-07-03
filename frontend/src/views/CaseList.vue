@@ -9,19 +9,22 @@
       />
     </div>
     <!-- 拖拽分隔条 1：侧边栏 ↔ 列表
-         target=right 表示 size 解读为"右侧面板（中间列表）宽度"，
-         拖动时所见即所得：向右拖 → 列表变宽，sidebar 让位。 -->
+         target=right 表示 size 解读为"右侧面板（中间列表）"的最小宽度，
+         拖动时所见即所得：向右拖 → listMinWidth 增大，列表最小空间被强制放大。 -->
     <BaseSplitter
       v-model:size="listMinWidth"
       target="right"
       direction="horizontal"
-      :min-size="320"
-      :max-size="0"
+      :min-size="280"
+      :max-size="1100"
       storage-key="tm-caselist-list-min-width"
       container-selector=".case-list-layout"
     />
-    <!-- 中间：用例列表表格（绝对宽度由 splitter1 控制，flex:none 让拖动立即生效） -->
-    <el-card class="case-list-card" shadow="never" :style="{ width: listMinWidth + 'px', flex: 'none' }">
+    <!-- 中间：用例列表表格
+         宽度 = listWidth（由 splitter2 直接控制，target=left），
+         min-width = listMinWidth（由 splitter1 控制作为下限保护），
+         flex: none 取消弹性布局，让 splitter2 的拖动方向 = 中间列表宽度变化方向（所见即所得）。 -->
+    <el-card class="case-list-card" shadow="never" :style="{ width: listWidth + 'px', minWidth: listMinWidth + 'px', flex: 'none' }">
     <div class="case-list-container">
       <!-- 顶部工具栏 -->
       <div class="list-toolbar">
@@ -359,18 +362,23 @@
     />
   </el-card>
 
-  <!-- 拖拽分隔条 2：列表 ↔ 编辑器 -->
+  <!-- 拖拽分隔条 2：列表 ↔ 编辑器
+       target=left 表示 size 解读为"左侧面板（中间列表）"的宽度。
+       拖动时所见即所得：向右拖 → 中间列表变宽，右侧编辑器自动让位（flex:1 收缩）。
+       这是用户期望的核心行为——拖动中间分隔条能直接控制中间和右边两个区域的比例。 -->
   <BaseSplitter
-    v-model:size="editorWidth"
+    v-model:size="listWidth"
+    target="left"
     direction="horizontal"
-    :min-size="400"
-    :max-size="1200"
-    storage-key="tm-caselist-editor-width-v2"
+    :min-size="280"
+    :max-size="listMaxWidth"
+    storage-key="tm-caselist-list-width"
     container-selector=".case-list-layout"
   />
 
-  <!-- 右侧：多 Tab 接口编辑器（常驻面板，对标 Apifox） -->
-  <div class="editor-panel" :style="{ width: editorWidth + 'px', flex: 'none' }">
+  <!-- 右侧：多 Tab 接口编辑器（常驻面板，对标 Apifox）
+       改为 flex:1 弹性占满中间列表让出的空间，min-width 400px 保证可读性。 -->
+  <div class="editor-panel" :style="{ flex: '1 1 0%', minWidth: '400px' }">
     <EditorTabContainer
       :env-id="selectedEnvId"
       :group-id="currentGroupId"
@@ -413,15 +421,18 @@ import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import { helpContent } from '@/utils/help-content'
 import autoTestRequest from '@/utils/autoTestRequest'
 
-// 三栏可拖拽布局：
+// 三栏可拖拽布局（所见即所得）：
 // - sidebar 固定 220px，避免反向拖拽语义困惑
-// - listMinWidth 控制中间列表的最小宽度（splitter1 拖动控制）
-// - editorWidth 控制右侧编辑器宽度（splitter2 拖动控制）
+// - splitter1 (target=right) 拖动 → listMinWidth 变化 → 中间列表的最小宽度（保护下限）
+// - splitter2 (target=left)  拖动 → listWidth 变化   → 中间列表的实际宽度（用户直接控制）
+//   拖动时：向右 → 中间列表变宽，右侧编辑器 (flex:1) 自动让位收缩
+//           向左 → 中间列表变窄，右侧编辑器自动扩展变宽
 const SIDEBAR_FIXED_WIDTH = 220
-const listMinWidth = ref(520)
-// 根据窗口宽度给出合理的默认编辑器宽度，避免全屏/笔记本下挤压中间列表
-const getDefaultEditorWidth = () => {
-  if (typeof window === 'undefined') return 720
+const EDITOR_MIN_WIDTH = 400       // 编辑器最小可读宽度
+const SPLITTER_WIDTH = 12          // 单个分隔条宽度
+// 根据窗口宽度计算 listMinWidth 的合理默认值（宽屏给更多展示空间）
+const getDefaultListMinWidth = () => {
+  if (typeof window === 'undefined') return 520
   const w = window.innerWidth
   if (w >= 1920) return 720
   if (w >= 1600) return 640
@@ -429,7 +440,17 @@ const getDefaultEditorWidth = () => {
   if (w >= 1280) return 480
   return 400
 }
-const editorWidth = ref(getDefaultEditorWidth())
+const listMinWidth = ref(getDefaultListMinWidth())
+// listWidth 初始默认与 listMinWidth 一致，保证中间列表至少有合理显示空间
+const listWidth = ref(getDefaultListMinWidth())
+
+// listMaxWidth = 容器总宽 - sidebar - 编辑器最小宽 - 2 个 splitter 宽
+// 这是中间列表在不挤压编辑器的情况下能取到的最大宽度
+// 依赖 viewportWidth 确保视口缩放时能重新计算
+const listMaxWidth = computed(() => {
+  const vw = viewportWidth.value
+  return Math.max(280, vw - SIDEBAR_FIXED_WIDTH - EDITOR_MIN_WIDTH - SPLITTER_WIDTH * 2 - 20)
+})
 
 const props = defineProps({
   groupId: {
@@ -477,6 +498,19 @@ const actionColWidth = computed(() => {
   return 160
 })
 const actionColFixed = computed(() => viewportWidth.value < 1280 ? 'right' : undefined)
+
+// 双向同步：listMinWidth（下限）拉高时，listWidth（实际宽）必须跟上
+// 避免 splitter1 拖大后中间列表宽度被 min-width 强制撑开，但 splitter2 的 size 值还停留在小值
+watch(listMinWidth, (newMin) => {
+  if (listWidth.value < newMin) {
+    listWidth.value = newMin
+  }
+})
+// 视口缩放时，listWidth 不能超过 listMaxWidth，也不能低于 listMinWidth
+watch(listMaxWidth, (newMax) => {
+  if (listWidth.value > newMax) listWidth.value = newMax
+  if (listWidth.value < listMinWidth.value) listWidth.value = listMinWidth.value
+})
 
 // 选中分组时触发（由侧边栏 emit），更新当前分组并重新加载用例
 const handleSelectGroup = (groupId) => {
@@ -1239,12 +1273,13 @@ defineExpose({
 </script>
 
 <style scoped>
-/* 左右布局：侧边栏 25% + 列表 75%（gap:0 由 BaseSplitter 提供间距） */
+/* 左右布局：侧边栏固定 + 列表弹性 + 编辑器可调 */
 .case-list-layout {
   display: flex;
   gap: 0;
   height: 100%;
   min-height: 0;
+  overflow: hidden; /* 防止 splitter 拖到极端时三栏总宽溢出 */
 }
 
 .case-list-sidebar {
@@ -1254,8 +1289,7 @@ defineExpose({
 }
 
 .case-list-card {
-  flex: 1 1 0;
-  min-width: 340px;
+  flex: 1 1 0%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1495,18 +1529,10 @@ defineExpose({
   color: var(--tm-text-primary);
 }
 
-/* 响应式：1366 以下限制编辑器最大宽度，确保三栏不超视口 */
+/* 响应式：1366 以下限制中间列表最小宽度，避免列表被无限压缩 */
 @media (max-width: 1366px) {
   .case-list-card {
     min-width: 320px;
-  }
-  .editor-panel {
-    max-width: 480px !important;
-  }
-}
-@media (max-width: 1280px) {
-  .editor-panel {
-    max-width: none !important;
   }
 }
 
