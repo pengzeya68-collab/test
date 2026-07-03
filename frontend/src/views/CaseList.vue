@@ -1,7 +1,9 @@
 <template>
   <div class="case-list-layout">
-    <!-- 左侧分组树侧边栏（固定 220px 宽，避免反向拖拽的迷惑） -->
-    <div class="case-list-sidebar" :style="{ width: SIDEBAR_FIXED_WIDTH + 'px', flex: 'none' }">
+    <!-- 左侧分组树侧边栏
+         宽度由 splitter1 target=left 直接控制（所见即所得：拖动 → sidebar 变宽/窄），
+         拖到 min=180 时自动隐藏，拖到 min=180+ 时恢复显示（用户体验：完全可调） -->
+    <div class="case-list-sidebar" :style="{ width: sidebarWidth + 'px', flex: 'none' }">
       <CaseTreeSidebar
         ref="sidebarRef"
         :current-group-id="currentGroupId"
@@ -9,22 +11,21 @@
       />
     </div>
     <!-- 拖拽分隔条 1：侧边栏 ↔ 列表
-         target=right 表示 size 解读为"右侧面板（中间列表）"的最小宽度，
-         拖动时所见即所得：向右拖 → listMinWidth 增大，列表最小空间被强制放大。 -->
+         target=left 表示 size 解读为"左侧面板（侧边栏）"的宽度。
+         拖动时所见即所得：向右拖 → sidebar 变宽；向左拖 → sidebar 变窄。 -->
     <BaseSplitter
-      v-model:size="listMinWidth"
-      target="right"
+      v-model:size="sidebarWidth"
+      target="left"
       direction="horizontal"
-      :min-size="280"
-      :max-size="1100"
-      storage-key="tm-caselist-list-min-width"
+      :min-size="SIDEBAR_MIN"
+      :max-size="SIDEBAR_MAX"
+      storage-key="tm-caselist-sidebar-width"
       container-selector=".case-list-layout"
     />
     <!-- 中间：用例列表表格
          宽度 = listWidth（由 splitter2 直接控制，target=left），
-         min-width = listMinWidth（由 splitter1 控制作为下限保护），
          flex: none 取消弹性布局，让 splitter2 的拖动方向 = 中间列表宽度变化方向（所见即所得）。 -->
-    <el-card class="case-list-card" shadow="never" :style="{ width: listWidth + 'px', minWidth: listMinWidth + 'px', flex: 'none' }">
+    <el-card class="case-list-card" shadow="never" :style="{ width: listWidth + 'px', flex: 'none' }">
     <div class="case-list-container">
       <!-- 顶部工具栏 -->
       <div class="list-toolbar">
@@ -96,6 +97,33 @@
             <el-icon><Plus /></el-icon>
             <span class="toolbar-text-hide">新建用例</span>
           </el-button>
+          <!-- 布局预设下拉（快速调整三栏比例） -->
+          <el-dropdown trigger="click" @command="applyLayoutPreset" class="toolbar-btn-icon">
+            <el-button plain title="布局预设">
+              <el-icon><Operation /></el-icon>
+              <span class="toolbar-text-hide">布局</span>
+              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="compact">
+                  <el-icon><Files /></el-icon> 紧凑布局（侧边 180 / 列表 400）
+                </el-dropdown-item>
+                <el-dropdown-item command="default">
+                  <el-icon><Grid /></el-icon> 默认布局（侧边 220 / 列表 720）
+                </el-dropdown-item>
+                <el-dropdown-item command="wide">
+                  <el-icon><FullScreen /></el-icon> 宽屏布局（侧边 280 / 列表 1080）
+                </el-dropdown-item>
+                <el-dropdown-item divided command="editor-focus">
+                  <el-icon><EditPen /></el-icon> 编辑器专注（侧边 180 / 列表 320）
+                </el-dropdown-item>
+                <el-dropdown-item command="reset">
+                  <el-icon><RefreshRight /></el-icon> 重置为默认
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </div>
 
@@ -409,7 +437,13 @@ import {
   FolderAdd,
   DocumentCopy,
   Rank,
-  MoreFilled
+  MoreFilled,
+  Operation,
+  Files,
+  Grid,
+  FullScreen,
+  EditPen,
+  RefreshRight
 } from '@element-plus/icons-vue'
 import CaseTreeSidebar from '@/components/CaseTreeSidebar.vue'
 import EditorTabContainer from '@/components/EditorTabContainer.vue'
@@ -421,35 +455,36 @@ import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import { helpContent } from '@/utils/help-content'
 import autoTestRequest from '@/utils/autoTestRequest'
 
-// 三栏可拖拽布局（所见即所得）：
-// - sidebar 固定 220px，避免反向拖拽语义困惑
-// - splitter1 (target=right) 拖动 → listMinWidth 变化 → 中间列表的最小宽度（保护下限）
-// - splitter2 (target=left)  拖动 → listWidth 变化   → 中间列表的实际宽度（用户直接控制）
-//   拖动时：向右 → 中间列表变宽，右侧编辑器 (flex:1) 自动让位收缩
-//           向左 → 中间列表变窄，右侧编辑器自动扩展变宽
-const SIDEBAR_FIXED_WIDTH = 220
-const EDITOR_MIN_WIDTH = 400       // 编辑器最小可读宽度
-const SPLITTER_WIDTH = 12          // 单个分隔条宽度
-// 根据窗口宽度计算 listMinWidth 的合理默认值（宽屏给更多展示空间）
-const getDefaultListMinWidth = () => {
-  if (typeof window === 'undefined') return 520
+// 三栏可拖拽布局（完全对称、所见即所得）：
+// - splitter1 (target=left)  拖动 → sidebarWidth 变化 → 左侧分组树宽度
+// - splitter2 (target=left)  拖动 → listWidth   变化 → 中间列表宽度
+// - 右侧编辑器：flex:1 自动占满剩余空间（min-width: 400px 保证可读性）
+// 用户可以从两个方向自由调整三栏比例；editor 反向被挤压（list 变宽时 editor 自动让位）
+const SIDEBAR_MIN = 180           // 侧边栏最小宽度（保留可识别的分组树）
+const SIDEBAR_MAX = 500           // 侧边栏最大宽度（避免挤压列表）
+const EDITOR_MIN_WIDTH = 400      // 编辑器最小可读宽度
+const LIST_MIN_WIDTH = 280        // 列表最小宽度（保证表格列可读）
+const SPLITTER_WIDTH = 12         // 单个分隔条宽度
+// 根据窗口宽度计算合理默认布局（宽屏给更多展示空间）
+const getDefaultLayout = () => {
+  if (typeof window === 'undefined') return { sidebar: 220, list: 720 }
   const w = window.innerWidth
-  if (w >= 1920) return 720
-  if (w >= 1600) return 640
-  if (w >= 1440) return 560
-  if (w >= 1280) return 480
-  return 400
+  if (w >= 1920) return { sidebar: 240, list: 960 }
+  if (w >= 1600) return { sidebar: 240, list: 800 }
+  if (w >= 1440) return { sidebar: 220, list: 720 }
+  if (w >= 1280) return { sidebar: 200, list: 560 }
+  return { sidebar: 180, list: 400 }
 }
-const listMinWidth = ref(getDefaultListMinWidth())
-// listWidth 初始默认与 listMinWidth 一致，保证中间列表至少有合理显示空间
-const listWidth = ref(getDefaultListMinWidth())
+const _initialLayout = getDefaultLayout()
+const sidebarWidth = ref(_initialLayout.sidebar)
+const listWidth = ref(_initialLayout.list)
 
 // listMaxWidth = 容器总宽 - sidebar - 编辑器最小宽 - 2 个 splitter 宽
-// 这是中间列表在不挤压编辑器的情况下能取到的最大宽度
+// 这是中间列表在不挤压编辑器（min=400）情况下能取到的最大宽度
 // 依赖 viewportWidth 确保视口缩放时能重新计算
 const listMaxWidth = computed(() => {
   const vw = viewportWidth.value
-  return Math.max(280, vw - SIDEBAR_FIXED_WIDTH - EDITOR_MIN_WIDTH - SPLITTER_WIDTH * 2 - 20)
+  return Math.max(LIST_MIN_WIDTH, vw - sidebarWidth.value - EDITOR_MIN_WIDTH - SPLITTER_WIDTH * 2 - 20)
 })
 
 const props = defineProps({
@@ -499,18 +534,38 @@ const actionColWidth = computed(() => {
 })
 const actionColFixed = computed(() => viewportWidth.value < 1280 ? 'right' : undefined)
 
-// 双向同步：listMinWidth（下限）拉高时，listWidth（实际宽）必须跟上
-// 避免 splitter1 拖大后中间列表宽度被 min-width 强制撑开，但 splitter2 的 size 值还停留在小值
-watch(listMinWidth, (newMin) => {
-  if (listWidth.value < newMin) {
-    listWidth.value = newMin
-  }
-})
-// 视口缩放时，listWidth 不能超过 listMaxWidth，也不能低于 listMinWidth
+// 视口缩放时，listWidth 不能超过 listMaxWidth
 watch(listMaxWidth, (newMax) => {
   if (listWidth.value > newMax) listWidth.value = newMax
-  if (listWidth.value < listMinWidth.value) listWidth.value = listMinWidth.value
+  if (listWidth.value < LIST_MIN_WIDTH) listWidth.value = LIST_MIN_WIDTH
 })
+// 视口缩放时，sidebarWidth 也不能超过新的合理范围
+watch(viewportWidth, () => {
+  const newMaxSidebar = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, viewportWidth.value - LIST_MIN_WIDTH - EDITOR_MIN_WIDTH - 40))
+  if (sidebarWidth.value > newMaxSidebar) sidebarWidth.value = newMaxSidebar
+})
+
+// 布局预设：用户从下拉菜单选择，瞬时切换到对应尺寸
+// 比纯拖拽更高效，适合"快速调出大屏列表"或"折叠侧边栏"等场景
+const LAYOUT_PRESETS = {
+  compact:        { sidebar: 180, list: 400 },
+  default:        { sidebar: 220, list: 720 },
+  wide:           { sidebar: 280, list: 1080 },
+  'editor-focus': { sidebar: 180, list: 320 },
+}
+const applyLayoutPreset = (preset) => {
+  // 'reset' 走视口自适应
+  let target = preset === 'reset' ? getDefaultLayout() : LAYOUT_PRESETS[preset]
+  if (!target) return
+  sidebarWidth.value = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, target.sidebar))
+  listWidth.value = Math.max(LIST_MIN_WIDTH, Math.min(listMaxWidth.value, target.list))
+  // 持久化（让 BaseSplitter 的 storageKey 行为一致）
+  try {
+    localStorage.setItem('tm-caselist-sidebar-width', String(sidebarWidth.value))
+    localStorage.setItem('tm-caselist-list-width', String(listWidth.value))
+  } catch {}
+  ElMessage?.success?.(`布局已切换：侧边 ${sidebarWidth.value}px / 列表 ${listWidth.value}px`)
+}
 
 // 选中分组时触发（由侧边栏 emit），更新当前分组并重新加载用例
 const handleSelectGroup = (groupId) => {
@@ -1542,7 +1597,7 @@ defineExpose({
     width: 100% !important;
     flex: 1 1 100% !important;
     order: 3;
-    min-width: 0;
+    min-width: 0 !important;
     height: 460px;
   }
   /* 编辑器下沉时隐藏列表↔编辑器之间的拖拽手柄 */
@@ -1561,7 +1616,7 @@ defineExpose({
     width: 100% !important;
     flex: 1 1 100% !important;
     order: 3;
-    min-width: 0;
+    min-width: 0 !important;
     height: 500px;
   }
   /* 编辑器下沉时隐藏列表↔编辑器之间的拖拽手柄（紧跟在 card 后的 splitter） */
