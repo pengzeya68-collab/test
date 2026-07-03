@@ -24,9 +24,12 @@
       container-selector=".case-list-layout"
     />
     <!-- 中间：用例列表表格
-         flex: 1 弹性布局，min-width 保证表格可读，max-width 受 listMaxWidth 限制避免挤压 editor。
-         拖动 splitter2 时，listMaxWidth 变化 → list 弹性宽度变化 → editor 反向让位。 -->
-    <el-card class="case-list-card" shadow="never" :style="{ flex: '1 1 0%', minWidth: LIST_MIN_WIDTH + 'px', maxWidth: listMaxWidth + 'px' }">
+         width = listMaxWidth（由 splitter2 直接控制，target=right），
+         max-width = listMaxAllowed（视口 - sidebar - editor_min - 2 splitter，防止挤压 editor），
+         min-width = LIST_MIN_WIDTH（保证表格可读）。
+         拖动 splitter1 (sidebar) 时，listMaxAllowed 自动变化 → list 弹性调整；
+         拖动 splitter2 时，listMaxWidth 变化 → list 直接变化 → editor flex:1 反向让位。 -->
+    <el-card class="case-list-card" shadow="never" :style="{ width: listMaxWidth + 'px', maxWidth: listMaxLimit + 'px', minWidth: LIST_MIN_WIDTH + 'px', flex: 'none' }">
     <div class="case-list-container">
       <!-- 顶部工具栏 -->
       <div class="list-toolbar">
