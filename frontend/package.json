@@ -8,7 +8,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
-    "test": "echo 'No tests configured yet. Add a test framework like Vitest to enable testing.'"
+    "test": "echo 'No tests configured yet. Add a test framework like Vitest to enable testing.'",
+    "test:e2e": "playwright test -c ../playwright.config.js",
+    "test:e2e:headed": "playwright test -c ../playwright.config.js --headed",
+    "test:e2e:report": "playwright show-report ../playwright-report"
   },
   "dependencies": {
     "@codemirror/commands": "^6.3.2",

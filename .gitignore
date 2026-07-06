@@ -179,9 +179,10 @@ testmaster_migration.sql.gz
 /*_report.json
 /check_screenshots/
 /ui_check_screenshots/
+/ui_*screenshots/
+/deep_check_screenshots/
 /workspace/
-/e2e/
-/playwright.config.js
+/deploy_new/
 /deploy_package.zip
 /package-lock.json
 

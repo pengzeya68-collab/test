@@ -1,19 +1,19 @@
 <template>
   <!-- v20260528-multichart-4panel-fullscreen -->
-  <div class="jmeter-workspace">
+  <div class="jmeter-workspace" data-testid="jmeter-page">
     <!-- 步骤导航 -->
     <div class="step-nav">
-      <div class="step" :class="{active: currentStep >= 1, done: currentStep > 1}" @click="currentStep = 1">
+      <div class="step" data-testid="jmeter-step-select-interface" :class="{active: currentStep >= 1, done: currentStep > 1}" @click="currentStep = 1">
         <span class="step-num">{{ currentStep > 1 ? '✓' : '1' }}</span>
         <span class="step-label">选择接口</span>
       </div>
       <span class="step-arrow">→</span>
-      <div class="step" :class="{active: currentStep >= 2, done: currentStep > 2}" @click="currentStep >= 2 ? currentStep = 2 : null">
+      <div class="step" data-testid="jmeter-step-configure" :class="{active: currentStep >= 2, done: currentStep > 2}" @click="currentStep >= 2 ? currentStep = 2 : null">
         <span class="step-num">{{ currentStep > 2 ? '✓' : '2' }}</span>
         <span class="step-label">配置压测参数</span>
       </div>
       <span class="step-arrow">→</span>
-      <div class="step" :class="{active: currentStep >= 3}" @click="currentStep >= 3 ? currentStep = 3 : null">
+      <div class="step" data-testid="jmeter-step-export" :class="{active: currentStep >= 3}" @click="currentStep >= 3 ? currentStep = 3 : null">
         <span class="step-num">3</span>
         <span class="step-label">导出 JMX</span>
       </div>
@@ -140,7 +140,7 @@
           </div>
           <div class="import-footer">
             <span class="import-count">已选 {{ selectedImportCases.length }} 个接口</span>
-            <el-button type="primary" size="large" :disabled="selectedImportCases.length === 0" @click="importSelectedCases" style="font-weight:700;">
+            <el-button type="primary" size="large" data-testid="jmeter-import-selected-button" :disabled="selectedImportCases.length === 0" @click="importSelectedCases" style="font-weight:700;">
               🚀 导入到脚本 <el-icon><Right /></el-icon>
             </el-button>
           </div>
@@ -408,7 +408,7 @@
                 <el-button size="small" @click="saveSamplerToCase(selectedNode)" :loading="savingToCase">
                   💾 保存到接口库
                 </el-button>
-                <el-button size="small" type="warning" plain @click="aiParameterize(selectedNode)" :loading="aiParamLoading">
+                <el-button size="small" type="warning" plain data-testid="jmeter-ai-parameterize-button" @click="aiParameterize(selectedNode)" :loading="aiParamLoading">
                   🤖 AI 参数化
                 </el-button>
               </div>
@@ -3613,7 +3613,8 @@ onBeforeUnmount(() => {
 
 /* ===== 查看结果树 (VRT) ===== */
 .vrt-container { display: flex; gap: 0; border: 1px solid var(--tm-border-light); border-radius: 6px; overflow: hidden; background: var(--tm-card-bg); flex: 1; min-height: 0; }
-.vrt-inline-section .vrt-container { }
+.vrt-inline-section { position: sticky; top: 0; z-index: 5; background: var(--bg-surface); }
+.vrt-inline-section .vrt-container { height: calc(100vh - 240px); min-height: 380px; max-height: 680px; }
 .vrt-inline-section .vrt-left-col { width: 220px; }
 .vrt-left-col { display: flex; flex-direction: column; flex-shrink: 0; width: 280px; border-right: 1px solid var(--tm-border-light); background: var(--bg-surface); overflow: hidden; }
 .vrt-sample-list { flex: 1; overflow-y: auto; min-height: 0; }
@@ -3631,9 +3632,10 @@ onBeforeUnmount(() => {
 .vrt-detail-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .vrt-empty-detail { display: none; color: var(--tm-text-secondary); }
 .vrt-tabs { height: 100%; display: flex; flex-direction: column; }
-.vrt-tabs :deep(.el-tabs__header) { margin-bottom: 0; background: var(--bg-surface); border-bottom: 1px solid var(--tm-border-light); padding: 0 8px; }
-.vrt-tabs :deep(.el-tabs__content) { flex: 1; overflow-y: auto; padding: 8px 12px; }
-.vrt-inner-tabs :deep(.el-tabs__header) { margin-bottom: 4px; }
+.vrt-tabs :deep(.el-tabs) { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; overflow: hidden; }
+.vrt-tabs :deep(.el-tabs__header) { margin-bottom: 0; background: var(--bg-surface); border-bottom: 1px solid var(--tm-border-light); padding: 0 8px; flex-shrink: 0; }
+.vrt-tabs :deep(.el-tabs__content) { flex: 1; overflow-y: auto; padding: 8px 12px; min-height: 0; height: 0; }
+.vrt-inner-tabs :deep(.el-tabs__header) { margin-bottom: 4px; position: sticky; top: 0; z-index: 9; background: var(--bg-surface); }
 .vrt-inner-tabs :deep(.el-tabs__content) { max-height: calc(100% - 36px); overflow-y: auto; }
 .vrt-table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.8; }
 .vrt-table td { padding: 2px 8px; border-bottom: 1px solid var(--tm-border-light); vertical-align: top; color: var(--tm-text-primary); }

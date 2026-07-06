@@ -1,5 +1,5 @@
 <template>
-  <div class="bench-control-panel" :class="{ expanded: benchPanelExpanded, running: benching }">
+  <div class="bench-control-panel" data-testid="jmeter-bench-panel" :class="{ expanded: benchPanelExpanded, running: benching }">
     <!-- Header: 始终显示,但运行时简化 -->
     <div class="bcp-header" @click="benchPanelExpanded = !benchPanelExpanded">
       <div class="bcp-header-left">
@@ -12,18 +12,18 @@
       <div v-if="!benching && !benchResult" class="bcp-header-center">
         <div class="bcp-config-item bcp-engine-select">
           <label>引擎</label>
-          <el-select v-model="benchEngine" size="small" style="width:130px;">
+          <el-select v-model="benchEngine" data-testid="jmeter-bench-engine-select" size="small" style="width:130px;">
             <el-option label="⚡ 快速预览" value="quick" />
             <el-option label="🎯 JMeter 引擎" value="jmeter" :disabled="!jmeterEngineAvailable" />
           </el-select>
         </div>
         <div class="bcp-config-item">
           <label>并发数</label>
-          <el-input-number v-model="benchConcurrency" :min="1" :max="benchEngine === 'jmeter' ? 10000 : 200" size="small" controls-position="right" style="width:90px;" />
+          <el-input-number v-model="benchConcurrency" data-testid="jmeter-bench-concurrency-input" :min="1" :max="benchEngine === 'jmeter' ? 10000 : 200" size="small" controls-position="right" style="width:90px;" />
         </div>
         <div class="bcp-config-item">
           <label>持续(秒)</label>
-          <el-input-number v-model="benchDuration" :min="3" :max="benchEngine === 'jmeter' ? 3600 : 60" size="small" controls-position="right" style="width:90px;" />
+          <el-input-number v-model="benchDuration" data-testid="jmeter-bench-duration-input" :min="3" :max="benchEngine === 'jmeter' ? 3600 : 60" size="small" controls-position="right" style="width:90px;" />
         </div>
         <div class="bcp-config-item">
           <label>预热(秒)</label>
@@ -33,14 +33,14 @@
 
       <!-- 运行中: 显示进度 -->
       <div v-if="benching" class="bcp-header-center">
-        <div class="bcp-progress-inline">
+        <div class="bcp-progress-inline" data-testid="jmeter-bench-progress">
           <el-progress :percentage="benchPercent" :stroke-width="6" :status="benchPercent >= 100 ? 'success' : ''" style="width:200px;" />
           <span class="bcp-progress-text">{{ benchProgress }} {{ benchEta }}</span>
         </div>
       </div>
 
       <div class="bcp-header-right">
-        <el-button v-if="!benching" type="danger" @click.stop="startBench" size="default" class="bcp-start-btn">
+        <el-button v-if="!benching" type="danger" data-testid="jmeter-bench-start-button" @click.stop="startBench" size="default" class="bcp-start-btn">
           {{ benchEngine === 'jmeter' ? '🎯 JMeter 压测' : '⚡ 快速预览' }}（{{ benchConcurrency }}并发 × {{ benchDuration }}秒）
         </el-button>
         <el-button v-else :icon="SwitchButton" @click.stop="stopBench" size="default" type="danger">停止</el-button>
@@ -90,7 +90,7 @@
       </el-alert>
 
       <!-- 压测结果区域(完成后显示) -->
-      <div v-if="benchResult" class="bcp-report-section">
+      <div v-if="benchResult" class="bcp-report-section" data-testid="jmeter-bench-result-section">
         <!-- 统计指标栏 -->
         <div class="bcp-quick-stats">
           <div class="bcp-stat" :class="benchResult.failed > 0 ? 'bcp-stat-err' : 'bcp-stat-ok'">
@@ -196,18 +196,99 @@
           </div>
         </div>
 
-        <!-- 响应体采样 -->
-        <div v-if="benchResult.body_samples && benchResult.body_samples.length > 0" class="bcp-body-samples">
-          <div class="bpu-header">📄 响应体采样 (前 {{ Math.min(benchResult.body_samples.length, 10) }} 条)
-            <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary);">最多 1000 字符</span>
+        <!-- 查看结果树(JMeter 风格:左树右详情) -->
+        <div v-if="(benchResult.body_samples && benchResult.body_samples.length > 0) || (benchResult.samples && benchResult.samples.length > 0)" class="bcp-view-tree" data-testid="jmeter-view-results-tree">
+          <div class="bpu-header">🌲 查看结果树 (View Results Tree) — 共 {{ (benchResult.body_samples || benchResult.samples).length }} 条采样
+            <span style="font-size:11px;font-weight:400;color:var(--tm-text-secondary);">点击左侧采样器查看完整请求/响应</span>
           </div>
-          <div class="bcp-samples-scroll">
-            <div v-for="(bs, bi) in benchResult.body_samples.slice(0, 10)" :key="bi" class="bcp-sample-card">
-              <div class="bcp-sample-header">
-                <el-tag :type="bs.status >= 200 && bs.status < 400 ? 'success' : 'danger'" size="small">{{ bs.status }}</el-tag>
-                <span class="bcp-sample-url" :title="bs.url">{{ shortUrl(bs.url) }}</span>
+          <div class="vt-container">
+            <!-- 左侧:采样器列表(按 label 分组) -->
+            <div class="vt-tree">
+              <div
+                v-for="(s, si) in (benchResult.body_samples || benchResult.samples)"
+                :key="si"
+                class="vt-tree-node"
+                data-testid="jmeter-vrt-sample-node"
+                :class="['vt-node-' + ((s.status >= 200 && s.status < 400) ? 'ok' : 'err'), { 'vt-node-active': selectedSampleIndex === si }]"
+                @click="selectedSampleIndex = si"
+              >
+                <div class="vt-node-icon">
+                  <el-tag :type="(s.status >= 200 && s.status < 400) ? 'success' : 'danger'" size="small" effect="dark">
+                    {{ s.status || 'ERR' }}
+                  </el-tag>
+                </div>
+                <div class="vt-node-body">
+                  <div class="vt-node-title" :title="s.url || s.label">
+                    <span class="vt-node-method">{{ s.method || 'GET' }}</span>
+                    {{ s.label || s.url || ('采样 #' + (si + 1)) }}
+                  </div>
+                  <div class="vt-node-meta">
+                    <span class="vt-node-elapsed">{{ s.elapsed_ms }}ms</span>
+                    <span v-if="s.thread_name" class="vt-node-thread">{{ s.thread_name }}</span>
+                  </div>
+                </div>
               </div>
-              <pre class="bcp-sample-body">{{ bs.body }}</pre>
+            </div>
+            <!-- 右侧:选中采样器的完整请求/响应详情 -->
+            <div class="vt-detail">
+              <div v-if="selectedSampleIndex === null || !((benchResult.body_samples || benchResult.samples)[selectedSampleIndex])" class="vt-detail-empty">
+                <el-icon size="40" color="var(--tm-text-secondary)"><InfoFilled /></el-icon>
+                <p>请从左侧选择一个采样器,查看完整请求与响应详情</p>
+              </div>
+              <div v-else class="vt-detail-content" data-testid="jmeter-vrt-detail-content">
+                <div class="vt-detail-header">
+                  <div class="vt-detail-title">
+                    <el-tag :type="((benchResult.body_samples || benchResult.samples)[selectedSampleIndex].status >= 200 && (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].status < 400) ? 'success' : 'danger'" size="default" effect="dark">
+                      {{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].status || 'ERR' }}
+                    </el-tag>
+                    <span class="vt-detail-method">{{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].method }}</span>
+                    <span class="vt-detail-url" :title="(benchResult.body_samples || benchResult.samples)[selectedSampleIndex].url">{{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].url || (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].label }}</span>
+                  </div>
+                  <div class="vt-detail-stats">
+                    <span class="vt-stat">⏱ {{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].elapsed_ms }}ms</span>
+                    <span class="vt-stat">📤 {{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].bytes_sent || 0 }}B</span>
+                    <span class="vt-stat">📥 {{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].bytes_received || 0 }}B</span>
+                  </div>
+                </div>
+                <!-- 选项卡:Request / Response -->
+                <el-tabs v-model="selectedSampleTab" class="vt-tabs">
+                  <!-- Request Tab -->
+                  <el-tab-pane label="📤 Request" name="request">
+                    <div class="vt-section">
+                      <div class="vt-section-title">请求体 (Request Body)</div>
+                      <pre class="vt-code" v-if="(benchResult.body_samples || benchResult.samples)[selectedSampleIndex].request_body">{{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].request_body }}</pre>
+                      <div v-else class="vt-empty-block">(空请求体)</div>
+                    </div>
+                    <div class="vt-section" v-if="(benchResult.body_samples || benchResult.samples)[selectedSampleIndex].request_headers">
+                      <div class="vt-section-title">请求头 (Request Headers)</div>
+                      <pre class="vt-code vt-code-headers">{{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].request_headers }}</pre>
+                    </div>
+                  </el-tab-pane>
+                  <!-- Response Tab -->
+                  <el-tab-pane label="📥 Response" name="response">
+                    <div class="vt-section">
+                      <div class="vt-section-title">响应体 (Response Body) — {{ ((benchResult.body_samples || benchResult.samples)[selectedSampleIndex].body || (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].response_body || '').length }} 字符</div>
+                      <pre class="vt-code vt-code-response" data-testid="jmeter-vrt-response-body" v-if="(benchResult.body_samples || benchResult.samples)[selectedSampleIndex].body || (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].response_body">{{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].body || (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].response_body }}</pre>
+                      <div v-else class="vt-empty-block">(空响应体)</div>
+                    </div>
+                    <div class="vt-section" v-if="(benchResult.body_samples || benchResult.samples)[selectedSampleIndex].response_headers">
+                      <div class="vt-section-title">响应头 (Response Headers)</div>
+                      <pre class="vt-code vt-code-headers">{{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].response_headers }}</pre>
+                    </div>
+                  </el-tab-pane>
+                  <!-- All Data Tab -->
+                  <el-tab-pane label="🔍 Raw Data" name="raw">
+                    <div class="vt-section">
+                      <pre class="vt-code">{{ JSON.stringify((benchResult.body_samples || benchResult.samples)[selectedSampleIndex], null, 2) }}</pre>
+                    </div>
+                  </el-tab-pane>
+                </el-tabs>
+                <!-- 错误信息(若有) -->
+                <div v-if="(benchResult.body_samples || benchResult.samples)[selectedSampleIndex].failure_message" class="vt-error-box">
+                  <el-icon color="#f56c6c"><WarningFilled /></el-icon>
+                  <span>{{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].failure_message }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -342,7 +423,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted, shallowRef } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { SwitchButton, ArrowDown } from '@element-plus/icons-vue'
+import { SwitchButton, ArrowDown, InfoFilled, WarningFilled } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import autoTestRequest from '@/utils/autoTestRequest'
 import { useAICosts } from '@/composables/useAICosts'
@@ -404,6 +485,8 @@ const aiAnalysisText = ref('')
 const aiAnalysisDialogVisible = ref(false)
 const errorCollapseActive = ref([])
 const benchPanelExpanded = ref(false)
+const selectedSampleIndex = ref(0) // 查看结果树:当前选中的采样器下标
+const selectedSampleTab = ref('response') // 查看结果树:当前显示的 tab
 const benchChartRef = ref(null)
 const benchChartRef2 = ref(null)
 const benchChartRef3 = ref(null)
@@ -622,17 +705,32 @@ const pollBench = async () => {
         if (res.status === 'success' && benchRunId.value) {
           try {
             const samples = await autoTestRequest.get(`/auto-test/jmeter/runs/${benchRunId.value}/samples`, {
-              params: { limit: 10, only_failures: false },
+              params: { limit: 20, only_failures: false },
             })
             if (Array.isArray(samples) && samples.length > 0) {
+              // Stage F.5 增强:把 samples 完整字段保存,支持"查看结果树"组件显示请求/响应/头
               benchResult.value.body_samples = samples.map(s => ({
+                id: s.id,
                 status: parseInt(s.status) || 0,
+                response_message: s.response_message || '',
                 url: s.url || s.label || '',
                 method: s.method || 'GET',
-                body: s.response_body || '',
+                label: s.label || '',
                 request_body: s.request_body || '',
+                response_body: s.response_body || '',
+                body: s.response_body || '',  // 别名,兼容旧字段
+                request_headers: s.request_headers || '',
+                response_headers: s.response_headers || '',
                 elapsed_ms: s.elapsed_ms || 0,
+                latency_ms: s.latency_ms || 0,
+                bytes_received: s.bytes_received || 0,
+                bytes_sent: s.bytes_sent || 0,
+                thread_name: s.thread_name || '',
+                failure_message: s.failure_message || '',
+                ts: s.ts || '',
               }))
+              selectedSampleIndex.value = 0  // 默认选中第一个
+              selectedSampleTab.value = 'response'
             }
           } catch (e) {
             console.warn('加载采样器详情失败(忽略):', e)
@@ -814,19 +912,33 @@ const resizeAllBenchCharts = () => { [benchChartInstance, benchChartInstance2, b
 const restoreHistoryResult = (h) => {
   benchResult.value = { total: h.total, success: h.success, failed: h.failed, tps: h.tps, avg_ms: h.avg_ms, min_ms: h.min_ms || 0, max_ms: h.max_ms || 0, p50_ms: h.p50_ms || 0, p95_ms: h.p95_ms, p99_ms: h.p99_ms, status_distribution: h.statusDistribution, per_url: h.perUrl, errors: h.errors, samples: h.samples || [] }
   benching.value = false; showBenchHistory.value = false
-  // Stage F.4 修复 BUG 2:如果是从服务端来的历史(有 id),同时拉采样器详情填充 body_samples
+  // Stage F.5 增强:从服务端历史拉采样器详情,完整字段填充 body_samples
   if (h.id) {
-    autoTestRequest.get(`/auto-test/jmeter/runs/${h.id}/samples`, { params: { limit: 10 } })
+    autoTestRequest.get(`/auto-test/jmeter/runs/${h.id}/samples`, { params: { limit: 20 } })
       .then(samples => {
         if (Array.isArray(samples) && samples.length > 0 && benchResult.value) {
           benchResult.value.body_samples = samples.map(s => ({
+            id: s.id,
             status: parseInt(s.status) || 0,
+            response_message: s.response_message || '',
             url: s.url || s.label || '',
             method: s.method || 'GET',
-            body: s.response_body || '',
+            label: s.label || '',
             request_body: s.request_body || '',
+            response_body: s.response_body || '',
+            body: s.response_body || '',
+            request_headers: s.request_headers || '',
+            response_headers: s.response_headers || '',
             elapsed_ms: s.elapsed_ms || 0,
+            latency_ms: s.latency_ms || 0,
+            bytes_received: s.bytes_received || 0,
+            bytes_sent: s.bytes_sent || 0,
+            thread_name: s.thread_name || '',
+            failure_message: s.failure_message || '',
+            ts: s.ts || '',
           }))
+          selectedSampleIndex.value = 0
+          selectedSampleTab.value = 'response'
         }
       })
       .catch(e => console.warn('加载历史采样器详情失败:', e))
@@ -965,6 +1077,42 @@ defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurre
 .bcp-sample-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; }
 .bcp-sample-url { flex: 1; color: var(--tm-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bcp-sample-body { background: var(--bg-surface); color: var(--tm-text-primary); font-family: 'Consolas','Monaco',monospace; font-size: 11px; padding: 10px; border-radius: 6px; max-height: 100px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid var(--tm-border-light); }
+
+/* 查看结果树(JMeter 风格:左树右详情) */
+.bcp-view-tree { padding: 0 14px 12px; border-top: 1px solid var(--tm-border-light); background: var(--bg-surface); position: sticky; top: 0; z-index: 5; }
+.vt-container { display: flex; gap: 0; border: 1px solid var(--tm-border-light); border-radius: 8px; overflow: hidden; height: calc(100vh - 260px); min-height: 380px; max-height: 680px; margin-top: 8px; }
+.vt-tree { width: 320px; flex: none; overflow-y: auto; border-right: 1px solid var(--tm-border-light); background: var(--bg-surface-hover); }
+.vt-tree-node { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--tm-border-light); transition: background 0.15s ease; }
+.vt-tree-node:hover { background: var(--bg-surface); }
+.vt-tree-node.vt-node-active { background: var(--el-color-primary-light-9); border-left: 3px solid var(--el-color-primary); padding-left: 7px; }
+.vt-node-icon { flex: none; }
+.vt-node-body { flex: 1; min-width: 0; }
+.vt-node-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--tm-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-node-method { padding: 1px 5px; background: var(--el-color-primary-light-9); color: var(--el-color-primary); border-radius: 3px; font-size: 10px; font-weight: 600; font-family: 'Consolas','Monaco',monospace; }
+.vt-node-meta { display: flex; gap: 8px; margin-top: 3px; font-size: 10px; color: var(--tm-text-secondary); }
+.vt-node-elapsed { color: var(--el-color-success); font-weight: 500; }
+.vt-node-thread { font-family: 'Consolas','Monaco',monospace; }
+.vt-detail { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.vt-detail-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--tm-text-secondary); font-size: 13px; }
+.vt-detail-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.vt-detail-header { padding: 10px 12px; border-bottom: 1px solid var(--tm-border-light); background: var(--bg-surface-hover); }
+.vt-detail-title { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.vt-detail-method { padding: 2px 6px; background: var(--el-color-primary); color: #fff; border-radius: 3px; font-size: 10px; font-weight: 600; font-family: 'Consolas','Monaco',monospace; }
+.vt-detail-url { flex: 1; color: var(--tm-text-primary); font-family: 'Consolas','Monaco',monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-detail-stats { display: flex; gap: 12px; margin-top: 6px; font-size: 11px; color: var(--tm-text-secondary); }
+.vt-stat { padding: 1px 6px; background: var(--bg-surface); border-radius: 4px; }
+.vt-tabs { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.vt-tabs :deep(.el-tabs) { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; overflow: hidden; }
+.vt-tabs :deep(.el-tabs__header) { margin-bottom: 0; flex-shrink: 0; background: var(--bg-surface); border-bottom: 1px solid var(--tm-border-light); padding: 0 12px; }
+.vt-tabs :deep(.el-tabs__content) { flex: 1; overflow-y: auto; padding: 0 12px 12px; min-height: 0; height: 0; }
+.vt-tabs :deep(.el-tab-pane) { height: auto; }
+.vt-section { margin-bottom: 12px; }
+.vt-section-title { font-size: 11px; font-weight: 600; color: var(--tm-text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.vt-code { background: var(--bg-surface); color: var(--tm-text-primary); font-family: 'Consolas','Monaco',monospace; font-size: 11px; padding: 10px; border-radius: 6px; max-height: 280px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid var(--tm-border-light); }
+.vt-code-response { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+.vt-code-headers { background: #f1f5f9; color: #334155; font-size: 10px; max-height: 160px; }
+.vt-empty-block { padding: 10px; color: var(--tm-text-secondary); font-size: 11px; font-style: italic; text-align: center; background: var(--bg-surface-hover); border-radius: 6px; }
+.vt-error-box { display: flex; align-items: center; gap: 6px; padding: 8px 12px; margin: 0 12px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; color: #b91c1c; font-size: 12px; }
 
 .bcp-errors-section { margin: 0 14px 8px; border-top: 1px solid var(--tm-border-light); background: rgba(var(--el-color-danger-rgb), 0.06); }
 .bcp-errors-section :deep(.el-collapse-item__header) { background: rgba(var(--el-color-danger-rgb), 0.06); padding: 0 14px; }

@@ -50,11 +50,19 @@ class JmeterEngine:
         with open(jmx_path, "w", encoding="utf-8") as f:
             f.write(jmx_content)
 
-        # 默认 jmeter.save.saveservice 不存响应体/请求体/URL,会导致采样器详情全空
-        # 显式开启 response_data + samplerData + URL,这样 JTL 才会包含这些列
-        # 这些 -J 只影响本次 run,不污染全局 jmeter.properties
+        # JMeter 5.6.3 的设计矛盾:
+        #   - CSV 输出 hardcoded 只有 16 列(timeStamp..Connect),
+        #     不会输出 samplerData/responseData/requestHeaders/responseHeaders
+        #   - HTML Dashboard (jmeter -e -o) **只接受 CSV** 输入
+        #     (5.6.3 源码报 "Report generation requires csv output format")
+        #   - XML 输出包含所有 body 字段,但 -e -o 不兼容
+        # 解决: 强制 XML 输出,放弃 JMeter 内置 HTML Dashboard,
+        # 改用前端自研图表(TrendChart/BenchRunner 已有完整可视化)。
+        # samples 详情落库后,前端通过 /runs/{id}/samples 读取并展示完整 body。
+        # 备注: 即使 -J saveservice.response_data=true 也无效,JMeter CSV 写盘时
+        # 仍按 hardcoded 16 列输出。
         save_props = {
-            "jmeter.save.saveservice.output_format": "csv",
+            "jmeter.save.saveservice.output_format": "xml",
             "jmeter.save.saveservice.response_data": "true",
             "jmeter.save.saveservice.response_data.on_error": "true",
             "jmeter.save.saveservice.samplerData": "true",
@@ -64,7 +72,13 @@ class JmeterEngine:
             "jmeter.save.saveservice.responseMessage": "true",
             "jmeter.save.saveservice.assertion_results": "none",
         }
-        cmd = [JMETER_BIN, "-n", "-t", jmx_path, "-l", jtl_path, "-e", "-o", report_dir]
+        # 关键: JMeter 启动时从 user.dir 解析 jmeter.properties,
+        # 但本任务 cwd=run_dir 不是 jmeter bin,会找不到 jmeter.properties,
+        # 导致 -J saveservice.* 也不生效。显式 -p 指定 jmeter.properties 路径。
+        jmeter_props = os.path.join(os.path.dirname(JMETER_BIN), "jmeter.properties")
+        # 关键: 删除已有的 report_dir(若存在),避免 -e -o 报 "Report generation requires csv"。
+        # 我们不用 -e -o,改用 XML jtl + 前端自研图表。
+        cmd = [JMETER_BIN, "-n", "-t", jmx_path, "-l", jtl_path, "-p", jmeter_props]
         for k, v in save_props.items():
             cmd.extend(["-J", f"{k}={v}"])
         if props:
@@ -240,8 +254,46 @@ class JtlParser:
         dt="dataType" de="dataEncoding" ng="grpThreads" na="allThreads" hn="hostname">
           <httpSample ...>
         </sampleResult>
+
+        JMeter 5.6.3 实际输出格式(无 sampleResult 包裹):
+        <httpSample t="..." s="true" rc="200" rm="OK" lb="label" ts="..." by="486" sby="112">
+          <responseHeader class="java.lang.String">...完整 headers...</responseHeader>
+          <requestHeader class="java.lang.String">...完整 headers...</requestHeader>
+          <responseData class="java.lang.String">{...JSON 响应体...}</responseData>
+          <cookies class="java.lang.String"></cookies>
+          <method class="java.lang.String">GET</method>
+          <queryString class="java.lang.String"></queryString>
+          <java.net.URL>https://...</java.net.URL>
+        </httpSample>
         """
         samples = []
+        # 提取 httpSample 子节点 body 字段的辅助函数
+        def _extract_sub_nodes(s) -> dict:
+            out = {
+                "response_data": "",
+                "request_data": "",
+                "request_headers": "",
+                "response_headers": "",
+                "method": "",
+                "url": "",
+            }
+            for sub in s:
+                tag = sub.tag
+                text = sub.text or ""
+                if tag == "responseData" and text:
+                    out["response_data"] = text[:2000] + ("..." if len(text) > 2000 else "")
+                elif tag == "samplerData" and text:
+                    out["request_data"] = text[:2000] + ("..." if len(text) > 2000 else "")
+                elif tag == "requestHeader" and text:
+                    out["request_headers"] = text[:2000] + ("..." if len(text) > 2000 else "")
+                elif tag == "responseHeader" and text:
+                    out["response_headers"] = text[:2000] + ("..." if len(text) > 2000 else "")
+                elif tag == "method" and text:
+                    out["method"] = text
+                elif tag == "java.net.URL" and text:
+                    out["url"] = text
+            return out
+
         for s in root.iter("sampleResult"):
             try:
                 item = {
@@ -282,7 +334,8 @@ class JtlParser:
                 samples.append(item)
             except (ValueError, TypeError):
                 continue
-        # 兼容旧版本 <httpSample> 标签(没 sampleResult 包裹)
+        # 兼容 JMeter 5.6 默认输出格式(无 sampleResult 包裹,直接 httpSample)
+        # 关键: 必须解析子节点(responseData/requestHeader/responseHeader/method/java.net.URL)
         for s in root.iter("httpSample"):
             try:
                 item = {
@@ -292,18 +345,25 @@ class JtlParser:
                     "ts": int(s.attrib.get("ts", 0) or 0),
                 }
                 if include_details:
-                    response_data = s.attrib.get("responseData", "") or ""
-                    request_data = s.attrib.get("samplerData", "") or ""
+                    # 优先从子节点提取 body 字段(JMeter 5.6 默认输出)
+                    sub_data = _extract_sub_nodes(s)
+                    # attrib 中的 URL/responseData 兜底
+                    response_data = sub_data["response_data"] or s.attrib.get("responseData", "") or ""
+                    request_data = sub_data["request_data"] or s.attrib.get("samplerData", "") or ""
                     if len(response_data) > 2000:
                         response_data = response_data[:2000] + "..."
                     if len(request_data) > 2000:
                         request_data = request_data[:2000] + "..."
+                    method = sub_data["method"] or _extract_method(request_data)
+                    url = sub_data["url"] or s.attrib.get("url") or s.attrib.get("URL") or ""
+                    request_headers = sub_data["request_headers"] or s.attrib.get("requestHeaders", "") or ""
+                    response_headers = sub_data["response_headers"] or s.attrib.get("responseHeaders", "") or ""
                     item.update({
                         "response_code": s.attrib.get("rc", "") or "",
                         "response_message": s.attrib.get("rm", "") or "",
                         "thread_name": s.attrib.get("tn", "") or "",
-                        "url": s.attrib.get("url") or s.attrib.get("URL") or "",
-                        "method": _extract_method(request_data),
+                        "url": url,
+                        "method": method,
                         "bytes": int(s.attrib.get("by", 0) or 0),
                         "sent_bytes": int(s.attrib.get("sby", 0) or 0),
                         "latency": int(s.attrib.get("lt", 0) or 0),
@@ -311,8 +371,8 @@ class JtlParser:
                         "failure_message": s.attrib.get("fm", "") or "",
                         "request_data": request_data,
                         "response_data": response_data,
-                        "request_headers": s.attrib.get("requestHeaders", "") or "",
-                        "response_headers": s.attrib.get("responseHeaders", "") or "",
+                        "request_headers": request_headers,
+                        "response_headers": response_headers,
                     })
                 samples.append(item)
             except (ValueError, TypeError):
@@ -321,14 +381,29 @@ class JtlParser:
 
     @staticmethod
     def _aggregate(samples: list) -> dict:
+        """聚合指标 + 详细统计(供前端 BenchRunner.vue 完整展示)
+        返回字段:
+          - 基础: total/success/failure/error_rate/tps/avg_ms/p50/p95/p99/min/max
+          - 按接口: per_url
+          - 状态码: status_distribution
+          - 响应时间分布: rt_distribution
+          - 吞吐量趋势: throughput_trend
+          - 错误详情: errors
+        """
         if not samples:
-            return {"total": 0, "tps": 0, "avg_ms": 0, "p95_ms": 0, "error_rate": 0}
+            return {
+                "total": 0, "success": 0, "failure": 0, "error_rate": 0,
+                "tps": 0, "avg_ms": 0, "p50_ms": 0, "p95_ms": 0, "p99_ms": 0,
+                "min_ms": 0, "max_ms": 0,
+                "per_url": [], "status_distribution": {},
+                "rt_distribution": {}, "throughput_trend": [], "errors": [],
+            }
 
         elapsed = sorted(s["elapsed"] for s in samples)
         success_count = sum(1 for s in samples if s["success"])
         total = len(samples)
-        ts_min = min(s["ts"] for s in samples)
-        ts_max = max(s["ts"] for s in samples)
+        ts_min = min(s["ts"] for s in samples) if samples else 0
+        ts_max = max(s["ts"] for s in samples) if samples else 0
         duration_s = max((ts_max - ts_min) / 1000.0, 0.001)
 
         def percentile(p: float) -> int:
@@ -336,6 +411,124 @@ class JtlParser:
             if idx >= total:
                 idx = total - 1
             return elapsed[idx]
+
+        # 1) per_url: 按 (label|url) 聚合
+        per_url_map = {}
+        for s in samples:
+            label = s.get("label") or s.get("url") or "unknown"
+            key = label
+            if key not in per_url_map:
+                per_url_map[key] = {
+                    "name": label,
+                    "method": s.get("method", "GET") or "GET",
+                    "url": s.get("url", "") or "",
+                    "count": 0,
+                    "success": 0,
+                    "failed": 0,
+                    "elapsed_total": 0,
+                    "elapsed_list": [],
+                }
+            entry = per_url_map[key]
+            entry["count"] += 1
+            if s.get("success"):
+                entry["success"] += 1
+            else:
+                entry["failed"] += 1
+            entry["elapsed_total"] += s["elapsed"]
+            entry["elapsed_list"].append(s["elapsed"])
+
+        per_url = []
+        for entry in per_url_map.values():
+            cnt = entry["count"]
+            elapsed_sorted = sorted(entry["elapsed_list"])
+            def _pct(arr, p):
+                if not arr:
+                    return 0
+                idx = int(len(arr) * p)
+                if idx >= len(arr):
+                    idx = len(arr) - 1
+                return arr[idx]
+            per_url.append({
+                "name": entry["name"],
+                "method": entry["method"],
+                "url": entry["url"],
+                "count": cnt,
+                "success": entry["success"],
+                "failed": entry["failed"],
+                "success_rate": round(entry["success"] / cnt * 100, 2) if cnt > 0 else 0,
+                "avg_ms": round(entry["elapsed_total"] / cnt, 2) if cnt > 0 else 0,
+                "min_ms": elapsed_sorted[0] if elapsed_sorted else 0,
+                "max_ms": elapsed_sorted[-1] if elapsed_sorted else 0,
+                "p50_ms": _pct(elapsed_sorted, 0.5),
+                "p95_ms": _pct(elapsed_sorted, 0.95),
+                "p99_ms": _pct(elapsed_sorted, 0.99),
+            })
+
+        # 2) status_distribution: 按响应码计数
+        status_distribution = {}
+        for s in samples:
+            rc = s.get("response_code", "0") or "0"
+            try:
+                rc_int = int(rc)
+            except (ValueError, TypeError):
+                rc_int = 0
+            status_distribution[rc_int if rc_int else rc] = status_distribution.get(rc_int if rc_int else rc, 0) + 1
+
+        # 3) rt_distribution: 响应时间分布(<10/10-50/50-100/100-500/500-1000/1000-3000/>3000ms)
+        rt_buckets = [
+            ("<10ms", 0, 10), ("10-50ms", 10, 50), ("50-100ms", 50, 100),
+            ("100-500ms", 100, 500), ("500-1000ms", 500, 1000),
+            ("1000-3000ms", 1000, 3000), (">3000ms", 3000, float("inf")),
+        ]
+        rt_distribution = {label: 0 for label, _, _ in rt_buckets}
+        for s in samples:
+            e = s["elapsed"]
+            for label, lo, hi in rt_buckets:
+                if lo <= e < hi:
+                    rt_distribution[label] += 1
+                    break
+
+        # 4) throughput_trend: 5秒窗口
+        trend_buckets = {}
+        for s in samples:
+            sec = int(s["ts"] / 1000)
+            bucket = (sec // 5) * 5
+            if bucket not in trend_buckets:
+                trend_buckets[bucket] = {"t": bucket, "count": 0}
+            trend_buckets[bucket]["count"] += 1
+        # 从最早 sample 时间开始算 (相对时间)
+        if trend_buckets:
+            first_sec = min(trend_buckets.keys())
+            throughput_trend = []
+            for t in sorted(trend_buckets.keys()):
+                e = trend_buckets[t]
+                # 改为相对时间 (从0开始)
+                rel = t - first_sec
+                throughput_trend.append({
+                    "t": rel,
+                    "count": e["count"],
+                    "tps": round(e["count"] / 5.0, 2),
+                })
+        else:
+            throughput_trend = []
+
+        # 5) errors: 失败详情(最多 50 条,按时间倒序)
+        errors = []
+        for s in sorted(samples, key=lambda x: x.get("ts", 0), reverse=True):
+            if not s.get("success"):
+                errors.append({
+                    "name": s.get("label", "") or "",
+                    "method": s.get("method", "GET") or "GET",
+                    "url": s.get("url", "") or "",
+                    "status": int(s.get("response_code", "0") or 0),
+                    "response_message": s.get("response_message", "") or "",
+                    "elapsed_ms": s.get("elapsed", 0) or 0,
+                    "error": s.get("failure_message", "") or s.get("response_message", "") or "请求失败",
+                    "request_body": s.get("request_data", "") or "",
+                    "response_body": s.get("response_data", "") or "",
+                })
+                if len(errors) >= 50:
+                    break
 
         return {
             "total": total,
@@ -349,4 +542,9 @@ class JtlParser:
             "p99_ms": percentile(0.99),
             "min_ms": elapsed[0],
             "max_ms": elapsed[-1],
+            "per_url": per_url,
+            "status_distribution": status_distribution,
+            "rt_distribution": rt_distribution,
+            "throughput_trend": throughput_trend,
+            "errors": errors,
         }

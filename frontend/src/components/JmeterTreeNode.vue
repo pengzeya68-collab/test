@@ -1,6 +1,12 @@
 <template>
-  <div class="tree-node" :class="{ selected: node.uid === selectedUid, disabled: node.enabled === false }">
-    <div class="node-row" @click="$emit('select', node.uid)" :style="{ paddingLeft: depth * 18 + 4 + 'px' }" :class="{ 'search-match': isMatched }">
+  <div
+    class="tree-node"
+    data-testid="jmeter-tree-node"
+    :data-node-uid="node.uid"
+    :data-node-type="node.type"
+    :class="{ selected: node.uid === selectedUid, disabled: node.enabled === false }"
+  >
+    <div class="node-row" data-testid="jmeter-tree-node-row" @click="$emit('select', node.uid)" :style="{ paddingLeft: depth * 18 + 4 + 'px' }" :class="{ 'search-match': isMatched }">
       <span class="node-toggle" v-if="node.children && node.children.length > 0" @click.stop="expanded = !expanded">
         {{ expanded ? '▼' : '▶' }}
       </span>
@@ -10,7 +16,7 @@
       <span class="node-type-tag">{{ typeLabel }}</span>
       <div class="node-actions" @click.stop>
         <el-dropdown trigger="click" size="small">
-          <el-button link size="small">⋯</el-button>
+          <el-button link size="small" data-testid="jmeter-tree-node-actions">⋯</el-button>
           <template #dropdown>
             <el-dropdown-menu>
               <template v-if="node.type === 'TestPlan'">

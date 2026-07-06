@@ -1,5 +1,5 @@
 <template>
-  <div class="login-container" ref="containerRef" @mousemove="onContainerMove">
+  <div class="login-container" data-testid="login-page" ref="containerRef" @mousemove="onContainerMove">
     <AuroraBackground />
 
     <div class="login-card" ref="cardRef" @mousemove="onCardMove" @mouseleave="onCardLeave">
@@ -8,16 +8,15 @@
           <svg width="44" height="44" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="loginLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="var(--tm-color-primary)"/>
-                <stop offset="50%" stop-color="#ec4899"/>
-                <stop offset="100%" stop-color="#00f2fe"/>
+                <stop offset="0%" stop-color="#6366F1"/>
+                <stop offset="100%" stop-color="#8B5CF6"/>
               </linearGradient>
             </defs>
             <path d="M14 22 L50 22 L50 28 L38 28 L38 50 L26 50 L26 28 L14 28 Z" fill="url(#loginLogoGrad)"/>
           </svg>
         </div>
         <h1 class="title">TestMaster</h1>
-        <p class="subtitle">测试工程师成长平台 · 2026</p>
+        <p class="subtitle">测试工程师成长平台</p>
       </div>
 
       <el-form
@@ -31,7 +30,7 @@
           prop="username"
           :rules="[{ required: true, message: '请输入用户名', trigger: 'blur' }]"
         >
-          <el-input v-model="loginForm.username" placeholder="用户名" size="large">
+          <el-input v-model="loginForm.username" data-testid="login-username-input" placeholder="用户名" size="large">
             <template #prefix><el-icon><User /></el-icon></template>
           </el-input>
         </el-form-item>
@@ -42,6 +41,7 @@
         >
           <el-input
             v-model="loginForm.password"
+            data-testid="login-password-input"
             type="password"
             placeholder="密码"
             size="large"
@@ -54,6 +54,7 @@
         <el-form-item>
           <el-button
             v-ripple
+            data-testid="login-submit-button"
             type="primary"
             size="large"
             :loading="loading"
@@ -83,7 +84,7 @@
     <div class="brand-strip">
       <span>© 2026 TestMaster</span>
       <span class="dot">·</span>
-      <span>Cyberpunk Edition</span>
+      <span>专业测试学习平台</span>
     </div>
   </div>
 </template>
@@ -159,30 +160,24 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--tm-bg-page, #09090b);
+  background: var(--tm-bg-page);
   padding: 24px;
   overflow: hidden;
-  perspective: 1200px;
 }
 
 .login-card {
   position: relative;
   z-index: 2;
-  background: var(--tm-glass-bg, rgba(24, 24, 27, 0.75));
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-radius: 24px;
-  padding: 48px 44px;
+  background: rgba(30, 41, 59, 0.85);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-radius: 20px;
+  padding: 44px 40px;
   width: 100%;
   max-width: 420px;
-  box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.3s ease;
-  transform-style: preserve-3d;
-  will-change: transform;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .login-card::before {
@@ -191,10 +186,7 @@ const handleLogin = async () => {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg,
-    rgba(var(--tm-color-primary-rgb), 0.6),
-    rgba(236, 72, 153, 0.3) 50%,
-    rgba(0, 242, 254, 0.5));
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.2));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -202,45 +194,29 @@ const handleLogin = async () => {
 }
 
 .login-card:focus-within {
-  box-shadow:
-    0 32px 96px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(var(--tm-color-primary-rgb), 0.4),
-    0 0 48px rgba(var(--tm-color-primary-rgb), 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: 0 28px 56px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241, 0.25);
 }
 
 .logo-mark {
   display: flex;
   justify-content: center;
   margin-bottom: 12px;
-  filter: drop-shadow(0 0 12px rgba(var(--tm-color-primary-rgb), 0.6));
-  animation: logo-pulse 4s ease-in-out infinite;
-}
-
-@keyframes logo-pulse {
-  0%, 100% { filter: drop-shadow(0 0 12px rgba(var(--tm-color-primary-rgb), 0.6)); }
-  50% { filter: drop-shadow(0 0 20px rgba(var(--tm-color-primary-rgb), 0.9)); }
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 36px;
+  margin-bottom: 32px;
 }
 
 .title {
-  font-size: 34px;
+  font-size: 32px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--tm-text-primary, #fafafa);
   margin: 0 0 8px 0;
-  background: linear-gradient(135deg,
-    var(--tm-color-primary),
-    #ec4899 50%,
-    var(--tm-color-primary-dark));
+  background: var(--tm-gradient-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  text-shadow: 0 0 40px rgba(var(--tm-color-primary-rgb), 0.4);
 }
 
 .subtitle {
@@ -261,24 +237,22 @@ const handleLogin = async () => {
   }
 
   :deep(.el-input__wrapper.is-focus) {
-    box-shadow: 0 0 0 1px var(--tm-color-primary),
-                0 0 24px rgba(var(--tm-color-primary-rgb), 0.3) !important;
+    box-shadow: 0 0 0 1px var(--tm-color-primary) !important;
   }
 }
 
 .login-btn {
   width: 100%;
-  height: 48px;
-  border-radius: 12px !important;
+  height: 46px;
+  border-radius: 10px !important;
   font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.02em;
   background: linear-gradient(135deg,
     var(--tm-color-primary),
     var(--tm-color-primary-dark)) !important;
   border: none !important;
-  box-shadow: 0 8px 24px rgba(var(--tm-color-primary-rgb), 0.4),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 16px rgba(var(--tm-color-primary-rgb), 0.3) !important;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -287,8 +261,8 @@ const handleLogin = async () => {
   gap: 12px;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 32px rgba(var(--tm-color-primary-rgb), 0.55) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(var(--tm-color-primary-rgb), 0.35) !important;
   }
 
   &:active {
@@ -315,7 +289,7 @@ const handleLogin = async () => {
 }
 
 .footer-link {
-  color: var(--tm-color-primary, #ec4899);
+  color: var(--tm-color-primary);
   text-decoration: none;
   font-weight: 500;
   transition: all 0.2s ease;

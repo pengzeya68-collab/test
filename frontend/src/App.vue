@@ -79,7 +79,7 @@
               :class="{ active: isSidebarActive(item.path) }"
               :title="item.name"
             >
-              <span class="sidebar-icon">{{ item.icon }}</span>
+              <span class="sidebar-icon"><el-icon><component :is="item.icon" /></el-icon></span>
               <span class="sidebar-text">{{ item.name }}</span>
               <el-badge v-if="item.badge" :value="item.badge" :max="9" class="sidebar-badge" />
             </router-link>
@@ -173,7 +173,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, ArrowDown, Brush, Calendar, Menu } from '@element-plus/icons-vue'
+import { User, ArrowDown, Brush, Calendar, Menu, House, MapLocation, EditPen, Notebook, Tickets, Microphone, List, Folder, ChatDotRound, Monitor, Setting, Lightning, DocumentCopy, DataLine, Guide, TrendCharts, Trophy, Calendar as CalendarIcon, Medal, ChatLineRound, Aim } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { themes, loadSavedTheme, applyTheme } from '@/utils/ThemeConfig'
@@ -205,52 +205,52 @@ const sidebarGroups = computed(() => {
     {
       label: '学习',
       items: [
-        { name: '首页', path: '/', icon: '🏠' },
-        { name: '学习路径', path: '/learning-paths', icon: '🗺️' },
-        { name: '习题库', path: '/exercises', icon: '✏️' },
-        { name: '错题本', path: '/wrong-answers', icon: '📖' },
-        { name: '模考大赛', path: '/exams', icon: '📝' },
+        { name: '首页', path: '/', icon: House },
+        { name: '学习路径', path: '/learning-paths', icon: MapLocation },
+        { name: '习题库', path: '/exercises', icon: EditPen },
+        { name: '错题本', path: '/wrong-answers', icon: Notebook },
+        { name: '模考大赛', path: '/exams', icon: Tickets },
       ],
     },
     {
       label: '面试',
       items: [
-        { name: '面试模拟', path: '/interview/simulate', icon: '🎤' },
-        { name: '面试题库', path: '/interview', icon: '📋' },
-        { name: '我的面试', path: '/interview/my', icon: '📁' },
+        { name: '面试模拟', path: '/interview/simulate', icon: Microphone },
+        { name: '面试题库', path: '/interview', icon: List },
+        { name: '我的面试', path: '/interview/my', icon: Folder },
       ],
     },
     {
       label: '工具',
       items: [
-        { name: 'AI导师', path: '/ai-tutor', icon: '🤖' },
-        { name: '代码练习室', path: '/code-playground', icon: '💻' },
-        { name: '自动化测试', path: '/auto-test', icon: '⚙️' },
-        { name: 'JMeter 助手', path: '/jmeter-assistant', icon: '⚡' },
-        { name: 'AI生成用例', path: '/ai-generate-cases', icon: '🧪' },
-        { name: '覆盖率看板', path: '/test-coverage', icon: '📐' },
-        { name: '测试工具导航', path: '/tools', icon: '🧭' },
+        { name: 'AI导师', path: '/ai-tutor', icon: ChatDotRound },
+        { name: '代码练习室', path: '/code-playground', icon: Monitor },
+        { name: '自动化测试', path: '/auto-test', icon: Setting },
+        { name: 'JMeter 助手', path: '/jmeter-assistant', icon: Lightning },
+        { name: 'AI生成用例', path: '/ai-generate-cases', icon: DocumentCopy },
+        { name: '覆盖率看板', path: '/test-coverage', icon: DataLine },
+        { name: '测试工具导航', path: '/tools', icon: Guide },
       ],
     },
     {
       label: '成长',
       items: [
-        { name: '技能分析', path: '/skill-analysis', icon: '📊' },
-        { name: '排行榜', path: '/leaderboard', icon: '🏆' },
-        { name: '学习周报', path: '/weekly-report', icon: '📈' },
-        { name: '技能证书', path: '/certificates', icon: '🎓' },
+        { name: '技能分析', path: '/skill-analysis', icon: TrendCharts },
+        { name: '排行榜', path: '/leaderboard', icon: Trophy },
+        { name: '学习周报', path: '/weekly-report', icon: CalendarIcon },
+        { name: '技能证书', path: '/certificates', icon: Medal },
       ],
     },
     {
       label: '社区',
       items: [
-        { name: '社区交流', path: '/community', icon: '💬' },
+        { name: '社区交流', path: '/community', icon: ChatLineRound },
       ],
     },
   ]
 
   if (!userStore.assessmentCompleted) {
-    groups[0].items.push({ name: '入学测评', path: '/assessment', icon: '🎯' })
+    groups[0].items.push({ name: '入学测评', path: '/assessment', icon: Aim })
   }
 
   if (!checkinStatus.value.checked_in_today) {
@@ -397,7 +397,7 @@ const goToRegister = () => {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: var(--tm-bg-page);
   color: var(--tm-text-primary);
 }
@@ -408,26 +408,16 @@ body {
   flex-direction: column;
   background: var(--bg-base);
   position: relative;
-  z-index: 1;
 }
 
-/* 全局背景科幻光效 */
-#app::before {
-  content: '';
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at 50% 0%, rgba(var(--tm-color-primary-rgb), 0.04), transparent 50%),
-            radial-gradient(circle at 100% 100%, rgba(var(--tm-color-primary-rgb), 0.03), transparent 50%);
-  pointer-events: none;
-  z-index: -1;
-}
-
-/* 顶部导航栏 - 玻璃拟态 */
+/* 顶部导航栏 */
 .navbar {
   height: 64px;
   background: var(--tm-sidebar-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--tm-border-light);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -456,13 +446,12 @@ body {
 }
 
 .logo-text {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: 1px;
-  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  letter-spacing: -0.02em;
+  background: var(--tm-gradient-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 8px rgba(var(--tm-color-primary-rgb), 0.4));
 }
 
 .nav-menu {
@@ -493,10 +482,9 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: 20px;
-  height: 3px;
-  background: var(--accent-primary);
-  border-radius: 4px;
-  box-shadow: 0 0 10px rgba(var(--tm-color-primary-rgb), 0.4);
+  height: 2px;
+  background: var(--tm-color-primary);
+  border-radius: 2px;
 }
 
 .nav-right {
@@ -599,14 +587,14 @@ body {
   align-items: stretch;
 }
 
-/* 侧边栏 - 玻璃态 */
+/* 侧边栏 */
 .sidebar {
-  width: 280px;
-  min-width: 280px;
+  width: 260px;
+  min-width: 260px;
   background: var(--tm-card-bg);
   border: 1px solid var(--tm-border-light);
   border-radius: var(--radius-lg);
-  box-shadow: var(--tm-shadow-base);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -628,33 +616,44 @@ body {
 }
 
 .sidebar-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   padding: 0 12px;
   margin-bottom: 8px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.08em;
 }
 
 .sidebar-item {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 14px;
   color: var(--text-secondary);
   text-decoration: none;
   border-radius: var(--radius-md);
-  margin-bottom: 4px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 2px;
+  transition: all 0.2s ease;
   position: relative;
-  overflow: hidden;
+  cursor: pointer;
 }
 
 .sidebar-icon {
-  margin-right: 12px;
-  font-size: 18px;
-  transition: transform 0.3s;
+  margin-right: 10px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.sidebar-icon .el-icon {
+  font-size: 16px;
 }
 
 .sidebar-text {
@@ -667,30 +666,34 @@ body {
 
 .sidebar-item:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .sidebar-item:hover .sidebar-icon {
-  transform: scale(1.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.12);
+  color: var(--tm-color-primary);
 }
 
 .sidebar-item.active {
-  color: var(--accent-primary);
+  color: var(--tm-color-primary);
   background: rgba(var(--tm-color-primary-rgb), 0.1);
-  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.2);
-  box-shadow: inset 0 0 20px rgba(var(--tm-color-primary-rgb), 0.05);
   font-weight: 600;
+}
+
+.sidebar-item.active .sidebar-icon {
+  background: rgba(var(--tm-color-primary-rgb), 0.18);
+  color: var(--tm-color-primary);
 }
 
 .sidebar-item.active::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0;
-  bottom: 0;
+  top: 8px;
+  bottom: 8px;
   width: 3px;
   background: var(--tm-color-primary);
-  box-shadow: 0 0 10px rgba(var(--tm-color-primary-rgb), 0.4);
+  border-radius: 0 3px 3px 0;
 }
 
 .sidebar-badge {
@@ -727,13 +730,12 @@ body {
 :deep(.el-dialog) {
   background: var(--tm-card-bg) !important;
   border: 1px solid var(--tm-border-light);
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(var(--tm-color-primary-rgb), 0.03);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
   border-radius: var(--radius-lg);
 }
 :deep(.el-dialog__title) {
-  color: var(--tm-color-primary);
-  font-weight: 800;
-  text-shadow: 0 0 10px rgba(var(--tm-color-primary-rgb), 0.4);
+  color: var(--tm-text-primary);
+  font-weight: 700;
 }
 
 .checkin-content {
@@ -745,11 +747,10 @@ body {
 }
 
 .streak-number {
-  font-size: 64px;
-  font-weight: 900;
+  font-size: 56px;
+  font-weight: 800;
   color: var(--tm-color-primary);
   line-height: 1;
-  text-shadow: 0 0 20px rgba(var(--tm-color-primary-rgb), 0.4);
 }
 
 .streak-label {

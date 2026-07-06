@@ -1,5 +1,5 @@
 <template>
-  <div class="auto-test-page">
+  <div class="auto-test-page" data-testid="auto-test-page">
     <div class="beginner-guide-banner" v-if="showGuide">
       <div class="guide-content">
         <div class="guide-icon">🚀</div>
@@ -79,6 +79,7 @@
             v-for="group in tabGroups"
             :key="group.key"
             class="tab-group-btn"
+            :data-testid="`auto-test-group-${group.key}`"
             :class="{ active: activeGroup === group.key }"
             @click="switchGroup(group.key)"
           >
@@ -109,6 +110,7 @@
           v-for="tab in currentGroupTabs"
           :key="tab.key"
           class="tab-item"
+          :data-testid="`auto-test-tab-${tab.key}`"
           :class="{ 'active': activeTab === tab.key }"
           @click="activeTab = tab.key; handleTabChange(tab.key)"
         >
@@ -158,7 +160,7 @@
       <DataFactory />
     </div>
 
-    <div v-if="activeTab === 'jmeter' || visitedTabs.has('jmeter')" v-show="activeTab === 'jmeter'" class="tab-content">
+    <div v-if="activeTab === 'jmeter' || visitedTabs.has('jmeter')" v-show="activeTab === 'jmeter'" class="tab-content" data-testid="auto-test-panel-jmeter">
       <JmeterAssistant :environment-list="environmentList" />
     </div>
 

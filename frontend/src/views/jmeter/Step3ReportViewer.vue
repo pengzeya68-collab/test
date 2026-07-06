@@ -563,7 +563,7 @@ defineExpose({
 .col-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: #334155; }
 .col-num { width: 60px; text-align: right; flex-shrink: 0; font-weight: 600; font-size: 11.5px; }
 
-.vrt-container { display: flex; gap: 0; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; background: #fff; flex: 1; min-height: 300px; min-height: 0; }
+.vrt-container { display: flex; gap: 0; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; background: #fff; flex: 1; height: calc(100vh - 240px); max-height: 680px; min-height: 380px; }
 .vrt-left-col { display: flex; flex-direction: column; flex-shrink: 0; width: 280px; border-right: 1px solid #ccc; background: #f5f5f5; overflow: hidden; min-height: 0; }
 .vrt-sample-list { flex: 1; overflow-y: auto; min-height: 0; }
 .vrt-sample-item { display: flex; align-items: center; gap: 6px; padding: 4px 8px; cursor: pointer; transition: background .1s; font-size: 11px; border-bottom: 1px solid #f3f4f6; }
@@ -579,9 +579,10 @@ defineExpose({
 .vrt-detail-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .vrt-empty-detail { flex: 1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 13px; }
 .vrt-tabs { height: 100%; display: flex; flex-direction: column; }
-.vrt-tabs :deep(.el-tabs__header) { margin-bottom: 0; background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 0 8px; }
-.vrt-tabs :deep(.el-tabs__content) { flex: 1; overflow-y: auto; padding: 8px 12px; }
-.vrt-inner-tabs :deep(.el-tabs__header) { margin-bottom: 4px; }
+.vrt-tabs :deep(.el-tabs) { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; overflow: hidden; }
+.vrt-tabs :deep(.el-tabs__header) { margin-bottom: 0; background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 0 8px; flex-shrink: 0; }
+.vrt-tabs :deep(.el-tabs__content) { flex: 1; overflow-y: auto; padding: 8px 12px; min-height: 0; height: 0; }
+.vrt-inner-tabs :deep(.el-tabs__header) { margin-bottom: 4px; position: sticky; top: 0; z-index: 9; background: #f9fafb; }
 .vrt-inner-tabs :deep(.el-tabs__content) { max-height: calc(100% - 36px); overflow-y: auto; }
 .vrt-table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.8; }
 .vrt-table td { padding: 2px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }

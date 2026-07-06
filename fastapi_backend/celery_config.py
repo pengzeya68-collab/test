@@ -56,4 +56,35 @@ app.conf.worker_max_tasks_per_child = 100
 # Redis 健康检查（防止 broker 连接断开后不重连）
 app.conf.broker_connection_retry_on_startup = True
 
+# 关键: 必须在 worker 启动时显式 import 所有 model,
+# 否则 JmeterBenchRun.user_id 等外键引用 "users.id" 时会抛 NoReferencedTableError
+import fastapi_backend.models.models  # noqa: F401
+import fastapi_backend.models.autotest  # noqa: F401
+import fastapi_backend.models.autotest_jmeter_models  # noqa: F401
+
+# Celery worker 启动钩子(每个 ForkPoolWorker 子进程初始化时执行)
+from celery.signals import worker_process_init
+
+@worker_process_init.connect
+def _setup_metadata(**kwargs):
+    """每个 ForkPoolWorker 子进程初始化时,确保所有 model 都已注册到 Base.metadata。
+    父进程正确 import 不代表 fork 后的子进程也注册了(子进程继承父进程内存,
+    但 ORM class 的 __table__ 引用若发生在子进程的某次延迟导入,
+    可能找不到 users 表)。这里显式 import 一次,确保万无一失。
+    """
+    import logging as _lg
+    _lg.getLogger(__name__).info(
+        "[worker_process_init] re-importing models for child pid=%d",
+        __import__("os").getpid(),
+    )
+    import fastapi_backend.models.models  # noqa: F401
+    import fastapi_backend.models.autotest  # noqa: F401
+    import fastapi_backend.models.autotest_jmeter_models  # noqa: F401
+    from fastapi_backend.core.database import Base
+    _lg.getLogger(__name__).info(
+        "[worker_process_init] metadata tables=%d, has users=%s",
+        len(Base.metadata.tables),
+        "users" in Base.metadata.tables,
+    )
+
 app.autodiscover_tasks(["fastapi_backend.tasks"])

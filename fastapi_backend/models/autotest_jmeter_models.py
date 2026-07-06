@@ -21,7 +21,7 @@ class JmeterBenchRun(Base):
     html_report_path = Column(String(500))
     summary_json = Column(Text)  # 聚合指标 JSON: p50/p95/p99/tps/error_rate
     error_msg = Column(Text)
-    script_hash = Column(String(64), index=True)  # JMX 内容 SHA256,用于基线匹配
+    script_hash = Column(String(128), index=True)  # JMX 内容 SHA256,用于基线匹配
     regression = Column(Integer, default=0)  # 0=未回归,1=性能回归(超基线)
     started_at = Column(DateTime)
     finished_at = Column(DateTime)
@@ -78,7 +78,7 @@ class JmeterPerformanceBaseline(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
-    script_hash = Column(String(64), index=True)  # 脚本内容 SHA256,自动匹配
+    script_hash = Column(String(128), index=True)  # 脚本内容 SHA256,自动匹配(留余量给 fallback hash)
     p95_threshold_ms = Column(Integer)
     p99_threshold_ms = Column(Integer)
     tps_threshold = Column(Float)

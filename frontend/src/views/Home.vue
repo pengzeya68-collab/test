@@ -32,7 +32,7 @@
       </div>
       <div class="grid-layout cols-3">
         <div class="standard-card stage-card" v-for="(stage, idx) in stages" :key="stage.id" v-spotlight v-fade-in="{ stagger: idx * 80 }" @click="viewStagePaths(stage.id)">
-          <div class="card-icon">{{ stage.icon }}</div>
+          <div class="card-icon-wrap"><el-icon><component :is="stage.icon" /></el-icon></div>
           <h3 class="card-title">{{ stage.title }}</h3>
           <p class="card-desc">{{ stage.desc }}</p>
           <div class="card-meta">
@@ -51,13 +51,13 @@
       </div>
       <div class="grid-layout cols-2">
         <div class="standard-card practice-card" @click="goToModule('automation')">
-          <div class="card-icon">🤖</div>
+          <div class="card-icon-wrap"><el-icon><Setting /></el-icon></div>
           <h3 class="card-title">自动化测试</h3>
           <p class="card-desc">Selenium、Appium、Playwright、Cypress 自动化测试实战习题</p>
           <button class="btn-primary-sm">开始练习</button>
         </div>
         <div class="standard-card practice-card" @click="goToModule('api')">
-          <div class="card-icon">🌐</div>
+          <div class="card-icon-wrap"><el-icon><DataLine /></el-icon></div>
           <h3 class="card-title">接口调试 &amp; 自动化</h3>
           <p class="card-desc">在线接口调试、自动化测试场景编排、定时任务调度</p>
           <button class="btn-primary-sm">开始使用</button>
@@ -97,7 +97,7 @@
             <span class="stat-label">项目实战 →</span>
           </div>
           <div class="mini-stat-card clickable" v-spotlight @click="router.push('/tools')">
-            <span class="stat-num">🔧</span>
+            <span class="stat-num stat-icon"><el-icon><Guide /></el-icon></span>
             <span class="stat-label">测试工具导航 →</span>
           </div>
         </div>
@@ -182,22 +182,22 @@
       </div>
       <div class="grid-layout cols-4">
         <div class="advantage-card">
-          <div class="adv-icon">📚</div>
+          <div class="adv-icon-wrap"><el-icon><Notebook /></el-icon></div>
           <h4 class="adv-title">体系化课程</h4>
           <p class="adv-desc">对标行业一线测试机构的课程体系，覆盖测试全领域</p>
         </div>
         <div class="advantage-card">
-          <div class="adv-icon">✏️</div>
+          <div class="adv-icon-wrap"><el-icon><EditPen /></el-icon></div>
           <h4 class="adv-title">实战习题</h4>
           <p class="adv-desc">大量实战习题，边学边练，快速巩固知识点</p>
         </div>
         <div class="advantage-card">
-          <div class="adv-icon">📈</div>
+          <div class="adv-icon-wrap"><el-icon><TrendCharts /></el-icon></div>
           <h4 class="adv-title">进度跟踪</h4>
           <p class="adv-desc">完整的学习进度跟踪系统，清晰掌握学习情况</p>
         </div>
         <div class="advantage-card">
-          <div class="adv-icon">👤</div>
+          <div class="adv-icon-wrap"><el-icon><Medal /></el-icon></div>
           <h4 class="adv-title">职业规划</h4>
           <p class="adv-desc">清晰的职业成长路径，从小白到测试架构师的完整路线</p>
         </div>
@@ -209,7 +209,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search } from '@element-plus/icons-vue'
+import { Search, Notebook, EditPen, Setting, DataLine, Guide, TrendCharts, Medal, Reading, Odometer, OfficeBuilding } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
 
@@ -352,11 +352,11 @@ const fetchDashboardData = async () => {
 }
 
 const stages = [
-  { id: 1, title: '测试入门筑基', desc: '建立测试思维，掌握基础理论和测试方法', duration: '4周', target: '测试实习生', icon: '📚' },
-  { id: 2, title: '功能测试精通', desc: '独立完成Web/APP/小程序等各类项目功能测试', duration: '8周', target: '初级测试工程师', icon: '✏️' },
-  { id: 3, title: '测试技术进阶', desc: '掌握接口测试、自动化测试基础、性能测试基础', duration: '12周', target: '中级测试工程师', icon: '📈' },
-  { id: 4, title: '自动化测试专家', desc: '搭建自动化测试框架，完成UI/接口/性能自动化', duration: '16周', target: '高级测试工程师', icon: '⚙️' },
-  { id: 5, title: '测试架构师之路', desc: '测试平台开发、质量体系建设、测试效能提升', duration: '20周+', target: '测试架构师/专家', icon: '🏢' },
+  { id: 1, title: '测试入门筑基', desc: '建立测试思维，掌握基础理论和测试方法', duration: '4周', target: '测试实习生', icon: Reading },
+  { id: 2, title: '功能测试精通', desc: '独立完成Web/APP/小程序等各类项目功能测试', duration: '8周', target: '初级测试工程师', icon: EditPen },
+  { id: 3, title: '测试技术进阶', desc: '掌握接口测试、自动化测试基础、性能测试基础', duration: '12周', target: '中级测试工程师', icon: TrendCharts },
+  { id: 4, title: '自动化测试专家', desc: '搭建自动化测试框架，完成UI/接口/性能自动化', duration: '16周', target: '高级测试工程师', icon: Odometer },
+  { id: 5, title: '测试架构师之路', desc: '测试平台开发、质量体系建设、测试效能提升', duration: '20周+', target: '测试架构师/专家', icon: OfficeBuilding },
 ]
 
 const goToLearningPaths = () => router.push('/learning-paths')
@@ -437,11 +437,11 @@ const viewStagePaths = (stageId) => router.push({ path: '/learning-paths', query
 /* ==================== Hero Banner ==================== */
 .hero-banner {
   width: 100%;
-  padding: 48px 48px 42px;
+  padding: 56px 48px 48px;
   text-align: center;
-  background: linear-gradient(135deg, var(--tm-bg-page) 0%, var(--tm-card-bg) 40%, rgba(var(--tm-color-primary-rgb), 0.06) 70%, var(--tm-bg-page) 100%);
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
@@ -449,32 +449,23 @@ const viewStagePaths = (stageId) => router.push({ path: '/learning-paths', query
 .hero-banner::before {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -30%;
-  width: 160%;
-  height: 200%;
+  inset: 0;
   background:
-    radial-gradient(ellipse at 30% 20%, rgba(var(--tm-color-primary-rgb), 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 80%, rgba(99, 102, 241, 0.10) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(0, 242, 254, 0.06) 0%, transparent 60%);
-  animation: heroGlow 10s ease-in-out infinite alternate;
-}
-@keyframes heroGlow {
-  0% { opacity: 0.6; transform: scale(1); }
-  100% { opacity: 1; transform: scale(1.08); }
+    radial-gradient(ellipse 60% 80% at 20% 0%, rgba(99, 102, 241, 0.15), transparent 55%),
+    radial-gradient(ellipse 50% 60% at 90% 100%, rgba(139, 92, 246, 0.1), transparent 50%);
+  pointer-events: none;
 }
 
 .hero-title {
-  font-size: 42px;
-  font-weight: 900;
-  margin: 0 0 6px;
+  font-size: 44px;
+  font-weight: 800;
+  margin: 0 0 8px;
   letter-spacing: -0.03em;
-  line-height: 1.2;
-  background: linear-gradient(135deg, var(--tm-color-primary) 0%, var(--tm-color-primary) 15%, rgba(var(--tm-color-primary-rgb), 0.6) 50%, rgba(var(--tm-color-primary-rgb), 0.3) 85%);
+  line-height: 1.15;
+  background: var(--tm-gradient-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 20px rgba(var(--tm-color-primary-rgb), 0.3));
   position: relative;
   z-index: 1;
 }
@@ -490,9 +481,8 @@ const viewStagePaths = (stageId) => router.push({ path: '/learning-paths', query
 .hero-subtitle .typewriter {
   display: inline-block;
   font-weight: 600;
-  color: var(--tm-color-primary);
-  text-shadow: 0 0 12px rgba(var(--tm-color-primary-rgb), 0.5);
-  letter-spacing: 0.02em;
+  color: var(--tm-color-primary-light);
+  letter-spacing: 0.01em;
 }
 .hero-subtitle .cursor {
   display: inline-block;
@@ -586,21 +576,38 @@ const viewStagePaths = (stageId) => router.push({ path: '/learning-paths', query
   border: 1px solid var(--tm-border-light);
   border-radius: 14px;
   padding: 24px;
-  transition: all 0.3s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
   display: flex;
   flex-direction: column;
-}
-.standard-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(var(--tm-color-primary-rgb), 0.25);
-  box-shadow: 0 8px 30px rgba(var(--tm-color-primary-rgb), 0.12);
-}
-
-.stage-card {
   cursor: pointer;
 }
-.stage-card .card-icon {
-  font-size: 28px;
+.standard-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.card-icon-wrap,
+.adv-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--tm-color-primary-rgb), 0.12);
+  color: var(--tm-color-primary);
+  margin-bottom: 14px;
+}
+.card-icon-wrap .el-icon,
+.adv-icon-wrap .el-icon {
+  font-size: 22px;
+}
+.adv-icon-wrap {
+  margin: 0 auto 12px;
+}
+
+.stage-card .card-icon-wrap {
   margin-bottom: 14px;
 }
 .stage-card .card-title {
@@ -655,11 +662,9 @@ const viewStagePaths = (stageId) => router.push({ path: '/learning-paths', query
 /* ==================== 专项练习卡片 ==================== */
 .practice-card {
   text-align: center;
-  cursor: pointer;
 }
-.practice-card .card-icon {
-  font-size: 44px;
-  margin-bottom: 14px;
+.practice-card .card-icon-wrap {
+  margin: 0 auto 14px;
 }
 .practice-card .card-title {
   font-size: 19px;
@@ -709,14 +714,25 @@ const viewStagePaths = (stageId) => router.push({ path: '/learning-paths', query
 }
 .stat-num {
   display: block;
-  font-size: 30px;
-  font-weight: 900;
-  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
+  font-size: 28px;
+  font-weight: 800;
+  background: var(--tm-gradient-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   line-height: 1;
   margin-bottom: 6px;
+}
+.stat-num.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  -webkit-text-fill-color: var(--tm-color-primary);
+  color: var(--tm-color-primary);
+}
+.stat-num.stat-icon .el-icon {
+  font-size: 28px;
 }
 .stat-label {
   font-size: 12px;
@@ -877,13 +893,9 @@ const viewStagePaths = (stageId) => router.push({ path: '/learning-paths', query
   transition: all 0.3s ease;
 }
 .advantage-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(var(--tm-color-primary-rgb), 0.2);
-  box-shadow: 0 6px 24px rgba(var(--tm-color-primary-rgb), 0.08);
-}
-.adv-icon {
-  font-size: 34px;
-  margin-bottom: 10px;
+  transform: translateY(-3px);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 .adv-title {
   font-size: 16px;

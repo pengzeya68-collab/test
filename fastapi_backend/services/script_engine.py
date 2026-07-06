@@ -656,8 +656,12 @@ class PmPython:
     - pm.test(name, fn) 测试块
     """
 
+    @property
+    def _context(self):
+        raise AttributeError("禁止访问属性 '_context'")
+
     def __init__(self, context: Dict[str, Any]):
-        self._context = context
+        self._internal_context = context
         # 断言与测试结果统一收集到 test_results，便于执行引擎合并计数
         self._assertions: List[Dict[str, Any]] = context.setdefault("test_results", [])
         env_vars = context.setdefault("env_vars", {})
@@ -678,10 +682,8 @@ class PmPython:
             headers=context.get("request_headers", {}) or {},
             body=context.get("request_body"),
         )
-        # environment 对应环境变量，variables 对应临时变量（与 JS 引擎保持一致）
-        variables_store = context.setdefault("variables", {})
         self.environment = _PmVarStore(env_vars)
-        self.variables = _PmVarStore(variables_store)
+        self.variables = _PmVarStore(session_vars)
         self.sessionVariables = _PmVarStore(session_vars)
         self.globals = _PmGlobals(globals_store, self._persisted_globals)
 
@@ -696,14 +698,14 @@ class PmPython:
         """
         from fastapi_backend.utils.autotest_helpers import extract_jsonpath_value
 
-        source = self.response.json() if from_body else self._context.get("response_body")
+        source = self.response.json() if from_body else self._internal_context.get("response_body")
         try:
             value = extract_jsonpath_value(source, json_path)
         except Exception as e:
             _logger.warning(f"pm.extract 提取失败 ({json_path}): {e}")
             value = None
         self.variables.set(name, value)
-        self._context.setdefault("extracted_vars", {})[name] = value
+        self._internal_context.setdefault("extracted_vars", {})[name] = value
         return value
 
     def test(self, name: str, fn) -> None:

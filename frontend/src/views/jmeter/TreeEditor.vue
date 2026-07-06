@@ -1,5 +1,5 @@
 <template>
-  <div class="panel tree-panel" :style="{ width: treeWidth + 'px', minWidth: treeWidth + 'px' }">
+  <div class="panel tree-panel" data-testid="jmeter-tree-panel" :style="{ width: treeWidth + 'px', minWidth: treeWidth + 'px' }">
     <div class="panel-title">
       <span>📋 脚本结构</span>
       <div class="tree-toolbar">
@@ -9,13 +9,13 @@
       </div>
     </div>
     <div class="tree-search-bar">
-      <el-input v-model="treeSearchQuery" placeholder="🔍 搜索节点名称..." size="small" clearable prefix-icon="Search" />
+      <el-input v-model="treeSearchQuery" data-testid="jmeter-tree-search-input" placeholder="🔍 搜索节点名称..." size="small" clearable prefix-icon="Search" />
     </div>
     <div class="tree-body">
-      <div class="tree-root-label" @click="$emit('select-node', modelValue.uid)">
+      <div class="tree-root-label" data-testid="jmeter-tree-root-node" @click="$emit('select-node', modelValue.uid)">
         <span class="root-icon">📋</span>
         <span>{{ modelValue.name }}</span>
-        <el-button link size="small" @click.stop="$emit('add-root-element')" style="margin-left:auto">
+        <el-button link size="small" data-testid="jmeter-tree-add-threadgroup-button" @click.stop="$emit('add-root-element')" style="margin-left:auto">
           <el-icon><Plus /></el-icon> 添加线程组
         </el-button>
       </div>

@@ -12,7 +12,26 @@ from celery.exceptions import Ignore
 # 确保 AI 生成任务被 Celery worker 发现和注册
 import fastapi_backend.services.autotest_ai_generator  # noqa: F401
 
+# 关键: 必须在 Celery worker 启动时把所有 model 注册到 Base.metadata,
+# 否则 JmeterBenchRun.user_id 等外键引用 "users.id" 时会抛 NoReferencedTableError,
+# 导致所有 jmeter 任务一启动就 commit 失败,被 Ignore 后状态永远停留在 pending。
+import fastapi_backend.models.models  # noqa: F401  (User)
+import fastapi_backend.models.autotest  # noqa: F401  (其他关联表)
+import fastapi_backend.models.autotest_jmeter_models  # noqa: F401  (JmeterBenchRun/Sample/Snapshot/Baseline)
+
 _logger = logging.getLogger(__name__)
+
+# 调试: 启动时打印 metadata 注册状态
+try:
+    from fastapi_backend.core.database import Base as _Base
+    _logger.info(
+        "[Celery startup] Base.metadata tables count=%d, has users=%s, has jmeter_bench_runs=%s",
+        len(_Base.metadata.tables),
+        "users" in _Base.metadata.tables,
+        "jmeter_bench_runs" in _Base.metadata.tables,
+    )
+except Exception as _e:
+    _logger.warning("[Celery startup] metadata check failed: %s", _e)
 
 
 # 模块级全局共享engine，避免每次Celery任务创建新AsyncEngine
@@ -386,7 +405,9 @@ def task_run_jmeter_bench(self, run_id: int):
 
             run.jmx_path = engine_result.get("jmx_path")
             run.jtl_path = engine_result.get("jtl_path")
-            run.html_report_path = engine_result.get("report_dir")
+            # Stage F.4 重构后:放弃 JMeter 内置 HTML Dashboard (与 XML 冲突,见 jmeter_engine.py)
+            # html_report_path 始终为 None,前端通过自研图表展示数据。
+            run.html_report_path = None
             run.summary_json = _json.dumps(summary, ensure_ascii=False)
             run.finished_at = _dt.utcnow()
 

@@ -790,10 +790,10 @@ async def _run_bench(task_id: str, config: dict):
                                 "start_time": req_start_iso,
                                 "data_type": "text",
                                 "error": None,
-                                "request_body": "",
-                                "response_body": "",
-                                "request_headers": {},
-                                "response_headers": {},
+                                "request_body": (req_body or "")[:10000],
+                                "response_body": raw_body[:30000].decode("utf-8", errors="replace") if raw_body else "",
+                                "request_headers": dict(headers) if headers else {},
+                                "response_headers": resp_headers,
                                 "http_fields": {
                                     "content_type": content_type,
                                     "encoding": data_encoding,
@@ -1515,6 +1515,25 @@ async def submit_jmeter_run(
     return result
 
 
+@router.get("/jmeter/runs/compare")
+async def compare_jmeter_runs(
+    ids: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """对比多次压测结果，ids 为逗号分隔的 run_id
+    关键:此端点必须声明在 /jmeter/runs/{run_id} 之前,否则 FastAPI
+    会把 "compare" 当作 run_id 报 422。
+    """
+    try:
+        run_ids = [int(x.strip()) for x in ids.split(",") if x.strip()]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ids 参数格式错误，应为逗号分隔的数字")
+    if not run_ids or len(run_ids) > 20:
+        raise HTTPException(status_code=400, detail="至少 1 个、最多 20 个 run_id")
+    return await jmeter_compare_runs(db, run_ids)
+
+
 @router.get("/jmeter/runs/{run_id}")
 async def get_jmeter_run(
     run_id: int,
@@ -1606,22 +1625,6 @@ async def list_jmeter_runs(
     if offset < 0:
         offset = 0
     return await jmeter_list_runs(db, user_id=current_user.id, limit=limit, offset=offset)
-
-
-@router.get("/jmeter/runs/compare")
-async def compare_jmeter_runs(
-    ids: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """对比多次压测结果，ids 为逗号分隔的 run_id"""
-    try:
-        run_ids = [int(x.strip()) for x in ids.split(",") if x.strip()]
-    except ValueError:
-        raise HTTPException(status_code=400, detail="ids 参数格式错误，应为逗号分隔的数字")
-    if not run_ids or len(run_ids) > 20:
-        raise HTTPException(status_code=400, detail="至少 1 个、最多 20 个 run_id")
-    return await jmeter_compare_runs(db, run_ids)
 
 
 @router.get("/jmeter/engine-status")

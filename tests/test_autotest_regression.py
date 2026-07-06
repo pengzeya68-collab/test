@@ -4,22 +4,43 @@
       Mock服务、JMeter、AI生成、覆盖率、导入导出、调试执行、调度、邮件
 每个测试验证业务逻辑，不只是HTTP状态码
 """
+import os
+from urllib.parse import urljoin
+
 import pytest
 import requests
 import json
 import time
 import uuid
 import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-BASE = "https://34.150.26.84"
+pytestmark = [pytest.mark.remote, pytest.mark.regression, pytest.mark.slow]
+
+
+def _remote_base_url():
+    base_url = os.getenv("TESTMASTER_REMOTE_BASE_URL")
+    if not base_url:
+        pytest.skip("设置 TESTMASTER_REMOTE_BASE_URL 后才会执行远程回归测试")
+    return base_url.rstrip("/")
+
+
+def _remote_verify_tls():
+    value = os.getenv("TESTMASTER_REMOTE_VERIFY_TLS", "true").strip().lower()
+    verify = value in {"1", "true", "yes", "on"}
+    if not verify:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    return verify
+
+
+def _remote_timeout():
+    return float(os.getenv("TESTMASTER_REMOTE_TIMEOUT", "15"))
 
 
 def api(method, path, headers=None, **kwargs):
     """统一API调用"""
-    url = f"{BASE}{path}"
-    r = getattr(requests, method)(url, headers=headers, verify=False, timeout=15, **kwargs)
-    return r
+    url = urljoin(f"{_remote_base_url()}/", path.lstrip("/"))
+    kwargs.setdefault("timeout", _remote_timeout())
+    return getattr(requests, method)(url, headers=headers, verify=_remote_verify_tls(), **kwargs)
 
 
 # ================================================================
@@ -683,7 +704,7 @@ class TestMockService:
 
     def test_06_dynamic_mock_endpoint(self, auth):
         """动态Mock端点 - 无需鉴权"""
-        r = requests.get(f"{BASE}/api/{TestMockService.mock_slug}/api/test", verify=False, timeout=10)
+        r = api("get", f"/api/{TestMockService.mock_slug}/api/test")
         if r.status_code == 200:
             assert r.json().get("message") == "hello"
 
@@ -787,7 +808,7 @@ class TestExportImport:
         share_token = r.json()["token"]
 
         # 无需登录访问
-        r2 = requests.get(f"{BASE}/api/auto-test/api-docs/shared/{share_token}", verify=False, timeout=10)
+        r2 = api("get", f"/api/auto-test/api-docs/shared/{share_token}")
         assert r2.status_code == 200
 
         api("delete", f"/api/auto-test/cases/{c['id']}", headers=auth)
