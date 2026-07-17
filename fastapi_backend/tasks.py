@@ -98,6 +98,34 @@ def _persist_task_result(task_id: str, result_data: dict) -> None:
 def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int = None):
     """Celery任务：执行测试场景，实时上报步骤进度"""
     task_id = self.request.id
+    execution_lock = None
+
+    # 在 Celery worker 内持有场景级分布式锁，覆盖多 Web worker 重复投递，
+    # 并一直持有到真正执行结束，而不是只覆盖调度器的短轮询窗口。
+    try:
+        from fastapi_backend.core.config import settings as _settings
+        from redis import Redis
+
+        lock_url = _settings.REDIS_URL or _settings.CELERY_BROKER_URL
+        if lock_url:
+            redis_client = Redis.from_url(lock_url)
+            execution_lock = redis_client.lock(
+                f"testmaster:scenario-execution:{scenario_id}",
+                timeout=24 * 60 * 60,
+                blocking=False,
+            )
+            if not execution_lock.acquire(blocking=False):
+                skipped = {
+                    "task_id": task_id,
+                    "scenario_id": scenario_id,
+                    "status": "skipped",
+                    "reason": "scenario_already_running",
+                }
+                _persist_task_result(task_id, skipped)
+                return skipped
+    except Exception as lock_error:
+        execution_lock = None
+        _logger.warning("Failed to acquire scenario execution lock: %s", lock_error)
 
     try:
         import asyncio
@@ -219,6 +247,12 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
         # 显式标记 Celery 任务状态为 FAILURE，避免误报 SUCCESS
         self.update_state(state="FAILURE", meta=fail_payload)
         raise Ignore()
+    finally:
+        if execution_lock is not None:
+            try:
+                execution_lock.release()
+            except Exception as lock_error:
+                _logger.warning("Failed to release scenario execution lock: %s", lock_error)
 
 
 @app.task(bind=True, max_retries=2, name="fastapi_backend.tasks.send_email")

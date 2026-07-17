@@ -104,6 +104,7 @@ ssl/*.pem
 fastapi_backend/autotest_data/reports/
 fastapi_backend/autotest_data/screenshots/
 fastapi_backend/autotest_data/logs/
+instance/ui_automation/
 
 # Keep example data
 !fastapi_backend/autotest_data/.gitkeep
@@ -185,6 +186,23 @@ testmaster_migration.sql.gz
 /deploy_new/
 /deploy_package.zip
 /package-lock.json
+
+# Desktop app local build/test artifacts
+/desktop/dist/
+/desktop/backend-dist/
+/desktop/release/
+/desktop/test-artifacts/
+/desktop/.backend-build/
+/desktop/.business-acceptance-profile/
+/desktop/.enterprise-final-smoke/
+/desktop/.final-backend-smoke/
+/desktop/.public-api-acceptance/
+/desktop/.public-api-dev*/
+/desktop/.smoke-profile/
+/desktop/*.png
+
+# Bundled browser/runtime caches
+/playwright-browsers/
 
 # Trae 临时文档
 /.trae/

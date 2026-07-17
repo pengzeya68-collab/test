@@ -17,7 +17,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
@@ -66,7 +66,7 @@ class MockRuleCreate(BaseModel):
     name: str = ""
     description: str = ""
     response_status: int = 200
-    response_headers: dict = {}
+    response_headers: dict = Field(default_factory=dict)
     response_body: Any = None
     delay_ms: int = 0
     condition: Optional[dict] = None
@@ -467,6 +467,7 @@ async def import_swagger(
 @mock_public_router.api_route(
     "/{slug}/{rest_of_path:path}",
     methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    include_in_schema=False,
 )
 async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
     """
@@ -604,4 +605,3 @@ async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
 #   POST   /api/mock/rules                     -> 改用 POST /api/mock/projects/{project_id}/rules
 #   GET    /api/mock/rules                     -> 改用 GET  /api/mock/projects/{project_id}/rules
 #   DELETE /api/mock/rules/{rule_key:path}     -> 改用 DELETE /api/mock/projects/{project_id}/rules/{rule_id}
-

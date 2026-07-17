@@ -1,40 +1,40 @@
-<template>
+﻿<template>
   <div class="ai-tutor-page">
     <header class="page-header">
       <div class="header-titles">
-        <h1 class="page-title">🤖 AI智能导师</h1>
-        <p class="page-desc">你的专属测试学习私人教练，随时解答你的问题</p>
+        <h1 class="page-title">馃 AI鏅鸿兘瀵煎笀</h1>
+        <p class="page-desc">浣犵殑涓撳睘娴嬭瘯瀛︿範绉佷汉鏁欑粌锛岄殢鏃惰В绛斾綘鐨勯棶棰</p>
       </div>
     </header>
 
     <div class="tutor-container">
       <aside class="left-panel">
         <div class="panel-card">
-          <h3 class="panel-title">功能列表</h3>
+          <h3 class="panel-title">鍔熻兘鍒楄〃</h3>
           <div class="function-list">
             <div
               class="function-item"
               :class="{ active: currentMode === 'chat' }"
               @click="switchMode('chat')"
             >
-              <span class="func-icon">💬</span>
-              <span>学习答疑</span>
+              <span class="func-icon">馃挰</span>
+              <span>瀛︿範绛旂枒</span>
             </div>
             <div
               class="function-item"
               :class="{ active: currentMode === 'code' }"
               @click="switchMode('code')"
             >
-              <span class="func-icon">🔍</span>
-              <span>代码审查</span>
+              <span class="func-icon">馃攳</span>
+              <span>浠ｇ爜瀹℃煡</span>
             </div>
             <div
               class="function-item"
               :class="{ active: currentMode === 'advice' }"
               @click="getLearningAdvice"
             >
-              <span class="func-icon">📈</span>
-              <span>学习建议</span>
+              <span class="func-icon">馃搱</span>
+              <span>瀛︿範寤鸿</span>
               <span v-if="getCostText('ai_learning_advice')" class="ai-cost-tag">{{ getCostText('ai_learning_advice') }}</span>
             </div>
             <div
@@ -42,30 +42,30 @@
               :class="{ active: currentMode === 'interview' }"
               @click="switchMode('interview')"
             >
-              <span class="func-icon">🎤</span>
-              <span>面试模拟</span>
+              <span class="func-icon">馃帳</span>
+              <span>闈㈣瘯妯℃嫙</span>
             </div>
           </div>
         </div>
 
         <div class="panel-card">
-          <h3 class="panel-title">快捷提问</h3>
+          <h3 class="panel-title">蹇嵎鎻愰棶</h3>
           <div class="quick-questions">
-            <button class="btn-quick" @click="quickQuestion('怎么学习Python自动化测试？')">Python自动化学习</button>
-            <button class="btn-quick" @click="quickQuestion('接口测试需要掌握哪些技能？')">接口测试学习</button>
-            <button class="btn-quick" @click="quickQuestion('测试工程师学习路径是什么？')">学习路径规划</button>
-            <button class="btn-quick" @click="quickQuestion('测试工程师简历怎么写？')">简历优化建议</button>
+            <button class="btn-quick" @click="quickQuestion('鎬庝箞瀛︿範Python鑷姩鍖栨祴璇曪紵')">Python鑷姩鍖栧涔</button>
+            <button class="btn-quick" @click="quickQuestion('鎺ュ彛娴嬭瘯闇€瑕佹帉鎻″摢浜涙妧鑳斤紵')">鎺ュ彛娴嬭瘯瀛︿範</button>
+            <button class="btn-quick" @click="quickQuestion('娴嬭瘯宸ョ▼甯堝涔犺矾寰勬槸浠€涔堬紵')">瀛︿範璺緞瑙勫垝</button>
+            <button class="btn-quick" @click="quickQuestion('娴嬭瘯宸ョ▼甯堢畝鍘嗘€庝箞鍐欙紵')">绠€鍘嗕紭鍖栧缓璁</button>
             <button class="btn-quick" @click="quickQuestion('功能测试怎么转自动化测试？')">转自动化经验</button>
           </div>
         </div>
 
         <div class="panel-card">
-          <h3 class="panel-title">使用说明</h3>
+          <h3 class="panel-title">浣跨敤璇存槑</h3>
           <div class="usage-tips">
-            <p><strong>💡 学习答疑：</strong>有任何测试相关的问题都可以提问</p>
-            <p><strong>💡 代码审查：</strong>粘贴你的代码，AI会帮你审查并给出优化建议</p>
-            <p><strong>💡 学习建议：</strong>根据你的技能情况给出个性化学习规划</p>
-            <p><strong>💡 面试模拟：</strong>模拟真实面试场景，提升面试能力</p>
+            <p><strong>馃挕 瀛︿範绛旂枒锛</strong>鏈変换浣曟祴璇曠浉鍏崇殑闂閮藉彲浠ユ彁闂</p>
+            <p><strong>馃挕 浠ｇ爜瀹℃煡锛</strong>绮樿创浣犵殑浠ｇ爜锛孉I浼氬府浣犲鏌ュ苟缁欏嚭浼樺寲寤鸿</p>
+            <p><strong>馃挕 瀛︿範寤鸿锛</strong>鏍规嵁浣犵殑鎶€鑳芥儏鍐电粰鍑轰釜鎬у寲瀛︿範瑙勫垝</p>
+            <p><strong>馃挕 闈㈣瘯妯℃嫙锛</strong>妯℃嫙鐪熷疄闈㈣瘯鍦烘櫙锛屾彁鍗囬潰璇曡兘鍔</p>
           </div>
         </div>
       </aside>
@@ -73,10 +73,10 @@
       <main class="right-panel">
         <div class="chat-container" ref="chatContainer">
           <div class="welcome-message" v-if="messages.length === 0">
-            <div class="welcome-icon">🤖</div>
-            <h2>你好！我是你的AI测试导师 TestMaster</h2>
-            <p>我有10年软件测试行业经验，精通功能测试、接口测试、自动化测试、性能测试等技术。</p>
-            <p>有什么问题都可以问我，我会尽力为你解答！</p>
+            <div class="welcome-icon">馃</div>
+            <h2>浣犲ソ锛佹垜鏄綘鐨凙I娴嬭瘯瀵煎笀 TestMaster</h2>
+            <p>鎴戞湁10骞磋蒋浠舵祴璇曡涓氱粡楠岋紝绮鹃€氬姛鑳芥祴璇曘€佹帴鍙ｆ祴璇曘€佽嚜鍔ㄥ寲娴嬭瘯銆佹€ц兘娴嬭瘯绛夋妧鏈€</p>
+            <p>鏈変粈涔堥棶棰橀兘鍙互闂垜锛屾垜浼氬敖鍔涗负浣犺В绛旓紒</p>
           </div>
 
           <div
@@ -86,12 +86,12 @@
             :class="msg.role"
           >
             <div class="message-avatar">
-              <span v-if="msg.role === 'assistant'">🤖</span>
-              <span v-else>👤</span>
+              <span v-if="msg.role === 'assistant'">馃</span>
+              <span v-else>馃懁</span>
             </div>
             <div class="message-content">
               <div class="message-header">
-                <span class="message-name">{{ msg.role === 'assistant' ? 'AI导师' : '我' }}</span>
+                <span class="message-name">{{ msg.role === 'assistant' ? 'AI 导师' : '我' }}</span>
                 <span class="message-time">{{ msg.time }}</span>
               </div>
               <div class="message-text" v-if="!msg.loading">
@@ -101,7 +101,7 @@
                 <span class="loading-dot"></span>
                 <span class="loading-dot"></span>
                 <span class="loading-dot"></span>
-                <span class="loading-text">思考中...</span>
+                <span class="loading-text">鎬濊€冧腑...</span>
               </div>
             </div>
           </div>
@@ -113,15 +113,15 @@
               v-model="inputMessage"
               class="chat-textarea"
               rows="3"
-              placeholder="有什么问题都可以问我哦... (Ctrl+Enter 发送)"
+              placeholder="鏈変粈涔堥棶棰橀兘鍙互闂垜鍝?.. (Ctrl+Enter 鍙戦€?"
               @keydown.ctrl.enter="sendMessage"
             ></textarea>
             <div class="input-actions">
               <button class="btn-outline" @click="clearHistory">
-                <span>🗑️</span> 清空对话
+                <span>馃棏锔</span> 娓呯┖瀵硅瘽
               </button>
               <button class="btn-primary" @click="sendMessage" :disabled="sending">
-                <span>📨</span> {{ sending ? '发送中...' : '发送' }}
+                <span>发送</span> {{ sending ? '发送中...' : '发送' }}
               </button>
               <span v-if="getCostText('ai_chat')" class="ai-cost-hint">{{ getCostText('ai_chat') }}</span>
             </div>
@@ -135,18 +135,18 @@
                 <option value="shell">Shell</option>
                 <option value="javascript">JavaScript</option>
               </select>
-              <span class="code-tip">粘贴你的代码，我会帮你审查优化</span>
+              <span class="code-tip">绮樿创浣犵殑浠ｇ爜锛屾垜浼氬府浣犲鏌ヤ紭鍖</span>
             </div>
             <textarea
               v-model="codeContent"
               class="chat-textarea code-textarea"
               rows="8"
-              placeholder="请粘贴要审查的代码..."
+              placeholder="璇风矘璐磋瀹℃煡鐨勪唬鐮?.."
             ></textarea>
             <div class="input-actions">
-              <button class="btn-outline" @click="clearCode">🔄 清空</button>
+              <button class="btn-outline" @click="clearCode">馃攧 娓呯┖</button>
               <button class="btn-primary" @click="reviewCode" :disabled="sending">
-                ✅ {{ sending ? '审查中...' : '提交审查' }}
+                鉁?{{ sending ? '瀹℃煡涓?..' : '鎻愪氦瀹℃煡' }}
               </button>
               <span v-if="getCostText('ai_code_review')" class="ai-cost-hint">{{ getCostText('ai_code_review') }}</span>
             </div>
@@ -155,7 +155,7 @@
           <template v-if="currentMode === 'interview'">
             <div class="interview-config" v-if="!interviewStarted">
               <div class="form-group">
-                <label>目标岗位</label>
+                <label>鐩爣宀椾綅</label>
                 <select v-model="interviewForm.position_level" class="native-select full">
                   <option value="功能测试工程师">功能测试工程师</option>
                   <option value="自动化测试工程师">自动化测试工程师</option>
@@ -164,43 +164,43 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>工作经验</label>
+                <label>宸ヤ綔缁忛獙</label>
                 <select v-model="interviewForm.years_of_experience" class="native-select full">
-                  <option :value="0">应届生</option>
-                  <option :value="2">1-3年</option>
-                  <option :value="4">3-5年</option>
-                  <option :value="6">5年以上</option>
+                  <option :value="0">搴斿眾鐢</option>
+                  <option :value="2">1-3骞</option>
+                  <option :value="4">3-5骞</option>
+                  <option :value="6">5骞翠互涓</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>面试轮次</label>
+                <label>闈㈣瘯杞</label>
                 <select v-model="interviewForm.interview_round" class="native-select full">
                   <option value="一面">一面（技术基础）</option>
                   <option value="二面">二面（技术深度）</option>
                   <option value="三面">三面（综合能力）</option>
                 </select>
               </div>
-              <button class="btn-primary btn-full" @click="startInterview">🚀 开始模拟面试</button>
+              <button class="btn-primary btn-full" @click="startInterview">馃殌 寮€濮嬫ā鎷熼潰璇</button>
             </div>
 
             <div v-else>
               <div class="interview-status">
-                <span class="status-icon">⏳</span>
+                <span class="status-icon">鈴</span>
                 <div>
-                  <strong>面试进行中</strong>
-                  <p>请认真回答面试官的问题，回答完点击提交按钮</p>
+                  <strong>闈㈣瘯杩涜涓</strong>
+                  <p>璇疯鐪熷洖绛旈潰璇曞畼鐨勯棶棰橈紝鍥炵瓟瀹岀偣鍑绘彁浜ゆ寜閽</p>
                 </div>
               </div>
               <textarea
                 v-model="inputMessage"
                 class="chat-textarea"
                 rows="5"
-                placeholder="请输入你的回答..."
+                placeholder="璇疯緭鍏ヤ綘鐨勫洖绛?.."
               ></textarea>
               <div class="input-actions">
-                <button class="btn-outline" @click="endInterview">🛑 结束面试</button>
+                <button class="btn-outline" @click="endInterview">馃洃 缁撴潫闈㈣瘯</button>
                 <button class="btn-primary" @click="sendInterviewAnswer" :disabled="sending">
-                  📤 {{ sending ? '提交中...' : '提交回答' }}
+                  馃摛 {{ sending ? '鎻愪氦涓?..' : '鎻愪氦鍥炵瓟' }}
                 </button>
               </div>
             </div>
@@ -302,7 +302,7 @@ const sendMessage = async () => {
       loading: false
     }
   } catch (error) {
-    console.error('发送消息失败:', error)
+    console.error('鍙戦€佹秷鎭け璐?', error)
     ElMessage.error('发送消息失败，请稍后重试')
     const loadingIdx = messages.value.findIndex(m => m.loading)
     if (loadingIdx !== -1) messages.value.splice(loadingIdx, 1)
@@ -319,7 +319,7 @@ const reviewCode = async () => {
   }
 
   const code = codeContent.value.trim()
-  addMessage('user', `请审查这段${codeLanguage.value}代码：\n\`\`\`${codeLanguage.value}\n${code}\n\`\`\``)
+  addMessage('user', `璇峰鏌ヨ繖娈?{codeLanguage.value}浠ｇ爜锛歕n\`\`\`${codeLanguage.value}\n${code}\n\`\`\``)
   addMessage('assistant', '', true)
   sending.value = true
 
@@ -334,8 +334,8 @@ const reviewCode = async () => {
       loading: false
     }
   } catch (error) {
-    console.error('代码审查失败:', error)
-    ElMessage.error('代码审查失败，请稍后重试')
+    console.error('浠ｇ爜瀹℃煡澶辫触:', error)
+    ElMessage.error('浠ｇ爜瀹℃煡澶辫触锛岃绋嶅悗閲嶈瘯')
     const loadingIdx = messages.value.findIndex(m => m.loading)
     if (loadingIdx !== -1) messages.value.splice(loadingIdx, 1)
   } finally {
@@ -361,8 +361,8 @@ const getLearningAdvice = async () => {
       loading: false
     }
   } catch (error) {
-    console.error('获取学习建议失败:', error)
-    ElMessage.error('获取学习建议失败，请稍后重试')
+    console.error('鑾峰彇瀛︿範寤鸿澶辫触:', error)
+    ElMessage.error('鑾峰彇瀛︿範寤鸿澶辫触锛岃绋嶅悗閲嶈瘯')
     const loadingIdx = messages.value.findIndex(m => m.loading)
     if (loadingIdx !== -1) messages.value.splice(loadingIdx, 1)
   } finally {
@@ -373,7 +373,7 @@ const getLearningAdvice = async () => {
 
 const startInterview = async () => {
   interviewStarted.value = true
-  const question = `我要模拟${interviewForm.position_level}面试，工作经验${interviewForm.years_of_experience}年，${interviewForm.interview_round}。请开始面试。`
+  const question = `我要模拟 ${interviewForm.value.position_level} 面试，工作经验 ${interviewForm.value.years_of_experience} 年，${interviewForm.value.interview_round}。请开始面试。`
   addMessage('user', question)
   addMessage('assistant', '', true)
   sending.value = true
@@ -393,7 +393,7 @@ const startInterview = async () => {
       loading: false
     }
   } catch (error) {
-    console.error('开始面试失败:', error)
+    console.error('寮€濮嬮潰璇曞け璐?', error)
     ElMessage.error('开始面试失败，请稍后重试')
     const loadingIdx = messages.value.findIndex(m => m.loading)
     if (loadingIdx !== -1) messages.value.splice(loadingIdx, 1)
@@ -426,8 +426,8 @@ const sendInterviewAnswer = async () => {
       loading: false
     }
   } catch (error) {
-    console.error('提交回答失败:', error)
-    ElMessage.error('提交回答失败，请稍后重试')
+    console.error('鎻愪氦鍥炵瓟澶辫触:', error)
+    ElMessage.error('鎻愪氦鍥炵瓟澶辫触锛岃绋嶅悗閲嶈瘯')
     const loadingIdx = messages.value.findIndex(m => m.loading)
     if (loadingIdx !== -1) messages.value.splice(loadingIdx, 1)
   } finally {
@@ -451,8 +451,8 @@ const clearHistory = async () => {
     messages.value = []
     ElMessage.success('对话历史已清空')
   } catch (error) {
-    console.error('清空历史失败:', error)
-    ElMessage.error('清空历史失败')
+    console.error('娓呯┖鍘嗗彶澶辫触:', error)
+    ElMessage.error('娓呯┖鍘嗗彶澶辫触')
   }
 }
 

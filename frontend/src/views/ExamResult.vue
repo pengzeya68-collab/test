@@ -1,13 +1,13 @@
-<template>
+﻿<template>
   <div class="exam-result">
     <div class="container">
       <div class="back-btn" @click="goBack">
         <el-icon><ArrowLeft /></el-icon>
-        返回考试列表
+        杩斿洖鑰冭瘯鍒楄〃
       </div>
 
       <div v-if="result" class="result-container">
-        <!-- 成绩概览 -->
+        <!-- 鎴愮哗姒傝 -->
         <div class="overview-card">
           <div class="score-section">
             <div class="score-circle" :class="result.attempt.is_passed ? 'passed' : 'failed'">
@@ -34,54 +34,54 @@
               <div class="score-content">
                 <div class="score-number">{{ result.attempt.score }}</div>
                 <div class="score-total">/ {{ result.exam.total_score }}</div>
-                <div class="score-label">总分</div>
+                <div class="score-label">鎬诲垎</div>
               </div>
             </div>
             <div class="score-info">
               <h2>{{ result.exam.title }}</h2>
               <div class="result-badge">
                 <el-tag :type="result.attempt.is_passed ? 'success' : 'danger'" size="large">
-                  {{ result.attempt.is_passed ? '🎉 考试通过' : '❌ 未通过' }}
+                  {{ result.attempt.is_passed ? '馃帀 鑰冭瘯閫氳繃' : '鉂?鏈€氳繃' }}
                 </el-tag>
               </div>
               <div class="score-meta">
-                <p><strong>及格线：</strong>{{ result.exam.pass_score }}分</p>
-                <p><strong>得分率：</strong>{{ result.statistics.score_rate }}%</p>
-                <p><strong>考试用时：</strong>{{ result.attempt.duration }}分钟</p>
-                <p><strong>完成时间：</strong>{{ result.attempt.end_time }}</p>
+                <p><strong>鍙婃牸绾匡細</strong>{{ result.exam.pass_score }}鍒</p>
+                <p><strong>寰楀垎鐜囷細</strong>{{ result.statistics.score_rate }}%</p>
+                <p><strong>鑰冭瘯鐢ㄦ椂锛</strong>{{ result.attempt.duration }}鍒嗛挓</p>
+                <p><strong>瀹屾垚鏃堕棿锛</strong>{{ result.attempt.end_time }}</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 统计信息 -->
+        <!-- 缁熻淇℃伅 -->
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-number">{{ result.statistics.total_questions }}</div>
-            <div class="stat-label">总题数</div>
+            <div class="stat-label">鎬婚鏁</div>
           </div>
           <div class="stat-card">
             <div class="stat-number" style="color: #67c23a;">{{ result.statistics.correct_count }}</div>
-            <div class="stat-label">做对</div>
+            <div class="stat-label">鍋氬</div>
           </div>
           <div class="stat-card">
             <div class="stat-number" style="color: #f56c6c;">{{ result.statistics.wrong_count }}</div>
-            <div class="stat-label">做错</div>
+            <div class="stat-label">鍋氶敊</div>
           </div>
           <div class="stat-card">
             <div class="stat-number" style="color: var(--tm-text-secondary);">{{ Math.max(0, result.statistics.total_questions - result.statistics.correct_count - result.statistics.wrong_count) }}</div>
-            <div class="stat-label">未判分</div>
+            <div class="stat-label">鏈垽鍒</div>
           </div>
         </div>
 
-        <!-- 题型得分统计 -->
+        <!-- 棰樺瀷寰楀垎缁熻 -->
         <div class="section-card">
-          <h3 class="section-title">题型得分情况</h3>
+          <h3 class="section-title">棰樺瀷寰楀垎鎯呭喌</h3>
           <div class="type-stats">
             <div class="type-item" v-for="(stats, type) in result.statistics.question_type_stats" :key="type">
               <div class="type-header">
                 <span class="type-name">{{ getQuestionTypeText(type) }}</span>
-                <span class="type-score">{{ stats.score }}/{{ stats.total_score }}分</span>
+                <span class="type-score">{{ stats.score }}/{{ stats.total_score }}鍒</span>
               </div>
               <el-progress 
                 :percentage="stats.total_score ? Math.round(stats.score / stats.total_score * 100) : 0"
@@ -89,16 +89,16 @@
                 :show-text="false"
               />
               <div class="type-meta">
-                <span>{{ stats.correct }}/{{ stats.total }}题正确</span>
-                <span>正确率 {{ stats.total ? Math.round(stats.correct / stats.total * 100) : 0 }}%</span>
+                <span>{{ stats.correct }}/{{ stats.total }}棰樻纭</span>
+                <span>姝ｇ‘鐜?{{ stats.total ? Math.round(stats.correct / stats.total * 100) : 0 }}%</span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 题目详情 -->
+        <!-- 棰樼洰璇︽儏 -->
         <div class="section-card">
-          <h3 class="section-title">题目详情</h3>
+          <h3 class="section-title">棰樼洰璇︽儏</h3>
           <div class="question-list">
             <div 
               class="question-item" 
@@ -111,7 +111,7 @@
                   <el-tag size="small" type="info">
                     {{ getQuestionTypeText(item.question.question_type) }}
                   </el-tag>
-                  <span class="question-score">({{ item.question.score }}分)</span>
+                  <span class="question-score">({{ item.question.score }} 分)</span>
                 </div>
                 <div class="question-result">
                   <el-tag 
@@ -120,7 +120,7 @@
                   >
                     {{ item.is_correct === true ? '正确' : item.is_correct === false ? '错误' : '待评分' }}
                   </el-tag>
-                  <span class="user-score">得分：{{ item.score || 0 }}分</span>
+                  <span class="user-score">得分：{{ item.score || 0 }} 分</span>
                 </div>
               </div>
               
@@ -128,7 +128,7 @@
                 <p v-html="renderMarkdown(item.question.content)"></p>
               </div>
               
-              <!-- 选择题展示选项 -->
+              <!-- 閫夋嫨棰樺睍绀洪€夐」 -->
               <div v-if="item.question.options" class="options">
                 <div 
                   class="option-item" 
@@ -169,15 +169,15 @@
           </div>
         </div>
 
-        <!-- 行动按钮 -->
+        <!-- 琛屽姩鎸夐挳 -->
         <div class="action-buttons">
           <el-button type="primary" @click="reviewWrongQuestions">
             <el-icon><Edit /></el-icon>
-            重做错题
+            閲嶅仛閿欓
           </el-button>
           <el-button type="default" @click="goToExamList">
             <el-icon><List /></el-icon>
-            更多考试
+            鏇村鑰冭瘯
           </el-button>
         </div>
       </div>
@@ -218,8 +218,8 @@ const fetchResult = async () => {
     const res = await request.get(`/exams/attempts/${attemptId.value}/result`)
     result.value = res
   } catch (error) {
-    console.error('获取考试结果失败:', error)
-    ElMessage.error('获取考试结果失败')
+    console.error('鑾峰彇鑰冭瘯缁撴灉澶辫触:', error)
+    ElMessage.error('鑾峰彇鑰冭瘯缁撴灉澶辫触')
   } finally {
     loading.value = false
   }
@@ -234,7 +234,7 @@ const goToExamList = () => {
 }
 
 const reviewWrongQuestions = () => {
-  ElMessage.info('错题本功能开发中，敬请期待~')
+  ElMessage.info('错题本功能开发中，敬请期待')
 }
 
 const getQuestionTypeText = (type) => {
@@ -662,3 +662,4 @@ const getScoreColor = (score, total) => {
   }
 }
 </style>
+

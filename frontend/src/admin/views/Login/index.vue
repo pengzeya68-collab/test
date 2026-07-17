@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <div class="admin-login-theme">
     <div class="login-card">
       <div class="login-header">
         <h2>TestMaster</h2>
-        <p>管理员后台登录</p>
+        <p>绠＄悊鍛樺悗鍙扮櫥褰</p>
       </div>
 
       <el-form :model="form" :rules="rules" ref="formRef" label-width="0">
@@ -23,7 +23,7 @@
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="密码"
+            placeholder="瀵嗙爜"
             size="large"
             class="dark-input"
             @keyup.enter="handleLogin"
@@ -42,14 +42,14 @@
             @click="handleLogin"
             class="btn-login"
           >
-            登录
+            鐧诲綍
           </el-button>
         </el-form-item>
       </el-form>
 
-      <!-- 测试账号提示仅在开发环境显示 -->
+      <!-- 娴嬭瘯璐﹀彿鎻愮ず浠呭湪寮€鍙戠幆澧冩樉绀?-->
       <div v-if="isDev" class="login-footer">
-        <span>默认账号: admin / admin123</span>
+        <span>榛樿璐﹀彿: admin / admin123</span>
       </div>
     </div>
   </div>
@@ -104,7 +104,7 @@ const handleLogin = async () => {
         const adminUser = res.user
 
         if (!adminToken || adminToken === 'undefined' || adminToken === 'null') {
-          ElMessage.error('登录失败：服务器未返回有效Token')
+          ElMessage.error('登录失败：服务器未返回有效 token')
           return
         }
 
@@ -118,13 +118,13 @@ const handleLogin = async () => {
         setAdminInfo(adminUser)
         // 更新 Pinia store 响应式状态
         adminStore.setAdminInfo(adminUser, adminToken)
-        // 设置 axios 默认 Authorization 头（仅设置header，不写入用户token键）
+        // 设置 axios 默认 Authorization 头
         setAdminTokenHeader(adminToken)
 
         ElMessage.success('登录成功')
 
         const redirect = route.query.redirect || '/admin/dashboard'
-        // 校验重定向路径必须以/admin/开头，防止开放重定向
+        // 校验重定向路径必须以 /admin/ 开头，防止开放重定向
         const safeRedirect = (typeof redirect === 'string' && redirect.startsWith('/admin/')) ? redirect : '/admin/dashboard'
         router.push(safeRedirect).catch(err => {
           console.error('路由跳转失败:', err)
@@ -225,3 +225,4 @@ const handleLogin = async () => {
   font-size: 12px;
 }
 </style>
+

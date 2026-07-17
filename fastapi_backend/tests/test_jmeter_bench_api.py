@@ -216,7 +216,8 @@ class TestRunsListing:
         assert data[0]["plan_name"] == "Sample Run"
         assert data[0]["engine_type"] == "quick"
 
-    def test_list_runs_respects_limit(self, auth_client, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_list_runs_respects_limit(self, auth_client, db_session, test_user):
         """limit 参数限制返回数量"""
         # 创建 5 个 run
         for i in range(5):
@@ -228,8 +229,7 @@ class TestRunsListing:
                 status="success",
             )
             db_session.add(run)
-        import asyncio
-        asyncio.get_event_loop().run_until_complete(db_session.commit())
+        await db_session.commit()
         response = auth_client.get("/api/auto-test/jmeter/runs?limit=3")
         assert response.status_code == 200
         data = response.json()
@@ -257,7 +257,8 @@ class TestRunsListing:
 class TestRunsCompare:
     """GET /api/auto-test/jmeter/runs/compare?ids=1,2"""
 
-    def test_compare_two_runs(self, auth_client, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_compare_two_runs(self, auth_client, db_session, test_user):
         """对比 2 个 run"""
         runs = []
         for i in range(2):
@@ -271,10 +272,9 @@ class TestRunsCompare:
             )
             db_session.add(run)
             runs.append(run)
-        import asyncio
-        asyncio.get_event_loop().run_until_complete(db_session.commit())
+        await db_session.commit()
         for r in runs:
-            asyncio.get_event_loop().run_until_complete(db_session.refresh(r))
+            await db_session.refresh(r)
         run_ids = ",".join(str(r.id) for r in runs)
 
         response = auth_client.get(f"/api/auto-test/jmeter/runs/compare?ids={run_ids}")

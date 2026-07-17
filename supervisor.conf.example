@@ -3,7 +3,9 @@
 # 放置位置: /etc/supervisor/conf.d/testmaster.conf
 
 [program:testmaster-backend]
-command=uvicorn fastapi_backend.main:app --host 0.0.0.0 --port 5001 --workers 4
+# APScheduler is embedded in this process. Keep exactly one web worker; scale
+# Celery workers for execution concurrency instead of duplicating schedulers.
+command=uvicorn fastapi_backend.main:app --host 0.0.0.0 --port 5001 --workers 1
 directory=/opt/testmaster/fastapi_backend
 user=appuser
 autostart=true

@@ -1,6 +1,6 @@
-<template>
+﻿<template>
   <div class="code-playground">
-    <!-- 页面头部 -->
+    <!-- 椤甸潰澶撮儴 -->
     <div class="page-header">
       <div class="header-left">
         <div class="header-icon">
@@ -10,34 +10,34 @@
           </svg>
         </div>
         <div>
-          <h1 class="page-title">在线代码练习室</h1>
-          <p class="page-subtitle">在线编写、运行、调试代码，支持 Python / SQL / Shell</p>
+          <h1 class="page-title">鍦ㄧ嚎浠ｇ爜缁冧範瀹</h1>
+          <p class="page-subtitle">鍦ㄧ嚎缂栧啓銆佽繍琛屻€佽皟璇曚唬鐮侊紝鏀寔 Python / SQL / Shell</p>
         </div>
       </div>
       <div class="header-stats">
         <div class="stat-chip">
           <span class="stat-num">{{ exercises.length }}</span>
-          <span class="stat-label">道习题</span>
+          <span class="stat-label">閬撲範棰</span>
         </div>
         <div class="stat-chip">
           <span class="stat-num">{{ filteredExercises.length }}</span>
-          <span class="stat-label">当前筛选</span>
+          <span class="stat-label">褰撳墠绛涢€</span>
         </div>
         <LayoutPresetDropdown size="small" @change="applyLayoutPreset" />
       </div>
     </div>
 
     <div class="playground-container">
-      <!-- 左侧题目列表 -->
+      <!-- 宸︿晶棰樼洰鍒楄〃 -->
       <div class="left-panel" :style="{ width: leftPanelWidth + 'px', flex: 'none' }">
-        <!-- 语言筛选标签 -->
+        <!-- 璇█绛涢€夋爣绛?-->
         <div class="filter-tabs">
           <button
             class="filter-tab"
             :class="{ active: currentLanguageFilter === '' }"
             @click="currentLanguageFilter = ''"
           >
-            <span class="tab-icon">&#x1f4cb;</span> 全部
+            <span class="tab-icon">&#x1f4cb;</span> 鍏ㄩ儴
           </button>
           <button
             class="filter-tab"
@@ -62,7 +62,7 @@
           </button>
         </div>
 
-        <!-- 习题列表 -->
+        <!-- 涔犻鍒楄〃 -->
         <div class="exercise-list">
           <div
             class="exercise-item"
@@ -87,15 +87,15 @@
           </div>
         </div>
 
-        <!-- 空状态 -->
+        <!-- 绌虹姸鎬?-->
         <div class="empty-state" v-if="filteredExercises.length === 0 && !loading">
           <div class="empty-icon">&#x1f50d;</div>
-          <p>暂无{{ currentLanguageFilter ? getDisplayLanguage({language: currentLanguageFilter, exercise_type: ''}) : '' }}习题</p>
-          <button class="empty-reset-btn" @click="currentLanguageFilter = ''">查看全部习题</button>
+          <p>鏆傛棤{{ currentLanguageFilter ? getDisplayLanguage({language: currentLanguageFilter, exercise_type: ''}) : '' }}涔犻</p>
+          <button class="empty-reset-btn" @click="currentLanguageFilter = ''">鏌ョ湅鍏ㄩ儴涔犻</button>
         </div>
       </div>
 
-      <!-- 拖拽分隔条：题目列表 ↔ 编程区域 -->
+      <!-- 鎷栨嫿鍒嗛殧鏉★細棰樼洰鍒楄〃 鈫?缂栫▼鍖哄煙 -->
       <BaseSplitter
         v-model:size="leftPanelWidth"
         direction="horizontal"
@@ -105,9 +105,9 @@
         container-selector=".playground-container"
       />
 
-      <!-- 右侧编程区域 -->
+      <!-- 鍙充晶缂栫▼鍖哄煙 -->
       <div class="right-panel">
-        <!-- 未选择习题 -->
+        <!-- 鏈€夋嫨涔犻 -->
         <div class="welcome-state" v-if="!selectedExercise">
           <div class="welcome-icon">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -115,25 +115,25 @@
               <polyline points="8 6 2 12 8 18"></polyline>
             </svg>
           </div>
-          <h2>选择一道习题开始练习</h2>
-          <p>从左侧列表中选择习题，在线编写代码并运行</p>
+          <h2>閫夋嫨涓€閬撲範棰樺紑濮嬬粌涔</h2>
+          <p>浠庡乏渚у垪琛ㄤ腑閫夋嫨涔犻锛屽湪绾跨紪鍐欎唬鐮佸苟杩愯</p>
           <div class="welcome-features">
             <div class="feature-item">
               <span class="feature-icon">&#x26a1;</span>
-              <span>即时运行</span>
+              <span>鍗虫椂杩愯</span>
             </div>
             <div class="feature-item">
               <span class="feature-icon">&#x1f916;</span>
-              <span>AI点评</span>
+              <span>AI鐐硅瘎</span>
             </div>
             <div class="feature-item">
               <span class="feature-icon">&#x1f6e1;&#xfe0f;</span>
-              <span>安全沙箱</span>
+              <span>瀹夊叏娌欑</span>
             </div>
           </div>
         </div>
 
-        <!-- 题目描述 -->
+        <!-- 棰樼洰鎻忚堪 -->
         <div class="problem-section" v-if="selectedExercise">
           <div class="problem-header">
             <div class="problem-title-row">
@@ -150,7 +150,7 @@
                 {{ selectedExercise.knowledge_point }}
               </span>
               <span class="problem-tag time-tag" v-if="selectedExercise.time_estimate">
-                {{ selectedExercise.time_estimate }} 分钟
+                {{ selectedExercise.time_estimate }} 鍒嗛挓
               </span>
             </div>
           </div>
@@ -159,21 +159,21 @@
             <div class="problem-instructions" v-if="selectedExercise.instructions">
               <div class="section-label">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                要求
+                瑕佹眰
               </div>
               <pre>{{ selectedExercise.instructions }}</pre>
             </div>
             <div class="problem-testcases" v-if="selectedExercise.test_cases">
               <div class="section-label">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-                测试用例
+                娴嬭瘯鐢ㄤ緥
               </div>
               <pre>{{ selectedExercise.test_cases }}</pre>
             </div>
           </div>
         </div>
 
-        <!-- 代码编辑器 -->
+        <!-- 浠ｇ爜缂栬緫鍣?-->
         <div class="editor-section" v-if="selectedExercise">
           <CodeEditor
             v-model="userCode"
@@ -187,71 +187,71 @@
           />
         </div>
 
-        <!-- 执行结果 -->
+        <!-- 鎵ц缁撴灉 -->
         <div class="result-section" v-if="submitResult">
           <div class="result-card" :class="submitResult.success ? 'result-success' : 'result-error'">
             <div class="result-header">
               <div class="result-status">
                 <span class="status-dot" :class="submitResult.success ? 'dot-success' : 'dot-error'"></span>
-                <span class="status-text">{{ submitResult.success ? '执行成功' : '执行失败' }}</span>
+                <span class="status-text">{{ submitResult.success ? '鎵ц鎴愬姛' : '鎵ц澶辫触' }}</span>
               </div>
               <span class="result-time" v-if="submitResult.execution_time_ms">
-                ⏱ {{ submitResult.execution_time_ms }}ms
+                鈴?{{ submitResult.execution_time_ms }}ms
               </span>
             </div>
             <div class="result-body">
-              <!-- 无输出时显示提示 -->
+              <!-- 鏃犺緭鍑烘椂鏄剧ず鎻愮ず -->
               <div v-if="!submitResult.stdout && !submitResult.stderr" class="result-block no-output-block">
-                <div class="result-label">输出</div>
+                <div class="result-label">杈撳嚭</div>
                 <div class="no-output-msg">
-                  <span class="no-output-icon">✓</span>
-                  代码执行成功，无输出内容
-                  <div class="no-output-hint">💡 提示：函数定义不会自动输出，请在代码中添加 <code>print()</code> 调用或点击"提交判题"验证正确性</div>
+                  <span class="no-output-icon">鉁</span>
+                  浠ｇ爜鎵ц鎴愬姛锛屾棤杈撳嚭鍐呭
+                  <div class="no-output-hint">馃挕 鎻愮ず锛氬嚱鏁板畾涔変笉浼氳嚜鍔ㄨ緭鍑猴紝璇峰湪浠ｇ爜涓坊鍔?<code>print()</code> 璋冪敤鎴栫偣鍑?鎻愪氦鍒ら"楠岃瘉姝ｇ‘鎬</div>
                 </div>
               </div>
-              <!-- 有输出时正常显示 -->
+              <!-- 鏈夎緭鍑烘椂姝ｅ父鏄剧ず -->
               <div v-if="submitResult.stdout" class="result-block">
-                <div class="result-label">输出</div>
+                <div class="result-label">杈撳嚭</div>
                 <pre class="result-output">{{ submitResult.stdout }}</pre>
               </div>
-              <!-- 有错误时显示 -->
+              <!-- 鏈夐敊璇椂鏄剧ず -->
               <div v-if="submitResult.stderr" class="result-block">
-                <div class="result-label error-label">错误</div>
+                <div class="result-label error-label">閿欒</div>
                 <pre class="result-output error-output">{{ submitResult.stderr }}</pre>
               </div>
             </div>
-            <!-- 操作按钮 -->
+            <!-- 鎿嶄綔鎸夐挳 -->
             <div class="result-actions">
               <button class="submit-btn" @click="submitCode" :disabled="submitLoading">
                 <span v-if="submitLoading" class="submit-btn-running"></span>
                 <span v-else>&#x1f4dd;</span>
-                {{ submitLoading ? '提交判题中...' : '提交判题' }}
+                {{ submitLoading ? '鎻愪氦鍒ら涓?..' : '鎻愪氦鍒ら' }}
               </button>
               <button class="ai-btn" @click="getAIEvaluation" :disabled="aiLoading || !submitResult.success">
                 <span v-if="aiLoading" class="ai-btn-loading"></span>
                 <span v-else>&#x1f916;</span>
-                {{ aiLoading ? 'AI评估中...' : '获取AI点评' }}
+                {{ aiLoading ? 'AI璇勪及涓?..' : '鑾峰彇AI鐐硅瘎' }}
               </button>
             </div>
           </div>
         </div>
 
-        <!-- 判题结果 -->
+        <!-- 鍒ら缁撴灉 -->
         <div class="result-section" v-if="submissionResult">
           <div class="submit-card" :class="submissionResult.judge_result?.all_passed ? 'result-success' : 'result-error'">
             <div class="submit-header">
               <div class="submit-status">
                 <span class="submit-dot" :class="submissionResult.judge_result?.all_passed ? 'dot-success' : 'dot-error'"></span>
                 <span class="submit-text">
-                  {{ submissionResult.judge_result?.all_passed ? '全部通过' : submissionResult.judge_result?.summary || '部分通过' }}
+                  {{ submissionResult.judge_result?.all_passed ? '鍏ㄩ儴閫氳繃' : submissionResult.judge_result?.summary || '閮ㄥ垎閫氳繃' }}
                 </span>
               </div>
               <span class="submit-time">
-                {{ submissionResult.judge_result?.passed_count || 0 }}/{{ submissionResult.judge_result?.total_cases || 0 }} 通过
+                {{ submissionResult.judge_result?.passed_count || 0 }}/{{ submissionResult.judge_result?.total_cases || 0 }} 閫氳繃
               </span>
             </div>
             <div class="submit-body">
-              <!-- 测试用例列表 -->
+              <!-- 娴嬭瘯鐢ㄤ緥鍒楄〃 -->
               <div v-if="submissionResult.judge_result?.details?.length" class="submit-result-block">
                 <div class="testcase-list">
                   <div
@@ -260,16 +260,16 @@
                     class="testcase-item"
                     :class="tc.passed ? 'tc-pass' : 'tc-fail'"
                   >
-                    <span class="testcase-icon">{{ tc.passed ? '✓' : '✗' }}</span>
-                    <span class="testcase-label">测试用例 #{{ tc.case_index }}</span>
-                    <span class="testcase-detail">{{ tc.passed ? '通过' : '失败' }}</span>
+                    <span class="testcase-icon">{{ tc.passed ? '通过' : '失败' }}</span>
+                    <span class="testcase-label">娴嬭瘯鐢ㄤ緥 #{{ tc.case_index }}</span>
+                    <span class="testcase-detail">{{ tc.passed ? '閫氳繃' : '澶辫触' }}</span>
                   </div>
                 </div>
               </div>
-              <!-- 通过率进度条 -->
+              <!-- 閫氳繃鐜囪繘搴︽潯 -->
               <div v-if="submissionResult.judge_result?.total_cases > 1" class="submit-result-block">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                  <span style="font-size: 12px; color: var(--tm-text-secondary);">通过率</span>
+                  <span style="font-size: 12px; color: var(--tm-text-secondary);">閫氳繃鐜</span>
                   <span style="font-size: 12px; color: var(--tm-text-primary); font-weight: 600;">{{ (submissionResult.judge_result.pass_rate || 0).toFixed(0) }}%</span>
                 </div>
                 <div class="score-bar-track">
@@ -284,15 +284,14 @@
           </div>
         </div>
 
-        <!-- AI评估结果 -->
+        <!-- AI璇勪及缁撴灉 -->
         <div class="result-section" v-if="aiEvaluationResult">
           <div class="ai-result-card">
             <div class="ai-result-header">
               <span class="ai-avatar">&#x1f916;</span>
-              <span class="ai-title">AI导师点评</span>
+              <span class="ai-title">AI瀵煎笀鐐硅瘎</span>
               <div class="ai-score-badge" :class="getScoreClass(aiEvaluationResult.score)">
-                {{ aiEvaluationResult.score }}分
-              </div>
+                {{ aiEvaluationResult.score }}鍒?              </div>
             </div>
             <div class="ai-score-bar">
               <div class="score-bar-track">
@@ -309,7 +308,7 @@
             <div class="ai-optimized" v-if="aiEvaluationResult.optimized_code">
               <div class="section-label">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                优化建议
+                浼樺寲寤鸿
               </div>
               <pre>{{ aiEvaluationResult.optimized_code }}</pre>
             </div>
@@ -328,7 +327,7 @@ import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import LayoutPresetDropdown from '@/components/LayoutPresetDropdown.vue'
 import request from '@/utils/request'
 
-// 左侧题目列表宽度（带 localStorage 持久化）
+// 宸︿晶棰樼洰鍒楄〃瀹藉害锛堝甫 localStorage 鎸佷箙鍖栵級
 const leftPanelWidth = ref(320)
 
 // 布局预设：调整左侧题目列表宽度
@@ -343,7 +342,7 @@ const applyLayoutPreset = (preset) => {
   const width = presets[preset] ?? 320
   leftPanelWidth.value = Math.max(220, Math.min(560, width))
   try { localStorage.setItem('tm-codeplayground-sidebar-width', String(leftPanelWidth.value)) } catch {}
-  ElMessage?.success?.(`布局已切换：题目列表 ${leftPanelWidth.value}px`)
+  ElMessage?.success?.(`甯冨眬宸插垏鎹細棰樼洰鍒楄〃 ${leftPanelWidth.value}px`)
 }
 
 const exercises = ref([])
@@ -367,14 +366,14 @@ const getEffectiveLanguage = (exercise) => {
   const cat = (exercise.category || '').toLowerCase()
   const kp = (exercise.knowledge_point || '').toLowerCase()
   if (cat.includes('database') || cat.includes('sql') || kp.includes('sql')) return 'sql'
-  if (cat.includes('linux') || cat.includes('shell') || kp.includes('shell') || kp.includes('命令')) return 'shell'
+  if (cat.includes('linux') || cat.includes('shell') || kp.includes('shell') || kp.includes('鍛戒护')) return 'shell'
   if (cat.includes('programming') || cat.includes('python') || kp.includes('python')) return 'python'
   return 'python'
 }
 
 const getDisplayLanguage = (exercise) => {
   const lang = exercise.language || ''
-  if (lang === '中文') {
+  if (lang === '涓枃') {
     const effective = getEffectiveLanguage(exercise)
     const map = { python: 'Python', sql: 'SQL', shell: 'Shell' }
     return map[effective] || 'Python'
@@ -409,11 +408,11 @@ const fetchExercises = async () => {
     const exerciseList = Array.isArray(res) ? res : (res.data || [])
     exercises.value = exerciseList.filter(ex =>
       ex.exercise_type === 'code' || ex.exercise_type === 'sql' ||
-      ex.category?.includes('代码') || ex.category?.includes('编程')
+      ex.category?.includes('浠ｇ爜') || ex.category?.includes('缂栫▼')
     )
   } catch (error) {
-    console.error('获取习题失败:', error)
-    ElMessage.error('获取习题失败')
+    console.error('鑾峰彇涔犻澶辫触:', error)
+    ElMessage.error('鑾峰彇涔犻澶辫触')
   } finally {
     loading.value = false
   }
@@ -434,7 +433,7 @@ const handleCodeRun = (event) => {
 
 const getAIEvaluation = async () => {
   if (!selectedExercise.value || !userCode.value.trim()) {
-    ElMessage.warning('请先执行代码')
+    ElMessage.warning('璇峰厛鎵ц浠ｇ爜')
     return
   }
 
@@ -450,10 +449,10 @@ const getAIEvaluation = async () => {
     })
 
     aiEvaluationResult.value = res
-    ElMessage.success('AI评估完成')
+    ElMessage.success('AI璇勪及瀹屾垚')
   } catch (error) {
-    console.error('AI评估失败:', error)
-    ElMessage.error('AI评估失败，请稍后重试')
+    console.error('AI璇勪及澶辫触:', error)
+    ElMessage.error('AI璇勪及澶辫触锛岃绋嶅悗閲嶈瘯')
   } finally {
     aiLoading.value = false
   }
@@ -461,7 +460,7 @@ const getAIEvaluation = async () => {
 
 const submitCode = async () => {
   if (!selectedExercise.value || !userCode.value.trim()) {
-    ElMessage.warning('请先编写代码')
+    ElMessage.warning('璇峰厛缂栧啓浠ｇ爜')
     return
   }
 
@@ -475,10 +474,10 @@ const submitCode = async () => {
     })
 
     submissionResult.value = res
-    ElMessage.success(res.message || (res.judge_result?.all_passed ? '全部通过！' : '提交完成'))
+    ElMessage.success(res.message || (res.judge_result?.all_passed ? '全部通过' : '提交完成'))
   } catch (error) {
-    console.error('提交判题失败:', error)
-    ElMessage.error(error.response?.data?.detail || '提交判题失败')
+    console.error('鎻愪氦鍒ら澶辫触:', error)
+    ElMessage.error(error.response?.data?.detail || '鎻愪氦鍒ら澶辫触')
   } finally {
     submitLoading.value = false
   }
@@ -516,7 +515,7 @@ const renderDescription = (text) => {
   flex-direction: column;
 }
 
-/* ===== 页面头部 ===== */
+/* ===== 椤甸潰澶撮儴 ===== */
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -586,7 +585,7 @@ const renderDescription = (text) => {
   color: var(--tm-text-secondary);
 }
 
-/* ===== 主布局（gap:0 由 BaseSplitter 提供间距） ===== */
+/* ===== 涓诲竷灞€锛坓ap:0 鐢?BaseSplitter 鎻愪緵闂磋窛锛?===== */
 .playground-container {
   display: flex;
   gap: 0;
@@ -595,7 +594,7 @@ const renderDescription = (text) => {
   overflow: hidden;
 }
 
-/* ===== 左侧面板 ===== */
+/* ===== 宸︿晶闈㈡澘 ===== */
 .left-panel {
   flex-shrink: 0;
   background: var(--tm-card-bg);
@@ -610,7 +609,7 @@ const renderDescription = (text) => {
   height: 100%;
 }
 
-/* 语言筛选标签 */
+/* 璇█绛涢€夋爣绛?*/
 .filter-tabs {
   display: flex;
   gap: 4px;
@@ -652,7 +651,7 @@ const renderDescription = (text) => {
   font-size: 13px;
 }
 
-/* 习题列表 */
+/* 涔犻鍒楄〃 */
 .exercise-list {
   flex: 1;
   overflow-y: auto;
@@ -784,7 +783,7 @@ const renderDescription = (text) => {
   flex-shrink: 0;
 }
 
-/* 空状态 */
+/* 绌虹姸鎬?*/
 .empty-state {
   padding: 40px 20px;
   text-align: center;
@@ -817,7 +816,7 @@ const renderDescription = (text) => {
   border-color: rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
-/* ===== 右侧面板 ===== */
+/* ===== 鍙充晶闈㈡澘 ===== */
 .right-panel {
   flex: 1 1 0;
   min-width: 0;
@@ -842,7 +841,7 @@ const renderDescription = (text) => {
   border-radius: 4px;
 }
 
-/* 欢迎状态 */
+/* 娆㈣繋鐘舵€?*/
 .welcome-state {
   background: var(--tm-card-bg);
   border-radius: 16px;
@@ -893,7 +892,7 @@ const renderDescription = (text) => {
   font-size: 18px;
 }
 
-/* ===== 题目区域 ===== */
+/* ===== 棰樼洰鍖哄煙 ===== */
 .problem-section {
   background: var(--tm-card-bg);
   border-radius: 16px;
@@ -1045,7 +1044,7 @@ const renderDescription = (text) => {
   color: var(--tm-text-regular);
 }
 
-/* ===== 编辑器区域 ===== */
+/* ===== 缂栬緫鍣ㄥ尯鍩?===== */
 .editor-section {
   flex: 1;
   min-height: 320px;
@@ -1058,7 +1057,7 @@ const renderDescription = (text) => {
   min-height: 320px;
 }
 
-/* ===== 执行结果 ===== */
+/* ===== 鎵ц缁撴灉 ===== */
 .result-section {
   flex-shrink: 0;
 }
@@ -1210,7 +1209,7 @@ const renderDescription = (text) => {
   }
 }
 
-/* ===== 提交判题区域 ===== */
+/* ===== 鎻愪氦鍒ら鍖哄煙 ===== */
 .submit-section {
   flex-shrink: 0;
 }
@@ -1413,7 +1412,7 @@ const renderDescription = (text) => {
   to { transform: rotate(360deg); }
 }
 
-/* ===== AI评估结果 ===== */
+/* ===== AI璇勪及缁撴灉 ===== */
 .ai-result-card {
   border-radius: 12px;
   border: 1px solid rgba(var(--tm-color-primary-rgb), 0.2);
@@ -1504,7 +1503,7 @@ const renderDescription = (text) => {
   padding: 0 16px 16px;
 }
 
-/* ===== 响应式 ===== */
+/* ===== 鍝嶅簲寮?===== */
 @media (max-width: 1200px) {
   .playground-container {
     flex-direction: column;
@@ -1519,7 +1518,7 @@ const renderDescription = (text) => {
     height: auto;
   }
 
-  /* 纵向堆叠时隐藏拖拽手柄（用 :deep 穿透 scoped 样式） */
+  /* 绾靛悜鍫嗗彔鏃堕殣钘忔嫋鎷芥墜鏌勶紙鐢?:deep 绌块€?scoped 鏍峰紡锛?*/
   .playground-container > :deep(.base-splitter) {
     display: none;
   }
@@ -1560,3 +1559,5 @@ const renderDescription = (text) => {
   }
 }
 </style>
+
+

@@ -128,7 +128,7 @@ def export_python_code(cases: List[Dict]) -> str:
     for i, case in enumerate(cases):
         method = case.get("method", "GET").upper()
         url = case.get("url", "")
-        headers = case.get("headers", {})
+        headers = case.get("headers") or {}
         payload = case.get("payload")
         body_type = case.get("body_type", "none")
         name = case.get("name", f"test_case_{i + 1}")

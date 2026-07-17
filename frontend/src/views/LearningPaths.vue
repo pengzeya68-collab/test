@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="learning-paths" style="position: relative; z-index: 1;">
     <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
 
@@ -9,7 +9,7 @@
         </div>
         <div class="stat-info">
           <div class="stat-value">{{ displayCompleted }}</div>
-          <div class="stat-label">已完成习题</div>
+          <div class="stat-label">宸插畬鎴愪範棰</div>
         </div>
       </div>
       <div class="stat-card">
@@ -17,8 +17,8 @@
           <el-icon :size="22"><Timer /></el-icon>
         </div>
         <div class="stat-info">
-          <div class="stat-value">{{ displayStreak }}<small> 天</small></div>
-          <div class="stat-label">连续学习</div>
+          <div class="stat-value">{{ displayStreak }}<small> 澶</small></div>
+          <div class="stat-label">杩炵画瀛︿範</div>
         </div>
       </div>
       <div class="stat-card">
@@ -27,7 +27,7 @@
         </div>
         <div class="stat-info">
           <div class="stat-value">{{ skillLevel }}</div>
-          <div class="stat-label">技能等级</div>
+          <div class="stat-label">鎶€鑳界瓑绾</div>
         </div>
       </div>
     </div>
@@ -49,7 +49,7 @@
       <aside class="lp-sidebar">
         <div class="sidebar-header">
           <el-icon :size="18"><Reading /></el-icon>
-          <span>学习路线</span>
+          <span>瀛︿範璺嚎</span>
         </div>
         <div class="sidebar-stages">
           <div
@@ -81,21 +81,21 @@
         <div class="hero-banner" :class="'hero-stage-' + currentStage">
           <div class="hero-deco"></div>
           <div class="hero-content">
-            <div class="hero-badge">阶段 {{ currentStage }}</div>
+            <div class="hero-badge">闃舵 {{ currentStage }}</div>
             <h2 class="hero-title">{{ stageInfo.title }}</h2>
             <p class="hero-desc">{{ stageInfo.description }}</p>
             <div class="hero-meta">
               <div class="hero-meta-item">
                 <el-icon><Timer /></el-icon>
-                <span>预计 {{ currentStageStats.hours }} 小时</span>
+                <span>棰勮 {{ currentStageStats.hours }} 灏忔椂</span>
               </div>
               <div class="hero-meta-item">
                 <el-icon><Document /></el-icon>
-                <span>{{ currentStageStats.exercises }} 个习题</span>
+                <span>{{ currentStageStats.exercises }} 涓範棰</span>
               </div>
               <div class="hero-meta-item">
                 <el-icon><Collection /></el-icon>
-                <span>{{ currentStageStats.paths }} 条路径</span>
+                <span>{{ currentStageStats.paths }} 鏉¤矾寰</span>
               </div>
             </div>
           </div>
@@ -103,8 +103,8 @@
 
         <div class="content-toolbar">
           <div class="toolbar-left">
-            <h3 class="section-title">课程列表</h3>
-            <span class="result-count">共 {{ learningPaths.length }} 条</span>
+            <h3 class="section-title">璇剧▼鍒楄〃</h3>
+            <span class="result-count">鍏?{{ learningPaths.length }} 鏉</span>
           </div>
           <div class="toolbar-right">
             <el-select
@@ -113,10 +113,10 @@
               @change="fetchLearningPaths"
               style="width: 130px;"
             >
-              <el-option label="全部难度" value="" />
-              <el-option label="初级" value="beginner" />
-              <el-option label="中级" value="intermediate" />
-              <el-option label="高级" value="advanced" />
+              <el-option label="鍏ㄩ儴闅惧害" value="" />
+              <el-option label="鍒濈骇" value="beginner" />
+              <el-option label="涓骇" value="intermediate" />
+              <el-option label="楂樼骇" value="advanced" />
             </el-select>
           </div>
         </div>
@@ -124,11 +124,11 @@
         <div class="path-list" v-if="learningPaths.length > 0 && !loading">
           <div class="path-list-header">
             <span class="col-icon"></span>
-            <span class="col-title">路径名称</span>
-            <span class="col-count">习题</span>
-            <span class="col-hours">时长</span>
-            <span class="col-diff">难度</span>
-            <span class="col-action">操作</span>
+            <span class="col-title">璺緞鍚嶇О</span>
+            <span class="col-count">涔犻</span>
+            <span class="col-hours">鏃堕暱</span>
+            <span class="col-diff">闅惧害</span>
+            <span class="col-action">鎿嶄綔</span>
           </div>
           <div
             class="path-row"
@@ -171,7 +171,7 @@
 
         <div class="loading-state" v-if="loading">
           <el-icon class="is-loading" :size="36"><Loading /></el-icon>
-          <span>加载中...</span>
+          <span>鍔犺浇涓?..</span>
         </div>
       </main>
     </div>
@@ -205,30 +205,30 @@ const stageConfigs = [
   { id: 1, shortTitle: '测试入门筑基', desc: '零基础入门，掌握测试基础', estimatedWeeks: 4 },
   { id: 2, shortTitle: '功能测试精通', desc: '精通各类项目功能测试', estimatedWeeks: 8 },
   { id: 3, shortTitle: '测试技术进阶', desc: '接口、Linux、性能测试', estimatedWeeks: 12 },
-  { id: 4, shortTitle: '自动化测试专家', desc: 'Python、接口/UI自动化', estimatedWeeks: 16 },
+  { id: 4, shortTitle: '自动化测试专家', desc: 'Python、接口和 UI 自动化', estimatedWeeks: 16 },
   { id: 5, shortTitle: '测试架构师之路', desc: '平台开发、DevOps、质量体系', estimatedWeeks: 20 },
 ]
 
 const stageInfos = {
   1: {
-    title: '阶段1 - 测试入门筑基',
-    description: '适合零基础入门，掌握软件测试基础理论、测试方法、计算机基础和SQL，为测试生涯打好基础。预计4周完成。'
+    title: '阶段 1 - 测试入门筑基',
+    description: '适合零基础入门，掌握软件测试基础理论、测试方法、计算机基础和 SQL。预计 4 周完成。'
   },
   2: {
-    title: '阶段2 - 功能测试精通',
-    description: '精通Web/APP/小程序等各类项目的功能测试，掌握完整的测试流程，能独立负责项目测试。预计8周完成。'
+    title: '阶段 2 - 功能测试精通',
+    description: '精通 Web、App、小程序等项目的功能测试，掌握完整测试流程。预计 8 周完成。'
   },
   3: {
-    title: '阶段3 - 测试技术进阶',
-    description: '掌握接口测试、Linux、数据库进阶、性能测试基础，成为中级测试工程师。预计12周完成。'
+    title: '阶段 3 - 测试技术进阶',
+    description: '掌握接口测试、Linux、数据库进阶和性能测试基础。预计 12 周完成。'
   },
   4: {
-    title: '阶段4 - 自动化测试专家',
-    description: '精通Python编程、接口自动化、UI自动化、APP自动化、性能测试，成为高级自动化测试工程师。预计16周完成。'
+    title: '阶段 4 - 自动化测试专家',
+    description: '精通 Python、接口自动化、UI 自动化、App 自动化和性能测试。预计 16 周完成。'
   },
   5: {
-    title: '阶段5 - 测试架构师之路',
-    description: '掌握测试平台开发、DevOps、质量体系建设、专项测试技术，向测试架构师/测试专家方向发展。预计20周以上。'
+    title: '阶段 5 - 测试架构师之路',
+    description: '掌握测试平台开发、DevOps、质量体系建设和专项测试技术。预计 20 周以上。'
   }
 }
 
@@ -242,11 +242,11 @@ const totalCompletedExercises = computed(() => {
 
 const skillLevel = computed(() => {
   const total = totalCompletedExercises.value
-  if (total >= 100) return '专家'
-  if (total >= 60) return '高级'
-  if (total >= 30) return '中级'
-  if (total >= 10) return '初级'
-  return '入门'
+  if (total >= 100) return '涓撳'
+  if (total >= 60) return '楂樼骇'
+  if (total >= 30) return '涓骇'
+  if (total >= 10) return '鍒濈骇'
+  return '鍏ラ棬'
 })
 
 const currentStageStats = computed(() => {
@@ -272,11 +272,11 @@ const stageProgressMap = computed(() => {
 })
 
 const languageIconMap = {
-  'Python': '🐍', 'Java': '☕', 'SQL': '🗃️', 'Linux': '🐧',
-  'JavaScript': '📜', 'HTTP': '🌐', 'Shell': '💻', 'Bash': '💻',
-  'HTML': '🌐', 'CSS': '🎨', 'Postman': '📮', 'JMeter': '📊',
-  'Selenium': '🤖', 'Appium': '📱', 'Docker': '🐳', 'Git': '📂',
-  '性能测试': '⚡', '接口测试': '🔌', '自动化': '🤖',
+  Python: 'Py', Java: 'J', SQL: 'SQL', Linux: 'L',
+  JavaScript: 'JS', HTTP: 'HTTP', Shell: 'SH', Bash: 'SH',
+  HTML: 'HTML', CSS: 'CSS', Postman: 'PM', JMeter: 'JM',
+  Selenium: 'Se', Appium: 'Ap', Docker: 'D', Git: 'Git',
+  '性能测试': 'PT', '接口测试': 'API', '自动化': 'AT',
 }
 
 let animationFrameId = null
@@ -325,7 +325,7 @@ const fetchLearningPaths = async () => {
     const res = await request.get('/learning-paths', { params })
     learningPaths.value = res
   } catch (error) {
-    console.error('获取学习路径失败:', error)
+    console.error('鑾峰彇瀛︿範璺緞澶辫触:', error)
   } finally {
     loading.value = false
   }
@@ -337,7 +337,7 @@ const fetchAllPaths = async () => {
     const arr = Array.isArray(res) ? res : (res?.list || res?.items || [])
     allPaths.value = arr
   } catch (error) {
-    console.error('获取所有路径失败:', error)
+    console.error('鑾峰彇鎵€鏈夎矾寰勫け璐?', error)
   }
 }
 
@@ -345,7 +345,7 @@ const fetchAllProgress = async () => {
   try {
     const res = await request.get('/learning-paths/all-progress')
     allProgress.value = res.progress || []
-    // 从API返回数据计算 displayStreak 和 displayCompleted
+    // 浠嶢PI杩斿洖鏁版嵁璁＄畻 displayStreak 鍜?displayCompleted
     const streak = res.streak || res.streak_days || 0
     const completed = res.completed_exercises || totalCompletedExercises.value
     nextTick(() => {
@@ -353,7 +353,7 @@ const fetchAllProgress = async () => {
       animateValue(displayStreak, streak, 1000)
     })
   } catch (error) {
-    console.error('获取学习进度失败:', error)
+    console.error('鑾峰彇瀛︿範杩涘害澶辫触:', error)
   }
 }
 
@@ -389,11 +389,11 @@ const isPathCompleted = (pathId) => {
 }
 
 const getLanguageIcon = (lang) => {
-  if (!lang) return '📘'
+  if (!lang) return '馃摌'
   for (const [key, icon] of Object.entries(languageIconMap)) {
     if (lang.toLowerCase().includes(key.toLowerCase())) return icon
   }
-  return '📘'
+  return '馃摌'
 }
 
 const getStageTagType = (stage) => {
@@ -412,9 +412,9 @@ const getDifficultyTagType = (difficulty) => {
 
 const getDifficultyText = (difficulty) => {
   const map = {
-    beginner: '初级',
-    intermediate: '中级',
-    advanced: '高级'
+    beginner: '鍒濈骇',
+    intermediate: '涓骇',
+    advanced: '楂樼骇'
   }
   return map[difficulty] || difficulty
 }
@@ -1057,3 +1057,4 @@ const goToDetail = (id) => {
   }
 }
 </style>
+

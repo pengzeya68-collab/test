@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -84,6 +85,35 @@ async def ensure_dev_tables() -> None:
             pass  # 列已存在则忽略
 
 
+async def ensure_desktop_admin() -> None:
+    """Create the first local desktop account only for the bundled local service."""
+    if os.getenv("TESTMASTER_DESKTOP_LOCAL") != "1":
+        return
+    from sqlalchemy import select
+    from fastapi_backend.core.database import AsyncSessionLocal
+    from fastapi_backend.models.models import User
+    from fastapi_backend.services.auth_service import AuthService
+
+    username = os.getenv("TESTMASTER_DESKTOP_ADMIN", "admin").strip() or "admin"
+    password = os.getenv("TESTMASTER_DESKTOP_PASSWORD", "admin123")
+    async with AsyncSessionLocal() as session:
+        existing = await session.scalar(select(User).where(User.username == username))
+        if existing:
+            return
+        session.add(User(
+            username=username,
+            email=f"{username}@testmaster.local",
+            password_hash=AuthService.hash_password(password),
+            is_active=True,
+            is_admin=True,
+            is_super_admin=True,
+            level=1,
+            score=0,
+        ))
+        await session.commit()
+        _logger.info("Local desktop administrator initialized")
+
+
 async def init_auto_test_runtime() -> None:
     """Initialize AutoTest assets: DB tables, directories, scheduler."""
     from fastapi_backend.core.autotest_database import init_autotest_db
@@ -133,6 +163,7 @@ async def lifespan(_: FastAPI):
         await create_tables()
     else:
         await ensure_dev_tables()
+    await ensure_desktop_admin()
     # AutoTest 初始化（失败不阻塞主服务启动）
     try:
         await init_auto_test_runtime()
@@ -264,6 +295,21 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Trace-ID", "X-Request-ID"],
 )
 
+from fastapi_backend.middleware.request_body_limit import RequestBodyLimitMiddleware
+app.add_middleware(RequestBodyLimitMiddleware, max_bytes=75 * 1024 * 1024)
+
+
+@app.middleware("http")
+async def autotest_request_size_limit(request: Request, call_next):
+    if request.url.path.startswith("/api/auto-test/"):
+        content_length = request.headers.get("content-length")
+        if content_length and content_length.isdigit() and int(content_length) > 75 * 1024 * 1024:
+            return JSONResponse(
+                status_code=413,
+                content={"detail": "接口自动化请求体不能超过 75 MB", "code": "REQUEST_TOO_LARGE"},
+            )
+    return await call_next(request)
+
 # 请求统计中间件（必须在 AI 速率限制之前注册）
 app.middleware("http")(request_stats_middleware)
 
@@ -278,7 +324,7 @@ from fastapi_backend.core.router_registry import discover_routers
 
 _routers = discover_routers()
 
-for group_name in ("admin", "autotest", "learning", "ai_tools"):
+for group_name in ("admin", "autotest", "learning", "ai_tools", "ui_automation"):
     group_router = _routers.get(group_name)
     if group_router is not None:
         app.include_router(group_router)

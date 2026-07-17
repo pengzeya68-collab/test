@@ -1,6 +1,6 @@
 """AI 积分相关 Schema"""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
@@ -9,13 +9,12 @@ from datetime import datetime
 
 
 class AIPointsConfigResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     feature: str
     display_name: str
     points_cost: int
     description: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
 
 class AIPointsConfigUpdate(BaseModel):
@@ -28,6 +27,8 @@ class AIPointsConfigUpdate(BaseModel):
 
 
 class AIUsageLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     username: Optional[str] = None
@@ -35,9 +36,6 @@ class AIUsageLogResponse(BaseModel):
     feature_name: Optional[str] = None
     points_cost: int
     created_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class AIUsageStatsResponse(BaseModel):
@@ -51,6 +49,8 @@ class AIUsageStatsResponse(BaseModel):
 
 
 class PointsTransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     username: Optional[str] = None
@@ -62,9 +62,6 @@ class PointsTransactionResponse(BaseModel):
     related_feature: Optional[str] = None
     note: Optional[str] = None
     created_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class PointsBalanceResponse(BaseModel):

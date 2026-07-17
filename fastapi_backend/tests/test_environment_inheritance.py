@@ -562,3 +562,19 @@ class TestInheritanceAPI:
             "/api/auto-test/environments/999999/effective-variables"
         )
         assert resp.status_code == 404
+@pytest.mark.asyncio
+async def test_inheritance_rejects_parent_owned_by_another_user(autotest_session_factory):
+    foreign_parent = await _create_env(
+        autotest_session_factory, "其他租户环境", {"private_token": "do-not-leak"}, user_id=2
+    )
+    async with autotest_session_factory() as session:
+        with pytest.raises(EnvironmentNotFoundError):
+            await validate_parent_id(session, env_id=None, parent_id=foreign_parent.id, user_id=1)
+
+
+@pytest.mark.asyncio
+async def test_inheritance_chain_cannot_cross_user_boundary(autotest_session_factory):
+    foreign_env = await _create_env(autotest_session_factory, "租户二", {"secret": "hidden"}, user_id=2)
+    async with autotest_session_factory() as session:
+        with pytest.raises(EnvironmentNotFoundError):
+            await get_inheritance_chain(session, foreign_env.id, user_id=1)

@@ -56,6 +56,7 @@ class EnvironmentNotFoundError(InheritanceError):
 async def get_inheritance_chain(
     session: AsyncSession,
     env_id: int,
+    user_id: Optional[int] = None,
 ) -> List[Any]:
     """
     获取环境继承链（从根环境到当前环境，按继承顺序排列）。
@@ -100,9 +101,10 @@ async def get_inheritance_chain(
                 f"请减少环境继承层级（当前已遍历 {steps} 层）。"
             )
 
-        result = await session.execute(
-            select(AutoTestEnvironment).where(AutoTestEnvironment.id == current_id)
-        )
+        query = select(AutoTestEnvironment).where(AutoTestEnvironment.id == current_id)
+        if user_id is not None:
+            query = query.where(AutoTestEnvironment.user_id == user_id)
+        result = await session.execute(query)
         env = result.scalar_one_or_none()
         if env is None:
             if steps == 0:
@@ -126,6 +128,7 @@ async def get_inheritance_chain(
 async def get_effective_variables(
     session: AsyncSession,
     env_id: int,
+    user_id: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """
     计算合并后的有效变量列表（含来源标注）。
@@ -144,7 +147,7 @@ async def get_effective_variables(
         合并后的变量列表，每个元素为 dict：
         {name, value, source_environment_id, source_environment_name, is_overridden}
     """
-    chain = await get_inheritance_chain(session, env_id)
+    chain = await get_inheritance_chain(session, env_id, user_id=user_id)
 
     # 记录每个变量名首次出现的来源（最上层），用于判断 is_overridden
     # 同时记录最终生效的值与来源
@@ -185,6 +188,7 @@ async def validate_parent_id(
     session: AsyncSession,
     env_id: Optional[int],
     parent_id: Optional[int],
+    user_id: Optional[int] = None,
 ) -> None:
     """
     校验 parent_id 是否合法（不形成循环、不超出最大深度、父环境存在）。
@@ -213,9 +217,10 @@ async def validate_parent_id(
         )
 
     # 校验父环境存在
-    result = await session.execute(
-        select(AutoTestEnvironment).where(AutoTestEnvironment.id == parent_id)
-    )
+    parent_query = select(AutoTestEnvironment).where(AutoTestEnvironment.id == parent_id)
+    if user_id is not None:
+        parent_query = parent_query.where(AutoTestEnvironment.user_id == user_id)
+    result = await session.execute(parent_query)
     parent_env = result.scalar_one_or_none()
     if parent_env is None:
         raise EnvironmentNotFoundError(f"父环境 ID={parent_id} 不存在。")
@@ -238,11 +243,10 @@ async def validate_parent_id(
                     f"父环境 ID={parent_id} 的继承链已存在循环，无法继续继承。"
                 )
             visited.add(cursor)
-            r = await session.execute(
-                select(AutoTestEnvironment.parent_id).where(
-                    AutoTestEnvironment.id == cursor
-                )
-            )
+            cursor_query = select(AutoTestEnvironment.parent_id).where(AutoTestEnvironment.id == cursor)
+            if user_id is not None:
+                cursor_query = cursor_query.where(AutoTestEnvironment.user_id == user_id)
+            r = await session.execute(cursor_query)
             row = r.first()
             cursor = row[0] if row else None
 
@@ -255,7 +259,7 @@ async def validate_parent_id(
     else:
         # 创建场景：仅需校验父环境的祖先链深度 + 父本身 + 当前 不超过限制
         # 同时复用 get_inheritance_chain 的循环检测逻辑
-        chain = await get_inheritance_chain(session, parent_id)
+        chain = await get_inheritance_chain(session, parent_id, user_id=user_id)
         # chain 为 [root, ..., parent]，加上当前环境共 len(chain) + 1 层
         if len(chain) + 1 > MAX_INHERITANCE_DEPTH:
             raise MaxDepthExceededError(

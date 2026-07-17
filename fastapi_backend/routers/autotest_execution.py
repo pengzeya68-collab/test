@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, BackgroundTasks, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
@@ -192,6 +192,8 @@ async def send_request(
     current_user: User = Depends(get_current_active_user),
 ):
     from fastapi_backend.services.autotest_request_service import execute_http_request
+    from fastapi_backend.schemas.autotest import AutoTestRequestConfig
+    from pydantic import ValidationError
 
     url = payload.get("url", "")
     if not url:
@@ -204,17 +206,24 @@ async def send_request(
     if not safe:
         raise HTTPException(status_code=400, detail=reason)
     try:
-        return await execute_http_request(
+        try:
+            validated_config = AutoTestRequestConfig.model_validate(payload.get("request_config") or {})
+        except ValidationError as validation_error:
+            raise HTTPException(status_code=422, detail=validation_error.errors())
+        result = await execute_http_request(
             method=method,
             url=url,
             headers=convert_to_dict(payload.get("headers")),
             params=convert_to_dict(payload.get("params")),
-            body=payload.get("body") or payload.get("payload"),
+            body=payload["body"] if "body" in payload else payload.get("payload"),
             body_type=payload.get("body_type", "json"),
             env_id=payload.get("env_id"),
             variables=convert_to_dict(payload.get("variables")),
             user_id=current_user.id,
+            request_config=validated_config.model_dump(by_alias=True),
         )
+        result.pop("_raw_headers", None)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -620,6 +629,111 @@ async def quick_run(
 class BatchRunRequest(BaseModel):
     case_ids: List[int]
     env_id: Optional[int] = None
+    concurrency: int = 10
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_case_id_list(cls, value):
+        return {"case_ids": value} if isinstance(value, list) else value
+
+    @model_validator(mode="after")
+    def validate_concurrency(self):
+        if not 1 <= self.concurrency <= 20:
+            raise ValueError("并发数必须在 1 到 20 之间")
+        return self
+
+
+async def _run_case_batch_task(task_id: str, body: BatchRunRequest, user_id: int) -> None:
+    from fastapi_backend.core.autotest_database import AsyncSessionLocal
+    from fastapi_backend.services.autotest_execution import quick_run_case
+
+    results = []
+    try:
+        async with AsyncSessionLocal() as session:
+            case_result = await session.execute(
+                select(AutoTestCase).where(AutoTestCase.id.in_(body.case_ids), AutoTestCase.user_id == user_id)
+            )
+            case_map = {case.id: case for case in case_result.scalars().all()}
+            cases = [case_map[case_id] for case_id in body.case_ids if case_id in case_map]
+            env = None
+            if body.env_id:
+                env_result = await session.execute(
+                    select(AutoTestEnvironment).where(
+                        AutoTestEnvironment.id == body.env_id, AutoTestEnvironment.user_id == user_id
+                    )
+                )
+                env = env_result.scalar_one_or_none()
+
+            total = len(cases)
+            queue = asyncio.Queue()
+            for case in cases:
+                queue.put_nowait(case)
+            result_lock = asyncio.Lock()
+
+            async def worker():
+                while not queue.empty():
+                    stored = await get_task(task_id)
+                    if stored and (stored.get("cancelled") or stored.get("status") == "cancelled"):
+                        return
+                    try:
+                        case = queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        return
+                    try:
+                        execution = await quick_run_case(case, env, user_id=user_id)
+                    except Exception as exc:
+                        execution = {"success": False, "error": str(exc), "execution_time": 0}
+                    async with result_lock:
+                        results.append({"case_id": case.id, "case_name": case.name, **execution})
+                        session.add(AutoTestHistory(
+                            case_id=case.id, user_id=user_id,
+                            status="success" if execution.get("success") else "failed",
+                            execution_time=execution.get("execution_time") or 0,
+                            response_data=execution.get("response"), error_message=execution.get("error"),
+                        ))
+                        await session.commit()
+                        completed = len(results)
+                        succeeded = sum(1 for item in results if item.get("success"))
+                        await update_task(task_id, {
+                            "status": "PROGRESS", "user_id": user_id,
+                            "progress": {"current": completed, "total": total, "percent": int(completed * 100 / max(total, 1)), "current_api": case.name},
+                            "result": {"total": total, "completed": completed, "success": succeeded, "failed": completed - succeeded, "results": list(results)},
+                        })
+                    queue.task_done()
+
+            await asyncio.gather(*[worker() for _ in range(min(body.concurrency, max(total, 1)))])
+            stored = await get_task(task_id)
+            if stored and (stored.get("cancelled") or stored.get("status") == "cancelled"):
+                return
+            success = sum(1 for item in results if item.get("success"))
+            result_payload = {"total": total, "success": success, "failed": total - success, "results": results}
+            await update_task(task_id, {
+                "status": "completed", "state": "completed", "user_id": user_id,
+                "progress": {"current": total, "total": total, "percent": 100, "current_api": "执行完成"},
+                "result": result_payload, "completed_at": time.time(),
+            })
+    except Exception as exc:
+        await update_task(task_id, {"status": "failed", "state": "failed", "user_id": user_id, "error": str(exc), "completed_at": time.time()})
+
+
+@router.post("/cases/batch-run-async", status_code=202)
+async def start_batch_run(
+    body: BatchRunRequest,
+    current_user: User = Depends(get_current_active_user),
+):
+    if not body.case_ids:
+        raise HTTPException(status_code=400, detail="请提供至少一个用例 ID")
+    if len(body.case_ids) > 500:
+        raise HTTPException(status_code=400, detail="单次后台批量运行最多支持 500 个用例")
+    task_id = f"case-batch-{uuid.uuid4()}"
+    await update_task(task_id, {
+        "task_id": task_id, "task_type": "case_batch", "status": "PENDING", "state": "PENDING",
+        "user_id": current_user.id, "progress": {"current": 0, "total": len(body.case_ids), "percent": 0, "current_api": "等待执行"},
+    })
+    task = asyncio.create_task(_run_case_batch_task(task_id, body, current_user.id))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    return {"task_id": task_id, "status": "PENDING"}
 
 
 @router.post("/cases/batch-run")
@@ -1164,6 +1278,35 @@ def _scenario_id_from_scheduler_task_id(task_id: str) -> Optional[int]:
     return None
 
 
+async def _get_owned_scheduler_task(task_id: str, user_id: int):
+    """Return a scheduler task only after checking its scenario in the DB.
+
+    Job metadata is a cache and may be reconstructed after restart, so it must
+    never be the authority for tenant isolation.
+    """
+    from fastapi_backend.services.autotest_scheduler import get_scheduled_task
+    from fastapi_backend.core.autotest_database import AsyncSessionLocal
+
+    task = get_scheduled_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    scenario_id = task.get("scenario_id") or _scenario_id_from_scheduler_task_id(task_id)
+    if scenario_id is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(AutoTestScenario.id).where(
+                AutoTestScenario.id == int(scenario_id),
+                AutoTestScenario.user_id == user_id,
+            )
+        )
+        if result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="任务不存在")
+    task["scenario_id"] = int(scenario_id)
+    task["user_id"] = user_id
+    return task
+
+
 @router.get("/scheduler/tasks", response_model=List[ScheduleTaskResponse])
 async def list_scheduler_tasks(
     current_user: User = Depends(get_current_active_user),
@@ -1181,6 +1324,17 @@ async def get_scenario_scheduler_tasks(
 ):
     """获取指定场景的定时任务"""
     from fastapi_backend.services.autotest_scheduler import get_tasks_by_scenario
+    from fastapi_backend.core.autotest_database import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        owned = await db.execute(
+            select(AutoTestScenario.id).where(
+                AutoTestScenario.id == scenario_id,
+                AutoTestScenario.user_id == current_user.id,
+            )
+        )
+        if owned.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="场景不存在")
 
     tasks = get_tasks_by_scenario(scenario_id, user_id=current_user.id)
     return tasks if tasks else []
@@ -1217,15 +1371,21 @@ async def create_scheduler_task(
             is_active=task.is_active,
             user_id=current_user.id,
         )
-        await persist_schedule_to_db(
-            int(task.scenario_id),
-            task.cron_expression,
-            int(task.env_id) if task.env_id is not None else None,
-            task.webhook_url,
-            task.name,
-            True if task.is_active is None else bool(task.is_active),
-            user_id=current_user.id,
-        )
+        try:
+            await persist_schedule_to_db(
+                int(task.scenario_id),
+                task.cron_expression,
+                int(task.env_id) if task.env_id is not None else None,
+                task.webhook_url,
+                task.name,
+                True if task.is_active is None else bool(task.is_active),
+                user_id=current_user.id,
+            )
+        except Exception:
+            # Compensate the already-created APScheduler job.
+            from fastapi_backend.services.autotest_scheduler import remove_scheduled_task
+            remove_scheduled_task(result["task_id"])
+            raise
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1244,19 +1404,27 @@ async def delete_scheduler_task(
     from fastapi_backend.services.autotest_scheduler import get_scheduled_task, remove_scheduled_task
     from fastapi_backend.services.autotest_schedule_persistence import clear_schedule_from_db
 
-    t = get_scheduled_task(task_id)
-    if not t:
-        raise HTTPException(status_code=404, detail="任务不存在")
-
-    # 校验任务归属
-    if t.get("user_id") and t["user_id"] != current_user.id:
-        raise HTTPException(status_code=404, detail="任务不存在")
+    t = await _get_owned_scheduler_task(task_id, current_user.id)
 
     scenario_id = t.get("scenario_id") if t else _scenario_id_from_scheduler_task_id(task_id)
     success = remove_scheduled_task(task_id)
     if success:
-        if scenario_id is not None:
-            await clear_schedule_from_db(int(scenario_id), user_id=current_user.id)
+        try:
+            if scenario_id is not None:
+                await clear_schedule_from_db(int(scenario_id), user_id=current_user.id)
+        except Exception:
+            # Restore the job if persistence failed, keeping both stores aligned.
+            from fastapi_backend.services.autotest_scheduler import add_scheduled_task
+            add_scheduled_task(
+                scenario_id=int(t["scenario_id"]),
+                cron_expression=t["cron_expression"],
+                env_id=t.get("env_id"),
+                webhook_url=t.get("webhook_url"),
+                task_name=t.get("name"),
+                is_active=t.get("is_active", True),
+                user_id=current_user.id,
+            )
+            raise
         return {"message": "删除成功"}
     raise HTTPException(status_code=404, detail="任务不存在或删除失败")
 
@@ -1267,16 +1435,7 @@ async def run_scheduler_task_now(
     current_user: User = Depends(get_current_active_user),
 ):
     """立即执行定时任务（手动触发）"""
-    import asyncio
-    from fastapi_backend.services.autotest_scheduler import get_scheduled_task, execute_scenario_job
-
-    task = get_scheduled_task(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
-
-    # 校验任务归属
-    if task.get("user_id") and task["user_id"] != current_user.id:
-        raise HTTPException(status_code=404, detail="任务不存在")
+    task = await _get_owned_scheduler_task(task_id, current_user.id)
 
     scenario_id = task.get("scenario_id")
     user_id = None
@@ -1299,17 +1458,9 @@ async def run_scheduler_task_now(
 
     try:
 
-        async def _execute_job_safe():
-            try:
-                await execute_scenario_job(task["scenario_id"], task.get("env_id"), task_id, user_id=user_id)
-            except Exception as e:
-                import logging
-
-                logging.getLogger(__name__).error(f"定时任务执行失败 task_id={task_id}: {e}", exc_info=True)
-
-        _bg_task = asyncio.create_task(_execute_job_safe())
-        _bg_task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.exception() else None)
-        return {"message": "任务已触发执行"}
+        from fastapi_backend.tasks import task_run_scenario
+        celery_task = task_run_scenario.delay(task["scenario_id"], task.get("env_id"), user_id)
+        return {"message": "任务已触发执行", "celery_task_id": celery_task.id}
     except HTTPException:
         raise
     except Exception as e:
@@ -1325,20 +1476,19 @@ async def toggle_scheduler_task(
     from fastapi_backend.services.autotest_scheduler import get_scheduled_task, toggle_task_status
     from fastapi_backend.services.autotest_schedule_persistence import persist_schedule_is_active_db
 
-    task = get_scheduled_task(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
-
-    # 校验任务归属
-    if task.get("user_id") and task["user_id"] != current_user.id:
-        raise HTTPException(status_code=404, detail="任务不存在")
+    task = await _get_owned_scheduler_task(task_id, current_user.id)
 
     try:
         result = toggle_task_status(task_id)
         t2 = get_scheduled_task(task_id)
         sid = (t2 or {}).get("scenario_id") or _scenario_id_from_scheduler_task_id(task_id)
         if sid is not None:
-            await persist_schedule_is_active_db(int(sid), bool(result.get("is_active")), user_id=current_user.id)
+            try:
+                await persist_schedule_is_active_db(int(sid), bool(result.get("is_active")), user_id=current_user.id)
+            except Exception:
+                # Toggle back if the database write failed.
+                toggle_task_status(task_id)
+                raise
         return result
     except HTTPException:
         raise

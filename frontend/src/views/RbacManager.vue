@@ -1,24 +1,24 @@
-<template>
+﻿<template>
   <div class="rbac-manager">
     <div class="page-header">
       <div>
-        <h2 class="page-title">🛡️ 角色权限管理</h2>
-        <p class="page-subtitle">基于角色的访问控制（RBAC）——角色、权限、用户角色分配</p>
+        <h2 class="page-title">馃洝锔?瑙掕壊鏉冮檺绠＄悊</h2>
+        <p class="page-subtitle">鍩轰簬瑙掕壊鐨勮闂帶鍒讹紙RBAC锛夆€斺€旇鑹层€佹潈闄愩€佺敤鎴疯鑹插垎閰</p>
       </div>
       <div>
-        <el-button type="primary" @click="openAssignDialog">分配用户角色</el-button>
-        <el-button @click="loadAll">刷新</el-button>
+        <el-button type="primary" @click="openAssignDialog">鍒嗛厤鐢ㄦ埛瑙掕壊</el-button>
+        <el-button @click="loadAll">鍒锋柊</el-button>
       </div>
     </div>
 
     <el-row :gutter="20">
-      <!-- 左侧：角色列表 -->
+      <!-- 宸︿晶锛氳鑹插垪琛?-->
       <el-col :span="8">
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
-              <span>角色列表</span>
-              <el-tag v-if="permissionStore.isAdmin" type="danger" size="small">管理员</el-tag>
+              <span>瑙掕壊鍒楄〃</span>
+              <el-tag v-if="permissionStore.isAdmin" type="danger" size="small">绠＄悊鍛</el-tag>
             </div>
           </template>
           <el-table
@@ -28,47 +28,46 @@
             @current-change="onRoleSelect"
             size="small"
           >
-            <el-table-column prop="display_name" label="角色" min-width="100" />
-            <el-table-column prop="code" label="代码" min-width="80">
+            <el-table-column prop="display_name" label="瑙掕壊" min-width="100" />
+            <el-table-column prop="code" label="浠ｇ爜" min-width="80">
               <template #default="{ row }">
                 <el-tag size="small" :type="row.is_system ? 'warning' : 'info'">
                   {{ row.code || row.name }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="系统" width="60" align="center">
+            <el-table-column label="绯荤粺" width="60" align="center">
               <template #default="{ row }">
                 <el-icon v-if="row.is_system" color="#E6A23C"><Star /></el-icon>
               </template>
             </el-table-column>
           </el-table>
-          <div v-if="roles.length === 0 && !roleLoading" class="empty-tip">暂无角色数据</div>
+          <div v-if="roles.length === 0 && !roleLoading" class="empty-tip">鏆傛棤瑙掕壊鏁版嵁</div>
         </el-card>
       </el-col>
 
-      <!-- 右侧：权限分配 -->
+      <!-- 鍙充晶锛氭潈闄愬垎閰?-->
       <el-col :span="16">
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
               <span>
-                权限分配
+                鏉冮檺鍒嗛厤
                 <el-tag v-if="selectedRole" type="success" size="small" style="margin-left: 8px;">
                   {{ selectedRole.display_name }}
                 </el-tag>
               </span>
               <div v-if="selectedRole && canEditRole">
                 <el-button type="primary" size="small" :loading="saveLoading" @click="savePermissions">
-                  保存权限
+                  淇濆瓨鏉冮檺
                 </el-button>
               </div>
             </div>
           </template>
 
-          <div v-if="!selectedRole" class="empty-tip">请从左侧选择角色</div>
+          <div v-if="!selectedRole" class="empty-tip">璇蜂粠宸︿晶閫夋嫨瑙掕壊</div>
           <div v-else-if="selectedRole.is_system && selectedRole.code === 'ADMIN'" class="empty-tip">
-            ADMIN 系统角色拥有全部权限，不可修改
-          </div>
+            ADMIN 绯荤粺瑙掕壊鎷ユ湁鍏ㄩ儴鏉冮檺锛屼笉鍙慨鏀?          </div>
           <div v-else>
             <el-tree
               ref="permTreeRef"
@@ -84,19 +83,19 @@
       </el-col>
     </el-row>
 
-    <!-- 用户角色分配对话框 -->
-    <el-dialog v-model="assignDialogVisible" title="分配用户角色" width="640px">
+    <!-- 鐢ㄦ埛瑙掕壊鍒嗛厤瀵硅瘽妗?-->
+    <el-dialog v-model="assignDialogVisible" title="鍒嗛厤鐢ㄦ埛瑙掕壊" width="640px">
       <el-form :inline="true" size="small" @submit.prevent>
-        <el-form-item label="用户ID">
-          <el-input v-model="assignForm.userId" placeholder="输入用户ID" style="width: 160px;" />
+        <el-form-item label="鐢ㄦ埛ID">
+          <el-input v-model="assignForm.userId" placeholder="杈撳叆鐢ㄦ埛ID" style="width: 160px;" />
         </el-form-item>
         <el-form-item>
-          <el-button @click="loadUserRoles">查询当前角色</el-button>
+          <el-button @click="loadUserRoles">鏌ヨ褰撳墠瑙掕壊</el-button>
         </el-form-item>
       </el-form>
 
       <div v-if="userCurrentRoles.length" class="current-roles">
-        <span class="label">当前角色：</span>
+        <span class="label">褰撳墠瑙掕壊锛</span>
         <el-tag
           v-for="r in userCurrentRoles"
           :key="r.role_id"
@@ -109,7 +108,7 @@
         </el-tag>
       </div>
 
-      <el-divider content-position="left">选择要分配的角色</el-divider>
+      <el-divider content-position="left">閫夋嫨瑕佸垎閰嶇殑瑙掕壊</el-divider>
       <el-checkbox-group v-model="assignForm.roleIds">
         <el-checkbox v-for="r in roles" :key="r.id" :label="r.id" style="display: block; margin-bottom: 8px;">
           {{ r.display_name }} ({{ r.code || r.name }})
@@ -118,8 +117,8 @@
       </el-checkbox-group>
 
       <template #footer>
-        <el-button @click="assignDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="assignLoading" @click="submitAssign">保存分配</el-button>
+        <el-button @click="assignDialogVisible = false">鍙栨秷</el-button>
+        <el-button type="primary" :loading="assignLoading" @click="submitAssign">淇濆瓨鍒嗛厤</el-button>
       </template>
     </el-dialog>
   </div>
@@ -144,17 +143,16 @@ const roleLoading = ref(false)
 const saveLoading = ref(false)
 const assignLoading = ref(false)
 
-// 用户角色分配对话框
-const assignDialogVisible = ref(false)
+// 鐢ㄦ埛瑙掕壊鍒嗛厤瀵硅瘽妗?const assignDialogVisible = ref(false)
 const assignForm = ref({ userId: '', roleIds: [] })
 const userCurrentRoles = ref([])
 
 const treeProps = { label: 'name', children: 'children' }
 
-/** 是否可编辑角色权限（需 role:update 权限） */
+/** 鏄惁鍙紪杈戣鑹叉潈闄愶紙闇€ role:update 鏉冮檺锛?*/
 const canEditRole = computed(() => permissionStore.hasPermission('role:update'))
 
-/** 将权限列表按模块组织成树形结构 */
+/** 灏嗘潈闄愬垪琛ㄦ寜妯″潡缁勭粐鎴愭爲褰㈢粨鏋?*/
 const permissionTree = computed(() => {
   const modules = {}
   for (const p of permissions.value) {
@@ -165,42 +163,42 @@ const permissionTree = computed(() => {
         children: [],
       }
     }
-    modules[p.module].children.push({ code: p.code, name: `${p.action || ''} · ${p.name}` })
+    modules[p.module].children.push({ code: p.code, name: `${p.action || ''} 路 ${p.name}` })
   }
   return Object.values(modules).sort((a, b) => a.name.localeCompare(b.name))
 })
 
 function moduleLabel(module) {
   const labels = {
-    case: '接口用例',
-    scenario: '测试场景',
-    suite: '回归套件',
-    environment: '环境配置',
-    variable: '全局变量',
-    mock: 'Mock 服务',
-    schedule: '定时任务',
-    audit: '审计日志',
-    user: '用户管理',
-    role: '角色管理',
+    case: '鎺ュ彛鐢ㄤ緥',
+    scenario: '娴嬭瘯鍦烘櫙',
+    suite: '鍥炲綊濂椾欢',
+    environment: '鐜閰嶇疆',
+    variable: '鍏ㄥ眬鍙橀噺',
+    mock: 'Mock 鏈嶅姟',
+    schedule: '瀹氭椂浠诲姟',
+    audit: '瀹¤鏃ュ織',
+    user: '鐢ㄦ埛绠＄悊',
+    role: '瑙掕壊绠＄悊',
   }
   return labels[module] || module
 }
 
-/** 加载角色列表 */
+/** 鍔犺浇瑙掕壊鍒楄〃 */
 async function loadRoles() {
   roleLoading.value = true
   try {
     const res = await request.get('/admin/rbac/roles')
     roles.value = res || []
   } catch (e) {
-    // 非 admin 用户会收到 403，静默处理
+    // 非管理员用户可能收到 403，保持空列表即可。
     roles.value = []
   } finally {
     roleLoading.value = false
   }
 }
 
-/** 加载所有权限 */
+/** 鍔犺浇鎵€鏈夋潈闄?*/
 async function loadPermissions() {
   try {
     const res = await request.get('/admin/rbac/permissions')
@@ -214,7 +212,7 @@ async function loadAll() {
   await Promise.all([loadRoles(), loadPermissions()])
 }
 
-/** 选中角色时加载其权限 */
+/** 閫変腑瑙掕壊鏃跺姞杞藉叾鏉冮檺 */
 async function onRoleSelect(row) {
   if (!row) return
   selectedRole.value = row
@@ -223,28 +221,28 @@ async function onRoleSelect(row) {
   try {
     const res = await request.get(`/admin/rbac/roles/${row.id}/permissions`)
     checkedKeys.value = (res || []).map((p) => p.code)
-    // el-tree 需要在渲染后设置勾选
+    // el-tree 需要在渲染后设置勾选状态。
     setTimeout(() => {
       permTreeRef.value && permTreeRef.value.setCheckedKeys(checkedKeys.value)
     }, 50)
   } catch (e) {
-    ElMessage.warning('加载角色权限失败')
+    ElMessage.warning('鍔犺浇瑙掕壊鏉冮檺澶辫触')
   }
 }
 
-/** 保存角色权限 */
+/** 淇濆瓨瑙掕壊鏉冮檺 */
 async function savePermissions() {
   if (!selectedRole.value || !permTreeRef.value) return
   const checked = permTreeRef.value.getCheckedKeys()
   const halfChecked = permTreeRef.value.getHalfCheckedKeys()
-  // 过滤掉模块通配节点（以 :* 结尾），只提交具体权限码
+  // 杩囨护鎺夋ā鍧楅€氶厤鑺傜偣锛堜互 :* 缁撳熬锛夛紝鍙彁浜ゅ叿浣撴潈闄愮爜
   const codes = [...checked, ...halfChecked].filter((c) => !c.endsWith(':*'))
   saveLoading.value = true
   try {
     await request.put(`/admin/rbac/roles/${selectedRole.value.id}/permissions`, {
       permission_codes: codes,
     })
-    ElMessage.success('权限保存成功')
+    ElMessage.success('鏉冮檺淇濆瓨鎴愬姛')
   } catch (e) {
     ElMessage.error('权限保存失败：' + (e.message || ''))
   } finally {
@@ -262,10 +260,10 @@ function openAssignDialog() {
   assignDialogVisible.value = true
 }
 
-/** 查询用户当前角色 */
+/** 鏌ヨ鐢ㄦ埛褰撳墠瑙掕壊 */
 async function loadUserRoles() {
   if (!assignForm.value.userId) {
-    ElMessage.warning('请输入用户ID')
+    ElMessage.warning('请输入用户 ID')
     return
   }
   try {
@@ -278,10 +276,10 @@ async function loadUserRoles() {
   }
 }
 
-/** 提交用户角色分配 */
+/** 鎻愪氦鐢ㄦ埛瑙掕壊鍒嗛厤 */
 async function submitAssign() {
   if (!assignForm.value.userId) {
-    ElMessage.warning('请输入用户ID')
+    ElMessage.warning('请输入用户 ID')
     return
   }
   assignLoading.value = true
@@ -298,10 +296,10 @@ async function submitAssign() {
   }
 }
 
-/** 移除单个用户角色 */
+/** 绉婚櫎鍗曚釜鐢ㄦ埛瑙掕壊 */
 async function removeUserRole(roleId) {
   try {
-    await ElMessageBox.confirm('确认移除该用户的此角色？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm('确认移除该用户的此角色吗？', '提示', { type: 'warning' })
   } catch {
     return
   }
@@ -319,7 +317,7 @@ async function removeUserRole(roleId) {
 }
 
 onMounted(async () => {
-  // 确保权限已加载（用于按钮控制）
+  // 确保权限已加载，用于按钮权限控制。
   if (!permissionStore.loaded) {
     await permissionStore.fetchPermissions()
   }
@@ -369,3 +367,4 @@ onMounted(async () => {
   margin-left: 8px;
 }
 </style>
+

@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <div class="admin-layout">
-    <!-- 移动端遮罩 -->
+    <!-- 绉诲姩绔伄缃?-->
     <div v-if="sidebarOpen" class="sidebar-overlay" @click="sidebarOpen = false" />
 
-    <!-- 侧边栏 -->
+    <!-- 渚ц竟鏍?-->
     <aside class="sidebar" :class="{ collapsed: sidebarCollapsed, 'mobile-open': sidebarOpen }">
       <div class="logo" @click="$router.push('/admin/dashboard')">
         <span class="logo-icon">TM</span>
@@ -34,7 +34,7 @@
 
     <!-- 右侧内容 -->
     <main class="main-content">
-      <!-- 顶部导航 -->
+      <!-- 椤堕儴瀵艰埅 -->
       <header class="top-nav">
         <div class="nav-left">
           <button class="hamburger" @click="sidebarOpen = !sidebarOpen">
@@ -45,8 +45,8 @@
         <div class="nav-right">
           <el-dropdown trigger="click" @command="changeTheme">
             <button class="nav-btn theme-btn">
-              <span class="btn-icon">🎨</span>
-              <span class="btn-text">主题</span>
+              <span class="btn-icon">馃帹</span>
+              <span class="btn-text">涓婚</span>
             </button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -61,11 +61,11 @@
             <span class="user-avatar">{{ (adminInfo?.username || 'A')[0].toUpperCase() }}</span>
             <span class="user-name">{{ adminInfo?.username || 'Admin' }}</span>
           </div>
-          <button class="nav-btn logout-btn" @click="logout">退出</button>
+          <button class="nav-btn logout-btn" @click="logout">閫€鍑</button>
         </div>
       </header>
 
-      <!-- 主内容 -->
+      <!-- 涓诲唴瀹?-->
       <div class="content-area">
         <router-view />
       </div>
@@ -89,24 +89,24 @@ const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 
 const menus = [
-  { path: '/admin/dashboard', title: '数据统计', icon: '📊' },
-  { path: '/admin/exercises', title: '习题管理', icon: '📝' },
-  { path: '/admin/paths', title: '学习路径', icon: '🗺️' },
-  { path: '/admin/users', title: '用户管理', icon: '👥' },
-  { path: '/admin/exams', title: '考试管理', icon: '📋' },
-  { path: '/admin/interview', title: '面试题库', icon: '🎤' },
-  { path: '/admin/community', title: '社区管理', icon: '💬' },
-  { path: '/admin/backup', title: '备份管理', icon: '💾' },
-  { path: '/admin/ai-config', title: 'AI配置', icon: '🤖' },
-  { path: '/admin/ai-points', title: 'AI积分管理', icon: '💰' },
-  { path: '/admin/settings', title: '系统设置', icon: '⚙️' },
+  { path: '/admin/dashboard', title: '数据统计', icon: 'D' },
+  { path: '/admin/exercises', title: '习题管理', icon: 'Q' },
+  { path: '/admin/paths', title: '学习路径', icon: 'L' },
+  { path: '/admin/users', title: '用户管理', icon: 'U' },
+  { path: '/admin/exams', title: '考试管理', icon: 'E' },
+  { path: '/admin/interview', title: '面试题库', icon: 'I' },
+  { path: '/admin/community', title: '社区管理', icon: 'C' },
+  { path: '/admin/backup', title: '备份管理', icon: 'B' },
+  { path: '/admin/ai-config', title: 'AI 配置', icon: 'A' },
+  { path: '/admin/ai-points', title: 'AI 积分管理', icon: 'P' },
+  { path: '/admin/settings', title: '系统设置', icon: 'S' },
 ]
 
 const isActive = (path) => route.path.startsWith(path)
 
 const currentTitle = computed(() => {
   const menu = menus.find(m => route.path.startsWith(m.path))
-  return menu ? menu.title : '后台管理'
+  return menu ? menu.title : '鍚庡彴绠＄悊'
 })
 
 const handleMenuClick = (path) => {
@@ -121,7 +121,7 @@ const toggleCollapse = () => {
 
 const changeTheme = (themeId) => {
   const theme = applyTheme(themeId)
-  ElMessage.success(`已切换至「${theme.name}」主题`)
+  ElMessage.success(`已切换至“${theme.name}”主题`)
 }
 
 onMounted(() => {
@@ -152,7 +152,7 @@ const logout = async () => {
   overflow: hidden;
 }
 
-/* ===== 侧边栏 ===== */
+/* ===== 渚ц竟鏍?===== */
 .sidebar {
   width: 220px;
   min-width: 220px;
@@ -191,7 +191,7 @@ const logout = async () => {
   color: rgba(255,255,255,0.85);
 }
 
-/* 菜单 */
+/* 鑿滃崟 */
 .menu {
   flex: 1;
   padding: 12px 8px;
@@ -235,7 +235,7 @@ const logout = async () => {
   text-overflow: ellipsis;
 }
 
-/* 折叠按钮 */
+/* 鎶樺彔鎸夐挳 */
 .sidebar-footer {
   padding: 8px;
   border-top: 1px solid var(--tm-border-light);
@@ -261,7 +261,7 @@ const logout = async () => {
   flex-shrink: 0;
 }
 
-/* ===== 主内容区 ===== */
+/* ===== 涓诲唴瀹瑰尯 ===== */
 .main-content {
   flex: 1;
   display: flex;
@@ -270,7 +270,7 @@ const logout = async () => {
   min-width: 0;
 }
 
-/* 顶部导航 */
+/* 椤堕儴瀵艰埅 */
 .top-nav {
   height: 56px;
   background: var(--tm-card-bg);
@@ -293,7 +293,7 @@ const logout = async () => {
   color: var(--tm-text-primary);
 }
 
-/* 汉堡按钮 (移动端) */
+/* 姹夊牎鎸夐挳 (绉诲姩绔? */
 .hamburger {
   display: none;
   flex-direction: column;
@@ -378,7 +378,7 @@ const logout = async () => {
   border: 1px solid rgba(255,255,255,0.2);
 }
 
-/* 内容区域 */
+/* 鍐呭鍖哄煙 */
 .content-area {
   flex: 1;
   padding: 20px;
@@ -389,7 +389,7 @@ const logout = async () => {
 .content-area::-webkit-scrollbar-thumb { background: var(--tm-border-light); border-radius: 3px; }
 .content-area::-webkit-scrollbar-thumb:hover { background: var(--tm-color-primary); }
 
-/* ===== 移动端遮罩 ===== */
+/* ===== 绉诲姩绔伄缃?===== */
 .sidebar-overlay {
   display: none;
   position: fixed;
@@ -398,7 +398,7 @@ const logout = async () => {
   z-index: 99;
 }
 
-/* ===== 响应式 ===== */
+/* ===== 鍝嶅簲寮?===== */
 @media (max-width: 768px) {
   .hamburger {
     display: flex;
@@ -424,3 +424,4 @@ const logout = async () => {
   }
 }
 </style>
+

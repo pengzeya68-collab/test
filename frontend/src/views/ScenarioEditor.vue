@@ -56,6 +56,8 @@
           @edit-overrides="handleEditOverrides"
           @add-step="handleAddStep"
           @add-step-type="handleAddFlowStep"
+          @debug-step="step => handleDebugStep(step, true)"
+          @debug-from="step => handleDebugStep(step, false)"
         />
       </el-tab-pane>
 
@@ -176,6 +178,26 @@
 
     <ScenarioExecutionDialog ref="executionDialogRef" v-model="resultDialogVisible" @completed="handleExecutionCompleted" />
 
+    <el-drawer v-model="debugDrawerVisible" title="场景调试结果" size="58%">
+      <div v-if="debugResult">
+        <el-descriptions border :column="3">
+          <el-descriptions-item label="状态">{{ debugResult.status }}</el-descriptions-item>
+          <el-descriptions-item label="耗时">{{ debugResult.total_time }} ms</el-descriptions-item>
+          <el-descriptions-item label="执行步骤">{{ debugResult.step_results?.length || 0 }}</el-descriptions-item>
+        </el-descriptions>
+        <el-table :data="debugResult.step_results || []" style="margin-top: 14px" border>
+          <el-table-column prop="step_order" label="#" width="55" />
+          <el-table-column prop="api_case_name" label="步骤" min-width="160" />
+          <el-table-column prop="status" label="状态" width="90" />
+          <el-table-column prop="status_code" label="HTTP" width="80" />
+          <el-table-column prop="response_time" label="耗时(ms)" width="100" />
+          <el-table-column prop="error" label="错误" min-width="200" show-overflow-tooltip />
+        </el-table>
+        <el-divider>运行时变量快照</el-divider>
+        <pre class="debug-context">{{ JSON.stringify(debugResult.context_vars || {}, null, 2) }}</pre>
+      </div>
+    </el-drawer>
+
     <HelpDrawer
       v-model="showHelp"
       :title="helpData.title"
@@ -188,7 +210,7 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, VideoPlay, Back, Search, Refresh, DocumentCopy } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import { helpContent } from '@/utils/help-content'
@@ -222,6 +244,8 @@ const selectedCases = ref([])
 const caseTableRef = ref(null)
 const resultDialogVisible = ref(false)
 const executionDialogRef = ref(null)
+const debugDrawerVisible = ref(false)
+const debugResult = ref(null)
 let pollingTimer = null
 let pollingAbortController = null
 
@@ -428,11 +452,11 @@ const handleEditOverrides = ({ step, overrides, extractors }) => {
 // 添加流控类型步骤
 const handleAddFlowStep = async (stepType) => {
   const defaultConfigs = {
-    if_condition: { field: '', operator: '==', value: '' },
-    for_loop: { count: 5, var_name: 'i' },
-    for_each: { collection: 'items', item_var: 'item', index_var: 'index' },
+    if_condition: { field: '', operator: '==', value: '', then_branch: [], else_branch: [], reference_mode: 'id' },
+    for_loop: { count: 5, var_name: 'i', body: [], reference_mode: 'id' },
+    for_each: { collection: 'items', item_var: 'item', index_var: 'index', body: [], reference_mode: 'id' },
     wait: { duration_ms: 1000 },
-    group: { name: '分组' },
+    group: { name: '分组', children: [], reference_mode: 'id' },
     db_query: { connection_id: null, query: 'SELECT 1', extract_to: '' },
     scenario_ref: { scenario_id: null },
   }
@@ -495,6 +519,40 @@ const handleRun = async () => {
   // 安全兜底：3分钟后自动重置isRunning，防止对话框未触发completed事件
   if (isRunningFallbackTimer) clearTimeout(isRunningFallbackTimer)
   isRunningFallbackTimer = setTimeout(() => { isRunning.value = false }, 180000)
+}
+
+const handleDebugStep = async (step, singleStep) => {
+  if (!selectedEnvId.value) {
+    ElMessage.warning('请先选择执行环境')
+    return
+  }
+  try {
+    const previousContext = debugResult.value?.context_vars || {}
+    const { value: contextText } = await ElMessageBox.prompt(
+      '可填写前序登录 Token、订单号等运行时变量；留空使用空上下文。',
+      singleStep ? '单步调试上下文' : '从此步骤运行的初始上下文',
+      {
+        inputType: 'textarea', inputValue: JSON.stringify(previousContext, null, 2),
+        confirmButtonText: '开始调试', cancelButtonText: '取消',
+      },
+    )
+    let contextVars = {}
+    try { contextVars = contextText?.trim() ? JSON.parse(contextText) : {} } catch { ElMessage.error('上下文必须是合法的 JSON 对象'); return }
+    if (!contextVars || Array.isArray(contextVars) || typeof contextVars !== 'object') {
+      ElMessage.error('上下文必须是 JSON 对象')
+      return
+    }
+    debugResult.value = await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/debug`, {
+      env_id: selectedEnvId.value,
+      start_step_id: step.id,
+      stop_after_step_id: singleStep ? step.id : null,
+      context_vars: contextVars,
+    })
+    debugDrawerVisible.value = true
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error('场景调试失败：' + (error.response?.data?.detail || error.message))
+  }
 }
 
 const handleExecutionCompleted = () => {

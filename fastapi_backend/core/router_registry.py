@@ -59,6 +59,9 @@ _ROUTER_MODULES = {
         "fastapi_backend.routers.sandbox",
         "fastapi_backend.routers.mock_api",
     ],
+    "ui_automation": [
+        "fastapi_backend.routers.ui_automation",
+    ],
     "standalone": [
         "fastapi_backend.routers.auth",
         "fastapi_backend.routers.checkin",

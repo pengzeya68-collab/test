@@ -260,7 +260,7 @@ async def run_suite(
 
             exec_result = await _run_scenario(sid, env_id=env_id, user_id=current_user.id)
             duration_ms = int((_time.time() - t0) * 1000)
-            exec_failed = exec_result.get("failed_steps", 0) > 0
+            exec_failed = not exec_result.get("success", False)
             scenario_result = {
                 "scenario_id": sid,
                 "scenario_name": sc.name,

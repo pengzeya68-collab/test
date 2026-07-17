@@ -1,21 +1,21 @@
-<template>
+﻿<template>
   <div class="interview-detail">
     <div class="container">
       <div class="back-btn" @click="$router.back()">
         <el-icon><ArrowLeft /></el-icon>
-        返回
+        杩斿洖
       </div>
 
       <div v-if="session" class="detail-container">
-        <!-- 面试概览 -->
+        <!-- 闈㈣瘯姒傝 -->
         <div class="overview-card">
           <div class="overview-header">
             <div>
               <h1 class="session-title">{{ session.title }}</h1>
               <p class="session-meta">
-                {{ session.position }} · {{ session.level }} · {{ session.interview_type }}
-                <span class="time">开始时间：{{ session.start_time }}</span>
-                <span class="time" v-if="session.end_time">结束时间：{{ session.end_time }}</span>
+                {{ session.position }} 路 {{ session.level }} 路 {{ session.interview_type }}
+                <span class="time">寮€濮嬫椂闂达細{{ session.start_time }}</span>
+                <span class="time" v-if="session.end_time">缁撴潫鏃堕棿锛歿{ session.end_time }}</span>
               </p>
             </div>
             <div class="score-badge" :class="session.user_score >= 60 ? 'passed' : 'failed'">
@@ -25,19 +25,19 @@
           </div>
           
           <div class="feedback-section" v-if="session.feedback">
-            <h3>总体评价</h3>
+            <h3>鎬讳綋璇勪环</h3>
             <p class="feedback-text">{{ session.feedback }}</p>
           </div>
           
           <div class="suggestions-section" v-if="session.improvement_suggestions">
-            <h3>改进建议</h3>
+            <h3>鏀硅繘寤鸿</h3>
             <div class="suggestions-text" v-html="renderMarkdown(session.improvement_suggestions)"></div>
           </div>
         </div>
 
-        <!-- 题目详情 -->
+        <!-- 棰樼洰璇︽儏 -->
         <div class="questions-card">
-          <h2 class="card-title">答题详情</h2>
+          <h2 class="card-title">绛旈璇︽儏</h2>
           <div class="question-list">
             <div 
               class="question-item" 
@@ -76,20 +76,20 @@
                 </div>
                 
                 <div class="answer-item" v-if="item.ai_feedback">
-                  <div class="answer-label">AI点评：</div>
+                  <div class="answer-label">AI 点评：</div>
                   <div class="answer-content feedback">
                     {{ item.ai_feedback }}
                   </div>
                 </div>
                 
                 <div class="answer-item">
-                  <div class="answer-label">参考答案：</div>
+                  <div class="answer-label">鍙傝€冪瓟妗堬細</div>
                   <div class="answer-content correct-answer" v-html="renderMarkdown(item.answer)"></div>
                 </div>
 
-                <!-- 代码评估结果 -->
+                <!-- 浠ｇ爜璇勪及缁撴灉 -->
                 <div v-if="showCodeEvaluation(item)" class="code-evaluation-item">
-                  <div class="answer-label">代码评估结果：</div>
+                  <div class="answer-label">浠ｇ爜璇勪及缁撴灉锛</div>
                   <CodeEvaluationResult
                     :execution-status="item.execution_status || 'pending'"
                     :ai-evaluation-status="item.ai_evaluation_status || 'pending'"
@@ -106,15 +106,15 @@
           </div>
         </div>
 
-        <!-- 操作按钮 -->
+        <!-- 鎿嶄綔鎸夐挳 -->
         <div class="action-buttons">
           <el-button type="primary" @click="startNewInterview">
             <el-icon><VideoPlay /></el-icon>
-            再来一次
+            鍐嶆潵涓€娆?
           </el-button>
           <el-button type="default" @click="goToMyInterviews">
             <el-icon><List /></el-icon>
-            查看所有面试
+            鏌ョ湅鎵€鏈夐潰璇?
           </el-button>
         </div>
       </div>
@@ -154,7 +154,7 @@ watch(sessionId, () => {
 const fetchDetail = async () => {
   loading.value = true
   try {
-    // 先尝试从 Flask 获取面试详情
+    // 鍏堝皾璇曚粠 Flask 鑾峰彇闈㈣瘯璇︽儏
     const res = await request.get(`/interview/sessions/${sessionId.value}`)
     
     if (res.session) {
@@ -177,16 +177,16 @@ const fetchDetail = async () => {
         feedback: detail.feedback || '',
         improvement_suggestions: detail.improvement_suggestions || ''
       }
-      // FastAPI 创建的会话题目通过关联获取
+      // FastAPI 鍒涘缓鐨勪細璇濋鐩€氳繃鍏宠仈鑾峰彇
       questions.value = []
 
-      // 如果有提交记录，获取所有提交结果来展示
+      // 濡傛灉鏈夋彁浜よ褰曪紝鑾峰彇鎵€鏈夋彁浜ょ粨鏋滄潵灞曠ず
       if (detail.submissions && detail.submissions.length > 0) {
         questions.value = detail.submissions.map(sub => ({
           id: sub.question_id || detail.question_id,
-          title: sub.question_title || '面试题目',
+          title: sub.question_title || '闈㈣瘯棰樼洰',
           content: sub.question_description || sub.question_prompt || '',
-          category: '编程',
+          category: '缂栫▼',
           difficulty: sub.question_difficulty || 'medium',
           user_answer: sub.source_code || '',
           answer: sub.question_prompt || '',
@@ -203,9 +203,9 @@ const fetchDetail = async () => {
             const sub = subRes.data
             questions.value = [{
               id: sub.question_id || detail.question_id,
-              title: sub.question_title || '面试题目',
+              title: sub.question_title || '闈㈣瘯棰樼洰',
               content: sub.question_description || sub.question_prompt || '',
-              category: '编程',
+              category: '缂栫▼',
               difficulty: sub.question_difficulty || 'medium',
               user_answer: sub.source_code || '',
               answer: sub.question_prompt || '',
@@ -217,13 +217,13 @@ const fetchDetail = async () => {
             }]
           }
         } catch (subErr) {
-          console.warn('获取提交结果失败，尝试备用方式:', subErr)
+          console.warn('鑾峰彇鎻愪氦缁撴灉澶辫触锛屽皾璇曞鐢ㄦ柟寮?', subErr)
         }
       }
     }
   } catch (error) {
-    console.error('获取面试详情失败:', error)
-    ElMessage.error('获取面试详情失败')
+    console.error('鑾峰彇闈㈣瘯璇︽儏澶辫触:', error)
+    ElMessage.error('鑾峰彇闈㈣瘯璇︽儏澶辫触')
   } finally {
     loading.value = false
   }
@@ -247,7 +247,7 @@ const goToMyInterviews = () => {
 }
 
 const showCodeEvaluation = (item) => {
-  // 如果题目是编程相关类别且有关注信息，显示代码评估结果
+  // 编程相关类别且存在评估信息时，显示代码评估结果
   const codeCategories = ['编程', '自动化测试', '接口测试', '数据库', 'SQL', 'Shell']
   const isCodeQuestion = codeCategories.some(cat => (item.category || '').includes(cat))
 
@@ -563,7 +563,7 @@ const formatDateTime = (dateTimeStr) => {
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* Markdown样式 */
+/* Markdown鏍峰紡 */
 .question-desc, .answer-content {
   line-height: 2;
 }
@@ -625,7 +625,7 @@ const formatDateTime = (dateTimeStr) => {
   }
 }
 
-/* 代码评估结果样式 */
+/* 浠ｇ爜璇勪及缁撴灉鏍峰紡 */
 .code-evaluation-item {
   margin-top: 16px;
 }
@@ -637,3 +637,4 @@ const formatDateTime = (dateTimeStr) => {
   margin-bottom: 12px;
 }
 </style>
+

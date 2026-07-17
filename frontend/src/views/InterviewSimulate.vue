@@ -1,50 +1,50 @@
-<template>
+﻿<template>
   <div class="interview-simulate-container">
     <div class="back-action-bar">
-      <button class="btn-back" @click="$router.back()">&lt; 返回</button>
+      <button class="btn-back" @click="$router.back()">&lt; 杩斿洖</button>
     </div>
 
     <div class="center-card-wrapper" v-if="!sessionId">
       <div class="mock-interview-card">
-        <h2 class="card-title">创建模拟面试</h2>
+        <h2 class="card-title">鍒涘缓妯℃嫙闈㈣瘯</h2>
 
         <div class="form-group">
-          <label>应聘岗位</label>
-          <input type="text" v-model="form.position" placeholder="例如：测试工程师" />
+          <label>搴旇仒宀椾綅</label>
+          <input type="text" v-model="form.position" placeholder="渚嬪锛氭祴璇曞伐绋嬪笀" />
         </div>
 
         <div class="form-group">
-          <label>岗位级别</label>
+          <label>宀椾綅绾у埆</label>
           <select v-model="form.level">
-            <option value="">请选择</option>
-            <option value="初级">初级</option>
-            <option value="中级">中级</option>
-            <option value="高级">高级</option>
-            <option value="专家">专家</option>
+            <option value="">璇烽€夋嫨</option>
+            <option value="鍒濈骇">鍒濈骇</option>
+            <option value="涓骇">涓骇</option>
+            <option value="楂樼骇">楂樼骇</option>
+            <option value="涓撳">涓撳</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label>面试类型</label>
+          <label>闈㈣瘯绫诲瀷</label>
           <select v-model="form.type">
-            <option value="">请选择</option>
-            <option value="技术面">技术面试</option>
-            <option value="HR面">HR面试</option>
-            <option value="综合面">综合面试</option>
+            <option value="">璇烽€夋嫨</option>
+            <option value="鎶€鏈潰">鎶€鏈潰璇</option>
+            <option value="HR闈?>HR闈㈣瘯</option>
+            <option value="缁煎悎闈?>缁煎悎闈㈣瘯</option>
           </select>
         </div>
 
         <div class="form-group row-group">
-          <label>题目数量</label>
+          <label>棰樼洰鏁伴噺</label>
           <div class="number-input-wrap">
-            <button class="num-btn" @click="form.question_count = Math.max(5, (form.question_count || 5) - 1)">−</button>
+            <button class="num-btn" @click="form.question_count = Math.max(5, (form.question_count || 5) - 1)">鈭</button>
             <input type="number" v-model.number="form.question_count" class="num-input" />
             <button class="num-btn" @click="form.question_count = Math.min(20, (form.question_count || 5) + 1)">+</button>
           </div>
         </div>
 
         <div class="form-group">
-          <label>考察范围</label>
+          <label>鑰冨療鑼冨洿</label>
           <div class="checkbox-list">
             <label
               v-for="cat in categories"
@@ -95,7 +95,7 @@
           <div class="answer-top-row">
             <h4 class="answer-label">你的回答</h4>
             <button class="btn-hint" @click="showAnswerHint = !showAnswerHint">
-              {{ showAnswerHint ? '收起提示' : '💡 提示一下' }}
+              {{ showAnswerHint ? '收起提示' : '提示一下' }}
             </button>
           </div>
 
@@ -109,53 +109,53 @@
               :language="'python'"
               :template="getCodeTemplate()"
             />
-            <p class="code-notice">💡 此题目为编程题，请编写代码完成要求的功能。</p>
+            <p class="code-notice">馃挕 姝ら鐩负缂栫▼棰橈紝璇风紪鍐欎唬鐮佸畬鎴愯姹傜殑鍔熻兘銆</p>
           </div>
           <textarea
             v-else
             v-model="currentAnswer"
             class="answer-textarea"
-            placeholder="请输入你的回答..."
+            placeholder="璇疯緭鍏ヤ綘鐨勫洖绛?.."
             rows="8"
           ></textarea>
 
           <div class="feedback-block" v-if="currentQuestion.is_answered">
-            <!-- AI 评分 -->
+            <!-- AI 璇勫垎 -->
             <div class="feedback-score-bar">
-              <span class="score-label">AI 评分</span>
+              <span class="score-label">AI 璇勫垎</span>
               <span class="score-value" :class="getScoreClass(currentQuestion.score)">
                 {{ currentQuestion.score !== null && currentQuestion.score !== undefined ? currentQuestion.score : '...' }}/100
               </span>
               <span v-if="currentQuestion.score !== null && currentQuestion.score !== undefined" class="score-level" :class="getScoreClass(currentQuestion.score)">
                 {{ getScoreLevel(currentQuestion.score) }}
               </span>
-              <span v-if="currentQuestion.score === null || currentQuestion.score === undefined" class="score-evaluating">评估中...</span>
+              <span v-if="currentQuestion.score === null || currentQuestion.score === undefined" class="score-evaluating">璇勪及涓?..</span>
             </div>
 
-            <!-- 结构化反馈 -->
+            <!-- 缁撴瀯鍖栧弽棣?-->
             <div v-if="currentQuestion.parsed_feedback" class="feedback-sections">
               <div class="fb-section fb-overview" v-if="currentQuestion.parsed_feedback.feedback">
-                <div class="fb-title">总评</div>
+                <div class="fb-title">鎬昏瘎</div>
                 <div class="fb-text">{{ currentQuestion.parsed_feedback.feedback }}</div>
               </div>
               <div class="fb-section fb-strengths" v-if="currentQuestion.parsed_feedback.strengths?.length">
-                <div class="fb-title">优点</div>
+                <div class="fb-title">浼樼偣</div>
                 <ul><li v-for="(s, i) in currentQuestion.parsed_feedback.strengths" :key="i">{{ s }}</li></ul>
               </div>
               <div class="fb-section fb-weaknesses" v-if="currentQuestion.parsed_feedback.weaknesses?.length">
-                <div class="fb-title">不足</div>
+                <div class="fb-title">涓嶈冻</div>
                 <ul><li v-for="(w, i) in currentQuestion.parsed_feedback.weaknesses" :key="i">{{ w }}</li></ul>
               </div>
               <div class="fb-section fb-suggestion" v-if="currentQuestion.parsed_feedback.suggestion">
-                <div class="fb-title">改进建议</div>
+                <div class="fb-title">鏀硅繘寤鸿</div>
                 <div class="fb-text">{{ currentQuestion.parsed_feedback.suggestion }}</div>
               </div>
             </div>
-            <!-- 降级：无结构化数据时显示纯文本 -->
+            <!-- 闄嶇骇锛氭棤缁撴瀯鍖栨暟鎹椂鏄剧ず绾枃鏈?-->
             <div v-else-if="currentQuestion.ai_feedback" class="feedback-text">{{ currentQuestion.ai_feedback }}</div>
 
             <div class="follow-up-block" v-if="currentQuestion.follow_up_question">
-              <div class="feedback-divider">🔍 面试官追问</div>
+              <div class="feedback-divider">馃攳 闈㈣瘯瀹樿拷闂</div>
               <div class="follow-up-q">
                 <p>{{ currentQuestion.follow_up_question }}</p>
                 <p class="follow-up-hint">{{ currentQuestion.follow_up_hint }}</p>
@@ -164,7 +164,7 @@
                 v-model="currentQuestion.follow_up_answer"
                 class="answer-textarea"
                 rows="3"
-                placeholder="请输入你的追问回答..."
+                placeholder="璇疯緭鍏ヤ綘鐨勮拷闂洖绛?.."
               ></textarea>
               <button class="btn-submit-follow" @click="submitFollowUp" :disabled="followUpSubmitting">
                 {{ followUpSubmitting ? '提交中...' : '提交追问回答' }}
@@ -176,7 +176,7 @@
 
             <div class="follow-up-trigger" v-if="!currentQuestion.follow_up_question && !currentQuestion.follow_up_skipped">
               <button class="btn-follow-up" @click="requestFollowUp" :disabled="followUpLoading">
-                {{ followUpLoading ? '获取中...' : '🔍 面试官追问' }}
+                {{ followUpLoading ? '获取中...' : '面试官追问' }}
               </button>
               <span v-if="getCostText('interview_follow_up')" class="ai-cost-hint">{{ getCostText('interview_follow_up') }}</span>
               <button class="btn-skip" @click="currentQuestion.follow_up_skipped = true">跳过追问</button>
@@ -191,15 +191,15 @@
         </div>
 
         <div class="question-nav-buttons">
-          <button :disabled="currentQuestionIndex === 0" @click="prevQuestion">上一题</button>
-          <span v-if="getCostText('interview_text_eval') && !currentQuestion.is_answered" class="ai-cost-hint">提交答案消耗 {{ getCostText('interview_text_eval') }}</span>
+          <button :disabled="currentQuestionIndex === 0" @click="prevQuestion">涓婁竴棰</button>
+          <span v-if="getCostText('interview_text_eval') && !currentQuestion.is_answered" class="ai-cost-hint">鎻愪氦绛旀娑堣€?{{ getCostText('interview_text_eval') }}</span>
           <button
             v-if="!currentQuestion.is_answered"
             class="btn-submit"
             @click="submitAnswer"
             :disabled="submitting"
           >
-            {{ submitting ? '提交中...' : '提交回答' }}
+            {{ submitting ? '鎻愪氦涓?..' : '鎻愪氦鍥炵瓟' }}
           </button>
           <button
             v-else
@@ -207,7 +207,7 @@
             :disabled="currentQuestionIndex === questions.length - 1"
             @click="nextQuestion"
           >
-            下一题
+            涓嬩竴棰?
           </button>
         </div>
       </div>
@@ -215,7 +215,7 @@
 
     <el-dialog
       v-model="showResultDialog"
-      title="面试报告"
+      title="闈㈣瘯鎶ュ憡"
       width="680px"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
@@ -239,43 +239,43 @@
           <ul><li v-for="(s, i) in result.report.strengths" :key="i">{{ s }}</li></ul>
         </div>
 
-        <!-- 弱项 -->
+        <!-- 寮遍」 -->
         <div class="report-section" v-if="result.report?.weaknesses?.length">
-          <h4>待提升</h4>
+          <h4>寰呮彁鍗</h4>
           <ul><li v-for="(w, i) in result.report.weaknesses" :key="i">{{ w }}</li></ul>
         </div>
 
-        <!-- 分数范围 -->
+        <!-- 鍒嗘暟鑼冨洿 -->
         <div class="report-section" v-if="result.report?.score_range">
-          <h4>分数统计</h4>
+          <h4>鍒嗘暟缁熻</h4>
           <div class="score-stats">
-            <span>最高分: <strong>{{ result.report.score_range.max }}</strong></span>
-            <span>最低分: <strong>{{ result.report.score_range.min }}</strong></span>
-            <span>通过率: <strong>{{ result.report.pass_rate }}%</strong></span>
+            <span>鏈€楂樺垎: <strong>{{ result.report.score_range.max }}</strong></span>
+            <span>鏈€浣庡垎: <strong>{{ result.report.score_range.min }}</strong></span>
+            <span>閫氳繃鐜? <strong>{{ result.report.pass_rate }}%</strong></span>
           </div>
         </div>
 
-        <!-- 改进计划 -->
+        <!-- 鏀硅繘璁″垝 -->
         <div class="report-section" v-if="result.report?.improvement_plan?.length">
-          <h4>改进计划</h4>
+          <h4>鏀硅繘璁″垝</h4>
           <ol><li v-for="(p, i) in result.report.improvement_plan" :key="i">{{ p }}</li></ol>
         </div>
       </div>
       <template #footer>
-        <el-button @click="goToDetail">查看详情</el-button>
-        <el-button type="primary" @click="restart">再来一次</el-button>
+        <el-button @click="goToDetail">鏌ョ湅璇︽儏</el-button>
+        <el-button type="primary" @click="restart">鍐嶆潵涓€娆</el-button>
       </template>
     </el-dialog>
 
     <el-dialog
       v-model="showCompleteConfirm"
-      title="确认结束面试"
+      title="纭缁撴潫闈㈣瘯"
       width="400px"
     >
-      <p>你确定要结束本次面试吗？结束后将无法继续答题。</p>
+      <p>浣犵‘瀹氳缁撴潫鏈闈㈣瘯鍚楋紵缁撴潫鍚庡皢鏃犳硶缁х画绛旈銆</p>
       <template #footer>
-        <el-button @click="showCompleteConfirm = false">取消</el-button>
-        <el-button type="danger" @click="completeInterview" :disabled="completing">确认结束</el-button>
+        <el-button @click="showCompleteConfirm = false">鍙栨秷</el-button>
+        <el-button type="danger" @click="completeInterview" :disabled="completing">纭缁撴潫</el-button>
       </template>
     </el-dialog>
   </div>
@@ -332,11 +332,11 @@ const currentQuestion = computed(() => {
 
 const needsCodeEditor = computed(() => {
   if (!currentQuestion.value) return false
-  // 优先使用 language 字段判断：text 表示文本题，其余视为代码题
+  // 优先使用 language 字段判断：text 表示文本题，其余按代码题处理
   const lang = (currentQuestion.value.language || '').toLowerCase()
   if (lang === 'text' || lang === '中文' || lang === '通用') return false
   if (['python', 'java', 'sql', 'shell', 'javascript', 'go', 'c', 'c++'].some(l => lang.includes(l))) return true
-  // 降级：用 category 判断（仅当 language 不明确时）
+  // 降级：language 不明确时用 category 判断
   const category = currentQuestion.value.category || ''
   const codeCategories = ['编程', '自动化测试', '接口测试', '数据库', 'SQL', 'Shell']
   return codeCategories.some(cat => category.includes(cat))
@@ -383,7 +383,7 @@ const createSession = async () => {
       currentAnswer.value = questions.value[0].user_answer || ''
     }
 
-    ElMessage.success(`面试会话创建成功！共${data.total_questions || questions.value.length}道题目`)
+    ElMessage.success(`面试会话创建成功，共 ${data.total_questions || questions.value.length} 道题目`)
   } catch (error) {
     console.error('创建面试会话失败:', error)
     ElMessage.error('创建失败，请稍后重试')
@@ -406,8 +406,8 @@ const fetchSession = async () => {
       currentAnswer.value = questions.value[currentQuestionIndex.value].user_answer || ''
     }
   } catch (error) {
-    console.error('获取面试会话失败:', error)
-    ElMessage.error('获取面试信息失败')
+    console.error('鑾峰彇闈㈣瘯浼氳瘽澶辫触:', error)
+    ElMessage.error('鑾峰彇闈㈣瘯淇℃伅澶辫触')
   } finally {
     creating.value = false
   }
@@ -446,7 +446,7 @@ const submitAnswer = async () => {
   }
 
   submitting.value = true
-  // 捕获当前题目索引，防止异步操作期间用户切换题目导致数据写入错误
+  // 捕获当前题目索引，防止异步提交期间切换题目导致数据写入错误
   const submitIdx = currentQuestionIndex.value
   const getQuestion = () => questions.value[submitIdx]
 
@@ -469,7 +469,7 @@ const submitAnswer = async () => {
     const checkResult = async (attempts = 0) => {
       if (pollingAborted.value || attempts > 20) {
         const q2 = getQuestion()
-        if (q2) q2.ai_feedback = 'AI评估超时，请稍后刷新查看'
+        if (q2) q2.ai_feedback = 'AI璇勪及瓒呮椂锛岃绋嶅悗鍒锋柊鏌ョ湅'
         submitting.value = false
         return
       }
@@ -480,24 +480,24 @@ const submitAnswer = async () => {
           const q3 = getQuestion()
           if (q3) {
             q3.score = sub.score
-            q3.ai_feedback = sub.feedback || '评估完成'
+            q3.ai_feedback = sub.feedback || '璇勪及瀹屾垚'
             q3.parsed_feedback = sub.parsed_feedback || null
           }
           submitting.value = false
           return
         }
       } catch (err) {
-        console.warn('获取评估结果失败:', err)
+        console.warn('鑾峰彇璇勪及缁撴灉澶辫触:', err)
       }
       await new Promise(r => setTimeout(r, 2000))
       await checkResult(attempts + 1)
     }
 
     setTimeout(() => checkResult(), 2000)
-    ElMessage.success('回答提交成功，AI正在评估...')
+    ElMessage.success('鍥炵瓟鎻愪氦鎴愬姛锛孉I姝ｅ湪璇勪及...')
   } catch (error) {
-    console.error('提交答案失败:', error)
-    ElMessage.error('提交失败，请稍后重试')
+    console.error('鎻愪氦绛旀澶辫触:', error)
+    ElMessage.error('鎻愪氦澶辫触锛岃绋嶅悗閲嶈瘯')
     submitting.value = false
   }
 }
@@ -518,8 +518,8 @@ const completeInterview = async () => {
     showCompleteConfirm.value = false
     userStore.checkNewAchievements()
   } catch (error) {
-    console.error('结束面试失败:', error)
-    ElMessage.error('操作失败，请稍后重试')
+    console.error('缁撴潫闈㈣瘯澶辫触:', error)
+    ElMessage.error('鎿嶄綔澶辫触锛岃绋嶅悗閲嶈瘯')
   } finally {
     completing.value = false
   }
@@ -579,8 +579,8 @@ const requestFollowUp = async () => {
     currentQuestion.value.follow_up_hint = res.hint
     currentQuestion.value.follow_up_type = res.follow_up_type
   } catch (error) {
-    console.error('获取追问失败:', error)
-    ElMessage.error('获取追问失败')
+    console.error('鑾峰彇杩介棶澶辫触:', error)
+    ElMessage.error('鑾峰彇杩介棶澶辫触')
   } finally {
     followUpLoading.value = false
   }
@@ -598,7 +598,7 @@ const submitFollowUp = async () => {
       language: 'text',
       source_code: currentQuestion.value.follow_up_answer,
     })
-    currentQuestion.value.follow_up_feedback = res.data?.feedback || '回答已收到，继续保持！'
+    currentQuestion.value.follow_up_feedback = res.data?.feedback || '回答已收到，请继续保持。'
     ElMessage.success('追问回答已提交')
   } catch (error) {
     console.error('提交追问回答失败:', error)

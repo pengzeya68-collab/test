@@ -66,7 +66,7 @@ async def persist_schedule_to_db(
         res = await session.execute(query)
         row = res.scalar_one_or_none()
         if not row:
-            return
+            raise LookupError(f"Scenario {scenario_id} no longer exists")
         row.schedule_cron_expression = cron_expression
         row.schedule_env_id = env_id
         row.schedule_webhook_url = webhook_url or None
@@ -83,7 +83,7 @@ async def persist_schedule_is_active_db(scenario_id: int, is_active: bool, user_
         res = await session.execute(query)
         row = res.scalar_one_or_none()
         if not row:
-            return
+            raise LookupError(f"Scenario {scenario_id} no longer exists")
         row.schedule_is_active = is_active
         await session.commit()
 
@@ -96,7 +96,7 @@ async def clear_schedule_from_db(scenario_id: int, user_id: int = None) -> None:
         res = await session.execute(query)
         row = res.scalar_one_or_none()
         if not row:
-            return
+            raise LookupError(f"Scenario {scenario_id} no longer exists")
         row.schedule_cron_expression = None
         row.schedule_env_id = None
         row.schedule_webhook_url = None

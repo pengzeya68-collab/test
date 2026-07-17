@@ -52,6 +52,7 @@ SNAPSHOT_FIELDS: Tuple[str, ...] = (
     "pre_script_language",
     "post_script_language",
     "response_schema",
+    "request_config",
 )
 
 

@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <div class="json-editor">
     <div class="editor-toolbar">
-      <span class="toolbar-hint">支持 JSON 语法高亮</span>
+      <span class="toolbar-hint">鏀寔 JSON 璇硶楂樹寒</span>
       <div class="toolbar-actions">
-        <el-button size="small" text @click="formatJson">格式化</el-button>
-        <el-button size="small" text @click="compressJson">压缩</el-button>
+        <el-button size="small" text @click="formatJson">鏍煎紡鍖</el-button>
+        <el-button size="small" text @click="compressJson">鍘嬬缉</el-button>
       </div>
     </div>
     <div class="editor-wrapper">
@@ -21,7 +21,7 @@
     </div>
     <div class="editor-status">
       <span v-if="error" class="status-error">{{ error }}</span>
-      <span v-else class="status-ok">✓ JSON 格式正确</span>
+      <span v-else class="status-ok">鉁?JSON 鏍煎紡姝ｇ‘</span>
     </div>
   </div>
 </template>
@@ -37,7 +37,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: '输入 JSON 数据...'
+    default: '杈撳叆 JSON 鏁版嵁...'
   }
 })
 
@@ -47,23 +47,23 @@ const textareaRef = ref(null)
 const content = ref('')
 const error = ref('')
 
-// 同步外部值
+// 鍚屾澶栭儴鍊?
 watch(() => props.modelValue, (val) => {
   if (val !== content.value) {
     content.value = typeof val === 'object' ? JSON.stringify(val, null, 2) : val || ''
-    // 清除错误状态并重新验证
+    // 娓呴櫎閿欒鐘舵€佸苟閲嶆柊楠岃瘉
     error.value = ''
     try {
       if (content.value.trim()) {
         JSON.parse(content.value)
       }
     } catch (e) {
-      error.value = 'JSON 格式错误'
+      error.value = 'JSON 鏍煎紡閿欒'
     }
   }
 }, { immediate: true })
 
-// 处理输入
+// 澶勭悊杈撳叆
 const handleInput = () => {
   error.value = ''
   try {
@@ -71,46 +71,46 @@ const handleInput = () => {
       JSON.parse(content.value)
     }
   } catch (e) {
-    error.value = 'JSON 格式错误'
+    error.value = 'JSON 鏍煎紡閿欒'
   }
   emit('update:modelValue', content.value)
 }
 
-// 格式化
+// 鏍煎紡鍖?
 const formatJson = () => {
   try {
     const parsed = JSON.parse(content.value)
     content.value = JSON.stringify(parsed, null, 2)
     error.value = ''
   } catch (e) {
-    error.value = '无法格式化：JSON 格式错误'
+    error.value = '鏃犳硶鏍煎紡鍖栵細JSON 鏍煎紡閿欒'
   }
 }
 
-// 压缩
+// 鍘嬬缉
 const compressJson = () => {
   try {
     const parsed = JSON.parse(content.value)
     content.value = JSON.stringify(parsed)
     error.value = ''
   } catch (e) {
-    error.value = '无法压缩：JSON 格式错误'
+    error.value = '鏃犳硶鍘嬬缉锛欽SON 鏍煎紡閿欒'
   }
 }
 
-// 处理 Tab 键
+// 澶勭悊 Tab 閿?
 const handleTab = (e) => {
   const textarea = textareaRef.value
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
   content.value = content.value.substring(0, start) + '  ' + content.value.substring(end)
-  // 设置光标位置
+  // 璁剧疆鍏夋爣浣嶇疆
   setTimeout(() => {
     textarea.selectionStart = textarea.selectionEnd = start + 2
   }, 0)
 }
 
-// 语法高亮
+// 璇硶楂樹寒
 const highlightedContent = computed(() => {
   if (!content.value || props.contentType !== 'application/json') return ''
   try {
@@ -121,15 +121,15 @@ const highlightedContent = computed(() => {
   }
 })
 
-// JSON 语法高亮
+// JSON 璇硶楂樹寒
 const syntaxHighlight = (json) => {
   if (!json) return ''
-  // 先转义HTML实体
+  // 鍏堣浆涔塇TML瀹炰綋
   const escaped = json
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-  // 使用单一正则交替匹配，避免双重包裹
+  // 浣跨敤鍗曚竴姝ｅ垯浜ゆ浛鍖归厤锛岄伩鍏嶅弻閲嶅寘瑁?
   return escaped.replace(
     /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+\.?\d*([eE][+-]?\d+)?)/g,
     (match) => {
@@ -257,7 +257,7 @@ defineExpose({
   color: #f14c4c;
 }
 
-/* 语法高亮颜色 */
+/* 璇硶楂樹寒棰滆壊 */
 :deep(.json-key) {
   color: #9cdcfe;
 }
@@ -278,3 +278,4 @@ defineExpose({
   color: #569cd6;
 }
 </style>
+

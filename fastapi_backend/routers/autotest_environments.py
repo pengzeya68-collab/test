@@ -129,7 +129,7 @@ async def create_environment(
 
     # 校验 parent_id 合法性（不形成循环、不超深度、父环境存在）
     try:
-        await validate_parent_id(db, env_id=None, parent_id=data.get("parent_id"))
+        await validate_parent_id(db, env_id=None, parent_id=data.get("parent_id"), user_id=current_user.id)
     except InheritanceError as exc:
         _raise_inheritance_error(exc)
 
@@ -164,7 +164,7 @@ async def update_environment(
     # 如果显式传入了 parent_id，校验循环继承与深度
     if "parent_id" in _set_fields:
         try:
-            await validate_parent_id(db, env_id=env_id, parent_id=_set_fields["parent_id"])
+            await validate_parent_id(db, env_id=env_id, parent_id=_set_fields["parent_id"], user_id=current_user.id)
         except InheritanceError as exc:
             _raise_inheritance_error(exc)
 
@@ -238,14 +238,17 @@ async def get_effective_variables_endpoint(
         raise HTTPException(status_code=404, detail="环境不存在")
 
     try:
-        effective_vars = await get_effective_variables(db, env_id)
+        effective_vars = await get_effective_variables(db, env_id, user_id=current_user.id)
     except InheritanceError as exc:
         _raise_inheritance_error(exc)
 
     return {
         "env_id": env_id,
         "env_name": env.env_name,
-        "variables": effective_vars,
+        "variables": [
+            {**item, "value": "****" if _SENSITIVE_PATTERN.search(item["name"]) else item["value"]}
+            for item in effective_vars
+        ],
         "count": len(effective_vars),
     }
 
@@ -273,7 +276,7 @@ async def get_inheritance_chain_endpoint(
         raise HTTPException(status_code=404, detail="环境不存在")
 
     try:
-        chain = await get_inheritance_chain(db, env_id)
+        chain = await get_inheritance_chain(db, env_id, user_id=current_user.id)
     except InheritanceError as exc:
         _raise_inheritance_error(exc)
 

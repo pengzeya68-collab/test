@@ -79,13 +79,15 @@
                 <FlowControlPanel
                   :step-type="element.step_type"
                   :step-config="element.step_config || {}"
+                  :available-steps="availableChildSteps(element)"
                   @save="(config) => saveStepConfig(element, config)"
                 />
               </el-popover>
             </template>
             <el-popover
+              v-if="!element.step_type || element.step_type === 'api_request'"
               placement="bottom"
-              :width="450"
+              :width="560"
               trigger="click"
               @show="loadExtractors(element)"
             >
@@ -114,6 +116,10 @@
                       size="small"
                       style="flex: 1; margin-right: 8px;"
                     />
+                    <el-select v-model="ext.scope" size="small" style="width: 118px; margin-right: 8px;">
+                      <el-option label="本次运行" value="run" />
+                      <el-option label="保存为全局" value="global" />
+                    </el-select>
                     <el-button
                       type="danger"
                       size="small"
@@ -219,6 +225,12 @@
           </div>
 
           <div class="step-actions">
+            <el-tooltip content="只运行此步骤" placement="top">
+              <el-button size="small" text @click="emit('debug-step', element)"><el-icon><VideoPlay /></el-icon></el-button>
+            </el-tooltip>
+            <el-tooltip content="从此步骤开始运行" placement="top">
+              <el-button size="small" text @click="emit('debug-from', element)"><el-icon><Position /></el-icon></el-button>
+            </el-tooltip>
             <el-switch v-model="element.is_active" @change="handleStepActiveChange(element)" />
             <el-button type="danger" size="small" text @click="handleRemoveStep(element)">
               <el-icon><Delete /></el-icon>
@@ -276,7 +288,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Delete, Rank, Setting, Download, ArrowDown, Position, Switch, Refresh, List, Timer, FolderOpened, Coin, Link, DocumentCopy } from '@element-plus/icons-vue'
+import { Plus, Delete, Rank, Setting, Download, ArrowDown, Position, Switch, Refresh, List, Timer, FolderOpened, Coin, Link, DocumentCopy, VideoPlay } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
 import autoTestRequest from '@/utils/autoTestRequest'
 import CodeEditor from '@/components/CodeEditor.vue'
@@ -293,7 +305,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['reorder', 'toggle-active', 'remove', 'edit-overrides', 'add-step', 'add-step-type'])
+const emit = defineEmits(['reorder', 'toggle-active', 'remove', 'edit-overrides', 'add-step', 'add-step-type', 'debug-step', 'debug-from'])
 
 const localSteps = ref([])
 
@@ -400,7 +412,7 @@ const loadExtractors = (step) => {
     // 兼容旧数据：extractorType 字段映射为 type
     extractorForm.value = extractors.map(e => {
       const { extractorType, ...rest } = e
-      return { ...rest, type: e.type || extractorType || 'jsonpath' }
+      return { ...rest, type: e.type || extractorType || 'jsonpath', scope: e.scope || 'run' }
     })
   } else {
     extractorForm.value = []
@@ -411,7 +423,8 @@ const addExtractor = () => {
   extractorForm.value.push({
     variableName: '',
     expression: '',
-    type: 'jsonpath'
+    type: 'jsonpath',
+    scope: 'run'
   })
 }
 
@@ -497,6 +510,13 @@ const getStepTypeLabel = (type) => {
 const getStepTagType = (type) => {
   return STEP_TYPE_MAP[type || 'api_request']?.tag || 'info'
 }
+
+const availableChildSteps = (currentStep) => localSteps.value
+  .filter(step => step.id !== currentStep.id && ['api_request', 'wait', 'db_query', 'scenario_ref'].includes(step.step_type || 'api_request'))
+  .map(step => ({
+    id: step.id,
+    label: `${step.step_order + 1}. ${step.api_case?.name || getStepDisplayName(step)}`,
+  }))
 
 const getStepDisplayName = (element) => {
   const config = element.step_config || {}

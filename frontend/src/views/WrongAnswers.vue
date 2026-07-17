@@ -1,26 +1,26 @@
-<template>
+﻿<template>
   <div class="wrong-answers-page">
     <header class="page-header">
       <div class="header-titles">
-        <h1 class="page-title">📖 错题本</h1>
-        <p class="page-desc">回顾错题，查漏补缺，避免重复犯错</p>
+        <h1 class="page-title">馃摉 閿欓鏈</h1>
+        <p class="page-desc">鍥為【閿欓锛屾煡婕忚ˉ缂猴紝閬垮厤閲嶅鐘敊</p>
       </div>
       <div class="title-glow-line"></div>
     </header>
 
     <div class="stats-bar">
       <div class="stat-chip stat-wrong">
-        <div class="stat-icon-box stat-icon-wrong">✗</div>
+        <div class="stat-icon-box stat-icon-wrong">鉁</div>
         <div class="stat-info">
           <span class="stat-num stat-num-wrong">{{ wrongData.wrong_count }}</span>
-          <span class="stat-label">待复习</span>
+          <span class="stat-label">寰呭涔</span>
         </div>
       </div>
       <div class="stat-chip stat-mastered">
-        <div class="stat-icon-box stat-icon-mastered">✓</div>
+        <div class="stat-icon-box stat-icon-mastered">鉁</div>
         <div class="stat-info">
           <span class="stat-num stat-num-mastered">{{ wrongData.mastered_count }}</span>
-          <span class="stat-label">已掌握</span>
+          <span class="stat-label">宸叉帉鎻</span>
         </div>
       </div>
     </div>
@@ -30,12 +30,12 @@
         class="tab-item"
         :class="{ active: activeTab === 'wrong' }"
         @click="activeTab = 'wrong'"
-      >❌ 待复习</div>
+      >鉂?寰呭涔</div>
       <div
         class="tab-item"
         :class="{ active: activeTab === 'mastered' }"
         @click="activeTab = 'mastered'"
-      >✅ 已掌握</div>
+      >鉁?宸叉帉鎻</div>
     </div>
 
     <div class="tab-content">
@@ -47,7 +47,7 @@
             class="wrong-card"
           >
             <div class="card-left">
-              <div class="card-status-icon icon-fail">✗</div>
+              <div class="card-status-icon icon-fail">鉁</div>
             </div>
             <div class="card-body" @click="goToExercise(item.id)">
               <div class="card-title-row">
@@ -55,32 +55,32 @@
               </div>
               <div class="card-meta">
                 <span v-if="item.knowledge_point" class="meta-tag">
-                  <span class="meta-emoji">🏷️</span>
+                  <span class="meta-emoji">馃彿锔</span>
                   {{ item.knowledge_point }}
                 </span>
                 <span v-if="item.category" class="meta-tag">
-                  <span class="meta-emoji">📁</span>
+                  <span class="meta-emoji">馃搧</span>
                   {{ item.category }}
                 </span>
                 <span class="meta-tag">
-                  <span class="meta-emoji">⏰</span>
+                  <span class="meta-emoji">鈴</span>
                   {{ item.last_wrong_at }}
                 </span>
               </div>
             </div>
             <div class="card-right">
-              <span class="badge badge-danger">错 {{ item.wrong_count }} 次</span>
+              <span class="badge badge-danger">閿?{{ item.wrong_count }} 娆</span>
               <span class="badge" :class="'badge-' + getDifficultyType(item.difficulty)">
                 {{ getDifficultyText(item.difficulty) }}
               </span>
-              <button class="redo-btn" @click.stop="goToExercise(item.id)">重做</button>
+              <button class="redo-btn" @click.stop="goToExercise(item.id)">閲嶅仛</button>
             </div>
           </div>
         </div>
         <div v-else class="empty-state">
-          <div class="empty-emoji">🎉</div>
-          <p class="empty-title">没有错题，继续保持！</p>
-          <p class="empty-desc">你的知识掌握得很扎实</p>
+          <div class="empty-emoji">馃帀</div>
+          <p class="empty-title">娌℃湁閿欓锛岀户缁繚鎸侊紒</p>
+          <p class="empty-desc">浣犵殑鐭ヨ瘑鎺屾彙寰楀緢鎵庡疄</p>
         </div>
       </template>
 
@@ -92,7 +92,7 @@
             class="wrong-card mastered-card"
           >
             <div class="card-left">
-              <div class="card-status-icon icon-pass">✓</div>
+              <div class="card-status-icon icon-pass">鉁</div>
             </div>
             <div class="card-body" @click="goToExercise(item.id)">
               <div class="card-title-row">
@@ -100,24 +100,24 @@
               </div>
               <div class="card-meta">
                 <span v-if="item.knowledge_point" class="meta-tag">
-                  <span class="meta-emoji">🏷️</span>
+                  <span class="meta-emoji">馃彿锔</span>
                   {{ item.knowledge_point }}
                 </span>
                 <span v-if="item.category" class="meta-tag">
-                  <span class="meta-emoji">📁</span>
+                  <span class="meta-emoji">馃搧</span>
                   {{ item.category }}
                 </span>
               </div>
             </div>
             <div class="card-right">
-              <span class="badge badge-success">已掌握</span>
+              <span class="badge badge-success">宸叉帉鎻</span>
             </div>
           </div>
         </div>
         <div v-else class="empty-state">
-          <div class="empty-emoji">📝</div>
-          <p class="empty-title">还没有从错题中掌握的题目</p>
-          <p class="empty-desc">继续复习错题，把它们变成你的强项</p>
+          <div class="empty-emoji">馃摑</div>
+          <p class="empty-title">杩樻病鏈変粠閿欓涓帉鎻＄殑棰樼洰</p>
+          <p class="empty-desc">缁х画澶嶄範閿欓锛屾妸瀹冧滑鍙樻垚浣犵殑寮洪」</p>
         </div>
       </template>
     </div>
@@ -152,7 +152,7 @@ const fetchWrongAnswers = async () => {
       mastered_count: res.mastered_count || 0,
     }
   } catch (error) {
-    console.error('获取错题本失败:', error)
+    console.error('鑾峰彇閿欓鏈け璐?', error)
   }
 }
 
@@ -166,7 +166,7 @@ const getDifficultyType = (d) => {
 }
 
 const getDifficultyText = (d) => {
-  const map = { beginner: '初级', intermediate: '中级', advanced: '高级', easy: '初级', medium: '中级', hard: '高级' }
+  const map = { beginner: '鍒濈骇', intermediate: '涓骇', advanced: '楂樼骇', easy: '鍒濈骇', medium: '涓骇', hard: '楂樼骇' }
   return map[d] || d
 }
 </script>

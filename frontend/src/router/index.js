@@ -4,14 +4,16 @@ import { adminLoginRoute, adminRoutes } from './admin'
 import { useUserStore } from '@/stores/user'
 import { useAdminStore } from '@/stores/admin'
 
+const isDesktopBuild = import.meta.env.VITE_DESKTOP_BUILD === 'true'
+
 const routes = [
   adminLoginRoute,
   adminRoutes,
-  {
+  ...(isDesktopBuild ? [{ path: '/', redirect: '/auto-test' }] : [{
     path: '/',
     name: 'Home',
     component: () => import('@/views/Home.vue')
-  },
+  }]),
   {
     path: '/login',
     name: 'Login',
@@ -184,6 +186,32 @@ const routes = [
     // 公开访问页面，无需 requiresAuth
   },
   {
+    path: '/cases', name: 'CaseList', component: () => import('@/views/CaseList.vue'), meta: { requiresAuth: true, title: '接口用例' }
+  },
+  {
+    path: '/scenarios', name: 'ScenarioList', component: () => import('@/views/ScenarioList.vue'), meta: { requiresAuth: true, title: '业务场景' }
+  },
+  {
+    path: '/suites', name: 'SuiteManager', component: () => import('@/views/SuiteManager.vue'), meta: { requiresAuth: true, title: '接口回归套件' }
+  },
+  {
+    path: '/data-factory', name: 'DataFactory', component: () => import('@/views/DataFactory.vue'), meta: { requiresAuth: true, title: '测试数据工厂' }
+  },
+  {
+    path: '/mock-service', name: 'MockService', component: () => import('@/views/MockService.vue'), meta: { requiresAuth: true, title: 'Mock 服务' }
+  },
+  {
+    path: '/backup-manager', name: 'BackupManager', component: () => import('@/views/BackupManager.vue'), meta: { requiresAuth: true, title: '自动化资产备份' }
+  },
+  {
+    path: '/ui-automation/cases', name: 'UICaseList', component: () => import('@/views/ui-automation/UICaseList.vue'), meta: { requiresAuth: true, title: 'UI 自动化用例' }
+  },
+  {
+    path: '/ui-automation/suites', name: 'UISuiteManager', component: () => import('@/views/ui-automation/UISuiteManager.vue'), meta: { requiresAuth: true, title: 'UI 回归套件' }
+  },
+  {
+    path: '/ui-automation/cases/:id', name: 'UICaseEditor', component: () => import('@/views/ui-automation/UICaseEditor.vue'), meta: { requiresAuth: true, title: 'UI 用例编辑器' }
+  },  {
     path: '/assessment',
     name: 'OnboardingAssessment',
     component: () => import(/* webpackChunkName: "learning" */ '@/views/OnboardingAssessment.vue'),

@@ -61,6 +61,13 @@ def extract_jsonpath_value(data: Any, path: str, default: Any = None) -> Any:
                 # 支持 [*] 通配符语法
                 if index_str == "*":
                     keys.append("*")
+                elif len(index_str) >= 2 and index_str[0] in {'"', "'"} and index_str[-1] == index_str[0]:
+                    try:
+                        keys.append(json.loads(index_str) if index_str[0] == '"' else index_str[1:-1].replace("\\'", "'"))
+                    except (json.JSONDecodeError, ValueError):
+                        return default
+                else:
+                    return default
             i = j
         elif char == "]":
             pass

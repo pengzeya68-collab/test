@@ -177,9 +177,9 @@ html, body {
 // 杈撳叆妗嗘牱寮?
 .el-input {
   --el-input-focus-border-color: var(--accent-primary);
-  --el-input-bg-color: rgba(0,0,0,0.4);
-  --el-input-border-color: rgba(255,255,255,0.1);
-  --el-input-text-color: #fff;
+  --el-input-bg-color: var(--bg-elevated);
+  --el-input-border-color: var(--border-subtle);
+  --el-input-text-color: var(--text-primary);
 
   .el-input__wrapper {
     background-color: var(--el-input-bg-color) !important;

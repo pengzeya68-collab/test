@@ -4,8 +4,9 @@ AutoTest Pydantic Schema 模型
 """
 
 from pydantic import BaseModel, Field, BeforeValidator, ConfigDict, field_validator, model_validator
-from typing import Optional, List, Dict, Any, Annotated
+from typing import Optional, List, Dict, Any, Annotated, Literal
 from datetime import datetime
+import json
 
 
 # 可空整数类型：自动将空字符串转换为 None
@@ -16,6 +17,58 @@ def empty_str_to_none(v):
 
 
 OptionalInt = Annotated[Optional[int], BeforeValidator(empty_str_to_none)]
+
+
+class AutoTestAuthConfig(BaseModel):
+    type: Literal["none", "bearer", "basic", "api_key"] = "none"
+    token: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    key: Optional[str] = None
+    value: Optional[str] = None
+    location: Literal["header", "query"] = Field("header", alias="in")
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    @model_validator(mode="after")
+    def validate_credentials(self):
+        if self.type == "bearer" and not self.token:
+            raise ValueError("Bearer 认证必须填写 token")
+        if self.type == "basic" and self.username is None:
+            raise ValueError("Basic 认证必须填写用户名")
+        if self.type == "api_key" and (not self.key or self.value is None):
+            raise ValueError("API Key 认证必须填写参数名和参数值")
+        return self
+
+
+class AutoTestRetryConfig(BaseModel):
+    count: int = Field(0, ge=0, le=10)
+    interval_ms: int = Field(0, ge=0, le=60000)
+    status_codes: List[int] = Field(default_factory=lambda: [408, 429, 500, 502, 503, 504])
+    retry_non_idempotent: bool = False
+
+    model_config = ConfigDict(extra="allow")
+
+    @field_validator("status_codes")
+    @classmethod
+    def validate_status_codes(cls, value):
+        if any(code < 100 or code > 599 for code in value):
+            raise ValueError("重试状态码必须在 100 到 599 之间")
+        return value
+
+
+class AutoTestRequestConfig(BaseModel):
+    auth: AutoTestAuthConfig = Field(default_factory=AutoTestAuthConfig)
+    cookies: Dict[str, str] = Field(default_factory=dict)
+    timeout_ms: int = Field(30000, ge=100, le=600000)
+    retry: AutoTestRetryConfig = Field(default_factory=AutoTestRetryConfig)
+    verify_ssl: bool = True
+    follow_redirects: bool = True
+    max_redirects: int = Field(10, ge=0, le=20)
+    graphql_variables: Dict[str, Any] = Field(default_factory=dict)
+    binary_encoding: Literal["utf-8", "base64"] = "utf-8"
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
 
 # ========== 断言 target / operator 枚举 ==========
@@ -113,8 +166,43 @@ class AutoTestCaseBase(BaseModel):
     pre_script_language: str = Field("javascript", description="前置脚本语言: javascript/python")
     post_script_language: str = Field("javascript", description="后置脚本语言: javascript/python")
     response_schema: Optional[Dict[str, Any]] = Field(None, description="响应JSON Schema")
+    request_config: Optional[AutoTestRequestConfig] = Field(
+        None,
+        description="请求执行策略：auth/cookies/timeout_ms/retry/verify_ssl/follow_redirects",
+    )
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_assertions(cls, data):
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        key = "assertions" if "assertions" in normalized else "assert_rules"
+        value = normalized.get(key)
+        if isinstance(value, dict) and isinstance(value.get("rules"), list):
+            normalized[key] = value["rules"]
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_embedded_uploads(self):
+        if self.body_type != "form-data" or not isinstance(self.payload, dict):
+            return self
+        file_count = 0
+        encoded_total = 0
+        for key, value in self.payload.items():
+            if isinstance(value, dict) and value.get("type") == "file":
+                file_count += 1
+                encoded = value.get("content_base64") or ""
+                if len(encoded) > 28 * 1024 * 1024:
+                    raise ValueError(f"文件 {value.get('filename') or key} 超过 20 MB 限制")
+                encoded_total += len(encoded)
+        if file_count > 20:
+            raise ValueError("单个用例最多保存 20 个上传文件")
+        if encoded_total > 68 * 1024 * 1024:
+            raise ValueError("单个用例上传文件总大小不能超过 50 MB")
+        return self
 
 
 class AutoTestCaseCreate(AutoTestCaseBase):
@@ -156,8 +244,33 @@ class AutoTestCaseUpdate(BaseModel):
     pre_script_language: Optional[str] = "javascript"
     post_script_language: Optional[str] = "javascript"
     response_schema: Optional[Dict[str, Any]] = None
+    request_config: Optional[AutoTestRequestConfig] = None
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_assertions(cls, data):
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        key = "assertions" if "assertions" in normalized else "assert_rules"
+        value = normalized.get(key)
+        if isinstance(value, dict) and isinstance(value.get("rules"), list):
+            normalized[key] = value["rules"]
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_embedded_uploads(self):
+        if self.body_type != "form-data" or not isinstance(self.payload, dict):
+            return self
+        files = [value for value in self.payload.values() if isinstance(value, dict) and value.get("type") == "file"]
+        if len(files) > 20:
+            raise ValueError("单个用例最多保存 20 个上传文件")
+        sizes = [len(value.get("content_base64") or "") for value in files]
+        if any(size > 28 * 1024 * 1024 for size in sizes) or sum(sizes) > 68 * 1024 * 1024:
+            raise ValueError("用例上传文件超过允许大小")
+        return self
 
 
 class AutoTestCaseResponse(AutoTestCaseBase):
@@ -185,8 +298,15 @@ class AutoTestEnvironmentBase(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_env_name(cls, data):
-        if isinstance(data, dict) and "name" not in data and data.get("env_name"):
-            data = {**data, "name": data["env_name"]}
+        if isinstance(data, dict):
+            data = dict(data)
+            if "name" not in data and data.get("env_name"):
+                data["name"] = data["env_name"]
+            if isinstance(data.get("variables"), str):
+                try:
+                    data["variables"] = json.loads(data["variables"])
+                except (TypeError, json.JSONDecodeError):
+                    pass
         return data
 
 
@@ -205,8 +325,15 @@ class AutoTestEnvironmentUpdate(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_env_name(cls, data):
-        if isinstance(data, dict) and "name" not in data and data.get("env_name"):
-            data = {**data, "name": data["env_name"]}
+        if isinstance(data, dict):
+            data = dict(data)
+            if "name" not in data and data.get("env_name"):
+                data["name"] = data["env_name"]
+            if isinstance(data.get("variables"), str):
+                try:
+                    data["variables"] = json.loads(data["variables"])
+                except (TypeError, json.JSONDecodeError):
+                    pass
         return data
 
 

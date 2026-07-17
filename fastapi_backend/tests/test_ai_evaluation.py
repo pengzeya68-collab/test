@@ -56,9 +56,16 @@ class TestAIEvaluation:
         assert result is not None
         assert hasattr(result, "score")
 
+    @patch("fastapi_backend.services.ai_tutor_service.AITutorService._evaluate_with_real_ai")
     @pytest.mark.asyncio
-    async def test_evaluate_code_different_languages(self):
+    async def test_evaluate_code_different_languages(self, mock_evaluate):
         """测试不同编程语言评估"""
+        mock_evaluate.return_value = AIEvaluationResponse(
+            is_correct=True,
+            score=80,
+            feedback="代码可评估",
+            optimized_code=None,
+        )
         languages = ["python", "javascript", "java", "cpp"]
 
         for lang in languages:

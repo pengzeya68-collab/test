@@ -1,82 +1,82 @@
-<template>
+﻿<template>
   <div class="exercises" style="position: relative; z-index: 1;">
     <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
 
-    <!-- 顶部统计栏 -->
+    <!-- 椤堕儴缁熻鏍?-->
     <div class="stats-bar">
       <div class="stats-bar-inner">
         <div class="stat-item">
           <span class="stat-value">{{ exercises.length }}</span>
-          <span class="stat-label">总题数</span>
+          <span class="stat-label">鎬婚鏁</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
           <span class="stat-value stat-value--success">{{ completedCount }}</span>
-          <span class="stat-label">已完成</span>
+          <span class="stat-label">宸插畬鎴</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
           <span class="stat-value stat-value--accent">{{ accuracyRate }}%</span>
-          <span class="stat-label">正确率</span>
+          <span class="stat-label">姝ｇ‘鐜</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item stat-item--action" v-if="lastUnfinishedExercise">
           <span class="stat-continue" @click="goToDetail(lastUnfinishedExercise.id)">
-            <span class="continue-icon">▶</span>
-            继续练习：{{ lastUnfinishedExercise.title }}
+            <span class="continue-icon">鈻</span>
+            缁х画缁冧範锛歿{ lastUnfinishedExercise.title }}
           </span>
         </div>
       </div>
     </div>
 
-    <!-- 筛选区域 -->
+    <!-- 绛涢€夊尯鍩?-->
     <div class="filter-section">
-      <!-- 题型标签行 -->
+      <!-- 棰樺瀷鏍囩琛?-->
       <div class="filter-row">
-        <div class="filter-label">题型</div>
+        <div class="filter-label">棰樺瀷</div>
         <div class="pill-group">
           <span
             class="pill"
             :class="{ 'pill--active': currentType === '' }"
             @click="currentType = ''"
-          >全部</span>
+          >鍏ㄩ儴</span>
           <span
             class="pill"
             :class="{ 'pill--active': currentType === 'single_choice' }"
             @click="currentType = 'single_choice'"
-          >选择题</span>
+          >閫夋嫨棰</span>
           <span
             class="pill"
             :class="{ 'pill--active': currentType === 'multiple_choice' }"
             @click="currentType = 'multiple_choice'"
-          >多选题</span>
+          >澶氶€夐</span>
           <span
             class="pill"
             :class="{ 'pill--active': currentType === 'true_false' }"
             @click="currentType = 'true_false'"
-          >判断题</span>
+          >鍒ゆ柇棰</span>
           <span
             class="pill"
             :class="{ 'pill--active': currentType === 'code' }"
             @click="currentType = 'code'; currentLanguage = ''"
-          >代码题</span>
+          >浠ｇ爜棰</span>
           <span
             class="pill"
             :class="{ 'pill--active': currentType === 'code' && currentLanguage === 'sql' }"
             @click="currentType = 'code'; currentLanguage = 'sql'"
-          >SQL题</span>
+          >SQL棰</span>
         </div>
       </div>
 
-      <!-- 代码语言子分类（选中代码题时显示） -->
+      <!-- 浠ｇ爜璇█瀛愬垎绫伙紙閫変腑浠ｇ爜棰樻椂鏄剧ず锛?-->
       <div class="filter-row" v-if="currentType === 'code'">
-        <div class="filter-label">语言</div>
+        <div class="filter-label">璇█</div>
         <div class="pill-group">
           <span
             class="pill pill--lang"
             :class="{ 'pill--active': !currentLanguage }"
             @click="currentLanguage = ''"
-          >全部</span>
+          >鍏ㄩ儴</span>
           <span
             v-for="lang in availableLanguages"
             :key="lang.value"
@@ -87,39 +87,39 @@
         </div>
       </div>
 
-      <!-- 难度标签行 -->
+      <!-- 闅惧害鏍囩琛?-->
       <div class="filter-row">
-        <div class="filter-label">难度</div>
+        <div class="filter-label">闅惧害</div>
         <div class="pill-group">
           <span
             class="pill pill--difficulty"
             :class="{ 'pill--active': currentDifficulty === '' }"
             @click="currentDifficulty = ''"
-          >全部</span>
+          >鍏ㄩ儴</span>
           <span
             class="pill pill--difficulty pill--easy"
             :class="{ 'pill--active': currentDifficulty === 'easy' }"
             @click="currentDifficulty = 'easy'"
-          >简单</span>
+          >绠€鍗</span>
           <span
             class="pill pill--difficulty pill--medium"
             :class="{ 'pill--active': currentDifficulty === 'medium' }"
             @click="currentDifficulty = 'medium'"
-          >中等</span>
+          >涓瓑</span>
           <span
             class="pill pill--difficulty pill--hard"
             :class="{ 'pill--active': currentDifficulty === 'hard' }"
             @click="currentDifficulty = 'hard'"
-          >困难</span>
+          >鍥伴毦</span>
         </div>
       </div>
 
-      <!-- 搜索 + 模块 + 阶段 + 随机练习 -->
+      <!-- 鎼滅储 + 妯″潡 + 闃舵 + 闅忔満缁冧範 -->
       <div class="filter-row filter-row--tools">
         <div class="search-box">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索知识点、标题..."
+            placeholder="鎼滅储鐭ヨ瘑鐐广€佹爣棰?.."
             clearable
           >
             <template #prefix>
@@ -129,12 +129,12 @@
         </div>
         <el-select
           v-model="currentModule"
-          placeholder="功能模块"
+          placeholder="鍔熻兘妯″潡"
           style="width: 150px;"
           clearable
           filterable
         >
-          <el-option label="全部模块" value="" />
+          <el-option label="鍏ㄩ儴妯″潡" value="" />
           <el-option
             v-for="mod in availableModules"
             :key="mod"
@@ -144,27 +144,27 @@
         </el-select>
         <el-select
           v-model="currentStage"
-          placeholder="学习阶段"
+          placeholder="瀛︿範闃舵"
           style="width: 130px;"
         >
-          <el-option :value="0" label="全部阶段" />
-          <el-option :value="1" label="阶段1" />
-          <el-option :value="2" label="阶段2" />
-          <el-option :value="3" label="阶段3" />
-          <el-option :value="4" label="阶段4" />
-          <el-option :value="5" label="阶段5" />
+          <el-option :value="0" label="鍏ㄩ儴闃舵" />
+          <el-option :value="1" label="闃舵1" />
+          <el-option :value="2" label="闃舵2" />
+          <el-option :value="3" label="闃舵3" />
+          <el-option :value="4" label="闃舵4" />
+          <el-option :value="5" label="闃舵5" />
         </el-select>
-        <button class="random-btn" @click="randomPractice" title="随机练习">
-          <span class="random-icon">🎲</span>
-          随机练习
+        <button class="random-btn" @click="randomPractice" title="闅忔満缁冧範">
+          <span class="random-icon">馃幉</span>
+          闅忔満缁冧範
         </button>
       </div>
     </div>
 
-    <!-- 阶段说明 -->
+    <!-- 闃舵璇存槑 -->
     <div class="stage-info" v-if="stageInfo.title">
       <div class="stage-info-inner">
-        <span class="stage-info-icon">💡</span>
+        <span class="stage-info-icon">馃挕</span>
         <div class="stage-info-content">
           <span class="stage-info-title">{{ stageInfo.title }}</span>
           <span class="stage-info-desc">{{ stageInfo.description }}</span>
@@ -172,22 +172,22 @@
       </div>
     </div>
 
-    <!-- 习题列表表格 -->
+    <!-- 涔犻鍒楄〃琛ㄦ牸 -->
     <div class="exercise-table-wrap" v-if="paginatedExercises.length > 0">
       <div class="exercise-table">
-        <!-- 表头 -->
+        <!-- 琛ㄥご -->
         <div class="exercise-table-header">
-          <div class="col col-status">状态</div>
-          <div class="col col-id">序号</div>
-          <div class="col col-title">题目</div>
-          <div class="col col-type">类型</div>
-          <div class="col col-difficulty">难度</div>
-          <div class="col col-tag">知识点</div>
-          <div class="col col-time">时长</div>
-          <div class="col col-score">得分</div>
-          <div class="col col-action">操作</div>
+          <div class="col col-status">鐘舵€</div>
+          <div class="col col-id">搴忓彿</div>
+          <div class="col col-title">棰樼洰</div>
+          <div class="col col-type">绫诲瀷</div>
+          <div class="col col-difficulty">闅惧害</div>
+          <div class="col col-tag">鐭ヨ瘑鐐</div>
+          <div class="col col-time">鏃堕暱</div>
+          <div class="col col-score">寰楀垎</div>
+          <div class="col col-action">鎿嶄綔</div>
         </div>
-        <!-- 表体 -->
+        <!-- 琛ㄤ綋 -->
         <div
           class="exercise-row"
           :class="{
@@ -200,9 +200,9 @@
           @click="goToDetail(exercise.id)"
         >
           <div class="col col-status">
-            <span class="status-icon" v-if="isExerciseCompleted(exercise.id) && !isExerciseWrong(exercise.id)">✅</span>
-            <span class="status-icon status-icon--wrong" v-else-if="isExerciseWrong(exercise.id)">❌</span>
-            <span class="status-icon status-icon--pending" v-else>⬜</span>
+            <span class="status-icon" v-if="isExerciseCompleted(exercise.id) && !isExerciseWrong(exercise.id)">鉁</span>
+            <span class="status-icon status-icon--wrong" v-else-if="isExerciseWrong(exercise.id)">鉂</span>
+            <span class="status-icon status-icon--pending" v-else>猬</span>
           </div>
           <div class="col col-id">{{ exercise.id }}</div>
           <div class="col col-title" @click="goToDetail(exercise.id)">
@@ -225,7 +225,7 @@
             <span class="time-text">{{ exercise.time_estimate }}min</span>
           </div>
           <div class="col col-score">
-            <span class="score-text" v-if="getExerciseScore(exercise.id)">{{ getExerciseScore(exercise.id) }}分</span>
+            <span class="score-text" v-if="getExerciseScore(exercise.id)">{{ getExerciseScore(exercise.id) }}鍒</span>
             <span class="score-text score-text--none" v-else>--</span>
           </div>
           <div class="col col-action">
@@ -237,17 +237,17 @@
       </div>
     </div>
 
-    <!-- 空状态 -->
+    <!-- 绌虹姸鎬?-->
     <div class="empty-state" v-if="filteredExercises.length === 0 && !loading">
       <el-empty description="暂无符合条件的习题" />
     </div>
 
-    <!-- 加载状态 -->
+    <!-- 鍔犺浇鐘舵€?-->
     <div class="loading" v-if="loading">
       <el-icon class="is-loading" size="40"><Loading /></el-icon>
     </div>
 
-    <!-- 分页 -->
+    <!-- 鍒嗛〉 -->
     <div class="pagination-container" v-if="paginatedExercises.length > 0">
       <el-pagination
         v-model:current-page="currentPage"
@@ -324,24 +324,24 @@ const lastUnfinishedExercise = computed(() => {
 
 const stageInfos = {
   1: {
-    title: '阶段1 - 测试入门筑基',
-    description: '适合零基础入门，掌握软件测试基础理论、测试方法、计算机基础和SQL，为测试生涯打好基础。'
+    title: '阶段 1 - 测试入门筑基',
+    description: '适合零基础入门，掌握软件测试基础理论、测试方法、计算机基础和 SQL。'
   },
   2: {
-    title: '阶段2 - 功能测试精通',
-    description: '精通Web/APP/小程序等各类项目的功能测试，掌握完整的测试流程，能独立负责项目测试。'
+    title: '阶段 2 - 功能测试精通',
+    description: '精通 Web、App、小程序等项目的功能测试，掌握完整测试流程。'
   },
   3: {
-    title: '阶段3 - 测试技术进阶',
-    description: '掌握接口测试、Linux、数据库进阶、性能测试基础，成为中级测试工程师。'
+    title: '阶段 3 - 测试技术进阶',
+    description: '掌握接口测试、Linux、数据库进阶和性能测试基础。'
   },
   4: {
-    title: '阶段4 - 自动化测试专家',
-    description: '精通Python编程、接口自动化、UI自动化、APP自动化、性能测试，成为高级自动化测试工程师。'
+    title: '阶段 4 - 自动化测试专家',
+    description: '精通 Python、接口自动化、UI 自动化、App 自动化和性能测试。'
   },
   5: {
-    title: '阶段5 - 测试架构师之路',
-    description: '掌握测试平台开发、DevOps、质量体系建设、专项测试技术，向测试架构师/测试专家方向发展。'
+    title: '阶段 5 - 测试架构师之路',
+    description: '掌握测试平台开发、DevOps、质量体系建设和专项测试技术。'
   }
 }
 
@@ -448,7 +448,7 @@ const fetchProgress = async () => {
     const res = await request.get('/exercise/progress')
     exerciseProgress.value = res.progress || {}
   } catch (error) {
-    console.error('获取习题进度失败:', error)
+    console.error('鑾峰彇涔犻杩涘害澶辫触:', error)
   }
 }
 
@@ -484,8 +484,8 @@ const fetchExercises = async () => {
       exercises.value = []
     }
   } catch (error) {
-    console.error('获取习题列表失败:', error)
-    ElMessage.error('获取习题列表失败')
+    console.error('鑾峰彇涔犻鍒楄〃澶辫触:', error)
+    ElMessage.error('鑾峰彇涔犻鍒楄〃澶辫触')
   } finally {
     loading.value = false
   }
@@ -506,11 +506,11 @@ const getDifficultyText = (difficulty) => {
 const getExerciseTypeText = (type) => {
   const map = {
     choice: '选择题',
-    single_choice: '选择题',
+    single_choice: '单选题',
     multiple_choice: '多选题',
     true_false: '判断题',
     code: '代码题',
-    sql: 'SQL题',
+    sql: 'SQL 题',
     text: '文本题',
   }
   return map[type] || type
@@ -523,7 +523,7 @@ const goToDetail = (id) => {
 const randomPractice = () => {
   const unfinished = exercises.value.filter(e => !isExerciseCompleted(e.id))
   if (unfinished.length === 0) {
-    ElMessage.info('所有习题已完成，太厉害了！')
+    ElMessage.info('鎵€鏈変範棰樺凡瀹屾垚锛屽お鍘夊浜嗭紒')
     return
   }
   const random = unfinished[Math.floor(Math.random() * unfinished.length)]
@@ -547,7 +547,7 @@ const randomPractice = () => {
   pointer-events: none;
 }
 
-/* ========== 顶部统计栏 ========== */
+/* ========== 椤堕儴缁熻鏍?========== */
 .stats-bar {
   background: var(--tm-glass-bg);
   backdrop-filter: var(--tm-glass-blur);
@@ -638,7 +638,7 @@ const randomPractice = () => {
   font-size: 12px;
 }
 
-/* ========== 筛选区域 ========== */
+/* ========== 绛涢€夊尯鍩?========== */
 .filter-section {
   background: var(--tm-glass-bg);
   backdrop-filter: var(--tm-glass-blur);
@@ -771,7 +771,7 @@ const randomPractice = () => {
   font-size: 15px;
 }
 
-/* ========== 阶段说明 ========== */
+/* ========== 闃舵璇存槑 ========== */
 .stage-info {
   margin-bottom: 20px;
 }
@@ -810,7 +810,7 @@ const randomPractice = () => {
   line-height: 1.6;
 }
 
-/* ========== 习题表格 ========== */
+/* ========== 涔犻琛ㄦ牸 ========== */
 .exercise-table-wrap {
   background: var(--tm-glass-bg);
   backdrop-filter: var(--tm-glass-blur);
@@ -867,7 +867,7 @@ const randomPractice = () => {
   border-left: 3px solid rgba(248, 113, 113, 0.5);
 }
 
-/* 列宽定义 */
+/* 鍒楀瀹氫箟 */
 .col {
   flex-shrink: 0;
   display: flex;
@@ -921,7 +921,7 @@ const randomPractice = () => {
   justify-content: flex-end;
 }
 
-/* 状态图标 */
+/* 鐘舵€佸浘鏍?*/
 .status-icon {
   font-size: 16px;
   line-height: 1;
@@ -936,7 +936,7 @@ const randomPractice = () => {
   opacity: 0.4;
 }
 
-/* 标题 */
+/* 鏍囬 */
 .title-text {
   font-size: 14px;
   font-weight: 500;
@@ -952,7 +952,7 @@ const randomPractice = () => {
   color: var(--tm-color-primary);
 }
 
-/* 类型徽章 */
+/* 绫诲瀷寰界珷 */
 .type-badge {
   display: inline-flex;
   align-items: center;
@@ -1000,7 +1000,7 @@ const randomPractice = () => {
   border: 1px solid rgba(161, 161, 170, 0.2);
 }
 
-/* 难度徽章 */
+/* 闅惧害寰界珷 */
 .diff-badge {
   display: inline-flex;
   align-items: center;
@@ -1032,7 +1032,7 @@ const randomPractice = () => {
   border: 1px solid rgba(248, 113, 113, 0.2);
 }
 
-/* 知识点标签 */
+/* 鐭ヨ瘑鐐规爣绛?*/
 .knowledge-tag {
   display: inline-block;
   max-width: 110px;
@@ -1046,14 +1046,14 @@ const randomPractice = () => {
   font-size: 11px;
 }
 
-/* 时长 */
+/* 鏃堕暱 */
 .time-text {
   font-size: 12px;
   color: var(--tm-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-/* 得分 */
+/* 寰楀垎 */
 .score-text {
   font-size: 13px;
   font-weight: 600;
@@ -1067,7 +1067,7 @@ const randomPractice = () => {
   opacity: 0.4;
 }
 
-/* 练习按钮 */
+/* 缁冧範鎸夐挳 */
 .practice-btn {
   display: inline-flex;
   align-items: center;
@@ -1088,7 +1088,7 @@ const randomPractice = () => {
   transform: translateY(-1px);
 }
 
-/* ========== 空状态 & 加载 ========== */
+/* ========== 绌虹姸鎬?& 鍔犺浇 ========== */
 .empty-state {
   background: var(--tm-glass-bg);
   backdrop-filter: var(--tm-glass-blur);
@@ -1111,7 +1111,7 @@ const randomPractice = () => {
   text-align: center;
 }
 
-/* ========== 分页 ========== */
+/* ========== 鍒嗛〉 ========== */
 .pagination-container {
   display: flex;
   justify-content: center;
@@ -1119,7 +1119,7 @@ const randomPractice = () => {
   padding: 20px 0;
 }
 
-/* ========== 响应式 ========== */
+/* ========== 鍝嶅簲寮?========== */
 @media (max-width: 1024px) {
   .col-tag {
     display: none;
@@ -1183,3 +1183,4 @@ const randomPractice = () => {
   }
 }
 </style>
+

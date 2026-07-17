@@ -1,17 +1,17 @@
-<template>
+﻿<template>
   <div class="lesson-page">
     <div class="lesson-navbar">
-      <button class="back-btn" @click="goBack">← {{ pathTitle }}</button>
+      <button class="back-btn" @click="goBack">鈫?{{ pathTitle }}</button>
       <div class="lesson-nav-info" v-if="lesson">
-        <span>{{ lesson.current_index }} / {{ lesson.total_lessons }} 节</span>
-        <span class="time-badge">{{ lesson.time_estimate }}分钟</span>
+        <span>{{ lesson.current_index }} / {{ lesson.total_lessons }} 鑺</span>
+        <span class="time-badge">{{ lesson.time_estimate }}鍒嗛挓</span>
       </div>
     </div>
 
     <div class="lesson-layout" v-if="lesson">
       <aside class="lesson-sidebar">
         <div class="sidebar-header">
-          📖 课程目录
+          馃摉 璇剧▼鐩綍
         </div>
         <nav class="sidebar-list">
           <div
@@ -33,22 +33,20 @@
           <div class="lesson-header">
             <h1 class="lesson-title">{{ lesson.title }}</h1>
             <div class="lesson-meta">
-              <span v-if="lesson.knowledge_point">🏷️ {{ lesson.knowledge_point }}</span>
+              <span v-if="lesson.knowledge_point">馃彿锔?{{ lesson.knowledge_point }}</span>
             </div>
           </div>
           <div class="lesson-body" v-html="renderedContent"></div>
         </article>
 
         <div class="lesson-footer">
-          <button class="outline-btn" @click="goToExercises" title="做配套练习题巩固知识">
-            ✏️ 做配套练习
-          </button>
+          <button class="outline-btn" @click="goToExercises" title="鍋氶厤濂楃粌涔犻宸╁浐鐭ヨ瘑">
+            鉁忥笍 鍋氶厤濂楃粌涔?          </button>
           <div class="lesson-footer-right">
             <button class="outline-btn" @click="prevLesson" :disabled="!lesson?.prev_lesson">
-              ← 上一节
-            </button>
+              鈫?涓婁竴鑺?            </button>
             <button class="primary-btn" @click="nextLesson">
-              {{ lesson?.next_lesson ? '下一节 →' : '✅ 已完成全部课程' }}
+              {{ lesson?.next_lesson ? '下一节' : '已完成全部课程' }}
             </button>
           </div>
         </div>
@@ -56,8 +54,8 @@
     </div>
 
     <div class="lesson-loading" v-if="loading">
-      <div class="spinner">⏳</div>
-      <p>加载课程内容中...</p>
+      <div class="spinner">鈴</div>
+      <p>鍔犺浇璇剧▼鍐呭涓?..</p>
     </div>
   </div>
 </template>
@@ -97,10 +95,10 @@ const fetchLesson = async () => {
       sections.value = sectionsRes.value.lessons || []
     }
     if (lessonRes.status === 'rejected') {
-      ElMessage.error('加载课程内容失败')
+      ElMessage.error('鍔犺浇璇剧▼鍐呭澶辫触')
     }
   } catch (error) {
-    ElMessage.error('加载课程内容失败')
+    ElMessage.error('鍔犺浇璇剧▼鍐呭澶辫触')
   } finally {
     loading.value = false
   }

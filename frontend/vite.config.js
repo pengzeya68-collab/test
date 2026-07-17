@@ -8,12 +8,14 @@ import path from 'path'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  const isDesktopBuild = env.VITE_DESKTOP_BUILD === 'true'
   const unifiedBackend =
     env.VITE_FASTAPI_BASE_URL ||
     env.VITE_API_BASE_URL ||
     'http://127.0.0.1:5001'
 
   return {
+    base: isDesktopBuild ? './' : '/',
     plugins: [
       vue(),
       AutoImport({
@@ -36,7 +38,9 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src')
+        '@': path.resolve(__dirname, './src'),
+        '@app-root': path.resolve(__dirname, isDesktopBuild ? './src/DesktopApp.vue' : './src/App.vue'),
+        '@app-router': path.resolve(__dirname, isDesktopBuild ? './src/router/desktop.js' : './src/router/index.js')
       }
     },
     server: {

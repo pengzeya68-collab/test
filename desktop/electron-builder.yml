@@ -1,0 +1,39 @@
+appId: com.testmaster.desktop
+productName: TestMaster Desktop
+copyright: Copyright (c) 2026 TestMaster
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - package.json
+win:
+  signAndEditExecutable: false
+  target:
+    - nsis
+    - portable
+  artifactName: ${productName}-${version}-${arch}.${ext}
+extraResources:
+  - from: backend-dist/testmaster-backend
+    to: backend
+    filter:
+      - "**/*"
+  - from: ../playwright-browsers
+    to: browsers
+    filter:
+      - "**/*"
+asar: true
+asarUnpack:
+  - node_modules/playwright/.local-browsers/**/*
+  - node_modules/playwright-core/.local-browsers/**/*
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: TestMaster Desktop
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}
+
+

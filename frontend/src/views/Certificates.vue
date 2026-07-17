@@ -1,23 +1,23 @@
-<template>
+﻿<template>
   <div class="certificates-page">
     <header class="page-header">
       <div class="header-titles">
-        <h1 class="page-title">🎓 技能证书</h1>
-        <p class="page-desc">证明你的测试技能，解锁更多认证</p>
+        <h1 class="page-title">馃帗 鎶€鑳借瘉涔</h1>
+        <p class="page-desc">璇佹槑浣犵殑娴嬭瘯鎶€鑳斤紝瑙ｉ攣鏇村璁よ瘉</p>
       </div>
     </header>
 
     <div class="cert-stats">
       <div class="cert-stat">
         <div class="cert-stat-value unlocked-val">{{ certData.unlocked_count }}</div>
-        <div class="cert-stat-label">已解锁</div>
+        <div class="cert-stat-label">宸茶В閿</div>
       </div>
       <div class="cert-stat-separator">
         <span>/</span>
       </div>
       <div class="cert-stat">
         <div class="cert-stat-value total-val">{{ certData.total_count }}</div>
-        <div class="cert-stat-label">总认证</div>
+        <div class="cert-stat-label">鎬昏璇</div>
       </div>
       <div class="cert-progress-bar">
         <div class="cert-progress-fill" :style="{ width: (certData.unlocked_count / (certData.total_count || 1) * 100) + '%' }"></div>
@@ -27,8 +27,8 @@
 
     <div class="section-header">
       <h2 class="section-title">
-        <span class="title-dot">◈</span>
-        认证列表
+        <span class="title-dot">鈼</span>
+        璁よ瘉鍒楄〃
       </h2>
       <div class="title-glow-line"></div>
     </div>
@@ -42,12 +42,12 @@
       >
         <div class="cert-card-top">
           <div class="cert-icon-wrap">
-            <span class="cert-icon">{{ cert.unlocked ? cert.icon : '🔒' }}</span>
+            <span class="cert-icon">{{ cert.unlocked ? cert.icon : '馃敀' }}</span>
           </div>
           <div class="cert-badges">
             <span class="cert-level-tag" :class="'lv-' + getLevelClass(cert.level)">{{ cert.level }}</span>
-            <span class="cert-status-tag" v-if="cert.unlocked">已认证</span>
-            <span class="cert-status-tag locked-tag" v-else>未解锁</span>
+            <span class="cert-status-tag" v-if="cert.unlocked">宸茶璇</span>
+            <span class="cert-status-tag locked-tag" v-else>鏈В閿</span>
           </div>
         </div>
 
@@ -68,14 +68,14 @@
           <span class="cert-date">{{ cert.issued_at }}</span>
         </div>
         <div class="cert-footer locked-footer" v-else>
-          <span class="unlock-hint">🔒 技能分数达到 {{ cert.required_score }} 解锁</span>
+          <span class="unlock-hint">馃敀 鎶€鑳藉垎鏁拌揪鍒?{{ cert.required_score }} 瑙ｉ攣</span>
         </div>
       </div>
     </div>
 
     <div class="empty-state" v-if="!certData.certificates?.length">
-      <div class="empty-icon">📭</div>
-      <p class="empty-text">暂无认证数据</p>
+      <div class="empty-icon">馃摥</div>
+      <p class="empty-text">鏆傛棤璁よ瘉鏁版嵁</p>
     </div>
   </div>
 </template>
@@ -102,13 +102,13 @@ const fetchCertificates = async () => {
     const res = await request.get('/certificates/')
     certData.value = res
   } catch (error) {
-    console.error('获取证书失败:', error)
-    ElMessage.error('获取证书失败，请稍后重试')
+    console.error('鑾峰彇璇佷功澶辫触:', error)
+    ElMessage.error('鑾峰彇璇佷功澶辫触锛岃绋嶅悗閲嶈瘯')
   }
 }
 
 const getLevelClass = (level) => {
-  const map = { '初级': 'beginner', '中级': 'medium', '高级': 'advanced', '专家': 'expert' }
+  const map = { '鍒濈骇': 'beginner', '涓骇': 'medium', '楂樼骇': 'advanced', '涓撳': 'expert' }
   return map[level] || 'medium'
 }
 </script>

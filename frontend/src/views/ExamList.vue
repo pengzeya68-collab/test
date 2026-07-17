@@ -1,14 +1,14 @@
-<template>
+﻿<template>
   <div class="exam-list" style="position: relative; z-index: 1;">
     <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
       <div class="page-header">
         <div>
-          <h1 class="page-title">在线考试中心</h1>
-          <p class="page-subtitle">模拟真实考试场景，检验学习成果</p>
+          <h1 class="page-title">鍦ㄧ嚎鑰冭瘯涓績</h1>
+          <p class="page-subtitle">妯℃嫙鐪熷疄鑰冭瘯鍦烘櫙锛屾楠屽涔犳垚鏋</p>
         </div>
         <el-button type="primary" @click="openGenerateDialog">
           <el-icon><MagicStick /></el-icon>
-          智能组卷
+          鏅鸿兘缁勫嵎
         </el-button>
       </div>
 
@@ -17,33 +17,33 @@
           <el-col :span="6">
             <el-select
               v-model="filters.type"
-              placeholder="考试类型"
+              placeholder="鑰冭瘯绫诲瀷"
               @change="handleFilterChange"
               style="width: 100%;"
               clearable
             >
-              <el-option label="模拟考试" value="模拟考试" />
-              <el-option label="专项练习" value="专项练习" />
-              <el-option label="正式考试" value="正式考试" />
+              <el-option label="妯℃嫙鑰冭瘯" value="妯℃嫙鑰冭瘯" />
+              <el-option label="涓撻」缁冧範" value="涓撻」缁冧範" />
+              <el-option label="姝ｅ紡鑰冭瘯" value="姝ｅ紡鑰冭瘯" />
             </el-select>
           </el-col>
           <el-col :span="6">
             <el-select
               v-model="filters.difficulty"
-              placeholder="难度"
+              placeholder="闅惧害"
               @change="handleFilterChange"
               style="width: 100%;"
               clearable
             >
-              <el-option label="简单" value="easy" />
-              <el-option label="中等" value="medium" />
-              <el-option label="困难" value="hard" />
+              <el-option label="Easy" value="easy" />
+              <el-option label="涓瓑" value="medium" />
+              <el-option label="鍥伴毦" value="hard" />
             </el-select>
           </el-col>
           <el-col :span="8">
             <el-input
               v-model="filters.search"
-              placeholder="搜索考试名称..."
+              placeholder="鎼滅储鑰冭瘯鍚嶇О..."
               @keyup.enter="handleFilterChange"
               style="width: 100%;"
             >
@@ -55,7 +55,7 @@
           <el-col :span="4">
             <el-button type="primary" @click="handleFilterChange" style="width: 100%;">
               <el-icon><Search /></el-icon>
-              搜索
+              鎼滅储
             </el-button>
           </el-col>
         </el-row>
@@ -79,23 +79,23 @@
             <div class="exam-info">
               <div class="info-item">
                 <el-icon size="14"><Timer /></el-icon>
-                <span>{{ exam.duration }}分钟</span>
+                <span>{{ exam.duration }}鍒嗛挓</span>
               </div>
               <div class="info-item">
                 <el-icon size="14"><Tickets /></el-icon>
-                <span>{{ exam.total_score }}分</span>
+                <span>{{ exam.total_score }}鍒</span>
               </div>
               <div class="info-item">
                 <el-icon size="14"><List /></el-icon>
-                <span>{{ exam.question_count }}题</span>
+                <span>{{ exam.question_count }}棰</span>
               </div>
               <div class="info-item">
                 <el-icon size="14"><Star /></el-icon>
-                <span>及格{{ exam.pass_score }}分</span>
+                <span>鍙婃牸{{ exam.pass_score }}鍒</span>
               </div>
             </div>
             <div class="difficulty">
-              <span>难度：</span>
+              <span>闅惧害锛</span>
               <el-rate 
                 v-model="exam.difficultyLevel" 
                 disabled 
@@ -109,7 +109,7 @@
           <div class="card-footer">
             <div class="exam-status" v-if="exam.attempt_status">
               <el-tag :type="exam.is_passed ? 'success' : 'warning'" size="small">
-                已参加 {{ exam.attempt_score }}分
+                宸插弬鍔?{{ exam.attempt_score }}鍒?
               </el-tag>
             </div>
             <div class="card-actions">
@@ -128,7 +128,7 @@
                 :disabled="exam.attempt_status === 'in_progress'"
               >
                 <el-icon><Delete /></el-icon>
-                删除
+                鍒犻櫎
               </el-button>
             </div>
           </div>
@@ -146,49 +146,49 @@
       </div>
 
       <div class="empty-state" v-if="exams.length === 0 && !loading">
-        <el-empty description="暂无考试，快来生成你的专属试卷吧~" />
+        <el-empty description="鏆傛棤鑰冭瘯锛屽揩鏉ョ敓鎴愪綘鐨勪笓灞炶瘯鍗峰惂~" />
       </div>
 
       <div class="loading-state" v-if="loading">
         <el-skeleton :rows="6" animated />
       </div>
 
-      <!-- 智能组卷弹窗 -->
+      <!-- 鏅鸿兘缁勫嵎寮圭獥 -->
       <el-dialog 
         v-model="showGenerateDialog" 
-        title="智能生成试卷"
+        title="鏅鸿兘鐢熸垚璇曞嵎"
         width="600px"
       >
         <el-form :model="generateForm" label-width="100px">
-          <el-form-item label="考试类型">
+          <el-form-item label="鑰冭瘯绫诲瀷">
             <el-select v-model="generateForm.exam_type" style="width: 200px;">
-              <el-option label="模拟考试" value="模拟考试" />
-              <el-option label="专项练习" value="专项练习" />
+              <el-option label="妯℃嫙鑰冭瘯" value="妯℃嫙鑰冭瘯" />
+              <el-option label="涓撻」缁冧範" value="涓撻」缁冧範" />
             </el-select>
           </el-form-item>
-          <el-form-item label="学习路径">
+          <el-form-item label="瀛︿範璺緞">
             <el-select 
               v-model="generateForm.learning_path_id" 
               style="width: 360px;"
-              placeholder="全部路径（不限定）"
+              placeholder="All learning paths"
               clearable
             >
               <el-option 
                 v-for="lp in learningPaths" 
                 :key="lp.id" 
-                :label="`[阶段${lp.stage}] ${lp.title}`" 
+                :label="`[闃舵${lp.stage}] ${lp.title}`" 
                 :value="lp.id" 
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="难度">
+          <el-form-item label="闅惧害">
             <el-select v-model="generateForm.difficulty" style="width: 200px;">
-              <el-option label="简单" value="easy" />
-              <el-option label="中等" value="medium" />
-              <el-option label="困难" value="hard" />
+              <el-option label="Easy" value="easy" />
+              <el-option label="涓瓑" value="medium" />
+              <el-option label="鍥伴毦" value="hard" />
             </el-select>
           </el-form-item>
-          <el-form-item label="考试时长">
+          <el-form-item label="鑰冭瘯鏃堕暱">
             <el-input-number 
               v-model="generateForm.duration" 
               :min="30" 
@@ -196,26 +196,26 @@
               step="10"
               style="width: 200px;"
             />
-            <span class="ml-2">分钟</span>
+            <span class="ml-2">鍒嗛挓</span>
           </el-form-item>
-          <el-form-item label="题型数量">
-            <el-form-item label="单选题" label-width="80px">
+          <el-form-item label="棰樺瀷鏁伴噺">
+            <el-form-item label="鍗曢€夐" label-width="80px">
               <el-input-number v-model="generateForm.question_count.single_choice" :min="0" :max="50" />
             </el-form-item>
-            <el-form-item label="多选题" label-width="80px">
+            <el-form-item label="澶氶€夐" label-width="80px">
               <el-input-number v-model="generateForm.question_count.multiple_choice" :min="0" :max="30" />
             </el-form-item>
-            <el-form-item label="判断题" label-width="80px">
+            <el-form-item label="True or false" label-width="80px">
               <el-input-number v-model="generateForm.question_count.true_false" :min="0" :max="30" />
             </el-form-item>
-            <el-form-item label="代码题" label-width="80px">
+            <el-form-item label="Code" label-width="80px">
               <el-input-number v-model="generateForm.question_count.code" :min="0" :max="10" />
             </el-form-item>
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button @click="showGenerateDialog = false">取消</el-button>
-          <el-button type="primary" @click="generateExam" :loading="generating">生成试卷</el-button>
+          <el-button @click="showGenerateDialog = false">鍙栨秷</el-button>
+          <el-button type="primary" @click="generateExam" :loading="generating">鐢熸垚璇曞嵎</el-button>
         </template>
       </el-dialog>
   </div>
@@ -247,7 +247,7 @@ const showGenerateDialog = ref(false)
 const generating = ref(false)
 
 const generateForm = reactive({
-  exam_type: '模拟考试',
+  exam_type: '妯℃嫙鑰冭瘯',
   difficulty: 'medium',
   duration: 60,
   learning_path_id: null,
@@ -300,8 +300,8 @@ const fetchExams = async () => {
     }))
     total.value = res.total ?? (Array.isArray(res) ? res.length : 0)
   } catch (error) {
-    console.error('获取考试列表失败:', error)
-    ElMessage.error('获取考试列表失败')
+    console.error('鑾峰彇鑰冭瘯鍒楄〃澶辫触:', error)
+    ElMessage.error('鑾峰彇鑰冭瘯鍒楄〃澶辫触')
   } finally {
     loading.value = false
   }
@@ -309,20 +309,20 @@ const fetchExams = async () => {
 
 const getTypeTagType = (type) => {
   const map = {
-    '模拟考试': 'primary',
-    '专项练习': 'success',
-    '正式考试': 'danger'
+    '妯℃嫙鑰冭瘯': 'primary',
+    '涓撻」缁冧範': 'success',
+    '姝ｅ紡鑰冭瘯': 'danger'
   }
   return map[type] || 'info'
 }
 
 const getExamButtonText = (exam) => {
   if (exam.attempt_status === 'in_progress') {
-    return '继续考试'
+    return '缁х画鑰冭瘯'
   } else if (exam.attempt_status) {
-    return '查看结果'
+    return '鏌ョ湅缁撴灉'
   } else {
-    return '开始考试'
+    return '寮€濮嬭€冭瘯'
   }
 }
 
@@ -341,7 +341,7 @@ const startExam = (exam) => {
 }
 
 const generateExam = async () => {
-  // 检查至少有一个题型
+  // 检查至少选择一种题型
   const totalQuestions = Object.values(generateForm.question_count).reduce((a, b) => a + b, 0)
   if (totalQuestions === 0) {
     ElMessage.warning('至少选择一种题型')
@@ -368,9 +368,9 @@ const generateExam = async () => {
 }
 
 const deleteExam = async (exam) => {
-  // 正在进行的考试不能删除
+  // 姝ｅ湪杩涜鐨勮€冭瘯涓嶈兘鍒犻櫎
   if (exam.attempt_status === 'in_progress') {
-    ElMessage.warning('正在进行的考试不能删除')
+    ElMessage.warning('姝ｅ湪杩涜鐨勮€冭瘯涓嶈兘鍒犻櫎')
     return
   }
   
@@ -598,3 +598,4 @@ const deleteExam = async (exam) => {
   }
 }
 </style>
+

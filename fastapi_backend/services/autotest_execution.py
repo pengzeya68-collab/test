@@ -209,7 +209,7 @@ async def replace_case_variables(
             from fastapi_backend.services.autotest_variable_service import get_effective_variables
 
             async with AsyncSessionLocal() as session:
-                effective_vars = await get_effective_variables(session, env.id)
+                effective_vars = await get_effective_variables(session, env.id, user_id=user_id)
             # effective_vars 是 [{name, value, source_environment_id, ...}, ...]
             for v in effective_vars:
                 variables[v["name"]] = v["value"]
@@ -299,6 +299,7 @@ async def replace_case_variables(
         "content_type": content_type,
         "payload": payload,
         "assert_rules": assert_rules,
+        "request_config": __import__("fastapi_backend.services.autotest_request_config", fromlist=["reveal_request_config"]).reveal_request_config(getattr(case, "request_config", None)),
     }
 
 
@@ -373,69 +374,53 @@ async def quick_run_case(
             except Exception as e:
                 _logger.warning(f"前置脚本执行失败: {e}")
 
-        # 构建请求 kwargs
-        req_kwargs = {"headers": headers, "timeout": 30}
+        from fastapi_backend.services.autotest_request_service import execute_http_request
 
-        if params:
-            req_kwargs["params"] = params
-
-        if method in ("POST", "PUT", "PATCH"):
-            if body_type == "none" or not payload:
-                pass
-            elif body_type == "raw":
-                if content_type == "application/json":
-                    req_kwargs["json"] = payload
-                else:
-                    req_kwargs["data"] = str(payload) if payload else ""
-                    if headers and isinstance(headers, dict):
-                        headers["Content-Type"] = content_type
-                    else:
-                        req_kwargs["headers"] = {**(headers or {}), "Content-Type": content_type}
-            elif body_type == "form-data":
-                # form-data 类型需要使用 files 参数发送 multipart/form-data
-                if isinstance(payload, dict):
-                    # 将 dict 转为 multipart 字段
-                    form_fields = {}
-                    for k, v in payload.items():
-                        if isinstance(v, (dict, list)):
-                            form_fields[k] = json.dumps(v, ensure_ascii=False)
-                        else:
-                            form_fields[k] = str(v)
-                    req_kwargs["data"] = form_fields
-                else:
-                    req_kwargs["data"] = str(payload) if payload else ""
-
-        if method == "GET":
-            response = await asyncio.to_thread(requests.get, url, verify=not settings.DISABLE_SSL_VERIFY, **req_kwargs)
-        elif method == "POST":
-            response = await asyncio.to_thread(requests.post, url, verify=not settings.DISABLE_SSL_VERIFY, **req_kwargs)
-        elif method == "PUT":
-            response = await asyncio.to_thread(requests.put, url, verify=not settings.DISABLE_SSL_VERIFY, **req_kwargs)
-        elif method == "DELETE":
-            response = await asyncio.to_thread(requests.delete, url, verify=not settings.DISABLE_SSL_VERIFY, **req_kwargs)
-        elif method == "PATCH":
-            response = await asyncio.to_thread(requests.patch, url, verify=not settings.DISABLE_SSL_VERIFY, **req_kwargs)
-        else:
+        request_config = dict(case_data.get("request_config") or {})
+        request_config.setdefault(
+            "timeout_ms", int(settings.AUTOTEST_QUICK_RUN_TIMEOUT_SECONDS * 1000)
+        )
+        transport_result = await execute_http_request(
+            method=method,
+            url=url,
+            headers=headers,
+            params=params,
+            body=payload,
+            body_type=body_type,
+            env_id=getattr(env, "id", None),
+            user_id=user_id,
+            request_config=request_config,
+            resolve_persisted_variables=False,
+        )
+        if transport_result.get("status_code") is None:
+            from fastapi_backend.services.autotest_request_config import sanitize_request_headers, sanitize_request_url
             return {
                 "success": False,
-                "status_code": 400,
+                "status_code": 408 if "超时" in str(transport_result.get("error")) else 503,
                 "response": None,
-                "execution_time": 0,
-                "error": f"不支持的请求方法: {method}",
+                "response_headers": {},
+                "execution_time": transport_result.get("execution_time", 0),
+                "error": transport_result.get("error") or "请求失败",
                 "assert_result": None,
                 "request_body": payload,
+                "request_url": sanitize_request_url(url),
+                "request_method": method,
+                "request_headers": sanitize_request_headers(headers, request_config),
+                "request_params": params,
+                "attempts": transport_result.get("attempts", []),
             }
 
-        execution_time = int((time.time() - start_time) * 1000)
-
-        try:
-            response_data = response.json()
-        except Exception:
-            response_data = {"raw": response.text}
+        execution_time = transport_result.get("execution_time", 0)
+        response_data = transport_result.get("response_content")
+        response_headers = transport_result.get("_raw_headers") or transport_result.get("headers") or {}
+        public_response_headers = transport_result.get("headers") or {}
+        public_request = transport_result.get("request") or {}
+        response_text = response_data if isinstance(response_data, str) else json.dumps(response_data, ensure_ascii=False)
+        response_status = transport_result["status_code"]
 
         # 执行断言（不再提前拦截 status_code >= 400，让断言引擎根据用户配置判断）
         assert_result = execute_assertions(
-            case_data["assert_rules"], response.status_code, response_data, execution_time, dict(response.headers)
+            case_data["assert_rules"], response_status, response_data, execution_time, response_headers
         )
 
         # 执行后置脚本
@@ -453,8 +438,8 @@ async def quick_run_case(
                 script_ctx = ScriptEngine.build_context(
                     {}, {}, user_id,
                     response_body=response_data,
-                    status_code=response.status_code,
-                    response_headers=dict(response.headers),
+                    status_code=response_status,
+                    response_headers=response_headers,
                 )
                 script_ctx = ScriptEngine.run_post_script(post_script, script_ctx, language=post_script_language)
                 # 合并脚本断言结果（JS 路径写入 test_results，Python 路径同时写入 assertions）
@@ -483,7 +468,7 @@ async def quick_run_case(
                 extractors = case.extractors
             if extractors:
                 extracted_vars = await extract_variables_from_response(
-                    extractors, response_data, response.text, dict(response.headers)
+                    extractors, response_data, response_text, response_headers
                 )
                 if extracted_vars:
                     await _save_variables_to_db_safe(extracted_vars, user_id=user_id)
@@ -495,21 +480,23 @@ async def quick_run_case(
 
         return {
             "success": assert_result["passed"],
-            "status_code": response.status_code,
+            "status_code": response_status,
             "response": response_data,
-            "response_headers": dict(response.headers) if response.headers else {},
+            "response_headers": public_response_headers,
             "execution_time": execution_time,
             "error": None if assert_result["passed"] else assert_result["message"],
             "assert_result": assert_result,
             "request_body": payload,
-            "request_url": url,
+            "request_url": public_request.get("url", url),
             "request_method": method,
-            "request_headers": headers,
+            "request_headers": public_request.get("headers", {}),
             "request_params": params,
             "extracted_variables": extracted_vars,
             # 🔥 新增：后置脚本断言结果与错误信息（Flow 5 关键）
             "script_test_results": script_test_results,
             "script_error": script_error,
+            "attempts": transport_result.get("attempts", []),
+            "request_snapshot": transport_result.get("request"),
         }
 
     except requests.exceptions.Timeout:

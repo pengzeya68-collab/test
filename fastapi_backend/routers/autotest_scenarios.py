@@ -7,8 +7,8 @@ AutoTest 统一路由 - 场景管理
 
 import uuid
 import logging
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -261,27 +261,8 @@ async def update_scenario_status(
     await db.commit()
     await db.refresh(db_scenario)
 
-    from fastapi_backend.services.autotest_scheduler import get_scheduler
-    from fastapi_backend.services.autotest_schedule_persistence import persist_schedule_is_active_db
-
-    sched = get_scheduler()
-    task_id = f"auto_sched_{scenario_id}"
-    if not db_scenario.is_active:
-        try:
-            sched.pause_job(task_id)
-        except Exception as e:
-            import logging
-
-            logging.getLogger(__name__).warning(f"暂停定时任务失败: {e}")
-        await persist_schedule_is_active_db(scenario_id, False, user_id=current_user.id)
-    else:
-        try:
-            sched.resume_job(task_id)
-        except Exception as e:
-            import logging
-
-            logging.getLogger(__name__).warning(f"恢复定时任务失败: {e}")
-        await persist_schedule_is_active_db(scenario_id, True, user_id=current_user.id)
+    # 场景启停与定时任务启停是两个独立状态。执行入口会跳过停用场景，
+    # 这里不能覆盖用户手动暂停的调度状态。
 
     return {"id": db_scenario.id, "is_active": db_scenario.is_active}
 
@@ -348,6 +329,70 @@ async def delete_scenario(
 
 # ========== 场景步骤 CRUD ==========
 
+_CONTROL_TYPES = {"if_condition", "for_loop", "for_each", "wait", "group", "scenario_ref", "db_query"}
+
+
+async def _validate_step_definition(step_type, config, scenario_id, db, user_id, allow_incomplete=False):
+    step_type = step_type or "api_request"
+    config = config or {}
+    if step_type != "api_request" and step_type not in _CONTROL_TYPES:
+        raise HTTPException(status_code=400, detail=f"不支持的步骤类型: {step_type}")
+    if not allow_incomplete and step_type == "if_condition" and not (config.get("condition") or config.get("field")):
+        raise HTTPException(status_code=400, detail="If 条件步骤必须配置判断条件")
+    if step_type == "for_loop":
+        try:
+            count = int(config.get("count", 0))
+        except (TypeError, ValueError):
+            count = 0
+        if count < 1 or count > 1000:
+            raise HTTPException(status_code=400, detail="For 循环次数必须在 1 到 1000 之间")
+    if not allow_incomplete and step_type == "for_each" and not config.get("collection"):
+        raise HTTPException(status_code=400, detail="ForEach 必须配置集合变量")
+    if step_type == "wait":
+        try:
+            duration = int(config.get("duration_ms", 0))
+        except (TypeError, ValueError):
+            duration = -1
+        if duration < 0 or duration > 300000:
+            raise HTTPException(status_code=400, detail="等待时间必须在 0 到 300000 毫秒之间")
+    if not allow_incomplete and step_type == "scenario_ref":
+        ref_id = config.get("scenario_id")
+        if not ref_id or int(ref_id) == int(scenario_id):
+            raise HTTPException(status_code=400, detail="引用场景必须选择其他有效场景")
+        result = await db.execute(
+            select(AutoTestScenario.id).where(AutoTestScenario.id == int(ref_id), AutoTestScenario.user_id == user_id)
+        )
+        if result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="引用的场景不存在或无权访问")
+    if not allow_incomplete and step_type == "db_query" and (not config.get("connection_id") or not config.get("query")):
+        raise HTTPException(status_code=400, detail="数据库查询步骤必须配置连接和 SQL")
+
+
+async def _validate_control_references(config, scenario_id, db):
+    if not config or config.get("reference_mode") != "id":
+        return
+    references = set()
+    for key in ("then_branch", "else_branch", "body", "children"):
+        values = config.get(key, [])
+        if not isinstance(values, list):
+            raise HTTPException(status_code=400, detail=f"{key} 必须是步骤 ID 列表")
+        references.update(values)
+    if not references:
+        return
+    result = await db.execute(
+        select(AutoTestScenarioStep.id, AutoTestScenarioStep.step_type).where(
+            AutoTestScenarioStep.scenario_id == scenario_id,
+            AutoTestScenarioStep.id.in_(references),
+        )
+    )
+    rows = result.all()
+    existing = {row.id for row in rows}
+    if existing != references:
+        raise HTTPException(status_code=400, detail="流程控制配置引用了不存在的步骤")
+    nested_controls = [row.id for row in rows if row.step_type in {"if_condition", "for_loop", "for_each", "group"}]
+    if nested_controls:
+        raise HTTPException(status_code=400, detail="流程控制暂不允许嵌套引用其他控制步骤")
+
 
 @router.post("/{scenario_id}/steps", response_model=ScenarioStepResponse)
 async def add_step(
@@ -374,17 +419,16 @@ async def add_step(
         else:
             raise HTTPException(status_code=400, detail="API 请求类型步骤必须指定 api_case_id")
 
-    # 对非 api_request 类型的 step_config 进行基本校验
-    step_config = step.step_config or {}
-    if step.step_type == "if":
-        if not step_config.get("condition"):
-            raise HTTPException(status_code=400, detail="if步骤必须包含condition")
-    elif step.step_type == "for":
-        if not step_config.get("loop_var") or not step_config.get("items"):
-            raise HTTPException(status_code=400, detail="for步骤必须包含loop_var和items")
-    elif step.step_type == "group":
-        if not step_config.get("steps"):
-            raise HTTPException(status_code=400, detail="group步骤必须包含steps")
+    await _validate_step_definition(step.step_type, step.step_config, scenario_id, db, current_user.id, allow_incomplete=True)
+    await _validate_control_references(step.step_config, scenario_id, db)
+    duplicate = await db.execute(
+        select(AutoTestScenarioStep.id).where(
+            AutoTestScenarioStep.scenario_id == scenario_id,
+            AutoTestScenarioStep.step_order == step.step_order,
+        )
+    )
+    if duplicate.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail="步骤顺序已存在，请刷新后重试")
 
     db_step = AutoTestScenarioStep(
         scenario_id=scenario_id,
@@ -397,6 +441,8 @@ async def add_step(
         parent_step_id=step.parent_step_id,
         pre_script=step.pre_script,
         post_script=step.post_script,
+        pre_script_language=step.pre_script_language,
+        post_script_language=step.post_script_language,
     )
     db.add(db_step)
     await db.commit()
@@ -440,6 +486,12 @@ async def reorder_steps(
         )
     )
     steps_map = {step.id: step for step in steps_result.scalars().all()}
+    requested_ids = [item.step_id for item in step_orders]
+    requested_orders = [item.step_order for item in step_orders]
+    if len(requested_ids) != len(set(requested_ids)) or len(requested_orders) != len(set(requested_orders)):
+        raise HTTPException(status_code=400, detail="步骤 ID 和目标顺序不能重复")
+    if set(requested_ids) != set(steps_map):
+        raise HTTPException(status_code=400, detail="排序请求必须包含当前场景的全部步骤")
 
     # 第一步：先将所有步骤设为临时负值，避免交换顺序时违反 uq_scenario_step_order 唯一约束
     for item in step_orders:
@@ -495,6 +547,10 @@ async def update_step(
         )
         if not case_result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="指定的接口不存在或无权访问")
+    effective_type = update_data.get("step_type", db_step.step_type)
+    effective_config = update_data.get("step_config", db_step.step_config)
+    await _validate_step_definition(effective_type, effective_config, scenario_id, db, current_user.id)
+    await _validate_control_references(effective_config, scenario_id, db)
     for key, value in update_data.items():
         setattr(db_step, key, value)
 
@@ -691,6 +747,53 @@ async def parse_dataset_file(
 
 
 # ========== Pytest 数据驱动执行 ==========
+
+
+class ScenarioDebugRequest(BaseModel):
+    env_id: Optional[int] = None
+    start_step_id: Optional[int] = None
+    stop_after_step_id: Optional[int] = None
+    context_vars: Dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post("/{scenario_id}/debug")
+async def debug_scenario(
+    scenario_id: int,
+    request: ScenarioDebugRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(AutoTestScenario).options(selectinload(AutoTestScenario.steps)).where(
+            AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id
+        )
+    )
+    scenario = result.scalar_one_or_none()
+    if not scenario:
+        raise HTTPException(status_code=404, detail="场景不存在")
+    valid_step_ids = {step.id for step in scenario.steps}
+    for step_id in (request.start_step_id, request.stop_after_step_id):
+        if step_id is not None and step_id not in valid_step_ids:
+            raise HTTPException(status_code=400, detail=f"步骤 {step_id} 不属于当前场景")
+    target = next((step for step in scenario.steps if step.id == request.start_step_id), None)
+    if target and not target.is_active:
+        raise HTTPException(status_code=400, detail="停用步骤不能调试")
+    consumed_ids = set()
+    consumed_orders = set()
+    for step in scenario.steps:
+        config = step.step_config if isinstance(step.step_config, dict) else {}
+        mode = config.get("reference_mode", "order")
+        references = []
+        for key in ("then_branch", "else_branch", "body", "children"):
+            references.extend(config.get(key, []) or [])
+        (consumed_ids if mode == "id" else consumed_orders).update(references)
+    if target and (target.id in consumed_ids or target.step_order in consumed_orders):
+        raise HTTPException(status_code=400, detail="该步骤属于条件、循环或分组内部，请从所属流控步骤开始调试")
+    from fastapi_backend.services.autotest_scenario_runner import run_scenario_debug
+    return await run_scenario_debug(
+        scenario_id, request.env_id, request.start_step_id, request.stop_after_step_id,
+        request.context_vars, current_user.id,
+    )
 
 
 @router.post("/{scenario_id}/run-pytest")

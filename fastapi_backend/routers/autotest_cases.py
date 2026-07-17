@@ -21,7 +21,7 @@ from fastapi_backend.schemas.autotest import (
 router = APIRouter(prefix="/api/auto-test/cases", tags=["AutoTest-用例"])
 
 
-def _case_to_dict(case):
+def _case_to_dict(case, include_secrets=False):
     """将 case 对象转为字典，兼容数据库中可能存在的非标准字段类型"""
     return {
         "id": case.id,
@@ -44,6 +44,11 @@ def _case_to_dict(case):
         "pre_script_language": getattr(case, "pre_script_language", "javascript"),
         "post_script_language": getattr(case, "post_script_language", "javascript"),
         "response_schema": getattr(case, "response_schema", None),
+        "request_config": (
+            __import__("fastapi_backend.services.autotest_request_config", fromlist=["reveal_request_config"]).reveal_request_config(getattr(case, "request_config", None))
+            if include_secrets else
+            __import__("fastapi_backend.services.autotest_request_config", fromlist=["mask_request_config"]).mask_request_config(getattr(case, "request_config", None))
+        ),
         "current_version": getattr(case, "current_version", None),
         "updated_at": case.updated_at.isoformat() if case.updated_at else None,
     }
@@ -183,7 +188,7 @@ async def get_case(
     history_result = await db.execute(history_query)
     last_history = history_result.scalar_one_or_none()
 
-    case_dict = _case_to_dict(case)
+    case_dict = _case_to_dict(case, include_secrets=True)
     case_dict["lastRunStatus"] = last_history.status if last_history else None
 
     return case_dict
@@ -201,6 +206,12 @@ async def create_case(
         raise HTTPException(status_code=400, detail="URL格式不正确，必须以/或http://或https://开头")
 
     data = case_in.model_dump(exclude_none=True)
+    if data.get("request_config") is not None:
+        from fastapi_backend.services.autotest_request_config import protect_request_config
+        auth = data["request_config"].get("auth", {})
+        if "location" in auth and "in" not in auth:
+            auth["in"] = auth.pop("location")
+        data["request_config"] = protect_request_config(data["request_config"])
     if "assertions" in data:
         data["assert_rules"] = data.pop("assertions")
     if data.get("folder_id") is not None:
@@ -238,6 +249,12 @@ async def update_case(
         raise HTTPException(status_code=404, detail="用例不存在")
 
     update_data = case_in.model_dump(exclude_unset=True)
+    if update_data.get("request_config") is not None:
+        from fastapi_backend.services.autotest_request_config import merge_request_config
+        auth = update_data["request_config"].get("auth", {})
+        if "location" in auth and "in" not in auth:
+            auth["in"] = auth.pop("location")
+        update_data["request_config"] = merge_request_config(case.request_config, update_data["request_config"])
     if "assertions" in update_data:
         update_data["assert_rules"] = update_data.pop("assertions")
     if "folder_id" in update_data:

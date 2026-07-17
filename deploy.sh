@@ -5,7 +5,7 @@ echo "============================================================"
 echo "  TestMaster 一键部署脚本"
 echo "============================================================"
 
-REPO_URL="${1:-https://github.com/pengzeya/TestMaster.git}"
+REPO_URL="${1:-https://github.com/pengzeya68-collab/test.git}"
 INSTALL_DIR="${2:-/root/TestMasterProject}"
 
 echo ""
@@ -76,13 +76,15 @@ if [ ! -f .env ]; then
     DB_PASSWORD=$(openssl rand -hex 16)
     ADMIN_SECRET_KEY=$(openssl rand -hex 32)
     ENCRYPTION_KEY=$(openssl rand -hex 32)
-    sed -i "s/DB_PASSWORD=CHANGE_ME_TO_A_STRONG_PASSWORD/DB_PASSWORD=$DB_PASSWORD/" .env
-    sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://testmaster:$DB_PASSWORD@postgres:5432/testmaster|" .env
-    sed -i "s/SECRET_KEY=CHANGE_ME_TO_A_RANDOM_SECRET_KEY_MIN_32_CHARS/SECRET_KEY=$SECRET_KEY/" .env
-    sed -i "s/ADMIN_PASSWORD=$/ADMIN_PASSWORD=admin123/" .env
-    sed -i "s/ADMIN_SECRET_KEY=$/ADMIN_SECRET_KEY=$ADMIN_SECRET_KEY/" .env
-    sed -i "s/TESTMASTER_ENCRYPTION_KEY=$/TESTMASTER_ENCRYPTION_KEY=$ENCRYPTION_KEY/" .env
-    echo "已生成 .env 文件"
+    sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$DB_PASSWORD/" .env
+    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://testmaster:$DB_PASSWORD@postgres:5432/testmaster|" .env
+    sed -i "s/^SECRET_KEY=.*/SECRET_KEY=$SECRET_KEY/" .env
+    sed -i "s/^ENVIRONMENT=.*/ENVIRONMENT=production/" .env
+    sed -i "s/^AUTO_CREATE_TABLES_ON_STARTUP=.*/AUTO_CREATE_TABLES_ON_STARTUP=true/" .env
+    sed -i "s/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=admin123/" .env
+    sed -i "s/^ADMIN_SECRET_KEY=.*/ADMIN_SECRET_KEY=$ADMIN_SECRET_KEY/" .env
+    sed -i "s/^TESTMASTER_ENCRYPTION_KEY=.*/TESTMASTER_ENCRYPTION_KEY=$ENCRYPTION_KEY/" .env
+    echo "已生成 .env 文件，数据库使用 Docker 内部 PostgreSQL"
     echo ""
     echo "=========================================="
     echo "  管理员登录账号: admin"

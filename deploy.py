@@ -130,10 +130,12 @@ if [ ! -f {INSTALL_DIR}/.env ]; then
     cp {INSTALL_DIR}/.env.example {INSTALL_DIR}/.env
     SECRET_KEY=$(openssl rand -hex 32)
     DB_PASSWORD=$(openssl rand -hex 16)
-    sed -i "s/DB_PASSWORD=testmaster2024/DB_PASSWORD=$DB_PASSWORD/" {INSTALL_DIR}/.env
-    sed -i "s/SECRET_KEY=.*/SECRET_KEY=$SECRET_KEY/" {INSTALL_DIR}/.env
-    sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://testmaster:$DB_PASSWORD@postgres:5432/testmaster|" {INSTALL_DIR}/.env
-    echo ".env 已生成"
+    sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$DB_PASSWORD/" {INSTALL_DIR}/.env
+    sed -i "s/^SECRET_KEY=.*/SECRET_KEY=$SECRET_KEY/" {INSTALL_DIR}/.env
+    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://testmaster:$DB_PASSWORD@postgres:5432/testmaster|" {INSTALL_DIR}/.env
+    sed -i "s/^ENVIRONMENT=.*/ENVIRONMENT=production/" {INSTALL_DIR}/.env
+    sed -i "s/^AUTO_CREATE_TABLES_ON_STARTUP=.*/AUTO_CREATE_TABLES_ON_STARTUP=true/" {INSTALL_DIR}/.env
+    echo ".env 已生成，数据库使用 Docker 内部 PostgreSQL"
 else
     echo ".env 已存在，跳过"
 fi
@@ -258,7 +260,7 @@ asyncio.run(seed_all())
         print("\n" + "#" * 60)
         print("# 验证部署")
         print("#" * 60)
-        run_ssh(transport, "docker compose ps", "容器状态", cwd=INSTALL_DIR)
+        run_ssh(transport, f"cd {INSTALL_DIR} && docker compose ps", "容器状态")
         run_ssh(transport, "curl -sf http://localhost:5001/api/health && echo ' ✅ 后端正常' || echo ' ❌ 后端异常'", "后端检查")
         run_ssh(transport, "curl -sfk https://localhost/health && echo ' ✅ HTTPS 正常' || echo ' ❌ HTTPS 异常'", "HTTPS 检查")
 

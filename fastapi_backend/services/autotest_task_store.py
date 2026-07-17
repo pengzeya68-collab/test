@@ -72,6 +72,13 @@ async def load_all_tasks() -> None:
                     task_data = json.load(f)
                     task_id = task_data.get("task_id")
                     if task_id:
+                        if str(task_data.get("status", "")).upper() in {"PENDING", "PROGRESS", "STARTED"}:
+                            task_data.update({
+                                "status": "failed", "state": "failed",
+                                "error": "后端服务重启，任务已中断，请重新执行",
+                                "info": "任务因服务重启中断", "completed_at": time.time(),
+                            })
+                            _save_task_to_file(task_id, task_data)
                         with _thread_lock:
                             _task_store[task_id] = task_data
             except Exception:
@@ -255,6 +262,13 @@ def _load_all_tasks_sync() -> None:
                 task_data = json.load(f)
                 task_id = task_data.get("task_id")
                 if task_id:
+                    if str(task_data.get("status", "")).upper() in {"PENDING", "PROGRESS", "STARTED"}:
+                        task_data.update({
+                            "status": "failed", "state": "failed",
+                            "error": "后端服务重启，任务已中断，请重新执行",
+                            "info": "任务因服务重启中断", "completed_at": time.time(),
+                        })
+                        _save_task_to_file(task_id, task_data)
                     with _thread_lock:
                         _task_store[task_id] = task_data
         except Exception:

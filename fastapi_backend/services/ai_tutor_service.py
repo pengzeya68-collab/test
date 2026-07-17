@@ -41,6 +41,14 @@ class AITutorService:
     ) -> AIEvaluationResponse:
         logger.info(f"收到代码提交: 题目 {submission.question_id}, 语言 {submission.language}")
 
+        if not (submission.source_code or "").strip():
+            return AIEvaluationResponse(
+                is_correct=False,
+                score=0,
+                feedback="提交代码为空，请先填写代码后再提交评估。",
+                optimized_code=None,
+            )
+
         config = await self._load_config()
 
         if not config:

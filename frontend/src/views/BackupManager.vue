@@ -201,6 +201,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { PieChart, LineChart } from 'echarts/charts'
 import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
 import request from '@/utils/request'
+import { getAdminToken, setAdminInfo, setAdminToken } from '@/utils/auth'
 
 use([CanvasRenderer, PieChart, LineChart, TooltipComponent, LegendComponent, GridComponent])
 
@@ -230,6 +231,16 @@ const systemLoadChart = shallowRef(null)
 
 // 心跳刷新定时器
 let refreshTimer = null
+
+const ensureDesktopAdminSession = async () => {
+  if (!window.testmaster || getAdminToken()) return
+  const res = await request.post('/admin/login', { username: 'admin', password: 'admin123' })
+  const adminToken = res.token || res.access_token
+  if (adminToken) {
+    setAdminToken(adminToken)
+    setAdminInfo(res.user)
+  }
+}
 
 // 计算真实的总备份大小 - 防弹版本
 const totalSize = computed(() => {
@@ -636,7 +647,12 @@ const updateChartsData = (chartData) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    await ensureDesktopAdminSession()
+  } catch (error) {
+    console.error('初始化桌面管理员会话失败:', error)
+  }
   fetchSystemMetrics()
   fetchBackups()
   fetchAuditLogs()

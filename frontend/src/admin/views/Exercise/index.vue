@@ -1,21 +1,21 @@
-<template>
+﻿<template>
   <div class="exercise-management-dark">
-    <h1 class="page-title">习题管理</h1>
+    <h1 class="page-title">涔犻绠＄悊</h1>
 
-    <!-- 操作栏 -->
+    <!-- 鎿嶄綔鏍?-->
     <div class="toolbar-card">
       <div class="toolbar-left">
         <el-button type="primary" @click="handleAdd" class="btn-primary">
           <el-icon><Plus /></el-icon>
-          新增习题
+          鏂板涔犻
         </el-button>
         <el-button type="success" @click="handleImport" class="btn-success">
           <el-icon><Upload /></el-icon>
-          批量导入
+          鎵归噺瀵煎叆
         </el-button>
         <el-button @click="downloadTemplate" class="btn-outline">
           <el-icon><Download /></el-icon>
-          下载模板
+          涓嬭浇妯℃澘
         </el-button>
       </div>
       <div class="toolbar-right">
@@ -34,10 +34,10 @@
       </div>
     </div>
 
-    <!-- 批量导入对话框 -->
+    <!-- 鎵归噺瀵煎叆瀵硅瘽妗?-->
     <el-dialog
       v-model="importDialogVisible"
-      title="批量导入习题"
+      title="鎵归噺瀵煎叆涔犻"
       width="520px"
       custom-class="dark-dialog"
     >
@@ -56,7 +56,7 @@
           <el-button type="primary">选择文件</el-button>
           <template #tip>
             <div class="el-upload__tip">
-              支持JSON格式，<a @click="downloadTemplate" class="link-text">下载导入模板</a>
+              支持 JSON 格式，<a @click="downloadTemplate" class="link-text">下载导入模板</a>
             </div>
           </template>
         </el-upload>
@@ -64,7 +64,7 @@
         <!-- 导入结果 -->
         <div v-if="importResult" style="margin-top: 20px;">
           <el-alert
-            :title="`导入完成，成功${importResult.success_count}条，失败${importResult.fail_count}条`"
+            :title="`导入完成，成功 ${importResult.success_count} 条，失败 ${importResult.fail_count} 条`"
             :type="importResult.fail_count > 0 ? 'warning' : 'success'"
             show-icon
           />
@@ -79,16 +79,16 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="importDialogVisible = false" class="btn-cancel">取消</el-button>
-        <el-button type="primary" @click="submitImport" :loading="importLoading" class="btn-primary">开始导入</el-button>
+        <el-button @click="importDialogVisible = false" class="btn-cancel">鍙栨秷</el-button>
+        <el-button type="primary" @click="submitImport" :loading="importLoading" class="btn-primary">寮€濮嬪鍏</el-button>
       </template>
     </el-dialog>
 
-    <!-- 列表 -->
+    <!-- 鍒楄〃 -->
     <div class="list-card">
-      <el-table :data="list" border stripe v-loading="loading" class="admin-table" empty-text="暂无习题数据">
+      <el-table :data="list" border stripe v-loading="loading" class="admin-table" empty-text="鏆傛棤涔犻鏁版嵁">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="title" label="习题标题" min-width="200" />
+        <el-table-column prop="title" label="涔犻鏍囬" min-width="200" />
         <el-table-column prop="category" label="分类" width="120" />
         <el-table-column prop="difficulty" label="难度" width="100">
           <template #default="{ row }">
@@ -107,16 +107,16 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="160" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column prop="createTime" label="鍒涘缓鏃堕棿" width="160" />
+        <el-table-column label="鎿嶄綔" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="handleEdit(row)" class="btn-edit">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button size="small" @click="handleEdit(row)" class="btn-edit">缂栬緫</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(row)">鍒犻櫎</el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <!-- 分页 -->
+      <!-- 鍒嗛〉 -->
       <div class="pagination-wrapper">
         <el-pagination
           v-model:current-page="page"
@@ -131,7 +131,7 @@
       </div>
     </div>
 
-    <!-- 编辑弹窗 -->
+    <!-- 缂栬緫寮圭獥 -->
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑习题' : '新增习题'"
@@ -162,7 +162,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="内容" prop="content">
-          <el-input v-model="form.content" type="textarea" :rows="6" placeholder="请输入习题内容" class="dark-input" />
+          <el-input v-model="form.content" type="textarea" :rows="6" placeholder="请输入练习内容" class="dark-input" />
         </el-form-item>
         <el-form-item label="答案" prop="answer">
           <el-input v-model="form.answer" type="textarea" :rows="4" placeholder="请输入参考答案" class="dark-input" />
@@ -205,18 +205,18 @@ const form = reactive({
 })
 
 const rules = {
-  title: [{ required: true, message: '请输入习题标题', trigger: 'blur' }],
-  content: [{ required: true, message: '请输入习题内容', trigger: 'blur' }],
+  title: [{ required: true, message: '请输入练习标题', trigger: 'blur' }],
+  content: [{ required: true, message: '请输入练习内容', trigger: 'blur' }],
   answer: [{ required: true, message: '请输入参考答案', trigger: 'blur' }],
 }
 
-// 批量导入相关
+// 鎵归噺瀵煎叆鐩稿叧
 const importDialogVisible = ref(false)
 const uploadRef = ref()
 const importLoading = ref(false)
 const importResult = ref(null)
 
-// 请求头，动态获取token（避免token刷新后headers过期）
+// 动态读取 token，避免刷新后上传请求仍使用过期认证信息。
 const headers = computed(() => ({
   Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}`
 }))
@@ -247,8 +247,8 @@ const fetchList = async () => {
       total.value = res.total
     }
   } catch (e) {
-    console.error('获取习题列表失败:', e)
-    ElMessage.error('获取列表失败')
+    console.error('鑾峰彇涔犻鍒楄〃澶辫触:', e)
+    ElMessage.error('鑾峰彇鍒楄〃澶辫触')
   } finally {
     loading.value = false
   }
@@ -264,7 +264,7 @@ const handleSizeChange = () => {
   fetchList()
 }
 
-// 监听难度变化，自动搜索
+// 难度变化时回到第一页并重新查询。
 const handleDifficultyChange = () => {
   page.value = 1
   fetchList()
@@ -318,14 +318,14 @@ const handleSubmit = async () => {
     dialogVisible.value = false
     fetchList()
   } catch (e) {
-    console.error('提交失败:', e)
+    console.error('鎻愪氦澶辫触:', e)
     ElMessage.error('操作失败：' + (e.response?.data?.error || e.message))
   }
 }
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要删除这个习题吗？', '提示', {
+    await ElMessageBox.confirm('确定要删除这个练习吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
@@ -336,13 +336,13 @@ const handleDelete = async (row) => {
     fetchList()
   } catch (e) {
     if (e !== 'cancel') {
-      console.error('删除失败:', e)
+      console.error('鍒犻櫎澶辫触:', e)
       ElMessage.error('删除失败：' + (e.response?.data?.error || e.message))
     }
   }
 }
 
-// 批量导入
+// 鎵归噺瀵煎叆
 const handleImport = () => {
   importDialogVisible.value = true
   importResult.value = null
@@ -351,16 +351,16 @@ const handleImport = () => {
   }
 }
 
-// 下载导入模板
+// 涓嬭浇瀵煎叆妯℃澘
 const downloadTemplate = () => {
-  // 创建一个示例模板JSON文件下载
+  // 鍒涘缓涓€涓ず渚嬫ā鏉縅SON鏂囦欢涓嬭浇
   const template = [
     {
-      "title": "习题标题（必填）",
-      "description": "习题描述",
+      "title": "练习标题（必填）",
+      "description": "练习描述",
       "instructions": "答题说明",
       "solution": "参考答案（必填）",
-      "difficulty": "easy/medium/hard（可选，默认easy）",
+      "difficulty": "easy/medium/hard（可选，默认 easy）",
       "language": "通用/Python/SQL/Linux（可选）",
       "category": "分类（可选）",
       "time_estimate": "预计耗时（分钟，可选）"
@@ -371,14 +371,14 @@ const downloadTemplate = () => {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = '习题导入模板.json'
+  a.download = '练习导入模板.json'
   a.click()
   URL.revokeObjectURL(url)
 
   ElMessage.success('模板下载成功')
 }
 
-// 提交导入
+// 鎻愪氦瀵煎叆
 const submitImport = () => {
   if (!uploadRef.value || uploadRef.value.uploadFiles.length === 0) {
     ElMessage.warning('请先选择文件')
@@ -389,15 +389,15 @@ const submitImport = () => {
   uploadRef.value.submit()
 }
 
-// 导入成功
+// 瀵煎叆鎴愬姛
 const handleImportSuccess = (response) => {
   importLoading.value = false
   importResult.value = response
   ElMessage.success(response.msg || '导入完成')
-  fetchList() // 刷新列表
+  fetchList() // 鍒锋柊鍒楄〃
 }
 
-// 导入失败
+// 瀵煎叆澶辫触
 const handleImportError = (error) => {
   importLoading.value = false
   ElMessage.error('导入失败：' + (error.response?.data?.error || error.message))
@@ -608,3 +608,4 @@ onMounted(() => {
   color: var(--tm-color-primary);
 }
 </style>
+

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="profile-container">
     <section class="profile-hero">
       <div class="hero-left">
@@ -17,12 +17,12 @@
       </div>
       <div class="hero-right">
         <div class="score-card">
-          <div class="score-value">{{ skillProfile ? Math.round(skillProfile.overall_score || 0) : '—' }}</div>
-          <div class="score-label">综合得分</div>
+          <div class="score-value">{{ skillProfile ? Math.round(skillProfile.overall_score || 0) : '--' }}</div>
+          <div class="score-label">缁煎悎寰楀垎</div>
         </div>
         <div class="score-card points-card">
           <div class="score-value">{{ userInfo?.score || 0 }}</div>
-          <div class="score-label">积分</div>
+          <div class="score-label">绉垎</div>
         </div>
       </div>
     </section>
@@ -31,7 +31,7 @@
       <div class="main-col">
         <div class="panel" v-if="skillProfile">
           <div class="panel-header">
-            <h3 class="panel-title">技能画像</h3>
+            <h3 class="panel-title">鎶€鑳界敾鍍</h3>
             <div class="title-glow-line"></div>
           </div>
           <div class="skill-body">
@@ -47,7 +47,7 @@
               </svg>
               <div class="ring-center">
                 <div class="ring-score">{{ Math.round(skillProfile.overall_score || 0) }}</div>
-                <div class="ring-unit">综合得分</div>
+                <div class="ring-unit">缁煎悎寰楀垎</div>
               </div>
             </div>
             <div class="skill-bars" v-if="skillProfile.dimension_scores">
@@ -59,49 +59,49 @@
                 <span class="skill-num">{{ dim.score }}</span>
               </div>
             </div>
-            <button class="link-btn" @click="router.push('/skill-analysis')">查看详细分析 →</button>
+            <button class="link-btn" @click="router.push('/skill-analysis')">鏌ョ湅璇︾粏鍒嗘瀽 鈫</button>
           </div>
         </div>
 
         <div class="panel" v-else>
           <div class="panel-header">
-            <h3 class="panel-title">技能画像</h3>
+            <h3 class="panel-title">鎶€鑳界敾鍍</h3>
             <div class="title-glow-line"></div>
           </div>
           <div class="empty-block">
-            <p>你还没有完成入学测评</p>
-            <button class="primary-btn" @click="router.push('/assessment')">立即测评</button>
+            <p>浣犺繕娌℃湁瀹屾垚鍏ュ娴嬭瘎</p>
+            <button class="primary-btn" @click="router.push('/assessment')">绔嬪嵆娴嬭瘎</button>
           </div>
         </div>
 
         <div class="panel">
           <div class="panel-header">
-            <h3 class="panel-title">学习统计</h3>
+            <h3 class="panel-title">瀛︿範缁熻</h3>
             <div class="title-glow-line"></div>
           </div>
           <div class="stats-row">
             <div class="stat-block">
               <div class="stat-num">{{ stats.exercises_done }}</div>
-              <div class="stat-label">完成习题</div>
+              <div class="stat-label">瀹屾垚涔犻</div>
             </div>
             <div class="stat-block">
               <div class="stat-num">{{ stats.exams_taken }}</div>
-              <div class="stat-label">参加考试</div>
+              <div class="stat-label">鍙傚姞鑰冭瘯</div>
             </div>
             <div class="stat-block">
               <div class="stat-num">{{ stats.interviews_done }}</div>
-              <div class="stat-label">模拟面试</div>
+              <div class="stat-label">妯℃嫙闈㈣瘯</div>
             </div>
             <div class="stat-block">
               <div class="stat-num">{{ stats.streak_days }}</div>
-              <div class="stat-label">连续学习</div>
+              <div class="stat-label">杩炵画瀛︿範</div>
             </div>
           </div>
         </div>
 
         <div class="panel" v-if="recentActivities.length > 0">
           <div class="panel-header">
-            <h3 class="panel-title">最近活动</h3>
+            <h3 class="panel-title">鏈€杩戞椿鍔</h3>
             <div class="title-glow-line"></div>
           </div>
           <div class="activity-list">
@@ -112,26 +112,26 @@
               @click="router.push(`/exercises/${act.exercise_id}`)"
             >
               <div class="act-icon-box" :class="act.result === 'pass' ? 'pass' : 'fail'">
-                {{ act.result === 'pass' ? '✓' : '✗' }}
+                {{ act.result === 'pass' ? '通过' : '失败' }}
               </div>
               <div class="act-body">
                 <div class="act-title">{{ act.exercise_title }}</div>
                 <div class="act-time">{{ act.created_at }}</div>
               </div>
-              <div class="act-score" :class="act.result === 'pass' ? 'pass' : 'fail'">{{ act.score }}分</div>
+              <div class="act-score" :class="act.result === 'pass' ? 'pass' : 'fail'">{{ act.score }}鍒</div>
             </div>
           </div>
         </div>
 
         <div class="panel" v-if="knowledgeMap.length > 0">
           <div class="panel-header">
-            <h3 class="panel-title">知识点掌握度</h3>
+            <h3 class="panel-title">鐭ヨ瘑鐐规帉鎻″害</h3>
             <div class="title-glow-line"></div>
           </div>
           <div class="km-header">
-            <span class="km-tag mastered">已掌握 {{ knowledgeStats.mastered_points }}</span>
-            <span class="km-tag learning">学习中 {{ knowledgeStats.learning_points }}</span>
-            <span class="km-tag pending">未开始 {{ knowledgeStats.not_started_points }}</span>
+            <span class="km-tag mastered">宸叉帉鎻?{{ knowledgeStats.mastered_points }}</span>
+            <span class="km-tag learning">瀛︿範涓?{{ knowledgeStats.learning_points }}</span>
+            <span class="km-tag pending">鏈紑濮?{{ knowledgeStats.not_started_points }}</span>
           </div>
           <div class="km-list">
             <div
@@ -159,13 +159,13 @@
 
         <div class="panel">
           <div class="panel-header">
-            <h3 class="panel-title">学习热力图</h3>
+            <h3 class="panel-title">瀛︿範鐑姏鍥</h3>
             <div class="title-glow-line"></div>
           </div>
           <div class="hm-stats">
-            <span class="hm-item">活跃 {{ heatmapData.total_days }} 天</span>
-            <span class="hm-item">总计 {{ heatmapData.total_submissions }} 题</span>
-            <span class="hm-item">最长连续 {{ heatmapData.longest_streak }} 天</span>
+            <span class="hm-item">娲昏穬 {{ heatmapData.total_days }} 澶</span>
+            <span class="hm-item">鎬昏 {{ heatmapData.total_submissions }} 棰</span>
+            <span class="hm-item">鏈€闀胯繛缁?{{ heatmapData.longest_streak }} 澶</span>
           </div>
           <div class="hm-grid">
             <div
@@ -173,23 +173,23 @@
               :key="day.date"
               class="hm-cell"
               :class="'lvl-' + day.level"
-              :title="day.date + ': ' + day.total + '题'"
+              :title="day.date + ': ' + day.total + ' 题'"
             ></div>
           </div>
           <div class="hm-legend">
-            <span class="lg-label">少</span>
+            <span class="lg-label">灏</span>
             <div class="hm-cell lvl-0"></div>
             <div class="hm-cell lvl-1"></div>
             <div class="hm-cell lvl-2"></div>
             <div class="hm-cell lvl-3"></div>
             <div class="hm-cell lvl-4"></div>
-            <span class="lg-label">多</span>
+            <span class="lg-label">澶</span>
           </div>
         </div>
 
         <div class="panel">
           <div class="panel-header">
-            <h3 class="panel-title">成就徽章</h3>
+            <h3 class="panel-title">鎴愬氨寰界珷</h3>
             <span class="ach-tally">{{ achievementStats.unlocked_count }}/{{ achievementStats.total_count }}</span>
             <div class="title-glow-line"></div>
           </div>
@@ -200,7 +200,7 @@
               class="ach-row"
               :class="{ 'ach-on': ach.unlocked, 'ach-off': !ach.unlocked }"
             >
-              <div class="ach-emoji">{{ ach.unlocked ? ach.icon : '🔒' }}</div>
+              <div class="ach-emoji">{{ ach.unlocked ? ach.icon : '馃敀' }}</div>
               <div class="ach-mid">
                 <div class="ach-name">{{ ach.name }}</div>
                 <div class="ach-desc">{{ ach.description }}</div>
@@ -214,32 +214,32 @@
       <div class="side-col">
         <div class="panel">
           <div class="panel-header">
-            <h3 class="panel-title">基本信息</h3>
+            <h3 class="panel-title">鍩烘湰淇℃伅</h3>
             <div class="title-glow-line"></div>
           </div>
           <div class="info-list">
             <div class="info-row">
-              <span class="info-k">用户名</span>
+              <span class="info-k">鐢ㄦ埛鍚</span>
               <span class="info-v">{{ userInfo?.username }}</span>
             </div>
             <div class="info-row">
-              <span class="info-k">邮箱</span>
+              <span class="info-k">閭</span>
               <span class="info-v">{{ userInfo?.email }}</span>
             </div>
             <div class="info-row">
-              <span class="info-k">手机号</span>
+              <span class="info-k">鎵嬫満鍙</span>
               <span class="info-v">{{ userInfo?.phone || '未绑定' }}</span>
             </div>
             <div class="info-row">
-              <span class="info-k">等级</span>
+              <span class="info-k">绛夌骇</span>
               <span class="info-v">Lv.{{ userInfo?.level || 1 }}</span>
             </div>
             <div class="info-row">
-              <span class="info-k">积分</span>
+              <span class="info-k">绉垎</span>
               <span class="info-v">{{ userInfo?.score || 0 }}</span>
             </div>
             <div class="info-row">
-              <span class="info-k">注册时间</span>
+              <span class="info-k">娉ㄥ唽鏃堕棿</span>
               <span class="info-v">{{ formatDate(userInfo?.created_at) }}</span>
             </div>
           </div>
@@ -247,62 +247,62 @@
 
         <div class="panel">
           <div class="panel-header">
-            <h3 class="panel-title">修改密码</h3>
+            <h3 class="panel-title">淇敼瀵嗙爜</h3>
             <div class="title-glow-line"></div>
           </div>
           <form class="pwd-form" @submit.prevent="handleChangePassword">
             <div class="field">
-              <label class="field-label">旧密码</label>
-              <input v-model="passwordForm.old_password" type="password" class="field-input" placeholder="请输入旧密码" required />
+              <label class="field-label">鏃у瘑鐮</label>
+              <input v-model="passwordForm.old_password" type="password" class="field-input" placeholder="璇疯緭鍏ユ棫瀵嗙爜" required />
             </div>
             <div class="field">
-              <label class="field-label">新密码</label>
-              <input v-model="passwordForm.new_password" type="password" class="field-input" placeholder="请输入新密码（6-32位）" required minlength="6" maxlength="32" />
+              <label class="field-label">鏂板瘑鐮</label>
+              <input v-model="passwordForm.new_password" type="password" class="field-input" placeholder="璇疯緭鍏ユ柊瀵嗙爜锛?-32浣嶏級" required minlength="6" maxlength="32" />
             </div>
             <div class="field">
-              <label class="field-label">确认密码</label>
+              <label class="field-label">纭瀵嗙爜</label>
               <input v-model="passwordForm.confirm_password" type="password" class="field-input" placeholder="再次输入新密码" required />
             </div>
-            <p v-if="passwordForm.confirm_password && passwordForm.confirm_password !== passwordForm.new_password" class="field-error">两次输入的密码不一致</p>
+            <p v-if="passwordForm.confirm_password && passwordForm.confirm_password !== passwordForm.new_password" class="field-error">涓ゆ杈撳叆鐨勫瘑鐮佷笉涓€鑷</p>
             <button type="submit" class="primary-btn submit-btn" :disabled="loading || (passwordForm.confirm_password && passwordForm.confirm_password !== passwordForm.new_password)">
-              {{ loading ? '修改中...' : '修改密码' }}
+              {{ loading ? '淇敼涓?..' : '淇敼瀵嗙爜' }}
             </button>
           </form>
         </div>
 
         <div class="panel">
           <div class="panel-header">
-            <h3 class="panel-title">快捷入口</h3>
+            <h3 class="panel-title">蹇嵎鍏ュ彛</h3>
             <div class="title-glow-line"></div>
           </div>
           <div class="quick-grid">
             <div class="quick-item" @click="router.push('/skill-analysis')">
-              <span class="quick-emoji">📊</span>
-              <span class="quick-txt">技能分析</span>
+              <span class="quick-emoji">馃搳</span>
+              <span class="quick-txt">鎶€鑳藉垎鏋</span>
             </div>
             <div class="quick-item" @click="router.push('/learning-paths')">
-              <span class="quick-emoji">📚</span>
-              <span class="quick-txt">学习路径</span>
+              <span class="quick-emoji">馃摎</span>
+              <span class="quick-txt">瀛︿範璺緞</span>
             </div>
             <div class="quick-item" @click="router.push('/exercises')">
-              <span class="quick-emoji">✏️</span>
-              <span class="quick-txt">习题练习</span>
+              <span class="quick-emoji">鉁忥笍</span>
+              <span class="quick-txt">涔犻缁冧範</span>
             </div>
             <div class="quick-item" @click="router.push('/interview')">
-              <span class="quick-emoji">🎤</span>
-              <span class="quick-txt">模拟面试</span>
+              <span class="quick-emoji">馃帳</span>
+              <span class="quick-txt">妯℃嫙闈㈣瘯</span>
             </div>
             <div class="quick-item" @click="router.push('/assessment')">
-              <span class="quick-emoji">🎯</span>
-              <span class="quick-txt">重新测评</span>
+              <span class="quick-emoji">馃幆</span>
+              <span class="quick-txt">閲嶆柊娴嬭瘎</span>
             </div>
             <div class="quick-item" @click="router.push('/ai-tutor')">
-              <span class="quick-emoji">🤖</span>
-              <span class="quick-txt">AI 导师</span>
+              <span class="quick-emoji">馃</span>
+              <span class="quick-txt">AI 瀵煎笀</span>
             </div>
             <div class="quick-item" @click="router.push('/points')">
-              <span class="quick-emoji">💰</span>
-              <span class="quick-txt">我的积分</span>
+              <span class="quick-emoji">馃挵</span>
+              <span class="quick-txt">鎴戠殑绉垎</span>
             </div>
           </div>
         </div>
@@ -359,7 +359,7 @@ const levelText = computed(() => {
     return { 1: '入门', 2: '了解', 3: '掌握', 4: '精通', 5: '专家' }[level] || '入门'
   }
   const score = skillProfile.value.overall_score ?? 0
-  return LEVEL_MAP.find(l => score >= l.min)?.text || '入门'
+  return LEVEL_MAP.find(l => score >= l.min)?.text || '鍏ラ棬'
 })
 
 const levelClass = computed(() => {
@@ -372,7 +372,7 @@ const levelClass = computed(() => {
 })
 
 const formatDate = (dateStr) => {
-  if (!dateStr) return '—'
+  if (!dateStr) return '--'
   try {
     return new Date(dateStr).toLocaleDateString('zh-CN')
   } catch {
@@ -445,11 +445,11 @@ const fetchAchievements = async () => {
 
 const handleChangePassword = async () => {
   if (!passwordForm.value.old_password) {
-    ElMessage.warning('请输入旧密码')
+    ElMessage.warning('璇疯緭鍏ユ棫瀵嗙爜')
     return
   }
   if (!passwordForm.value.new_password || passwordForm.value.new_password.length < 6) {
-    ElMessage.warning('新密码至少需要6个字符')
+    ElMessage.warning('新密码至少需要 6 个字符')
     return
   }
   if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
@@ -462,11 +462,11 @@ const handleChangePassword = async () => {
       old_password: passwordForm.value.old_password,
       new_password: passwordForm.value.new_password,
     })
-    ElMessage.success('密码修改成功！请重新登录')
+    ElMessage.success('瀵嗙爜淇敼鎴愬姛锛佽閲嶆柊鐧诲綍')
     await userStore.logout()
     router.push('/login')
   } catch (error) {
-    ElMessage.error(error.response?.data?.error || '密码修改失败')
+    ElMessage.error(error.response?.data?.error || '瀵嗙爜淇敼澶辫触')
   } finally {
     loading.value = false
     passwordForm.value = { old_password: '', new_password: '', confirm_password: '' }

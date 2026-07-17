@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <div class="weekly-report-page">
     <header class="page-header">
       <div class="header-titles">
-        <h1 class="page-title">📊 学习周报</h1>
+        <h1 class="page-title">馃搳 瀛︿範鍛ㄦ姤</h1>
         <p class="page-desc">{{ report.period?.start }} ~ {{ report.period?.end }}</p>
       </div>
     </header>
@@ -10,25 +10,25 @@
     <div class="report-grid">
       <div class="report-card summary-card">
         <div class="section-header">
-          <h3 class="card-title">本周概览</h3>
+          <h3 class="card-title">鏈懆姒傝</h3>
           <div class="title-glow-line"></div>
         </div>
         <div class="summary-grid">
           <div class="summary-item">
-            <div class="summary-value">{{ report.summary?.total_submissions || 0 }}<span class="summary-unit">题</span></div>
-            <div class="summary-label">做题数</div>
+            <div class="summary-value">{{ report.summary?.total_submissions || 0 }}<span class="summary-unit">棰</span></div>
+            <div class="summary-label">鍋氶鏁</div>
           </div>
           <div class="summary-item correct">
-            <div class="summary-value">{{ report.summary?.correct_count || 0 }}<span class="summary-unit">题</span></div>
-            <div class="summary-label">答对</div>
+            <div class="summary-value">{{ report.summary?.correct_count || 0 }}<span class="summary-unit">棰</span></div>
+            <div class="summary-label">绛斿</div>
           </div>
           <div class="summary-item wrong">
-            <div class="summary-value">{{ report.summary?.wrong_count || 0 }}<span class="summary-unit">题</span></div>
-            <div class="summary-label">答错</div>
+            <div class="summary-value">{{ report.summary?.wrong_count || 0 }}<span class="summary-unit">棰</span></div>
+            <div class="summary-label">绛旈敊</div>
           </div>
           <div class="summary-item rate">
             <div class="summary-value">{{ report.summary?.correct_rate || 0 }}<span class="summary-unit">%</span></div>
-            <div class="summary-label">正确率</div>
+            <div class="summary-label">姝ｇ‘鐜</div>
           </div>
         </div>
       </div>
@@ -51,7 +51,7 @@
             <span class="compare-value-neutral">{{ report.comparison?.last_week_total || 0 }} 题</span>
           </div>
           <div class="compare-item">
-            <span class="compare-label">上周正确率</span>
+            <span class="compare-label">涓婂懆姝ｇ‘鐜</span>
             <span class="compare-value-neutral">{{ report.comparison?.last_correct_rate || 0 }}%</span>
           </div>
         </div>
@@ -59,20 +59,20 @@
 
       <div class="report-card checkin-card">
         <div class="section-header">
-          <h3 class="card-title">签到记录</h3>
+          <h3 class="card-title">绛惧埌璁板綍</h3>
           <div class="title-glow-line"></div>
         </div>
         <div class="checkin-stats">
           <div class="checkin-item">
             <div class="checkin-value">{{ report.summary?.checkin_count || 0 }}<span class="checkin-unit"> / 7</span></div>
-            <div class="checkin-label">本周签到</div>
+            <div class="checkin-label">鏈懆绛惧埌</div>
             <div class="checkin-progress">
               <div class="checkin-progress-fill" :style="{ width: ((report.summary?.checkin_count || 0) / 7 * 100) + '%' }"></div>
             </div>
           </div>
           <div class="checkin-item">
-            <div class="checkin-value checkin-streak">{{ report.summary?.max_streak || 0 }}<span class="checkin-unit"> 天</span></div>
-            <div class="checkin-label">最长连续</div>
+            <div class="checkin-value checkin-streak">{{ report.summary?.max_streak || 0 }}<span class="checkin-unit"> 澶</span></div>
+            <div class="checkin-label">鏈€闀胯繛缁</div>
           </div>
         </div>
       </div>
@@ -80,7 +80,7 @@
 
     <div class="report-card daily-card">
       <div class="section-header">
-        <h3 class="card-title">每日学习分布</h3>
+        <h3 class="card-title">姣忔棩瀛︿範鍒嗗竷</h3>
         <div class="title-glow-line"></div>
       </div>
       <div class="daily-chart">
@@ -93,27 +93,27 @@
             <div
               class="daily-bar bar-correct"
               :style="{ height: getBarHeight(day.correct) + 'px' }"
-              :title="`正确: ${day.correct}`"
+              :title="`姝ｇ‘: ${day.correct}`"
             ></div>
             <div
               class="daily-bar bar-wrong"
               :style="{ height: getBarHeight((day.total || 0) - (day.correct || 0)) + 'px' }"
-              :title="`错误: ${(day.total || 0) - (day.correct || 0)}`"
+              :title="`閿欒: ${(day.total || 0) - (day.correct || 0)}`"
             ></div>
           </div>
           <div class="daily-label">{{ day.day_name }}</div>
-          <div class="daily-count">{{ day.total }}题</div>
+          <div class="daily-count">{{ day.total }}棰</div>
         </div>
       </div>
       <div class="chart-legend">
-        <span class="legend-item"><span class="legend-dot correct"></span>正确</span>
-        <span class="legend-item"><span class="legend-dot wrong"></span>错误</span>
+        <span class="legend-item"><span class="legend-dot correct"></span>姝ｇ‘</span>
+        <span class="legend-item"><span class="legend-dot wrong"></span>閿欒</span>
       </div>
     </div>
 
     <div class="report-card category-card" v-if="Object.keys(report.category_distribution || {}).length > 0">
       <div class="section-header">
-        <h3 class="card-title">知识点分布</h3>
+        <h3 class="card-title">鐭ヨ瘑鐐瑰垎甯</h3>
         <div class="title-glow-line"></div>
       </div>
       <div class="category-list">
@@ -126,14 +126,14 @@
           <div class="cat-bar-wrap">
             <div class="cat-bar" :style="{ width: (count / maxCatCount * 100) + '%' }"></div>
           </div>
-          <span class="cat-count">{{ count }} 题</span>
+          <span class="cat-count">{{ count }} 棰</span>
         </div>
       </div>
     </div>
 
     <div class="report-card suggest-card">
       <div class="section-header">
-        <h3 class="card-title">💡 学习建议</h3>
+        <h3 class="card-title">馃挕 瀛︿範寤鸿</h3>
         <div class="title-glow-line"></div>
       </div>
       <div class="suggest-list">
@@ -143,7 +143,7 @@
         </div>
       </div>
       <div class="suggest-empty" v-if="!report.suggestions?.length">
-        <p>暂无建议，继续努力学习吧！</p>
+        <p>鏆傛棤寤鸿锛岀户缁姫鍔涘涔犲惂锛</p>
       </div>
     </div>
   </div>
@@ -172,8 +172,8 @@ const fetchReport = async () => {
     const res = await request.get('/report/weekly')
     report.value = res
   } catch (error) {
-    console.error('获取周报失败:', error)
-    ElMessage.error('获取周报失败，请稍后重试')
+    console.error('鑾峰彇鍛ㄦ姤澶辫触:', error)
+    ElMessage.error('鑾峰彇鍛ㄦ姤澶辫触锛岃绋嶅悗閲嶈瘯')
   }
 }
 

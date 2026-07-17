@@ -1,13 +1,13 @@
-<template>
+﻿<template>
   <div class="learning-path-management-dark">
-    <h1 class="page-title">学习路径管理</h1>
+    <h1 class="page-title">瀛︿範璺緞绠＄悊</h1>
 
-    <!-- 操作栏 -->
+    <!-- 鎿嶄綔鏍?-->
     <div class="toolbar-card">
       <div class="toolbar-left">
         <el-button type="primary" @click="handleAdd" class="btn-primary">
           <el-icon><Plus /></el-icon>
-          新增路径
+          鏂板璺緞
         </el-button>
       </div>
       <div class="toolbar-right">
@@ -26,7 +26,7 @@
       </div>
     </div>
 
-    <!-- 卡片列表 -->
+    <!-- 鍗＄墖鍒楄〃 -->
     <div v-loading="loading">
     <el-row :gutter="20" class="paths-grid" v-if="list.length">
       <el-col :span="8" v-for="item in list" :key="item.id" class="path-col">
@@ -38,29 +38,29 @@
           <p class="card-description">{{ item.description }}</p>
           <div class="card-stats">
             <div class="stat-item">
-              <span class="stat-label">习题</span>
+              <span class="stat-label">涔犻</span>
               <span class="stat-value">{{ item.exerciseCount }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">学习</span>
+              <span class="stat-label">瀛︿範</span>
               <span class="stat-value">{{ item.learnCount }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">完成率</span>
+              <span class="stat-label">瀹屾垚鐜</span>
               <span class="stat-value">{{ item.completionRate }}%</span>
             </div>
           </div>
           <div class="card-actions">
-            <el-button size="small" @click="handleEdit(item)" class="btn-edit">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(item)">删除</el-button>
+            <el-button size="small" @click="handleEdit(item)" class="btn-edit">缂栬緫</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(item)">鍒犻櫎</el-button>
           </div>
         </div>
       </el-col>
     </el-row>
-    <el-empty v-else description="暂无学习路径" class="admin-empty" />
+    <el-empty v-else description="鏆傛棤瀛︿範璺緞" class="admin-empty" />
     </div>
 
-    <!-- 分页 -->
+    <!-- 鍒嗛〉 -->
     <div class="pagination-wrapper">
       <el-pagination
         v-model:current-page="page"
@@ -74,7 +74,7 @@
       />
     </div>
 
-    <!-- 编辑弹窗 -->
+    <!-- 缂栬緫寮圭獥 -->
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑学习路径' : '新增学习路径'"
@@ -114,8 +114,8 @@
       </el-form>
 
       <template #footer>
-        <el-button @click="dialogVisible = false" class="btn-cancel">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" class="btn-primary">确定</el-button>
+        <el-button @click="dialogVisible = false" class="btn-cancel">鍙栨秷</el-button>
+        <el-button type="primary" @click="handleSubmit" class="btn-primary">纭畾</el-button>
       </template>
     </el-dialog>
   </div>
@@ -142,7 +142,7 @@ const form = reactive({
   id: null,
   title: '',
   level: 'beginner',
-  language: '通用',
+  language: '閫氱敤',
   description: '',
   exerciseIds: []
 })
@@ -153,7 +153,7 @@ const getLevelType = (val) => {
 }
 
 const getLevelText = (val) => {
-  const map = { beginner: '入门', intermediate: '进阶', advanced: '高级' }
+  const map = { beginner: '鍏ラ棬', intermediate: '杩涢樁', advanced: '楂樼骇' }
   return map[val] || val
 }
 
@@ -173,8 +173,8 @@ const fetchList = async () => {
       total.value = res.total
     }
   } catch (e) {
-    console.error('获取学习路径失败:', e)
-    ElMessage.error('获取列表失败')
+    console.error('鑾峰彇瀛︿範璺緞澶辫触:', e)
+    ElMessage.error('鑾峰彇鍒楄〃澶辫触')
   } finally {
     loading.value = false
   }
@@ -187,7 +187,7 @@ const fetchExerciseOptions = async () => {
       exerciseOptions.value = res
     }
   } catch (e) {
-    console.error('获取习题选项失败:', e)
+    console.error('鑾峰彇涔犻閫夐」澶辫触:', e)
   }
 }
 
@@ -206,7 +206,7 @@ const handleAdd = () => {
   Object.keys(form).forEach(key => {
     if (key === 'id') form[key] = null
     else if (key === 'level') form[key] = 'beginner'
-    else if (key === 'language') form[key] = '通用'
+    else if (key === 'language') form[key] = '閫氱敤'
     else if (key === 'exerciseIds') form[key] = []
     else form[key] = ''
   })
@@ -221,11 +221,11 @@ const handleEdit = async (row) => {
     form.id = row.id
     form.title = row.title || ''
     form.level = row.level || 'beginner'
-    form.language = (res && res.language) || row.language || '通用'
+    form.language = (res && res.language) || row.language || '閫氱敤'
     form.description = row.description || ''
     form.exerciseIds = (res && res.exerciseIds) ? res.exerciseIds : []
   } catch (e) {
-    ElMessage.error('获取路径详情失败')
+    ElMessage.error('鑾峰彇璺緞璇︽儏澶辫触')
     return
   }
   fetchExerciseOptions()
@@ -237,7 +237,7 @@ const handleSubmit = async () => {
     const payload = {
       title: form.title,
       level: form.level,
-      language: form.language || '通用',
+      language: form.language || '閫氱敤',
       description: form.description,
       exerciseIds: form.exerciseIds || []
     }
@@ -497,3 +497,4 @@ onMounted(() => {
   color: var(--tm-color-primary);
 }
 </style>
+

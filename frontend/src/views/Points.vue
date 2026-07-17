@@ -1,36 +1,36 @@
-<template>
+﻿<template>
   <div class="points-page">
     <div class="points-header">
-      <button class="back-btn" @click="router.push('/profile')">← 返回</button>
-      <h1>我的积分</h1>
+      <button class="back-btn" @click="router.push('/profile')">鈫?杩斿洖</button>
+      <h1>鎴戠殑绉垎</h1>
     </div>
 
-    <!-- 积分概览 -->
+    <!-- 绉垎姒傝 -->
     <div class="overview-cards">
       <div class="overview-card main-card">
-        <div class="card-icon">💰</div>
+        <div class="card-icon">馃挵</div>
         <div class="card-info">
           <div class="card-value">{{ balance }}</div>
-          <div class="card-label">当前积分</div>
+          <div class="card-label">褰撳墠绉垎</div>
         </div>
       </div>
       <div class="overview-card">
-        <div class="card-icon">📊</div>
+        <div class="card-icon">馃搳</div>
         <div class="card-info">
           <div class="card-value">{{ totalUsed }}</div>
-          <div class="card-label">累计消耗</div>
+          <div class="card-label">绱娑堣€</div>
         </div>
       </div>
       <div class="overview-card">
-        <div class="card-icon">🤖</div>
+        <div class="card-icon">馃</div>
         <div class="card-info">
           <div class="card-value">{{ totalCalls }}</div>
-          <div class="card-label">AI 调用次数</div>
+          <div class="card-label">AI 璋冪敤娆℃暟</div>
         </div>
       </div>
     </div>
 
-    <!-- Tab 切换 -->
+    <!-- Tab 鍒囨崲 -->
     <div class="tab-bar">
       <button
         v-for="tab in tabs"
@@ -41,25 +41,25 @@
       >{{ tab.label }}</button>
     </div>
 
-    <!-- 积分流水 -->
+    <!-- 绉垎娴佹按 -->
     <div v-if="activeTab === 'transactions'" class="tab-content">
       <div class="filter-row">
         <select v-model="txFilter.txType" class="filter-select" @change="fetchTransactions">
-          <option value="">全部类型</option>
-          <option value="checkin">每日签到</option>
-          <option value="project">项目实战</option>
-          <option value="purchase">积分购买</option>
-          <option value="admin_grant">管理员充值</option>
-          <option value="ai_usage">AI 使用</option>
-          <option value="refund">积分退还</option>
+          <option value="">鍏ㄩ儴绫诲瀷</option>
+          <option value="checkin">姣忔棩绛惧埌</option>
+          <option value="project">椤圭洰瀹炴垬</option>
+          <option value="purchase">绉垎璐拱</option>
+          <option value="admin_grant">绠＄悊鍛樺厖鍊</option>
+          <option value="ai_usage">AI 浣跨敤</option>
+          <option value="refund">绉垎閫€杩</option>
         </select>
       </div>
-      <div v-if="transactions.length === 0" class="empty-hint">暂无积分流水记录</div>
+      <div v-if="transactions.length === 0" class="empty-hint">鏆傛棤绉垎娴佹按璁板綍</div>
       <div v-else class="tx-list">
         <div v-for="tx in transactions" :key="tx.id" class="tx-item">
           <div class="tx-left">
             <div class="tx-icon" :class="tx.amount > 0 ? 'income' : 'expense'">
-              {{ tx.amount > 0 ? '↑' : '↓' }}
+              {{ tx.amount > 0 ? '+' : '-' }}
             </div>
             <div class="tx-info">
               <div class="tx-title">{{ tx.source || tx.tx_type_name }}</div>
@@ -70,32 +70,32 @@
             <div class="tx-amount" :class="tx.amount > 0 ? 'income' : 'expense'">
               {{ tx.amount > 0 ? '+' : '' }}{{ tx.amount }}
             </div>
-            <div class="tx-balance">余额 {{ tx.balance_after }}</div>
+            <div class="tx-balance">浣欓 {{ tx.balance_after }}</div>
           </div>
         </div>
       </div>
       <div v-if="txTotal > 0" class="pagination">
-        <button :disabled="txFilter.page <= 1" @click="txFilter.page--; fetchTransactions()">上一页</button>
+        <button :disabled="txFilter.page <= 1" @click="txFilter.page--; fetchTransactions()">涓婁竴椤</button>
         <span>{{ txFilter.page }} / {{ Math.ceil(txTotal / txFilter.pageSize) }}</span>
-        <button :disabled="txFilter.page >= Math.ceil(txTotal / txFilter.pageSize)" @click="txFilter.page++; fetchTransactions()">下一页</button>
+        <button :disabled="txFilter.page >= Math.ceil(txTotal / txFilter.pageSize)" @click="txFilter.page++; fetchTransactions()">涓嬩竴椤</button>
       </div>
     </div>
 
-    <!-- AI 使用统计 -->
+    <!-- AI 浣跨敤缁熻 -->
     <div v-if="activeTab === 'usage'" class="tab-content">
-      <div v-if="usageStats.length === 0" class="empty-hint">暂无 AI 使用记录</div>
+      <div v-if="usageStats.length === 0" class="empty-hint">鏆傛棤 AI 浣跨敤璁板綍</div>
       <div v-else class="usage-list">
         <div v-for="stat in usageStats" :key="stat.feature" class="usage-item">
           <div class="usage-name">{{ stat.display_name }}</div>
           <div class="usage-bar">
             <div class="usage-fill" :style="{ width: usagePercent(stat.total_cost) + '%' }"></div>
           </div>
-          <div class="usage-num">{{ stat.count }} 次 / {{ stat.total_cost }} 积分</div>
+          <div class="usage-num">{{ stat.count }} 娆?/ {{ stat.total_cost }} 绉垎</div>
         </div>
       </div>
     </div>
 
-    <!-- AI 功能积分价格表 -->
+    <!-- AI 鍔熻兘绉垎浠锋牸琛?-->
     <div v-if="activeTab === 'costs'" class="tab-content">
       <div class="cost-list">
         <div v-for="cost in aiCosts" :key="cost.feature" class="cost-item">
@@ -121,22 +121,22 @@ const totalCalls = ref(0)
 
 const activeTab = ref('transactions')
 const tabs = [
-  { key: 'transactions', label: '积分流水' },
-  { key: 'usage', label: 'AI 使用统计' },
+  { key: 'transactions', label: '绉垎娴佹按' },
+  { key: 'usage', label: 'AI 浣跨敤缁熻' },
   { key: 'costs', label: '积分价格表' },
 ]
 
-// ── 积分余额 ──
+// 鈹€鈹€ 绉垎浣欓 鈹€鈹€
 const fetchBalance = async () => {
   try {
     const res = await request.get('/user/points')
     balance.value = res?.data?.points ?? res?.points ?? 0
   } catch (e) {
-    console.warn('获取积分余额失败', e)
+    console.warn('鑾峰彇绉垎浣欓澶辫触', e)
   }
 }
 
-// ── 积分流水 ──
+// 鈹€鈹€ 绉垎娴佹按 鈹€鈹€
 const transactions = ref([])
 const txTotal = ref(0)
 const txFilter = reactive({ page: 1, pageSize: 20, txType: '' })
@@ -150,11 +150,11 @@ const fetchTransactions = async () => {
     transactions.value = data.items || []
     txTotal.value = data.total || 0
   } catch (e) {
-    console.warn('获取积分流水失败', e)
+    console.warn('鑾峰彇绉垎娴佹按澶辫触', e)
   }
 }
 
-// ── AI 使用统计 ──
+// 鈹€鈹€ AI 浣跨敤缁熻 鈹€鈹€
 const usageStats = ref([])
 
 const fetchUsageStats = async () => {
@@ -165,7 +165,7 @@ const fetchUsageStats = async () => {
     totalUsed.value = data.total_points_used || 0
     totalCalls.value = usageStats.value.reduce((sum, s) => sum + s.count, 0)
   } catch (e) {
-    console.warn('获取使用统计失败', e)
+    console.warn('鑾峰彇浣跨敤缁熻澶辫触', e)
   }
 }
 
@@ -174,7 +174,7 @@ const usagePercent = (cost) => {
   return Math.min((cost / totalUsed.value) * 100, 100)
 }
 
-// ── AI 积分价格表 ──
+// 鈹€鈹€ AI 绉垎浠锋牸琛?鈹€鈹€
 const aiCosts = ref([])
 
 const fetchCosts = async () => {
@@ -186,7 +186,7 @@ const fetchCosts = async () => {
   }
 }
 
-// ── 工具 ──
+// 鈹€鈹€ 宸ュ叿 鈹€鈹€
 const formatTime = (t) => {
   if (!t) return ''
   return new Date(t).toLocaleString('zh-CN', {
@@ -234,7 +234,7 @@ onMounted(() => {
   color: var(--tm-color-primary, #00D9C0);
 }
 
-/* 概览卡片 */
+/* 姒傝鍗＄墖 */
 .overview-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -303,7 +303,7 @@ onMounted(() => {
   font-size: 14px;
 }
 
-/* 筛选 */
+/* 绛涢€?*/
 .filter-row {
   margin-bottom: 14px;
 }
@@ -316,7 +316,7 @@ onMounted(() => {
   font-size: 13px;
 }
 
-/* 流水列表 */
+/* 娴佹按鍒楄〃 */
 .tx-list { display: flex; flex-direction: column; gap: 8px; }
 .tx-item {
   display: flex;
@@ -348,7 +348,7 @@ onMounted(() => {
 .tx-amount.expense { color: #f56c6c; }
 .tx-balance { font-size: 11px; color: var(--tm-text-secondary, #666); margin-top: 2px; }
 
-/* 分页 */
+/* 鍒嗛〉 */
 .pagination {
   display: flex;
   justify-content: center;
@@ -368,7 +368,7 @@ onMounted(() => {
 .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
 .pagination span { font-size: 13px; color: var(--tm-text-secondary, #888); }
 
-/* 使用统计 */
+/* 浣跨敤缁熻 */
 .usage-list { display: flex; flex-direction: column; gap: 12px; }
 .usage-item {
   padding: 14px 16px;
@@ -392,7 +392,7 @@ onMounted(() => {
 }
 .usage-num { font-size: 12px; color: var(--tm-text-secondary, #888); }
 
-/* 积分价格表 */
+/* 绉垎浠锋牸琛?*/
 .cost-list { display: flex; flex-direction: column; gap: 8px; }
 .cost-item {
   display: flex;
@@ -417,3 +417,4 @@ onMounted(() => {
   .cost-item { flex-direction: column; align-items: flex-start; gap: 4px; }
 }
 </style>
+

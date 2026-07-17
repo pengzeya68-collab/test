@@ -1,11 +1,11 @@
-<template>
+﻿<template>
   <div class="my-interviews-page">
     <header class="page-header">
       <div class="header-titles">
-        <h1 class="page-title">我的面试</h1>
-        <p class="page-desc">查看历史面试记录和成绩分析</p>
+        <h1 class="page-title">鎴戠殑闈㈣瘯</h1>
+        <p class="page-desc">鏌ョ湅鍘嗗彶闈㈣瘯璁板綍鍜屾垚缁╁垎鏋</p>
       </div>
-      <button class="btn-primary" @click="$router.push('/interview/simulate')">+ 开始新面试</button>
+      <button class="btn-primary" @click="$router.push('/interview/simulate')">+ 寮€濮嬫柊闈㈣瘯</button>
     </header>
 
     <div class="tabs-container">
@@ -13,17 +13,17 @@
         class="tab-item"
         :class="{ active: activeTab === 'all' }"
         @click="activeTab = 'all'; fetchSessions(true)"
-      >全部记录</div>
+      >鍏ㄩ儴璁板綍</div>
       <div
         class="tab-item"
         :class="{ active: activeTab === 'in_progress' }"
         @click="activeTab = 'in_progress'; fetchSessions(true)"
-      >进行中</div>
+      >杩涜涓</div>
       <div
         class="tab-item"
         :class="{ active: activeTab === 'completed' }"
         @click="activeTab = 'completed'; fetchSessions(true)"
-      >已完成</div>
+      >宸插畬鎴</div>
     </div>
 
     <div class="content-area" v-if="loading">
@@ -34,9 +34,9 @@
 
     <div class="content-area" v-else-if="sessions.length === 0">
       <div class="empty-content">
-        <div class="empty-icon">📦</div>
-        <p class="empty-text">暂无面试记录，快去开始第一次模拟面试吧~</p>
-        <button class="btn-primary" @click="$router.push('/interview/simulate')">开始面试</button>
+        <div class="empty-icon">馃摝</div>
+        <p class="empty-text">鏆傛棤闈㈣瘯璁板綍锛屽揩鍘诲紑濮嬬涓€娆℃ā鎷熼潰璇曞惂~</p>
+        <button class="btn-primary" @click="$router.push('/interview/simulate')">寮€濮嬮潰璇</button>
       </div>
     </div>
 
@@ -57,28 +57,28 @@
 
           <div class="card-body">
             <div class="session-meta">
-              <span class="meta-item">📍 {{ session.position }}</span>
-              <span class="meta-item">📊 {{ session.level }}</span>
-              <span class="meta-item">🎫 {{ session.interview_type }}</span>
-              <span class="meta-item">📝 {{ session.question_count }}题</span>
+              <span class="meta-item">馃搷 {{ session.position }}</span>
+              <span class="meta-item">馃搳 {{ session.level }}</span>
+              <span class="meta-item">馃帿 {{ session.interview_type }}</span>
+              <span class="meta-item">馃摑 {{ session.question_count }}棰</span>
             </div>
 
             <div class="score-row" v-if="session.status === 'completed' && session.user_score !== null">
-              <span class="score-label">得分：</span>
+              <span class="score-label">寰楀垎锛</span>
               <span class="score-value" :class="getScoreClass(session.user_score)">
                 {{ session.user_score }} / {{ session.total_score }}
               </span>
               <span class="result-badge" :class="session.user_score >= 60 ? 'pass' : 'fail'">
-                {{ session.user_score >= 60 ? '通过' : '未通过' }}
+                {{ session.user_score >= 60 ? '閫氳繃' : '鏈€氳繃' }}
               </span>
             </div>
             <div class="score-row" v-else-if="session.status === 'completed'">
-              <span class="score-label">状态：</span>
-              <span class="score-value pending">已完成，待评分</span>
+              <span class="score-label">鐘舵€侊細</span>
+              <span class="score-value pending">宸插畬鎴愶紝寰呰瘎鍒</span>
             </div>
 
             <div class="progress-row" v-else>
-              <span>继续上次面试</span>
+              <span>缁х画涓婃闈㈣瘯</span>
               <div class="mini-progress-bar">
                 <div class="mini-progress-fill" :style="{ width: (session.question_count > 0 ? Math.min((session.answered_count || 0) / session.question_count * 100, 100) : 0) + '%' }"></div>
               </div>
@@ -88,7 +88,7 @@
           <div class="card-footer">
             <span class="footer-time">{{ session.start_time }}</span>
             <button class="btn-sm">
-              {{ session.status === 'completed' ? '查看详情' : '继续面试' }}
+              {{ session.status === 'completed' ? '鏌ョ湅璇︽儏' : '缁х画闈㈣瘯' }}
             </button>
           </div>
         </div>
@@ -99,13 +99,13 @@
           class="page-btn"
           :disabled="currentPage <= 1"
           @click="currentPage--; fetchSessions()"
-        >上一页</button>
-        <span class="page-info">第 {{ currentPage }} 页 / 共 {{ Math.ceil(total / perPage) }} 页（{{ total }} 条）</span>
+        >涓婁竴椤</button>
+        <span class="page-info">绗?{{ currentPage }} 椤?/ 鍏?{{ Math.ceil(total / perPage) }} 椤碉紙{{ total }} 鏉★級</span>
         <button
           class="page-btn"
           :disabled="currentPage >= Math.ceil(total / perPage)"
           @click="currentPage++; fetchSessions()"
-        >下一页</button>
+        >涓嬩竴椤</button>
       </div>
     </div>
   </div>
@@ -181,8 +181,8 @@ const fetchSessions = async (resetPage = false) => {
       total.value = res.total || 0
     }
   } catch (error) {
-    console.error('获取面试记录失败:', error)
-    ElMessage.error('获取面试记录失败: ' + (error.response?.data?.message || error.message))
+    console.error('鑾峰彇闈㈣瘯璁板綍澶辫触:', error)
+    ElMessage.error('鑾峰彇闈㈣瘯璁板綍澶辫触: ' + (error.response?.data?.message || error.message))
     sessions.value = []
     total.value = 0
   } finally {

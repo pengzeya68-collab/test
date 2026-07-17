@@ -1,4 +1,4 @@
-"""
+﻿"""
 Core application settings for fastapi_backend.
 """
 
@@ -29,11 +29,11 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = ""
     ADMIN_SECRET_KEY: str = ""
 
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"  # 默认仅允许本地前端域名
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"  # 榛樿浠呭厑璁告湰鍦板墠绔煙鍚?
 
     @property
     def cors_origins_list(self) -> List[str]:
-        """将逗号分隔的 CORS_ORIGINS 字符串转为列表"""
+        """Convert comma-separated CORS_ORIGINS into a list."""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     AI_PROVIDER: str = "openai"
@@ -69,7 +69,7 @@ class Settings(BaseSettings):
 
     AUTO_CREATE_TABLES_ON_STARTUP: bool = False
 
-    # 加密密钥（用于加密数据库敏感字段）
+    # 鍔犲瘑瀵嗛挜锛堢敤浜庡姞瀵嗘暟鎹簱鏁忔劅瀛楁锛?
     TESTMASTER_ENCRYPTION_KEY: str = ""
 
     REDIS_URL: Optional[str] = None
@@ -92,22 +92,27 @@ class Settings(BaseSettings):
     WECHAT_MINI_APP_ID: str = ""
     WECHAT_MINI_APP_SECRET: str = ""
 
-    AI_RATE_LIMIT_REQUESTS: int = 10  # 每窗口最大请求数
-    AI_RATE_LIMIT_WINDOW_SECONDS: int = 60  # 速率限制窗口（秒）
+    AI_RATE_LIMIT_REQUESTS: int = 10  # 姣忕獥鍙ｆ渶澶ц姹傛暟
+    AI_RATE_LIMIT_WINDOW_SECONDS: int = 60  # 閫熺巼闄愬埗绐楀彛锛堢锛?
 
-    # 临时开关：关闭 SSL 验证（仅用于开发/测试环境，生产环境必须开启）
+    # 涓存椂寮€鍏筹細鍏抽棴 SSL 楠岃瘉锛堜粎鐢ㄤ簬寮€鍙?娴嬭瘯鐜锛岀敓浜х幆澧冨繀椤诲紑鍚級
     DISABLE_SSL_VERIFY: bool = True
-    # 临时开关：关闭 SSRF 防护（仅用于开发/测试环境，生产环境必须开启）
+    # 涓存椂寮€鍏筹細鍏抽棴 SSRF 闃叉姢锛堜粎鐢ㄤ簬寮€鍙?娴嬭瘯鐜锛岀敓浜х幆澧冨繀椤诲紑鍚級
     DISABLE_SSRF_GUARD: bool = True
-    # 临时开关：关闭 Nginx 限流（通过环境变量控制）
+    # 涓存椂寮€鍏筹細鍏抽棴 Nginx 闄愭祦锛堥€氳繃鐜鍙橀噺鎺у埗锛?
     DISABLE_RATE_LIMIT: bool = True
 
-    # JMeter 快速预览模式上限（保持现状 200/60/10，可由 .env 覆盖）
+    # JMeter 蹇€熼瑙堟ā寮忎笂闄愶紙淇濇寔鐜扮姸 200/60/10锛屽彲鐢?.env 瑕嗙洊锛?
     JMETER_QUICK_MAX_CONCURRENCY: int = 200
     JMETER_QUICK_MAX_DURATION: int = 60
     JMETER_QUICK_MAX_RAMPUP: int = 10
-    # JMeter 引擎 feature flag（默认关，灰度切流时设为 true）
+    # JMeter 寮曟搸 feature flag锛堥粯璁ゅ叧锛岀伆搴﹀垏娴佹椂璁句负 true锛?
     JMETER_ENGINE_ENABLED: bool = False
+
+    # UI 鑷姩鍖?feature flag锛圥hase 0 榛樿寮€鍚紝鍏佽 API 楠ㄦ灦娉ㄥ唽锛?
+    UI_AUTOMATION_ENABLED: bool = True
+    UI_AUTOMATION_ARTIFACT_MAX_BYTES: int = 10 * 1024 * 1024
+    AUTOTEST_QUICK_RUN_TIMEOUT_SECONDS: float = 10.0
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
@@ -121,7 +126,7 @@ settings = Settings()
 
 if not settings.SECRET_KEY:
     if settings.ENVIRONMENT == "production":
-        raise RuntimeError("生产环境必须在 .env 中设置 SECRET_KEY")
+        raise RuntimeError("鐢熶骇鐜蹇呴』鍦?.env 涓缃?SECRET_KEY")
     else:
         import secrets
 
@@ -130,18 +135,18 @@ if not settings.SECRET_KEY:
 
 if not settings.ADMIN_PASSWORD:
     if settings.ENVIRONMENT == "production":
-        raise RuntimeError("生产环境必须在 .env 中设置 ADMIN_PASSWORD")
+        raise RuntimeError("鐢熶骇鐜蹇呴』鍦?.env 涓缃?ADMIN_PASSWORD")
     else:
         import secrets
 
         settings.ADMIN_PASSWORD = secrets.token_urlsafe(16)
         _logger.warning("开发环境使用随机生成的 ADMIN_PASSWORD，生产环境请务必在 .env 中设置固定密码")
 
-# 自用项目不限制密码强度，如需加强安全请自行修改 .env 中的 ADMIN_PASSWORD
+# 鑷敤椤圭洰涓嶉檺鍒跺瘑鐮佸己搴︼紝濡傞渶鍔犲己瀹夊叏璇疯嚜琛屼慨鏀?.env 涓殑 ADMIN_PASSWORD
 
 if not settings.ADMIN_SECRET_KEY:
     if settings.ENVIRONMENT == "production":
-        raise RuntimeError("生产环境必须在 .env 中设置 ADMIN_SECRET_KEY")
+        raise RuntimeError("鐢熶骇鐜蹇呴』鍦?.env 涓缃?ADMIN_SECRET_KEY")
     else:
         import secrets
 
@@ -152,6 +157,8 @@ if settings.ENVIRONMENT == "production":
     localhost_origins = [o for o in settings.cors_origins_list if "localhost" in o or "127.0.0.1" in o]
     if localhost_origins:
         _logger.warning(
-            "生产环境 CORS_ORIGINS 包含 localhost 地址: %s，请在 .env 中设置正确的 CORS_ORIGINS",
+            "鐢熶骇鐜 CORS_ORIGINS 鍖呭惈 localhost 鍦板潃: %s锛岃鍦?.env 涓缃纭殑 CORS_ORIGINS",
             localhost_origins,
         )
+
+

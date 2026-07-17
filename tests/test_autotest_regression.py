@@ -447,7 +447,7 @@ class TestGlobalVariables:
         assert r.status_code == 201
         data = r.json()
         assert data["is_encrypted"] is True
-        assert data["value"] == "secret123", "加密变量应自动解密显示"
+        assert data["value"] == "***", "加密变量必须脱敏，禁止通过 API 回显明文"
         TestGlobalVariables.encrypted_var_id = data["id"]
 
     def test_04_update_variable(self, auth):
@@ -723,17 +723,22 @@ class TestMockService:
 # ================================================================
 class TestDebug:
     def test_01_execute_get(self, auth):
+        target = f"{_remote_base_url()}/api/ui-automation/health"
         r = api("post", "/api/auto-test/debug/execute", headers=auth,
-                json={"method": "GET", "url": "https://httpbin.org/get", "timeout": 10})
+                json={"method": "GET", "url": target, "timeout": 10})
         assert r.status_code == 200
         data = r.json()
         assert data["response"]["status_code"] == 200
         assert "elapsed_ms" in data["response"]
 
     def test_02_execute_post(self, auth):
+        target = f"{_remote_base_url()}/api/v1/auth/login"
         r = api("post", "/api/auto-test/debug/execute", headers=auth,
-                json={"method": "POST", "url": "https://httpbin.org/post",
-                      "body": json.dumps({"test": "data"}), "timeout": 10})
+                json={"method": "POST", "url": target,
+                      "headers": {"Content-Type": "application/json"},
+                      "body": json.dumps({"username": os.environ["TESTMASTER_REMOTE_USER"],
+                                          "password": os.environ["TESTMASTER_REMOTE_PASSWORD"]}),
+                      "timeout": 10})
         assert r.status_code == 200
         assert r.json()["response"]["status_code"] == 200
 
@@ -854,9 +859,10 @@ class TestMisc:
                 json={"scenario_id": scenario_id, "cron_expression": "0 9 * * *",
                       "name": "每日9点", "is_active": True})
         if r.status_code in (200, 201):
-            task_id = r.json().get("id")
+            task_id = r.json().get("task_id")
             if task_id:
-                api("delete", f"/api/auto-test/scheduler/tasks/{task_id}", headers=auth)
+                delete_r = api("delete", f"/api/auto-test/scheduler/tasks/{task_id}", headers=auth)
+                assert delete_r.status_code == 200
         api("delete", f"/api/auto-test/scenarios/{scenario_id}", headers=auth)
 
 

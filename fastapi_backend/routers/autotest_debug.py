@@ -41,8 +41,6 @@ async def debug_execute_request(
     Response:
         status_code, headers, body, elapsed_ms, size_bytes, error
     """
-    import aiohttp
-
     method = body.get("method", "GET").upper()
     url = body.get("url", "")
     headers = body.get("headers", {}) or {}
@@ -55,6 +53,8 @@ async def debug_execute_request(
         raise HTTPException(
             status_code=400, detail=f"不支持的 HTTP 方法: {method}，仅支持 {', '.join(sorted(allowed_methods))}"
         )
+
+    import aiohttp
 
     # 校验超时范围
     try:
@@ -224,10 +224,12 @@ async def debug_execute_from_case(
             method=case.method or "GET",
             url=url,
             headers=convert_to_dict(headers),
+            params=convert_to_dict(getattr(case, "params", None)),
             body=body_str or None,
             body_type=getattr(case, "body_type", "json") or "json",
             env_id=env_id,
             user_id=current_user.id,
+            request_config=__import__("fastapi_backend.services.autotest_request_config", fromlist=["reveal_request_config"]).reveal_request_config(getattr(case, "request_config", None)),
         )
         return result
     except ValueError as e:

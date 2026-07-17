@@ -17,6 +17,7 @@ if config.config_file_name is not None:
 
 from fastapi_backend.models.models import Base as MainBase
 import fastapi_backend.models.autotest as _autotest_models  # noqa: F401
+import fastapi_backend.models.ui_automation as _ui_automation_models  # noqa: F401
 from fastapi_backend.core.config import settings
 
 db_url = settings.DATABASE_URL

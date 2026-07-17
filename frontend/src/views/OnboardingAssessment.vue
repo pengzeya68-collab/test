@@ -1,25 +1,25 @@
-<template>
+﻿<template>
   <div class="assessment-page">
     <div class="assessment-container">
       <div v-if="step === 'intro'" class="step-intro">
-        <div class="intro-icon">🎯</div>
-        <h1 class="intro-title">入学能力测评</h1>
+        <div class="intro-icon">馃幆</div>
+        <h1 class="intro-title">鍏ュ鑳藉姏娴嬭瘎</h1>
         <p class="intro-desc">
-          完成以下 10 道测评题，我们将为你生成专属技能画像，<br/>
-          并推荐最适合你的学习路径
+          瀹屾垚浠ヤ笅 10 閬撴祴璇勯锛屾垜浠皢涓轰綘鐢熸垚涓撳睘鎶€鑳界敾鍍忥紝<br/>
+          骞舵帹鑽愭渶閫傚悎浣犵殑瀛︿範璺緞
         </p>
         <div class="intro-info">
           <div class="info-item">
-            <span class="info-icon">⏱️</span>
-            <span>约 5 分钟</span>
+            <span class="info-icon">鈴憋笍</span>
+            <span>绾?5 鍒嗛挓</span>
           </div>
           <div class="info-item">
-            <span class="info-icon">📊</span>
-            <span>5 大技能维度</span>
+            <span class="info-icon">馃搳</span>
+            <span>5 澶ф妧鑳界淮搴</span>
           </div>
           <div class="info-item">
-            <span class="info-icon">🎯</span>
-            <span>个性化推荐</span>
+            <span class="info-icon">馃幆</span>
+            <span>涓€у寲鎺ㄨ崘</span>
           </div>
         </div>
         <el-button
@@ -29,14 +29,14 @@
           @click="startAssessment"
           :loading="loading"
         >
-          开始测评
+          寮€濮嬫祴璇?
         </el-button>
         <el-button
           size="large"
           class="skip-btn"
           @click="skipAssessment"
         >
-          稍后再说
+          绋嶅悗鍐嶈
         </el-button>
       </div>
 
@@ -79,7 +79,7 @@
             @click="prevQuestion"
             size="large"
           >
-            上一题
+            涓婁竴棰?
           </el-button>
           <el-button
             v-if="currentIndex < questions.length - 1"
@@ -88,7 +88,7 @@
             @click="nextQuestion"
             :disabled="answers[currentQuestion.id] === undefined"
           >
-            下一题
+            涓嬩竴棰?
           </el-button>
           <el-button
             v-else
@@ -98,16 +98,16 @@
             :disabled="answers[currentQuestion.id] === undefined"
             :loading="submitting"
           >
-            提交测评
+            鎻愪氦娴嬭瘎
           </el-button>
         </div>
       </div>
 
       <div v-else-if="step === 'result'" class="step-result">
         <div class="result-header">
-          <div class="result-icon">🏆</div>
-          <h1 class="result-title">测评完成！</h1>
-          <p class="result-subtitle">你的专属技能画像已生成</p>
+          <div class="result-icon">馃弳</div>
+          <h1 class="result-title">娴嬭瘎瀹屾垚锛</h1>
+          <p class="result-subtitle">浣犵殑涓撳睘鎶€鑳界敾鍍忓凡鐢熸垚</p>
         </div>
 
         <div class="result-score-section">
@@ -123,14 +123,14 @@
             </svg>
             <div class="score-inner">
               <div class="score-value">{{ Math.round(animatedResultScore) }}</div>
-              <div class="score-label">综合得分</div>
+              <div class="score-label">缁煎悎寰楀垎</div>
             </div>
           </div>
           <div class="result-level" :class="levelClass">{{ result.overall_level }}</div>
         </div>
 
         <div class="result-dimensions">
-          <h3 class="section-label">技能维度分析</h3>
+          <h3 class="section-label">鎶€鑳界淮搴﹀垎鏋</h3>
           <div class="dimension-list">
             <div
               v-for="dim in result.dimension_scores"
@@ -139,7 +139,7 @@
             >
               <div class="dim-header">
                 <span class="dim-name">{{ dim.name }}</span>
-                <span class="dim-score" :class="getScoreClass(dim.score)">{{ dim.score }}分</span>
+                <span class="dim-score" :class="getScoreClass(dim.score)">{{ dim.score }}鍒</span>
               </div>
               <div class="dim-bar">
                 <div
@@ -153,7 +153,7 @@
         </div>
 
         <div class="result-recommendations" v-if="result.recommended_paths?.length">
-          <h3 class="section-label">为你推荐的学习路径</h3>
+          <h3 class="section-label">涓轰綘鎺ㄨ崘鐨勫涔犺矾寰</h3>
           <div class="rec-list">
             <div
               v-for="rec in result.recommended_paths"
@@ -173,10 +173,10 @@
 
         <div class="result-actions">
           <el-button type="primary" size="large" @click="goToHome" class="action-btn">
-            进入首页
+            杩涘叆棣栭〉
           </el-button>
           <el-button size="large" @click="goToSkillAnalysis" class="action-btn-secondary">
-            查看技能详情
+            鏌ョ湅鎶€鑳借鎯?
           </el-button>
         </div>
       </div>
@@ -253,8 +253,8 @@ const startAssessment = async () => {
     currentIndex.value = 0
     step.value = 'quiz'
   } catch (error) {
-    console.error('获取测评题目失败:', error)
-    ElMessage.error('获取测评题目失败，请稍后重试')
+    console.error('鑾峰彇娴嬭瘎棰樼洰澶辫触:', error)
+    ElMessage.error('鑾峰彇娴嬭瘎棰樼洰澶辫触锛岃绋嶅悗閲嶈瘯')
   } finally {
     loading.value = false
   }
@@ -295,8 +295,8 @@ const submitAssessment = async () => {
     animateResultScore(res.overall_score)
     userStore.checkNewAchievements()
   } catch (error) {
-    console.error('提交测评失败:', error)
-    ElMessage.error('提交测评失败，请稍后重试')
+    console.error('鎻愪氦娴嬭瘎澶辫触:', error)
+    ElMessage.error('鎻愪氦娴嬭瘎澶辫触锛岃绋嶅悗閲嶈瘯')
   } finally {
     submitting.value = false
   }
@@ -329,7 +329,7 @@ const goToSkillAnalysis = () => {
 const skipAssessment = () => {
   userStore.setAssessmentCompleted({
     overall_score: 0,
-    overall_level: '入门',
+    overall_level: '鍏ラ棬',
     dimension_scores: [],
     skipped: true,
   })
@@ -840,3 +840,4 @@ const skipAssessment = () => {
   color: #c084fc;
 }
 </style>
+

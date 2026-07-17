@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="exam-page">
     <div class="exam-header">
       <div class="container">
@@ -6,9 +6,9 @@
           <div class="exam-info">
             <h1 class="exam-title">{{ exam?.title }}</h1>
             <div class="exam-meta">
-              <span>总分：{{ exam?.total_score }}分</span>
-              <span>及格：{{ exam?.pass_score }}分</span>
-              <span>题目数：{{ questions.length }}题</span>
+              <span>鎬诲垎锛歿{ exam?.total_score }}鍒</span>
+              <span>鍙婃牸锛歿{ exam?.pass_score }}鍒</span>
+              <span>棰樼洰鏁帮細{{ questions.length }}棰</span>
             </div>
           </div>
           <div class="timer">
@@ -29,9 +29,9 @@
 
     <div class="container">
       <div class="exam-container">
-        <!-- 左侧题目导航 -->
+        <!-- 宸︿晶棰樼洰瀵艰埅 -->
         <div class="question-nav">
-          <div class="nav-header">题目导航</div>
+          <div class="nav-header">棰樼洰瀵艰埅</div>
           <div class="nav-grid">
             <div 
               class="nav-item" 
@@ -50,23 +50,23 @@
           <div class="nav-legend">
             <div class="legend-item">
               <span class="legend-dot answered"></span>
-              <span>已答</span>
+              <span>宸茬瓟</span>
             </div>
             <div class="legend-item">
               <span class="legend-dot"></span>
-              <span>未答</span>
+              <span>鏈瓟</span>
             </div>
             <div class="legend-item">
               <span class="legend-dot marked"></span>
-              <span>标记</span>
+              <span>鏍囪</span>
             </div>
           </div>
         </div>
 
-        <!-- 中间题目内容 -->
+        <!-- 涓棿棰樼洰鍐呭 -->
         <div class="question-content" v-if="currentQuestion">
           <div class="question-header">
-            <div class="question-number">第 {{ currentQuestionIndex + 1 }} 题 ({{ currentQuestion.score }}分)</div>
+            <div class="question-number">绗?{{ currentQuestionIndex + 1 }} 棰?({{ currentQuestion.score }}鍒?</div>
             <el-button 
               link 
               :icon="markedQuestions.includes(currentQuestion.id) ? StarFilled : Star"
@@ -85,7 +85,7 @@
             </div>
             <div class="question-text" v-html="renderMarkdown(currentQuestion.content)"></div>
             
-            <!-- 单选题 -->
+            <!-- 鍗曢€夐 -->
             <div v-if="currentQuestion.question_type === 'single_choice'" class="options">
               <el-radio-group v-model="userAnswers[currentQuestion.id]">
                 <el-radio 
@@ -98,7 +98,7 @@
               </el-radio-group>
             </div>
             
-            <!-- 多选题 -->
+            <!-- 澶氶€夐 -->
             <div v-if="currentQuestion.question_type === 'multiple_choice'" class="options">
               <el-checkbox-group 
                 v-model="selectedOptions" 
@@ -114,27 +114,27 @@
               </el-checkbox-group>
             </div>
             
-            <!-- 判断题 -->
+            <!-- 鍒ゆ柇棰?-->
             <div v-if="currentQuestion.question_type === 'true_false'" class="options">
               <el-radio-group v-model="userAnswers[currentQuestion.id]">
-                <el-radio value="true">正确</el-radio>
-                <el-radio value="false">错误</el-radio>
+                <el-radio value="true">姝ｇ‘</el-radio>
+                <el-radio value="false">閿欒</el-radio>
               </el-radio-group>
             </div>
             
-            <!-- 简答题 -->
+            <!-- 绠€绛旈 -->
             <div v-if="currentQuestion.question_type === 'short_answer'" class="answer-area">
               <el-input
                 v-model="userAnswers[currentQuestion.id]"
                 type="textarea"
                 :rows="6"
-                placeholder="请输入你的答案..."
+                placeholder="璇疯緭鍏ヤ綘鐨勭瓟妗?.."
                 maxlength="2000"
                 show-word-limit
               />
             </div>
             
-            <!-- 代码题 -->
+            <!-- 浠ｇ爜棰?-->
             <div v-if="currentQuestion.question_type === 'code'" class="answer-area">
               <CodeEditor 
                 v-model="userAnswers[currentQuestion.id]"
@@ -149,36 +149,36 @@
               :disabled="currentQuestionIndex === 0"
               @click="prevQuestion"
             >
-              上一题
+              涓婁竴棰?
             </el-button>
             <el-button 
               type="primary" 
               :disabled="currentQuestionIndex === questions.length - 1"
               @click="nextQuestion"
             >
-              下一题
+              涓嬩竴棰?
             </el-button>
           </div>
         </div>
       </div>
 
-      <!-- 底部提交栏 -->
+      <!-- 搴曢儴鎻愪氦鏍?-->
       <div class="submit-bar">
         <div class="container">
           <div class="submit-info">
             <div class="info-item">
-              <span class="label">已答</span>
+              <span class="label">宸茬瓟</span>
               <span class="value answered">{{ answeredCount }}</span>
               <span class="total">/ {{ questions.length }}</span>
             </div>
             <div class="divider"></div>
             <div class="info-item">
-              <span class="label">未答</span>
+              <span class="label">鏈瓟</span>
               <span class="value unanswered">{{ questions.length - answeredCount }}</span>
             </div>
             <div class="divider"></div>
             <div class="info-item">
-              <span class="label">标记</span>
+              <span class="label">鏍囪</span>
               <span class="value marked">{{ markedQuestions.length }}</span>
             </div>
           </div>
@@ -191,7 +191,7 @@
               class="marked-btn"
             >
               <el-icon><Collection /></el-icon>
-              查看标记
+              鏌ョ湅鏍囪
             </el-button>
             <el-button 
               type="danger" 
@@ -200,39 +200,39 @@
               class="submit-btn"
             >
               <el-icon><CircleCheck /></el-icon>
-              交卷
+              浜ゅ嵎
             </el-button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 提交确认弹窗 -->
+    <!-- 鎻愪氦纭寮圭獥 -->
     <el-dialog 
       v-model="showSubmitConfirm" 
-      title="确认交卷"
+      title="纭浜ゅ嵎"
       width="500px"
     >
-      <p>你确定要提交考试吗？提交后将无法修改答案。</p>
-      <p>当前已答 {{ answeredCount }} 题，还有 {{ questions.length - answeredCount }} 题未答。</p>
+      <p>浣犵‘瀹氳鎻愪氦鑰冭瘯鍚楋紵鎻愪氦鍚庡皢鏃犳硶淇敼绛旀銆</p>
+      <p>褰撳墠宸茬瓟 {{ answeredCount }} 棰橈紝杩樻湁 {{ questions.length - answeredCount }} 棰樻湭绛斻€</p>
       <template #footer>
-        <el-button @click="showSubmitConfirm = false">取消</el-button>
-        <el-button type="danger" @click="submitExam" :loading="submitting">确认交卷</el-button>
+        <el-button @click="showSubmitConfirm = false">鍙栨秷</el-button>
+        <el-button type="danger" @click="submitExam" :loading="submitting">纭浜ゅ嵎</el-button>
       </template>
     </el-dialog>
 
-    <!-- 时间提醒弹窗 -->
+    <!-- 鏃堕棿鎻愰啋寮圭獥 -->
     <el-dialog 
       v-model="showTimeWarning" 
-      title="时间提醒"
+      title="鏃堕棿鎻愰啋"
       width="400px"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
       :show-close="false"
     >
-      <p>距离考试结束还有 <strong>{{ Math.ceil(remainingTime / 60) }}分钟</strong>，请合理安排时间。</p>
+      <p>璺濈鑰冭瘯缁撴潫杩樻湁 <strong>{{ Math.ceil(remainingTime / 60) }}鍒嗛挓</strong>锛岃鍚堢悊瀹夋帓鏃堕棿銆</p>
       <template #footer>
-        <el-button type="primary" @click="showTimeWarning = false">知道了</el-button>
+        <el-button type="primary" @click="showTimeWarning = false">鐭ラ亾浜</el-button>
       </template>
     </el-dialog>
   </div>
@@ -304,21 +304,21 @@ const fetchExamQuestions = async () => {
     questions.value = res.questions
     attemptId.value = res.attempt_id
     
-    // 初始化倒计时
+    // 鍒濆鍖栧€掕鏃?
     if (!exam.value.duration || exam.value.duration <= 0) {
-      ElMessage.error('考试时长数据异常')
+      ElMessage.error('鑰冭瘯鏃堕暱鏁版嵁寮傚父')
       router.back()
       return
     }
     remainingTime.value = exam.value.duration
     startTimer()
     
-    // 初始化用户答案
+    // 鍒濆鍖栫敤鎴风瓟妗?
     questions.value.forEach(q => {
       userAnswers.value[q.id] = ''
     })
     
-    // 如果是多选题，初始化选项数组
+    // 濡傛灉鏄閫夐锛屽垵濮嬪寲閫夐」鏁扮粍
     if (currentQuestion.value?.question_type === 'multiple_choice') {
       const answer = userAnswers.value[currentQuestion.value.id]
       selectedOptions.value = answer ? answer.split(',').filter(Boolean) : []
@@ -327,8 +327,8 @@ const fetchExamQuestions = async () => {
     }
     
   } catch (error) {
-    console.error('获取考试题目失败:', error)
-    ElMessage.error('获取考试题目失败')
+    console.error('鑾峰彇鑰冭瘯棰樼洰澶辫触:', error)
+    ElMessage.error('鑾峰彇鑰冭瘯棰樼洰澶辫触')
     router.back()
   }
 }
@@ -336,12 +336,12 @@ const fetchExamQuestions = async () => {
 let timerInitialized = false
 
 const startTimer = () => {
-  // 仅首次调用时将分钟转为秒
+  // 浠呴娆¤皟鐢ㄦ椂灏嗗垎閽熻浆涓虹
   if (!timerInitialized) {
     remainingTime.value = remainingTime.value * 60
     timerInitialized = true
   }
-  // 使用时间戳计算，避免浏览器标签页切换时计时器漂移
+  // 浣跨敤鏃堕棿鎴宠绠楋紝閬垮厤娴忚鍣ㄦ爣绛鹃〉鍒囨崲鏃惰鏃跺櫒婕傜Щ
   const _startAt = Date.now()
   const _totalSeconds = remainingTime.value
 
@@ -357,7 +357,7 @@ const startTimer = () => {
     if (remainingTime.value <= 0) {
       clearInterval(examTimer)
       examTimer = null
-      ElMessage.warning('考试时间已到，系统将自动提交')
+      ElMessage.warning('鑰冭瘯鏃堕棿宸插埌锛岀郴缁熷皢鑷姩鎻愪氦')
       submitExam()
     }
   }, 1000)
@@ -386,14 +386,14 @@ const getQuestionTypeText = (type) => {
 
 
 const jumpToQuestion = (index) => {
-  // 保存当前多选题的答案
+  // 淇濆瓨褰撳墠澶氶€夐鐨勭瓟妗?
   if (currentQuestion.value?.question_type === 'multiple_choice') {
     userAnswers.value[currentQuestion.value.id] = selectedOptions.value.join(',')
   }
   
   currentQuestionIndex.value = index
   
-  // 如果是多选题，加载已选答案
+  // 濡傛灉鏄閫夐锛屽姞杞藉凡閫夌瓟妗?
   if (currentQuestion.value.question_type === 'multiple_choice') {
     const answer = userAnswers.value[currentQuestion.value.id]
     selectedOptions.value = answer ? (answer || '').split(',').filter(Boolean) : []
@@ -427,7 +427,7 @@ const toggleMarkQuestion = () => {
 }
 
 const jumpToMarkedQuestion = () => {
-  // 跳转到第一个标记的题目
+  // 璺宠浆鍒扮涓€涓爣璁扮殑棰樼洰
   if (markedQuestions.value.length > 0) {
     const markedId = markedQuestions.value[0]
     const index = questions.value.findIndex(q => q.id === markedId)
@@ -438,16 +438,16 @@ const jumpToMarkedQuestion = () => {
 }
 
 const submitExam = async () => {
-  // 防止重复提交
+  // 闃叉閲嶅鎻愪氦
   if (submitting.value) return
 
-  // 保存当前题目的答案
+  // 淇濆瓨褰撳墠棰樼洰鐨勭瓟妗?
   if (currentQuestion.value?.question_type === 'multiple_choice') {
     userAnswers.value[currentQuestion.value.id] = selectedOptions.value.join(',')
   }
 
   submitting.value = true
-  // 清除计时器，避免计时器到期再次触发提交
+  // 清除计时器，避免到期后再次触发提交
   if (examTimer) {
     clearInterval(examTimer)
     examTimer = null
@@ -468,7 +468,7 @@ const submitExam = async () => {
       return
     }
 
-    ElMessage.success('考试提交成功！')
+    ElMessage.success('考试提交成功')
 
     // 跳转到结果页
     router.push(`/exam/result/${attemptId.value}`)
@@ -478,7 +478,7 @@ const submitExam = async () => {
       ElMessage.error('提交失败，正在重试...')
       startTimer()
     } else {
-      ElMessage.error('自动提交失败，请点击"提交试卷"按钮手动重试')
+      ElMessage.error('自动提交失败，请点击“提交试卷”按钮手动重试')
     }
   } finally {
     submitting.value = false
@@ -793,7 +793,7 @@ const submitExam = async () => {
   height: auto;
 }
 
-/* Markdown样式 */
+/* Markdown鏍峰紡 */
 .question-text {
   line-height: 2;
 }
@@ -867,3 +867,4 @@ const submitExam = async () => {
   }
 }
 </style>
+

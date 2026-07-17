@@ -1,26 +1,26 @@
-<template>
+﻿<template>
   <div class="oj-page">
     <div class="oj-loading" v-if="loading">
       <div class="loading-spinner"></div>
-      <p>加载中...</p>
+      <p>鍔犺浇涓?..</p>
     </div>
 
     <div class="oj-empty" v-if="!loading && !exercise">
-      <p>习题不存在</p>
-      <button class="btn-purple-glow" @click="goBack">返回列表</button>
+      <p>涔犻涓嶅瓨鍦</p>
+      <button class="btn-purple-glow" @click="goBack">杩斿洖鍒楄〃</button>
     </div>
 
     <template v-if="!loading && exercise">
       <div class="oj-topbar">
         <div class="topbar-left">
-          <button class="topbar-btn back-btn" @click="goBack" title="返回列表">
-            <span class="tb-icon">←</span>
+          <button class="topbar-btn back-btn" @click="goBack" title="杩斿洖鍒楄〃">
+            <span class="tb-icon">鈫</span>
           </button>
           <div class="progress-indicator">
-            <span class="progress-text">第 <strong>{{ currentIndex + 1 }}</strong> / {{ totalCount }} 题</span>
+            <span class="progress-text">绗?<strong>{{ currentIndex + 1 }}</strong> / {{ totalCount }} 棰</span>
           </div>
-          <button class="topbar-btn nav-arrow" :disabled="currentIndex <= 0" @click="prevExercise" title="上一题">‹</button>
-          <button class="topbar-btn nav-arrow" :disabled="!hasNextExercise" @click="nextExercise" title="下一题">›</button>
+          <button class="topbar-btn nav-arrow" :disabled="currentIndex <= 0" @click="prevExercise" title="上一题">&lt;</button>
+          <button class="topbar-btn nav-arrow" :disabled="!hasNextExercise" @click="nextExercise" title="下一题">&gt;</button>
         </div>
         <div class="topbar-center">
           <span class="topbar-title">{{ exercise.title }}</span>
@@ -29,7 +29,7 @@
         </div>
         <div class="topbar-right">
           <div class="timer-display" :class="{ 'timer-warning': elapsedSeconds > 600 }">
-            <span class="timer-icon">⏱</span>
+            <span class="timer-icon">鈴</span>
             <span class="timer-text">{{ formattedTime }}</span>
           </div>
         </div>
@@ -44,59 +44,59 @@
             <button
               :class="['left-tab', { active: leftTab === 'desc' }]"
               @click="leftTab = 'desc'"
-            >题目</button>
+            >棰樼洰</button>
             <button
               :class="['left-tab', { active: leftTab === 'result' }]"
               @click="leftTab = 'result'"
               v-if="submitResult"
             >
-              结果
+              缁撴灉
               <span class="tab-dot" :class="submitResult.correct ? 'dot-green' : 'dot-red'"></span>
             </button>
             <button
               :class="['left-tab', { active: leftTab === 'skill' }]"
               @click="leftTab = 'skill'"
               v-if="submitResult?.correct && submitResult.skill_change?.length"
-            >技能</button>
+            >鎶€鑳</button>
             <button
               :class="['left-tab', { active: leftTab === 'solution' }]"
               @click="leftTab = 'solution'"
               v-if="showSolution"
-            >答案</button>
+            >绛旀</button>
             <button
               :class="['left-tab', { active: leftTab === 'notes' }]"
               @click="leftTab = 'notes'"
-            >笔记</button>
+            >绗旇</button>
             <button
               :class="['left-tab', { active: leftTab === 'related' }]"
               @click="leftTab = 'related'"
               v-if="relatedExercises.length > 0"
-            >推荐</button>
+            >鎺ㄨ崘</button>
           </div>
 
           <div class="left-panel-body">
             <div v-if="leftTab === 'desc'" class="tab-content">
               <h2 class="problem-title">{{ exercise.title }}</h2>
               <div class="problem-meta">
-                <span>⏱ {{ exercise.time_estimate }} 分钟</span>
-                <span>📁 {{ exercise.category }}</span>
-                <span v-if="exercise.knowledge_point">📌 {{ exercise.knowledge_point }}</span>
-                <span>📅 {{ formatDate(exercise.updated_at) }}</span>
+                <span>鈴?{{ exercise.time_estimate }} 鍒嗛挓</span>
+                <span>馃搧 {{ exercise.category }}</span>
+                <span v-if="exercise.knowledge_point">馃搶 {{ exercise.knowledge_point }}</span>
+                <span>馃搮 {{ formatDate(exercise.updated_at) }}</span>
               </div>
               <div class="problem-section">
-                <h4 class="section-label">题目描述</h4>
+                <h4 class="section-label">棰樼洰鎻忚堪</h4>
                 <div class="section-body desc-body">
                   <p style="white-space: pre-wrap;">{{ exercise.description }}</p>
                 </div>
               </div>
               <div class="problem-section" v-if="exercise.instructions">
-                <h4 class="section-label">答题要求</h4>
+                <h4 class="section-label">绛旈瑕佹眰</h4>
                 <div class="section-body">
                   <pre class="instructions-pre">{{ exercise.instructions }}</pre>
                 </div>
               </div>
               <div class="problem-section" v-if="exercise.hint">
-                <button class="hint-inline-btn" @click="showHintDialog">💡 查看提示</button>
+                <button class="hint-inline-btn" @click="showHintDialog">馃挕 鏌ョ湅鎻愮ず</button>
               </div>
             </div>
 
@@ -104,14 +104,14 @@
               <div class="judge-panel" :class="{ 'judge-pass': submitResult.correct, 'judge-fail': !submitResult.correct }">
                 <div class="judge-status-row">
                   <span class="judge-tag" :class="submitResult.correct ? 'success' : 'fail'">
-                    {{ submitResult.correct ? '✓ 通过' : '✗ 未通过' }}
+                    {{ submitResult.correct ? '鉁?閫氳繃' : '鉁?鏈€氳繃' }}
                   </span>
                   <span class="judge-msg">{{ submitResult.message }}</span>
                 </div>
                 <div v-if="submitResult.judge_result" class="judge-body">
                   <div class="judge-stats-row">
-                    <span>通过 {{ submitResult.judge_result.passed_count }}/{{ submitResult.judge_result.total_cases }} 个测试用例</span>
-                    <span>通过率 {{ submitResult.judge_result.pass_rate }}%</span>
+                    <span>閫氳繃 {{ submitResult.judge_result.passed_count }}/{{ submitResult.judge_result.total_cases }} 涓祴璇曠敤渚</span>
+                    <span>閫氳繃鐜?{{ submitResult.judge_result.pass_rate }}%</span>
                   </div>
                   <div v-if="submitResult.judge_result.details?.length" class="judge-case-list">
                     <div
@@ -120,12 +120,12 @@
                       class="judge-case-item"
                       :class="detail.passed ? 'case-ok' : 'case-ng'"
                     >
-                      <span class="case-index">用例 {{ detail.case_index }}</span>
-                      <span class="case-badge" :class="detail.passed ? 'success' : 'fail'">{{ detail.passed ? '通过' : '未通过' }}</span>
+                      <span class="case-index">鐢ㄤ緥 {{ detail.case_index }}</span>
+                      <span class="case-badge" :class="detail.passed ? 'success' : 'fail'">{{ detail.passed ? '閫氳繃' : '鏈€氳繃' }}</span>
                       <div v-if="!detail.passed" class="case-fail-detail">
-                        <div><span>预期：</span><code>{{ detail.expected }}</code></div>
-                        <div><span>实际：</span><code>{{ detail.actual }}</code></div>
-                        <div v-if="detail.error"><span>错误：</span><code class="code-warn">{{ detail.error }}</code></div>
+                        <div><span>棰勬湡锛</span><code>{{ detail.expected }}</code></div>
+                        <div><span>瀹為檯锛</span><code>{{ detail.actual }}</code></div>
+                        <div v-if="detail.error"><span>閿欒锛</span><code class="code-warn">{{ detail.error }}</code></div>
                       </div>
                     </div>
                   </div>
@@ -144,7 +144,7 @@
                       <div class="skill-bar-after" :style="{ width: sc.after + '%' }"></div>
                     </div>
                   </div>
-                  <span class="skill-score">{{ sc.before }} → {{ sc.after }}</span>
+                  <span class="skill-score">{{ sc.before }} 鈫?{{ sc.after }}</span>
                   <span class="skill-gain">+{{ sc.change }}</span>
                 </div>
               </div>
@@ -163,15 +163,15 @@
                     <div class="note-entry-header">
                       <span class="note-entry-title">{{ note.title }}</span>
                       <span class="note-entry-time">{{ note.updated_at }}</span>
-                      <button class="note-delete-btn" @click="deleteNote(note.id)">删除</button>
+                      <button class="note-delete-btn" @click="deleteNote(note.id)">鍒犻櫎</button>
                     </div>
                     <div class="note-entry-body">{{ note.content }}</div>
                   </div>
                 </div>
-                <input v-model="newNoteTitle" type="text" class="note-title-input" placeholder="笔记标题" />
-                <textarea v-model="newNoteContent" class="note-content-textarea" placeholder="记录你的理解..." rows="3"></textarea>
+                <input v-model="newNoteTitle" type="text" class="note-title-input" placeholder="绗旇鏍囬" />
+                <textarea v-model="newNoteContent" class="note-content-textarea" placeholder="璁板綍浣犵殑鐞嗚В..." rows="3"></textarea>
                 <button class="btn-save-note" @click="saveNote" :disabled="noteSaving">
-                  {{ noteSaving ? '保存中...' : '保存笔记' }}
+                  {{ noteSaving ? '淇濆瓨涓?..' : '淇濆瓨绗旇' }}
                 </button>
               </div>
             </div>
@@ -185,7 +185,7 @@
                   :class="{ 'rec-done': rel.completed }"
                   @click="goToExercise(rel.id)"
                 >
-                  <span class="rec-status">{{ rel.completed ? '✅' : '⬜' }}</span>
+                  <span class="rec-status">{{ rel.completed ? '完成' : '待做' }}</span>
                   <div class="rec-info">
                     <h4 class="rec-title">{{ rel.title }}</h4>
                     <div class="rec-meta">
@@ -193,7 +193,7 @@
                       <span class="rec-subject" v-if="rel.knowledge_point">{{ rel.knowledge_point }}</span>
                     </div>
                   </div>
-                  <span class="rec-arrow">›</span>
+                  <span class="rec-arrow">鈥</span>
                 </div>
               </div>
             </div>
@@ -207,7 +207,7 @@
         <div class="oj-right-panel">
           <div class="editor-wrapper" v-if="isCodeOrSqlType">
             <div class="js-notice" v-if="isJsExercise">
-              <span>⚠️ JavaScript题目暂不支持在线运行和自动判题，请参考答案在本地环境练习</span>
+              <span>鈿狅笍 JavaScript棰樼洰鏆備笉鏀寔鍦ㄧ嚎杩愯鍜岃嚜鍔ㄥ垽棰橈紝璇峰弬鑰冪瓟妗堝湪鏈湴鐜缁冧範</span>
             </div>
             <CodeEditor
               v-model="userCode"
@@ -221,8 +221,8 @@
 
           <div class="editor-action-bar">
             <div class="action-bar-left">
-              <button class="btn-hint-sm" @click="showHintDialog" v-if="exercise?.hint">💡 提示</button>
-              <button class="btn-outline-sm" @click="viewSolution" v-if="!showSolution">查看答案</button>
+              <button class="btn-hint-sm" @click="showHintDialog" v-if="exercise?.hint">馃挕 鎻愮ず</button>
+              <button class="btn-outline-sm" @click="viewSolution" v-if="!showSolution">鏌ョ湅绛旀</button>
             </div>
             <div class="action-bar-right">
               <button
@@ -231,7 +231,7 @@
                 :disabled="sqlRunning || pythonRunning"
                 v-if="isSqlExercise"
               >
-                {{ sqlRunning ? '运行中...' : '▶ 运行SQL' }}
+                {{ sqlRunning ? '杩愯涓?..' : '鈻?杩愯SQL' }}
               </button>
               <button
                 class="btn-run-sm"
@@ -239,28 +239,28 @@
                 :disabled="pythonRunning"
                 v-if="isPythonExercise"
               >
-                {{ pythonRunning ? '运行中...' : '▶ 运行代码' }}
+                {{ pythonRunning ? '杩愯涓?..' : '鈻?杩愯浠ｇ爜' }}
               </button>
               <button
                 class="btn-submit-sm"
                 @click="submitAnswer"
                 :disabled="submitting || isJsExercise"
               >
-                {{ submitting ? '判题中...' : '✓ 提交' }}
+                {{ submitting ? '鍒ら涓?..' : '鉁?鎻愪氦' }}
               </button>
               <span v-if="getCostText('exercise_code_eval')" class="ai-cost-hint">{{ getCostText('exercise_code_eval') }}</span>
             </div>
           </div>
 
           <div class="shortcut-hint-bar">
-            Ctrl+Enter 提交 · Ctrl+Shift+R 运行
+            Ctrl+Enter 鎻愪氦 路 Ctrl+Shift+R 杩愯
           </div>
 
           <div class="output-panel" v-if="isSqlExercise && sqlResult">
             <div class="output-header">
-              <span>执行结果 ({{ sqlResult.elapsed_ms }}ms)</span>
+              <span>鎵ц缁撴灉 ({{ sqlResult.elapsed_ms }}ms)</span>
               <span class="sql-result-tag" :class="sqlResult.success ? 'success' : 'fail'">
-                {{ sqlResult.success ? '成功' : '失败' }}
+                {{ sqlResult.success ? '鎴愬姛' : '澶辫触' }}
               </span>
             </div>
             <div v-if="!sqlResult.success" class="sql-result-error">{{ sqlResult.error }}</div>
@@ -277,35 +277,35 @@
                   </tr>
                 </tbody>
               </table>
-              <div class="sql-result-count">返回 {{ sqlResult.row_count }} 行记录</div>
+              <div class="sql-result-count">杩斿洖 {{ sqlResult.row_count }} 琛岃褰</div>
             </div>
             <div v-if="sqlResult.success && sqlResult.message" class="sql-result-msg">{{ sqlResult.message }}</div>
           </div>
 
           <div class="output-panel" v-if="isPythonExercise && pythonResult">
             <div class="output-header">
-              <span>运行结果</span>
+              <span>杩愯缁撴灉</span>
               <span class="sql-result-tag" :class="(pythonResult.exit_code === 0 || pythonResult.returncode === 0) ? 'success' : 'fail'">
-                {{ (pythonResult.exit_code === 0 || pythonResult.returncode === 0) ? '成功' : '失败' }}
+                {{ (pythonResult.exit_code === 0 || pythonResult.returncode === 0) ? '鎴愬姛' : '澶辫触' }}
               </span>
             </div>
             <div class="python-output-content">
               <pre v-if="pythonResult.stdout" class="python-stdout">{{ pythonResult.stdout }}</pre>
               <pre v-if="pythonResult.stderr" class="python-stderr">{{ pythonResult.stderr }}</pre>
-              <div v-if="!pythonResult.stdout && !pythonResult.stderr" class="python-no-output">(无输出)</div>
+              <div v-if="!pythonResult.stdout && !pythonResult.stderr" class="python-no-output">(鏃犺緭鍑?</div>
             </div>
           </div>
 
           <div class="output-panel judge-quick-view" v-if="submitResult && isCodeOrSqlType">
             <div class="output-header">
-              <span>判题结果</span>
+              <span>鍒ら缁撴灉</span>
               <span class="judge-quick-tag" :class="submitResult?.correct ? 'pass' : 'fail'">
-                {{ submitResult?.correct ? '✓ 通过' : '✗ 未通过' }}
+                {{ submitResult?.correct ? '鉁?閫氳繃' : '鉁?鏈€氳繃' }}
               </span>
             </div>
             <div class="judge-quick-body" v-if="submitResult?.judge_result">
-              <span>通过 {{ submitResult.judge_result.passed_count }}/{{ submitResult.judge_result.total_cases }}</span>
-              <button class="link-btn" @click="leftTab = 'result'">查看详情 ›</button>
+              <span>閫氳繃 {{ submitResult.judge_result.passed_count }}/{{ submitResult.judge_result.total_cases }}</span>
+              <button class="link-btn" @click="leftTab = 'result'">鏌ョ湅璇︽儏 鈥</button>
             </div>
           </div>
         </div>
@@ -316,7 +316,7 @@
           <div class="choice-question-card">
             <div class="choice-tags">
               <span class="tag-badge type">{{ getModuleName(exercise.module) }}</span>
-              <span class="tag-badge stage">阶段{{ exercise.stage }}</span>
+              <span class="tag-badge stage">闃舵{{ exercise.stage }}</span>
               <span class="tag-badge level" :class="'level-' + exercise.difficulty">{{ getDifficultyText(exercise.difficulty) }}</span>
               <span class="tag-badge subject" v-if="exercise.knowledge_point">{{ exercise.knowledge_point }}</span>
             </div>
@@ -346,24 +346,24 @@
               <span class="option-label">{{ opt.key }}</span>
               <span class="option-text">{{ opt.text }}</span>
               <span class="option-check" v-if="isChoiceSelected(opt.key)">
-                <template v-if="submitResult && !submitResult?.correct && opt.key !== (submitResult?.correct_answer || submitResult?.expected_solution)">✗</template>
-                <template v-else>✓</template>
+                <template v-if="submitResult && !submitResult?.correct && opt.key !== (submitResult?.correct_answer || submitResult?.expected_solution)">鉁</template>
+                <template v-else>鉁</template>
               </span>
             </div>
           </div>
 
           <div class="choice-actions">
-            <button class="btn-hint" @click="showHintDialog" v-if="exercise?.hint">💡 提示</button>
-            <button class="btn-outline" @click="showSolution = true">查看答案</button>
+            <button class="btn-hint" @click="showHintDialog" v-if="exercise?.hint">馃挕 鎻愮ず</button>
+            <button class="btn-outline" @click="showSolution = true">鏌ョ湅绛旀</button>
             <button class="btn-green-glow" @click="submitAnswer" :disabled="submitting || !hasChoiceAnswer">
-              {{ submitting ? '判题中...' : '提交答案' }}
+              {{ submitting ? '鍒ら涓?..' : '鎻愪氦绛旀' }}
             </button>
           </div>
 
           <div class="choice-result" v-if="submitResult" :class="submitResult?.correct ? 'result-pass' : 'result-fail'">
             <div class="result-status">
-              <span class="result-icon">{{ submitResult?.correct ? '🎉' : '❌' }}</span>
-              <span class="result-text">{{ submitResult?.correct ? '回答正确！' : '回答错误' }}</span>
+              <span class="result-icon">{{ submitResult?.correct ? '正确' : '错误' }}</span>
+              <span class="result-text">{{ submitResult?.correct ? '回答正确' : '回答错误' }}</span>
               <span class="result-msg">{{ submitResult?.message }}</span>
             </div>
             <div v-if="!submitResult?.correct && (submitResult?.correct_answer || submitResult?.expected_solution)" class="correct-answer-hint">
@@ -372,7 +372,7 @@
           </div>
 
           <div class="choice-skill" v-if="submitResult?.correct && submitResult.skill_change?.length">
-            <h4 class="section-label">📈 技能提升</h4>
+            <h4 class="section-label">馃搱 鎶€鑳芥彁鍗</h4>
             <div class="skill-panel">
               <div class="skill-item" v-for="sc in submitResult.skill_change" :key="sc.key">
                 <span class="skill-name">{{ sc.name }}</span>
@@ -382,42 +382,42 @@
                     <div class="skill-bar-after" :style="{ width: sc.after + '%' }"></div>
                   </div>
                 </div>
-                <span class="skill-score">{{ sc.before }} → {{ sc.after }}</span>
+                <span class="skill-score">{{ sc.before }} 鈫?{{ sc.after }}</span>
                 <span class="skill-gain">+{{ sc.change }}</span>
               </div>
             </div>
           </div>
 
           <div class="choice-solution" v-if="showSolution">
-            <h4 class="section-label">💡 参考答案</h4>
+            <h4 class="section-label">馃挕 鍙傝€冪瓟妗</h4>
             <div class="solution-card">
               <pre class="solution-text">{{ exercise.solution }}</pre>
             </div>
           </div>
 
           <div class="choice-notes">
-            <h4 class="section-label">📖 学习笔记</h4>
+            <h4 class="section-label">馃摉 瀛︿範绗旇</h4>
             <div class="notebook-container">
               <div class="note-list" v-if="exerciseNotes.length > 0">
                 <div v-for="note in exerciseNotes" :key="note.id" class="note-entry">
                   <div class="note-entry-header">
                     <span class="note-entry-title">{{ note.title }}</span>
                     <span class="note-entry-time">{{ note.updated_at }}</span>
-                    <button class="note-delete-btn" @click="deleteNote(note.id)">删除</button>
+                    <button class="note-delete-btn" @click="deleteNote(note.id)">鍒犻櫎</button>
                   </div>
                   <div class="note-entry-body">{{ note.content }}</div>
                 </div>
               </div>
-              <input v-model="newNoteTitle" type="text" class="note-title-input" placeholder="笔记标题" />
-              <textarea v-model="newNoteContent" class="note-content-textarea" placeholder="记录你的理解..." rows="3"></textarea>
+              <input v-model="newNoteTitle" type="text" class="note-title-input" placeholder="绗旇鏍囬" />
+              <textarea v-model="newNoteContent" class="note-content-textarea" placeholder="璁板綍浣犵殑鐞嗚В..." rows="3"></textarea>
               <button class="btn-save-note" @click="saveNote" :disabled="noteSaving">
-                {{ noteSaving ? '保存中...' : '保存笔记' }}
+                {{ noteSaving ? '淇濆瓨涓?..' : '淇濆瓨绗旇' }}
               </button>
             </div>
           </div>
 
           <div class="choice-related" v-if="relatedExercises.length > 0">
-            <h4 class="section-label">📊 相关推荐</h4>
+            <h4 class="section-label">馃搳 鐩稿叧鎺ㄨ崘</h4>
             <div class="recommend-grid">
               <div
                 v-for="rel in relatedExercises"
@@ -426,7 +426,7 @@
                 :class="{ 'rec-done': rel.completed }"
                 @click="goToExercise(rel.id)"
               >
-                <span class="rec-status-icon">{{ rel.completed ? '✅' : '⬜' }}</span>
+                <span class="rec-status-icon">{{ rel.completed ? '完成' : '待做' }}</span>
                 <h4 class="rec-card-title">{{ rel.title }}</h4>
                 <div class="rec-card-meta">
                   <span class="rec-badge-diff" :class="'diff-' + rel.difficulty">{{ getDifficultyText(rel.difficulty) }}</span>
@@ -443,7 +443,7 @@
           <div class="text-question-card">
             <div class="text-tags">
               <span class="tag-badge type">{{ getModuleName(exercise.module) }}</span>
-              <span class="tag-badge stage">阶段{{ exercise.stage }}</span>
+              <span class="tag-badge stage">闃舵{{ exercise.stage }}</span>
               <span class="tag-badge level" :class="'level-' + exercise.difficulty">{{ getDifficultyText(exercise.difficulty) }}</span>
             </div>
             <h2 class="text-title">{{ exercise.title }}</h2>
@@ -451,26 +451,26 @@
               <p style="white-space: pre-wrap;">{{ exercise.description }}</p>
             </div>
             <div class="text-instructions" v-if="exercise.instructions">
-              <h4 class="section-label">答题要求</h4>
+              <h4 class="section-label">绛旈瑕佹眰</h4>
               <pre class="instructions-pre">{{ exercise.instructions }}</pre>
             </div>
           </div>
 
           <div class="text-answer-area">
-            <h4 class="section-label">✍️ 我的答案</h4>
+            <h4 class="section-label">鉁嶏笍 鎴戠殑绛旀</h4>
             <textarea
               v-model="userAnswer"
               class="answer-textarea"
-              placeholder="请在此输入你的答案..."
+              placeholder="璇峰湪姝よ緭鍏ヤ綘鐨勭瓟妗?.."
               rows="8"
             ></textarea>
           </div>
 
           <div class="text-actions">
-            <button class="btn-hint" @click="showHintDialog" v-if="exercise?.hint">💡 提示</button>
-            <button class="btn-outline" @click="showSolution = true">查看答案</button>
+            <button class="btn-hint" @click="showHintDialog" v-if="exercise?.hint">馃挕 鎻愮ず</button>
+            <button class="btn-outline" @click="showSolution = true">鏌ョ湅绛旀</button>
             <button class="btn-green-glow" @click="submitAnswer" :disabled="submitting">
-              {{ submitting ? '判题中...' : '提交答案' }}
+              {{ submitting ? '鍒ら涓?..' : '鎻愪氦绛旀' }}
             </button>
           </div>
 
@@ -478,14 +478,14 @@
             <div class="judge-panel" :class="{ 'judge-pass': submitResult?.correct, 'judge-fail': !submitResult?.correct }">
               <div class="judge-status-row">
                 <span class="judge-tag" :class="submitResult?.correct ? 'success' : 'fail'">
-                  {{ submitResult?.correct ? '✓ 通过' : '✗ 未通过' }}
+                  {{ submitResult?.correct ? '鉁?閫氳繃' : '鉁?鏈€氳繃' }}
                 </span>
                 <span class="judge-msg">{{ submitResult?.message }}</span>
               </div>
               <div v-if="submitResult?.judge_result" class="judge-body">
                 <div class="judge-stats-row">
-                  <span>通过 {{ submitResult.judge_result.passed_count }}/{{ submitResult.judge_result.total_cases }} 个测试用例</span>
-                  <span>通过率 {{ submitResult.judge_result.pass_rate }}%</span>
+                  <span>閫氳繃 {{ submitResult.judge_result.passed_count }}/{{ submitResult.judge_result.total_cases }} 涓祴璇曠敤渚</span>
+                  <span>閫氳繃鐜?{{ submitResult.judge_result.pass_rate }}%</span>
                 </div>
                 <div class="judge-footer">{{ submitResult.judge_result.summary }}</div>
               </div>
@@ -493,7 +493,7 @@
           </div>
 
           <div class="text-skill" v-if="submitResult?.correct && submitResult.skill_change?.length">
-            <h4 class="section-label">📈 技能提升</h4>
+            <h4 class="section-label">馃搱 鎶€鑳芥彁鍗</h4>
             <div class="skill-panel">
               <div class="skill-item" v-for="sc in submitResult.skill_change" :key="sc.key">
                 <span class="skill-name">{{ sc.name }}</span>
@@ -503,36 +503,36 @@
                     <div class="skill-bar-after" :style="{ width: sc.after + '%' }"></div>
                   </div>
                 </div>
-                <span class="skill-score">{{ sc.before }} → {{ sc.after }}</span>
+                <span class="skill-score">{{ sc.before }} 鈫?{{ sc.after }}</span>
                 <span class="skill-gain">+{{ sc.change }}</span>
               </div>
             </div>
           </div>
 
           <div class="text-solution" v-if="showSolution">
-            <h4 class="section-label">💡 参考答案</h4>
+            <h4 class="section-label">馃挕 鍙傝€冪瓟妗</h4>
             <div class="solution-card">
               <pre class="solution-text">{{ exercise.solution }}</pre>
             </div>
           </div>
 
           <div class="text-notes">
-            <h4 class="section-label">📖 学习笔记</h4>
+            <h4 class="section-label">馃摉 瀛︿範绗旇</h4>
             <div class="notebook-container">
               <div class="note-list" v-if="exerciseNotes.length > 0">
                 <div v-for="note in exerciseNotes" :key="note.id" class="note-entry">
                   <div class="note-entry-header">
                     <span class="note-entry-title">{{ note.title }}</span>
                     <span class="note-entry-time">{{ note.updated_at }}</span>
-                    <button class="note-delete-btn" @click="deleteNote(note.id)">删除</button>
+                    <button class="note-delete-btn" @click="deleteNote(note.id)">鍒犻櫎</button>
                   </div>
                   <div class="note-entry-body">{{ note.content }}</div>
                 </div>
               </div>
-              <input v-model="newNoteTitle" type="text" class="note-title-input" placeholder="笔记标题" />
-              <textarea v-model="newNoteContent" class="note-content-textarea" placeholder="记录你的理解..." rows="3"></textarea>
+              <input v-model="newNoteTitle" type="text" class="note-title-input" placeholder="绗旇鏍囬" />
+              <textarea v-model="newNoteContent" class="note-content-textarea" placeholder="璁板綍浣犵殑鐞嗚В..." rows="3"></textarea>
               <button class="btn-save-note" @click="saveNote" :disabled="noteSaving">
-                {{ noteSaving ? '保存中...' : '保存笔记' }}
+                {{ noteSaving ? '淇濆瓨涓?..' : '淇濆瓨绗旇' }}
               </button>
             </div>
           </div>
@@ -651,7 +651,7 @@ const choiceOptions = computed(() => {
   const options = []
   const keys = ['A', 'B', 'C', 'D', 'E', 'F']
   for (const key of keys) {
-    const regex = new RegExp(`^${key}[.．、:：]\\s*(.+)$`, 'm')
+    const regex = new RegExp(`^${key}[.锛庛€?锛歖\\s*(.+)$`, 'm')
     const match = desc.match(regex)
     if (match) {
       options.push({ key, text: match[1].trim() })
@@ -750,14 +750,14 @@ const fetchRelatedExercises = async () => {
     if (relatedExercises.value.length > 0) {
       nextExerciseId.value = relatedExercises.value[0].id
     }
-  } catch (e) { console.warn('获取相关习题失败:', e) }
+  } catch (e) { console.warn('鑾峰彇鐩稿叧涔犻澶辫触:', e) }
 }
 
 const fetchNotes = async () => {
   try {
     const res = await request.get('/notes', { params: { exercise_id: exerciseId.value } })
     exerciseNotes.value = res.notes || []
-  } catch (e) { console.warn('获取笔记失败:', e) }
+  } catch (e) { console.warn('鑾峰彇绗旇澶辫触:', e) }
 }
 
 const saveNote = async () => {
@@ -772,12 +772,12 @@ const saveNote = async () => {
       content: newNoteContent.value,
       exercise_id: parseInt(exerciseId.value),
     })
-    ElMessage.success('笔记保存成功')
+    ElMessage.success('绗旇淇濆瓨鎴愬姛')
     newNoteTitle.value = ''
     newNoteContent.value = ''
     await fetchNotes()
   } catch {
-    ElMessage.error('保存失败')
+    ElMessage.error('淇濆瓨澶辫触')
   } finally {
     noteSaving.value = false
   }
@@ -789,7 +789,7 @@ const deleteNote = async (noteId) => {
     ElMessage.success('笔记已删除')
     await fetchNotes()
   } catch {
-    ElMessage.error('删除失败')
+    ElMessage.error('鍒犻櫎澶辫触')
   }
 }
 
@@ -805,15 +805,15 @@ const fetchExerciseDetail = async () => {
     exercise.value = res
     if (!res || !res.id) {
       console.warn('[ExerciseDetail] Invalid response data:', res)
-      ElMessage.warning('习题数据异常')
+      ElMessage.warning('涔犻鏁版嵁寮傚父')
     } else {
       if (res.exercise_type === 'code' && res.code_template) {
         userCode.value = res.code_template
       }
     }
   } catch (error) {
-    console.error('获取习题详情失败:', error?.response?.status, error?.response?.data || error.message)
-    ElMessage.error(`获取习题详情失败: ${error?.response?.data?.detail || error.message}`)
+    console.error('鑾峰彇涔犻璇︽儏澶辫触:', error?.response?.status, error?.response?.data || error.message)
+    ElMessage.error(`鑾峰彇涔犻璇︽儏澶辫触: ${error?.response?.data?.detail || error.message}`)
     exercise.value = null
   } finally {
     loading.value = false
@@ -862,20 +862,20 @@ const submitAnswer = async () => {
     })
     submitResult.value = res
     if (res.correct) {
-      ElMessage.success('答案正确！技能分数已更新')
+      ElMessage.success('绛旀姝ｇ‘锛佹妧鑳藉垎鏁板凡鏇存柊')
       userStore.checkNewAchievements()
     } else {
-      ElMessage.warning('答案不正确，再试试看！')
+      ElMessage.warning('答案不正确，请再试一次')
     }
   } catch {
-    ElMessage.error('提交失败，请稍后重试')
+    ElMessage.error('鎻愪氦澶辫触锛岃绋嶅悗閲嶈瘯')
   } finally {
     submitting.value = false
   }
 }
 
 const goBack = () => { router.back() }
-const onCodeRun = (result) => { console.log('代码运行结果:', result) }
+const onCodeRun = (result) => { console.log('浠ｇ爜杩愯缁撴灉:', result) }
 
 const runCurrentCode = async () => {
   if (isSqlExercise.value) {
@@ -887,7 +887,7 @@ const runCurrentCode = async () => {
 
 const runPythonCode = async () => {
   if (!userCode.value || !userCode.value.trim()) {
-    ElMessage.warning('请先写代码再运行')
+    ElMessage.warning('璇峰厛鍐欎唬鐮佸啀杩愯')
     return
   }
   pythonRunning.value = true
@@ -902,15 +902,15 @@ const runPythonCode = async () => {
     pythonResult.value = result
     if (result.exit_code === 0 || result.returncode === 0) {
       if (result.stdout && result.stdout.trim()) {
-        ElMessage.success('代码运行成功')
+        ElMessage.success('浠ｇ爜杩愯鎴愬姛')
       } else {
-        ElMessage.info('代码运行完成，无输出')
+        ElMessage.info('浠ｇ爜杩愯瀹屾垚锛屾棤杈撳嚭')
       }
     } else {
-      ElMessage.error('代码运行出错')
+      ElMessage.error('浠ｇ爜杩愯鍑洪敊')
     }
   } catch {
-    ElMessage.error('运行请求失败，请稍后重试')
+    ElMessage.error('杩愯璇锋眰澶辫触锛岃绋嶅悗閲嶈瘯')
   } finally {
     pythonRunning.value = false
   }
@@ -918,7 +918,7 @@ const runPythonCode = async () => {
 
 const runSql = async () => {
   if (!userCode.value || !userCode.value.trim()) {
-    ElMessage.warning('请输入SQL语句')
+    ElMessage.warning('璇疯緭鍏QL璇彞')
     return
   }
   sqlRunning.value = true
@@ -930,12 +930,12 @@ const runSql = async () => {
     })
     sqlResult.value = res
     if (res.success) {
-      ElMessage.success(`SQL执行成功，耗时 ${res.elapsed_ms}ms`)
+      ElMessage.success(`SQL鎵ц鎴愬姛锛岃€楁椂 ${res.elapsed_ms}ms`)
     } else {
-      ElMessage.error('SQL执行失败，请检查语法')
+      ElMessage.error('SQL 执行失败，请检查语法')
     }
   } catch {
-    ElMessage.error('执行请求失败，请稍后重试')
+    ElMessage.error('鎵ц璇锋眰澶辫触锛岃绋嶅悗閲嶈瘯')
   } finally {
     sqlRunning.value = false
   }
@@ -956,7 +956,7 @@ const showHintDialog = () => {
   const safeHint = DOMPurify.sanitize(exercise.value.hint)
   ElMessageBox.alert(
     `<div style="color: #a5b4fc; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${safeHint}</div>`,
-    '💡 提示',
+    '馃挕 鎻愮ず',
     {
       dangerouslyUseHTMLString: true,
       confirmButtonText: '知道了',
@@ -2308,3 +2308,4 @@ const showHintDialog = () => {
   white-space: nowrap;
 }
 </style>
+

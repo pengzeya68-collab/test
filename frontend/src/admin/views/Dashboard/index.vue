@@ -1,6 +1,6 @@
-<template>
+﻿<template>
   <div class="dashboard-page">
-    <!-- 统计卡片 -->
+    <!-- 缁熻鍗＄墖 -->
     <el-row :gutter="16" class="stats-row">
       <el-col :xs="12" :sm="6" v-for="item in stats" :key="item.title">
         <div class="stat-card" :style="{ '--accent': getColor(item.title) }">
@@ -13,7 +13,7 @@
       </el-col>
     </el-row>
 
-    <!-- 加载骨架 -->
+    <!-- 鍔犺浇楠ㄦ灦 -->
     <template v-if="loading">
       <el-row :gutter="16">
         <el-col :span="12"><el-skeleton :rows="5" animated /></el-col>
@@ -21,7 +21,7 @@
       </el-row>
     </template>
 
-    <!-- 数据表格 -->
+    <!-- 鏁版嵁琛ㄦ牸 -->
     <template v-else>
       <el-row :gutter="16" class="tables-row">
         <el-col :xs="24" :lg="12">
@@ -37,16 +37,16 @@
         </el-col>
         <el-col :xs="24" :lg="12">
           <div class="admin-card">
-            <h3 class="card-title">最近添加习题</h3>
-            <el-table :data="recentExercises" stripe class="admin-table" empty-text="暂无数据">
+            <h3 class="card-title">鏈€杩戞坊鍔犱範棰</h3>
+            <el-table :data="recentExercises" stripe class="admin-table" empty-text="鏆傛棤鏁版嵁">
               <el-table-column prop="id" label="ID" width="70" />
-              <el-table-column prop="title" label="习题标题" show-overflow-tooltip />
-              <el-table-column prop="difficulty" label="难度" width="80">
+              <el-table-column prop="title" label="涔犻鏍囬" show-overflow-tooltip />
+              <el-table-column prop="difficulty" label="闅惧害" width="80">
                 <template #default="{ row }">
                   <el-tag :type="diffType(row.difficulty)" size="small">{{ diffText(row.difficulty) }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="createTime" label="创建时间" width="160" />
+              <el-table-column prop="createTime" label="鍒涘缓鏃堕棿" width="160" />
             </el-table>
           </div>
         </el-col>
@@ -66,8 +66,8 @@ const recentExercises = ref([])
 const loading = ref(true)
 
 const getIcon = (title) => {
-  const map = { '总用户数': '👥', '习题总数': '📝', '学习路径': '🗺️', '社区帖子': '💬' }
-  return map[title] || '📊'
+  const map = { '总用户数': 'U', '习题总数': 'Q', '学习路径': 'L', '社区帖子': 'P' }
+  return map[title] || 'D'
 }
 const getColor = (title) => {
   const map = { '总用户数': '#409EFF', '习题总数': '#67C23A', '学习路径': '#E6A23C', '社区帖子': '#F56C6C' }
@@ -84,8 +84,8 @@ const fetchData = async () => {
     if (res?.recentUsers) recentUsers.value = res.recentUsers
     if (res?.recentExercises) recentExercises.value = res.recentExercises
   } catch (e) {
-    console.error('获取统计数据失败:', e)
-    ElMessage.error('获取统计数据失败')
+    console.error('鑾峰彇缁熻鏁版嵁澶辫触:', e)
+    ElMessage.error('鑾峰彇缁熻鏁版嵁澶辫触')
   } finally {
     loading.value = false
   }
@@ -159,3 +159,4 @@ onMounted(fetchData)
   .stat-icon { width: 40px; height: 40px; font-size: 20px; }
 }
 </style>
+

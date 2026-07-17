@@ -149,6 +149,7 @@
         <el-button size="small" type="primary" plain :icon="VideoPlay" @click="handleBatchRun" :loading="batchRunning">
           批量运行
         </el-button>
+        <el-button v-if="batchTaskId" size="small" type="danger" plain @click="handleCancelBatch">取消运行</el-button>
         <el-button size="small" type="warning" plain :icon="Rank" @click="handleBatchMove">
           移动到分组
         </el-button>
@@ -1016,6 +1017,7 @@ const selectedCaseIds = ref([])
 const selectedCaseRows = ref([])
 const caseTableRef = ref(null)
 const batchRunning = ref(false)
+const batchTaskId = ref(null)
 
 const startExportSelect = () => {
   exportSelectMode.value = true
@@ -1050,22 +1052,38 @@ const handleBatchRun = async () => {
     return
   }
   batchRunning.value = true
-  let successCount = 0
-  let failCount = 0
   try {
-    for (const row of selectedCaseRows.value) {
-      try {
-        await autoTestRequest.post(`/auto-test/cases/${row.id}/run`, { env_id: selectedEnvId.value })
-        successCount++
-      } catch (e) {
-        failCount++
-        console.error(`用例 ${row.name} 运行失败:`, e)
-      }
-    }
-    ElMessage.success(`批量运行完成：成功 ${successCount} 个，失败 ${failCount} 个`)
+    const started = await autoTestRequest.post('/auto-test/cases/batch-run-async', {
+      case_ids: selectedCaseIds.value,
+      env_id: selectedEnvId.value,
+    })
+    batchTaskId.value = started.task_id
+    let task
+    do {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      task = await autoTestRequest.get(`/auto-test/tasks/${started.task_id}`)
+    } while (!['completed', 'failed', 'cancelled'].includes(String(task.status).toLowerCase()))
+    if (String(task.status).toLowerCase() !== 'completed') throw new Error(task.error || task.info || '后台任务未完成')
+    const result = task.result || {}
+    const message = `批量运行完成：成功 ${result.success || 0} 个，失败 ${result.failed || 0} 个`
+    if (result.failed) ElMessage.warning(message)
+    else ElMessage.success(message)
+  } catch (error) {
+    ElMessage.error('批量运行失败：' + (error.response?.data?.detail || error.message))
   } finally {
+    batchTaskId.value = null
     batchRunning.value = false
     loadCases()
+  }
+}
+
+const handleCancelBatch = async () => {
+  if (!batchTaskId.value) return
+  try {
+    await autoTestRequest.post(`/auto-test/tasks/${batchTaskId.value}/cancel`)
+    ElMessage.warning('已提交取消请求，已完成的结果会保留')
+  } catch (error) {
+    ElMessage.error('取消失败：' + (error.response?.data?.detail || error.message))
   }
 }
 

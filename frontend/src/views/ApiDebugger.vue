@@ -435,13 +435,14 @@ const sendDebugRequest = async () => {
     debugForm.value.headers.forEach(item => { if (item.key) headersObj[replaceVariables(item.key, varsArray)] = replaceVariables(item.value, varsArray) })
     const paramsObj = {}
     debugForm.value.params.forEach(item => { if (item.key) paramsObj[replaceVariables(item.key, varsArray)] = replaceVariables(item.value, varsArray) })
+    const bodyText = replaceVariables(debugForm.value.body || '', varsArray)
     const payload = {
       method: debugForm.value.method,
       url: replaceVariables(debugForm.value.url, varsArray),
       headers: headersObj, params: paramsObj,
       body: debugForm.value.bodyType === 'form-data'
         ? Object.fromEntries((debugForm.value.formData || []).filter(item => item.key).map(item => [replaceVariables(item.key, varsArray), replaceVariables(item.value, varsArray)]))
-        : replaceVariables(debugForm.value.body || '', varsArray),
+        : (debugForm.value.bodyType === 'json' && !bodyText.trim() ? null : bodyText),
       body_type: debugForm.value.bodyType
     }
     if (debugEnvId.value) payload.env_id = debugEnvId.value

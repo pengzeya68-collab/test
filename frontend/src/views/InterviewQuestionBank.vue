@@ -1,23 +1,23 @@
-<template>
+﻿<template>
   <div class="interview-question-bank" style="position: relative; z-index: 1;">
-    <!-- 背景特效 -->
+    <!-- 鑳屾櫙鐗规晥 -->
     <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
     <div class="glow-orb" style="position: absolute; top: 10%; right: 10%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(236,72,153,0.15), transparent 70%); border-radius: 50%; z-index: -1; pointer-events: none;"></div>
 
-    <!-- 原始结构恢复 -->
+    <!-- 鍘熷缁撴瀯鎭㈠ -->
     <div class="page-header">
       <div>
-        <h1 class="page-title">面试题库</h1>
-        <p class="page-subtitle">海量测试工程师面试真题，助力Offer收割</p>
+        <h1 class="page-title">闈㈣瘯棰樺簱</h1>
+        <p class="page-subtitle">娴烽噺娴嬭瘯宸ョ▼甯堥潰璇曠湡棰橈紝鍔╁姏Offer鏀跺壊</p>
       </div>
       <el-button-group>
         <el-button type="primary" @click="$router.push('/interview/simulate')">
           <el-icon><VideoPlay /></el-icon>
-          模拟面试
+          妯℃嫙闈㈣瘯
         </el-button>
         <el-button @click="$router.push('/interview/my')">
           <el-icon><Document /></el-icon>
-          我的面试
+          鎴戠殑闈㈣瘯
         </el-button>
       </el-button-group>
     </div>
@@ -52,7 +52,7 @@
         <el-col :span="7">
           <el-button type="primary" @click="fetchQuestions" style="width: 100%;">
             <el-icon><Search /></el-icon>
-            搜索
+            鎼滅储
           </el-button>
         </el-col>
       </el-row>
@@ -60,7 +60,7 @@
 
     <div class="tabs-container">
       <el-tabs v-model="activeTab" @tab-change="fetchQuestions">
-        <el-tab-pane label="全部题目" name="all" />
+        <el-tab-pane label="鍏ㄩ儴棰樼洰" name="all" />
       </el-tabs>
     </div>
 
@@ -114,17 +114,17 @@
     </div>
 
     <div class="empty-state" v-if="questions.length === 0 && !loading">
-      <el-empty description="暂无题目" />
+      <el-empty description="鏆傛棤棰樼洰" />
     </div>
 
     <div class="loading-state" v-if="loading">
       <el-skeleton :rows="10" animated />
     </div>
 
-    <!-- 题目详情弹窗 -->
+    <!-- 棰樼洰璇︽儏寮圭獥 -->
     <el-dialog 
       v-model="showDetailDialog" 
-      title="题目详情"
+      title="棰樼洰璇︽儏"
       width="800px"
       class="question-detail-dialog"
     >
@@ -147,18 +147,18 @@
         </div>
         
         <div class="detail-section">
-          <h4>参考答案</h4>
+          <h4>鍙傝€冪瓟妗</h4>
           <div class="answer-content" v-html="renderMarkdown(currentQuestion.answer)"></div>
         </div>
       </div>
       <template #footer>
-        <el-button @click="showDetailDialog = false">关闭</el-button>
+        <el-button @click="showDetailDialog = false">鍏抽棴</el-button>
         <el-button 
           type="primary" 
           :icon="currentQuestion?.is_collected ? StarFilled : Star"
           @click="toggleCollect(currentQuestion)"
         >
-          {{ currentQuestion?.is_collected ? '取消收藏' : '收藏' }}
+          {{ currentQuestion?.is_collected ? '鍙栨秷鏀惰棌' : '鏀惰棌' }}
         </el-button>
       </template>
     </el-dialog>
@@ -218,8 +218,8 @@ const fetchQuestions = async () => {
         title: item.title,
         slug: item.slug || `q-${item.id}`,
         difficulty: item.difficulty || 'medium',
-        category: item.category || item.knowledge_point || '综合',
-        position_level: item.position_level || item.level || '中级',
+        category: item.category || item.knowledge_point || '缁煎悎',
+        position_level: item.position_level || item.level || '涓骇',
         view_count: item.view_count || 0,
         collect_count: item.collect_count || 0,
         company: item.company || '',
@@ -230,11 +230,11 @@ const fetchQuestions = async () => {
       questions.value = transformedItems
       total.value = res.data.total
     } else {
-      throw new Error(res.message || '获取题目列表失败')
+      throw new Error(res.message || '鑾峰彇棰樼洰鍒楄〃澶辫触')
     }
   } catch (error) {
-    console.error('获取题目列表失败:', error)
-    ElMessage.error('获取题目列表失败')
+    console.error('鑾峰彇棰樼洰鍒楄〃澶辫触:', error)
+    ElMessage.error('鑾峰彇棰樼洰鍒楄〃澶辫触')
   } finally {
     loading.value = false
   }
@@ -272,7 +272,7 @@ const viewQuestion = async (question) => {
 }
 
 const toggleCollect = (question) => {
-  ElMessage.info('收藏功能暂未开放，敬请期待')
+  ElMessage.info('鏀惰棌鍔熻兘鏆傛湭寮€鏀撅紝鏁鏈熷緟')
   return
 }
 
@@ -560,3 +560,4 @@ const parseTags = (tags) => {
   }
 }
 </style>
+

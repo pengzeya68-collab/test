@@ -1,25 +1,25 @@
-<template>
+﻿<template>
   <div class="lp-detail-container">
     <div class="loading" v-if="loading">
-      <div class="spinner">⏳</div>
+      <div class="spinner">鈴</div>
     </div>
 
     <div v-if="!loading && path" class="path-content">
-      <!-- 头部信息 -->
+      <!-- 澶撮儴淇℃伅 -->
       <section class="path-hero">
         <div class="hero-tags">
-          <span class="tag" :class="'stage-' + (path.stage || 1)">阶段{{ path.stage }}</span>
+          <span class="tag" :class="'stage-' + (path.stage || 1)">闃舵{{ path.stage }}</span>
           <span class="tag" :class="'diff-' + (path.difficulty || 'beginner')">{{ getDifficultyText(path.difficulty) }}</span>
           <span class="tag tag-lang">{{ path.language }}</span>
         </div>
         <h1 class="hero-title">{{ path.title }}</h1>
         <p class="hero-desc">{{ path.description }}</p>
 
-        <!-- 学习进度 -->
+        <!-- 瀛︿範杩涘害 -->
         <div class="progress-bar-wrap" v-if="isLoggedIn">
           <div class="pb-header">
-            <span class="pb-label">学习进度</span>
-            <span class="pb-stats">已完成 {{ progressData.completed_exercises }}/{{ progressData.total_exercises }} 题</span>
+            <span class="pb-label">瀛︿範杩涘害</span>
+            <span class="pb-stats">宸插畬鎴?{{ progressData.completed_exercises }}/{{ progressData.total_exercises }} 棰</span>
             <span class="pb-pct">{{ progressData.progress_percent }}%</span>
           </div>
           <div class="pb-track">
@@ -27,31 +27,31 @@
           </div>
         </div>
 
-        <!-- 完成庆祝 -->
+        <!-- 瀹屾垚搴嗙 -->
         <div class="completion-banner" v-if="isLoggedIn && progressData.progress_percent >= 100">
-          <div class="cb-icon">🎉</div>
+          <div class="cb-icon">馃帀</div>
           <div class="cb-text">
-            <h3>恭喜完成本路径全部习题！</h3>
-            <p>你已经掌握了这条学习路线的所有知识点，继续挑战下一个阶段吧！</p>
+            <h3>鎭枩瀹屾垚鏈矾寰勫叏閮ㄤ範棰橈紒</h3>
+            <p>浣犲凡缁忔帉鎻′簡杩欐潯瀛︿範璺嚎鐨勬墍鏈夌煡璇嗙偣锛岀户缁寫鎴樹笅涓€涓樁娈靛惂锛</p>
           </div>
-          <button class="primary-btn" @click="goToNextStage">下一阶段 →</button>
+          <button class="primary-btn" @click="goToNextStage">涓嬩竴闃舵 鈫</button>
         </div>
 
         <div class="hero-stats">
           <div class="hs-item">
-            <span class="hs-emoji">⏱️</span>
+            <span class="hs-emoji">鈴憋笍</span>
             <span class="hs-val">{{ path.estimated_hours }}</span>
-            <span class="hs-lbl">小时</span>
+            <span class="hs-lbl">灏忔椂</span>
           </div>
           <div class="hs-item">
-            <span class="hs-emoji">📄</span>
+            <span class="hs-emoji">馃搫</span>
             <span class="hs-val">{{ path.exercises?.length || 0 }}</span>
-            <span class="hs-lbl">个习题</span>
+            <span class="hs-lbl">涓範棰</span>
           </div>
           <div class="hs-item">
-            <span class="hs-emoji">📅</span>
+            <span class="hs-emoji">馃搮</span>
             <span class="hs-val">{{ formatDate(path.created_at) }}</span>
-            <span class="hs-lbl">更新时间</span>
+            <span class="hs-lbl">鏇存柊鏃堕棿</span>
           </div>
         </div>
 
@@ -60,26 +60,26 @@
             {{ progressData.completed_exercises > 0 ? '继续学习' : '开始学习' }}
           </button>
           <button class="outline-btn btn-lg" @click="toggleCollect">
-            {{ isCollected ? '取消收藏' : '加入收藏' }}
+            {{ isCollected ? '鍙栨秷鏀惰棌' : '鍔犲叆鏀惰棌' }}
           </button>
         </div>
       </section>
 
-      <!-- 课程与习题 Tab -->
+      <!-- 璇剧▼涓庝範棰?Tab -->
       <section class="content-section">
         <div class="custom-tabs">
           <button class="ctab" :class="{ active: activeTab === 'lessons' }" @click="activeTab = 'lessons'">
-            📖 课程内容 <span class="ctab-badge" v-if="lessons.length > 0">{{ lessons.length }}节</span>
+            馃摉 璇剧▼鍐呭 <span class="ctab-badge" v-if="lessons.length > 0">{{ lessons.length }}鑺</span>
           </button>
           <button class="ctab" :class="{ active: activeTab === 'exercises' }" @click="activeTab = 'exercises'">
-            ✏️ 练习题 <span class="ctab-badge" v-if="path?.exercises?.length > 0">{{ path.exercises.length }}题</span>
+            鉁忥笍 缁冧範棰?<span class="ctab-badge" v-if="path?.exercises?.length > 0">{{ path.exercises.length }}棰</span>
           </button>
           <button class="ctab" :class="{ active: activeTab === 'project' }" @click="activeTab = 'project'">
-            🚀 项目实战
+            馃殌 椤圭洰瀹炴垬
           </button>
         </div>
 
-        <!-- 课程内容 -->
+        <!-- 璇剧▼鍐呭 -->
         <div v-show="activeTab === 'lessons'" class="tab-panel">
           <div v-if="!lessonsLoading" class="lesson-list">
             <div
@@ -92,19 +92,19 @@
               <div class="lc-body">
                 <h3 class="lc-title">{{ lesson.title }}</h3>
                 <div class="lc-meta">
-                  <span v-if="lesson.knowledge_point" class="lc-meta-item">🏷️ {{ lesson.knowledge_point }}</span>
-                  <span class="lc-meta-item">⏰ {{ lesson.time_estimate }}分钟</span>
+                  <span v-if="lesson.knowledge_point" class="lc-meta-item">馃彿锔?{{ lesson.knowledge_point }}</span>
+                  <span class="lc-meta-item">鈴?{{ lesson.time_estimate }}鍒嗛挓</span>
                 </div>
               </div>
-              <div class="lc-arrow">→</div>
+              <div class="lc-arrow">鈫</div>
             </div>
             <div class="empty-block" v-if="lessons.length === 0">
-              <p>📭 该路径暂无课程内容</p>
+              <p>馃摥 璇ヨ矾寰勬殏鏃犺绋嬪唴瀹</p>
             </div>
           </div>
         </div>
 
-        <!-- 练习题 -->
+        <!-- 缁冧範棰?-->
         <div v-show="activeTab === 'exercises'" class="tab-panel">
           <div class="exercise-list">
             <div
@@ -116,41 +116,41 @@
             >
               <div class="ex-top">
                 <div class="ex-title-row">
-                  <span class="ex-status" v-if="isExerciseCompleted(exercise.id)">✅</span>
-                  <span class="ex-status pending" v-else>⬜</span>
+                  <span class="ex-status" v-if="isExerciseCompleted(exercise.id)">鉁</span>
+                  <span class="ex-status pending" v-else>猬</span>
                   <h4 class="ex-title">{{ exercise.title }}</h4>
                 </div>
                 <div class="ex-badges">
-                  <span class="badge badge-success" v-if="getExerciseScore(exercise.id)">{{ getExerciseScore(exercise.id) }}分</span>
+                  <span class="badge badge-success" v-if="getExerciseScore(exercise.id)">{{ getExerciseScore(exercise.id) }}鍒</span>
                   <span class="badge" :class="'badge-' + (exercise.difficulty || 'beginner')">{{ getDifficultyText(exercise.difficulty) }}</span>
                 </div>
               </div>
               <p class="ex-desc">{{ exercise.description }}</p>
               <div class="ex-footer">
-                <span class="ex-foot-item">⏱️ {{ exercise.time_estimate }}分钟</span>
-                <span class="ex-foot-item" v-if="exercise.knowledge_point">🏷️ {{ exercise.knowledge_point }}</span>
-                <span class="ex-foot-item">📁 {{ exercise.category }}</span>
-                <span class="ex-foot-item" v-if="getExerciseAttempts(exercise.id) > 0">✍️ 尝试 {{ getExerciseAttempts(exercise.id) }} 次</span>
+                <span class="ex-foot-item">鈴憋笍 {{ exercise.time_estimate }}鍒嗛挓</span>
+                <span class="ex-foot-item" v-if="exercise.knowledge_point">馃彿锔?{{ exercise.knowledge_point }}</span>
+                <span class="ex-foot-item">馃搧 {{ exercise.category }}</span>
+                <span class="ex-foot-item" v-if="getExerciseAttempts(exercise.id) > 0">鉁嶏笍 灏濊瘯 {{ getExerciseAttempts(exercise.id) }} 娆</span>
               </div>
             </div>
             <div class="empty-block" v-if="!path?.exercises?.length">
-              <p>📭 该路径暂无习题</p>
+              <p>馃摥 璇ヨ矾寰勬殏鏃犱範棰</p>
             </div>
           </div>
         </div>
 
-        <!-- 项目实战 -->
+        <!-- 椤圭洰瀹炴垬 -->
         <div v-show="activeTab === 'project'" class="tab-panel">
           <ProjectPractice :pathId="pathId" />
         </div>
       </section>
     </div>
 
-    <!-- 不存在 -->
+    <!-- 涓嶅瓨鍦?-->
     <div class="empty-page" v-if="!loading && !path">
-      <div class="empty-icon">🔍</div>
-      <p>学习路径不存在</p>
-      <button class="primary-btn" @click="goBack">返回列表</button>
+      <div class="empty-icon">馃攳</div>
+      <p>瀛︿範璺緞涓嶅瓨鍦</p>
+      <button class="primary-btn" @click="goBack">杩斿洖鍒楄〃</button>
     </div>
   </div>
 </template>
@@ -202,7 +202,7 @@ const fetchPathDetail = async () => {
     path.value = res
     isCollected.value = res.is_collected || false
   } catch (error) {
-    ElMessage.error('获取学习路径详情失败')
+    ElMessage.error('鑾峰彇瀛︿範璺緞璇︽儏澶辫触')
   } finally {
     loading.value = false
   }
@@ -227,7 +227,7 @@ const getExerciseAttempts = (id) => {
   return progressData.value.exercises?.find(e => e.id === id)?.attempts || 0
 }
 
-const getDifficultyText = (d) => ({ beginner: '初级', intermediate: '中级', advanced: '高级' }[d] || d)
+const getDifficultyText = (d) => ({ beginner: '鍒濈骇', intermediate: '涓骇', advanced: '楂樼骇' }[d] || d)
 
 const formatDate = (ds) => ds ? new Date(ds).toLocaleDateString('zh-CN') : ''
 
@@ -237,7 +237,6 @@ const goBack = () => router.back()
 
 const startLearning = () => {
   if (lessons.value.length > 0) {
-    // 查找第一个未完成的课程，否则跳转第一个
     const nextLesson = progressData.value.lessons?.find(l => !l.completed) || lessons.value[0]
     router.push(`/learning-paths/${pathId.value}/lessons/${nextLesson.id}`)
   } else if (path.value?.exercises?.length > 0) {
@@ -249,7 +248,7 @@ const startLearning = () => {
       ElMessage.info('该路径暂无可用习题')
     }
   } else {
-    ElMessage.info('该路径暂无课程和习题')
+    ElMessage.info('璇ヨ矾寰勬殏鏃犺绋嬪拰涔犻')
   }
 }
 
@@ -266,9 +265,9 @@ const toggleCollect = async () => {
       await request.post(`/learning-paths/${pathId.value}/collect`)
     }
     isCollected.value = !isCollected.value
-    ElMessage.success(isCollected.value ? '收藏成功' : '取消收藏成功')
+    ElMessage.success(isCollected.value ? '鏀惰棌鎴愬姛' : '鍙栨秷鏀惰棌鎴愬姛')
   } catch {
-    ElMessage.error('操作失败，请稍后重试')
+    ElMessage.error('鎿嶄綔澶辫触锛岃绋嶅悗閲嶈瘯')
   }
 }
 
@@ -493,7 +492,7 @@ const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons
 
 .tab-panel { min-height: 200px; }
 
-/* ===== 课程列表 ===== */
+/* ===== 璇剧▼鍒楄〃 ===== */
 .lesson-list {
   display: flex;
   flex-direction: column;
@@ -564,7 +563,7 @@ const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons
   color: var(--tm-color-primary);
 }
 
-/* ===== 习题列表 ===== */
+/* ===== 涔犻鍒楄〃 ===== */
 .exercise-list {
   display: flex;
   flex-direction: column;

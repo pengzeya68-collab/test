@@ -63,13 +63,16 @@ docker compose up -d --build      # 重建镜像并重启
 ├──────────────────────────────────────────────────┤
 │  Celery Worker (异步任务)                         │
 ├──────────────────────────────────────────────────┤
+│  PostgreSQL (生产数据库, pg_data volume)           │
+├──────────────────────────────────────────────────┤
 │  Redis (消息队列 + 缓存)                          │
 └──────────────────────────────────────────────────┘
 ```
 
 ### 数据持久化
-- SQLite 数据库: `./instance/` → `/app/instance/`
-- 测试报告: `./fastapi_backend/autotest_data/` → `/app/fastapi_backend/autotest_data/`
+- 生产数据库：PostgreSQL Docker volume `pg_data` → `/var/lib/postgresql/data`
+- 本地开发可继续使用 SQLite：`./instance/testmaster.db`
+- 测试报告：`autotest_data` Docker volume → `/app/fastapi_backend/autotest_data/`
 
 ---
 
@@ -162,13 +165,13 @@ const data = Array.isArray(res) ? res : (res.items || res.data || [])
 
 ### 坑7: SQLite 并发写入问题
 
-**现象**: 偶尔出现 `database is locked` 错误。
+**现象**: 本地开发偶尔出现 `database is locked` 错误。
 
 **原因**: SQLite 不支持高并发写入。多个 worker 或高并发请求同时写数据库。
 
-**解决方案** (二选一):
-- 单worker运行（当前方案）: `CMD ["uvicorn", "fastapi_backend.main:app", "--host", "0.0.0.0", "--port", "5001"]`
-- 生产环境: 迁移到 PostgreSQL
+**当前方案**:
+- 本地受限环境可以继续用 SQLite。
+- 服务器和 Docker 部署统一使用 PostgreSQL，`docker-compose.yml` 会启动 `testmaster-postgres` 并通过 `DATABASE_URL=postgresql+asyncpg://...@postgres:5432/testmaster` 连接。
 
 ### 坑8: Docker 网络问题
 

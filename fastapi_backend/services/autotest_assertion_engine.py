@@ -450,7 +450,9 @@ def execute_assertions(
 
             operator = _normalize_operator(rule)
             expected = _normalize_expected(rule)
-            actual = get_field_value(field, status_code, response_body, response_time_ms, response_headers)
+            expression = rule.get("expression")
+            effective_field = expression if expression and field in {"body", "response_body", "json_body"} else field
+            actual = get_field_value(effective_field, status_code, response_body, response_time_ms, response_headers)
             passed = compare_values(actual, operator, expected)
 
             if not passed:
@@ -460,7 +462,7 @@ def execute_assertions(
             details.append(
                 {
                     "type": "assertion",
-                    "field": field,
+                    "field": effective_field,
                     "operator": operator,
                     "expected": expected,
                     "actual": actual,

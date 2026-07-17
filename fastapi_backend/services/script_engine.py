@@ -11,7 +11,9 @@
 import json
 import logging
 import re
+import sys
 import threading
+import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -744,10 +746,20 @@ class PythonScriptEngine:
             holder["logs"].append(" ".join(str(a) for a in args))
 
         def _run():
+            deadline = time.monotonic() + float(timeout)
+
+            def _timeout_trace(frame, event, arg):
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"脚本执行超时（>{timeout}s）")
+                return _timeout_trace
+
+            sys.settrace(_timeout_trace)
             try:
                 PythonScriptEngine._exec_restricted(script, pm, _safe_print)
             except Exception as e:  # noqa: BLE001 - 沙箱需捕获所有异常
                 holder["error"] = f"{type(e).__name__}: {e}"
+            finally:
+                sys.settrace(None)
 
         thread = threading.Thread(target=_run, name="pm-python-script", daemon=True)
         thread.start()

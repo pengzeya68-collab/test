@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <div class="not-found">
     <div class="not-found-content">
       <h1 class="error-code">404</h1>
-      <p class="error-message">页面未找到</p>
-      <p class="error-detail">你访问的页面不存在或已被移除</p>
-      <el-button type="primary" @click="router.push('/')">返回首页</el-button>
+      <p class="error-message">椤甸潰鏈壘鍒</p>
+      <p class="error-detail">浣犺闂殑椤甸潰涓嶅瓨鍦ㄦ垨宸茶绉婚櫎</p>
+      <el-button type="primary" @click="router.push('/')">杩斿洖棣栭〉</el-button>
     </div>
   </div>
 </template>
@@ -50,3 +50,4 @@ const router = useRouter()
   margin: 0 0 32px;
 }
 </style>
+

@@ -25,6 +25,16 @@
         <el-form-item label="期望值" v-if="!['exists', 'not_exists', 'empty', 'not_empty'].includes(config.operator)">
           <el-input v-model="config.value" placeholder="期望值" />
         </el-form-item>
+        <el-form-item label="满足时">
+          <el-select v-model="config.then_branch" multiple filterable placeholder="选择要执行的步骤" style="width:100%">
+            <el-option v-for="step in availableSteps" :key="step.id" :label="step.label" :value="step.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="不满足时">
+          <el-select v-model="config.else_branch" multiple filterable placeholder="选择要执行的步骤" style="width:100%">
+            <el-option v-for="step in availableSteps" :key="step.id" :label="step.label" :value="step.id" />
+          </el-select>
+        </el-form-item>
       </el-form>
     </template>
 
@@ -36,6 +46,11 @@
         </el-form-item>
         <el-form-item label="循环变量">
           <el-input v-model="config.var_name" placeholder="默认为 i" />
+        </el-form-item>
+        <el-form-item label="循环步骤">
+          <el-select v-model="config.body" multiple filterable placeholder="选择循环执行的步骤" style="width:100%">
+            <el-option v-for="step in availableSteps" :key="step.id" :label="step.label" :value="step.id" />
+          </el-select>
         </el-form-item>
       </el-form>
     </template>
@@ -51,6 +66,11 @@
         </el-form-item>
         <el-form-item label="索引变量">
           <el-input v-model="config.index_var" placeholder="默认为 index" />
+        </el-form-item>
+        <el-form-item label="循环步骤">
+          <el-select v-model="config.body" multiple filterable placeholder="选择循环执行的步骤" style="width:100%">
+            <el-option v-for="step in availableSteps" :key="step.id" :label="step.label" :value="step.id" />
+          </el-select>
         </el-form-item>
       </el-form>
     </template>
@@ -69,6 +89,11 @@
       <el-form :model="config" label-width="80px" size="small">
         <el-form-item label="分组名称">
           <el-input v-model="config.name" placeholder="分组名称" />
+        </el-form-item>
+        <el-form-item label="包含步骤">
+          <el-select v-model="config.children" multiple filterable placeholder="选择分组内步骤" style="width:100%">
+            <el-option v-for="step in availableSteps" :key="step.id" :label="step.label" :value="step.id" />
+          </el-select>
         </el-form-item>
       </el-form>
     </template>
@@ -114,7 +139,8 @@ import CodeEditor from '@/components/CodeEditor.vue'
 
 const props = defineProps({
   stepType: { type: String, required: true },
-  stepConfig: { type: Object, default: () => ({}) }
+  stepConfig: { type: Object, default: () => ({}) },
+  availableSteps: { type: Array, default: () => [] }
 })
 
 const emit = defineEmits(['save'])
@@ -163,6 +189,9 @@ const loadScenarios = async (visible) => {
 
 const handleSave = () => {
   const output = { ...config.value }
+  if (['if_condition', 'for_loop', 'for_each', 'group'].includes(props.stepType)) {
+    output.reference_mode = 'id'
+  }
   if (props.stepType === 'if_condition') {
     // 同时保留 field 字段（前端显示用）和 condition 对象（后端使用）
     output.field = config.value.field || ''

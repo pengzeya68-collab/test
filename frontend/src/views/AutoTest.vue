@@ -90,6 +90,8 @@
         </div>
         <!-- 跳转型快捷入口 -->
         <div class="quick-entries">
+          <el-button class="quick-btn ui-entry" type="primary" @click="$router.push('/ui-automation/cases')"><span>🖥 UI 自动化</span></el-button>
+          <el-button class="quick-btn" @click="$router.push('/ui-automation/suites')"><span>📦 UI 回归套件</span></el-button>
           <el-button class="quick-btn" @click="$router.push('/ai-generate-cases')">
             <span>🧪 AI生成用例</span>
             <el-tag size="small" type="warning" class="new-tag">新</el-tag>

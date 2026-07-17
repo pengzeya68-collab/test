@@ -91,6 +91,7 @@ async def init_autotest_db() -> None:
                         ("current_version", "VARCHAR(50)"),
                         ("pre_script_language", "VARCHAR(20) DEFAULT 'javascript'"),
                         ("post_script_language", "VARCHAR(20) DEFAULT 'javascript'"),
+                        ("request_config", "JSON"),
                     ]
                     for col_name, col_type in migrations:
                         if col_name not in cols:

@@ -1,13 +1,13 @@
-<template>
+﻿<template>
   <div class="skill-analysis-container">
     <header class="analysis-header">
       <div class="header-titles">
-        <h1 class="page-title">技能分析看板</h1>
-        <p class="page-subtitle">基于你的练习与面试表现，全方位剖析核心技术栈的掌握情况</p>
+        <h1 class="page-title">鎶€鑳藉垎鏋愮湅鏉</h1>
+        <p class="page-subtitle">鍩轰簬浣犵殑缁冧範涓庨潰璇曡〃鐜帮紝鍏ㄦ柟浣嶅墫鏋愭牳蹇冩妧鏈爤鐨勬帉鎻℃儏鍐</p>
       </div>
       <div class="overall-badge">
-        <span class="badge-label">综合胜任率</span>
-        <span class="badge-value">{{ Math.round(animatedScore) }}<span class="badge-unit">分</span></span>
+        <span class="badge-label">缁煎悎鑳滀换鐜</span>
+        <span class="badge-value">{{ Math.round(animatedScore) }}<span class="badge-unit">鍒</span></span>
         <span class="badge-level">{{ overallLevel }}</span>
       </div>
     </header>
@@ -16,8 +16,8 @@
       <section class="dashboard-section">
         <div class="section-header">
           <h2 class="section-title">
-            <span class="title-dot">◈</span>
-            能力评估与提升建议
+            <span class="title-dot">鈼</span>
+            鑳藉姏璇勪及涓庢彁鍗囧缓璁?
           </h2>
           <div class="title-glow-line"></div>
         </div>
@@ -40,14 +40,14 @@
               </svg>
               <div class="score-inner">
                 <span class="score-num">{{ Math.round(animatedScore) }}</span>
-                <span class="score-unit">分</span>
+                <span class="score-unit">鍒</span>
               </div>
             </div>
             <div class="score-info">
-              <h3>能力评估</h3>
+              <h3>鑳藉姏璇勪及</h3>
               <p class="level-desc">{{ levelDescription }}</p>
               <div class="improvement-tip">
-                <span class="tip-icon">💡</span>
+                <span class="tip-icon">馃挕</span>
                 <span>{{ improvementTip }}</span>
               </div>
             </div>
@@ -59,8 +59,8 @@
         <div class="chart-card">
           <div class="section-header">
             <h2 class="section-title">
-              <span class="title-dot">◈</span>
-              技能雷达图
+              <span class="title-dot">鈼</span>
+              鎶€鑳介浄杈惧浘
             </h2>
             <div class="title-glow-line"></div>
           </div>
@@ -72,8 +72,8 @@
         <div class="chart-card">
           <div class="section-header">
             <h2 class="section-title">
-              <span class="title-dot">◈</span>
-              技术栈掌握度
+              <span class="title-dot">鈼</span>
+              鎶€鏈爤鎺屾彙搴?
             </h2>
             <div class="title-glow-line"></div>
           </div>
@@ -85,8 +85,8 @@
         <div class="chart-card chart-card-full">
           <div class="section-header">
             <h2 class="section-title">
-              <span class="title-dot">◈</span>
-              技能提升进度
+              <span class="title-dot">鈼</span>
+              鎶€鑳芥彁鍗囪繘搴?
             </h2>
             <div class="title-glow-line"></div>
           </div>
@@ -99,8 +99,8 @@
       <section class="dashboard-section">
         <div class="section-header">
           <h2 class="section-title">
-            <span class="title-dot">◈</span>
-            核心技术栈掌握详情
+            <span class="title-dot">鈼</span>
+            鏍稿績鎶€鏈爤鎺屾彙璇︽儏
           </h2>
           <div class="title-glow-line"></div>
         </div>
@@ -117,7 +117,7 @@
                 <h3 class="module-name">{{ skill.name }}</h3>
               </div>
               <div class="status-group">
-                <span class="score-badge" :class="getScoreClass(skill.score)">{{ skill.score }}分</span>
+                <span class="score-badge" :class="getScoreClass(skill.score)">{{ skill.score }}鍒</span>
                 <span class="status-tag" :class="getLevelClass(skill.level)">{{ skill.level }}</span>
               </div>
             </div>
@@ -137,7 +137,7 @@
 
             <div class="card-footer-tags">
               <div class="suggestion-row">
-                <span class="suggestion-icon">💡</span>
+                <span class="suggestion-icon">馃挕</span>
                 <span class="suggestion-text">{{ skill.suggestion }}</span>
               </div>
             </div>
@@ -149,14 +149,14 @@
     <div class="modal-overlay" v-if="detailVisible" @click.self="detailVisible = false">
       <div class="modal-card">
         <div class="modal-header">
-          <h2 class="modal-title">技能详情</h2>
-          <button class="modal-close" @click="detailVisible = false">✕</button>
+          <h2 class="modal-title">鎶€鑳借鎯</h2>
+          <button class="modal-close" @click="detailVisible = false">鉁</button>
         </div>
         <div class="modal-body" v-if="selectedSkill">
           <div class="detail-header">
             <div class="detail-score">
               <span class="detail-score-num">{{ selectedSkill.score }}</span>
-              <span class="detail-score-unit">分</span>
+              <span class="detail-score-unit">鍒</span>
             </div>
             <div class="detail-info">
               <h3>{{ selectedSkill.name }}</h3>
@@ -166,12 +166,12 @@
           </div>
 
           <div class="detail-section">
-            <h4>提升建议</h4>
+            <h4>鎻愬崌寤鸿</h4>
             <p class="detail-suggestion">{{ selectedSkill.suggestion }}</p>
           </div>
 
           <div class="detail-section" v-if="selectedSkill.recommended_exercises?.length > 0">
-            <h4>推荐练习</h4>
+            <h4>鎺ㄨ崘缁冧範</h4>
             <div class="exercise-list">
               <div
                 class="exercise-item"
@@ -183,7 +183,7 @@
                   <span class="exercise-title">{{ ex.title }}</span>
                   <span class="exercise-diff-tag" :class="'diff-' + ex.difficulty">{{ getDifficultyText(ex.difficulty) }}</span>
                 </div>
-                <span class="exercise-time">{{ ex.time_estimate }}分钟</span>
+                <span class="exercise-time">{{ ex.time_estimate }}鍒嗛挓</span>
               </div>
             </div>
           </div>
@@ -231,11 +231,11 @@ const TEXT_LIGHT = '#e2e8f0'
 const TEXT_DIM = '#94a3b8'
 
 const DEFAULT_SKILLS = [
-  { key: 'api_automation', name: '接口自动化测试', score: 82, level: '熟练', description: '掌握 REST/GraphQL 接口测试，熟练使用 Pytest + Requests 构建自动化框架', suggestion: '建议深入学习契约测试(Pact)与接口Mock服务治理' },
-  { key: 'python_backend', name: 'Python 后端开发', score: 75, level: '掌握', description: '熟练使用 FastAPI/Flask 开发测试工具与数据服务', suggestion: '建议学习异步编程(asyncio)与微服务架构设计' },
-  { key: 'vue_frontend', name: 'Vue 前端开发', score: 68, level: '掌握', description: '掌握 Vue3 + Element Plus 构建测试管理平台', suggestion: '建议学习 Pinia 状态管理与组件库深度定制' },
-  { key: 'cicd_pipeline', name: 'CI/CD 流水线部署', score: 70, level: '掌握', description: '掌握 Jenkins/GitLab CI 构建自动化测试流水线', suggestion: '建议学习 GitHub Actions 与 ArgoCD 持续交付' },
-  { key: 'cloud_native', name: '云原生与自动化工具', score: 65, level: '了解', description: '掌握 Docker/K8s 容器化部署与自动化运维工具', suggestion: '建议学习 Helm Chart 与 Istio 服务网格' }
+  { key: 'api_automation', name: '接口自动化测试', score: 82, level: '熟练', description: '掌握 REST 和 GraphQL 接口测试。', suggestion: '深入学习契约测试与 Mock 服务治理。' },
+  { key: 'python_backend', name: 'Python 后端开发', score: 75, level: '掌握', description: '使用 FastAPI 或 Flask 开发测试工具。', suggestion: '学习异步编程与微服务架构。' },
+  { key: 'vue_frontend', name: 'Vue 前端开发', score: 68, level: '掌握', description: '使用 Vue 3 构建测试管理平台。', suggestion: '学习状态管理和组件库定制。' },
+  { key: 'cicd_pipeline', name: 'CI/CD 流水线', score: 70, level: '掌握', description: '使用 Jenkins 或 GitLab CI 构建测试流水线。', suggestion: '学习 GitHub Actions 和持续交付。' },
+  { key: 'cloud_native', name: '云原生与自动化工具', score: 65, level: '了解', description: '掌握 Docker 和 Kubernetes 基础。', suggestion: '学习 Helm 与服务网格。' }
 ]
 
 const DEFAULT_RADAR_DATA = {
@@ -243,7 +243,7 @@ const DEFAULT_RADAR_DATA = {
     { name: '接口自动化测试', max: 100 },
     { name: 'Python 后端开发', max: 100 },
     { name: 'Vue 前端开发', max: 100 },
-    { name: 'CI/CD 流水线部署', max: 100 },
+    { name: 'CI/CD 流水线', max: 100 },
     { name: '云原生与自动化工具', max: 100 }
   ],
   user_data: [82, 75, 68, 70, 65],
@@ -259,7 +259,7 @@ const skills = ref(DEFAULT_SKILLS)
 const radarData = ref(DEFAULT_RADAR_DATA)
 const lineData = ref(DEFAULT_LINE_DATA)
 const overallScore = ref(82)
-const overallLevel = ref('熟练')
+const overallLevel = ref('鐔熺粌')
 const animatedScore = ref(0)
 const detailVisible = ref(false)
 const selectedSkill = ref(null)
@@ -291,21 +291,21 @@ const animateScore = (target) => {
 
 const levelDescription = computed(() => {
   const map = {
-    '入门': '你刚刚进入测试开发领域，还有很大的提升空间，加油！',
-    '了解': '你已经掌握了基础的测试开发知识，可以尝试更多实战练习。',
-    '掌握': '你的技能已经比较扎实，可以承担大部分测试开发工作。',
-    '熟练': '你已经是一名优秀的测试开发工程师，能够独立负责项目测试平台建设。',
-    '精通': '你在测试开发领域已经有很深的造诣，可以指导新人成长。',
-    '专家': '你是测试开发领域的专家，在行业内有很高的水平。'
+    '入门': '已经进入测试开发领域，还有较大的提升空间。',
+    '了解': '已经掌握基础知识，可以增加实战练习。',
+    '掌握': '技能基础比较扎实，可以承担常规测试开发工作。',
+    '熟练': '能够独立负责测试平台和自动化项目。',
+    '精通': '在测试开发领域具备较深积累。',
+    '专家': '具备行业级测试架构与质量工程能力。'
   }
-  return map[overallLevel.value] || '继续努力，你会越来越优秀！'
+  return map[overallLevel.value] || '继续提升，你会越来越优秀。'
 })
 
 const improvementTip = computed(() => {
   const score = overallScore.value
-  if (score < 60) return '建议先巩固基础理论知识，多做基础练习。'
-  if (score < 80) return '你的基础不错，可以开始学习进阶技能，提升综合能力。'
-  return '你已经很优秀了，可以尝试更高难度的挑战，向专家方向发展。'
+  if (score < 60) return '建议先巩固基础理论，多做基础练习。'
+  if (score < 80) return '可以开始学习进阶技能，提升综合能力。'
+  return '可以挑战更高难度任务，向专家方向发展。'
 })
 
 const radarOption = computed(() => {
@@ -318,7 +318,7 @@ const radarOption = computed(() => {
       textStyle: { color: TEXT_LIGHT }
     },
     legend: {
-      data: ['我的能力', '行业平均'],
+      data: ['鎴戠殑鑳藉姏', '琛屼笟骞冲潎'],
       bottom: 10,
       textStyle: { color: TEXT_DIM, fontSize: 12 },
       itemWidth: 16,
@@ -351,14 +351,14 @@ const radarOption = computed(() => {
       axisLine: { lineStyle: { color: 'rgba(var(--tm-color-primary-rgb), 0.2)' } }
     },
     series: [{
-      name: '能力对比',
+      name: '鑳藉姏瀵规瘮',
       type: 'radar',
       symbol: 'circle',
       symbolSize: 6,
       data: [
         {
           value: radarData.value.user_data,
-          name: '我的能力',
+          name: '鎴戠殑鑳藉姏',
           itemStyle: { color: PRIMARY_PURPLE },
           lineStyle: { width: 2, color: PRIMARY_PURPLE, shadowColor: 'rgba(var(--tm-color-primary-rgb), 0.6)', shadowBlur: 8 },
           areaStyle: {
@@ -374,7 +374,7 @@ const radarOption = computed(() => {
         },
         {
           value: radarData.value.industry_data,
-          name: '行业平均',
+          name: '琛屼笟骞冲潎',
           itemStyle: { color: '#64748b' },
           lineStyle: { width: 1.5, color: '#64748b', type: 'dashed' },
           areaStyle: { color: 'rgba(100, 116, 139, 0.08)' }
@@ -394,7 +394,7 @@ const barOption = computed(() => {
       backgroundColor: 'rgba(18, 18, 31, 0.9)',
       borderColor: 'rgba(var(--tm-color-primary-rgb), 0.3)',
       textStyle: { color: TEXT_LIGHT },
-      formatter: (params) => `<strong>${params[0].name}</strong><br/>掌握度：<span style="color:${PRIMARY_MAGENTA};font-weight:bold">${params[0].value}%</span>`
+      formatter: (params) => `<strong>${params[0].name}</strong><br/>鎺屾彙搴︼細<span style="color:${PRIMARY_MAGENTA};font-weight:bold">${params[0].value}%</span>`
     },
     grid: { left: '3%', right: '8%', top: '8%', bottom: '8%' },
     xAxis: {
@@ -445,7 +445,7 @@ const lineOption = computed(() => {
       backgroundColor: 'rgba(18, 18, 31, 0.9)',
       borderColor: 'rgba(var(--tm-color-primary-rgb), 0.3)',
       textStyle: { color: TEXT_LIGHT },
-      formatter: (params) => `<strong>${params[0].name}</strong><br/>综合能力：<span style="color:${PRIMARY_PURPLE};font-weight:bold">${params[0].value}分</span>`
+      formatter: (params) => `<strong>${params[0].name}</strong><br/>缁煎悎鑳藉姏锛?span style="color:${PRIMARY_PURPLE};font-weight:bold">${params[0].value}鍒</span>`
     },
     grid: { left: '3%', right: '5%', top: '12%', bottom: '8%' },
     xAxis: {
@@ -461,7 +461,7 @@ const lineOption = computed(() => {
       splitLine: { lineStyle: { color: 'rgba(var(--tm-color-primary-rgb), 0.08)' } }
     },
     series: [{
-      name: '综合能力', type: 'line', smooth: true,
+      name: '缁煎悎鑳藉姏', type: 'line', smooth: true,
       symbol: 'circle', symbolSize: 8,
       lineStyle: { width: 3, color: PRIMARY_PURPLE, shadowColor: 'rgba(var(--tm-color-primary-rgb), 0.5)', shadowBlur: 10 },
       itemStyle: { color: PRIMARY_PURPLE, borderColor: '#12121f', borderWidth: 2 },
@@ -502,13 +502,12 @@ const fetchSkillData = async () => {
     if (res.overall_score) overallScore.value = res.overall_score
     if (res.overall_level) overallLevel.value = res.overall_level
   } catch (error) {
-    console.error('获取技能数据失败，使用默认数据:', error)
+    console.error('鑾峰彇鎶€鑳芥暟鎹け璐ワ紝浣跨敤榛樿鏁版嵁:', error)
   }
   try {
     const res = await request.get('/skills/progress')
     if (res.progress) {
-      // 使用时间维度作为X轴，而非技能名称
-      const months = res.progress.map(p => p.month || p.date || p.period || p.skill).slice(-6)
+      // 浣跨敤鏃堕棿缁村害浣滀负X杞达紝鑰岄潪鎶€鑳藉悕绉?      const months = res.progress.map(p => p.month || p.date || p.period || p.skill).slice(-6)
       const scores = res.progress.map(p => {
         if (!p.target || p.target === 0) return p.score || p.progress || 0
         return Math.round((p.current || 0) / p.target * 100)
@@ -516,7 +515,7 @@ const fetchSkillData = async () => {
       if (months.length > 0) lineData.value = { months, scores }
     }
   } catch (error) {
-    console.error('获取技能进度失败，使用默认数据:', error)
+    console.error('鑾峰彇鎶€鑳借繘搴﹀け璐ワ紝浣跨敤榛樿鏁版嵁:', error)
   }
   loading.value = false
 }
@@ -546,7 +545,7 @@ const getLevelClass = (level) => {
 }
 
 const getDifficultyText = (difficulty) => {
-  const map = { 'easy': '简单', 'medium': '中等', 'hard': '困难' }
+  const map = { easy: '简单', medium: '中等', hard: '困难' }
   return map[difficulty] || difficulty
 }
 
@@ -556,7 +555,7 @@ const viewSkillDetail = async (skill) => {
     selectedSkill.value = res
     detailVisible.value = true
   } catch (error) {
-    console.error('获取技能详情失败:', error)
+    console.error('鑾峰彇鎶€鑳借鎯呭け璐?', error)
     selectedSkill.value = skill
     detailVisible.value = true
   }

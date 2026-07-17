@@ -1,19 +1,19 @@
-<template>
+﻿<template>
   <div class="leaderboard-page">
     <header class="page-header">
       <div class="header-titles">
-        <h1 class="page-title">🏆 排行榜</h1>
-        <p class="page-desc">与全站学习者一较高下，争夺荣耀排名</p>
+        <h1 class="page-title">馃弳 鎺掕姒</h1>
+        <p class="page-desc">涓庡叏绔欏涔犺€呬竴杈冮珮涓嬶紝浜夊ず鑽ｈ€€鎺掑悕</p>
       </div>
     </header>
 
     <div class="my-rank-bar" v-if="myRank">
       <div class="rank-bar-left">
-        <span class="rank-bar-label">我的排名</span>
+        <span class="rank-bar-label">鎴戠殑鎺掑悕</span>
         <span class="rank-bar-number">#{{ myRank }}</span>
       </div>
       <div class="rank-bar-right">
-        <span class="rank-bar-metric">{{ currentTab === 'score' ? '积分' : currentTab === 'weekly' ? '本周答对' : '连续天数' }}</span>
+        <span class="rank-bar-metric">{{ currentTab === 'score' ? '绉垎' : currentTab === 'weekly' ? '鏈懆绛斿' : '杩炵画澶╂暟' }}</span>
         <span class="rank-bar-value">{{ myScore }}</span>
       </div>
     </div>
@@ -23,39 +23,39 @@
         class="tab-item"
         :class="{ active: currentTab === 'score' }"
         @click="switchTab('score')"
-      >🏅 积分榜</div>
+      >馃弲 绉垎姒</div>
       <div
         class="tab-item"
         :class="{ active: currentTab === 'weekly' }"
         @click="switchTab('weekly')"
-      >📅 本周活跃</div>
+      >馃搮 鏈懆娲昏穬</div>
       <div
         class="tab-item"
         :class="{ active: currentTab === 'streak' }"
         @click="switchTab('streak')"
-      >🔥 连续签到</div>
+      >馃敟 杩炵画绛惧埌</div>
     </div>
 
     <div class="tab-content">
       <template v-if="currentTab === 'score'">
         <div class="podium" v-if="scoreList.length >= 3">
           <div class="podium-item second" @click="viewProfile(scoreList[1])">
-            <div class="podium-medal">🥈</div>
+            <div class="podium-medal">馃</div>
             <div class="podium-name">{{ scoreList[1].username }}</div>
-            <div class="podium-score">{{ scoreList[1].score }}<span class="podium-unit"> 分</span></div>
+            <div class="podium-score">{{ scoreList[1].score }}<span class="podium-unit"> 鍒</span></div>
             <div class="podium-bar bar-silver">2</div>
           </div>
           <div class="podium-item first" @click="viewProfile(scoreList[0])">
-            <div class="podium-crown">👑</div>
-            <div class="podium-medal">🥇</div>
+            <div class="podium-crown">馃憫</div>
+            <div class="podium-medal">馃</div>
             <div class="podium-name">{{ scoreList[0].username }}</div>
-            <div class="podium-score">{{ scoreList[0].score }}<span class="podium-unit"> 分</span></div>
+            <div class="podium-score">{{ scoreList[0].score }}<span class="podium-unit"> 鍒</span></div>
             <div class="podium-bar bar-gold">1</div>
           </div>
           <div class="podium-item third" @click="viewProfile(scoreList[2])">
-            <div class="podium-medal">🥉</div>
+            <div class="podium-medal">馃</div>
             <div class="podium-name">{{ scoreList[2].username }}</div>
-            <div class="podium-score">{{ scoreList[2].score }}<span class="podium-unit"> 分</span></div>
+            <div class="podium-score">{{ scoreList[2].score }}<span class="podium-unit"> 鍒</span></div>
             <div class="podium-bar bar-bronze">3</div>
           </div>
         </div>
@@ -68,10 +68,10 @@
             :class="{ 'is-me': item.is_me }"
           >
             <span class="rank-num" :class="getRankClass(item.rank)">{{ item.rank }}</span>
-            <span class="rank-avatar-emoji">{{ item.rank <= 3 ? ['🥇','🥈','🥉'][item.rank-1] : '👤' }}</span>
+            <span class="rank-avatar-emoji">{{ item.rank <= 3 ? ['馃','馃','馃'][item.rank-1] : '馃懁' }}</span>
             <span class="rank-username">{{ item.username }}</span>
-            <span class="rank-score">{{ item.score }} 分</span>
-            <span class="me-badge" v-if="item.is_me">我</span>
+            <span class="rank-score">{{ item.score }} 鍒</span>
+            <span class="me-badge" v-if="item.is_me">鎴</span>
           </div>
         </div>
       </template>
@@ -85,15 +85,15 @@
             :class="{ 'is-me': item.is_me }"
           >
             <span class="rank-num" :class="getRankClass(item.rank)">{{ item.rank }}</span>
-            <span class="rank-avatar-emoji">{{ item.rank <= 3 ? ['🥇','🥈','🥉'][item.rank-1] : '👤' }}</span>
+            <span class="rank-avatar-emoji">{{ item.rank <= 3 ? ['馃','馃','馃'][item.rank-1] : '馃懁' }}</span>
             <span class="rank-username">{{ item.username }}</span>
-            <span class="rank-score">{{ item.weekly_correct }}/{{ item.weekly_total }} 题</span>
-            <span class="me-badge" v-if="item.is_me">我</span>
+            <span class="rank-score">{{ item.weekly_correct }}/{{ item.weekly_total }} 棰</span>
+            <span class="me-badge" v-if="item.is_me">鎴</span>
           </div>
         </div>
         <div class="empty-state" v-else>
-          <div class="empty-icon">📭</div>
-          <p class="empty-text">本周还没有人做题</p>
+          <div class="empty-icon">馃摥</div>
+          <p class="empty-text">鏈懆杩樻病鏈変汉鍋氶</p>
         </div>
       </template>
 
@@ -106,15 +106,15 @@
             :class="{ 'is-me': item.is_me }"
           >
             <span class="rank-num" :class="getRankClass(item.rank)">{{ item.rank }}</span>
-            <span class="rank-avatar-emoji">{{ item.rank <= 3 ? ['🥇','🥈','🥉'][item.rank-1] : '👤' }}</span>
+            <span class="rank-avatar-emoji">{{ item.rank <= 3 ? ['馃','馃','馃'][item.rank-1] : '馃懁' }}</span>
             <span class="rank-username">{{ item.username }}</span>
-            <span class="rank-score">{{ item.streak }} 天</span>
-            <span class="me-badge" v-if="item.is_me">我</span>
+            <span class="rank-score">{{ item.streak }} 澶</span>
+            <span class="me-badge" v-if="item.is_me">鎴</span>
           </div>
         </div>
         <div class="empty-state" v-else>
-          <div class="empty-icon">📭</div>
-          <p class="empty-text">还没有人签到</p>
+          <div class="empty-icon">馃摥</div>
+          <p class="empty-text">杩樻病鏈変汉绛惧埌</p>
         </div>
       </template>
     </div>
@@ -153,8 +153,8 @@ const fetchScoreLeaderboard = async () => {
     myRank.value = res.my_rank
     myScore.value = res.my_score
   } catch (error) {
-    console.error('获取积分排行失败:', error)
-    ElMessage.error('获取积分排行失败，请稍后重试')
+    console.error('鑾峰彇绉垎鎺掕澶辫触:', error)
+    ElMessage.error('鑾峰彇绉垎鎺掕澶辫触锛岃绋嶅悗閲嶈瘯')
   }
 }
 
@@ -165,8 +165,8 @@ const fetchWeeklyLeaderboard = async () => {
     myRank.value = res.my_rank || 0
     myScore.value = res.my_weekly_correct
   } catch (error) {
-    console.error('获取周排行失败:', error)
-    ElMessage.error('获取周排行失败，请稍后重试')
+    console.error('获取周排行榜失败', error)
+    ElMessage.error('获取周排行榜失败，请稍后重试')
   }
 }
 
@@ -177,8 +177,8 @@ const fetchStreakLeaderboard = async () => {
     myRank.value = res.my_rank || 0
     myScore.value = res.my_streak
   } catch (error) {
-    console.error('获取签到排行失败:', error)
-    ElMessage.error('获取签到排行失败，请稍后重试')
+    console.error('鑾峰彇绛惧埌鎺掕澶辫触:', error)
+    ElMessage.error('鑾峰彇绛惧埌鎺掕澶辫触锛岃绋嶅悗閲嶈瘯')
   }
 }
 

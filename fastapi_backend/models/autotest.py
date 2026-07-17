@@ -78,6 +78,7 @@ class AutoTestCase(Base):
     pre_script_language = Column(String(20), nullable=False, default="javascript", comment="前置脚本语言: javascript/python")
     post_script_language = Column(String(20), nullable=False, default="javascript", comment="后置脚本语言: javascript/python")
     response_schema = Column(JSON, nullable=True, comment="响应JSON Schema")
+    request_config = Column(JSON, nullable=True, comment="请求执行策略：认证、Cookie、超时、重试、TLS和重定向")
     # 当前版本号（冗余字段，方便查询，与最新一条 is_current=True 的 CaseVersion.version_number 同步）
     current_version = Column(String(50), nullable=True, comment="当前版本号(冗余,与最新版本快照同步)")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
@@ -793,4 +794,3 @@ class AssertTemplate(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         comment="更新时间",
     )
-

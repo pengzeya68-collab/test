@@ -41,6 +41,9 @@
             </template>
           </el-autocomplete>
           <el-button size="small" @click="showHelp = true" style="margin-left: 10px;">❓ 使用说明</el-button>
+          <el-button type="success" :loading="debugSending" @click="handleDraftSend" style="margin-left: 8px;">
+            <el-icon><VideoPlay /></el-icon>发送
+          </el-button>
           <el-button v-if="isEdit" size="small" @click="openVersionManager" style="margin-left: 8px;">
             <el-icon><Clock /></el-icon>
             版本管理
@@ -60,6 +63,48 @@
 
       <!-- Tabs -->
       <el-tabs v-model="activeTab" class="case-tabs">
+        <el-tab-pane label="请求设置" name="request-settings">
+          <div class="tab-content request-settings-grid">
+            <el-form label-position="top">
+              <el-form-item label="认证方式">
+                <el-select v-model="caseForm.requestConfig.auth.type" style="width: 100%">
+                  <el-option label="无认证" value="none" />
+                  <el-option label="Bearer Token" value="bearer" />
+                  <el-option label="Basic Auth" value="basic" />
+                  <el-option label="API Key" value="api_key" />
+                </el-select>
+              </el-form-item>
+              <template v-if="caseForm.requestConfig.auth.type === 'bearer'">
+                <el-form-item label="Token"><el-input v-model="caseForm.requestConfig.auth.token" show-password /></el-form-item>
+              </template>
+              <template v-else-if="caseForm.requestConfig.auth.type === 'basic'">
+                <el-form-item label="用户名"><el-input v-model="caseForm.requestConfig.auth.username" /></el-form-item>
+                <el-form-item label="密码"><el-input v-model="caseForm.requestConfig.auth.password" show-password /></el-form-item>
+              </template>
+              <template v-else-if="caseForm.requestConfig.auth.type === 'api_key'">
+                <el-form-item label="参数位置">
+                  <el-radio-group v-model="caseForm.requestConfig.auth.in">
+                    <el-radio value="header">Header</el-radio><el-radio value="query">Query</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+                <el-form-item label="参数名"><el-input v-model="caseForm.requestConfig.auth.key" /></el-form-item>
+                <el-form-item label="参数值"><el-input v-model="caseForm.requestConfig.auth.value" show-password /></el-form-item>
+              </template>
+            </el-form>
+            <el-form label-position="top">
+              <el-form-item label="请求超时（毫秒）"><el-input-number v-model="caseForm.requestConfig.timeout_ms" :min="100" :max="600000" :step="1000" /></el-form-item>
+              <el-form-item label="Cookie（JSON 对象）">
+                <el-input v-model="caseForm.requestConfig.cookiesJson" type="textarea" :rows="3" placeholder='{"session":"{{session_id}}"}' />
+              </el-form-item>
+              <el-form-item label="失败重试次数"><el-input-number v-model="caseForm.requestConfig.retry.count" :min="0" :max="10" /></el-form-item>
+              <el-form-item label="重试间隔（毫秒）"><el-input-number v-model="caseForm.requestConfig.retry.interval_ms" :min="0" :max="60000" :step="100" /></el-form-item>
+              <el-form-item label="连接策略">
+                <el-checkbox v-model="caseForm.requestConfig.follow_redirects">自动跟随重定向</el-checkbox>
+                <el-checkbox v-model="caseForm.requestConfig.verify_ssl">校验 TLS 证书</el-checkbox>
+              </el-form-item>
+            </el-form>
+          </div>
+        </el-tab-pane>
         <!-- Headers -->
         <el-tab-pane label="Headers" name="headers">
           <div class="tab-content">
@@ -172,11 +217,14 @@
                 <el-radio value="none">none</el-radio>
                 <el-radio value="raw">raw</el-radio>
                 <el-radio value="form-data">form-data</el-radio>
+                <el-radio value="x-www-form-urlencoded">x-www-form-urlencoded</el-radio>
+                <el-radio value="graphql">GraphQL</el-radio>
+                <el-radio value="binary">binary</el-radio>
               </el-radio-group>
             </div>
 
             <!-- Raw Body -->
-            <div v-if="caseForm.bodyType === 'raw'" class="raw-editor">
+            <div v-if="['raw', 'graphql', 'binary'].includes(caseForm.bodyType)" class="raw-editor">
               <div class="content-type-selector">
                 <el-select v-model="caseForm.contentType" style="width: 150px">
                   <el-option label="JSON" value="application/json" />
@@ -192,8 +240,16 @@
             </div>
 
             <!-- Form Data -->
-            <div v-if="caseForm.bodyType === 'form-data'" class="form-data-editor">
+            <div v-if="['form-data', 'x-www-form-urlencoded'].includes(caseForm.bodyType)" class="form-data-editor">
               <el-table :data="caseForm.formData" border size="small">
+                <el-table-column label="类型" width="100">
+                  <template #default="{ row }">
+                    <el-select v-model="row.type">
+                      <el-option label="文本" value="text" />
+                      <el-option v-if="caseForm.bodyType === 'form-data'" label="文件" value="file" />
+                    </el-select>
+                  </template>
+                </el-table-column>
                 <el-table-column label="Key" min-width="150">
                   <template #default="{ row }">
                     <el-input v-model="row.key" placeholder="参数名" />
@@ -201,7 +257,16 @@
                 </el-table-column>
                 <el-table-column label="Value" min-width="200">
                   <template #default="{ row }">
+                    <el-upload
+                      v-if="row.type === 'file'"
+                      :auto-upload="false"
+                      :show-file-list="false"
+                      :on-change="file => handleFormFile(file, row)"
+                    >
+                      <el-button>{{ row.filename || '选择文件' }}</el-button>
+                    </el-upload>
                     <el-autocomplete
+                      v-else
                       v-model="row.value"
                       :fetch-suggestions="querySearchVars"
                       placeholder="参数值"
@@ -416,6 +481,41 @@
           </div>
         </el-tab-pane>
       </el-tabs>
+
+      <section v-if="debugResult" class="inline-response-panel">
+        <header class="response-summary">
+          <strong>响应</strong>
+          <el-tag :type="debugResult.success ? 'success' : 'danger'">{{ debugResult.status_code || '请求失败' }}</el-tag>
+          <span>{{ debugResult.execution_time || 0 }} ms</span>
+          <span>{{ debugResult.content_length || 0 }} bytes</span>
+          <span v-if="debugResult.attempts?.length > 1">已尝试 {{ debugResult.attempts.length }} 次</span>
+        </header>
+        <el-alert v-if="debugResult.error" :title="debugResult.error" type="error" :closable="false" show-icon />
+        <el-tabs v-else v-model="responseTab">
+          <el-tab-pane label="响应体" name="body">
+            <div v-if="responseTree.length" class="response-inspector">
+              <div class="response-tree-pane">
+                <el-tree :data="responseTree" node-key="path" :expand-on-click-node="false" default-expand-all @node-click="handleResponseNodeClick">
+                  <template #default="{ data }"><span class="response-node"><code>{{ data.path }}</code><span>{{ data.preview }}</span></span></template>
+                </el-tree>
+              </div>
+              <div class="response-rule-pane">
+                <template v-if="selectedResponseNode">
+                  <div><strong>{{ selectedResponseNode.path }}</strong></div>
+                  <pre class="response-code compact">{{ formatDebugValue(selectedResponseNode.value) }}</pre>
+                  <el-button size="small" type="primary" @click="addAssertionFromResponse">添加等值断言</el-button>
+                  <el-button size="small" @click="addExtractorFromResponse">提取为变量</el-button>
+                </template>
+                <el-empty v-else description="选择响应字段后可直接添加断言或提取变量" :image-size="52" />
+              </div>
+            </div>
+            <pre v-else class="response-code">{{ formatDebugValue(debugResult.response_content) }}</pre>
+          </el-tab-pane>
+          <el-tab-pane label="响应头" name="headers"><pre class="response-code">{{ formatDebugValue(debugResult.headers) }}</pre></el-tab-pane>
+          <el-tab-pane label="最终请求" name="request"><pre class="response-code">{{ formatDebugValue(debugResult.request) }}</pre></el-tab-pane>
+          <el-tab-pane label="重试记录" name="attempts"><pre class="response-code">{{ formatDebugValue(debugResult.attempts) }}</pre></el-tab-pane>
+        </el-tabs>
+      </section>
     </div>
 
     <!-- 悬浮按钮，用于打开变量字典 -->
@@ -577,6 +677,28 @@ const drawerBindings = computed(() => props.embedded ? {} : {
 })
 
 const activeTab = ref('headers')
+const responseTab = ref('body')
+const debugSending = ref(false)
+const debugResult = ref(null)
+const selectedResponseNode = ref(null)
+const responseTree = computed(() => {
+  const value = debugResult.value?.response_content
+  if (value === null || value === undefined || typeof value !== 'object') return []
+  const build = (current, path, label) => {
+    const children = []
+    if (Array.isArray(current)) {
+      current.forEach((item, index) => children.push(build(item, `${path}[${index}]`, `[${index}]`)))
+    } else if (current && typeof current === 'object') {
+      Object.entries(current).forEach(([key, item]) => {
+        const childPath = /^[A-Za-z_$][\w$]*$/.test(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`
+        children.push(build(item, childPath, key))
+      })
+    }
+    const preview = children.length ? `${Array.isArray(current) ? 'Array' : 'Object'}(${children.length})` : formatDebugValue(current)
+    return { label, path, value: current, preview: String(preview).slice(0, 100), children }
+  }
+  return [build(value, '$', '$')]
+})
 const showHelp = ref(false)
 const helpData = helpContent.caseEditor
 // 版本管理面板状态
@@ -796,6 +918,12 @@ const caseForm = ref({
   pre_script_language: 'javascript',
   post_script_language: 'javascript',
   response_schema: null,
+  requestConfig: {
+    auth: { type: 'none', in: 'header', key: '', value: '', token: '', username: '', password: '' },
+    cookies: {}, cookiesJson: '{}', timeout_ms: 30000,
+    retry: { count: 0, interval_ms: 0, status_codes: [408, 429, 500, 502, 503, 504] },
+    follow_redirects: true, verify_ssl: true,
+  },
 })
 
 // 断言模板相关
@@ -903,12 +1031,16 @@ const initFormData = (data) => {
       effectiveFormData = data.payload
     }
     if (Array.isArray(effectiveFormData)) {
-      parsedFormData = JSON.parse(JSON.stringify(effectiveFormData))
+      parsedFormData = JSON.parse(JSON.stringify(effectiveFormData)).map(item => ({ type: 'text', ...item }))
     } else if (effectiveFormData && typeof effectiveFormData === 'object') {
       parsedFormData = Object.entries(effectiveFormData).map(([key, value], index) => ({
         id: `fd_${Date.now()}_${index}`,
         key,
-        value: value || ''
+        type: value?.type === 'file' ? 'file' : 'text',
+        value: value?.type === 'file' ? '' : (value ?? ''),
+        filename: value?.filename || '',
+        contentType: value?.content_type || '',
+        contentBase64: value?.content_base64 || '',
       }))
     }
     
@@ -984,6 +1116,16 @@ const initFormData = (data) => {
       pre_script_language: data.pre_script_language || 'javascript',
       post_script_language: data.post_script_language || 'javascript',
       response_schema: data.response_schema || null,
+      requestConfig: {
+        ...(data.request_config || {}),
+        auth: { type: 'none', in: 'header', ...(data.request_config?.auth || {}) },
+        cookies: data.request_config?.cookies || {},
+        cookiesJson: JSON.stringify(data.request_config?.cookies || {}, null, 2),
+        timeout_ms: data.request_config?.timeout_ms || 30000,
+        retry: { count: 0, interval_ms: 0, status_codes: [408, 429, 500, 502, 503, 504], ...(data.request_config?.retry || {}) },
+        follow_redirects: data.request_config?.follow_redirects !== false,
+        verify_ssl: data.request_config?.verify_ssl !== false,
+      },
     }
     
     // 🔥 如果有 body 内容，自动切到 Body Tab 让用户直接看到
@@ -1011,6 +1153,12 @@ const initFormData = (data) => {
       pre_script_language: 'javascript',
       post_script_language: 'javascript',
       response_schema: null,
+      requestConfig: {
+        auth: { type: 'none', in: 'header', key: '', value: '', token: '', username: '', password: '' },
+        cookies: {}, cookiesJson: '{}', timeout_ms: 30000,
+        retry: { count: 0, interval_ms: 0, status_codes: [408, 429, 500, 502, 503, 504] },
+        follow_redirects: true, verify_ssl: true,
+      },
     }
   }
 }
@@ -1238,11 +1386,31 @@ const removeParam = (index) => {
 
 // Form Data
 const addFormData = () => {
-  caseForm.value.formData.push({ key: '', value: '', id: `fd_${Date.now()}` })
+  caseForm.value.formData.push({
+    key: '', value: '', type: 'text', filename: '', contentType: '', contentBase64: '', id: `fd_${Date.now()}`
+  })
 }
 
 const removeFormData = (index) => {
   caseForm.value.formData.splice(index, 1)
+}
+
+const handleFormFile = (uploadFile, row) => {
+  const file = uploadFile?.raw
+  if (!file) return
+  if (file.size > 20 * 1024 * 1024) {
+    ElMessage.error('单个文件不能超过 20 MB')
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => {
+    row.filename = file.name
+    row.contentType = file.type || 'application/octet-stream'
+    row.contentBase64 = String(reader.result || '').split(',', 2)[1] || ''
+    emit('dirty-change', true)
+  }
+  reader.onerror = () => ElMessage.error('文件读取失败')
+  reader.readAsDataURL(file)
 }
 
 // Extractors
@@ -1510,12 +1678,15 @@ const handleSave = async (options = {}) => {
     // 构建 form-data 对象
     const formDataObj = {}
     rawForm.formData.forEach(item => {
-      if (item.key) formDataObj[item.key] = item.value || ''
+      if (!item.key) return
+      formDataObj[item.key] = item.type === 'file'
+        ? { type: 'file', filename: item.filename, content_type: item.contentType, content_base64: item.contentBase64 }
+        : (item.value ?? '')
     })
 
     // 构建 payload
     let payloadData = null
-    if (rawForm.bodyType === 'raw' || rawForm.bodyType === 'json') {
+    if (['raw', 'json', 'graphql', 'binary'].includes(rawForm.bodyType)) {
       if (rawForm.payload && rawForm.payload.trim()) {
         if (rawForm.contentType === 'application/json') {
           // JSON 类型，必须合法
@@ -1532,7 +1703,7 @@ const handleSave = async (options = {}) => {
       } else {
         payloadData = rawForm.contentType === 'application/json' ? {} : ''
       }
-    } else if (rawForm.bodyType === 'form-data') {
+    } else if (['form-data', 'x-www-form-urlencoded'].includes(rawForm.bodyType)) {
       // form-data 模式
       payloadData = formDataObj
     }
@@ -1563,6 +1734,16 @@ const handleSave = async (options = {}) => {
         expression: a.expression || ''
       }))
 
+    const requestConfig = JSON.parse(JSON.stringify(rawForm.requestConfig || {}))
+    try {
+      requestConfig.cookies = JSON.parse(requestConfig.cookiesJson || '{}')
+      if (!requestConfig.cookies || Array.isArray(requestConfig.cookies) || typeof requestConfig.cookies !== 'object') throw new Error()
+    } catch {
+      ElMessage.error('Cookie 必须是合法的 JSON 对象')
+      return
+    }
+    delete requestConfig.cookiesJson
+
     const payload = {
       group_id: groupIdToUse,
       method: rawForm.method,
@@ -1583,6 +1764,7 @@ const handleSave = async (options = {}) => {
       pre_script_language: rawForm.pre_script_language || 'javascript',
       post_script_language: rawForm.post_script_language || 'javascript',
       response_schema: rawForm.response_schema || null,
+      request_config: requestConfig,
     }
 
     let createdCaseId = null
@@ -1664,6 +1846,78 @@ const handleSaveAndRun = async () => {
     emit('run', { ...data, id: savedCaseId })
   }
 }
+
+const formatDebugValue = value => typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+const handleResponseNodeClick = data => { selectedResponseNode.value = data }
+
+const addAssertionFromResponse = () => {
+  const node = selectedResponseNode.value
+  if (!node) return
+  caseForm.value.assertions.push({
+    id: `ast_${genUniqueId()}`, target: 'response_body', operator: '==',
+    expected: typeof node.value === 'string' ? node.value : JSON.stringify(node.value), expression: node.path,
+  })
+  activeTab.value = 'assertions'
+  ElMessage.success(`已添加断言：${node.path}`)
+}
+
+const addExtractorFromResponse = async () => {
+  const node = selectedResponseNode.value
+  if (!node) return
+  try {
+    const { value } = await ElMessageBox.prompt('请输入变量名', `提取 ${node.path}`, {
+      confirmButtonText: '添加', cancelButtonText: '取消', inputPattern: /^[A-Za-z_][A-Za-z0-9_]*$/,
+      inputErrorMessage: '变量名只能包含字母、数字和下划线，且不能以数字开头',
+    })
+    caseForm.value.extractors.push({
+      id: `ext_${Date.now()}`, variableName: value, extractorType: 'jsonpath', expression: node.path, defaultValue: '',
+    })
+    activeTab.value = 'extractors'
+    ElMessage.success(`已添加变量提取：${value}`)
+  } catch {}
+}
+
+const handleDraftSend = async () => {
+  const form = toRaw(caseForm.value)
+  if (!form.url) {
+    ElMessage.warning('请先填写请求 URL')
+    return
+  }
+  const headers = Object.fromEntries((form.headers || []).filter(item => item.key).map(item => [item.key, item.value ?? '']))
+  const params = Object.fromEntries((form.params || []).filter(item => item.key).map(item => [item.key, item.value ?? '']))
+  let body = null
+  if (['raw', 'json', 'graphql', 'binary'].includes(form.bodyType)) {
+    body = form.payload ?? ''
+    if ((form.bodyType === 'json' || (form.bodyType === 'raw' && form.contentType === 'application/json')) && typeof body === 'string' && body.trim()) {
+      try { body = JSON.parse(body) } catch { ElMessage.error('请求体不是合法 JSON'); return }
+    }
+  } else if (['form-data', 'x-www-form-urlencoded'].includes(form.bodyType)) {
+    body = {}
+    for (const item of form.formData || []) {
+      if (!item.key) continue
+      body[item.key] = item.type === 'file'
+        ? { type: 'file', filename: item.filename, content_type: item.contentType, content_base64: item.contentBase64 }
+        : (item.value ?? '')
+    }
+  }
+  const requestConfig = JSON.parse(JSON.stringify(form.requestConfig || {}))
+  try { requestConfig.cookies = JSON.parse(requestConfig.cookiesJson || '{}') } catch { ElMessage.error('Cookie 必须是合法的 JSON 对象'); return }
+  delete requestConfig.cookiesJson
+  debugSending.value = true
+  try {
+    debugResult.value = await autoTestRequest.post('/auto-test/send', {
+      method: form.method, url: form.url, headers, params, body,
+      body_type: form.bodyType === 'raw' && form.contentType === 'application/json' ? 'json' : form.bodyType,
+      env_id: props.envId || null, request_config: requestConfig,
+    })
+    responseTab.value = 'body'
+    selectedResponseNode.value = null
+  } catch (error) {
+    debugResult.value = { success: false, error: error.response?.data?.detail || error.message }
+  } finally {
+    debugSending.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -1691,6 +1945,56 @@ const handleSaveAndRun = async () => {
   border-bottom: 1px solid var(--tm-border-light);
   flex-shrink: 0;
 }
+
+.inline-response-panel {
+  flex: 0 0 min(42%, 420px);
+  min-height: 220px;
+  overflow: hidden;
+  border-top: 1px solid var(--tm-border-light);
+  background: var(--tm-bg-card);
+  padding: 12px 18px;
+}
+
+.response-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 32px;
+}
+
+.response-code {
+  margin: 0;
+  max-height: 300px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 13px/1.55 Consolas, monospace;
+  color: var(--tm-text-primary);
+}
+
+.response-inspector {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.4fr) minmax(240px, 1fr);
+  gap: 16px;
+  height: 285px;
+}
+
+.response-tree-pane,
+.response-rule-pane {
+  overflow: auto;
+  border: 1px solid var(--tm-border-light);
+  padding: 10px;
+}
+
+.response-node {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.response-node code { color: var(--tm-color-primary); }
+.response-node span { overflow: hidden; text-overflow: ellipsis; color: var(--tm-text-secondary); }
+.response-code.compact { max-height: 150px; margin: 10px 0; }
 
 .top-row {
   display: flex;
@@ -1784,6 +2088,17 @@ const handleSaveAndRun = async () => {
 
 .body-type-selector {
   margin-bottom: 16px;
+}
+
+.request-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
+  gap: 24px;
+  max-width: 960px;
+}
+
+@media (max-width: 900px) {
+  .request-settings-grid { grid-template-columns: 1fr; }
 }
 
 .raw-editor {

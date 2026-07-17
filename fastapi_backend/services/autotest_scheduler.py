@@ -9,6 +9,7 @@ import json
 import logging
 import threading
 import uuid
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional, List
@@ -17,6 +18,7 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.jobstores.base import JobLookupError
 
 from fastapi_backend.core.config import settings
 from fastapi_backend.services.autotest_report_service import write_allure_results
@@ -41,7 +43,6 @@ def _schedule_meta_from_db(scenario_id: int, user_id: int = None) -> Dict[str, A
     'Task got Future attached to a different loop' 错误。
     """
     import re
-    import psycopg2
     from fastapi_backend.core.config import settings
 
     # 将 asyncpg URL 转为 psycopg2 格式
@@ -49,21 +50,29 @@ def _schedule_meta_from_db(scenario_id: int, user_id: int = None) -> Dict[str, A
     sync_url = re.sub(r'^postgresql\+asyncpg://', 'postgresql://', db_url)
 
     try:
-        conn = psycopg2.connect(sync_url, connect_timeout=5)
-        conn.autocommit = True
+        if sync_url.startswith(("sqlite:///", "sqlite+aiosqlite:///")):
+            import sqlite3
+            sqlite_path = re.sub(r'^sqlite(?:\+aiosqlite)?:///', '', sync_url)
+            conn = sqlite3.connect(sqlite_path, timeout=5)
+            placeholder = "?"
+        else:
+            import psycopg2
+            conn = psycopg2.connect(sync_url, connect_timeout=5)
+            conn.autocommit = True
+            placeholder = "%s"
         cur = conn.cursor()
         if user_id is not None:
             cur.execute(
                 "SELECT schedule_webhook_url, schedule_cron_expression, "
                 "schedule_env_id, schedule_task_name, schedule_is_active "
-                "FROM test_scenarios WHERE id = %s AND user_id = %s",
+                f"FROM test_scenarios WHERE id = {placeholder} AND user_id = {placeholder}",
                 (scenario_id, user_id),
             )
         else:
             cur.execute(
                 "SELECT schedule_webhook_url, schedule_cron_expression, "
                 "schedule_env_id, schedule_task_name, schedule_is_active "
-                "FROM test_scenarios WHERE id = %s",
+                f"FROM test_scenarios WHERE id = {placeholder}",
                 (scenario_id,),
             )
         row = cur.fetchone()
@@ -107,7 +116,9 @@ def get_scheduler() -> AsyncIOScheduler:
                 elif db_url.startswith("postgresql://"):
                     jobstore_url = db_url
                 else:
-                    jobstore_url = f"sqlite:///{PROJECT_ROOT / 'instance' / 'scheduler_jobs.db'}"
+                    data_root = Path(os.getenv("TESTMASTER_DATA_DIR", str(PROJECT_ROOT / "instance")))
+                    data_root.mkdir(parents=True, exist_ok=True)
+                    jobstore_url = f"sqlite:///{data_root / 'scheduler_jobs.db'}"
                 scheduler = AsyncIOScheduler(
                     jobstores={"default": SQLAlchemyJobStore(url=jobstore_url)},
                     job_defaults={"coalesce": True, "max_instances": 1, "misfire_grace_time": 300},
@@ -369,12 +380,14 @@ def remove_scheduled_task(task_id: str) -> bool:
     global scheduled_tasks
     try:
         sched = get_scheduler()
-        sched.remove_job(task_id)
+        try:
+            sched.remove_job(task_id)
+        except JobLookupError:
+            # Idempotent cleanup: a stale DB/cache entry must still be removable.
+            pass
         with _scheduled_tasks_lock:
             if task_id in scheduled_tasks:
                 del scheduled_tasks[task_id]
-        # 清空DB中的调度状态，避免重启后恢复已删除的任务
-        _clear_schedule_status_in_db(task_id)
         return True
     except Exception as e:
         _logger.error(f"删除定时任务失败 {task_id}: {e}")
@@ -416,14 +429,21 @@ def toggle_task_status(task_id: str) -> Dict[str, Any]:
         task_info["status"] = "idle" if new_is_active else "paused"
 
     # 锁外操作调度器（APScheduler 自身线程安全，避免长时间持锁）
-    if new_is_active:
-        # 恢复任务
-        _logger.info(f"[Scheduler] 恢复任务: {task_id}")
-        sched.resume_job(task_id)
-    else:
-        # 暂停任务
-        _logger.info(f"[Scheduler] 暂停任务: {task_id}")
-        sched.pause_job(task_id)
+    try:
+        if new_is_active:
+            _logger.info(f"[Scheduler] 恢复任务: {task_id}")
+            sched.resume_job(task_id)
+        else:
+            _logger.info(f"[Scheduler] 暂停任务: {task_id}")
+            sched.pause_job(task_id)
+    except Exception:
+        # Keep the in-memory cache aligned when APScheduler rejects the change.
+        with _scheduled_tasks_lock:
+            task_info = scheduled_tasks.get(task_id)
+            if task_info:
+                task_info["is_active"] = current_is_active
+                task_info["status"] = "idle" if current_is_active else "paused"
+        raise
 
     # 验证作业状态
     job = sched.get_job(task_id)
@@ -458,11 +478,6 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
 
         # 解析cron表达式
         cron_expr = ""
-        if hasattr(job.trigger, "fields"):
-            # CronTrigger
-            fields = job.trigger.fields
-            cron_expr = f"{fields[0]} {fields[1]} {fields[2]} {fields[3]} {fields[4]}"
-
         meta = _schedule_meta_from_db(scenario_id, user_id=job_user_id)
         task_info = {
             "task_id": task_id,
@@ -481,6 +496,7 @@ def get_scheduled_task(task_id: str) -> Optional[Dict[str, Any]]:
             "status": "idle",
             "is_active": job.next_run_time is not None,
             "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+            "user_id": job_user_id,
         }
         with _scheduled_tasks_lock:
             scheduled_tasks[task_id] = task_info
@@ -505,11 +521,6 @@ def get_all_scheduled_tasks(user_id: int = None) -> List[Dict[str, Any]]:
 
             # 解析cron表达式
             cron_expr = ""
-            if hasattr(job.trigger, "fields"):
-                # CronTrigger
-                fields = job.trigger.fields
-                cron_expr = f"{fields[0]} {fields[1]} {fields[2]} {fields[3]} {fields[4]}"
-
             meta = _schedule_meta_from_db(scenario_id, user_id=job_user_id)
             task_info = {
                 "task_id": task_id,
@@ -528,6 +539,7 @@ def get_all_scheduled_tasks(user_id: int = None) -> List[Dict[str, Any]]:
                 "status": "idle",
                 "is_active": job.next_run_time is not None,
                 "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                "user_id": job_user_id,
             }
             with _scheduled_tasks_lock:
                 scheduled_tasks[task_id] = task_info

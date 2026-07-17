@@ -12,7 +12,7 @@
 | 项目名 | TestMaster |
 | 后端 | FastAPI + SQLAlchemy + Celery |
 | 前端 | Vue 3 + Vite + Element Plus |
-| 数据库 | SQLite（生产也用，足够了） |
+| 数据库 | 本地开发可用 SQLite；服务器/Docker 部署统一使用 PostgreSQL |
 | GitHub | `https://github.com/pengzeya68-collab/test` |
 | 协议 | 商业许可 |
 
@@ -53,12 +53,17 @@ cp .env.example .env
 编辑 `.env`，**必须修改**以下项：
 
 ```env
+DB_PASSWORD=<PostgreSQL 强密码>
+DATABASE_URL=postgresql+asyncpg://testmaster:<同一个 DB_PASSWORD>@postgres:5432/testmaster
 SECRET_KEY=<用 openssl rand -hex 32 生成>
 ADMIN_PASSWORD=<你的管理员密码>
 ADMIN_SECRET_KEY=<用 openssl rand -hex 32 生成>
 CORS_ORIGINS=http://你的服务器IP
 TESTMASTER_ENCRYPTION_KEY=<用 openssl rand -hex 32 生成>
+AUTO_CREATE_TABLES_ON_STARTUP=true
 ```
+
+本地 Windows 环境可以继续在本地 `.env` 使用 SQLite；服务器和 Docker 部署不要使用 SQLite。
 
 ---
 
@@ -77,19 +82,15 @@ cd ..
 
 ---
 
-## 第五步：推送数据库和代码到 GitHub
+## 第五步：推送代码到 GitHub
 
 ```bash
-# 把本地数据库纳入版本控制
-git add -f instance/testmaster.db
-
-# 提交所有修改
 git add -A
-git commit -m "deploy: 初始部署"
+git commit -m "deploy: 更新部署代码"
 git push origin main
 ```
 
-> ⚠️ 如果 GitHub 推送失败（中国常见），参考"常见问题"第 2 条。
+> 不要提交本地 SQLite 数据库。服务器和 Docker 部署的数据由 PostgreSQL volume `pg_data` 持久化。
 
 ---
 
@@ -138,15 +139,20 @@ curl -s http://localhost:5001/api/health
 
 ```bash
 # 在服务器重置 admin 密码为 admin123456
-docker exec testmaster-backend pip install bcrypt==4.2.1 -q
 docker exec testmaster-backend python3 -c "
-import sqlite3, bcrypt
-hashed = bcrypt.hashpw(b'admin123456', bcrypt.gensalt(rounds=12)).decode()
-conn = sqlite3.connect('/app/instance/testmaster.db')
-conn.execute('UPDATE users SET password_hash=? WHERE username=?', (hashed, 'admin'))
-conn.commit()
-conn.close()
-print('Done')
+import asyncio, bcrypt
+from sqlalchemy import update
+from fastapi_backend.core.database import AsyncSessionLocal
+from fastapi_backend.models.models import User
+
+async def main():
+    hashed = bcrypt.hashpw(b'admin123456', bcrypt.gensalt(rounds=12)).decode()
+    async with AsyncSessionLocal() as session:
+        await session.execute(update(User).where(User.username == 'admin').values(password_hash=hashed))
+        await session.commit()
+    print('Done')
+
+asyncio.run(main())
 "
 ```
 
@@ -178,35 +184,29 @@ cd /root/TestMaster && docker compose logs backend --tail 20
 
 ### 4. 数据库丢失/数据不保存
 
-**根因**：数据库在容器内部的 `/tmp/` 目录，重启即消失。
-
-**已修复**：`docker-compose.yml` 已将数据库挂载到持久化目录：
+Docker 部署使用 PostgreSQL 容器，数据保存在 Docker volume：
 ```yaml
 volumes:
-  - ./instance:/app/instance
+  pg_data:
 ```
 
-数据库文件位置：`/root/TestMaster/instance/testmaster.db`
+检查方式：
+```bash
+docker volume ls | grep pg_data
+docker exec testmaster-postgres psql -U testmaster -d testmaster -c "SELECT count(*) FROM users;"
+```
+
+不要把本地 `instance/testmaster.db` 当作服务器生产数据库。
 
 ### 5. admin 用户不存在
 
 ```bash
 # 检查数据库
-docker exec testmaster-backend sqlite3 /app/instance/testmaster.db \
-  "SELECT username, is_admin FROM users WHERE username='admin'"
+docker exec testmaster-postgres psql -U testmaster -d testmaster \
+  -c "SELECT username, is_admin FROM users WHERE username='admin';"
 
-# 如果不存在，手动创建
-docker exec testmaster-backend pip install bcrypt==4.2.1 -q
-docker exec testmaster-backend python3 -c "
-import sqlite3, bcrypt
-h = bcrypt.hashpw(b'admin123456', bcrypt.gensalt(rounds=12)).decode()
-conn = sqlite3.connect('/app/instance/testmaster.db')
-conn.execute('INSERT INTO users (username,email,password_hash,is_admin,is_super_admin,is_active,level,score) VALUES (?,?,?,?,?,?,?,?)',
-    ('admin','admin@test.com',h,1,1,1,99,99999))
-conn.commit()
-conn.close()
-print('Admin created')
-"
+# 如果不存在，建议优先重新运行种子数据
+docker exec testmaster-backend python -m fastapi_backend.seed_all_data
 ```
 
 ### 6. 登录返回 500 错误（DetachedInstanceError）
@@ -239,9 +239,9 @@ stmt = select(User).where(...)
 
 ```
 Nginx (:80) ──→ Frontend 静态文件 (/frontend/dist)
-            ──→ API 代理 ──→ Backend (:5001) ──→ SQLite (/app/instance/testmaster.db)
-                                          ──→ Redis (:6379)
-                                          ──→ Celery Worker
+            ──→ API 代理 ──→ Backend (:5001) ──→ PostgreSQL (:5432, pg_data volume)
+                                          ├── Redis (:6379)
+                                          └── Celery Worker
 ```
 
 **容器列表**：
@@ -280,10 +280,10 @@ SSH 到服务器：
 |------|------|----------|
 | `requirements.txt` | Python 依赖 | 完整列表 + bcrypt==4.2.1 |
 | `Dockerfile` | Docker 镜像构建 | root 运行，单 worker |
-| `docker-compose.yml` | 服务编排 | 挂载 instance 目录 + 健康检查 |
+| `docker-compose.yml` | 服务编排 | PostgreSQL/Redis/backend/celery/nginx + 健康检查 |
 | `nginx.conf` | 前端 + API 代理 | SPA try_files |
-| `.env` | 环境变量 | SECRET_KEY, ADMIN_PASSWORD 等 |
-| `instance/testmaster.db` | 数据库 | Git 跟踪，持久化 |
+| `.env` | 环境变量 | DB_PASSWORD、DATABASE_URL、SECRET_KEY、ADMIN_PASSWORD 等 |
+| `pg_data` Docker volume | 生产数据库 | PostgreSQL 持久化数据 |
 | `.github/workflows/deploy.yml` | CI/CD | GitHub Actions SSH 部署 |
 
 ---

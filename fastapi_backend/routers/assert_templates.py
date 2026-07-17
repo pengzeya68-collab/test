@@ -12,7 +12,7 @@ import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -246,6 +246,8 @@ class AssertTemplateUpdate(BaseModel):
 
 
 class AssertTemplateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     description: Optional[str] = None
@@ -254,9 +256,6 @@ class AssertTemplateOut(BaseModel):
     code_snippet: Optional[str] = None
     is_builtin: bool
     user_id: Optional[int] = None
-
-    class Config:
-        from_attributes = True
 
 
 # ========== 种子化 ==========

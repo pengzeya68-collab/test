@@ -1,13 +1,13 @@
-<template>
+﻿<template>
   <div class="user-management-dark">
     <h1 class="page-title">用户管理</h1>
 
-    <!-- 操作栏 -->
+    <!-- 鎿嶄綔鏍?-->
     <div class="toolbar-card">
       <div class="toolbar-left">
         <el-button type="primary" @click="handleAdd" class="btn-primary">
           <el-icon><Plus /></el-icon>
-          新增用户
+          鏂板鐢ㄦ埛
         </el-button>
       </div>
       <div class="toolbar-right">
@@ -64,14 +64,14 @@
                     <el-icon><Edit /></el-icon> 编辑
                   </el-dropdown-item>
                   <el-dropdown-item @click="handleResetPassword(row)">
-                    🔑 重置密码
+                    重置密码
                   </el-dropdown-item>
                   <el-dropdown-item
                     @click="toggleStatus(row)"
                     :style="{ color: row.status === 'active' ? '#E6A23C' : '#67C23A' }"
                   >
                     <el-icon :color="row.status === 'active' ? '#E6A23C' : '#67C23A'">
-                      {{ row.status === 'active' ? '🔴' : '🟢' }}
+                      {{ row.status === 'active' ? '馃敶' : '馃煝' }}
                     </el-icon>
                     {{ row.status === 'active' ? '禁用用户' : '启用用户' }}
                   </el-dropdown-item>
@@ -81,7 +81,7 @@
                     :disabled="row.id === currentAdminId"
                   >
                     <el-icon :color="row.is_admin ? '#909399' : '#409EFF'">
-                      {{ row.is_admin ? '👤' : '👑' }}
+                      {{ row.is_admin ? '馃懁' : '馃憫' }}
                     </el-icon>
                     {{ row.is_admin ? '取消管理员' : '设为管理员' }}
                   </el-dropdown-item>
@@ -95,7 +95,7 @@
         </el-table-column>
       </el-table>
 
-      <!-- 分页 -->
+      <!-- 鍒嗛〉 -->
       <div class="pagination-wrapper">
         <el-pagination
           v-model:current-page="page"
@@ -110,7 +110,7 @@
       </div>
     </div>
 
-    <!-- 编辑弹窗 -->
+    <!-- 缂栬緫寮圭獥 -->
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑用户' : '新增用户'"
@@ -126,12 +126,12 @@
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" type="password" placeholder="请输入密码" class="dark-input" />
-          <div style="font-size: 12px; color: var(--tm-text-secondary); margin-top: 6px;">编辑时不填则保持原密码</div>
+          <div style="font-size: 12px; color: var(--tm-text-secondary); margin-top: 6px;">编辑时留空则保持原密码</div>
         </el-form-item>
-        <el-form-item label="等级" prop="level">
+        <el-form-item label="绛夌骇" prop="level">
           <el-input-number v-model="form.level" :min="1" :max="10" />
         </el-form-item>
-        <el-form-item label="积分" prop="score">
+        <el-form-item label="绉垎" prop="score">
           <el-input-number v-model="form.score" :min="0" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
@@ -226,8 +226,8 @@ const fetchList = async () => {
       total.value = 0
     }
   } catch (e) {
-    console.error('获取用户列表失败:', e)
-    ElMessage.error('获取列表失败')
+    console.error('鑾峰彇鐢ㄦ埛鍒楄〃澶辫触:', e)
+    ElMessage.error('鑾峰彇鍒楄〃澶辫触')
   } finally {
     loading.value = false
   }
@@ -269,7 +269,7 @@ const handleSubmit = async () => {
   try {
     if (isEdit.value) {
       const payload = { ...form }
-      // 编辑时空密码不提交，避免覆盖用户密码
+      // 缂栬緫鏃剁┖瀵嗙爜涓嶆彁浜わ紝閬垮厤瑕嗙洊鐢ㄦ埛瀵嗙爜
       if (!payload.password) delete payload.password
       await request.put(`/admin/users/${form.id}`, payload)
       ElMessage.success('更新成功')
@@ -280,7 +280,7 @@ const handleSubmit = async () => {
     dialogVisible.value = false
     fetchList()
   } catch (e) {
-    console.error('提交失败:', e)
+    console.error('鎻愪氦澶辫触:', e)
     ElMessage.error('操作失败：' + (e.response?.data?.error || e.message))
   }
 }
@@ -291,7 +291,7 @@ const toggleStatus = async (row) => {
 
   try {
     await ElMessageBox.confirm(
-      `确定要${actionText}用户【${row.username}】吗？`,
+      `确定要${actionText}用户“${row.username}”吗？`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -313,11 +313,11 @@ const toggleStatus = async (row) => {
 
 const toggleAdmin = async (row) => {
   const newAdminStatus = !row.is_admin
-  const actionText = newAdminStatus ? '设置为管理员' : '取消管理员权限'
+  const actionText = newAdminStatus ? '设为管理员' : '取消管理员权限'
 
   try {
     await ElMessageBox.confirm(
-      `确定要${actionText}【${row.username}】吗？`,
+      `确定要${actionText}“${row.username}”吗？`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -340,13 +340,13 @@ const toggleAdmin = async (row) => {
 const handleResetPassword = async (row) => {
   try {
     const { value: newPassword } = await ElMessageBox.prompt(
-      `请输入用户【${row.username}】的新密码`,
+      `请输入用户“${row.username}”的新密码`,
       '重置密码',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         inputPattern: /^.{6,}$/,
-        inputErrorMessage: '密码长度不能少于6位'
+        inputErrorMessage: '密码长度不能少于 6 位'
       }
     )
 
@@ -371,7 +371,7 @@ const handleDelete = async (row) => {
 
   try {
     await ElMessageBox.confirm(
-      `确定要删除用户【${row.username}】吗？删除后无法恢复！`,
+      `确定要删除用户“${row.username}”吗？删除后无法恢复。`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -542,3 +542,4 @@ onMounted(() => {
   color: var(--tm-color-primary);
 }
 </style>
+
