@@ -95,7 +95,7 @@ def upgrade():
         sa.Column("created_by", sa.Integer, nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column("is_current", sa.Boolean, nullable=False, server_default=sa.false()),
-        sa.UniqueConstraint("case_id", "version_number", name="uq_case_version_number"),
+        sa.UniqueConstraint("case_id", "version_number", name="uq_ui_case_version_number"),
     )
     op.create_index("idx_ui_case_versions_case_id", "ui_case_versions", ["case_id"])
 

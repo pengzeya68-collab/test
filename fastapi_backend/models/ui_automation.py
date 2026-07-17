@@ -78,7 +78,7 @@ class UICaseVersion(Base):
     __tablename__ = 'ui_case_versions'
     __table_args__ = (
         Index('idx_ui_case_versions_case_id', 'case_id'),
-        UniqueConstraint('case_id', 'version_number', name='uq_case_version_number'),
+        UniqueConstraint('case_id', 'version_number', name='uq_ui_case_version_number'),
     )
 
     id = Column(Integer, primary_key=True, index=True)
