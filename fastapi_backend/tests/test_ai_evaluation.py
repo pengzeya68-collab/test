@@ -35,7 +35,9 @@ class TestAIEvaluation:
             question_id="1",
         )
 
-        result = await self.tutor.evaluate_code(submission)
+        # Keep this a true unit test even when CI deliberately has no AI key.
+        with patch("fastapi_backend.core.config.settings.AI_API_KEY", "test-api-key"):
+            result = await self.tutor.evaluate_code(submission)
 
         assert result is not None
         assert hasattr(result, "score")

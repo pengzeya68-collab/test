@@ -548,29 +548,26 @@ async def project_autotest_run(
 
     await _get_project_or_404(project_id, current_user, db)
 
-    from fastapi_backend.core.autotest_database import get_autotest_db
     from fastapi_backend.models.autotest import AutoTestScenario
 
-    async for autotest_db in get_autotest_db():
-        scenario_check = await autotest_db.execute(
-            select(AutoTestScenario).where(
-                AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id
-            )
+    # AutoTest shares the primary database. Reuse the request-scoped session so
+    # ownership validation remains transactional and cannot cross event loops.
+    scenario_check = await db.execute(
+        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+    )
+    scenario = scenario_check.scalar_one_or_none()
+    if not scenario:
+        raise HTTPException(
+            status_code=400,
+            detail=f"场景(ID={scenario_id})不存在，请确认场景ID有效",
         )
-        scenario = scenario_check.scalar_one_or_none()
-        if not scenario:
-            raise HTTPException(
-                status_code=400,
-                detail=f"场景(ID={scenario_id})不存在，请确认场景ID有效",
-            )
 
-        # 校验场景是否属于该项目
-        if scenario.project_id is not None and scenario.project_id != project_id:
-            raise HTTPException(
-                status_code=403,
-                detail=f"场景(ID={scenario_id})不属于该项目(ID={project_id})，请使用项目关联的场景",
-            )
-        break
+    # 校验场景是否属于该项目
+    if scenario.project_id is not None and scenario.project_id != project_id:
+        raise HTTPException(
+            status_code=403,
+            detail=f"场景(ID={scenario_id})不属于该项目(ID={project_id})，请使用项目关联的场景",
+        )
 
     task_check = await db.execute(
         select(ProjectTask).where(

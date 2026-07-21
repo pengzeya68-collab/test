@@ -104,7 +104,13 @@ jobs:
       - name: Apply PostgreSQL migrations
         run: python -m alembic -c fastapi_backend/alembic.ini upgrade head
 
-      - name: Run backend tests
+      - name: Run PostgreSQL schedule lease test
+        run: python -m pytest fastapi_backend/tests/test_postgres_schedule_lease.py -q
+
+      - name: Run isolated backend test suite
+        env:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          TEST_POSTGRES_URL: ""
         run: python -m pytest fastapi_backend/tests -q
 
   security-scan:
