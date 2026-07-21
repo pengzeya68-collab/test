@@ -96,9 +96,9 @@ class Settings(BaseSettings):
     AI_RATE_LIMIT_WINDOW_SECONDS: int = 60  # 閫熺巼闄愬埗绐楀彛锛堢锛?
 
     # 涓存椂寮€鍏筹細鍏抽棴 SSL 楠岃瘉锛堜粎鐢ㄤ簬寮€鍙?娴嬭瘯鐜锛岀敓浜х幆澧冨繀椤诲紑鍚級
-    DISABLE_SSL_VERIFY: bool = True
+    DISABLE_SSL_VERIFY: bool = False
     # 涓存椂寮€鍏筹細鍏抽棴 SSRF 闃叉姢锛堜粎鐢ㄤ簬寮€鍙?娴嬭瘯鐜锛岀敓浜х幆澧冨繀椤诲紑鍚級
-    DISABLE_SSRF_GUARD: bool = True
+    DISABLE_SSRF_GUARD: bool = False
     # 涓存椂寮€鍏筹細鍏抽棴 Nginx 闄愭祦锛堥€氳繃鐜鍙橀噺鎺у埗锛?
     DISABLE_RATE_LIMIT: bool = True
 

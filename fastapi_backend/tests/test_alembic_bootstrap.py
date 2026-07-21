@@ -8,6 +8,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from sqlalchemy import create_engine
+
+from fastapi_backend.core.database import Base
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ALEMBIC_CONFIG = PROJECT_ROOT / "fastapi_backend" / "alembic.ini"
@@ -129,3 +132,54 @@ def test_empty_database_never_silently_bootstraps_a_requested_old_revision(tmp_p
     with sqlite3.connect(database) as connection:
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert tables == set()
+
+
+def test_verified_legacy_schema_is_stamped_before_additive_migrations(tmp_path):
+    """A legacy SQLAlchemy schema must not replay the incompatible initial DDL."""
+    database = tmp_path / "legacy-direct-schema.db"
+    sync_engine = create_engine(f"sqlite:///{database.as_posix()}")
+    try:
+        Base.metadata.create_all(sync_engine)
+    finally:
+        sync_engine.dispose()
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "DATABASE_URL": f"sqlite+aiosqlite:///{database.as_posix()}",
+            "ENVIRONMENT": "testing",
+            "SECRET_KEY": "legacy-bootstrap-test-key",
+            "ADMIN_PASSWORD": "legacy-bootstrap-test-password",
+            "ADMIN_SECRET_KEY": "legacy-bootstrap-test-admin-key",
+        }
+    )
+
+    upgraded = _alembic(env, "upgrade", "head")
+    assert upgraded.returncode == 0, upgraded.stderr
+    with sqlite3.connect(database) as connection:
+        version = connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+    assert version == HEAD_REVISION
+
+
+def test_partial_unversioned_schema_is_rejected_without_ddl(tmp_path):
+    database = tmp_path / "partial-direct-schema.db"
+    with sqlite3.connect(database) as connection:
+        connection.execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "DATABASE_URL": f"sqlite+aiosqlite:///{database.as_posix()}",
+            "ENVIRONMENT": "testing",
+            "SECRET_KEY": "partial-bootstrap-test-key",
+            "ADMIN_PASSWORD": "partial-bootstrap-test-password",
+            "ADMIN_SECRET_KEY": "partial-bootstrap-test-admin-key",
+        }
+    )
+
+    rejected = _alembic(env, "upgrade", "head")
+    assert rejected.returncode != 0
+    assert "未受支持的无 Alembic 版本数据库" in rejected.stderr
+    with sqlite3.connect(database) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert tables == {"users"}

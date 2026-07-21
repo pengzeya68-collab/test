@@ -25,6 +25,11 @@ def test_production_requires_postgresql_database_url():
         validate_production_database(config)
 
 
+def test_security_bypass_flags_default_to_disabled():
+    assert Settings.model_fields["DISABLE_SSL_VERIFY"].default is False
+    assert Settings.model_fields["DISABLE_SSRF_GUARD"].default is False
+
+
 @pytest.mark.asyncio
 async def test_production_rejects_runtime_create_all(monkeypatch):
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")

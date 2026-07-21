@@ -40,6 +40,31 @@ config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = MainBase.metadata
 
+_LEGACY_SCHEMA_BASELINE = "f4a5b6c7d8e9"
+# These tables were created by the pre-Alembic production bootstrap.  The
+# baseline deliberately includes the UI tables because f4 follows the UI
+# migration; a partial or unrelated database must never be stamped.
+_LEGACY_SCHEMA_REQUIRED_TABLES = {
+    "users",
+    "api_cases",
+    "api_groups",
+    "environments",
+    "mock_rules",
+    "mock_request_logs",
+    "test_scenarios",
+    "test_suites",
+    "ui_case_groups",
+    "ui_cases",
+    "ui_case_versions",
+    "ui_steps",
+    "ui_suites",
+    "ui_suite_items",
+    "ui_runs",
+    "ui_step_results",
+    "ui_artifacts",
+    "desktop_agents",
+}
+
 
 def _is_head_upgrade_command() -> bool:
     """Return true only for the deployment operation ``alembic upgrade head``."""
@@ -76,12 +101,36 @@ def _bootstrap_empty_database(connection) -> bool:
         raise RuntimeError("Alembic 未找到可用于空库初始化的 head revision")
     with connection.begin():
         target_metadata.create_all(bind=connection)
-        connection.execute(text(
-            "CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"
-        ))
+        connection.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"))
         connection.execute(
             text("INSERT INTO alembic_version (version_num) VALUES (:revision)"),
             {"revision": head},
+        )
+    return True
+
+
+def _stamp_verified_legacy_schema(connection) -> bool:
+    """Adopt only a known pre-Alembic production schema.
+
+    Older installations created tables directly through SQLAlchemy, leaving
+    data but no ``alembic_version`` table.  Replaying the historical initial
+    migration is unsafe (and not PostgreSQL-compatible), while blindly
+    stamping any non-empty database would hide drift.  Require the complete
+    legacy baseline before starting the additive migration chain at f4.
+    """
+    tables = set(inspect(connection).get_table_names())
+    if "alembic_version" in tables:
+        return False
+    if not _LEGACY_SCHEMA_REQUIRED_TABLES.issubset(tables):
+        missing = sorted(_LEGACY_SCHEMA_REQUIRED_TABLES - tables)
+        raise RuntimeError("检测到未受支持的无 Alembic 版本数据库；缺少旧版基线表: " + ", ".join(missing))
+
+    connection.commit()
+    with connection.begin():
+        connection.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"))
+        connection.execute(
+            text("INSERT INTO alembic_version (version_num) VALUES (:revision)"),
+            {"revision": _LEGACY_SCHEMA_BASELINE},
         )
     return True
 
@@ -108,14 +157,16 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        if not inspect(connection).get_table_names():
+        table_names = inspect(connection).get_table_names()
+        if not table_names:
             if _is_head_upgrade_command() and _bootstrap_empty_database(connection):
                 return
             if _is_non_head_upgrade_command():
-                raise RuntimeError(
-                    "空数据库只能执行 'alembic upgrade head' 初始化；"
-                    "历史迁移链无法安全构建指定旧版本。"
-                )
+                raise RuntimeError("空数据库只能执行 'alembic upgrade head' 初始化；历史迁移链无法安全构建指定旧版本。")
+        elif "alembic_version" not in table_names:
+            if not _is_head_upgrade_command():
+                raise RuntimeError("无 Alembic 版本的旧库只能执行 'alembic upgrade head' 安全升级")
+            _stamp_verified_legacy_schema(connection)
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
