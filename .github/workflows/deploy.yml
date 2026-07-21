@@ -109,9 +109,11 @@ jobs:
 
       - name: Run isolated backend test suite
         env:
-          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          DATABASE_URL: "sqlite+aiosqlite:///./testmaster_ci.sqlite3"
           TEST_POSTGRES_URL: ""
-        run: python -m pytest fastapi_backend/tests -q
+        run: |
+          rm -f testmaster_ci.sqlite3
+          python -m pytest fastapi_backend/tests -q
 
   security-scan:
     name: Security Scan

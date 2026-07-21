@@ -158,9 +158,10 @@ def test_app_import_success():
 
 
 def test_all_routes_registered(client):
-    """验证所有预期路由都在 app.routes 中注册"""
-    # FastAPI may retain grouped router containers without a direct ``path``.
-    registered = {route.path for route in app.routes if hasattr(route, "path")}
+    """验证所有预期路由都由 FastAPI 注册并公开到 OpenAPI。"""
+    # Grouped routers are represented by internal containers without ``path``;
+    # the generated schema is FastAPI's canonical flattened route registry.
+    registered = set(client.get("/api/openapi.json").json().get("paths", {}))
     missing = [p for p in ROUTE_PATHS if p not in registered]
     assert not missing, f"以下路由未注册: {missing}"
 
