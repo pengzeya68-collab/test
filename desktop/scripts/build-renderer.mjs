@@ -10,7 +10,7 @@ const frontendDir = path.resolve(desktopDir, '..', 'frontend');
 // 导致 frontend/dist 残留孤立的桌面 chunk，且"最后一次构建决定目录内容"，极易部署错版本。
 const rendererOutDir = path.resolve(desktopDir, 'dist', 'renderer');
 const npmCli = path.resolve(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
-const child = spawn(process.execPath, [npmCli, 'run', 'build', '--', '--outDir', rendererOutDir, '--emptyOutDir'], {
+const child = spawn(process.execPath, [npmCli, 'run', 'build', '--', '--mode', 'desktop', '--outDir', rendererOutDir, '--emptyOutDir'], {
   cwd: frontendDir,
   env: {
     ...process.env,

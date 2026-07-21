@@ -3,8 +3,7 @@ import { ElMessage } from 'element-plus'
 import { adminLoginRoute, adminRoutes } from './admin'
 import { useUserStore } from '@/stores/user'
 import { useAdminStore } from '@/stores/admin'
-
-const isDesktopBuild = import.meta.env.VITE_DESKTOP_BUILD === 'true'
+import { isDesktopBuild } from '@/utils/build-target'
 
 const routes = [
   adminLoginRoute,

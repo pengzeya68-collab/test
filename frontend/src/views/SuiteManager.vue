@@ -240,6 +240,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import { getServerUrl } from '@/utils/server-config'
+import { isDesktopBuild } from '@/utils/build-target'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
 
@@ -479,7 +480,7 @@ const createWebhook = async () => {
 const absoluteWebhookUrl = (path) => {
   if (!path) return ''
   if (/^https?:\/\//i.test(path)) return path
-  const origin = import.meta.env.VITE_DESKTOP_BUILD === 'true' ? getServerUrl() : window.location.origin
+  const origin = isDesktopBuild ? getServerUrl() : window.location.origin
   return new URL(path, `${origin.replace(/\/$/, '')}/`).toString()
 }
 

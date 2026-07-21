@@ -181,11 +181,11 @@ import { themes, loadSavedTheme, applyTheme } from '@/utils/ThemeConfig'
 import { useUserStore } from '@/stores/user'
 import NotificationBell from '@/components/NotificationBell.vue'
 import request from '@/utils/request'
+import { isDesktopBuild } from '@/utils/build-target'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
-const isDesktopBuild = import.meta.env.VITE_DESKTOP_BUILD === 'true'
 const desktopReady = computed(() => typeof window !== 'undefined' && typeof window.testmaster?.execution?.runCase === 'function')
 
 // 移动端汉堡菜单状态

@@ -3,17 +3,17 @@
     <div class="login-card">
       <div class="login-header">
         <div class="brand">TestMaster</div>
-        <h1>桌面版登录</h1>
-        <p>登录后直接进入 UI 自动化工作台</p>
+        <h1>{{ isDesktopBuild ? '桌面版登录' : '用户登录' }}</h1>
+        <p>{{ isDesktopBuild ? '登录后直接进入自动化测试工作台' : '登录后继续你的测试学习与实践' }}</p>
       </div>
 
       <el-form ref="formRef" :model="form" label-position="top" @submit.prevent="handleLogin">
-        <el-form-item label="服务地址" prop="serverUrl" :rules="[{ required: true, message: '请输入服务地址', trigger: 'blur' }]">
+        <el-form-item v-if="isDesktopBuild" label="服务地址" prop="serverUrl" :rules="[{ required: true, message: '请输入服务地址', trigger: 'blur' }]">
           <el-input v-model="form.serverUrl" placeholder="http://127.0.0.1:5001" size="large" @change="checkService" />
-          <div class="server-hint">本机使用默认地址；桌面端可连接企业内网 HTTP/HTTPS 地址，外网服务应使用 HTTPS。</div>
+          <div class="server-hint">填写服务根地址即可；粘贴“/api/health”等检测地址时会自动识别。</div>
           <div class="service-state" :class="serviceState">
             <i></i>{{ serviceText }}
-            <el-button v-if="serviceState === 'offline'" link type="primary" @click="checkService">重新检测</el-button>
+            <el-button v-if="serviceState !== 'online'" link type="primary" :loading="serviceState === 'checking'" @click="checkService">重新检测</el-button>
           </div>
         </el-form-item>
         <el-form-item label="用户名" prop="username" :rules="[{ required: true, message: '请输入用户名', trigger: 'blur' }]">
@@ -24,7 +24,7 @@
           <el-input v-model="form.password" type="password" show-password placeholder="请输入密码" size="large" @keyup.enter="handleLogin" />
         </el-form-item>
 
-        <el-button type="primary" size="large" class="submit-btn" :loading="loading" :disabled="serviceState !== 'online'" @click="handleLogin">
+        <el-button type="primary" size="large" class="submit-btn" :loading="loading" :disabled="isDesktopBuild && serviceState !== 'online'" @click="handleLogin">
           登录
         </el-button>
       </el-form>
@@ -39,6 +39,7 @@ import { ElMessage } from 'element-plus'
 import request, { setToken } from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 import { getServerUrl, setServerUrl } from '@/utils/server-config'
+import { isDesktopBuild } from '@/utils/build-target'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -47,20 +48,33 @@ const loading = ref(false)
 const serviceState = ref('checking')
 const form = ref({ serverUrl: getServerUrl(), username: '', password: '' })
 let servicePollTimer = null
-const serviceText = computed(() => ({ checking: '本地服务正在启动，请稍候…', online: '服务连接正常', offline: '服务暂时无法连接' }[serviceState.value]))
+const serviceDetail = ref('')
+const serviceText = computed(() => ({
+  checking: '正在检测服务…',
+  online: '服务连接正常',
+  offline: serviceDetail.value || '服务暂时无法连接，请确认地址和网络后重试',
+}[serviceState.value]))
 
-const normalizedServerUrl = () => form.value.serverUrl.trim().replace(/\/$/, '')
 const checkService = async () => {
   serviceState.value = 'checking'
-  const serverUrl = normalizedServerUrl()
-  if (!serverUrl) { serviceState.value = 'offline'; return false }
+  serviceDetail.value = ''
+  let serverUrl
   try {
-    setServerUrl(serverUrl)
+    serverUrl = setServerUrl(form.value.serverUrl)
+    form.value.serverUrl = serverUrl
     const response = await fetch(`${serverUrl}/api/ui-automation/health`, { signal: AbortSignal.timeout(2500) })
     const body = response.ok ? await response.json() : null
-    serviceState.value = body?.status === 'ok' && body?.enabled === true ? 'online' : 'offline'
+    if (body?.status === 'ok' && body?.enabled === true) {
+      serviceState.value = 'online'
+    } else {
+      serviceDetail.value = response.ok ? '服务未启用 UI 自动化模块' : `服务响应异常（HTTP ${response.status}）`
+      serviceState.value = 'offline'
+    }
   } catch (error) {
     console.warn('[DesktopLogin] Service check failed:', error)
+    serviceDetail.value = error?.name === 'TimeoutError'
+      ? '检测超时，请确认服务地址和网络'
+      : (error?.message || '服务暂时无法连接，请确认地址和网络后重试')
     serviceState.value = 'offline'
   }
   return serviceState.value === 'online'
@@ -84,8 +98,11 @@ const handleLogin = async () => {
 
   loading.value = true
   try {
-    setServerUrl(normalizedServerUrl())
-    const res = await request.post('/auth/login', form.value)
+    if (isDesktopBuild) {
+      const serverUrl = setServerUrl(form.value.serverUrl)
+      form.value.serverUrl = serverUrl
+    }
+    const res = await request.post('/auth/login', { username: form.value.username, password: form.value.password })
     userStore.setLogin(res.access_token, res.user)
     setToken(res.access_token)
     ElMessage.success('登录成功')
@@ -97,7 +114,9 @@ const handleLogin = async () => {
   }
 }
 
-onMounted(waitForLocalService)
+onMounted(() => {
+  if (isDesktopBuild) waitForLocalService()
+})
 onBeforeUnmount(() => { if (servicePollTimer) clearTimeout(servicePollTimer) })
 </script>
 

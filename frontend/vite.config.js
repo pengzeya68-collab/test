@@ -8,7 +8,8 @@ import path from 'path'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const isDesktopBuild = env.VITE_DESKTOP_BUILD === 'true'
+  // A normal web build must never depend on a leaked shell environment value.
+  const isDesktopBuild = mode === 'desktop'
   const unifiedBackend =
     env.VITE_FASTAPI_BASE_URL ||
     env.VITE_API_BASE_URL ||

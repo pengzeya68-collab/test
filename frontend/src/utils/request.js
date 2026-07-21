@@ -3,12 +3,12 @@ import { ElMessage } from 'element-plus'
 import router from '@app-router'
 import { getUserToken, getAdminToken, clearUserAuth, clearAdminAuth } from '@/utils/auth'
 import { getServerUrl } from '@/utils/server-config'
+import { isDesktopBuild } from '@/utils/build-target'
 
-const isDesktop = import.meta.env.VITE_DESKTOP_BUILD === 'true'
 const webApiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 const webAutoTestBase = import.meta.env.VITE_AUTO_TEST_BASE_URL || '/api'
-const apiBaseURL = () => isDesktop ? `${getServerUrl()}/api/v1` : webApiBase
-const autoTestBaseURL = () => isDesktop ? `${getServerUrl()}/api` : webAutoTestBase
+const apiBaseURL = () => isDesktopBuild ? `${getServerUrl()}/api/v1` : webApiBase
+const autoTestBaseURL = () => isDesktopBuild ? `${getServerUrl()}/api` : webAutoTestBase
 
 const service = axios.create({ timeout: 15000 })
 const autoTestService = axios.create({ timeout: 120000 })

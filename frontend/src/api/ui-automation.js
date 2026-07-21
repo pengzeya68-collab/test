@@ -4,6 +4,7 @@
 
 import axios from 'axios'
 import { getServerUrl } from '@/utils/server-config'
+import { isDesktopBuild } from '@/utils/build-target'
 import autoTestRequest from '@/utils/autoTestRequest'
 
 const uiAxios = axios.create({
@@ -25,7 +26,7 @@ async function retryUpload (operation, attempts = 3) {
 }
 
 uiAxios.interceptors.request.use((config) => {
-  if (import.meta.env.VITE_DESKTOP_BUILD === 'true') {
+  if (isDesktopBuild) {
     config.baseURL = `${getServerUrl()}/api/ui-automation`
   }
   const token = localStorage.getItem('token')
