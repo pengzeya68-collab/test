@@ -169,9 +169,7 @@ class TestApiDocGeneration:
     @pytest.mark.asyncio
     async def test_openapi_from_multiple_cases(self, docs_client, docs_session_factory):
         """2. 从多个用例生成 OpenAPI"""
-        c1 = await _create_case(
-            docs_session_factory, name="登录", method="POST", url="/api/login"
-        )
+        c1 = await _create_case(docs_session_factory, name="登录", method="POST", url="/api/login")
         c2 = await _create_case(
             docs_session_factory,
             name="获取用户",
@@ -180,9 +178,7 @@ class TestApiDocGeneration:
             body_type="none",
             payload=None,
         )
-        resp = docs_client.get(
-            f"{API_DOCS}/openapi", params={"case_ids": f"{c1.id},{c2.id}"}
-        )
+        resp = docs_client.get(f"{API_DOCS}/openapi", params={"case_ids": f"{c1.id},{c2.id}"})
         assert resp.status_code == 200, resp.text
         spec = resp.json()
         paths = spec["paths"]
@@ -197,14 +193,14 @@ class TestApiDocGeneration:
     async def test_openapi_by_group(self, docs_client, docs_session_factory):
         """3. 按分组生成 OpenAPI（tag 应为分组名）"""
         group = await _create_group(docs_session_factory, name="用户服务")
-        c1 = await _create_case(
+        await _create_case(
             docs_session_factory,
             name="登录",
             method="POST",
             url="/api/login",
             group_id=group.id,
         )
-        c2 = await _create_case(
+        await _create_case(
             docs_session_factory,
             name="注册",
             method="POST",
@@ -425,7 +421,7 @@ class TestApiDocShare:
     async def test_share_with_specific_case_ids(self, docs_client, docs_session_factory):
         """分享指定 case_ids 的用例"""
         c1 = await _create_case(docs_session_factory, name="登录", method="POST", url="/api/login")
-        c2 = await _create_case(docs_session_factory, name="注册", method="POST", url="/api/register")
+        await _create_case(docs_session_factory, name="注册", method="POST", url="/api/register")
 
         resp = docs_client.post(
             f"{API_DOCS}/share",
@@ -455,12 +451,8 @@ class TestApiDocShare:
     async def test_share_by_group(self, docs_client, docs_session_factory):
         """按分组分享文档"""
         group = await _create_group(docs_session_factory, name="用户服务")
-        await _create_case(
-            docs_session_factory, name="登录", method="POST", url="/api/login", group_id=group.id
-        )
-        await _create_case(
-            docs_session_factory, name="注册", method="POST", url="/api/register", group_id=group.id
-        )
+        await _create_case(docs_session_factory, name="登录", method="POST", url="/api/login", group_id=group.id)
+        await _create_case(docs_session_factory, name="注册", method="POST", url="/api/register", group_id=group.id)
 
         resp = docs_client.post(
             f"{API_DOCS}/share",

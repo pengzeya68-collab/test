@@ -5,10 +5,10 @@ test.describe('登录功能测试', () => {
   test('登录页面能正常显示', async ({ page }) => {
     await page.goto('/#/login');
 
-    await expect(page.getByTestId('login-page')).toBeVisible();
-    await expect(page.getByTestId('login-username-input')).toBeVisible();
-    await expect(page.getByTestId('login-password-input')).toBeVisible();
-    await expect(page.getByTestId('login-submit-button')).toBeVisible();
+    await expect(page.locator('.login-page')).toBeVisible();
+    await expect(page.getByText('用户名', { exact: true })).toBeVisible();
+    await expect(page.getByText('密码', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible();
   });
 });
 
@@ -75,15 +75,15 @@ test.describe('响应式布局测试', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/#/login');
 
-    await expect(page.getByTestId('login-page')).toBeVisible();
-    await expect(page.getByTestId('login-submit-button')).toBeVisible();
+    await expect(page.locator('.login-page')).toBeVisible();
+    await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible();
   });
 
   test('桌面端登录页能正常显示', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto('/#/login');
 
-    await expect(page.getByTestId('login-page')).toBeVisible();
-    await expect(page.getByTestId('login-submit-button')).toBeVisible();
+    await expect(page.locator('.login-page')).toBeVisible();
+    await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible();
   });
 });

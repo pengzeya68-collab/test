@@ -580,9 +580,7 @@ def execute_assertions(
                         passed = compare_values(actual_value, "equals", rule)
                         if not passed:
                             all_passed = False
-                            error_messages.append(
-                                f"响应头 {header_name} 断言失败: 期望 {rule}, 实际 {actual_value}"
-                            )
+                            error_messages.append(f"响应头 {header_name} 断言失败: 期望 {rule}, 实际 {actual_value}")
                     details.append(
                         {
                             "type": "response_header",
@@ -627,9 +625,7 @@ def execute_assertions(
 
             if not passed:
                 all_passed = False
-                error_messages.append(
-                    f"响应时间断言失败: 期望 {op_text} {expected_value}ms, 实际 {response_time_ms}ms"
-                )
+                error_messages.append(f"响应时间断言失败: 期望 {op_text} {expected_value}ms, 实际 {response_time_ms}ms")
             details.append(
                 {
                     "type": "response_time",

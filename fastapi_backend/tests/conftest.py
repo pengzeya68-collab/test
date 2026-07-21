@@ -79,10 +79,18 @@ def client_fixture(db_session: AsyncSession):
         yield db_session
 
     app.dependency_overrides[get_db] = _override_get_db
+    # Decorated routes use an independent audit session. Point it at this test
+    # database too, otherwise audit assertions silently exercise the configured
+    # development database instead of the isolated test schema.
+    from fastapi_backend.services.audit_service import AuditService
+
+    previous_audit_factory = AuditService._session_factory
+    AuditService._session_factory = TestingSessionLocal
 
     from fastapi.testclient import TestClient
 
     with TestClient(app) as client:
         yield client
 
+    AuditService._session_factory = previous_audit_factory
     app.dependency_overrides.clear()

@@ -9,7 +9,7 @@
     "scripts":  {
                     "dev":  "npm run build:main \u0026\u0026 electron .",
                     "build:main":  "tsc",
-                    "build:renderer":  "node scripts/build-renderer.mjs \u0026\u0026 node scripts/copy-renderer.mjs",
+                    "build:renderer":  "node scripts/build-renderer.mjs",
                     "build":  "npm run build:main \u0026\u0026 npm run build:renderer",
                     "build:backend":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-backend.ps1",
                     "build:pack":  "npm run build:backend \u0026\u0026 npm run build \u0026\u0026 electron-builder --win",

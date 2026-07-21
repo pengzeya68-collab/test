@@ -38,17 +38,34 @@ services:
       resources:
         <<: *default-resources
 
-  backend:
+  migrate:
     build:
       context: .
       dockerfile: Dockerfile
+    image: testmaster-app:${TESTMASTER_IMAGE_TAG:-local}
+    container_name: testmaster-migrate
+    restart: "no"
+    command: alembic -c fastapi_backend/alembic.ini upgrade head
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://testmaster:${DB_PASSWORD}@postgres:5432/testmaster
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - testmaster-net
+    logging: *default-logging
+
+  backend:
+    image: testmaster-app:${TESTMASTER_IMAGE_TAG:-local}
     container_name: testmaster-backend
     restart: unless-stopped
     ports:
       - "127.0.0.1:5001:5001"
     environment:
       - DATABASE_URL=postgresql+asyncpg://testmaster:${DB_PASSWORD}@postgres:5432/testmaster
-      - AUTO_CREATE_TABLES_ON_STARTUP=true
+      - AUTO_CREATE_TABLES_ON_STARTUP=false
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
@@ -63,6 +80,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
       interval: 10s
@@ -77,9 +96,7 @@ services:
         <<: *default-resources
 
   celery-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: testmaster-app:${TESTMASTER_IMAGE_TAG:-local}
     container_name: testmaster-celery
     restart: unless-stopped
     command: celery -A fastapi_backend.tasks worker --loglevel=info --concurrency=4
@@ -98,6 +115,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "celery -A fastapi_backend.tasks inspect ping --timeout 10 2>/dev/null"]
       interval: 30s

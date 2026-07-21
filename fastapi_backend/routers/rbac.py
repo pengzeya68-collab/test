@@ -124,16 +124,12 @@ async def delete_role(
         raise HTTPException(status_code=400, detail="系统内置角色不可删除")
 
     # 检查是否有用户通过 user_roles 多对多使用该角色
-    count_result = await db.execute(
-        select(func.count(UserRole.role_id)).where(UserRole.role_id == role_id)
-    )
+    count_result = await db.execute(select(func.count(UserRole.role_id)).where(UserRole.role_id == role_id))
     if count_result.scalar() > 0:
         raise HTTPException(status_code=400, detail="该角色下还有用户，无法删除")
 
     # 同时检查旧 role_id 字段
-    legacy_count = await db.execute(
-        select(func.count(User.id)).where(User.role_id == role_id)
-    )
+    legacy_count = await db.execute(select(func.count(User.id)).where(User.role_id == role_id))
     if legacy_count.scalar() > 0:
         raise HTTPException(status_code=400, detail="该角色下还有用户（旧关联），无法删除")
 
@@ -187,9 +183,7 @@ async def get_role_permissions(
     _: User = Depends(require_permissions("role:read")),
 ):
     """获取角色拥有的权限"""
-    result = await db.execute(
-        select(Role).options(selectinload(Role.permissions)).where(Role.id == role_id)
-    )
+    result = await db.execute(select(Role).options(selectinload(Role.permissions)).where(Role.id == role_id))
     role = result.scalar_one_or_none()
     if not role:
         raise HTTPException(status_code=404, detail="角色不存在")
@@ -355,11 +349,7 @@ async def assign_role_to_user(
     user.role_id = data.role_id
 
     # 同步写入 user_roles（如不存在）
-    existing = await db.execute(
-        select(UserRole).where(
-            UserRole.user_id == user_id, UserRole.role_id == data.role_id
-        )
-    )
+    existing = await db.execute(select(UserRole).where(UserRole.user_id == user_id, UserRole.role_id == data.role_id))
     if not existing.scalar_one_or_none():
         db.add(UserRole(user_id=user_id, role_id=data.role_id, assigned_by=current_user.id))
 

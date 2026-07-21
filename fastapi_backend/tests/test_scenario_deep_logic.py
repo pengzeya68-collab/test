@@ -48,9 +48,7 @@ async def test_fail_fast_loop_stops_after_first_failed_iteration(monkeypatch):
     engine.fail_fast = True
     engine.failed_encountered = False
     child = make_step(20, 200)
-    loop = make_step(10, 100, "for_loop", {
-        "reference_mode": "id", "count": 5, "var_name": "i", "body": [20]
-    })
+    loop = make_step(10, 100, "for_loop", {"reference_mode": "id", "count": 5, "var_name": "i", "body": [20]})
     calls = 0
 
     async def fail_child(*_args):
@@ -155,9 +153,9 @@ async def test_extracted_variables_are_run_scoped_by_default(monkeypatch):
     engine = ScenarioExecutionEngine(1, user_id=7)
     response = {"json": {"token": "run-token"}, "body": '{"token":"run-token"}', "headers": {}}
 
-    extracted = await engine._extract_variables([
-        {"variableName": "token", "extractorType": "jsonpath", "expression": "$.token"}
-    ], response)
+    extracted = await engine._extract_variables(
+        [{"variableName": "token", "extractorType": "jsonpath", "expression": "$.token"}], response
+    )
 
     assert extracted["token"] == "run-token"
     assert engine.context_vars["token"] == "run-token"
@@ -171,9 +169,9 @@ async def test_extractor_can_explicitly_persist_global_value(monkeypatch):
     engine = ScenarioExecutionEngine(1, user_id=7)
     response = {"json": {"tenant": "acme"}, "body": '{"tenant":"acme"}', "headers": {}}
 
-    await engine._extract_variables([
-        {"variableName": "tenant", "extractorType": "jsonpath", "expression": "$.tenant", "scope": "global"}
-    ], response)
+    await engine._extract_variables(
+        [{"variableName": "tenant", "extractorType": "jsonpath", "expression": "$.tenant", "scope": "global"}], response
+    )
 
     persist.assert_awaited_once_with({"tenant": "acme"}, user_id=7)
 
@@ -184,9 +182,9 @@ async def test_debug_execution_never_persists_global_extractor(monkeypatch):
     monkeypatch.setattr(scenario_runner, "save_variables_to_db", persist)
     engine = ScenarioExecutionEngine(1, user_id=7, _skip_record=True)
     response = {"json": {"token": "debug-only"}, "body": '{"token":"debug-only"}', "headers": {}}
-    extracted = await engine._extract_variables([
-        {"variableName": "token", "extractorType": "jsonpath", "expression": "$.token", "scope": "global"}
-    ], response)
+    extracted = await engine._extract_variables(
+        [{"variableName": "token", "extractorType": "jsonpath", "expression": "$.token", "scope": "global"}], response
+    )
     assert extracted["token"] == "debug-only"
     persist.assert_not_awaited()
 
@@ -194,6 +192,7 @@ async def test_debug_execution_never_persists_global_extractor(monkeypatch):
 @pytest.mark.asyncio
 async def test_debug_post_script_never_persists_globals(monkeypatch):
     from fastapi_backend.services.script_engine import ScriptEngine
+
     persist = AsyncMock(return_value=True)
     monkeypatch.setattr(ScriptEngine, "persist_globals_to_db", persist)
     engine = ScenarioExecutionEngine(1, user_id=7, _skip_record=True)
@@ -205,10 +204,17 @@ async def test_debug_post_script_never_persists_globals(monkeypatch):
 
     engine._shared_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     step = {
-        **make_step(1, 1), "api_case_name": "debug post script", "api_case_method": "GET",
-        "api_case_url": "https://example.test/debug", "api_case_headers": {}, "api_case_params": {},
-        "api_case_body": None, "api_case_body_type": "none", "api_case_assert_rules": [],
-        "api_case_extractors": [], "post_script": 'pm.globals.set("debug_secret", "temporary");',
+        **make_step(1, 1),
+        "api_case_name": "debug post script",
+        "api_case_method": "GET",
+        "api_case_url": "https://example.test/debug",
+        "api_case_headers": {},
+        "api_case_params": {},
+        "api_case_body": None,
+        "api_case_body_type": "none",
+        "api_case_assert_rules": [],
+        "api_case_extractors": [],
+        "post_script": 'pm.globals.set("debug_secret", "temporary");',
     }
     try:
         result = await engine._execute_api_request(step)
@@ -256,7 +262,10 @@ async def test_real_multi_api_chain_extracts_and_reuses_variables(monkeypatch):
                 env_name="chain", base_url=f"http://127.0.0.1:{server.server_port}", variables={}, user_id=1
             )
             seed_case = AutoTestCase(
-                name="seed", method="GET", url="/seed", user_id=1,
+                name="seed",
+                method="GET",
+                url="/seed",
+                user_id=1,
                 assert_rules=[{"field": "status_code", "operator": "equals", "expectedValue": 200}],
                 extractors=[
                     {"variableName": "token", "extractorType": "jsonpath", "expression": "$.token"},
@@ -264,14 +273,22 @@ async def test_real_multi_api_chain_extracts_and_reuses_variables(monkeypatch):
                 ],
             )
             use_case = AutoTestCase(
-                name="use", method="GET", url="/use/{{token}}", params={"item": "{{item}}"}, user_id=1,
+                name="use",
+                method="GET",
+                url="/use/{{token}}",
+                params={"item": "{{item}}"},
+                user_id=1,
                 assert_rules=[{"field": "status_code", "operator": "equals", "expectedValue": 200}],
             )
             scenario = AutoTestScenario(name="multi-api-chain", user_id=1, fail_fast=True)
             db.add_all([env, seed_case, use_case, scenario])
             await db.flush()
             seed_step = AutoTestScenarioStep(
-                scenario_id=scenario.id, api_case_id=seed_case.id, step_order=10, step_type="api_request", is_active=True
+                scenario_id=scenario.id,
+                api_case_id=seed_case.id,
+                step_order=10,
+                step_type="api_request",
+                is_active=True,
             )
             use_step = AutoTestScenarioStep(
                 scenario_id=scenario.id, api_case_id=use_case.id, step_order=30, step_type="api_request", is_active=True
@@ -279,17 +296,26 @@ async def test_real_multi_api_chain_extracts_and_reuses_variables(monkeypatch):
             db.add_all([seed_step, use_step])
             await db.flush()
             loop_step = AutoTestScenarioStep(
-                scenario_id=scenario.id, step_order=20, step_type="for_each", is_active=True,
+                scenario_id=scenario.id,
+                step_order=20,
+                step_type="for_each",
+                is_active=True,
                 step_config={
-                    "reference_mode": "id", "collection": "{{items}}", "item_var": "item",
-                    "index_var": "index", "body": [use_step.id],
+                    "reference_mode": "id",
+                    "collection": "{{items}}",
+                    "item_var": "item",
+                    "index_var": "index",
+                    "body": [use_step.id],
                 },
             )
             db.add(loop_step)
             await db.commit()
 
         monkeypatch.setattr(scenario_runner, "async_session", factory)
-        async def no_globals(_user_id): return {}
+
+        async def no_globals(_user_id):
+            return {}
+
         monkeypatch.setattr("fastapi_backend.services.autotest_execution._get_global_variables_cached", no_globals)
         engine = ScenarioExecutionEngine(scenario.id, env.id, user_id=1, _skip_record=True)
         result = await engine.execute()
@@ -318,7 +344,10 @@ async def test_empty_scenario_is_not_reported_as_success(monkeypatch):
             await db.commit()
             await db.refresh(scenario)
         monkeypatch.setattr(scenario_runner, "async_session", factory)
-        async def no_globals(_user_id): return {}
+
+        async def no_globals(_user_id):
+            return {}
+
         monkeypatch.setattr("fastapi_backend.services.autotest_execution._get_global_variables_cached", no_globals)
 
         result = await ScenarioExecutionEngine(scenario.id, user_id=1, _skip_record=True).execute()

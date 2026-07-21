@@ -114,7 +114,7 @@ class PytestDataDrivenEngine:
         _name_for_code = repr(self.scenario_name or "")
 
         # 在生成代码时计算 SSL_VERIFY 字面值，避免生成的代码依赖 settings 导入
-        ssl_verify = not getattr(settings, 'DISABLE_SSL_VERIFY', False)
+        ssl_verify = not getattr(settings, "DISABLE_SSL_VERIFY", False)
 
         code = f'''"""
 自动生成的场景测试文件

@@ -10,8 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -32,6 +31,7 @@ router = APIRouter(prefix="/api/ai/jmeter", tags=["AI-JMeter"])
 
 class ParameterizeRequest(BaseModel):
     """参数化请求"""
+
     url: str = Field("", description="原始 URL,如 https://api.example.com/users/123")
     method: str = Field("GET", description="HTTP 方法")
     body: str = Field("", description="请求体(JSON 字符串)")
@@ -54,7 +54,9 @@ class ParameterizeResponse(BaseModel):
     parameterized_url: str = Field("", description="参数化后的 URL,如 https://${host}/api/users/${userId}")
     parameterized_body: str = Field("", description="参数化后的请求体")
     extracted_vars: List[ExtractedVar] = Field(default_factory=list, description="提取的变量列表")
-    suggested_extractions: List[SuggestedExtraction] = Field(default_factory=list, description="建议的响应提取器(用于链式调用)")
+    suggested_extractions: List[SuggestedExtraction] = Field(
+        default_factory=list, description="建议的响应提取器(用于链式调用)"
+    )
     raw_ai_answer: str = Field("", description="AI 原始回答(调试用)")
 
 
@@ -70,7 +72,7 @@ def _heuristic_extract(req: ParameterizeRequest) -> tuple[str, str, List[Extract
         val = match.group(1)
         var_name = "userId"
         # 智能命名:根据上下文路径段推断变量名
-        prefix = match.string[:match.start()].rstrip("/").split("/")[-1].lower()
+        prefix = match.string[: match.start()].rstrip("/").split("/")[-1].lower()
         if prefix in ("users", "user", "u"):
             var_name = "userId"
         elif prefix in ("orders", "order", "o"):
@@ -215,7 +217,7 @@ def _parse_ai_answer(answer: str) -> dict:
     end = answer.rfind("}")
     if start >= 0 and end > start:
         try:
-            return json.loads(answer[start:end + 1])
+            return json.loads(answer[start : end + 1])
         except (json.JSONDecodeError, ValueError):
             pass
 

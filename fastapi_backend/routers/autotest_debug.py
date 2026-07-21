@@ -85,6 +85,7 @@ async def debug_execute_request(
     try:
         import ssl as ssl_module
         from fastapi_backend.core.config import settings
+
         timeout_obj = aiohttp.ClientTimeout(total=timeout)
         # 临时关闭 SSL 验证
         ssl_context = None if settings.DISABLE_SSL_VERIFY else ssl_module.create_default_context()
@@ -229,7 +230,9 @@ async def debug_execute_from_case(
             body_type=getattr(case, "body_type", "json") or "json",
             env_id=env_id,
             user_id=current_user.id,
-            request_config=__import__("fastapi_backend.services.autotest_request_config", fromlist=["reveal_request_config"]).reveal_request_config(getattr(case, "request_config", None)),
+            request_config=__import__(
+                "fastapi_backend.services.autotest_request_config", fromlist=["reveal_request_config"]
+            ).reveal_request_config(getattr(case, "request_config", None)),
         )
         return result
     except ValueError as e:

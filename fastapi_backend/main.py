@@ -63,6 +63,11 @@ async def create_tables() -> None:
     生产环境务必使用 Alembic 迁移管理数据库变更。"""
     if not getattr(settings, "AUTO_CREATE_TABLES_ON_STARTUP", False):
         return
+    if settings.ENVIRONMENT == "production":
+        raise RuntimeError(
+            "Production schema changes must run through `alembic upgrade head`; "
+            "AUTO_CREATE_TABLES_ON_STARTUP is forbidden."
+        )
     _logger.warning(
         "⚠️ AUTO_CREATE_TABLES_ON_STARTUP 已启用，正在使用 create_all() 创建表。"
         "生产环境请使用 `alembic upgrade head` 替代此选项。"
@@ -100,16 +105,18 @@ async def ensure_desktop_admin() -> None:
         existing = await session.scalar(select(User).where(User.username == username))
         if existing:
             return
-        session.add(User(
-            username=username,
-            email=f"{username}@testmaster.local",
-            password_hash=AuthService.hash_password(password),
-            is_active=True,
-            is_admin=True,
-            is_super_admin=True,
-            level=1,
-            score=0,
-        ))
+        session.add(
+            User(
+                username=username,
+                email=f"{username}@testmaster.local",
+                password_hash=AuthService.hash_password(password),
+                is_active=True,
+                is_admin=True,
+                is_super_admin=True,
+                level=1,
+                score=0,
+            )
+        )
         await session.commit()
         _logger.info("Local desktop administrator initialized")
 
@@ -122,7 +129,7 @@ async def init_auto_test_runtime() -> None:
         restore_scheduler_jobs_from_db,
     )
 
-    # 初始化 AutoTest 数据库（含运行时迁移，必须执行，不受 AUTO_CREATE_TABLES_ON_STARTUP 控制）
+    # Validate/initialize AutoTest storage. Production performs no runtime DDL.
     await init_autotest_db()
     await ensure_schedule_columns_on_db()
 
@@ -144,6 +151,15 @@ async def init_auto_test_runtime() -> None:
 
     start_scheduler()
     await restore_scheduler_jobs_from_db()
+    from fastapi_backend.services.suite_schedule_service import restore_suite_schedules
+    from fastapi_backend.services.suite_execution_service import start_suite_execution_watchdog
+    from fastapi_backend.services.artifact_maintenance import start_artifact_maintenance
+    from fastapi_backend.services.ui_automation.agent_service import start_ui_execution_watchdog
+
+    await start_suite_execution_watchdog()
+    await start_ui_execution_watchdog()
+    await restore_suite_schedules()
+    await start_artifact_maintenance()
 
 
 @asynccontextmanager
@@ -164,7 +180,7 @@ async def lifespan(_: FastAPI):
     else:
         await ensure_dev_tables()
     await ensure_desktop_admin()
-    # AutoTest 初始化（失败不阻塞主服务启动）
+    # Production must fail closed when its authoritative automation storage is unavailable.
     try:
         await init_auto_test_runtime()
         from fastapi_backend.services.autotest_task_store import (
@@ -175,6 +191,9 @@ async def lifespan(_: FastAPI):
         start_cleanup_task()
         _cleanup_needed = True
     except Exception as e:
+        if settings.ENVIRONMENT == "production":
+            _logger.exception("AutoTest 初始化失败，生产服务拒绝启动")
+            raise
         _logger.warning("AutoTest 初始化失败（不影响主服务）: %s", e)
         _cleanup_needed = False
     # RBAC 预置数据初始化（幂等，失败不阻塞主服务）
@@ -207,8 +226,14 @@ async def lifespan(_: FastAPI):
             try:
                 stop_cleanup_task()
                 from fastapi_backend.services.autotest_scheduler import stop_scheduler
+                from fastapi_backend.services.suite_execution_service import stop_suite_execution_watchdog
+                from fastapi_backend.services.artifact_maintenance import stop_artifact_maintenance
+                from fastapi_backend.services.ui_automation.agent_service import stop_ui_execution_watchdog
 
                 stop_scheduler()
+                await stop_suite_execution_watchdog()
+                await stop_ui_execution_watchdog()
+                await stop_artifact_maintenance()
             except Exception as e:
                 _logger.warning("AutoTest 清理失败: %s", e)
 
@@ -239,7 +264,13 @@ async def business_exception_handler(request: Request, exc: BusinessException) -
 
 
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-    payload = ErrorResponse(detail=exc.detail, trace_id=get_trace_id(request))
+    # Plain HTTPException is used extensively by routers. Give it a stable
+    # machine-readable fallback instead of returning a nullable code field.
+    payload = ErrorResponse(
+        detail=exc.detail,
+        code=f"HTTP_{exc.status_code}",
+        trace_id=get_trace_id(request),
+    )
     return JSONResponse(status_code=exc.status_code, content=payload.model_dump(mode="json"))
 
 
@@ -296,6 +327,7 @@ app.add_middleware(
 )
 
 from fastapi_backend.middleware.request_body_limit import RequestBodyLimitMiddleware
+
 app.add_middleware(RequestBodyLimitMiddleware, max_bytes=75 * 1024 * 1024)
 
 
@@ -310,10 +342,10 @@ async def autotest_request_size_limit(request: Request, call_next):
             )
     return await call_next(request)
 
+
 # 请求统计中间件（必须在 AI 速率限制之前注册）
 app.middleware("http")(request_stats_middleware)
 
-from fastapi_backend.middleware.ai_rate_limiter import ai_rate_limit_middleware
 
 # 临时禁用 AI 速率限制中间件（原条件：settings.ENVIRONMENT != "testing"）
 # if settings.ENVIRONMENT != "testing":

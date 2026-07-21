@@ -119,9 +119,7 @@ async def _validate_case_ownership(
     """
     if case_ids:
         result = await db.execute(
-            select(AutoTestCase.id).where(
-                AutoTestCase.id.in_(case_ids), AutoTestCase.user_id == user_id
-            )
+            select(AutoTestCase.id).where(AutoTestCase.id.in_(case_ids), AutoTestCase.user_id == user_id)
         )
         valid_ids = [row[0] for row in result.all()]
         if not valid_ids:
@@ -161,9 +159,7 @@ async def get_markdown_doc(
     """获取 Markdown 格式文档"""
     ids = _parse_case_ids(case_ids)
     ids, gid = await _validate_case_ownership(db, current_user.id, ids, group_id)
-    md = await ApiDocGenerator.generate_markdown(
-        db, case_ids=ids, group_id=gid, user_id=current_user.id, title=title
-    )
+    md = await ApiDocGenerator.generate_markdown(db, case_ids=ids, group_id=gid, user_id=current_user.id, title=title)
     return PlainTextResponse(md, media_type="text/markdown; charset=utf-8")
 
 
@@ -178,9 +174,7 @@ async def get_html_doc(
     """获取独立 HTML 文档（可离线查看）"""
     ids = _parse_case_ids(case_ids)
     ids, gid = await _validate_case_ownership(db, current_user.id, ids, group_id)
-    html_doc = await ApiDocGenerator.generate_html(
-        db, case_ids=ids, group_id=gid, user_id=current_user.id, title=title
-    )
+    html_doc = await ApiDocGenerator.generate_html(db, case_ids=ids, group_id=gid, user_id=current_user.id, title=title)
     return HTMLResponse(content=html_doc)
 
 
@@ -195,9 +189,7 @@ async def preview_html_doc(
     """在线预览 HTML 文档（返回可在浏览器查看的 HTML）"""
     ids = _parse_case_ids(case_ids)
     ids, gid = await _validate_case_ownership(db, current_user.id, ids, group_id)
-    html_doc = await ApiDocGenerator.generate_html(
-        db, case_ids=ids, group_id=gid, user_id=current_user.id, title=title
-    )
+    html_doc = await ApiDocGenerator.generate_html(db, case_ids=ids, group_id=gid, user_id=current_user.id, title=title)
     return HTMLResponse(content=html_doc)
 
 
@@ -233,16 +225,12 @@ async def create_share_link(
     # 校验用例确实存在（避免分享空文档）
     if ids:
         result = await db.execute(
-            select(AutoTestCase.id).where(
-                AutoTestCase.id.in_(ids), AutoTestCase.user_id == current_user.id
-            )
+            select(AutoTestCase.id).where(AutoTestCase.id.in_(ids), AutoTestCase.user_id == current_user.id)
         )
         valid_ids = [row[0] for row in result.all()]
     elif gid is not None:
         result = await db.execute(
-            select(AutoTestCase.id).where(
-                AutoTestCase.group_id == gid, AutoTestCase.user_id == current_user.id
-            )
+            select(AutoTestCase.id).where(AutoTestCase.group_id == gid, AutoTestCase.user_id == current_user.id)
         )
         valid_ids = [row[0] for row in result.all()]
     else:
@@ -304,9 +292,7 @@ async def get_shared_doc(
     根据 token 查找分享记录，校验过期与密码，返回对应格式的文档内容。
     每次访问自增 view_count。
     """
-    result = await db.execute(
-        select(ApiDocShare).where(ApiDocShare.token == token)
-    )
+    result = await db.execute(select(ApiDocShare).where(ApiDocShare.token == token))
     share = result.scalar_one_or_none()
     if not share:
         raise HTTPException(status_code=404, detail="分享链接不存在")
@@ -414,9 +400,7 @@ async def get_shared_doc(
             content=html_doc,
             headers={
                 "Content-Security-Policy": (
-                    "default-src 'self'; "
-                    "script-src 'unsafe-inline'; "
-                    "style-src 'unsafe-inline'"
+                    "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'"
                 ),
                 "X-Content-Type-Options": "nosniff",
                 "X-Frame-Options": "DENY",

@@ -22,7 +22,7 @@ def _encrypt_value(value: Any) -> Any:
 def _decrypt_value(value: Any) -> Any:
     if not isinstance(value, str) or not value.startswith(_PREFIX):
         return value
-    return decrypt(value[len(_PREFIX):])
+    return decrypt(value[len(_PREFIX) :])
 
 
 def protect_request_config(config: Dict[str, Any] | None) -> Dict[str, Any]:
@@ -89,5 +89,10 @@ def sanitize_request_headers(headers: Dict[str, Any] | None, config: Dict[str, A
 def sanitize_request_url(url: str) -> str:
     parts = urlsplit(url or "")
     sensitive = {"token", "access_token", "api_key", "apikey", "key", "secret", "password"}
-    query = urlencode([(key, _MASK if key.lower() in sensitive else value) for key, value in parse_qsl(parts.query, keep_blank_values=True)])
+    query = urlencode(
+        [
+            (key, _MASK if key.lower() in sensitive else value)
+            for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        ]
+    )
     return urlunsplit(parts._replace(query=query))

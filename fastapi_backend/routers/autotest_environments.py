@@ -20,10 +20,8 @@ from fastapi_backend.models.autotest import AutoTestEnvironment
 from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import AutoTestEnvironmentCreate, AutoTestEnvironmentUpdate
 from fastapi_backend.services.autotest_variable_service import (
-    CyclicInheritanceError,
     EnvironmentNotFoundError,
     InheritanceError,
-    MaxDepthExceededError,
     get_effective_variables,
     get_inheritance_chain,
     validate_parent_id,

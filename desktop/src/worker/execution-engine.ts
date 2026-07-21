@@ -43,8 +43,10 @@ export interface RunOptions {
   headless: boolean;
   screenshotsOnFailure: boolean;
   traceOnFailure: boolean;
+  videoOnFailure?: boolean;
   debugMode?: boolean;
   storageState?: object | null;
+  artifactRootDir?: string;
 }
 
 export interface StepResult {
@@ -56,13 +58,14 @@ export interface StepResult {
 }
 
 export interface RunResult {
-  status: 'passed' | 'failed' | 'cancelled' | 'error';
+  status: 'passed' | 'failed' | 'cancelled' | 'infra_error';
   totalSteps: number;
   passedSteps: number;
   failedSteps: number;
   durationMs: number;
   stepResults: StepResult[];
   tracePath: string | null;
+  videoPath: string | null;
 }
 
 export type StepEvent =
@@ -80,6 +83,37 @@ export type StepEvent =
 
 export type StepEventCallback = (event: StepEvent) => void;
 
+const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i;
+
+export function safeArtifactFilename(value: string, fallback = 'artifact'): string {
+  const leaf = path.win32.basename(String(value || '').replace(/\//g, '\\'));
+  let cleaned = leaf
+    .replace(/[\u0000-\u001f\u007f<>:"/\\|?*]/g, '_')
+    .replace(/[. ]+$/g, '')
+    .trim();
+  if (!cleaned || cleaned === '.' || cleaned === '..') cleaned = fallback;
+  if (WINDOWS_RESERVED_NAME.test(cleaned)) cleaned = `_${cleaned}`;
+  if (cleaned.length > 180) {
+    const extension = path.extname(cleaned).slice(0, 20);
+    cleaned = `${cleaned.slice(0, Math.max(1, 180 - extension.length))}${extension}`;
+  }
+  return cleaned;
+}
+
+export function uniqueArtifactPath(rootDir: string, requestedFilename: string, fallback = 'artifact'): string {
+  const root = path.resolve(rootDir);
+  fs.mkdirSync(root, { recursive: true });
+  const safeName = safeArtifactFilename(requestedFilename, fallback);
+  const extension = path.extname(safeName);
+  const stem = path.basename(safeName, extension);
+  for (let index = 0; index < 10_000; index += 1) {
+    const name = index === 0 ? safeName : `${stem}-${index}${extension}`;
+    const candidate = path.resolve(root, name);
+    if (candidate !== root && candidate.startsWith(`${root}${path.sep}`) && !fs.existsSync(candidate)) return candidate;
+  }
+  throw new Error('ARTIFACT_FILENAME_EXHAUSTED');
+}
+
 // ------------------------------------------------------------------
 // Execution engine
 // ------------------------------------------------------------------
@@ -96,6 +130,7 @@ export class CaseExecutionEngine {
   private pauseRequested = false;
   private paused = false;
   private resumeResolver: (() => void) | null = null;
+  private artifactRootDir = path.join(os.tmpdir(), 'testmaster-artifacts');
 
   /**
    * Execute a case snapshot.
@@ -116,16 +151,23 @@ export class CaseExecutionEngine {
     let passedSteps = 0;
     let failedSteps = 0;
     let savedTracePath: string | null = null;
+    let savedVideoPath: string | null = null;
+    let infrastructureError: unknown = null;
+    let currentVideo: import('playwright').Video | null = null;
 
     this.pauseMode = options.debugMode ? 'every-step' : 'breakpoints';
+    this.artifactRootDir = path.resolve(options.artifactRootDir || path.join(os.tmpdir(), 'testmaster-artifacts'));
     onEvent({ type: 'run:start', totalSteps: snapshot.steps.length });
 
     try {
       // Launch browser
       this.browser = await chromium.launch({ headless: options.headless, executablePath: bundledChromiumExecutable() });
+      const videoDir = path.join(this.artifactRootDir, 'videos');
+      if (options.videoOnFailure && !fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
       this.context = await this.browser.newContext({
         viewport: { width: 1280, height: 720 },
         storageState: options.storageState as any || undefined,
+        recordVideo: options.videoOnFailure ? { dir: videoDir, size: { width: 1280, height: 720 } } : undefined,
       });
 
       // Enable tracing if requested
@@ -139,6 +181,7 @@ export class CaseExecutionEngine {
 
       this.context.on('page', diagnosticPage => this.attachPageDiagnostics(diagnosticPage, onEvent));
       this.page = await this.context.newPage();
+      currentVideo = this.page.video();
       this.attachPageDiagnostics(this.page, onEvent);
 
       // Set default timeouts
@@ -264,23 +307,15 @@ export class CaseExecutionEngine {
       }
     } catch (error: any) {
       onEvent({ type: 'log', level: 'error', message: `Run error: ${error?.message}` });
-      return {
-        status: 'error',
-        totalSteps: snapshot.steps.length,
-        passedSteps,
-        failedSteps,
-        durationMs: Date.now() - startTime,
-        stepResults,
-        tracePath: savedTracePath,
-      };
+      infrastructureError = error;
     } finally {
       // Save trace on failure
       if (options.traceOnFailure && this.context) {
         try {
-          if (failedSteps > 0) {
-            const dir = path.join(os.tmpdir(), 'testmaster-traces');
+          if (failedSteps > 0 || infrastructureError) {
+            const dir = path.join(this.artifactRootDir, 'traces');
             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-            const tracePath = path.join(dir, 'trace-' + snapshot.case_id + '-' + Date.now() + '.zip');
+            const tracePath = uniqueArtifactPath(dir, `trace-${safeArtifactFilename(String(snapshot.case_id), 'case')}-${Date.now()}.zip`, 'trace.zip');
             savedTracePath = tracePath;
             await this.context.tracing.stop({ path: tracePath });
             onEvent({ type: 'log', level: 'info', message: `Trace saved: ${tracePath}` });
@@ -292,12 +327,26 @@ export class CaseExecutionEngine {
         }
       }
 
-      // Cleanup 鈥?always close browser resources
+      // Playwright only guarantees the final video path after its context closes.
       await this.cleanup();
+      if (currentVideo) {
+        try {
+          const videoPath = await currentVideo.path();
+          if ((failedSteps > 0 || infrastructureError) && options.videoOnFailure) {
+            savedVideoPath = videoPath;
+            onEvent({ type: 'log', level: 'info', message: `Video saved: ${videoPath}` });
+          } else if (videoPath && fs.existsSync(videoPath)) {
+            fs.unlinkSync(videoPath);
+          }
+        } catch {
+          // Artifact capture failure must not replace the original test result.
+        }
+      }
     }
 
-    const status: 'passed' | 'failed' | 'cancelled' =
-      this.cancelled ? 'cancelled' : failedSteps > 0 ? 'failed' : 'passed';
+    const status: RunResult['status'] = infrastructureError
+      ? 'infra_error'
+      : this.cancelled ? 'cancelled' : failedSteps > 0 ? 'failed' : 'passed';
 
     const result: RunResult = {
       status,
@@ -306,7 +355,8 @@ export class CaseExecutionEngine {
       failedSteps,
       durationMs: Date.now() - startTime,
       stepResults,
-        tracePath: savedTracePath,
+      tracePath: savedTracePath,
+      videoPath: savedVideoPath,
     };
 
     onEvent({
@@ -502,10 +552,10 @@ export class CaseExecutionEngine {
           page.waitForEvent('download', { timeout: timeoutMs }),
           locator.click({ timeout: timeoutMs }),
         ]);
-        const dir = path.join(os.tmpdir(), 'testmaster-downloads');
+        const dir = path.join(this.artifactRootDir, 'downloads');
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        const filename = download.suggestedFilename();
-        const savedPath = path.join(dir, filename);
+        const filename = safeArtifactFilename(download.suggestedFilename(), 'download');
+        const savedPath = uniqueArtifactPath(dir, filename, 'download');
         await download.saveAs(savedPath);
         if (resolvedInput.expectedFilename && !(new RegExp(resolvedInput.expectedFilename).test(filename))) {
           throw new Error('DOWNLOAD_FILENAME_MISMATCH: ' + filename);
@@ -760,9 +810,9 @@ export class CaseExecutionEngine {
   private async captureScreenshot(stepId: string, kind: 'pass' | 'fail'): Promise<string | null> {
     if (!this.page || this.page.isClosed()) return null;
     try {
-      const dir = path.join(os.tmpdir(), 'testmaster-screenshots');
+      const dir = path.join(this.artifactRootDir, 'screenshots');
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      const screenshotPath = path.join(dir, kind + '-' + stepId + '-' + Date.now() + '.png');
+      const screenshotPath = uniqueArtifactPath(dir, `${kind}-${safeArtifactFilename(stepId, 'step')}-${Date.now()}.png`, `${kind}-step.png`);
       await this.page.screenshot({ path: screenshotPath, fullPage: true });
       return screenshotPath;
     } catch {

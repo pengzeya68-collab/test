@@ -62,6 +62,7 @@ async def _check_single(url: str, timeout: float = 5.0) -> Dict:
     try:
         from fastapi_backend.core.config import settings
         import ssl as ssl_module
+
         ssl_context = None if settings.DISABLE_SSL_VERIFY else ssl_module.create_default_context()
         connector = aiohttp.TCPConnector(ssl=ssl_context)
         async with aiohttp.ClientSession(connector=connector) as session:

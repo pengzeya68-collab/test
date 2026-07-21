@@ -31,13 +31,27 @@ import { getMainWindow } from './window';
 import { deleteAuthState, listAuthStates, loadAuthState, saveAuthState } from './auth-state-store';
 import { chromium } from 'playwright';
 import { bundledChromiumExecutable } from '../worker/browser-runtime';
+import { DesktopAgentService } from './desktop-agent-service';
+import { getDesktopDataDirectoryStatus } from './desktop-data-directory';
 
 const activeOperations = new Map<string, AbortController>();
 const activeEngines = new Map<string, CaseExecutionEngine>();
 let activeRecorder: RecorderSession | null = null;
-
 const artifactRootDir = path.join(app.getPath('userData'), 'artifacts');
 const screenshotOutputDir = path.join(artifactRootDir, 'screenshots');
+const desktopAgent = new DesktopAgentService({
+  loadAuthState,
+  artifactRootDir,
+  desktopVersion: app.getVersion(),
+  onStatus: (status) => {
+    const window = getMainWindow();
+    if (window && !window.isDestroyed()) window.webContents.send('ipc:agent:status:event', status);
+  },
+});
+
+function configureAgentAutoStart(enabled: boolean): void {
+  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: enabled });
+}
 
 type BrowserLaunchPayload = {
   headless: boolean;
@@ -268,6 +282,7 @@ async function handleRunCase(
     traceOnFailure: payload.traceOnFailure,
     debugMode: payload.debugMode,
     storageState: payload.authStateId ? loadAuthState(payload.authStateId) : null,
+    artifactRootDir,
   };
 
   const onEvent = (event: StepEvent) => {
@@ -294,6 +309,19 @@ export async function stopActiveRecorder(): Promise<void> {
     activeRecorder = null;
   }
 }
+
+export function initializeDesktopAgent(): void {
+  desktopAgent.initialize();
+}
+
+export async function stopDesktopAgent(): Promise<void> {
+  await desktopAgent.shutdown();
+}
+
+export function isDesktopAgentEnabled(): boolean {
+  return desktopAgent.getStatus().enabled;
+}
+
 export function registerIpcHandlers(): void {
   const handlerMap: Record<string, (payload: unknown) => Promise<unknown>> = {
     'browser.launch': (payload) => handleBrowserLaunch(payload as BrowserLaunchPayload),
@@ -452,11 +480,65 @@ export function registerIpcHandlers(): void {
     } catch (error: any) { return createErrorResponse(correlationId, 'auth-state.save' as any, 'EXECUTION_ERROR', error?.message ?? String(error)); }
   });
 
-  ipcMain.handle('ipc:auth-state.delete', async (event, raw: any) => {
+  ipcMain.handle('ipc:auth-state.delete', async (event, raw: any) => {
     const correlationId = raw?.correlationId || 'unknown';
     try { assertTrustedSender(event); deleteAuthState(raw?.payload?.id); return createSuccessResponse(correlationId, 'auth-state.delete' as any, null); }
     catch (error: any) { return createErrorResponse(correlationId, 'auth-state.delete' as any, 'EXECUTION_ERROR', error?.message ?? String(error)); }
-  });
+  });
+  ipcMain.handle('ipc:agent.status', async (event, raw: any) => {
+    const correlationId = raw?.correlationId || 'unknown';
+    try {
+      assertTrustedSender(event);
+      return createSuccessResponse(correlationId, 'agent.status' as any, desktopAgent.getStatus());
+    } catch (error: any) {
+      return createErrorResponse(correlationId, 'agent.status' as any, 'EXECUTION_ERROR', error?.message ?? String(error));
+    }
+  });
+  ipcMain.handle('ipc:desktop.info', async (event, raw: any) => {
+    const correlationId = raw?.correlationId || 'unknown';
+    try {
+      assertTrustedSender(event);
+      return createSuccessResponse(correlationId, 'desktop.info' as any, {
+        dataDirectory: getDesktopDataDirectoryStatus(),
+      });
+    } catch (error: any) {
+      return createErrorResponse(correlationId, 'desktop.info' as any, 'EXECUTION_ERROR', error?.message ?? String(error));
+    }
+  });
+
+  ipcMain.handle('ipc:agent.register', async (event, raw: any) => {
+    const correlationId = raw?.correlationId || 'unknown';
+    try {
+      assertTrustedSender(event);
+      const payload = raw?.payload || {};
+      const result = await desktopAgent.register({
+        serverUrl: String(payload.serverUrl || ''),
+        accessToken: String(payload.accessToken || ''),
+        name: String(payload.name || ''),
+        authStateId: payload.authStateId ? String(payload.authStateId) : null,
+        headless: payload.headless !== false,
+      });
+      configureAgentAutoStart(true);
+      return createSuccessResponse(correlationId, 'agent.register' as any, result);
+    } catch (error: any) {
+      return createErrorResponse(correlationId, 'agent.register' as any, 'EXECUTION_ERROR', error?.message ?? String(error));
+    }
+  });
+
+  for (const action of ['enable', 'disable', 'remove'] as const) {
+    ipcMain.handle(`ipc:agent.${action}`, async (event, raw: any) => {
+      const correlationId = raw?.correlationId || 'unknown';
+      try {
+        assertTrustedSender(event);
+        const result = await desktopAgent[action]();
+        if (action === 'enable') configureAgentAutoStart(true);
+        if (action === 'disable' || action === 'remove') configureAgentAutoStart(false);
+        return createSuccessResponse(correlationId, `agent.${action}` as any, result);
+      } catch (error: any) {
+        return createErrorResponse(correlationId, `agent.${action}` as any, 'EXECUTION_ERROR', error?.message ?? String(error));
+      }
+    });
+  }
   ipcMain.handle('ipc:recorder.stop', async (event, raw: any) => {
     const correlationId = raw?.correlationId || 'unknown';
     try {
@@ -543,6 +625,12 @@ export function unregisterIpcHandlers(): void {
     'ipc:auth-state.validate',
     'ipc:auth-state.save',
     'ipc:auth-state.delete',
+    'ipc:agent.status',
+    'ipc:agent.register',
+    'ipc:agent.enable',
+    'ipc:agent.disable',
+    'ipc:agent.remove',
+    'ipc:desktop.info',
   ];
   for (const ch of channels) {
     if (ipcMain.listenerCount(ch) > 0) {

@@ -27,7 +27,9 @@ if not result_backend:
     result_backend = "db+sqlite:///celery_results.db"
     _logger.warning("CELERY_RESULT_BACKEND 未配置，Celery 结果后端降级为 SQLite 模式（仅本地开发/测试）")
 else:
-    _logger.info("Celery result_backend 已配置: %s", result_backend.split("@")[-1] if "@" in result_backend else result_backend)
+    _logger.info(
+        "Celery result_backend 已配置: %s", result_backend.split("@")[-1] if "@" in result_backend else result_backend
+    )
 
 app.conf.broker_url = broker_url
 app.conf.result_backend = result_backend
@@ -41,6 +43,7 @@ app.conf.enable_utc = True
 
 app.conf.task_routes = {
     "fastapi_backend.tasks.run_scenario": {"queue": "celery"},
+    "fastapi_backend.tasks.run_suite_execution": {"queue": "celery"},
     "fastapi_backend.tasks.send_email": {"queue": "celery"},
     "fastapi_backend.services.autotest_ai_generator.ai_generate_task": {"queue": "celery"},
     # JMeter 真实引擎压测任务，独立队列避免阻塞常规 Celery 任务
@@ -65,6 +68,7 @@ import fastapi_backend.models.autotest_jmeter_models  # noqa: F401
 # Celery worker 启动钩子(每个 ForkPoolWorker 子进程初始化时执行)
 from celery.signals import worker_process_init
 
+
 @worker_process_init.connect
 def _setup_metadata(**kwargs):
     """每个 ForkPoolWorker 子进程初始化时,确保所有 model 都已注册到 Base.metadata。
@@ -73,6 +77,7 @@ def _setup_metadata(**kwargs):
     可能找不到 users 表)。这里显式 import 一次,确保万无一失。
     """
     import logging as _lg
+
     _lg.getLogger(__name__).info(
         "[worker_process_init] re-importing models for child pid=%d",
         __import__("os").getpid(),
@@ -81,10 +86,12 @@ def _setup_metadata(**kwargs):
     import fastapi_backend.models.autotest  # noqa: F401
     import fastapi_backend.models.autotest_jmeter_models  # noqa: F401
     from fastapi_backend.core.database import Base
+
     _lg.getLogger(__name__).info(
         "[worker_process_init] metadata tables=%d, has users=%s",
         len(Base.metadata.tables),
         "users" in Base.metadata.tables,
     )
+
 
 app.autodiscover_tasks(["fastapi_backend.tasks"])

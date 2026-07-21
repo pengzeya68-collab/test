@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.models.models import Permission, Role, RolePermissionMapping
@@ -48,6 +48,24 @@ PRESET_PERMISSIONS: list[tuple[str, str, str, str, str]] = [
     ("suite:update", "编辑套件", "修改套件", "suite", "update"),
     ("suite:delete", "删除套件", "删除套件", "suite", "delete"),
     ("suite:execute", "执行套件", "执行回归套件", "suite", "execute"),
+    ("suite:schedule", "配置套件定时执行", "创建、修改或暂停服务端回归套件定时任务", "suite", "schedule"),
+    ("webhook:manage", "管理回归 Webhook", "创建、停用和轮换回归套件的外部 Webhook 密钥", "webhook", "manage"),
+    # artifact: 执行产物
+    ("artifact:download", "下载执行产物", "查看或下载已授权执行的截图、日志和追踪文件", "artifact", "download"),
+    # execution: execution records are shared infrastructure, not suite-only metadata
+    ("execution:read", "查看执行记录", "查看自动化执行状态、步骤和事件", "execution", "read"),
+    ("execution:cancel", "取消执行", "请求取消仍在运行的自动化执行", "execution", "cancel"),
+    # capture: 浏览器流量捕获
+    ("capture:create", "创建流量捕获", "创建并写入已脱敏的浏览器流量捕获会话", "capture", "create"),
+    ("capture:export", "导出流量捕获", "查看捕获候选并转换为接口测试资产", "capture", "export"),
+    # ui: 桌面 UI 自动化资产与执行
+    ("ui:read", "查看 UI 自动化", "查看 UI 用例、套件、运行记录与缺陷报告", "ui", "read"),
+    ("ui:write", "编辑 UI 自动化", "创建、编辑、版本化 UI 用例、套件和标注", "ui", "write"),
+    ("ui:execute", "执行 UI 自动化", "创建 UI 执行并上报受控桌面端运行事件", "ui", "execute"),
+    ("ui:agent", "管理 UI Agent", "注册和查看所属桌面 Agent", "ui", "agent"),
+    # ai: 受控辅助分析
+    ("ai:analyze", "AI 测试分析", "请求脱敏后的失败归因、定位器建议和需求测试点生成", "ai", "analyze"),
+    ("ai:feedback", "AI 分析反馈", "提交人工归因修正并查看本人反馈质量指标", "ai", "feedback"),
     # environment: 环境配置
     ("environment:create", "创建环境", "创建测试环境", "environment", "create"),
     ("environment:read", "查看环境", "查看环境配置", "environment", "read"),
@@ -63,6 +81,7 @@ PRESET_PERMISSIONS: list[tuple[str, str, str, str, str]] = [
     ("mock:read", "查看Mock", "查看 Mock 配置", "mock", "read"),
     ("mock:update", "编辑Mock", "修改 Mock 配置", "mock", "update"),
     ("mock:delete", "删除Mock", "删除 Mock 接口", "mock", "delete"),
+    ("mock:fault-inject", "注入Mock故障", "配置受控 Mock 故障注入", "mock", "fault-inject"),
     # schedule: 定时任务
     ("schedule:create", "创建定时任务", "创建调度任务", "schedule", "create"),
     ("schedule:read", "查看定时任务", "查看调度任务", "schedule", "read"),
@@ -92,9 +111,18 @@ PRESET_ROLES: list[tuple[str, str, str, str, bool]] = [
 # 角色代码 → 该角色拥有的权限代码列表
 # 使用通配 "*" 标记 ADMIN 拥有全部权限（实际写入所有预置权限码）
 VIEWER_PERMS = [
-    "case:read", "case:execute", "case:export",
-    "scenario:read", "scenario:execute",
-    "suite:read", "suite:execute",
+    "case:read",
+    "case:execute",
+    "case:export",
+    "scenario:read",
+    "scenario:execute",
+    "suite:read",
+    "suite:execute",
+    "artifact:download",
+    "execution:read",
+    "capture:create",
+    "capture:export",
+    "ui:read",
     "environment:read",
     "variable:read",
     "mock:read",
@@ -106,19 +134,56 @@ VIEWER_PERMS = [
 
 TESTER_PERMS = [
     # 用例全权限
-    "case:create", "case:read", "case:update", "case:delete",
-    "case:execute", "case:import", "case:export",
+    "case:create",
+    "case:read",
+    "case:update",
+    "case:delete",
+    "case:execute",
+    "case:import",
+    "case:export",
     # 场景全权限
-    "scenario:create", "scenario:read", "scenario:update", "scenario:delete",
+    "scenario:create",
+    "scenario:read",
+    "scenario:update",
+    "scenario:delete",
     "scenario:execute",
     # 套件全权限
-    "suite:create", "suite:read", "suite:update", "suite:delete",
+    "suite:create",
+    "suite:read",
+    "suite:update",
+    "suite:delete",
     "suite:execute",
+    "suite:schedule",
+    "webhook:manage",
+    "artifact:download",
+    "execution:read",
+    "execution:cancel",
+    "capture:create",
+    "capture:export",
+    "ui:read",
+    "ui:write",
+    "ui:execute",
+    "ui:agent",
+    "ai:analyze",
+    "ai:feedback",
     # 环境/变量/Mock/调度 CRUD（无用户/角色管理）
-    "environment:create", "environment:read", "environment:update", "environment:delete",
-    "variable:create", "variable:read", "variable:update", "variable:delete",
-    "mock:create", "mock:read", "mock:update", "mock:delete",
-    "schedule:create", "schedule:read", "schedule:update", "schedule:delete",
+    "environment:create",
+    "environment:read",
+    "environment:update",
+    "environment:delete",
+    "variable:create",
+    "variable:read",
+    "variable:update",
+    "variable:delete",
+    "mock:create",
+    "mock:read",
+    "mock:update",
+    "mock:delete",
+    "mock:fault-inject",
+    "schedule:create",
+    "schedule:read",
+    "schedule:update",
+    "schedule:delete",
     # 审计只读
     "audit:read",
     # 用户只读
@@ -131,6 +196,11 @@ ROLE_PERMISSION_MAP: dict[str, list[str]] = {
     "TESTER": TESTER_PERMS,
     "VIEWER": VIEWER_PERMS,
 }
+
+# These permissions were mistakenly granted to the built-in VIEWER role in an
+# earlier release. Keep the explicit revocation so existing deployments are
+# repaired during startup as well as fresh deployments.
+_VIEWER_REVOKED_PRESET_PERMS = {"suite:schedule", "webhook:manage"}
 
 
 async def _ensure_permissions(db: AsyncSession) -> dict[str, int]:
@@ -162,14 +232,19 @@ async def _ensure_permissions(db: AsyncSession) -> dict[str, int]:
 async def _ensure_roles(db: AsyncSession) -> dict[str, int]:
     """创建缺失的预置角色，返回 code→id 映射。"""
     result = await db.execute(select(Role.code, Role.name, Role.id))
-    existing: dict[str, int] = {}
+    existing_by_code: dict[str, int] = {}
+    existing_by_name: dict[str, int] = {}
     for code, name, rid in result.all():
-        existing[code or name or ""] = rid
+        if code:
+            existing_by_code[code] = rid
+        if name:
+            existing_by_name[name] = rid
 
     created = 0
     for name, code, display_name, desc, is_system in PRESET_ROLES:
-        key = code or name
-        if key in existing:
+        # Historic installations only stored the lowercase role name. Reuse
+        # that role instead of inserting a duplicate name during startup.
+        if code in existing_by_code or name in existing_by_name:
             continue
         db.add(
             Role(
@@ -185,9 +260,19 @@ async def _ensure_roles(db: AsyncSession) -> dict[str, int]:
         await db.flush()
     # 重新查询得到完整映射
     result = await db.execute(select(Role.code, Role.name, Role.id))
-    mapping: dict[str, int] = {}
+    role_ids_by_code: dict[str, int] = {}
+    role_ids_by_name: dict[str, int] = {}
     for code, name, rid in result.all():
-        mapping[code or name or ""] = rid
+        if code:
+            role_ids_by_code[code] = rid
+        if name:
+            role_ids_by_name[name] = rid
+
+    mapping: dict[str, int] = {}
+    for name, code, _display_name, _desc, _is_system in PRESET_ROLES:
+        role_id = role_ids_by_code.get(code) or role_ids_by_name.get(name)
+        if role_id is not None:
+            mapping[code] = role_id
     return mapping
 
 
@@ -210,23 +295,25 @@ async def _sync_role_permissions(
             desired_codes = ROLE_PERMISSION_MAP.get(role_code, [])
             desired_perm_ids = {perm_map[c] for c in desired_codes if c in perm_map}
 
-        if not desired_perm_ids:
-            continue
-
         # 查询当前已分配的权限 ID
         result = await db.execute(
-            select(RolePermissionMapping.permission_id).where(
-                RolePermissionMapping.role_id == role_id
-            )
+            select(RolePermissionMapping.permission_id).where(RolePermissionMapping.role_id == role_id)
         )
         existing_perm_ids = {row[0] for row in result.all()}
 
         # 补齐缺失的权限（不删除用户自定义追加的权限，仅补齐预置项）
         to_add = desired_perm_ids - existing_perm_ids
         for perm_id in to_add:
-            db.add(
-                RolePermissionMapping(role_id=role_id, permission_id=perm_id)
-            )
+            db.add(RolePermissionMapping(role_id=role_id, permission_id=perm_id))
+        if role_code == "VIEWER":
+            revoked_ids = {perm_map[code] for code in _VIEWER_REVOKED_PRESET_PERMS if code in perm_map}
+            if revoked_ids:
+                await db.execute(
+                    delete(RolePermissionMapping).where(
+                        RolePermissionMapping.role_id == role_id,
+                        RolePermissionMapping.permission_id.in_(revoked_ids),
+                    )
+                )
     await db.flush()
 
 

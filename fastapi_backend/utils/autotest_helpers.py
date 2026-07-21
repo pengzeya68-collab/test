@@ -63,7 +63,9 @@ def extract_jsonpath_value(data: Any, path: str, default: Any = None) -> Any:
                     keys.append("*")
                 elif len(index_str) >= 2 and index_str[0] in {'"', "'"} and index_str[-1] == index_str[0]:
                     try:
-                        keys.append(json.loads(index_str) if index_str[0] == '"' else index_str[1:-1].replace("\\'", "'"))
+                        keys.append(
+                            json.loads(index_str) if index_str[0] == '"' else index_str[1:-1].replace("\\'", "'")
+                        )
                     except (json.JSONDecodeError, ValueError):
                         return default
                 else:
@@ -83,7 +85,7 @@ def extract_jsonpath_value(data: Any, path: str, default: Any = None) -> Any:
         for idx, key in enumerate(remaining_keys):
             if key == "*":
                 # 通配符：对 list/dict 的所有元素应用剩余路径
-                rest = remaining_keys[idx + 1:]
+                rest = remaining_keys[idx + 1 :]
                 if isinstance(value, list):
                     return [_apply(item, rest) for item in value]
                 elif isinstance(value, dict):

@@ -151,9 +151,7 @@ async def test_query_by_user_id(patched_audit_service, audit_session_factory):
     await AuditService.log(
         db=None, user_id=1, username="alice", action="create", resource_type="scenario", resource_id=1
     )
-    await AuditService.log(
-        db=None, user_id=2, username="bob", action="create", resource_type="scenario", resource_id=2
-    )
+    await AuditService.log(db=None, user_id=2, username="bob", action="create", resource_type="scenario", resource_id=2)
 
     async with audit_session_factory() as session:
         result = await AuditService.query_logs(db=session, user_id=2)
@@ -168,17 +166,13 @@ async def test_query_by_resource_type_and_id(patched_audit_service, audit_sessio
     await AuditService.log(
         db=None, user_id=1, username="alice", action="create", resource_type="scenario", resource_id=100
     )
-    await AuditService.log(
-        db=None, user_id=1, username="alice", action="create", resource_type="case", resource_id=100
-    )
+    await AuditService.log(db=None, user_id=1, username="alice", action="create", resource_type="case", resource_id=100)
     await AuditService.log(
         db=None, user_id=1, username="alice", action="create", resource_type="scenario", resource_id=200
     )
 
     async with audit_session_factory() as session:
-        result = await AuditService.query_logs(
-            db=session, resource_type="scenario", resource_id=100
-        )
+        result = await AuditService.query_logs(db=session, resource_type="scenario", resource_id=100)
 
     assert result["total"] >= 1
     for item in result["items"]:
@@ -221,9 +215,7 @@ async def test_stats(patched_audit_service, audit_session_factory):
     await AuditService.log(
         db=None, user_id=1, username="alice", action="execute", resource_type="scenario", resource_id=1
     )
-    await AuditService.log(
-        db=None, user_id=2, username="bob", action="delete", resource_type="case", resource_id=3
-    )
+    await AuditService.log(db=None, user_id=2, username="bob", action="delete", resource_type="case", resource_id=3)
 
     async with audit_session_factory() as session:
         stats = await AuditService.stats(db=session)

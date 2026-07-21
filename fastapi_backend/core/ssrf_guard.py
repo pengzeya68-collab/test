@@ -7,6 +7,7 @@ def _is_ssrf_guard_disabled() -> bool:
     """检查是否临时禁用了 SSRF 防护"""
     try:
         from fastapi_backend.core.config import settings
+
         return settings.DISABLE_SSRF_GUARD
     except Exception:
         return False

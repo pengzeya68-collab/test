@@ -84,7 +84,13 @@ class TestExportImportRoundtrip:
         """多个用例的 JMX 必须能完整导入"""
         cases = [
             {"name": "List", "method": "GET", "url": "https://api.example.com/users", "headers": [], "body": ""},
-            {"name": "Create", "method": "POST", "url": "https://api.example.com/users", "headers": [{"key": "Content-Type", "value": "application/json"}], "body": '{"name":"test"}'},
+            {
+                "name": "Create",
+                "method": "POST",
+                "url": "https://api.example.com/users",
+                "headers": [{"key": "Content-Type", "value": "application/json"}],
+                "body": '{"name":"test"}',
+            },
             {"name": "Delete", "method": "DELETE", "url": "https://api.example.com/users/1", "headers": [], "body": ""},
         ]
         jmx = export_cases_to_jmx(cases)
@@ -100,9 +106,9 @@ class TestImportJmxFullTree:
 
     def test_full_tree_returns_dict_with_required_keys(self):
         """import_jmx_to_full_tree 必须返回包含 type/children 的字典"""
-        jmx = export_cases_to_jmx([{
-            "name": "T", "method": "GET", "url": "https://api.example.com/x", "headers": [], "body": ""
-        }])
+        jmx = export_cases_to_jmx(
+            [{"name": "T", "method": "GET", "url": "https://api.example.com/x", "headers": [], "body": ""}]
+        )
         tree = import_jmx_to_full_tree(jmx)
         assert isinstance(tree, dict)
         assert "type" in tree or "children" in tree
@@ -114,14 +120,14 @@ class TestImportJmxFullTree:
 
     def test_full_tree_empty_jmeter_plan(self):
         """空 JMeter 计划不应崩溃"""
-        empty_jmx = '''<?xml version="1.0" encoding="UTF-8"?>
+        empty_jmx = """<?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.0">
   <hashTree>
     <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Empty" enabled="true">
     </TestPlan>
     <hashTree/>
   </hashTree>
-</jmeterTestPlan>'''
+</jmeterTestPlan>"""
         tree = import_jmx_to_full_tree(empty_jmx)
         assert isinstance(tree, dict)
 
@@ -142,11 +148,17 @@ class TestImporterTypeMapping:
     def test_canonical_types_match_frontend_node_types(self):
         """规范类型集合应包含 11 个新元素(BoundaryExtractor 等)"""
         new_elements = {
-            "BoundaryExtractor", "CSSSelectorExtractor", "XPathExtractor",
-            "ConstantThroughputTimer", "PoissonRandomTimer",
-            "HttpCacheManager", "HttpAuthManager",
-            "ModuleController", "RunTimeController",
-            "Summariser", "RandomVariableConfig",
+            "BoundaryExtractor",
+            "CSSSelectorExtractor",
+            "XPathExtractor",
+            "ConstantThroughputTimer",
+            "PoissonRandomTimer",
+            "HttpCacheManager",
+            "HttpAuthManager",
+            "ModuleController",
+            "RunTimeController",
+            "Summariser",
+            "RandomVariableConfig",
         }
         canonical_types = set(_JMX_TYPE_MAP.values())
         for elem in new_elements:
@@ -159,26 +171,47 @@ class TestImporterTypeMapping:
 class TestNewElementsRoundtrip:
     """11 种 Stage D 新元素的导入/导出往返"""
 
-    @pytest.mark.parametrize("element_type,props,jmeter_tag", [
-        ("BoundaryExtractor", {"referenceName": "v1", "leftBoundary": "[", "rightBoundary": "]"}, "BoundaryExtractor"),
-        ("CSSSelectorExtractor", {"referenceName": "css", "selector": ".t"}, "CSSSelectorExtractor"),
-        ("XPathExtractor", {"referenceName": "xv", "xPath": "/root"}, "XPathExtractor"),
-        ("ConstantThroughputTimer", {"throughput": "600"}, "ConstantThroughputTimer"),
-        ("PoissonRandomTimer", {"delay": "100", "range": "200"}, "PoissonRandomTimer"),
-        ("HttpCacheManager", {"clearEachIteration": True}, "CacheManager"),
-        ("HttpAuthManager", {"users": [{"name": "u", "user": "admin", "pass": "p", "url": "https://api.example.com"}]}, "AuthManager"),
-        ("ModuleController", {"nodePath": "/Test Plan/TG"}, "ModuleController"),
-        ("RunTimeController", {"runtime": "60"}, "RunTimeController"),
-        ("Summariser", {"interval": "30"}, "Summariser"),
-        ("RandomVariableConfig", {"variableName": "rv", "minimumValue": "1", "maximumValue": "100"}, "RandomVariableConfig"),
-    ])
+    @pytest.mark.parametrize(
+        "element_type,props,jmeter_tag",
+        [
+            (
+                "BoundaryExtractor",
+                {"referenceName": "v1", "leftBoundary": "[", "rightBoundary": "]"},
+                "BoundaryExtractor",
+            ),
+            ("CSSSelectorExtractor", {"referenceName": "css", "selector": ".t"}, "CSSSelectorExtractor"),
+            ("XPathExtractor", {"referenceName": "xv", "xPath": "/root"}, "XPathExtractor"),
+            ("ConstantThroughputTimer", {"throughput": "600"}, "ConstantThroughputTimer"),
+            ("PoissonRandomTimer", {"delay": "100", "range": "200"}, "PoissonRandomTimer"),
+            ("HttpCacheManager", {"clearEachIteration": True}, "CacheManager"),
+            (
+                "HttpAuthManager",
+                {"users": [{"name": "u", "user": "admin", "pass": "p", "url": "https://api.example.com"}]},
+                "AuthManager",
+            ),
+            ("ModuleController", {"nodePath": "/Test Plan/TG"}, "ModuleController"),
+            ("RunTimeController", {"runtime": "60"}, "RunTimeController"),
+            ("Summariser", {"interval": "30"}, "Summariser"),
+            (
+                "RandomVariableConfig",
+                {"variableName": "rv", "minimumValue": "1", "maximumValue": "100"},
+                "RandomVariableConfig",
+            ),
+        ],
+    )
     def test_new_element_present_in_jmx(self, element_type, props, jmeter_tag):
         """生成的 JMX 中必须包含新元素对应的 JMeter tag"""
         tree = {
-            "type": "ThreadGroup", "name": "TG", "props": {},
+            "type": "ThreadGroup",
+            "name": "TG",
+            "props": {},
             "children": [
-                {"type": "HttpSampler", "name": "Req", "props": {"method": "GET", "url": "https://api.example.com", "headers": []},
-                 "children": [{"type": element_type, "name": "X", "props": props, "children": []}]}
+                {
+                    "type": "HttpSampler",
+                    "name": "Req",
+                    "props": {"method": "GET", "url": "https://api.example.com", "headers": []},
+                    "children": [{"type": element_type, "name": "X", "props": props, "children": []}],
+                }
             ],
         }
         jmx = export_tree_to_jmx([tree])
@@ -206,7 +239,7 @@ class TestInvalidInputHandling:
 
     def test_non_http_sampler_jmx(self):
         """仅含非 HTTP 采样器的 JMX 应返回空用例列表"""
-        jmx = '''<?xml version="1.0" encoding="UTF-8"?>
+        jmx = """<?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.0">
   <hashTree>
     <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="No Samplers" enabled="true"/>
@@ -215,7 +248,7 @@ class TestInvalidInputHandling:
       <hashTree/>
     </hashTree>
   </hashTree>
-</jmeterTestPlan>'''
+</jmeterTestPlan>"""
         cases = import_jmx_to_cases(jmx)
         assert cases == []
 
@@ -228,18 +261,18 @@ class TestJMeter563Compatibility:
 
     def test_jmeter_version_attribute(self):
         """jmeterTestPlan 根元素的 jmeter 属性必须为 5.0+"""
-        jmx = export_cases_to_jmx([{
-            "name": "V", "method": "GET", "url": "https://api.example.com", "headers": [], "body": ""
-        }])
+        jmx = export_cases_to_jmx(
+            [{"name": "V", "method": "GET", "url": "https://api.example.com", "headers": [], "body": ""}]
+        )
         root = ET.fromstring(jmx)
         version = root.get("version", "0")
         assert float(version) >= 1.2, f"version={version}"
 
     def test_properties_version_compatible(self):
         """properties 属性应兼容 JMeter 5.x"""
-        jmx = export_cases_to_jmx([{
-            "name": "V", "method": "GET", "url": "https://api.example.com", "headers": [], "body": ""
-        }])
+        jmx = export_cases_to_jmx(
+            [{"name": "V", "method": "GET", "url": "https://api.example.com", "headers": [], "body": ""}]
+        )
         root = ET.fromstring(jmx)
         props = root.get("properties", "0")
         assert float(props) >= 5.0, f"properties={props}"

@@ -4,19 +4,28 @@
       <div class="case-heading"><el-button text :icon="ArrowLeft" @click="goBack">用例列表</el-button><div><h1>{{ caseData?.name || 'UI 自动化用例' }}</h1><span :class="['engine-state',{ready:desktopReady}]"><i></i>{{ desktopReady ? '桌面引擎已连接' : '桌面引擎未连接' }}</span></div></div>
       <div class="toolbar-actions">
         <el-button :icon="FolderChecked" :loading="saving" @click="saveAll">保存</el-button>
+        <el-button :icon="Search" :disabled="!recording || !selectedStep?.locator || authCaptureMode" :loading="locatorSuggestionLoading" @click="requestLocatorSuggestions">定位建议</el-button>
         <el-button :icon="Aim" :disabled="!desktopReady || recording" :loading="running" @click="executeCase(true)">调试运行</el-button><el-button type="primary" :icon="VideoPlay" :disabled="!desktopReady || recording" :loading="running" @click="executeCase(false)">运行完整流程</el-button>
       </div>
     </header>
 
     <section class="recording-bar" :class="{ active: recording }">
       <div class="record-address"><el-input v-model="recorderUrl" :disabled="recording" placeholder="输入被测系统地址，例如：https://test.example.com"><template #prepend>录制地址</template></el-input></div>
-      <template v-if="!recording"><el-button type="danger" :icon="VideoCamera" :disabled="!desktopReady" @click="startRecording">开始录制</el-button></template>
+      <el-popover v-if="!recording" trigger="click" placement="bottom-end" :width="440">
+        <template #reference><el-button :icon="Setting">接口采集范围</el-button></template>
+        <el-form label-position="top">
+          <el-form-item label="域名白名单"><el-input v-model="captureConfig.domain_allowlist_text" type="textarea" :rows="3" placeholder="每行一个域名，例如 api.example.com 或 *.example.com" /></el-form-item>
+          <el-form-item label="排除路径"><el-input v-model="captureConfig.path_exclude_text" type="textarea" :rows="3" placeholder="每行一个路径，例如 /health 或 /static/*" /></el-form-item>
+        </el-form>
+      </el-popover>
+      <template v-if="!recording"><el-button type="danger" :icon="VideoCamera" :disabled="!desktopReady" @click="startRecording">开始录制</el-button><el-button v-if="captureSyncFailed" type="warning" :loading="captureSyncing" @click="retryPendingCapture">{{ captureRetryLabel }}</el-button><el-button v-if="activeCaptureId && captureSyncFailed" type="danger" plain @click="discardPendingCapture">放弃未同步抓包</el-button><el-button v-if="completedCaptureId" type="primary" plain @click="openCaptureImport">接口候选 {{ capturedExchangeCount }}</el-button></template>
       <template v-else>
-        <span class="recording-indicator"><i></i>{{ authCaptureMode ? '等待人工登录' : '正在录制' }}</span>
+        <span class="recording-indicator"><i></i>{{ authCaptureMode ? '等待人工登录' : (capturePaused ? '接口采集已暂停' : '正在录制') }}</span>
         <template v-if="authCaptureMode"><span class="auth-capture-tip">请在打开的浏览器中完成账号、短信或验证码登录；登录成功后回到这里保存。</span></template>
         <template v-else>
           <el-button :type="recorderMode === 'assert-visible' ? 'primary' : 'default'" :icon="View" @click="setRecorderMode('assert-visible')">添加可见断言</el-button>
           <el-button :type="recorderMode === 'assert-text' ? 'primary' : 'default'" :icon="CircleCheck" @click="setRecorderMode('assert-text')">添加文字断言</el-button>
+          <el-button v-if="activeCaptureId" @click="toggleCapturePaused">{{ capturePaused ? '恢复接口采集' : '暂停接口采集' }}</el-button>
           <el-button type="danger" plain :icon="VideoPause" @click="stopRecording">停止录制</el-button>
         </template>
       </template>
@@ -60,12 +69,22 @@
       <el-tabs v-model="debugTab">
         <el-tab-pane :label="`运行日志 (${executionLogs.length})`" name="execution"><div class="debug-list"><div v-for="(item,index) in executionLogs" :key="index" :class="['debug-line',item.level]"><span>{{ item.time }}</span><strong>{{ item.message }}</strong></div><el-empty v-if="!executionLogs.length" description="运行后显示步骤日志" :image-size="48" /></div></el-tab-pane>
         <el-tab-pane :label="`浏览器控制台 (${consoleLogs.length})`" name="console"><div class="debug-list"><div v-for="(item,index) in consoleLogs" :key="index" :class="['debug-line',item.level]"><span>{{ item.time }}</span><strong>{{ item.text }}</strong></div><el-empty v-if="!consoleLogs.length" description="录制时显示浏览器控制台" :image-size="48" /></div></el-tab-pane>
-        <el-tab-pane :label="`变量 (${Object.keys(variableSnapshot).length})`" name="variables"><div class="debug-list"><div v-for="(value,name) in variableSnapshot" :key="name" class="debug-line"><span>{{ name }}</span><strong>{{ value }}</strong></div><el-empty v-if="!Object.keys(variableSnapshot).length" description="调试暂停时显示变量" :image-size="48" /></div></el-tab-pane><el-tab-pane :label="`网络失败 (${networkLogs.length})`" name="network"><div class="debug-list"><div v-for="(item,index) in networkLogs" :key="index" class="debug-line error"><span>{{ item.status || '失败' }}</span><strong>{{ item.method }} {{ item.url }}</strong></div><el-empty v-if="!networkLogs.length" description="没有网络失败" :image-size="48" /></div></el-tab-pane>
+        <el-tab-pane :label="`变量 (${Object.keys(variableSnapshot).length})`" name="variables"><div class="debug-list"><div v-for="(value,name) in variableSnapshot" :key="name" class="debug-line"><span>{{ name }}</span><strong>{{ value }}</strong></div><el-empty v-if="!Object.keys(variableSnapshot).length" description="调试暂停时显示变量" :image-size="48" /></div></el-tab-pane><el-tab-pane :label="`网络请求 (${networkLogs.length})`" name="network"><div class="debug-list"><div v-for="(item,index) in networkLogs" :key="index" :class="['debug-line',{error:item.failed}]"><span>{{ item.status || '失败' }}</span><strong>{{ item.method }} {{ item.url }}</strong></div><el-empty v-if="!networkLogs.length" description="没有可捕获的接口请求" :image-size="48" /></div></el-tab-pane>
       </el-tabs>
     </section>
 
     <ActionPicker v-model="pickerVisible" @select="insertAction" />
     <RunResultDrawer ref="runResultDrawer" v-model="showRunResult" @run-finished="running=false" />
+    <el-dialog v-model="locatorSuggestionVisible" title="定位器建议" width="760px">
+      <el-table :data="locatorSuggestions" row-key="locator.value">
+        <el-table-column label="策略" width="120"><template #default="{ row }">{{ locatorLabel(row.locator.strategy) }}</template></el-table-column>
+        <el-table-column prop="locator.value" label="定位值" min-width="300" show-overflow-tooltip />
+        <el-table-column label="置信度" width="100"><template #default="{ row }">{{ Math.round(row.confidence * 100) }}%</template></el-table-column>
+        <el-table-column label="验证" width="100"><template #default><el-tag type="success" size="small">已通过</el-tag></template></el-table-column>
+        <el-table-column label="操作" width="90"><template #default="{ row }"><el-button text type="primary" @click="applyLocatorSuggestion(row)">采用</el-button></template></el-table-column>
+      </el-table>
+      <el-empty v-if="!locatorSuggestions.length" description="没有通过全部校验的候选定位器" />
+    </el-dialog>
   </div>
 </template>
 
@@ -86,9 +105,15 @@ let caseId=Number(route.params.id)
 const caseData=ref(null),steps=ref([]),loading=ref(false),saving=ref(false),running=ref(false)
 const selectedStepId=ref(''),pickerVisible=ref(false),insertIndex=ref(0),errors=ref({})
 const recording=ref(false),authCaptureMode=ref(false),refreshAuthStateId=ref(null),recorderMode=ref('record'),recorderUrl=ref(''),consoleLogs=ref([]),networkLogs=ref([]),executionLogs=ref([]),variableSnapshot=ref({}),debugTab=ref('execution')
+const activeCaptureId=ref(null),completedCaptureId=ref(null),capturedExchangeCount=ref(0)
+const capturePaused=ref(false),captureConfig=ref({domain_allowlist_text:'',path_exclude_text:''})
+const capturePendingCount=ref(0),captureSyncFailed=ref(false),captureSyncing=ref(false)
+let captureQueue=[],captureFlushTimer=null,captureFlushInFlight=null,captureWarningShown=false
 const showRunResult=ref(false),runResultDrawer=ref(null)
+const locatorSuggestionVisible=ref(false),locatorSuggestionLoading=ref(false),locatorSuggestions=ref([])
 const environments=ref([]),selectedEnvironmentId=ref(null),authStates=ref([]),selectedAuthStateId=ref(null),authCheckResults=ref({}),checkingAuthId=ref(null)
 const desktopReady=computed(()=>typeof window!=='undefined'&&typeof window.testmaster?.execution?.runCase==='function'&&typeof window.testmaster?.recorder?.start==='function')
+const captureRetryLabel=computed(()=>capturePendingCount.value?`重试同步 ${capturePendingCount.value} 条接口记录`:'重试完成抓包')
 const selectedIndex=computed(()=>steps.value.findIndex(step=>step.id===selectedStepId.value))
 const selectedStep=computed(()=>selectedIndex.value>=0?steps.value[selectedIndex.value]:null)
 
@@ -156,10 +181,57 @@ async function saveCurrentAuthState(){
 }
 async function executeCase(debugMode=false){if(!validate()||!desktopReady.value)return;saving.value=true;running.value=true;executionLogs.value=[];try{await persist();const version=await uiAutomationApi.createVersion(caseId,'运行前自动保存');showRunResult.value=true;await runResultDrawer.value.startRun({caseSnapshot:snapshot(),runContext:{caseId,caseVersionId:version.id},debugMode,environmentId:selectedEnvironmentId.value,authStateId:selectedAuthStateId.value,onEvent:event=>{executionLogs.value.push({time:now(),level:event.type?.includes('fail')?'error':'info',message:formatExecutionEvent(event)});if(event.type==='run:paused'){variableSnapshot.value=event.variables||{};debugTab.value='execution'};if(event.type==='console')consoleLogs.value.push({...event,time:now()});if(event.type==='network')networkLogs.value.push({...event,time:now()})}})}catch(error){ElMessage.error(`运行失败：${friendlyError(error)}`)}finally{saving.value=false;running.value=false}}
 
-async function startRecording(){if(authCaptureMode.value)return;if(!desktopReady.value){ElMessage.error('请使用 TestMaster 桌面版录制');return}const url=recorderUrl.value.trim()||caseData.value?.base_url?.trim();if(!/^https?:\/\//i.test(url)&&!url?.startsWith('data:')){ElMessage.warning('请输入完整的 http:// 或 https:// 地址');return}consoleLogs.value=[];networkLogs.value=[];try{await window.testmaster.recorder.start({url,slowMo:50},handleRecorderEvent);recording.value=true;recorderMode.value='record';ElMessage.success('录制已开始，请在打开的浏览器中操作')}catch(error){ElMessage.error(`录制启动失败：${friendlyError(error)}`)}}
-function handleRecorderEvent(event){if(event.type==='action'){const step=normalizeStep(event.step);const last=steps.value[steps.value.length-1];if(event.replaceLast&&last?.type===step.type&&JSON.stringify(last.locator)===JSON.stringify(step.locator)){step.id=last.id;steps.value.splice(steps.value.length-1,1,step)}else if(event.insertBeforeLast&&steps.value.length){steps.value.splice(steps.value.length-1,0,step)}else{steps.value.push(step)}selectedStepId.value=step.id}if(event.type==='console')consoleLogs.value.push({...event,time:now()});if(event.type==='network')networkLogs.value.push({...event,time:now()});if(event.type==='mode')recorderMode.value=event.mode;if(event.type==='error')ElMessage.error(event.message)}
+async function startRecording(){
+  if(authCaptureMode.value)return
+  if(!desktopReady.value){ElMessage.error('请使用 TestMaster 桌面版录制');return}
+  const url=recorderUrl.value.trim()||caseData.value?.base_url?.trim()
+  if(!/^https?:\/\//i.test(url)&&!url?.startsWith('data:')){ElMessage.warning('请输入完整的 http:// 或 https:// 地址');return}
+  consoleLogs.value=[];networkLogs.value=[];captureQueue=[];capturePendingCount.value=0;captureSyncFailed.value=false;activeCaptureId.value=null;completedCaptureId.value=null;capturedExchangeCount.value=0;captureWarningShown=false;capturePaused.value=false
+  try{const capture=await autoTestRequest.post('/auto-test/import/captures',{origin:'desktop_browser',source_url:url,capture_config:{domain_allowlist:parseCaptureRules(captureConfig.value.domain_allowlist_text),path_exclude:parseCaptureRules(captureConfig.value.path_exclude_text)}});activeCaptureId.value=capture.id}catch(error){captureWarningShown=true;ElMessage.warning('接口流量不会保存：'+friendlyError(error))}
+  try{await window.testmaster.recorder.start({url,slowMo:50,authStateId:selectedAuthStateId.value},handleRecorderEvent);recording.value=true;recorderMode.value='record';ElMessage.success('录制已开始，请在打开的浏览器中操作')}catch(error){if(activeCaptureId.value)await autoTestRequest.post(`/auto-test/import/captures/${activeCaptureId.value}/complete`).catch(()=>{});activeCaptureId.value=null;ElMessage.error(`录制启动失败：${friendlyError(error)}`)}
+}
+function queueCaptureExchange(event){
+  if(!activeCaptureId.value||capturePaused.value||!['xhr','fetch'].includes(event.resourceType))return
+  captureQueue.push({method:event.method,url:event.url,status:event.status,resourceType:event.resourceType,requestHeaders:event.requestHeaders,requestBody:event.requestBody,responseHeaders:event.responseHeaders,responseBody:event.responseBody,timingMs:event.durationMs,pageUrl:event.pageUrl});capturePendingCount.value=captureQueue.length
+  if(captureQueue.length>=20)void flushCapturedExchanges();else if(!captureFlushTimer)captureFlushTimer=window.setTimeout(()=>{captureFlushTimer=null;void flushCapturedExchanges()},800)
+}
+async function flushCapturedExchanges(){
+  if(captureFlushInFlight){await captureFlushInFlight;return flushCapturedExchanges()}
+  if(!activeCaptureId.value||!captureQueue.length)return
+  const sessionId=activeCaptureId.value
+  const batch=captureQueue.splice(0,100)
+  capturePendingCount.value=captureQueue.length
+  let succeeded=false
+  captureSyncing.value=true
+  captureFlushInFlight=autoTestRequest.post(`/auto-test/import/captures/${sessionId}/exchanges`,{exchanges:batch}).then(result=>{capturedExchangeCount.value+=result.accepted||0;succeeded=true;captureSyncFailed.value=false}).catch(error=>{captureQueue.unshift(...batch);captureSyncFailed.value=true;if(!captureWarningShown){captureWarningShown=true;ElMessage.warning('接口流量暂未同步：'+friendlyError(error))}}).finally(()=>{capturePendingCount.value=captureQueue.length;captureSyncing.value=false;captureFlushInFlight=null})
+  await captureFlushInFlight
+  if(succeeded&&activeCaptureId.value===sessionId&&captureQueue.length)await flushCapturedExchanges()
+}
+function handleRecorderEvent(event){if(event.type==='action'){const step=normalizeStep(event.step);const last=steps.value[steps.value.length-1];if(event.replaceLast&&last?.type===step.type&&JSON.stringify(last.locator)===JSON.stringify(step.locator)){step.id=last.id;steps.value.splice(steps.value.length-1,1,step)}else if(event.insertBeforeLast&&steps.value.length){steps.value.splice(steps.value.length-1,0,step)}else{steps.value.push(step)}selectedStepId.value=step.id}if(event.type==='console')consoleLogs.value.push({...event,time:now()});if(event.type==='network'){networkLogs.value.push({...event,time:now()});queueCaptureExchange(event)}if(event.type==='mode')recorderMode.value=event.mode;if(event.type==='error')ElMessage.error(event.message)}
 async function setRecorderMode(mode){try{await window.testmaster.recorder.setMode(mode);recorderMode.value=mode}catch(error){ElMessage.error(friendlyError(error))}}
-async function stopRecording(){try{await window.testmaster.recorder.stop();recording.value=false;recorderMode.value='record';ElMessage.success(`录制完成，已生成 ${steps.value.length} 个步骤`)}catch(error){ElMessage.error(friendlyError(error))}}
+function parseCaptureRules(value){return String(value||'').split(/[\n,]+/).map(item=>item.trim()).filter(Boolean)}
+async function toggleCapturePaused(){if(!activeCaptureId.value)return;try{if(!capturePaused.value)await flushCapturedExchanges();const action=capturePaused.value?'resume':'pause';await autoTestRequest.post(`/auto-test/import/captures/${activeCaptureId.value}/${action}`);capturePaused.value=!capturePaused.value;ElMessage.success(capturePaused.value?'接口采集已暂停':'接口采集已恢复')}catch(error){ElMessage.error('切换采集状态失败：'+friendlyError(error))}}
+async function finishCaptureSession(){
+  if(!activeCaptureId.value)return true
+  try{
+    if(capturePaused.value){await autoTestRequest.post(`/auto-test/import/captures/${activeCaptureId.value}/resume`);capturePaused.value=false}
+    await flushCapturedExchanges()
+    if(captureQueue.length){captureSyncFailed.value=true;return false}
+    const sessionId=activeCaptureId.value
+    await autoTestRequest.post(`/auto-test/import/captures/${sessionId}/complete`)
+    completedCaptureId.value=sessionId;activeCaptureId.value=null;capturePaused.value=false;captureSyncFailed.value=false
+    return true
+  }catch(error){captureSyncFailed.value=true;throw error}
+}
+async function retryPendingCapture(){
+  try{const completed=await finishCaptureSession();if(completed)ElMessage.success('接口流量已同步并完成抓包')}catch(error){ElMessage.error('重试同步失败：'+friendlyError(error))}
+}
+async function discardPendingCapture(){
+  if(!activeCaptureId.value)return
+  try{await ElMessageBox.confirm('未同步的接口记录将不再保存，确定放弃本次抓包？','放弃未同步抓包',{type:'warning'});await autoTestRequest.post(`/auto-test/import/captures/${activeCaptureId.value}/cancel`,{reason:'browser capture ended before pending exchanges were synchronized'});captureQueue=[];capturePendingCount.value=0;captureSyncFailed.value=false;activeCaptureId.value=null;capturePaused.value=false;ElMessage.success('已放弃未同步抓包')}catch(error){if(error!=='cancel'&&error!=='close')ElMessage.error('放弃抓包失败：'+friendlyError(error))}
+}
+async function stopRecording(){let stopError=null;try{await window.testmaster.recorder.stop()}catch(error){stopError=error}recording.value=false;recorderMode.value='record';try{const completed=await finishCaptureSession();if(completed)ElMessage.success(`录制完成，已生成 ${steps.value.length} 个步骤`);else ElMessage.warning('浏览器已停止，但仍有接口记录等待同步；请恢复网络后重试，或明确放弃抓包')}catch(error){ElMessage.warning('浏览器已停止，接口抓包尚未完成：'+friendlyError(error))}if(stopError)ElMessage.error(friendlyError(stopError))}
+function openCaptureImport(){if(completedCaptureId.value)router.push({path:'/import-center',query:{captureId:completedCaptureId.value}})}
 async function validateSelectedLocator(){
   if(!selectedStep.value?.locator)return
   if(!recording.value){ElMessage.warning('请先开始录制并打开被测页面，再验证定位器');return}
@@ -169,13 +241,56 @@ async function validateSelectedLocator(){
     else if(result.count===0) ElMessage.error('没有找到元素，请更换定位方式或定位值')
     else ElMessage.warning('定位不唯一：匹配到 '+result.count+' 个元素')
   }catch(error){ElMessage.error('定位验证失败：'+friendlyError(error))}
-}function formatExecutionEvent(event){if(event.type==='run:paused')return '已暂停在：'+event.stepName;if(event.type==='step:start')return '开始执行：'+event.stepName;if(event.type==='step:pass')return '步骤通过';if(event.type==='step:fail')return '步骤失败：'+event.error;if(event.type==='run:finish')return '运行结束：'+event.status;return event.message||event.type}
+}
+function locatorUrlMatches(currentUrl){
+  const expected=currentAuthValidationUrl()||recorderUrl.value
+  try{return new URL(currentUrl).origin===new URL(expected).origin}catch{return false}
+}
+async function requestLocatorSuggestions(){
+  if(!selectedStep.value?.locator||!recording.value)return
+  locatorSuggestionLoading.value=true
+  try{
+    const raw=[selectedStep.value.locator,...(selectedStep.value.locator.fallbacks||[])]
+    const seen=new Set(),probes=[]
+    let currentUrl=''
+    for(const locator of raw){
+      const key=JSON.stringify([locator.strategy,locator.value,locator.options||{},locator.framePath||[]])
+      if(seen.has(key))continue
+      seen.add(key)
+      const validation=await window.testmaster.recorder.validateLocator(JSON.parse(JSON.stringify(locator)))
+      currentUrl=currentUrl||validation.currentUrl||''
+      probes.push({
+        strategy:locator.strategy,value:locator.value,options:locator.options||{},
+        match_count:validation.count,visible:validation.visible,actionable:validation.actionable,
+        dry_run_passed:validation.dryRunPassed,url_matches:locatorUrlMatches(validation.currentUrl)
+      })
+    }
+    const response=await uiAutomationApi.suggestLocators(caseId,{
+      step_id:selectedStep.value.id,locator_probes:probes,
+      current_url:currentUrl,
+      login_state_matches:true
+    })
+    locatorSuggestions.value=response.suggestions||[]
+    locatorSuggestionVisible.value=true
+  }catch(error){ElMessage.error('定位建议生成失败：'+friendlyError(error))}finally{locatorSuggestionLoading.value=false}
+}
+async function applyLocatorSuggestion(suggestion){
+  try{
+    await ElMessageBox.confirm('采用该定位器并创建一个新的用例版本？','确认定位器建议',{type:'warning'})
+    selectedStep.value.locator={...suggestion.locator,fallbacks:[],framePath:selectedStep.value.locator?.framePath||[]}
+    await persist()
+    await uiAutomationApi.createVersion(caseId,'人工确认并采用定位器建议')
+    locatorSuggestionVisible.value=false
+    ElMessage.success('定位器已更新并创建新版本')
+  }catch(error){if(error!=='cancel'&&error!=='close')ElMessage.error(friendlyError(error))}
+}
+function formatExecutionEvent(event){if(event.type==='run:paused')return '已暂停在：'+event.stepName;if(event.type==='step:start')return '开始执行：'+event.stepName;if(event.type==='step:pass')return '步骤通过';if(event.type==='step:fail')return '步骤失败：'+event.error;if(event.type==='run:finish')return '运行结束：'+event.status;return event.message||event.type}
 function friendlyError(error){const message=error?.message||'未知错误';if(/Network Error|Failed to fetch|ECONNREFUSED/i.test(message))return'后台服务未连接';if(/timeout/i.test(message))return'操作超时，请检查页面或定位器';return message}
 function goBack(){router.push('/ui-automation/cases')}
 watch(()=>route.params.id,async value=>{
   const nextCaseId=Number(value)
   if(!Number.isInteger(nextCaseId)||nextCaseId<=0||nextCaseId===caseId)return
-  if(recording.value){await window.testmaster?.recorder?.stop().catch(()=>{});recording.value=false;authCaptureMode.value=false;refreshAuthStateId.value=null}
+  if(recording.value){await stopRecording();authCaptureMode.value=false;refreshAuthStateId.value=null}
   caseId=nextCaseId
   caseData.value=null;steps.value=[];selectedStepId.value='';errors.value={};selectedAuthStateId.value=null
   executionLogs.value=[];consoleLogs.value=[];networkLogs.value=[];variableSnapshot.value={}
@@ -187,7 +302,7 @@ watch(selectedAuthStateId,value=>{
   if(value)localStorage.setItem(key,value);else localStorage.removeItem(key)
 })
 onMounted(async()=>{await Promise.all([loadCase(),loadExecutionProfiles()])})
-onBeforeUnmount(()=>{if(recording.value)window.testmaster?.recorder?.stop().catch(()=>{})})
+onBeforeUnmount(()=>{if(recording.value)void stopRecording()})
 </script>
 
 <style scoped>

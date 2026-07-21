@@ -474,7 +474,7 @@ def export_enhanced_api_doc(
             for var in global_variables:
                 var_name = var.get("name", "")
                 # 匹配系统实际使用的 {{var_name}} 格式
-                if f"{{{{{var_name}}}}}" in all_text or f"{{var_name}}" in all_text:
+                if f"{{{{{var_name}}}}}" in all_text or "{var_name}" in all_text:
                     var_refs.append(
                         {
                             "name": var_name,

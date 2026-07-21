@@ -25,6 +25,29 @@ from fastapi_backend.models.autotest import MockProject, MockRule, MockRequestLo
 
 _logger = logging.getLogger(__name__)
 
+_FAULT_TYPES = {"status_error", "delay", "timeout_response", "invalid_json", "custom_headers"}
+_UNSAFE_RESPONSE_HEADERS = {"connection", "content-length", "keep-alive", "transfer-encoding"}
+
+
+def _safe_custom_headers(value: Any) -> dict[str, str]:
+    """Validate injectable headers so a test rule cannot corrupt the HTTP response."""
+    if not isinstance(value, dict):
+        return {}
+    headers: dict[str, str] = {}
+    for raw_name, raw_value in value.items():
+        name = str(raw_name).strip()
+        header_value = str(raw_value).strip()
+        if (
+            not name
+            or not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+", name)
+            or name.lower() in _UNSAFE_RESPONSE_HEADERS
+            or "\r" in header_value
+            or "\n" in header_value
+        ):
+            continue
+        headers[name] = header_value
+    return headers
+
 
 class MockEngine:
     """Mock 服务引擎"""
@@ -209,6 +232,73 @@ class MockEngine:
         if rule.delay_ms and rule.delay_ms > 0:
             await asyncio.sleep(rule.delay_ms / 1000.0)
 
+        fault_type = (rule.fault_type or "").strip().lower()
+        fault_config = rule.fault_config or {}
+        probability = float(fault_config.get("trigger_probability", 1))
+        probability = min(1.0, max(0.0, probability))
+        seed = fault_config.get("random_seed")
+        random_value = random.Random(f"{seed}:{rule.id}").random() if seed is not None else random.random()
+        triggered = fault_type in _FAULT_TYPES and random_value < probability
+        fault_decision = {
+            "configured": fault_type or None,
+            "triggered": triggered,
+            "type": fault_type if triggered else None,
+            "random_value": random_value if fault_type else None,
+        }
+        if fault_type and triggered:
+            extra_delay_ms = max(0, min(int(fault_config.get("delay_ms", 0)), 60_000))
+            if extra_delay_ms:
+                await asyncio.sleep(extra_delay_ms / 1000.0)
+            if fault_type == "status_error":
+                status = max(400, min(int(fault_config.get("status_code", 500)), 599))
+                return {
+                    "status": status,
+                    "headers": {"Content-Type": "application/json", "X-TestMaster-Fault": "status_error"},
+                    "body": fault_config.get("body", {"error": "Injected mock fault"}),
+                    "fault": fault_decision,
+                }
+            if fault_type == "delay":
+                # This is a normal HTTP response deliberately delayed by fault_config.delay_ms.
+                headers = dict(rule.response_headers or {})
+                headers.setdefault("Content-Type", "application/json")
+                headers["X-TestMaster-Fault"] = "delay"
+                return {
+                    "status": rule.response_status,
+                    "headers": headers,
+                    "body": self._resolve_dynamic_values(
+                        rule.response_body if rule.response_body is not None else {"message": "ok"}
+                    ),
+                    "fault": fault_decision,
+                }
+            if fault_type == "timeout_response":
+                return {
+                    "status": 504,
+                    "headers": {"Content-Type": "application/json", "X-TestMaster-Fault": "timeout_response"},
+                    "body": {"error": "Injected timeout"},
+                    "fault": fault_decision,
+                }
+            if fault_type == "invalid_json":
+                return {
+                    "status": int(fault_config.get("status_code", 200)),
+                    "headers": {"X-TestMaster-Fault": "invalid_json"},
+                    "raw_body": "{invalid-json",
+                    "content_type": "application/json",
+                    "fault": fault_decision,
+                }
+            if fault_type == "custom_headers":
+                headers = dict(rule.response_headers or {})
+                headers.update(_safe_custom_headers(fault_config.get("headers")))
+                headers.setdefault("Content-Type", "application/json")
+                headers["X-TestMaster-Fault"] = "custom_headers"
+                return {
+                    "status": rule.response_status,
+                    "headers": headers,
+                    "body": self._resolve_dynamic_values(
+                        rule.response_body if rule.response_body is not None else {"message": "ok"}
+                    ),
+                    "fault": fault_decision,
+                }
+
         headers = rule.response_headers or {}
         if "Content-Type" not in headers and "content-type" not in headers:
             headers["Content-Type"] = "application/json"
@@ -224,6 +314,7 @@ class MockEngine:
             "status": rule.response_status,
             "headers": headers,
             "body": body,
+            "fault": fault_decision,
         }
 
     async def log_request(
@@ -239,6 +330,7 @@ class MockEngine:
         response_body: str,
         response_time_ms: int,
         matched_rule_name: Optional[str] = None,
+        fault_decision: Optional[dict[str, Any]] = None,
     ):
         """记录 Mock 请求日志"""
         log = MockRequestLog(
@@ -252,6 +344,9 @@ class MockEngine:
             response_body=response_body[:5000] if response_body else None,
             response_time_ms=response_time_ms,
             matched_rule_name=matched_rule_name,
+            fault_triggered=bool((fault_decision or {}).get("triggered", False)),
+            fault_type=(fault_decision or {}).get("type"),
+            fault_random_value=(fault_decision or {}).get("random_value"),
         )
         db.add(log)
         await db.flush()

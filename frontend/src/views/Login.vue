@@ -10,7 +10,7 @@
       <el-form ref="formRef" :model="form" label-position="top" @submit.prevent="handleLogin">
         <el-form-item label="服务地址" prop="serverUrl" :rules="[{ required: true, message: '请输入服务地址', trigger: 'blur' }]">
           <el-input v-model="form.serverUrl" placeholder="http://127.0.0.1:5001" size="large" @change="checkService" />
-          <div class="server-hint">本机使用默认地址；连接企业服务时填写管理员提供的 HTTPS 地址。</div>
+          <div class="server-hint">本机使用默认地址；桌面端可连接企业内网 HTTP/HTTPS 地址，外网服务应使用 HTTPS。</div>
           <div class="service-state" :class="serviceState">
             <i></i>{{ serviceText }}
             <el-button v-if="serviceState === 'offline'" link type="primary" @click="checkService">重新检测</el-button>
@@ -59,7 +59,8 @@ const checkService = async () => {
     const response = await fetch(`${serverUrl}/api/ui-automation/health`, { signal: AbortSignal.timeout(2500) })
     const body = response.ok ? await response.json() : null
     serviceState.value = body?.status === 'ok' && body?.enabled === true ? 'online' : 'offline'
-  } catch {
+  } catch (error) {
+    console.warn('[DesktopLogin] Service check failed:', error)
     serviceState.value = 'offline'
   }
   return serviceState.value === 'online'

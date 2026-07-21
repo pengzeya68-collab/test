@@ -23,6 +23,7 @@ class RequestBodyLimitMiddleware:
             await self.app(scope, limited_receive, send)
         except _RequestBodyTooLarge:
             from starlette.responses import JSONResponse
+
             response = JSONResponse(
                 {"detail": "接口自动化请求体不能超过 75 MB", "code": "REQUEST_TOO_LARGE"},
                 status_code=413,

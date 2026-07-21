@@ -311,9 +311,7 @@ class ApiDocGenerator:
         return spec
 
     @staticmethod
-    def _case_to_openapi_path(
-        case: AutoTestCase, group_map: Dict[int, str], idx: int
-    ) -> Dict[str, Any]:
+    def _case_to_openapi_path(case: AutoTestCase, group_map: Dict[int, str], idx: int) -> Dict[str, Any]:
         """将单个用例转换为 OpenAPI path item
 
         返回 {"path": str, "method": str, "operation": dict}
@@ -365,12 +363,14 @@ class ApiDocGenerator:
             elif body_type in ("xml", "raw_xml"):
                 content_type = "application/xml"
 
-            schema = _json_to_schema(payload) if isinstance(payload, (dict, list)) else {"type": "string", "example": payload}
+            schema = (
+                _json_to_schema(payload)
+                if isinstance(payload, (dict, list))
+                else {"type": "string", "example": payload}
+            )
             request_body = {
                 "required": bool(payload),
-                "content": {
-                    content_type: {"schema": schema, "example": payload}
-                },
+                "content": {content_type: {"schema": schema, "example": payload}},
             }
 
         # 构建响应（优先使用 response_schema，否则给默认示例）
@@ -428,7 +428,9 @@ class ApiDocGenerator:
         lines: List[str] = []
         lines.append(f"# {title}")
         lines.append("")
-        lines.append(f"> 由 TestMaster 自动生成 · 共 {len(cases)} 个接口 · 生成时间 {datetime.now(timezone.utc).isoformat()}")
+        lines.append(
+            f"> 由 TestMaster 自动生成 · 共 {len(cases)} 个接口 · 生成时间 {datetime.now(timezone.utc).isoformat()}"
+        )
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -481,7 +483,7 @@ class ApiDocGenerator:
         # D10: 使用 Markdown 标题语法生成锚点，GitHub/VSCode 等渲染器会自动
         # 依据标题文本生成锚点 `method-id`，与目录链接一致，避免 <a id> 标签
         # 在部分渲染器中无法生成锚点的问题。
-        lines.append(f"### {_md_escape_inline(case.name or path)} <a id=\"{anchor}\"></a>")
+        lines.append(f'### {_md_escape_inline(case.name or path)} <a id="{anchor}"></a>')
         lines.append("")
         if case.description:
             # D5: description 转义后再拼接，防止 XSS 与 Markdown 语法破坏
@@ -641,7 +643,9 @@ class ApiDocGenerator:
             f'<div class="api-url"><span class="m-badge m-{method_lower}">{method}</span>'
             f'<code class="url-text">{html.escape(path)}</code></div>'
         )
-        parts.append(f'<div class="api-meta">分组: <b>{html.escape(group_name)}</b> · 完整 URL: <code>{html.escape(url)}</code></div>')
+        parts.append(
+            f'<div class="api-meta">分组: <b>{html.escape(group_name)}</b> · 完整 URL: <code>{html.escape(url)}</code></div>'
+        )
 
         # 请求头
         headers = case.headers
@@ -693,9 +697,7 @@ class ApiDocGenerator:
         return "".join(parts)
 
     @staticmethod
-    def _html_template(
-        title: str, total: int, gen_time: str, sidebar: str, details: str, no_data: str
-    ) -> str:
+    def _html_template(title: str, total: int, gen_time: str, sidebar: str, details: str, no_data: str) -> str:
         """完整 HTML 模板（内联 CSS + JS，支持分组折叠与搜索）"""
         return f"""<!DOCTYPE html>
 <html lang="zh-CN">

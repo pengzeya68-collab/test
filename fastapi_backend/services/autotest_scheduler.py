@@ -5,10 +5,8 @@
 
 import asyncio
 import copy
-import json
 import logging
 import threading
-import uuid
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,7 +19,6 @@ from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.jobstores.base import JobLookupError
 
 from fastapi_backend.core.config import settings
-from fastapi_backend.services.autotest_report_service import write_allure_results
 
 _logger = logging.getLogger(__name__)
 
@@ -47,16 +44,18 @@ def _schedule_meta_from_db(scenario_id: int, user_id: int = None) -> Dict[str, A
 
     # 将 asyncpg URL 转为 psycopg2 格式
     db_url = settings.DATABASE_URL
-    sync_url = re.sub(r'^postgresql\+asyncpg://', 'postgresql://', db_url)
+    sync_url = re.sub(r"^postgresql\+asyncpg://", "postgresql://", db_url)
 
     try:
         if sync_url.startswith(("sqlite:///", "sqlite+aiosqlite:///")):
             import sqlite3
-            sqlite_path = re.sub(r'^sqlite(?:\+aiosqlite)?:///', '', sync_url)
+
+            sqlite_path = re.sub(r"^sqlite(?:\+aiosqlite)?:///", "", sync_url)
             conn = sqlite3.connect(sqlite_path, timeout=5)
             placeholder = "?"
         else:
             import psycopg2
+
             conn = psycopg2.connect(sync_url, connect_timeout=5)
             conn.autocommit = True
             placeholder = "%s"
@@ -128,7 +127,6 @@ def get_scheduler() -> AsyncIOScheduler:
 
 async def execute_scenario_job(scenario_id: int, env_id: Optional[int], task_id: str, user_id: int = None):
     """执行场景任务的异步函数 - 通过Celery发送任务"""
-    import subprocess
 
     _logger.info(f"[Scheduler] 开始执行任务 {task_id}, 场景 {scenario_id}")
 
@@ -278,9 +276,7 @@ def add_scheduled_task(
         meta = _schedule_meta_from_db(scenario_id, user_id=user_id)
         db_is_active = meta.get("is_active")
         if db_is_active is False and is_active is not False:
-            _logger.info(
-                f"[Scheduler] DB显示场景 {scenario_id} 调度已停用，按DB状态添加为暂停"
-            )
+            _logger.info(f"[Scheduler] DB显示场景 {scenario_id} 调度已停用，按DB状态添加为暂停")
             is_active = False
     except Exception as e:
         _logger.warning(f"[Scheduler] 读取DB调度状态失败 {scenario_id}: {e}")
@@ -339,7 +335,7 @@ def _scenario_id_from_task_id(task_id: str) -> Optional[int]:
     prefix = "auto_sched_"
     if task_id.startswith(prefix):
         try:
-            return int(task_id[len(prefix):])
+            return int(task_id[len(prefix) :])
         except ValueError:
             return None
     return None
@@ -359,7 +355,7 @@ def _clear_schedule_status_in_db(task_id: str) -> None:
         return
 
     db_url = settings.DATABASE_URL
-    sync_url = re.sub(r'^postgresql\+asyncpg://', 'postgresql://', db_url)
+    sync_url = re.sub(r"^postgresql\+asyncpg://", "postgresql://", db_url)
 
     try:
         conn = psycopg2.connect(sync_url, connect_timeout=5)
@@ -422,9 +418,7 @@ def toggle_task_status(task_id: str) -> Dict[str, Any]:
             raise ValueError(f"任务 {task_id} 不存在")
         # 乐观锁校验：当前值必须与调用方读取的预期值一致
         if task_info.get("is_active", True) != current_is_active:
-            raise HTTPException(
-                status_code=409, detail="任务状态已被其他请求修改，请重试"
-            )
+            raise HTTPException(status_code=409, detail="任务状态已被其他请求修改，请重试")
         task_info["is_active"] = new_is_active
         task_info["status"] = "idle" if new_is_active else "paused"
 

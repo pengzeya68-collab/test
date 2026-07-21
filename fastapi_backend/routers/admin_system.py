@@ -6,8 +6,8 @@
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy import select, func, desc, text
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import get_db
@@ -297,17 +297,12 @@ async def _write_audit_log(
 
 def _generate_system_load_7d():
     """生成最近 7 天的系统负载模拟数据（基于当前系统负载 + 随机波动）"""
-    labels = [
-        (datetime.now() - timedelta(days=6 - i)).strftime("%m-%d") for i in range(7)
-    ]
+    labels = [(datetime.now() - timedelta(days=6 - i)).strftime("%m-%d") for i in range(7)]
     try:
         current_load = psutil.cpu_percent(interval=None)
     except Exception:
         current_load = 0
-    values = [
-        round(max(0, min(100, current_load + random.uniform(-15, 15))), 1)
-        for _ in range(7)
-    ]
+    values = [round(max(0, min(100, current_load + random.uniform(-15, 15))), 1) for _ in range(7)]
     return {"labels": labels, "values": values}
 
 

@@ -256,9 +256,7 @@ class TestExecuteAssertionsJsonSchema:
         assert result["passed"] is True
 
     def test_invalid_schema_format_handled(self):
-        rules = [
-            {"target": "json_schema", "operator": "matches", "expected_schema": {"type": "fake_type"}}
-        ]
+        rules = [{"target": "json_schema", "operator": "matches", "expected_schema": {"type": "fake_type"}}]
         result = self._run(rules, {"a": 1})
         assert result["passed"] is False
         assert "Schema 格式错误" in result["message"]

@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { login, openJmeterAssistant, loadSimpleJmeterTemplate } = require('./helpers/auth');
+const { login, openJmeterAssistant, loadSimpleJmeterTemplate, httpRequestNode } = require('./helpers/auth');
 
 test.describe('JMeter AI 参数化', () => {
   test.beforeEach(async ({ page }) => {
@@ -7,7 +7,7 @@ test.describe('JMeter AI 参数化', () => {
     await openJmeterAssistant(page);
     await loadSimpleJmeterTemplate(page);
 
-    const httpNode = page.getByTestId('jmeter-tree-node').filter({ hasText: 'API 请求' });
+    const httpNode = httpRequestNode(page);
     await httpNode.getByTestId('jmeter-tree-node-row').click();
     await expect(page.getByTestId('jmeter-ai-parameterize-button')).toBeVisible();
   });

@@ -72,9 +72,50 @@ interface DesktopApi {
     saveCurrent: (name: string, id?: string) => Promise<{ id: string; name: string }>
     delete: (id: string) => Promise<void>
   }
+  agent: {
+    status: () => Promise<DesktopAgentStatus>
+    register: (options: {
+      serverUrl: string
+      accessToken: string
+      name: string
+      authStateId?: string | null
+      headless?: boolean
+    }) => Promise<DesktopAgentStatus>
+    enable: () => Promise<DesktopAgentStatus>
+    disable: () => Promise<DesktopAgentStatus>
+    remove: () => Promise<DesktopAgentStatus>
+    onStatus: (listener: (status: DesktopAgentStatus) => void) => () => void
+  }
+  appInfo: {
+    get: () => Promise<{
+      dataDirectory: {
+        path: string
+        source: 'configured' | 'non-system-drive' | 'system-fallback'
+        isSystemDrive: boolean
+        warning: string | null
+      }
+    }>
+  }
   recorder: any
   files: any
   versions: DesktopVersions
+}
+
+interface DesktopAgentStatus {
+  state: 'unregistered' | 'disabled' | 'starting' | 'online' | 'running' | 'offline' | 'error' | 'stopping'
+  registered: boolean
+  enabled: boolean
+  agentId: number | null
+  agentKey: string | null
+  name: string | null
+  serverUrl: string | null
+  authStateId: string | null
+  headless: boolean
+  activeRunId: number | null
+  lastHeartbeatAt: string | null
+  lastClaimAt: string | null
+  lastError: string | null
+  retryInMs: number | null
 }
 
 interface Window {

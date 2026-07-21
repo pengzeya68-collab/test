@@ -76,24 +76,16 @@ def _apply_snapshot_to_case(case: AutoTestCase, snapshot: Dict[str, Any]) -> Non
 
 async def _get_case_or_404(db: AsyncSession, case_id: int, user_id: int) -> AutoTestCase:
     """获取用例并校验归属，不存在或无权访问返回 404"""
-    result = await db.execute(
-        select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == user_id)
-    )
+    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == user_id))
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
     return case
 
 
-async def _get_version_or_404(
-    db: AsyncSession, case_id: int, version_id: int
-) -> CaseVersion:
+async def _get_version_or_404(db: AsyncSession, case_id: int, version_id: int) -> CaseVersion:
     """获取版本并校验 case_id 归属"""
-    result = await db.execute(
-        select(CaseVersion).where(
-            CaseVersion.id == version_id, CaseVersion.case_id == case_id
-        )
-    )
+    result = await db.execute(select(CaseVersion).where(CaseVersion.id == version_id, CaseVersion.case_id == case_id))
     version = result.scalar_one_or_none()
     if not version:
         raise HTTPException(status_code=404, detail="版本不存在")
@@ -103,34 +95,22 @@ async def _get_version_or_404(
 async def _generate_auto_version_number(db: AsyncSession, case_id: int) -> str:
     """自动生成下一个版本号 v1/v2/v3..."""
     result = await db.execute(
-        select(func.count()).select_from(
-            select(CaseVersion).where(CaseVersion.case_id == case_id).subquery()
-        )
+        select(func.count()).select_from(select(CaseVersion).where(CaseVersion.case_id == case_id).subquery())
     )
     count = result.scalar_one()
     return f"v{count + 1}"
 
 
-async def _set_current_version(
-    db: AsyncSession, case_id: int, version_id: int, version_number: str
-) -> None:
+async def _set_current_version(db: AsyncSession, case_id: int, version_id: int, version_number: str) -> None:
     """将指定版本设为当前版本：先清除该 case 其他版本的 is_current，再置位目标版本"""
     await db.execute(
         update(CaseVersion)
         .where(CaseVersion.case_id == case_id, CaseVersion.is_current.is_(True))
         .values(is_current=False)
     )
-    await db.execute(
-        update(CaseVersion)
-        .where(CaseVersion.id == version_id)
-        .values(is_current=True)
-    )
+    await db.execute(update(CaseVersion).where(CaseVersion.id == version_id).values(is_current=True))
     # 同步冗余字段到用例表，便于列表查询当前版本号
-    await db.execute(
-        update(AutoTestCase)
-        .where(AutoTestCase.id == case_id)
-        .values(current_version=version_number)
-    )
+    await db.execute(update(AutoTestCase).where(AutoTestCase.id == case_id).values(current_version=version_number))
 
 
 # ========== 深度 diff 实现 ==========
@@ -302,9 +282,7 @@ async def create_case_version(
         await db.flush()
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(
-            status_code=409, detail=f"版本号 '{version_number}' 已存在，请使用其他版本号"
-        )
+        raise HTTPException(status_code=409, detail=f"版本号 '{version_number}' 已存在，请使用其他版本号")
 
     # 将新版本设为当前版本（首次保存亦然，符合"最新即当前"语义）
     await _set_current_version(db, case_id, version.id, version_number)
@@ -478,17 +456,11 @@ async def delete_case_version(
 
     # 检查是否还有剩余版本；若无则清空冗余字段
     remaining_result = await db.execute(
-        select(func.count()).select_from(
-            select(CaseVersion).where(CaseVersion.case_id == case_id).subquery()
-        )
+        select(func.count()).select_from(select(CaseVersion).where(CaseVersion.case_id == case_id).subquery())
     )
     remaining = remaining_result.scalar_one()
     if remaining == 0:
-        await db.execute(
-            update(AutoTestCase)
-            .where(AutoTestCase.id == case_id)
-            .values(current_version=None)
-        )
+        await db.execute(update(AutoTestCase).where(AutoTestCase.id == case_id).values(current_version=None))
 
     await db.commit()
     _logger.info("用户 %s 删除用例 %s 的版本 %s", current_user.id, case_id, version_id)

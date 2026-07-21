@@ -90,9 +90,7 @@ def _resolve_db(arguments: dict) -> Optional[AsyncSession]:
     return None
 
 
-def _resolve_resource_id(
-    arguments: dict, resource_type: str, resource_id_param: Optional[str]
-) -> Optional[int]:
+def _resolve_resource_id(arguments: dict, resource_type: str, resource_id_param: Optional[str]) -> Optional[int]:
     """从路径参数中解析资源 ID。"""
     # 显式指定的参数名优先
     if resource_id_param and resource_id_param in arguments:

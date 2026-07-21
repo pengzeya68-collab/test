@@ -195,7 +195,11 @@ async def update_global_variable(
     # 捕获变更前快照（对加密变量值脱敏）
     before_encrypted = variable.is_encrypted
     before = {
-        k: (_mask_variable_value(getattr(variable, k, None), before_encrypted) if k == "value" else getattr(variable, k, None))
+        k: (
+            _mask_variable_value(getattr(variable, k, None), before_encrypted)
+            if k == "value"
+            else getattr(variable, k, None)
+        )
         for k in update_data.keys()
     }
 
@@ -223,7 +227,11 @@ async def update_global_variable(
     # 捕获变更后快照（对加密变量值脱敏）并写入审计日志
     after_encrypted = variable.is_encrypted
     after = {
-        k: (_mask_variable_value(getattr(variable, k, None), after_encrypted) if k == "value" else getattr(variable, k, None))
+        k: (
+            _mask_variable_value(getattr(variable, k, None), after_encrypted)
+            if k == "value"
+            else getattr(variable, k, None)
+        )
         for k in update_data.keys()
     }
     await AuditService.log(

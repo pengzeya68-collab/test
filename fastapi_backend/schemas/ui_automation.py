@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pydantic schemas for the UI Automation module.
 """
 
@@ -11,20 +11,70 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 STEP_TYPES = [
-    'goto', 'reload', 'go_back', 'switch_page', 'close_page', 'set_viewport',
-    'click', 'double_click', 'fill', 'type', 'clear', 'press', 'check', 'uncheck', 'select_option',
-    'hover', 'focus', 'scroll_into_view', 'drag_and_drop', 'upload_file', 'download',
-    'accept_dialog', 'dismiss_dialog',
-    'wait_for_element', 'wait_for_url', 'wait_for_load_state', 'wait_for_timeout',
-    'assert_visible', 'assert_hidden', 'assert_enabled', 'assert_disabled', 'assert_editable',
-    'assert_checked', 'assert_text_equals', 'assert_text_contains', 'assert_text_matches', 'assert_value',
-    'assert_attribute', 'assert_css_property', 'assert_element_count', 'assert_url', 'assert_title',
-    'set_variable', 'extract_text', 'extract_value', 'extract_attribute', 'extract_url',
+    "goto",
+    "reload",
+    "go_back",
+    "switch_page",
+    "close_page",
+    "set_viewport",
+    "click",
+    "double_click",
+    "fill",
+    "type",
+    "clear",
+    "press",
+    "check",
+    "uncheck",
+    "select_option",
+    "hover",
+    "focus",
+    "scroll_into_view",
+    "drag_and_drop",
+    "upload_file",
+    "download",
+    "accept_dialog",
+    "dismiss_dialog",
+    "wait_for_element",
+    "wait_for_url",
+    "wait_for_load_state",
+    "wait_for_timeout",
+    "assert_visible",
+    "assert_hidden",
+    "assert_enabled",
+    "assert_disabled",
+    "assert_editable",
+    "assert_checked",
+    "assert_text_equals",
+    "assert_text_contains",
+    "assert_text_matches",
+    "assert_value",
+    "assert_attribute",
+    "assert_css_property",
+    "assert_element_count",
+    "assert_url",
+    "assert_title",
+    "set_variable",
+    "extract_text",
+    "extract_value",
+    "extract_attribute",
+    "extract_url",
 ]
 
-TERMINAL_RUN_STATUSES = {'passed', 'failed', 'cancelled', 'error'}
-RUN_STATUSES = ['queued', 'assigned', 'starting', 'running', 'passed', 'failed', 'cancelled', 'error', 'orphaned']
-ARTIFACT_TYPES = ['screenshot', 'video', 'trace', 'console_log', 'network', 'download', 'html_report']
+TERMINAL_RUN_STATUSES = {"passed", "failed", "cancelled", "timed_out", "infra_error"}
+RUN_STATUSES = [
+    "queued",
+    "waiting_for_agent",
+    "assigned",
+    "starting",
+    "running",
+    "cancel_requested",
+    "passed",
+    "failed",
+    "cancelled",
+    "timed_out",
+    "infra_error",
+]
+ARTIFACT_TYPES = ["screenshot", "video", "trace", "console_log", "network", "download", "html_report"]
 
 
 class AppBaseModel(BaseModel):
@@ -32,11 +82,11 @@ class AppBaseModel(BaseModel):
 
 
 class LocatorSchema(AppBaseModel):
-    strategy: Literal['test_id', 'role', 'label', 'placeholder', 'text', 'css', 'xpath']
+    strategy: Literal["test_id", "role", "label", "placeholder", "text", "css", "xpath"]
     value: str = Field(..., min_length=1, max_length=2000)
     options: dict[str, Any] = Field(default_factory=dict)
-    fallbacks: list['LocatorSchema'] = Field(default_factory=list)
-    frame_path: list[str] = Field(default_factory=list, alias='framePath')
+    fallbacks: list["LocatorSchema"] = Field(default_factory=list)
+    frame_path: list[str] = Field(default_factory=list, alias="framePath")
 
 
 class RetryConfig(AppBaseModel):
@@ -56,14 +106,14 @@ class StepSnapshot(AppBaseModel):
     timeout_ms: Optional[int] = Field(None, ge=100, le=120000)
     retry: RetryConfig = Field(default_factory=RetryConfig)
     continue_on_failure: bool = False
-    screenshot: Literal['always', 'on-failure', 'never'] = 'on-failure'
+    screenshot: Literal["always", "on-failure", "never"] = "on-failure"
     condition: Optional[str] = None
-    children: list['StepSnapshot'] = Field(default_factory=list)
+    children: list["StepSnapshot"] = Field(default_factory=list)
 
-    @model_validator(mode='after')
-    def validate_step_type(self) -> 'StepSnapshot':
+    @model_validator(mode="after")
+    def validate_step_type(self) -> "StepSnapshot":
         if self.type not in STEP_TYPES:
-            raise ValueError(f'Unsupported step type: {self.type}')
+            raise ValueError(f"Unsupported step type: {self.type}")
         return self
 
 
@@ -97,7 +147,7 @@ class UICaseCreate(AppBaseModel):
     description: Optional[str] = None
     group_id: Optional[int] = None
     project_id: Optional[int] = None
-    priority: Literal['low', 'medium', 'high', 'critical'] = 'medium'
+    priority: Literal["low", "medium", "high", "critical"] = "medium"
     tags: list[str] = Field(default_factory=list)
     base_url: Optional[str] = None
     default_timeout_ms: int = Field(10000, ge=1000, le=120000)
@@ -105,15 +155,15 @@ class UICaseCreate(AppBaseModel):
     viewport: Optional[dict[str, int]] = None
     locale: Optional[str] = None
     timezone_id: Optional[str] = None
-    color_scheme: Optional[Literal['light', 'dark', 'no-preference']] = None
+    color_scheme: Optional[Literal["light", "dark", "no-preference"]] = None
 
 
 class UICaseUpdate(AppBaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
     group_id: Optional[int] = None
-    status: Optional[Literal['draft', 'active', 'deprecated', 'archived']] = None
-    priority: Optional[Literal['low', 'medium', 'high', 'critical']] = None
+    status: Optional[Literal["draft", "active", "deprecated", "archived"]] = None
+    priority: Optional[Literal["low", "medium", "high", "critical"]] = None
     tags: Optional[list[str]] = None
     base_url: Optional[str] = None
     default_timeout_ms: Optional[int] = Field(None, ge=1000, le=120000)
@@ -121,7 +171,7 @@ class UICaseUpdate(AppBaseModel):
     viewport: Optional[dict[str, int]] = None
     locale: Optional[str] = None
     timezone_id: Optional[str] = None
-    color_scheme: Optional[Literal['light', 'dark', 'no-preference']] = None
+    color_scheme: Optional[Literal["light", "dark", "no-preference"]] = None
     is_active: Optional[bool] = None
 
 
@@ -203,6 +253,7 @@ class UISuiteUpdate(AppBaseModel):
     stop_on_first_failure: Optional[bool] = None
     is_active: Optional[bool] = None
 
+
 class UISuiteOut(AppBaseModel):
     id: int
     project_id: Optional[int] = None
@@ -228,14 +279,14 @@ class UIStepSave(AppBaseModel):
     timeout_ms: Optional[int] = Field(None, ge=100, le=120000)
     retry: Optional[RetryConfig] = None
     continue_on_failure: bool = False
-    screenshot: Literal['always', 'on-failure', 'never'] = 'on-failure'
+    screenshot: Literal["always", "on-failure", "never"] = "on-failure"
     condition: Optional[str] = None
     children: Optional[list[Any]] = None
 
-    @model_validator(mode='after')
-    def validate_step_type(self) -> 'UIStepSave':
+    @model_validator(mode="after")
+    def validate_step_type(self) -> "UIStepSave":
         if self.type not in STEP_TYPES:
-            raise ValueError(f'Unsupported step type: {self.type}')
+            raise ValueError(f"Unsupported step type: {self.type}")
         return self
 
 
@@ -250,12 +301,12 @@ class UIRunCreate(AppBaseModel):
     environment_id: Optional[int] = None
     agent_id: Optional[int] = None
     client_run_key: Optional[str] = Field(None, min_length=8, max_length=64)
-    trigger_type: Literal['manual', 'scheduled', 'ci', 'api'] = 'manual'
+    trigger_type: Literal["manual", "scheduled", "ci", "api"] = "manual"
 
-    @model_validator(mode='after')
-    def validate_target(self) -> 'UIRunCreate':
+    @model_validator(mode="after")
+    def validate_target(self) -> "UIRunCreate":
         if bool(self.case_id) == bool(self.suite_id):
-            raise ValueError('Exactly one of case_id or suite_id is required')
+            raise ValueError("Exactly one of case_id or suite_id is required")
         return self
 
 
@@ -281,6 +332,11 @@ class UIRunOut(AppBaseModel):
     environment_id: Optional[int] = None
     dataset_iteration: Optional[int] = None
     retry_of_run_id: Optional[int] = None
+    automation_execution_id: Optional[int] = None
+    execution_id: Optional[str] = None
+    attempt: int = 1
+    last_heartbeat_at: Optional[datetime] = None
+    lease_expires_at: Optional[datetime] = None
     total_steps: int
     passed_steps: int
     failed_steps: int
@@ -330,9 +386,15 @@ class UIRunEventIn(AppBaseModel):
     httpStatus: Optional[int] = Field(None, ge=0, le=599)
     occurred_at: Optional[datetime] = None
 
+    @model_validator(mode="after")
+    def validate_step_event(self) -> "UIRunEventIn":
+        if self.type.startswith("step:") and not self.stepId:
+            raise ValueError("stepId is required for step events")
+        return self
+
 
 class UIRunEventBatchIn(AppBaseModel):
-    events: list[UIRunEventIn] = Field(default_factory=list)
+    events: list[UIRunEventIn] = Field(default_factory=list, max_length=1000)
 
 
 class UIRunEventBatchOut(AppBaseModel):
@@ -343,14 +405,14 @@ class UIRunEventBatchOut(AppBaseModel):
 
 
 class UIArtifactCreate(AppBaseModel):
-    type: Literal['screenshot', 'video', 'trace', 'console_log', 'network', 'download', 'html_report']
+    type: Literal["screenshot", "video", "trace", "console_log", "network", "download", "html_report"]
     filename: str = Field(..., min_length=1, max_length=500)
     mime_type: Optional[str] = Field(None, max_length=100)
     size_bytes: Optional[int] = Field(None, ge=0)
 
 
-class UIArtifactUploadIn(UIArtifactCreate):
-    content_base64: str = Field(..., min_length=1)
+class UIArtifactLinkIn(AppBaseModel):
+    artifact_manifest_id: int = Field(..., ge=1)
 
 
 class UIArtifactOut(AppBaseModel):
@@ -362,6 +424,7 @@ class UIArtifactOut(AppBaseModel):
     size_bytes: Optional[int] = None
     storage_path: str
     storage_type: str
+    artifact_manifest_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
 
@@ -393,12 +456,20 @@ class DesktopAgentOut(AppBaseModel):
     updated_at: Optional[datetime] = None
 
 
+class AIAnalysisFeedbackIn(AppBaseModel):
+    accepted: bool
+    corrected_category: Optional[Literal["environment", "data", "product_defect", "script", "unknown"]] = None
+    comment: Optional[str] = Field(None, max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_correction(self) -> "AIAnalysisFeedbackIn":
+        if self.accepted and self.corrected_category is not None:
+            raise ValueError("accepted feedback cannot include corrected_category")
+        if not self.accepted and self.corrected_category is None:
+            raise ValueError("corrected_category is required when accepted is false")
+        return self
+
+
 LocatorSchema.model_rebuild()
 StepSnapshot.model_rebuild()
 UIStepSave.model_rebuild()
-UIArtifactUploadIn.model_rebuild()
-
-
-
-
-

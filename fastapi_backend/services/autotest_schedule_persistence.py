@@ -14,6 +14,12 @@ _logger = logging.getLogger(__name__)
 
 async def ensure_schedule_columns_on_db() -> None:
     """Ensure schedule columns exist on test_scenarios (PostgreSQL compatible)."""
+    from fastapi_backend.core.config import settings
+
+    if settings.ENVIRONMENT == "production":
+        _logger.info("生产环境的调度字段由 Alembic 管理，跳过运行时 DDL。")
+        return
+
     async with async_session() as session:
 
         def _migrate(sync_conn: Any) -> None:

@@ -92,13 +92,10 @@ async def get_inheritance_chain(
         if current_id in visited_ids:
             # 已访问过，说明出现循环
             cycle_path = " -> ".join(str(e.id) for e in chain_bottom_up) + f" -> {current_id}"
-            raise CyclicInheritanceError(
-                f"检测到循环继承：{cycle_path}。请检查环境的 parent_id 配置。"
-            )
+            raise CyclicInheritanceError(f"检测到循环继承：{cycle_path}。请检查环境的 parent_id 配置。")
         if steps >= MAX_INHERITANCE_DEPTH:
             raise MaxDepthExceededError(
-                f"继承链深度超过最大限制 {MAX_INHERITANCE_DEPTH} 层。"
-                f"请减少环境继承层级（当前已遍历 {steps} 层）。"
+                f"继承链深度超过最大限制 {MAX_INHERITANCE_DEPTH} 层。请减少环境继承层级（当前已遍历 {steps} 层）。"
             )
 
         query = select(AutoTestEnvironment).where(AutoTestEnvironment.id == current_id)
@@ -110,9 +107,7 @@ async def get_inheritance_chain(
             if steps == 0:
                 raise EnvironmentNotFoundError(f"环境 ID={env_id} 不存在。")
             # 中途找不到父环境（数据不一致），中断向上查找
-            _logger.warning(
-                "继承链解析时父环境 ID=%s 不存在，链路在中间断开。", current_id
-            )
+            _logger.warning("继承链解析时父环境 ID=%s 不存在，链路在中间断开。", current_id)
             break
 
         visited_ids.add(current_id)
@@ -212,9 +207,7 @@ async def validate_parent_id(
 
     # 不允许指向自身（更新场景）
     if env_id is not None and parent_id == env_id:
-        raise CyclicInheritanceError(
-            f"环境不能继承自身：env_id={env_id}, parent_id={parent_id}。"
-        )
+        raise CyclicInheritanceError(f"环境不能继承自身：env_id={env_id}, parent_id={parent_id}。")
 
     # 校验父环境存在
     parent_query = select(AutoTestEnvironment).where(AutoTestEnvironment.id == parent_id)
@@ -239,9 +232,7 @@ async def validate_parent_id(
                 )
             if cursor in visited:
                 # 父环境自身已存在循环（数据异常），抛出明确错误
-                raise CyclicInheritanceError(
-                    f"父环境 ID={parent_id} 的继承链已存在循环，无法继续继承。"
-                )
+                raise CyclicInheritanceError(f"父环境 ID={parent_id} 的继承链已存在循环，无法继续继承。")
             visited.add(cursor)
             cursor_query = select(AutoTestEnvironment.parent_id).where(AutoTestEnvironment.id == cursor)
             if user_id is not None:
@@ -253,8 +244,7 @@ async def validate_parent_id(
         # 深度检查：visited 已包含父环境及其全部祖先，加上当前环境共 len(visited)+1 层
         if len(visited) + 1 > MAX_INHERITANCE_DEPTH:
             raise MaxDepthExceededError(
-                f"设置 parent_id={parent_id} 后继承链深度将超过最大限制 "
-                f"{MAX_INHERITANCE_DEPTH} 层。"
+                f"设置 parent_id={parent_id} 后继承链深度将超过最大限制 {MAX_INHERITANCE_DEPTH} 层。"
             )
     else:
         # 创建场景：仅需校验父环境的祖先链深度 + 父本身 + 当前 不超过限制
@@ -263,8 +253,7 @@ async def validate_parent_id(
         # chain 为 [root, ..., parent]，加上当前环境共 len(chain) + 1 层
         if len(chain) + 1 > MAX_INHERITANCE_DEPTH:
             raise MaxDepthExceededError(
-                f"设置 parent_id={parent_id} 后继承链深度将超过最大限制 "
-                f"{MAX_INHERITANCE_DEPTH} 层。"
+                f"设置 parent_id={parent_id} 后继承链深度将超过最大限制 {MAX_INHERITANCE_DEPTH} 层。"
             )
 
 

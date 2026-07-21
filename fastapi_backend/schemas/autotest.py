@@ -393,9 +393,7 @@ class EffectiveVariableResponse(BaseModel):
     value: Any = Field(..., description="变量值（合并后）")
     source_environment_id: int = Field(..., description="变量来源环境ID")
     source_environment_name: str = Field(..., description="变量来源环境名称")
-    is_overridden: bool = Field(
-        False, description="是否被子环境覆盖（仅当此变量在更上层环境中也存在时为 True）"
-    )
+    is_overridden: bool = Field(False, description="是否被子环境覆盖（仅当此变量在更上层环境中也存在时为 True）")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -819,9 +817,7 @@ class DBConnectionResponse(BaseModel):
 class CaseVersionCreate(BaseModel):
     """创建版本请求：version_number 留空时自动递增生成 v1/v2/v3..."""
 
-    version_number: Optional[str] = Field(
-        None, max_length=50, description="版本号(留空自动递增 v1/v2/v3...)"
-    )
+    version_number: Optional[str] = Field(None, max_length=50, description="版本号(留空自动递增 v1/v2/v3...)")
     version_label: Optional[str] = Field(None, max_length=200, description="版本标签")
 
 
@@ -832,9 +828,7 @@ class CaseVersionResponse(BaseModel):
     case_id: int
     version_number: str
     version_label: Optional[str] = None
-    snapshot: Optional[Dict[str, Any]] = Field(
-        None, description="完整用例快照(列表接口不返回,详情接口返回)"
-    )
+    snapshot: Optional[Dict[str, Any]] = Field(None, description="完整用例快照(列表接口不返回,详情接口返回)")
     created_by: Optional[int] = None
     created_at: datetime
     is_current: bool = False
@@ -848,9 +842,7 @@ class CaseVersionDiffItem(BaseModel):
     field: str = Field(..., description="字段路径,如 headers.Authorization / payload.username")
     old_value: Any = Field(None, description="旧版本值(被删除时为 None)")
     new_value: Any = Field(None, description="新版本值(被删除时为 None)")
-    change_type: str = Field(
-        ..., description="变更类型: added(新增) / removed(删除) / modified(修改)"
-    )
+    change_type: str = Field(..., description="变更类型: added(新增) / removed(删除) / modified(修改)")
 
 
 class CaseVersionDiffResponse(BaseModel):

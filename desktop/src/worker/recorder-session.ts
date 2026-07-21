@@ -9,7 +9,11 @@ export type RecorderEvent =
   | { type: 'action'; step: Record<string, unknown>; replaceLast?: boolean; insertBeforeLast?: boolean }
   | { type: 'mode'; mode: RecorderMode }
   | { type: 'console'; level: string; text: string; url: string }
-  | { type: 'network'; method: string; url: string; status: number; failed: boolean }
+  | {
+      type: 'network'; method: string; url: string; status: number; failed: boolean;
+      resourceType?: string; requestHeaders?: Record<string, string>; requestBody?: unknown;
+      responseHeaders?: Record<string, string>; responseBody?: unknown; durationMs?: number; pageUrl?: string;
+    }
   | { type: 'page'; url: string; title: string }
   | { type: 'error'; message: string };
 
@@ -20,12 +24,17 @@ export interface RecorderStartOptions {
   storageState?: BrowserContextOptions['storageState'] | null;
 }
 
+const MAX_CAPTURED_NETWORK_EVENTS = 500;
+const MAX_CAPTURED_BODY_BYTES = 1024 * 1024;
+const SENSITIVE_NETWORK_FIELD = /password|passwd|secret|token|api[_-]?key|authorization|cookie|session|id_?card|phone/i;
+
 const RECORDER_SCRIPT = `
 (() => {
   if (window.__testmasterRecorderInstalled) return;
   window.__testmasterRecorderInstalled = true;
   window.__testmasterRecorderMode = 'record';
   let inputTimer = null;
+  const sensitiveField = /password|passwd|secret|token|api[_-]?key|authorization|cookie|session|id_?card|phone/i;
 
   const clean = value => String(value || '').replace(/\\s+/g, ' ').trim().slice(0, 500);
   const cssEscape = value => window.CSS && CSS.escape ? CSS.escape(value) : String(value).replace(/[^a-zA-Z0-9_-]/g, '\\\\$&');
@@ -52,6 +61,14 @@ const RECORDER_SCRIPT = `
     }
     const parent = el.closest('label');
     return parent ? clean(parent.innerText) : '';
+  };
+  const isSensitiveInput = el => {
+    const descriptor = [
+      el.getAttribute('type'), el.getAttribute('name'), el.getAttribute('id'),
+      el.getAttribute('autocomplete'), el.getAttribute('placeholder'),
+      el.getAttribute('aria-label'), labelText(el)
+    ].join(' ');
+    return String(el.getAttribute('type') || '').toLowerCase() === 'password' || sensitiveField.test(descriptor);
   };
   const cssPath = el => {
     if (el.id && !/\\d{5,}/.test(el.id)) return '#' + cssEscape(el.id);
@@ -128,8 +145,9 @@ const RECORDER_SCRIPT = `
     if (!el || (!['input', 'textarea'].includes(el.tagName.toLowerCase()) && !el.isContentEditable)) return;
     clearTimeout(inputTimer);
     inputTimer = setTimeout(() => {
-      const secret = (el.getAttribute('type') || '').toLowerCase() === 'password';
-      send({ kind: 'action', replaceLast: true, step: step('fill', '输入' + (labelText(el) || el.getAttribute('placeholder') || '内容'), locatorFor(el), { value: secret ? '{{PASSWORD}}' : (el.isContentEditable ? el.innerText : el.value), secret }) });
+      const secret = isSensitiveInput(el);
+      const password = (el.getAttribute('type') || '').toLowerCase() === 'password';
+      send({ kind: 'action', replaceLast: true, step: step('fill', '输入' + (labelText(el) || el.getAttribute('placeholder') || '内容'), locatorFor(el), { value: secret ? (password ? '{{PASSWORD}}' : '{{SENSITIVE_VALUE}}') : (el.isContentEditable ? el.innerText : el.value), secret }) });
     }, 350);
   }, true);
 
@@ -154,6 +172,7 @@ export class RecorderSession {
   private context: BrowserContext | null = null;
   private pages = new Set<Page>();
   private mode: RecorderMode = 'record';
+  private capturedNetworkEvents = 0;
 
   constructor(private readonly onEvent: (event: RecorderEvent) => void) {}
 
@@ -170,8 +189,8 @@ export class RecorderSession {
     const page = await this.context.newPage();
     await this.attachPage(page);
     await page.goto(options.url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-    this.emitAction('goto', '打开网页', null, { url: options.url });
-    this.onEvent({ type: 'ready', sessionId: this.id, url: page.url(), title: await page.title() });
+    this.emitAction('goto', '打开网页', null, { url: this.redactNetworkUrl(options.url) });
+    this.onEvent({ type: 'ready', sessionId: this.id, url: this.redactNetworkUrl(page.url()), title: await page.title() });
     return { sessionId: this.id, browserVersion: this.browser.version() };
   }
 
@@ -181,7 +200,14 @@ export class RecorderSession {
     this.onEvent({ type: 'mode', mode });
   }
 
-  async validateLocator(locator: TestMasterLocator): Promise<{ count: number; preview: string }> {
+  async validateLocator(locator: TestMasterLocator): Promise<{
+    count: number;
+    preview: string;
+    visible: boolean;
+    actionable: boolean;
+    dryRunPassed: boolean;
+    currentUrl: string;
+  }> {
     const page = [...this.pages].reverse().find(candidate => !candidate.isClosed());
     if (!page) throw new Error('RECORDER_PAGE_NOT_FOUND');
     const target = this.resolveLocator(page, locator);
@@ -197,8 +223,25 @@ export class RecorderSession {
         }
       });
     }
-    const preview = count > 0 ? await target.first().evaluate(element => (element as HTMLElement).innerText || element.getAttribute('aria-label') || element.tagName) : '';
-    return { count, preview: String(preview).trim().slice(0, 200) };
+    const first = target.first();
+    const preview = count > 0 ? await first.evaluate(element => (element as HTMLElement).innerText || element.getAttribute('aria-label') || element.tagName) : '';
+    const visible = count === 1 && await first.isVisible().catch(() => false);
+    const enabled = visible && await first.isEnabled().catch(() => false);
+    const receivesEvents = enabled && await first.evaluate(element => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.pointerEvents !== 'none' && rect.width > 0 && rect.height > 0;
+    }).catch(() => false);
+    const actionable = visible && enabled && receivesEvents;
+    const dryRunPassed = actionable && await first.hover({ trial: true, timeout: 1500 }).then(() => true).catch(() => false);
+    return {
+      count,
+      preview: String(preview).trim().slice(0, 200),
+      visible,
+      actionable,
+      dryRunPassed,
+      currentUrl: this.redactNetworkUrl(page.url()),
+    };
   }
 
   private resolveLocator(page: Page, locator: TestMasterLocator): import('playwright').Locator {
@@ -223,7 +266,7 @@ export class RecorderSession {
   async getCurrentPageInfo(): Promise<{ url: string; title: string }> {
     const page = [...this.pages].reverse().find(item => !item.isClosed());
     if (!page) throw new Error('RECORDER_PAGE_NOT_AVAILABLE');
-    return { url: page.url(), title: await page.title().catch(() => '') };
+    return { url: this.redactNetworkUrl(page.url()), title: await page.title().catch(() => '') };
   }
 
   async stop(): Promise<void> {
@@ -237,12 +280,14 @@ export class RecorderSession {
     const additionalPage = this.pages.size > 0;
     this.pages.add(page);
     if (additionalPage) this.emitAction('switch_page', '切换到新页面', null, { index: 'last' });
-    page.on('console', message => this.onEvent({ type: 'console', level: message.type(), text: message.text(), url: page.url() }));
-    page.on('response', response => { if (response.status() >= 400) this.onEvent({ type: 'network', method: response.request().method(), url: response.url(), status: response.status(), failed: true }); });
-    page.on('requestfailed', request => this.onEvent({ type: 'network', method: request.method(), url: request.url(), status: 0, failed: true }));
-    page.on('framenavigated', async frame => { if (frame === page.mainFrame()) this.onEvent({ type: 'page', url: page.url(), title: await page.title().catch(() => '') }); });
+    page.on('console', message => this.onEvent({
+      type: 'console', level: message.type(), text: this.redactDiagnosticText(message.text()), url: this.redactNetworkUrl(page.url()),
+    }));
+    page.on('response', response => void this.captureResponse(response));
+    page.on('requestfailed', request => this.onEvent({ type: 'network', method: request.method(), url: this.redactNetworkUrl(request.url()), status: 0, failed: true }));
+    page.on('framenavigated', async frame => { if (frame === page.mainFrame()) this.onEvent({ type: 'page', url: this.redactNetworkUrl(page.url()), title: await page.title().catch(() => '') }); });
     page.on('dialog', dialog => {
-      this.onEvent({ type: 'action', insertBeforeLast: true, step: this.makeStep('accept_dialog', '自动确认弹窗', null, { message: dialog.message(), dialogType: dialog.type() }) });
+      this.onEvent({ type: 'action', insertBeforeLast: true, step: this.makeStep('accept_dialog', '自动确认弹窗', null, { message: this.redactDiagnosticText(dialog.message()), dialogType: dialog.type() }) });
       void dialog.accept().catch(() => {});
     });
     page.on('close', () => this.pages.delete(page));
@@ -252,6 +297,7 @@ export class RecorderSession {
 
   private async handleBrowserEvent(payload: any, frame?: import('playwright').Frame): Promise<void> {
     if ((payload?.kind === 'action' || payload?.kind === 'assertion') && payload.step) {
+      this.redactRecordedStep(payload.step);
       const framePath = frame ? await this.getFramePath(frame) : [];
       if (payload.step.locator) {
         payload.step.locator.framePath = framePath;
@@ -260,6 +306,104 @@ export class RecorderSession {
       this.onEvent({ type: 'action', step: payload.step, replaceLast: !!payload.replaceLast });
     }
     if (payload?.kind === 'mode') { this.mode = payload.mode; this.onEvent({ type: 'mode', mode: payload.mode }); }
+  }
+
+  private redactNetworkValue(value: unknown, fieldName = 'value'): unknown {
+    if (SENSITIVE_NETWORK_FIELD.test(fieldName)) return `{{${fieldName.replace(/[^A-Za-z0-9_]/g, '_').toUpperCase()}}}`;
+    if (Array.isArray(value)) return value.map(item => this.redactNetworkValue(item, fieldName));
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, this.redactNetworkValue(item, key)]));
+    }
+    return value;
+  }
+
+  private redactNetworkHeaders(headers: Record<string, string>): Record<string, string> {
+    const output: Record<string, string> = {};
+    for (const [key, value] of Object.entries(headers)) {
+      if (/^set-cookie$/i.test(key) || /^cookie$/i.test(key)) continue;
+      output[key] = SENSITIVE_NETWORK_FIELD.test(key) ? String(this.redactNetworkValue(value, key)) : value;
+    }
+    return output;
+  }
+
+  private redactNetworkUrl(value: string): string {
+    try {
+      const url = new URL(value);
+      for (const key of [...url.searchParams.keys()]) {
+        if (SENSITIVE_NETWORK_FIELD.test(key)) url.searchParams.set(key, String(this.redactNetworkValue('', key)));
+      }
+      return url.toString().replace(/%7B%7B/gi, '{{').replace(/%7D%7D/gi, '}}');
+    } catch {
+      return value;
+    }
+  }
+
+  private redactDiagnosticText(value: string): string {
+    const source = String(value || '');
+    try {
+      const parsed = JSON.parse(source);
+      return JSON.stringify(this.redactNetworkValue(parsed));
+    } catch {
+      return source
+        .replace(/https?:\/\/[^\s"']+/gi, url => this.redactNetworkUrl(url))
+        .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/=-]+/gi, '$1 [REDACTED]')
+        .replace(/\b(password|passwd|secret|token|api[_-]?key|authorization|cookie|session)\s*([:=])\s*([^\s,;"'}\]]+)/gi, '$1$2[REDACTED]')
+        .slice(0, 2000);
+    }
+  }
+
+  private redactRecordedStep(step: Record<string, any>): void {
+    if (step.type !== 'fill' || !step.input || typeof step.input !== 'object') return;
+    const locator = step.locator || {};
+    const descriptor = [
+      locator.value,
+      locator.options?.name,
+      ...(locator.fallbacks || []).flatMap((fallback: Record<string, any>) => [fallback.value, fallback.options?.name]),
+    ].filter(Boolean).join(' ');
+    if (step.input.secret || SENSITIVE_NETWORK_FIELD.test(descriptor)) {
+      step.input = {
+        ...step.input,
+        value: String(step.input.value || '').includes('PASSWORD') ? '{{PASSWORD}}' : '{{SENSITIVE_VALUE}}',
+        secret: true,
+      };
+    }
+  }
+
+  private async captureResponse(response: import('playwright').Response): Promise<void> {
+    const request = response.request();
+    const resourceType = request.resourceType();
+    if (!['xhr', 'fetch'].includes(resourceType) || this.capturedNetworkEvents >= MAX_CAPTURED_NETWORK_EVENTS) return;
+    this.capturedNetworkEvents += 1;
+    const requestHeaders = this.redactNetworkHeaders(request.headers());
+    const responseHeaders = this.redactNetworkHeaders(await response.allHeaders().catch(() => ({})));
+    let requestBody: unknown = null;
+    const requestText = request.postData();
+    if (requestText && Buffer.byteLength(requestText, 'utf8') <= MAX_CAPTURED_BODY_BYTES) {
+      try { requestBody = this.redactNetworkValue(JSON.parse(requestText)); }
+      catch { requestBody = '[non-JSON request body omitted]'; }
+    }
+    let responseBody: unknown = null;
+    const contentLength = Number(responseHeaders['content-length'] || 0);
+    const contentType = String(responseHeaders['content-type'] || '').toLowerCase();
+    if (contentLength <= MAX_CAPTURED_BODY_BYTES && /(json|text|xml|javascript)/.test(contentType)) {
+      try {
+        const body = await response.body();
+        if (body.length <= MAX_CAPTURED_BODY_BYTES) {
+          const text = body.toString('utf8');
+          try { responseBody = this.redactNetworkValue(JSON.parse(text)); }
+          catch { responseBody = '[non-JSON response body omitted]'; }
+        }
+      } catch {}
+    }
+    const timing = request.timing();
+    const durationMs = timing.responseEnd >= timing.startTime
+      ? Math.max(0, Math.round(timing.responseEnd - timing.startTime))
+      : undefined;
+    this.onEvent({
+      type: 'network', method: request.method(), url: this.redactNetworkUrl(response.url()), status: response.status(),
+      failed: response.status() >= 400, resourceType, requestHeaders, requestBody, responseHeaders, responseBody,
+      durationMs, pageUrl: this.redactNetworkUrl(request.frame().page().url()),
+    });
   }
 
   private async getFramePath(frame: import('playwright').Frame): Promise<string[]> {

@@ -65,7 +65,7 @@
           <el-button @click="importFromSwagger">
             <el-icon><Upload /></el-icon> 从 Swagger 导入
           </el-button>
-          <el-button type="primary" @click="showCreateRule = true">
+          <el-button type="primary" @click="openCreateRule">
             <el-icon><Plus /></el-icon> 新建规则
           </el-button>
         </div>
@@ -85,6 +85,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="delay_ms" label="延迟(ms)" width="100" />
+        <el-table-column label="故障注入" width="130">
+          <template #default="{ row }">
+            <el-tag v-if="row.fault_type" type="warning" size="small">{{ faultLabel(row.fault_type) }}</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="is_active" label="状态" width="80">
           <template #default="{ row }">
             <el-switch v-model="row.is_active" @change="toggleRule(row)" />
@@ -125,6 +131,17 @@
         </el-table-column>
         <el-table-column prop="response_time_ms" label="耗时(ms)" width="100" />
         <el-table-column prop="matched_rule_name" label="匹配规则" width="150" />
+        <el-table-column label="故障结果" min-width="160">
+          <template #default="{ row }">
+            <el-tag v-if="row.fault_triggered" type="warning" size="small">
+              {{ faultLabel(row.fault_type) }}
+              <template v-if="row.fault_random_value !== null && row.fault_random_value !== undefined">
+                ({{ Number(row.fault_random_value).toFixed(4) }})
+              </template>
+            </el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
       </el-table>
     </div>
 
@@ -188,6 +205,40 @@
         <el-form-item label="延迟(ms)">
           <el-input-number v-model="ruleForm.delay_ms" :min="0" :max="30000" />
         </el-form-item>
+        <el-divider content-position="left">故障注入</el-divider>
+        <el-form-item label="故障类型">
+          <el-select v-model="ruleForm.fault_type" clearable placeholder="不注入故障">
+            <el-option v-for="option in faultOptions" :key="option.value" :label="option.label" :value="option.value" />
+          </el-select>
+        </el-form-item>
+        <template v-if="ruleForm.fault_type">
+          <el-form-item label="触发概率">
+            <el-input-number v-model="ruleForm.fault_trigger_probability" :min="0" :max="1" :step="0.1" :precision="2" />
+            <span class="form-tip">0 表示从不触发，1 表示每次触发</span>
+          </el-form-item>
+          <el-form-item label="复现种子">
+            <el-input v-model="ruleForm.fault_random_seed" maxlength="200" placeholder="可选；相同种子会产生稳定的命中结果" />
+          </el-form-item>
+          <el-form-item v-if="ruleForm.fault_type === 'status_error'" label="故障状态码">
+            <el-input-number v-model="ruleForm.fault_status_code" :min="400" :max="599" />
+          </el-form-item>
+          <el-form-item v-if="ruleForm.fault_type === 'invalid_json'" label="故障状态码">
+            <el-input-number v-model="ruleForm.fault_status_code" :min="100" :max="599" />
+          </el-form-item>
+          <el-form-item v-if="ruleForm.fault_type === 'delay' || ruleForm.fault_type === 'timeout_response'" label="故障延迟(ms)">
+            <el-input-number v-model="ruleForm.fault_delay_ms" :min="0" :max="60000" />
+          </el-form-item>
+          <el-form-item v-if="ruleForm.fault_type === 'custom_headers'" label="注入响应头">
+            <el-input v-model="ruleForm.fault_headers_str" type="textarea" :rows="3" placeholder='JSON，例如 {"X-Feature-Flag":"degraded"}' />
+          </el-form-item>
+          <el-alert
+            v-if="ruleForm.fault_type === 'timeout_response'"
+            title="超时响应会在应用层返回 504；它不会中断 TCP 连接。"
+            type="warning"
+            :closable="false"
+            show-icon
+          />
+        </template>
         <el-form-item label="优先级">
           <el-input-number v-model="ruleForm.priority" :min="0" :max="100" />
           <span class="form-tip">数字越大优先级越高</span>
@@ -267,9 +318,50 @@ const ruleForm = ref({
   response_headers_str: '{"Content-Type": "application/json"}',
   response_body_str: '{}',
   delay_ms: 0,
+  fault_type: '',
+  fault_trigger_probability: 1,
+  fault_random_seed: '',
+  fault_status_code: 500,
+  fault_delay_ms: 0,
+  fault_headers_str: '{}',
   priority: 0,
   is_active: true
 })
+
+const faultOptions = [
+  { value: 'status_error', label: '错误状态码' },
+  { value: 'delay', label: '正常响应延迟' },
+  { value: 'timeout_response', label: '应用层超时响应 (504)' },
+  { value: 'invalid_json', label: '无效 JSON 响应' },
+  { value: 'custom_headers', label: '注入自定义响应头' }
+]
+
+const faultLabel = (type) => faultOptions.find((option) => option.value === type)?.label || type || '-'
+
+const buildFaultConfig = () => {
+  const faultType = ruleForm.value.fault_type
+  if (!faultType) return null
+
+  const config = {
+    trigger_probability: Number(ruleForm.value.fault_trigger_probability)
+  }
+  const randomSeed = String(ruleForm.value.fault_random_seed || '').trim()
+  if (randomSeed) config.random_seed = randomSeed
+  if (faultType === 'status_error' || faultType === 'invalid_json') {
+    config.status_code = Number(ruleForm.value.fault_status_code)
+  }
+  if (faultType === 'delay' || faultType === 'timeout_response') {
+    config.delay_ms = Number(ruleForm.value.fault_delay_ms)
+  }
+  if (faultType === 'custom_headers') {
+    try {
+      config.headers = JSON.parse(ruleForm.value.fault_headers_str || '{}')
+    } catch (error) {
+      throw new Error(`注入响应头 JSON 格式错误: ${error.message}`)
+    }
+  }
+  return config
+}
 
 // 加载项目列表
 const loadProjects = async () => {
@@ -403,12 +495,18 @@ const saveRule = async () => {
       return
     }
     const data = {
-      ...ruleForm.value,
+      name: ruleForm.value.name,
+      method: ruleForm.value.method,
+      path: ruleForm.value.path,
+      response_status: ruleForm.value.response_status,
       response_headers: responseHeaders,
-      response_body: responseBody
+      response_body: responseBody,
+      delay_ms: ruleForm.value.delay_ms,
+      fault_type: ruleForm.value.fault_type || null,
+      fault_config: buildFaultConfig(),
+      priority: ruleForm.value.priority,
+      is_active: ruleForm.value.is_active
     }
-    delete data.response_headers_str
-    delete data.response_body_str
 
     if (editingRule.value) {
       await autoTestRequest.put(`${API_BASE}/projects/${currentProject.value.id}/rules/${editingRule.value.id}`, data)
@@ -431,6 +529,7 @@ const saveRule = async () => {
 // 编辑规则
 const editRule = (rule) => {
   editingRule.value = rule
+  const faultConfig = rule.fault_config || {}
   ruleForm.value = {
     name: rule.name,
     method: rule.method,
@@ -439,6 +538,12 @@ const editRule = (rule) => {
     response_headers_str: JSON.stringify(rule.response_headers || {}, null, 2),
     response_body_str: JSON.stringify(rule.response_body || {}, null, 2),
     delay_ms: rule.delay_ms || 0,
+    fault_type: rule.fault_type || '',
+    fault_trigger_probability: Number(faultConfig.trigger_probability ?? 1),
+    fault_random_seed: faultConfig.random_seed || '',
+    fault_status_code: Number(faultConfig.status_code ?? (rule.fault_type === 'status_error' ? 500 : 200)),
+    fault_delay_ms: Number(faultConfig.delay_ms ?? 0),
+    fault_headers_str: JSON.stringify(faultConfig.headers || {}, null, 2),
     priority: rule.priority || 0,
     is_active: rule.is_active !== false
   }
@@ -533,9 +638,21 @@ const resetRuleForm = () => {
     response_headers_str: '{"Content-Type": "application/json"}',
     response_body_str: '{}',
     delay_ms: 0,
+    fault_type: '',
+    fault_trigger_probability: 1,
+    fault_random_seed: '',
+    fault_status_code: 500,
+    fault_delay_ms: 0,
+    fault_headers_str: '{}',
     priority: 0,
     is_active: true
   }
+}
+
+const openCreateRule = () => {
+  editingRule.value = null
+  resetRuleForm()
+  showCreateRule.value = true
 }
 
 // 工具函数

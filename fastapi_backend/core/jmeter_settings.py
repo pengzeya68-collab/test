@@ -31,6 +31,10 @@ def is_jmeter_available() -> bool:
 
 _logger.info(
     "JMeter settings: home=%s, bin=%s, report_dir=%s, max_concurrent=%d, timeout=%ds, enabled=%s",
-    JMETER_HOME, JMETER_BIN, JMETER_REPORT_DIR, JMETER_MAX_CONCURRENT,
-    JMETER_TASK_TIMEOUT, JMETER_ENGINE_ENABLED,
+    JMETER_HOME,
+    JMETER_BIN,
+    JMETER_REPORT_DIR,
+    JMETER_MAX_CONCURRENT,
+    JMETER_TASK_TIMEOUT,
+    JMETER_ENGINE_ENABLED,
 )

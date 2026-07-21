@@ -31,7 +31,9 @@ _logger = logging.getLogger(__name__)
 _DETAIL_MAX_LENGTH = 10 * 1024
 
 # 敏感字段名匹配模式（密码、密钥、令牌等），审计日志中需脱敏
-_SENSITIVE_KEY_PATTERN = re.compile(r"(password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|credential|authorization)", re.IGNORECASE)
+_SENSITIVE_KEY_PATTERN = re.compile(
+    r"(password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|credential|authorization)", re.IGNORECASE
+)
 _MASKED_VALUE = "****"
 
 
@@ -185,9 +187,7 @@ class AuditService:
         page_size = max(min(page_size, 200), 1)
         offset = (page - 1) * page_size
 
-        rows_query = (
-            base_query.order_by(AuditLog.created_at.desc()).offset(offset).limit(page_size)
-        )
+        rows_query = base_query.order_by(AuditLog.created_at.desc()).offset(offset).limit(page_size)
         result = await db.execute(rows_query)
         items = [AuditService._to_dict(row) for row in result.scalars().all()]
 

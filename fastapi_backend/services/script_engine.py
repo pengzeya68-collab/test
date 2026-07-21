@@ -70,9 +70,7 @@ class ScriptEngine:
         try:
             from fastapi_backend.services.autotest_variable_service import save_variables_to_db
 
-            await save_variables_to_db(
-                globals_to_save, source=source, user_id=context.get("user_id")
-            )
+            await save_variables_to_db(globals_to_save, source=source, user_id=context.get("user_id"))
         except Exception as e:
             _logger.warning(f"持久化脚本全局变量失败: {e}")
 
@@ -370,17 +368,58 @@ var __globals_to_save = {{}};
 
 # 允许导入的安全模块白名单（其余一律拒绝，防止逃逸）
 _PY_ALLOWED_IMPORTS = {
-    "json", "re", "math", "datetime", "decimal", "collections", "itertools",
-    "functools", "operator", "string", "uuid", "hashlib", "base64",
-    "urllib.parse", "pprint", "statistics", "random", "copy",
+    "json",
+    "re",
+    "math",
+    "datetime",
+    "decimal",
+    "collections",
+    "itertools",
+    "functools",
+    "operator",
+    "string",
+    "uuid",
+    "hashlib",
+    "base64",
+    "urllib.parse",
+    "pprint",
+    "statistics",
+    "random",
+    "copy",
 }
 # 明确禁止的高危模块（即便出现在白名单也二次拦截）
 _PY_BLOCKED_IMPORTS = {
-    "os", "sys", "subprocess", "socket", "shutil", "pathlib", "ctypes",
-    "importlib", "builtins", "code", "codeop", "pty", "spawn", "platform",
-    "multiprocessing", "threading", "pickle", "marshal", "asyncio",
-    "tempfile", "signal", "resource", "fcntl", "glob", "linecache",
-    "traceback", "types", "inspect", "builtins", "runpy", "webbrowser",
+    "os",
+    "sys",
+    "subprocess",
+    "socket",
+    "shutil",
+    "pathlib",
+    "ctypes",
+    "importlib",
+    "builtins",
+    "code",
+    "codeop",
+    "pty",
+    "spawn",
+    "platform",
+    "multiprocessing",
+    "threading",
+    "pickle",
+    "marshal",
+    "asyncio",
+    "tempfile",
+    "signal",
+    "resource",
+    "fcntl",
+    "glob",
+    "linecache",
+    "traceback",
+    "types",
+    "inspect",
+    "builtins",
+    "runpy",
+    "webbrowser",
 }
 
 
@@ -398,6 +437,7 @@ def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
 try:
     from RestrictedPython import compile_restricted_exec, safe_builtins as _RP_SAFE_BUILTINS  # type: ignore
     from RestrictedPython.Guards import safer_getattr as _RP_SAFER_GETATTR, guarded_setattr as _RP_GUARDED_SETATTR  # type: ignore
+
     _HAS_RESTRICTED_PYTHON = True
 except ImportError:  # RestrictedPython 未安装时回退到 exec + 受限内建
     _HAS_RESTRICTED_PYTHON = False
@@ -410,10 +450,18 @@ except ImportError:  # RestrictedPython 未安装时回退到 exec + 受限内�
 import operator as _operator
 
 _PY_INPLACE_OPS = {
-    "+=": _operator.iadd, "-=": _operator.isub, "*=": _operator.imul,
-    "/=": _operator.itruediv, "//=": _operator.ifloordiv, "%=": _operator.imod,
-    "**=": _operator.ipow, "<<=": _operator.ilshift, ">>=": _operator.irshift,
-    "&=": _operator.iand, "|=": _operator.ior, "^=": _operator.ixor,
+    "+=": _operator.iadd,
+    "-=": _operator.isub,
+    "*=": _operator.imul,
+    "/=": _operator.itruediv,
+    "//=": _operator.ifloordiv,
+    "%=": _operator.imod,
+    "**=": _operator.ipow,
+    "<<=": _operator.ilshift,
+    ">>=": _operator.irshift,
+    "&=": _operator.iand,
+    "|=": _operator.ior,
+    "^=": _operator.ixor,
 }
 
 
@@ -428,6 +476,7 @@ def _py_inplacevar(op: str, x: Any, y: Any) -> Any:
 @dataclass
 class ScriptResult:
     """Python 脚本执行结果"""
+
     success: bool = True
     extracted_vars: Dict[str, Any] = field(default_factory=dict)
     assertions: List[Dict[str, Any]] = field(default_factory=list)
@@ -530,24 +579,35 @@ class _Expectation:
         self._value = value
         self._assertions = assertions
 
-    def _record(self, passed: bool, name: str, error: Optional[str] = None,
-                expected: Any = None, actual: Any = None) -> None:
-        self._assertions.append({
-            "name": name,
-            "passed": passed,
-            "error": error,
-            "expected": expected,
-            "actual": actual,
-        })
+    def _record(
+        self, passed: bool, name: str, error: Optional[str] = None, expected: Any = None, actual: Any = None
+    ) -> None:
+        self._assertions.append(
+            {
+                "name": name,
+                "passed": passed,
+                "error": error,
+                "expected": expected,
+                "actual": actual,
+            }
+        )
 
     def to_equal(self, expected: Any) -> "_Expectation":
         ok = self._value == expected
-        self._record(ok, f"expect to_equal({expected!r})", None if ok else f"期望 {expected!r}，实际 {self._value!r}", expected, self._value)
+        self._record(
+            ok,
+            f"expect to_equal({expected!r})",
+            None if ok else f"期望 {expected!r}，实际 {self._value!r}",
+            expected,
+            self._value,
+        )
         return self
 
     def to_not_equal(self, expected: Any) -> "_Expectation":
         ok = self._value != expected
-        self._record(ok, f"expect to_not_equal({expected!r})", None if ok else f"不应等于 {expected!r}", expected, self._value)
+        self._record(
+            ok, f"expect to_not_equal({expected!r})", None if ok else f"不应等于 {expected!r}", expected, self._value
+        )
         return self
 
     # 别名
@@ -586,19 +646,43 @@ class _Expectation:
             ok = False
             self._record(False, f"expect to_match_regex({pattern!r})", f"正则表达式无效: {e}", pattern, self._value)
             return self
-        self._record(ok, f"expect to_match_regex({pattern!r})", None if ok else f"不匹配正则 {pattern!r}", pattern, self._value)
+        self._record(
+            ok, f"expect to_match_regex({pattern!r})", None if ok else f"不匹配正则 {pattern!r}", pattern, self._value
+        )
         return self
 
     def to_be_a(self, type_name: str) -> "_Expectation":
-        _type_map = {"str": str, "string": str, "int": int, "integer": int,
-                     "float": float, "bool": bool, "boolean": bool,
-                     "list": list, "dict": dict, "map": dict, "set": set}
+        _type_map = {
+            "str": str,
+            "string": str,
+            "int": int,
+            "integer": int,
+            "float": float,
+            "bool": bool,
+            "boolean": bool,
+            "list": list,
+            "dict": dict,
+            "map": dict,
+            "set": set,
+        }
         py_type = _type_map.get((type_name or "").lower())
         if py_type is None:
-            self._record(False, f"expect to_be_a({type_name!r})", f"未知类型 {type_name!r}", type_name, type(self._value).__name__)
+            self._record(
+                False,
+                f"expect to_be_a({type_name!r})",
+                f"未知类型 {type_name!r}",
+                type_name,
+                type(self._value).__name__,
+            )
             return self
         ok = isinstance(self._value, py_type)
-        self._record(ok, f"expect to_be_a({type_name!r})", None if ok else f"期望类型 {type_name!r}，实际 {type(self._value).__name__}", type_name, type(self._value).__name__)
+        self._record(
+            ok,
+            f"expect to_be_a({type_name!r})",
+            None if ok else f"期望类型 {type_name!r}，实际 {type(self._value).__name__}",
+            type_name,
+            type(self._value).__name__,
+        )
         return self
 
     to_be_instance_of = to_be_a
@@ -608,7 +692,13 @@ class _Expectation:
             ok = self._value > n
         except TypeError:
             ok = False
-        self._record(ok, f"expect to_be_greater_than({n!r})", None if ok else f"期望大于 {n!r}，实际 {self._value!r}", n, self._value)
+        self._record(
+            ok,
+            f"expect to_be_greater_than({n!r})",
+            None if ok else f"期望大于 {n!r}，实际 {self._value!r}",
+            n,
+            self._value,
+        )
         return self
 
     to_be_above = to_be_greater_than
@@ -618,7 +708,13 @@ class _Expectation:
             ok = self._value < n
         except TypeError:
             ok = False
-        self._record(ok, f"expect to_be_less_than({n!r})", None if ok else f"期望小于 {n!r}，实际 {self._value!r}", n, self._value)
+        self._record(
+            ok,
+            f"expect to_be_less_than({n!r})",
+            None if ok else f"期望小于 {n!r}，实际 {self._value!r}",
+            n,
+            self._value,
+        )
         return self
 
     to_be_below = to_be_less_than
@@ -636,7 +732,9 @@ class _Expectation:
             ok = str(self._value).startswith(prefix)
         except Exception:
             ok = False
-        self._record(ok, f"expect to_start_with({prefix!r})", None if ok else f"不以 {prefix!r} 开头", prefix, self._value)
+        self._record(
+            ok, f"expect to_start_with({prefix!r})", None if ok else f"不以 {prefix!r} 开头", prefix, self._value
+        )
         return self
 
     def to_end_with(self, suffix: str) -> "_Expectation":
@@ -644,7 +742,9 @@ class _Expectation:
             ok = str(self._value).endswith(suffix)
         except Exception:
             ok = False
-        self._record(ok, f"expect to_end_with({suffix!r})", None if ok else f"不以 {suffix!r} 结尾", suffix, self._value)
+        self._record(
+            ok, f"expect to_end_with({suffix!r})", None if ok else f"不以 {suffix!r} 结尾", suffix, self._value
+        )
         return self
 
 
@@ -825,25 +925,69 @@ class PythonScriptEngine:
         base_builtins = dict(_RP_SAFE_BUILTINS) if _HAS_RESTRICTED_PYTHON else {}
         safe_builtins = {
             **base_builtins,
-            "abs": abs, "all": all, "any": any, "bool": bool, "dict": dict,
-            "enumerate": enumerate, "filter": filter, "float": float,
-            "hash": hash, "int": int, "isinstance": isinstance, "len": len,
-            "list": list, "map": map, "max": max, "min": min, "print": print_fn,
-            "range": range, "round": round, "set": set, "sorted": sorted,
-            "str": str, "sum": sum, "tuple": tuple, "type": type, "zip": zip,
-            "True": True, "False": False, "None": None,
-            "repr": repr, "frozenset": frozenset, "format": format,
-            "reversed": reversed, "bytes": bytes, "chr": chr, "ord": ord,
-            "Exception": Exception, "ValueError": ValueError, "TypeError": TypeError,
-            "KeyError": KeyError, "IndexError": IndexError, "AttributeError": AttributeError,
-            "AssertionError": AssertionError, "StopIteration": StopIteration,
-            "ZeroDivisionError": ZeroDivisionError, "NameError": NameError,
+            "abs": abs,
+            "all": all,
+            "any": any,
+            "bool": bool,
+            "dict": dict,
+            "enumerate": enumerate,
+            "filter": filter,
+            "float": float,
+            "hash": hash,
+            "int": int,
+            "isinstance": isinstance,
+            "len": len,
+            "list": list,
+            "map": map,
+            "max": max,
+            "min": min,
+            "print": print_fn,
+            "range": range,
+            "round": round,
+            "set": set,
+            "sorted": sorted,
+            "str": str,
+            "sum": sum,
+            "tuple": tuple,
+            "type": type,
+            "zip": zip,
+            "True": True,
+            "False": False,
+            "None": None,
+            "repr": repr,
+            "frozenset": frozenset,
+            "format": format,
+            "reversed": reversed,
+            "bytes": bytes,
+            "chr": chr,
+            "ord": ord,
+            "Exception": Exception,
+            "ValueError": ValueError,
+            "TypeError": TypeError,
+            "KeyError": KeyError,
+            "IndexError": IndexError,
+            "AttributeError": AttributeError,
+            "AssertionError": AssertionError,
+            "StopIteration": StopIteration,
+            "ZeroDivisionError": ZeroDivisionError,
+            "NameError": NameError,
             # 受控导入：仅白名单模块
             "__import__": _guarded_import,
         }
         # 显式移除可被滥用的内建（双保险）
-        for _bad in ("eval", "exec", "compile", "open", "input", "globals",
-                     "locals", "vars", "dir", "breakpoint", "memoryview"):
+        for _bad in (
+            "eval",
+            "exec",
+            "compile",
+            "open",
+            "input",
+            "globals",
+            "locals",
+            "vars",
+            "dir",
+            "breakpoint",
+            "memoryview",
+        ):
             safe_builtins.pop(_bad, None)
 
         user_globals: Dict[str, Any] = {
@@ -868,6 +1012,7 @@ class PythonScriptEngine:
                 if isinstance(name, str) and name.startswith("_"):
                     raise AttributeError(f"禁止访问属性 '{name}'")
                 return getattr(obj, name)
+
             user_globals["_getattr_"] = _safe_getattr
             user_globals["_setattr_"] = lambda obj, name, value: setattr(obj, name, value)
 

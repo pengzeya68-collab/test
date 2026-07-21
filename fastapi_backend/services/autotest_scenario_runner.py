@@ -29,7 +29,6 @@ from fastapi_backend.models.autotest import (
     # AutoTestCase,
     AutoTestEnvironment,
     AutoTestScenarioExecutionRecord,
-    AutoTestGlobalVariable,
 )
 from fastapi_backend.services.autotest_email_notifier import get_email_notifier
 from fastapi_backend.utils.parser import replace_variables
@@ -206,13 +205,12 @@ class ScenarioExecutionEngine:
                             from fastapi_backend.services.autotest_variable_service import (
                                 get_effective_variables,
                             )
+
                             effective_vars = await get_effective_variables(db, env.id, user_id=self.user_id)
                             for v in effective_vars:
                                 self.context_vars[v["name"]] = v["value"]
                         except Exception as e:
-                            _logger.warning(
-                                f"场景执行合并环境继承变量失败，回退到仅当前环境变量: {e}"
-                            )
+                            _logger.warning(f"场景执行合并环境继承变量失败，回退到仅当前环境变量: {e}")
                             if isinstance(env.variables, dict):
                                 self.context_vars.update(env.variables)
                     elif isinstance(env.variables, dict):
@@ -260,12 +258,19 @@ class ScenarioExecutionEngine:
                         step_info["api_case_body_type"] = step.api_case.body_type
                         step_info["api_case_assert_rules"] = step.api_case.assert_rules
                         from fastapi_backend.services.autotest_request_config import reveal_request_config
-                        step_info["api_case_request_config"] = reveal_request_config(getattr(step.api_case, "request_config", None))
+
+                        step_info["api_case_request_config"] = reveal_request_config(
+                            getattr(step.api_case, "request_config", None)
+                        )
                         step_info["api_case_extractors"] = step.api_case.extractors
                         step_info["api_case_pre_script"] = getattr(step.api_case, "pre_script", None)
                         step_info["api_case_post_script"] = getattr(step.api_case, "post_script", None)
-                        step_info["api_case_pre_script_language"] = getattr(step.api_case, "pre_script_language", None) or "javascript"
-                        step_info["api_case_post_script_language"] = getattr(step.api_case, "post_script_language", None) or "javascript"
+                        step_info["api_case_pre_script_language"] = (
+                            getattr(step.api_case, "pre_script_language", None) or "javascript"
+                        )
+                        step_info["api_case_post_script_language"] = (
+                            getattr(step.api_case, "post_script_language", None) or "javascript"
+                        )
                         step_info["api_case_response_schema"] = getattr(step.api_case, "response_schema", None)
                     steps_data.append(step_info)
 
@@ -309,7 +314,10 @@ class ScenarioExecutionEngine:
                     else:
                         continue
                 # 跳过已被流控步骤引用的子步骤
-                if ("id", step_info["id"]) in consumed_step_orders or ("order", step_info["step_order"]) in consumed_step_orders:
+                if ("id", step_info["id"]) in consumed_step_orders or (
+                    "order",
+                    step_info["step_order"],
+                ) in consumed_step_orders:
                     continue
                 step_name = (
                     step_info.get("api_case_name") or step_info.get("step_config", {}).get("name", "")
@@ -1045,9 +1053,12 @@ class TestScenario{scenario_id}:
             }
         if not condition_config or not (condition_config.get("variable") or condition_config.get("field")):
             return {
-                "step_id": step_info["id"], "step_order": step_info["step_order"],
-                "step_type": "if_condition", "success": False,
-                "error": "If 条件尚未配置", "response_time": 0,
+                "step_id": step_info["id"],
+                "step_order": step_info["step_order"],
+                "step_type": "if_condition",
+                "success": False,
+                "error": "If 条件尚未配置",
+                "response_time": 0,
             }
         condition_met = self._evaluate_condition(condition_config)
         branch = "then_branch" if condition_met else "else_branch"
@@ -1079,9 +1090,12 @@ class TestScenario{scenario_id}:
         body_steps = config.get("body", [])
         if not body_steps:
             return {
-                "step_id": step_info["id"], "step_order": step_info["step_order"],
-                "step_type": "for_loop", "success": False,
-                "error": "For 循环未选择循环步骤", "response_time": 0,
+                "step_id": step_info["id"],
+                "step_order": step_info["step_order"],
+                "step_type": "for_loop",
+                "success": False,
+                "error": "For 循环未选择循环步骤",
+                "response_time": 0,
             }
         loop_success = True
         executed_iterations = 0
@@ -1115,9 +1129,12 @@ class TestScenario{scenario_id}:
         body_steps = config.get("body", [])
         if not collection_expr or not body_steps:
             return {
-                "step_id": step_info["id"], "step_order": step_info["step_order"],
-                "step_type": "for_each", "success": False,
-                "error": "ForEach 必须配置集合和循环步骤", "response_time": 0,
+                "step_id": step_info["id"],
+                "step_order": step_info["step_order"],
+                "step_type": "for_each",
+                "success": False,
+                "error": "ForEach 必须配置集合和循环步骤",
+                "response_time": 0,
             }
         # 解析集合：从 context_vars 获取或用 replace_variables
         all_vars = {**self.context_vars, **self.session_vars}
@@ -1186,9 +1203,12 @@ class TestScenario{scenario_id}:
         children = config.get("children", [])
         if not children:
             return {
-                "step_id": step_info["id"], "step_order": step_info["step_order"],
-                "step_type": "group", "success": False,
-                "error": "分组未包含任何步骤", "response_time": 0,
+                "step_id": step_info["id"],
+                "step_order": step_info["step_order"],
+                "step_type": "group",
+                "success": False,
+                "error": "分组未包含任何步骤",
+                "response_time": 0,
             }
         group_success = True
         for child_order in children:
@@ -1476,11 +1496,15 @@ class TestScenario{scenario_id}:
 
             response_content = transport_result.get("response_content")
             response_bytes = (
-                response_content.encode("utf-8") if isinstance(response_content, str)
+                response_content.encode("utf-8")
+                if isinstance(response_content, str)
                 else json.dumps(response_content, ensure_ascii=False).encode("utf-8")
             )
             adapter_headers = {
-                key: value for key, value in (transport_result.get("_raw_headers") or transport_result.get("headers") or {}).items()
+                key: value
+                for key, value in (
+                    transport_result.get("_raw_headers") or transport_result.get("headers") or {}
+                ).items()
                 if key.lower() not in {"content-encoding", "content-length", "transfer-encoding"}
             }
             response = httpx.Response(
@@ -1884,9 +1908,7 @@ class DataDrivenScenarioExecutionEngine:
                         for v in effective_vars:
                             env_config[v["name"]] = v["value"]
                     except Exception as e:
-                        _logger.warning(
-                            f"数据驱动场景合并环境继承变量失败，回退到仅当前环境变量: {e}"
-                        )
+                        _logger.warning(f"数据驱动场景合并环境继承变量失败，回退到仅当前环境变量: {e}")
                         if isinstance(env.variables, dict):
                             env_config.update(env.variables)
                 elif isinstance(env.variables, dict):
@@ -2025,8 +2047,12 @@ async def run_scenario_debug(
     user_id: int = None,
 ) -> Dict[str, Any]:
     engine = ScenarioExecutionEngine(
-        scenario_id, env_id, user_id=user_id, _skip_record=True,
-        start_step_id=start_step_id, stop_after_step_id=stop_after_step_id,
+        scenario_id,
+        env_id,
+        user_id=user_id,
+        _skip_record=True,
+        start_step_id=start_step_id,
+        stop_after_step_id=stop_after_step_id,
         initial_context=context_vars,
     )
     return await engine.execute()

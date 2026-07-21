@@ -18,6 +18,8 @@
             <el-icon><Search /></el-icon>
           </template>
         </el-input>
+        <el-button @click="openAiMetrics">AI 评估指标</el-button>
+        <el-button @click="router.push('/ui-automation/ai-design')">需求测试设计</el-button>
         <el-button @click="router.push('/ui-automation/suites')">回归套件</el-button>
         <el-button type="primary" @click="showCreateDialog = true">
           <el-icon><Plus /></el-icon>
@@ -145,6 +147,11 @@
 
           <div class="run-detail-panel" v-loading="runDetailLoading">
             <template v-if="selectedRun">
+              <div class="detail-actions">
+                <el-button v-if="canCancelRun(selectedRun)" type="warning" plain :loading="cancellingRun" @click="cancelSelectedRun">取消运行</el-button>
+                <el-button v-if="['failed','infra_error','timed_out','cancelled'].includes(selectedRun.status)" :loading="failureAnalysisLoading" @click="openFailureAnalysis">失败归因</el-button>
+                <el-button v-if="['failed','infra_error','timed_out','cancelled'].includes(selectedRun.status)" type="danger" plain :loading="defectReportLoading" @click="openDefectReport">缺陷报告</el-button>
+              </div>
               <el-card shadow="never" class="detail-summary-card">
                 <div class="detail-summary-grid">
                   <div class="summary-item">
@@ -232,13 +239,79 @@
       </div>
     </el-drawer>
     <el-dialog v-model="artifactPreviewVisible" :title="artifactPreviewName" width="80%">
-      <img v-if="artifactPreviewData" :src="artifactPreviewData" alt="运行截图" style="display:block;max-width:100%;max-height:72vh;margin:0 auto" />
+      <div v-if="artifactPreviewData" class="annotation-canvas" @click="addArtifactAnnotation">
+        <img :src="artifactPreviewData" alt="运行截图" />
+        <button v-for="(annotation,index) in artifactAnnotations" :key="annotation.id || index" class="annotation-marker" type="button" :style="{left:`${annotation.x_percent}%`,top:`${annotation.y_percent}%`}" :title="annotation.note" @click.stop="removeArtifactAnnotation(index)">{{ index + 1 }}</button>
+      </div>
+      <div v-if="selectedArtifact?.artifact_manifest_id" class="annotation-toolbar"><span>{{ artifactAnnotations.length }} 个标注</span><el-button :loading="savingAnnotations" type="primary" @click="saveArtifactAnnotations">保存标注</el-button></div>
+    </el-dialog>
+    <el-dialog v-model="defectReportVisible" title="UI 自动化缺陷报告" width="900px">
+      <template v-if="defectReport">
+        <el-descriptions :column="2" border><el-descriptions-item label="运行编号">{{ defectReport.run_id }}</el-descriptions-item><el-descriptions-item label="状态">{{ runStatusLabel(defectReport.status) }}</el-descriptions-item><el-descriptions-item label="环境">{{ defectReport.environment?.name || '-' }}</el-descriptions-item><el-descriptions-item label="浏览器">{{ defectReport.reproduction?.browser }} {{ defectReport.reproduction?.browser_version || '' }}</el-descriptions-item></el-descriptions>
+        <h4>失败步骤</h4><el-table :data="defectReport.failed_steps || []" size="small"><el-table-column prop="step_id" label="步骤" min-width="150" /><el-table-column prop="error_message" label="错误" min-width="360" show-overflow-tooltip /><el-table-column prop="duration_ms" label="耗时(ms)" width="100" /></el-table>
+        <h4>事件时间线</h4><el-table :data="defectReport.timeline || []" size="small" max-height="260"><el-table-column prop="sequence" label="#" width="55" /><el-table-column prop="type" label="事件" min-width="180" /><el-table-column prop="level" label="级别" width="80" /><el-table-column label="时间" width="180"><template #default="{ row }">{{ formatDate(row.created_at) }}</template></el-table-column></el-table>
+      </template>
+    </el-dialog>
+    <el-dialog v-model="failureAnalysisVisible" title="失败归因建议" width="760px">
+      <template v-if="failureAnalysis">
+        <el-alert title="该结果是辅助建议，需由测试工程师确认后才计入评估。" type="warning" :closable="false" show-icon />
+        <el-descriptions :column="2" border class="analysis-summary">
+          <el-descriptions-item label="建议类别">{{ failureCategoryLabel(failureAnalysis.category) }}</el-descriptions-item>
+          <el-descriptions-item label="置信度">{{ formatPercent(failureAnalysis.confidence) }}</el-descriptions-item>
+        </el-descriptions>
+        <section class="analysis-section">
+          <h4>判断证据</h4>
+          <ul><li v-for="(item, index) in failureAnalysis.evidence || []" :key="`evidence-${index}`">{{ item }}</li></ul>
+          <el-empty v-if="!(failureAnalysis.evidence || []).length" description="暂无充分证据" :image-size="48" />
+        </section>
+        <section class="analysis-section" v-if="(failureAnalysis.unknowns || []).length">
+          <h4>待确认信息</h4>
+          <ul><li v-for="(item, index) in failureAnalysis.unknowns" :key="`unknown-${index}`">{{ item }}</li></ul>
+        </section>
+        <section class="analysis-section" v-if="(failureAnalysis.next_actions || []).length">
+          <h4>建议排查动作</h4>
+          <ol><li v-for="(item, index) in failureAnalysis.next_actions" :key="`action-${index}`">{{ item }}</li></ol>
+        </section>
+        <el-divider content-position="left">人工复核</el-divider>
+        <el-form label-width="100px">
+          <el-form-item label="复核结果">
+            <el-radio-group v-model="failureFeedback.accepted">
+              <el-radio-button :label="true">归因正确</el-radio-button>
+              <el-radio-button :label="false">需要纠正</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item v-if="failureFeedback.accepted === false" label="正确类别" required>
+            <el-select v-model="failureFeedback.corrected_category" style="width: 100%">
+              <el-option v-for="item in failureCategories" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="复核说明">
+            <el-input v-model="failureFeedback.comment" type="textarea" :rows="3" maxlength="1000" show-word-limit />
+          </el-form-item>
+        </el-form>
+      </template>
+      <template #footer>
+        <el-button @click="failureAnalysisVisible = false">关闭</el-button>
+        <el-button type="primary" :loading="failureFeedbackSaving" @click="submitFailureFeedback">提交复核</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog v-model="aiMetricsVisible" title="AI 失败归因评估" width="680px">
+      <div v-loading="aiMetricsLoading">
+        <el-descriptions v-if="aiMetrics" :column="2" border>
+          <el-descriptions-item label="已复核样本">{{ aiMetrics.total_feedback ?? 0 }}</el-descriptions-item>
+          <el-descriptions-item label="确认正确">{{ aiMetrics.accepted_count ?? 0 }}</el-descriptions-item>
+          <el-descriptions-item label="人工纠正">{{ aiMetrics.corrected_count ?? 0 }}</el-descriptions-item>
+          <el-descriptions-item label="归因准确率">{{ formatPercent(aiMetrics.accuracy_rate) }}</el-descriptions-item>
+          <el-descriptions-item label="人工纠正率">{{ formatPercent(aiMetrics.correction_rate) }}</el-descriptions-item>
+        </el-descriptions>
+        <el-empty v-if="!aiMetricsLoading && !aiMetrics" description="暂无评估数据" />
+      </div>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
@@ -262,9 +335,32 @@ const selectedRunStepResults = ref([])
 const selectedRunArtifacts = ref([])
 const runDetailLoading = ref(false)
 const activeRunTab = ref('steps')
+const cancellingRun = ref(false)
 const artifactPreviewVisible = ref(false)
 const artifactPreviewData = ref('')
 const artifactPreviewName = ref('')
+let artifactPreviewObjectUrl = ''
+const selectedArtifact = ref(null)
+const artifactAnnotations = ref([])
+const savingAnnotations = ref(false)
+const defectReportVisible = ref(false)
+const defectReportLoading = ref(false)
+const defectReport = ref(null)
+const failureAnalysisVisible = ref(false)
+const failureAnalysisLoading = ref(false)
+const failureAnalysis = ref(null)
+const failureFeedbackSaving = ref(false)
+const failureFeedback = ref({ accepted: true, corrected_category: '', comment: '' })
+const aiMetricsVisible = ref(false)
+const aiMetricsLoading = ref(false)
+const aiMetrics = ref(null)
+const failureCategories = [
+  { value: 'environment', label: '环境问题' },
+  { value: 'data', label: '测试数据问题' },
+  { value: 'product_defect', label: '产品缺陷' },
+  { value: 'script', label: '自动化脚本问题' },
+  { value: 'unknown', label: '暂时未知' },
+]
 const newCase = ref({
   name: '',
   base_url: '',
@@ -327,21 +423,50 @@ async function selectRun(row) {
   }
 }
 
+function canCancelRun(run) {
+  return ['queued', 'waiting_for_agent', 'assigned', 'starting', 'running'].includes(run?.status)
+}
+
+async function cancelSelectedRun() {
+  if (!selectedRun.value?.id) return
+  try {
+    await ElMessageBox.confirm('将请求停止当前运行。已在执行的步骤会在桌面 Agent 收到指令后安全结束。', '取消运行', { type: 'warning' })
+    cancellingRun.value = true
+    const updated = await uiAutomationApi.cancelRun(selectedRun.value.id)
+    selectedRun.value = updated
+    const index = runs.value.findIndex(item => item.id === updated.id)
+    if (index >= 0) runs.value.splice(index, 1, updated)
+    ElMessage.success(updated.status === 'cancelled' ? '运行已取消' : '已向桌面 Agent 发送取消指令')
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error.message || '取消运行失败')
+  } finally {
+    cancellingRun.value = false
+  }
+}
+
 async function openArtifact(artifact) {
   if (!selectedRun.value?.id) return
   try {
     const file = await uiAutomationApi.getRunArtifactContent(selectedRun.value.id, artifact.id)
-    if (artifact.type === 'screenshot' || file.mime_type?.startsWith('image/')) {
-      artifactPreviewName.value = file.filename
-      artifactPreviewData.value = `data:${file.mime_type};base64,${file.content_base64}`
+    const blob = file instanceof Blob ? file : new Blob([file], { type: artifact.mime_type || 'application/octet-stream' })
+    if (artifact.type === 'screenshot' || blob.type.startsWith('image/')) {
+      if (artifactPreviewObjectUrl) URL.revokeObjectURL(artifactPreviewObjectUrl)
+      artifactPreviewObjectUrl = URL.createObjectURL(blob)
+      artifactPreviewName.value = artifact.filename
+      artifactPreviewData.value = artifactPreviewObjectUrl
+      selectedArtifact.value = artifact
+      artifactAnnotations.value = []
+      if (artifact.artifact_manifest_id) {
+        const layer = await uiAutomationApi.getArtifactAnnotations(artifact.artifact_manifest_id)
+        artifactAnnotations.value = layer.annotations || []
+      }
       artifactPreviewVisible.value = true
       return
     }
-    const bytes = Uint8Array.from(atob(file.content_base64), ch => ch.charCodeAt(0))
-    const url = URL.createObjectURL(new Blob([bytes], { type: file.mime_type }))
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = file.filename
+    link.download = artifact.filename
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (error) {
@@ -367,6 +492,117 @@ async function handleCreate() {
     creating.value = false
   }
 }
+
+async function addArtifactAnnotation(event) {
+  if (!selectedArtifact.value?.artifact_manifest_id || event.target?.tagName !== 'IMG') return
+  const rect = event.currentTarget.getBoundingClientRect()
+  const x = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100))
+  const y = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100))
+  try {
+    const answer = await ElMessageBox.prompt('请输入标注说明', '添加截图标注', { inputPattern: /\S+/, inputErrorMessage: '请输入说明' })
+    artifactAnnotations.value.push({ id: crypto.randomUUID(), x_percent: Number(x.toFixed(3)), y_percent: Number(y.toFixed(3)), note: answer.value.trim() })
+  } catch {}
+}
+
+async function removeArtifactAnnotation(index) {
+  try {
+    await ElMessageBox.confirm(`删除标注 ${index + 1}？`, '删除标注', { type: 'warning' })
+    artifactAnnotations.value.splice(index, 1)
+  } catch {}
+}
+
+async function saveArtifactAnnotations() {
+  if (!selectedArtifact.value?.artifact_manifest_id) return
+  savingAnnotations.value = true
+  try {
+    await uiAutomationApi.saveArtifactAnnotations(selectedArtifact.value.artifact_manifest_id, artifactAnnotations.value)
+    ElMessage.success('截图标注已保存')
+  } catch (error) {
+    ElMessage.error(error.message || '保存标注失败')
+  } finally {
+    savingAnnotations.value = false
+  }
+}
+
+async function openDefectReport() {
+  if (!selectedRun.value?.id) return
+  defectReportLoading.value = true
+  try {
+    defectReport.value = await uiAutomationApi.getRunDefectReport(selectedRun.value.id)
+    defectReportVisible.value = true
+  } catch (error) {
+    ElMessage.error(error.message || '生成缺陷报告失败')
+  } finally {
+    defectReportLoading.value = false
+  }
+}
+
+async function openFailureAnalysis() {
+  if (!selectedRun.value?.id) return
+  failureAnalysisLoading.value = true
+  try {
+    failureAnalysis.value = await uiAutomationApi.analyzeFailure(selectedRun.value.id)
+    failureFeedback.value = { accepted: true, corrected_category: '', comment: '' }
+    failureAnalysisVisible.value = true
+  } catch (error) {
+    ElMessage.error(error.message || '失败归因生成失败')
+  } finally {
+    failureAnalysisLoading.value = false
+  }
+}
+
+async function submitFailureFeedback() {
+  const analysisId = failureAnalysis.value?.analysis_id || failureAnalysis.value?.id
+  if (!analysisId) {
+    ElMessage.error('归因记录缺少标识，无法提交复核')
+    return
+  }
+  if (failureFeedback.value.accepted === false && !failureFeedback.value.corrected_category) {
+    ElMessage.warning('请选择纠正后的失败类别')
+    return
+  }
+  failureFeedbackSaving.value = true
+  try {
+    await uiAutomationApi.submitAiAnalysisFeedback(analysisId, {
+      accepted: failureFeedback.value.accepted,
+      corrected_category: failureFeedback.value.accepted ? null : failureFeedback.value.corrected_category,
+      comment: failureFeedback.value.comment.trim() || null,
+    })
+    ElMessage.success('人工复核已记录')
+    failureAnalysisVisible.value = false
+  } catch (error) {
+    ElMessage.error(error.message || '提交人工复核失败')
+  } finally {
+    failureFeedbackSaving.value = false
+  }
+}
+
+async function openAiMetrics() {
+  aiMetricsVisible.value = true
+  aiMetricsLoading.value = true
+  aiMetrics.value = null
+  try {
+    aiMetrics.value = await uiAutomationApi.getAiAnalysisMetrics({ analysis_type: 'failure_attribution' })
+  } catch (error) {
+    ElMessage.error(error.message || '读取 AI 评估指标失败')
+  } finally {
+    aiMetricsLoading.value = false
+  }
+}
+
+watch(artifactPreviewVisible, visible => {
+  if (!visible && artifactPreviewObjectUrl) {
+    URL.revokeObjectURL(artifactPreviewObjectUrl)
+    artifactPreviewObjectUrl = ''
+    artifactPreviewData.value = ''
+    selectedArtifact.value = null
+    artifactAnnotations.value = []
+  }
+})
+
+onBeforeUnmount(() => {
+  if (artifactPreviewObjectUrl) URL.revokeObjectURL(artifactPreviewObjectUrl)
+})
 
 async function handleDelete(row) {
   try {
@@ -416,12 +652,12 @@ function priorityTagType(priority) {
 }
 
 function runStatusLabel(status) {
-  const map = { queued: '排队中', assigned: '已分配', starting: '启动中', running: '运行中', passed: '通过', failed: '失败', cancelled: '已取消', error: '错误', orphaned: '孤儿任务' }
+  const map = { queued: '排队中', waiting_for_agent: '等待桌面 Agent', assigned: '已分配', starting: '启动中', running: '运行中', cancel_requested: '取消中', passed: '通过', failed: '失败', cancelled: '已取消', timed_out: '执行超时', infra_error: '基础设施异常', error: '错误', orphaned: '异常中断' }
   return map[status] || status
 }
 
 function runStatusTagType(status) {
-  const map = { queued: 'info', assigned: 'info', starting: 'warning', running: 'warning', passed: 'success', failed: 'danger', cancelled: 'info', error: 'danger', orphaned: 'warning' }
+  const map = { queued: 'info', waiting_for_agent: 'warning', assigned: 'info', starting: 'warning', running: 'warning', cancel_requested: 'warning', passed: 'success', failed: 'danger', cancelled: 'info', timed_out: 'danger', infra_error: 'danger', error: 'danger', orphaned: 'warning' }
   return map[status] || 'info'
 }
 
@@ -445,6 +681,16 @@ function formatBytes(size) {
   if (size < 1024) return `${size} B`
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
   return `${(size / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function failureCategoryLabel(category) {
+  return failureCategories.find(item => item.value === category)?.label || category || '暂时未知'
+}
+
+function formatPercent(value) {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return '—'
+  return `${(number <= 1 ? number * 100 : number).toFixed(1)}%`
 }
 
 onMounted(() => {
@@ -564,6 +810,16 @@ onMounted(() => {
     }
   }
 }
+
+.detail-actions { display:flex; justify-content:flex-end; margin-bottom:8px; }
+.annotation-canvas { position:relative; width:fit-content; max-width:100%; margin:0 auto; cursor:crosshair; }
+.annotation-canvas img { display:block; max-width:100%; max-height:68vh; }
+.annotation-marker { position:absolute; width:24px; height:24px; transform:translate(-50%,-50%); border:2px solid #fff; border-radius:50%; background:#c52b32; color:#fff; font-weight:700; cursor:pointer; box-shadow:0 1px 5px rgba(0,0,0,.35); }
+.annotation-toolbar { display:flex; justify-content:flex-end; align-items:center; gap:12px; margin-top:12px; }
+.analysis-summary { margin-top: 16px; }
+.analysis-section { margin-top: 16px; }
+.analysis-section h4 { margin: 0 0 8px; font-size: 14px; }
+.analysis-section ul, .analysis-section ol { margin: 0; padding-left: 22px; line-height: 1.8; }
 </style>
 
 

@@ -1373,11 +1373,17 @@ class AuditLog(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, comment="操作用户ID")
     admin_id = Column(Integer, nullable=True, comment="管理员ID(兼容字段)")
     username = Column(String(80), nullable=True, comment="操作者用户名(冗余存储,便于查询)")
-    action = Column(String(200), nullable=False, comment="操作类型/描述: create/update/delete/execute/import/export 或具体描述")
+    action = Column(
+        String(200), nullable=False, comment="操作类型/描述: create/update/delete/execute/import/export 或具体描述"
+    )
     action_type = Column(
         String(50), nullable=False, default="other", comment="操作分类: backup/user_management/system/other(兼容字段)"
     )
-    resource_type = Column(String(50), nullable=True, comment="资源类型: case/scenario/suite/environment/variable/mock_rule/db_connection/schedule")
+    resource_type = Column(
+        String(50),
+        nullable=True,
+        comment="资源类型: case/scenario/suite/environment/variable/mock_rule/db_connection/schedule",
+    )
     resource_id = Column(Integer, nullable=True, comment="资源ID")
     resource_name = Column(String(500), nullable=True, comment="资源名称(冗余存储)")
     detail = Column(Text, nullable=True, comment="变更详情(JSON字符串,记录before/after)")

@@ -7,7 +7,6 @@ import { ElMessage } from 'element-plus'
 import {
   reassignUids,
   isValidParentChild,
-  resolveType,
   nodeTypeInfo,
 } from './nodeTypes'
 import {
@@ -227,9 +226,8 @@ export function useJmeterClipboard(scriptTreeRef, options = {}) {
    * 用于响应 vuedraggable 的 change 事件
    * @param {string} movedUid - 被移动节点的 uid
    * @param {string} newParentUid - 新父节点 uid
-   * @param {number} newIndex - 新位置索引
    */
-  const handleDragMove = (movedUid, newParentUid, newIndex) => {
+  const handleDragMove = (movedUid, newParentUid) => {
     const tree = scriptTreeRef.value || scriptTreeRef
     const targetParent = findNode(tree, newParentUid)
     if (!targetParent) return false

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_active_user
-from fastapi_backend.models.autotest import AutoTestCase, AutoTestHistory, AutoTestScenario, AutoTestScenarioStep
+from fastapi_backend.models.autotest import AutoTestCase, AutoTestHistory, AutoTestScenarioStep
 from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import (
     AutoTestCaseCreate,
@@ -45,9 +45,13 @@ def _case_to_dict(case, include_secrets=False):
         "post_script_language": getattr(case, "post_script_language", "javascript"),
         "response_schema": getattr(case, "response_schema", None),
         "request_config": (
-            __import__("fastapi_backend.services.autotest_request_config", fromlist=["reveal_request_config"]).reveal_request_config(getattr(case, "request_config", None))
-            if include_secrets else
-            __import__("fastapi_backend.services.autotest_request_config", fromlist=["mask_request_config"]).mask_request_config(getattr(case, "request_config", None))
+            __import__(
+                "fastapi_backend.services.autotest_request_config", fromlist=["reveal_request_config"]
+            ).reveal_request_config(getattr(case, "request_config", None))
+            if include_secrets
+            else __import__(
+                "fastapi_backend.services.autotest_request_config", fromlist=["mask_request_config"]
+            ).mask_request_config(getattr(case, "request_config", None))
         ),
         "current_version": getattr(case, "current_version", None),
         "updated_at": case.updated_at.isoformat() if case.updated_at else None,
@@ -208,6 +212,7 @@ async def create_case(
     data = case_in.model_dump(exclude_none=True)
     if data.get("request_config") is not None:
         from fastapi_backend.services.autotest_request_config import protect_request_config
+
         auth = data["request_config"].get("auth", {})
         if "location" in auth and "in" not in auth:
             auth["in"] = auth.pop("location")
@@ -251,6 +256,7 @@ async def update_case(
     update_data = case_in.model_dump(exclude_unset=True)
     if update_data.get("request_config") is not None:
         from fastapi_backend.services.autotest_request_config import merge_request_config
+
         auth = update_data["request_config"].get("auth", {})
         if "location" in auth and "in" not in auth:
             auth["in"] = auth.pop("location")
@@ -291,9 +297,7 @@ async def delete_case(
         raise HTTPException(status_code=404, detail="用例不存在")
 
     # 先把所有引用该 case 的场景步骤的 api_case_id 置空（不限 user_id），避免跨用户步骤 api_case_id 悬空
-    steps_result = await db.execute(
-        select(AutoTestScenarioStep).where(AutoTestScenarioStep.api_case_id == case_id)
-    )
+    steps_result = await db.execute(select(AutoTestScenarioStep).where(AutoTestScenarioStep.api_case_id == case_id))
     for step in steps_result.scalars().all():
         step.api_case_id = None
 

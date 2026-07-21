@@ -128,9 +128,7 @@ class TestCaseGroups:
     @pytest.mark.asyncio
     async def test_create_group_invalid_parent(self, autotest_client):
         """父分组不存在时创建应失败"""
-        resp = autotest_client.post(
-            GROUPS_API, json={"name": "孤儿", "parent_id": 99999}
-        )
+        resp = autotest_client.post(GROUPS_API, json={"name": "孤儿", "parent_id": 99999})
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
@@ -143,9 +141,7 @@ class TestCaseGroups:
         child2 = autotest_client.post(
             GROUPS_API, json={"name": "注册", "parent_id": root["id"], "sort_order": 1}
         ).json()
-        grandchild = autotest_client.post(
-            GROUPS_API, json={"name": "短信登录", "parent_id": child1["id"]}
-        ).json()
+        grandchild = autotest_client.post(GROUPS_API, json={"name": "短信登录", "parent_id": child1["id"]}).json()
 
         tree = autotest_client.get(f"{GROUPS_API}/tree").json()
         assert len(tree) == 1
@@ -167,9 +163,7 @@ class TestCaseGroups:
         """4. 移动分组到新父分组"""
         root_a = autotest_client.post(GROUPS_API, json={"name": "A"}).json()
         root_b = autotest_client.post(GROUPS_API, json={"name": "B"}).json()
-        child = autotest_client.post(
-            GROUPS_API, json={"name": "可移动子", "parent_id": root_a["id"]}
-        ).json()
+        child = autotest_client.post(GROUPS_API, json={"name": "可移动子", "parent_id": root_a["id"]}).json()
 
         moved = autotest_client.put(
             f"{GROUPS_API}/{child['id']}/move",
@@ -187,22 +181,16 @@ class TestCaseGroups:
     async def test_move_to_root(self, autotest_client):
         """移动分组到根（parent_id=null）"""
         root = autotest_client.post(GROUPS_API, json={"name": "根"}).json()
-        child = autotest_client.post(
-            GROUPS_API, json={"name": "子", "parent_id": root["id"]}
-        ).json()
+        child = autotest_client.post(GROUPS_API, json={"name": "子", "parent_id": root["id"]}).json()
 
-        moved = autotest_client.put(
-            f"{GROUPS_API}/{child['id']}/move", json={"parent_id": None}
-        ).json()
+        moved = autotest_client.put(f"{GROUPS_API}/{child['id']}/move", json={"parent_id": None}).json()
         assert moved["parent_id"] is None
 
     @pytest.mark.asyncio
     async def test_cycle_detection_self(self, autotest_client):
         """5. 循环检测：不能将分组设为自身的子分组"""
         group = autotest_client.post(GROUPS_API, json={"name": "自环"}).json()
-        resp = autotest_client.put(
-            f"{GROUPS_API}/{group['id']}/move", json={"parent_id": group["id"]}
-        )
+        resp = autotest_client.put(f"{GROUPS_API}/{group['id']}/move", json={"parent_id": group["id"]})
         assert resp.status_code == 400
         assert "自身" in resp.json()["detail"]
 
@@ -212,9 +200,7 @@ class TestCaseGroups:
         a = autotest_client.post(GROUPS_API, json={"name": "A"}).json()
         b = autotest_client.post(GROUPS_API, json={"name": "B", "parent_id": a["id"]}).json()
         # 将 A 移到 B 下会形成 A→B→A 循环
-        resp = autotest_client.put(
-            f"{GROUPS_API}/{a['id']}/move", json={"parent_id": b["id"]}
-        )
+        resp = autotest_client.put(f"{GROUPS_API}/{a['id']}/move", json={"parent_id": b["id"]})
         assert resp.status_code == 400
         assert "循环" in resp.json()["detail"]
 
@@ -223,72 +209,52 @@ class TestCaseGroups:
         """通过 PUT 更新 parent_id 也应触发循环检测"""
         a = autotest_client.post(GROUPS_API, json={"name": "A"}).json()
         b = autotest_client.post(GROUPS_API, json={"name": "B", "parent_id": a["id"]}).json()
-        resp = autotest_client.put(
-            f"{GROUPS_API}/{a['id']}", json={"parent_id": b["id"]}
-        )
+        resp = autotest_client.put(f"{GROUPS_API}/{a['id']}", json={"parent_id": b["id"]})
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
     async def test_delete_group_with_children_rejected(self, autotest_client):
         """6. 删除有子分组的分组应被拒绝"""
         root = autotest_client.post(GROUPS_API, json={"name": "根"}).json()
-        autotest_client.post(
-            GROUPS_API, json={"name": "子", "parent_id": root["id"]}
-        ).json()
+        autotest_client.post(GROUPS_API, json={"name": "子", "parent_id": root["id"]}).json()
         resp = autotest_client.delete(f"{GROUPS_API}/{root['id']}")
         assert resp.status_code == 400
         assert "子分组" in resp.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_delete_group_move_cases_to_parent(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_delete_group_move_cases_to_parent(self, autotest_client, autotest_session_factory):
         """删除分组时，用例移动到父分组"""
         root = autotest_client.post(GROUPS_API, json={"name": "根"}).json()
-        child = autotest_client.post(
-            GROUPS_API, json={"name": "子", "parent_id": root["id"]}
-        ).json()
+        child = autotest_client.post(GROUPS_API, json={"name": "子", "parent_id": root["id"]}).json()
         # 在 child 下创建用例
         await _create_case_direct(autotest_session_factory, child["id"], "用例1")
         await _create_case_direct(autotest_session_factory, child["id"], "用例2")
 
-        resp = autotest_client.delete(
-            f"{GROUPS_API}/{child['id']}", params={"move_cases_to_parent": True}
-        )
+        resp = autotest_client.delete(f"{GROUPS_API}/{child['id']}", params={"move_cases_to_parent": True})
         assert resp.status_code == 200
         assert "移动" in resp.json()["message"]
 
         # 验证用例已移到 root
-        cases_resp = autotest_client.get(
-            f"{CASES_API}", params={"group_id": root["id"]}
-        )
+        cases_resp = autotest_client.get(f"{CASES_API}", params={"group_id": root["id"]})
         cases = cases_resp.json()
         cases_list = cases["items"] if isinstance(cases, dict) else cases
         assert len(cases_list) == 2
 
     @pytest.mark.asyncio
-    async def test_delete_group_without_parent_deletes_cases(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_delete_group_without_parent_deletes_cases(self, autotest_client, autotest_session_factory):
         """删除根分组（无父分组）且 move_cases_to_parent=False 时删除用例"""
         root = autotest_client.post(GROUPS_API, json={"name": "根"}).json()
         await _create_case_direct(autotest_session_factory, root["id"], "用例1")
 
-        resp = autotest_client.delete(
-            f"{GROUPS_API}/{root['id']}", params={"move_cases_to_parent": False}
-        )
+        resp = autotest_client.delete(f"{GROUPS_API}/{root['id']}", params={"move_cases_to_parent": False})
         assert resp.status_code == 200
         assert "删除" in resp.json()["message"]
 
     @pytest.mark.asyncio
-    async def test_case_association_and_count(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_case_association_and_count(self, autotest_client, autotest_session_factory):
         """7 & 8. 用例关联分组 + case_count 统计正确"""
         root = autotest_client.post(GROUPS_API, json={"name": "根"}).json()
-        child = autotest_client.post(
-            GROUPS_API, json={"name": "子", "parent_id": root["id"]}
-        ).json()
+        child = autotest_client.post(GROUPS_API, json={"name": "子", "parent_id": root["id"]}).json()
 
         # root 下 2 个用例，child 下 3 个用例
         await _create_case_direct(autotest_session_factory, root["id"], "r1")
@@ -306,9 +272,7 @@ class TestCaseGroups:
     @pytest.mark.asyncio
     async def test_update_group_fields(self, autotest_client):
         """更新分组名称、描述、排序"""
-        group = autotest_client.post(
-            GROUPS_API, json={"name": "原名", "sort_order": 0}
-        ).json()
+        group = autotest_client.post(GROUPS_API, json={"name": "原名", "sort_order": 0}).json()
         updated = autotest_client.put(
             f"{GROUPS_API}/{group['id']}",
             json={"name": "新名", "description": "更新描述", "sort_order": 10},
@@ -320,9 +284,7 @@ class TestCaseGroups:
     @pytest.mark.asyncio
     async def test_get_single_group(self, autotest_client):
         """获取单个分组详情"""
-        group = autotest_client.post(
-            GROUPS_API, json={"name": "详情", "description": "desc"}
-        ).json()
+        group = autotest_client.post(GROUPS_API, json={"name": "详情", "description": "desc"}).json()
         data = autotest_client.get(f"{GROUPS_API}/{group['id']}").json()
         assert data["id"] == group["id"]
         assert data["name"] == "详情"

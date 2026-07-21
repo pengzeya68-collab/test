@@ -62,6 +62,19 @@ function clearRecorderListener(): void {
   recorderEventListener = null;
 }
 
+async function agentCall(type: 'status' | 'register' | 'enable' | 'disable' | 'remove', payload: unknown = {}): Promise<any> {
+  const correlationId = newCorrelationId();
+  const result = await ipcRenderer.invoke(`ipc:agent.${type}`, { correlationId, type: `agent.${type}`, payload });
+  if (!result?.success) throw new Error(result?.errorMessage || 'Agent operation failed');
+  return result.data;
+}
+async function desktopInfo(): Promise<any> {
+  const correlationId = newCorrelationId();
+  const result = await ipcRenderer.invoke('ipc:desktop.info', { correlationId, type: 'desktop.info', payload: {} });
+  if (!result?.success) throw new Error(result?.errorMessage || 'Desktop information unavailable');
+  return result.data;
+}
+
 async function recorderCall(type: 'execution.pause' | 'execution.resume' | 'file.choose' | 'recorder.start' | 'recorder.mode' | 'recorder.validate' | 'recorder.stop' | 'auth-state.validate', payload: unknown): Promise<any> {
   const correlationId = newCorrelationId();
   const result = await ipcRenderer.invoke(`ipc:${type}`, { correlationId, type, payload });
@@ -212,6 +225,28 @@ const desktopApi = {
   },
   artifacts: {
     read: (artifactPath: string) => ipcCall('artifact.read', { path: artifactPath }),
+  },
+  agent: {
+    status: () => agentCall('status'),
+    register: (options: {
+      serverUrl: string;
+      accessToken: string;
+      name: string;
+      authStateId?: string | null;
+      headless?: boolean;
+    }) => agentCall('register', options),
+    enable: () => agentCall('enable'),
+    disable: () => agentCall('disable'),
+    remove: () => agentCall('remove'),
+    onStatus: (listener: (status: unknown) => void) => {
+      const channel = 'ipc:agent:status:event';
+      const wrapped = (_event: unknown, status: unknown) => listener(status);
+      ipcRenderer.on(channel, wrapped);
+      return () => ipcRenderer.removeListener(channel, wrapped);
+    },
+  },
+  appInfo: {
+    get: desktopInfo,
   },
 
   versions: {

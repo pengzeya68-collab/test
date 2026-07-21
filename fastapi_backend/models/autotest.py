@@ -6,6 +6,7 @@ AutoTest 模型 - 使用 auto_test_platform 原始表名确保数据兼容
 """
 
 from datetime import datetime, timezone
+import uuid
 from sqlalchemy import (
     Column,
     Integer,
@@ -35,7 +36,9 @@ class AutoTestGroup(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, comment="分组名称")
-    parent_id = Column(Integer, ForeignKey("api_groups.id", ondelete="SET NULL"), nullable=True, comment="父级分组ID(null=根分组)")
+    parent_id = Column(
+        Integer, ForeignKey("api_groups.id", ondelete="SET NULL"), nullable=True, comment="父级分组ID(null=根分组)"
+    )
     description = Column(Text, nullable=True, comment="分组描述")
     sort_order = Column(Integer, nullable=False, default=0, comment="同级排序(越小越靠前)")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
@@ -75,8 +78,12 @@ class AutoTestCase(Base):
     description = Column(Text, nullable=True, comment="用例描述")
     pre_script = Column(Text, nullable=True, comment="前置脚本（JS/Python）")
     post_script = Column(Text, nullable=True, comment="后置脚本（JS/Python）")
-    pre_script_language = Column(String(20), nullable=False, default="javascript", comment="前置脚本语言: javascript/python")
-    post_script_language = Column(String(20), nullable=False, default="javascript", comment="后置脚本语言: javascript/python")
+    pre_script_language = Column(
+        String(20), nullable=False, default="javascript", comment="前置脚本语言: javascript/python"
+    )
+    post_script_language = Column(
+        String(20), nullable=False, default="javascript", comment="后置脚本语言: javascript/python"
+    )
     response_schema = Column(JSON, nullable=True, comment="响应JSON Schema")
     request_config = Column(JSON, nullable=True, comment="请求执行策略：认证、Cookie、超时、重试、TLS和重定向")
     # 当前版本号（冗余字段，方便查询，与最新一条 is_current=True 的 CaseVersion.version_number 同步）
@@ -288,8 +295,12 @@ class AutoTestScenarioStep(Base):
     parent_step_id = Column(Integer, ForeignKey("scenario_steps.id"), nullable=True, comment="父步骤ID(嵌套)")
     pre_script = Column(Text, nullable=True, comment="前置脚本（JS/Python）")
     post_script = Column(Text, nullable=True, comment="后置脚本（JS/Python）")
-    pre_script_language = Column(String(20), nullable=False, default="javascript", comment="前置脚本语言: javascript/python")
-    post_script_language = Column(String(20), nullable=False, default="javascript", comment="后置脚本语言: javascript/python")
+    pre_script_language = Column(
+        String(20), nullable=False, default="javascript", comment="前置脚本语言: javascript/python"
+    )
+    post_script_language = Column(
+        String(20), nullable=False, default="javascript", comment="后置脚本语言: javascript/python"
+    )
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
 
     scenario = relationship("AutoTestScenario", back_populates="steps")
@@ -567,6 +578,9 @@ class MockRule(Base):
     __tablename__ = "mock_rules"
     __table_args__ = (Index("idx_mock_rules_project_id", "project_id"),)
 
+    fault_type = Column(String(40), nullable=True)
+    fault_config = Column(JSON, nullable=True)
+
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(
         Integer,
@@ -619,6 +633,9 @@ class MockRequestLog(Base):
     response_body = Column(Text, nullable=True, comment="响应体")
     response_time_ms = Column(Integer, nullable=True, comment="响应耗时(ms)")
     matched_rule_name = Column(String(200), nullable=True, comment="匹配的规则名称")
+    fault_triggered = Column(Boolean, nullable=False, default=False, comment="本次请求是否命中故障注入")
+    fault_type = Column(String(40), nullable=True, comment="本次实际执行的故障类型")
+    fault_random_value = Column(Float, nullable=True, comment="故障概率判定使用的随机值")
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -635,6 +652,10 @@ class TestSuite(Base):
     """测试套件表"""
 
     __tablename__ = "test_suites"
+
+    kind = Column(String(20), nullable=False, default="scenario")
+    is_active = Column(Boolean, nullable=False, default=True)
+    legacy_key = Column(String(100), nullable=True, unique=True)
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, comment="套件名称")
@@ -655,6 +676,49 @@ class TestSuite(Base):
 
     cases = relationship("TestSuiteCase", back_populates="suite", cascade="all, delete-orphan")
     executions = relationship("TestSuiteExecution", back_populates="suite", cascade="all, delete-orphan")
+
+
+class TestSuiteScenario(Base):
+    """Database-backed membership for scenario regression suites."""
+
+    __tablename__ = "test_suite_scenarios"
+    __table_args__ = (
+        Index("idx_suite_scenarios_suite_id", "suite_id"),
+        UniqueConstraint("suite_id", "scenario_id", name="uq_suite_scenario"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    suite_id = Column(Integer, ForeignKey("test_suites.id", ondelete="CASCADE"), nullable=False)
+    scenario_id = Column(Integer, ForeignKey("test_scenarios.id", ondelete="CASCADE"), nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0)
+
+
+class TestSuiteSchedule(Base):
+    """Persistent server-side schedule configuration for a suite."""
+
+    __tablename__ = "test_suite_schedules"
+    __table_args__ = (UniqueConstraint("suite_id", name="uq_suite_schedule"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    suite_id = Column(Integer, ForeignKey("test_suites.id", ondelete="CASCADE"), nullable=False)
+    cron_expression = Column(String(200), nullable=False)
+    timezone_name = Column(String(100), nullable=False, default="Asia/Shanghai")
+    is_active = Column(Boolean, nullable=False, default=True)
+    notification_config = Column(JSON, nullable=True)
+    env_id = Column(Integer, nullable=True)
+    misfire_policy = Column(String(20), nullable=False, default="coalesce")
+    max_concurrent = Column(Integer, nullable=False, default=1)
+    execution_timeout_seconds = Column(Integer, nullable=False, default=1800)
+    max_retries = Column(Integer, nullable=False, default=0)
+    next_run_at = Column(DateTime(timezone=True), nullable=True)
+    last_enqueued_at = Column(DateTime(timezone=True), nullable=True)
+    last_execution_id = Column(Integer, nullable=True)
+    lease_token = Column(String(64), nullable=True)
+    lease_expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
+    )
 
 
 class TestSuiteCase(Base):
@@ -713,6 +777,213 @@ class TestSuiteExecution(Base):
     )
 
     suite = relationship("TestSuite", back_populates="executions")
+
+
+class AutomationExecution(Base):
+    """Authoritative execution state shared by API, UI and scheduled runs."""
+
+    __tablename__ = "automation_executions"
+    __table_args__ = (
+        Index("idx_automation_execution_target", "target_type", "target_id"),
+        Index("idx_automation_execution_user_created", "user_id", "created_at"),
+        UniqueConstraint("idempotency_key", name="uq_automation_execution_idempotency"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    public_id = Column(String(32), nullable=False, unique=True, default=lambda: uuid.uuid4().hex)
+    execution_type = Column(String(30), nullable=False, default="suite")
+    target_type = Column(String(30), nullable=False, default="suite")
+    target_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, nullable=True, index=True)
+    env_id = Column(Integer, nullable=True)
+    status = Column(String(30), nullable=False, default="queued")
+    attempt = Column(Integer, nullable=False, default=1)
+    idempotency_key = Column(String(128), nullable=False)
+    runner_id = Column(String(200), nullable=True)
+    error_code = Column(String(100), nullable=True)
+    error_message = Column(Text, nullable=True)
+    result_summary = Column(JSON, nullable=True)
+    queued_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class AutomationExecutionItem(Base):
+    __tablename__ = "automation_execution_items"
+    __table_args__ = (
+        Index("idx_execution_items_execution_id", "execution_id"),
+        UniqueConstraint("execution_id", "sequence", name="uq_execution_item_sequence"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    execution_id = Column(Integer, ForeignKey("automation_executions.id", ondelete="CASCADE"), nullable=False)
+    sequence = Column(Integer, nullable=False)
+    target_type = Column(String(30), nullable=False)
+    target_id = Column(Integer, nullable=False)
+    target_name = Column(String(300), nullable=True)
+    status = Column(String(30), nullable=False, default="queued")
+    result_summary = Column(JSON, nullable=True)
+    error_message = Column(Text, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class AutomationWebhook(Base):
+    """External trigger credential owned by one regression suite."""
+
+    __tablename__ = "automation_webhooks"
+    __table_args__ = (
+        Index("idx_automation_webhooks_user_created", "user_id", "created_at"),
+        Index("idx_automation_webhooks_suite", "suite_id"),
+    )
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    user_id = Column(Integer, nullable=False, index=True)
+    suite_id = Column(Integer, ForeignKey("test_suites.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(200), nullable=False)
+    signing_secret_encrypted = Column(Text, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    allowed_clock_skew_seconds = Column(Integer, nullable=False, default=300)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
+    )
+
+
+class AutomationWebhookReceipt(Base):
+    """Replay ledger. An event ID can create at most one execution."""
+
+    __tablename__ = "automation_webhook_receipts"
+    __table_args__ = (
+        UniqueConstraint("webhook_id", "event_id", name="uq_automation_webhook_event"),
+        Index("idx_automation_webhook_receipts_execution", "execution_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    webhook_id = Column(String(32), ForeignKey("automation_webhooks.id", ondelete="CASCADE"), nullable=False)
+    event_id = Column(String(128), nullable=False)
+    request_sha256 = Column(String(64), nullable=False)
+    execution_id = Column(Integer, ForeignKey("automation_executions.id", ondelete="CASCADE"), nullable=False)
+    received_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ExecutionEvent(Base):
+    __tablename__ = "execution_events"
+    __table_args__ = (
+        Index("idx_execution_events_execution_sequence", "execution_id", "sequence"),
+        UniqueConstraint("execution_id", "sequence", name="uq_execution_event_sequence"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    execution_id = Column(Integer, ForeignKey("automation_executions.id", ondelete="CASCADE"), nullable=False)
+    sequence = Column(Integer, nullable=False)
+    level = Column(String(20), nullable=False, default="info")
+    event_type = Column(String(80), nullable=False)
+    payload_redacted = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ArtifactManifest(Base):
+    __tablename__ = "artifact_manifests"
+    __table_args__ = (
+        Index("idx_artifacts_execution_id", "execution_id"),
+        UniqueConstraint("execution_id", "sha256", name="uq_execution_artifact_hash"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    execution_id = Column(Integer, ForeignKey("automation_executions.id", ondelete="CASCADE"), nullable=False)
+    kind = Column(String(40), nullable=False)
+    filename = Column(String(500), nullable=False)
+    content_type = Column(String(200), nullable=True)
+    size_bytes = Column(Integer, nullable=False)
+    sha256 = Column(String(64), nullable=False)
+    storage_key = Column(String(1000), nullable=False, unique=True)
+    retention_until = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ArtifactUploadSession(Base):
+    """Resumable server-side upload session for execution artifacts."""
+
+    __tablename__ = "artifact_upload_sessions"
+    __table_args__ = (Index("idx_artifact_upload_execution", "execution_id"),)
+
+    id = Column(String(32), primary_key=True)
+    execution_id = Column(Integer, ForeignKey("automation_executions.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, nullable=False, index=True)
+    kind = Column(String(40), nullable=False)
+    filename = Column(String(500), nullable=False)
+    content_type = Column(String(200), nullable=True)
+    expected_size_bytes = Column(Integer, nullable=False)
+    expected_sha256 = Column(String(64), nullable=False)
+    received_bytes = Column(Integer, nullable=False, default=0)
+    temp_storage_key = Column(String(1000), nullable=False)
+    status = Column(String(20), nullable=False, default="open")
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class CaptureSession(Base):
+    """Redacted browser/HAR capture session, kept separate from executable assets."""
+
+    __tablename__ = "capture_sessions"
+    __table_args__ = (Index("idx_capture_sessions_user_created", "user_id", "created_at"),)
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    user_id = Column(Integer, nullable=False, index=True)
+    origin = Column(String(40), nullable=False, default="desktop_browser")
+    status = Column(String(20), nullable=False, default="capturing")
+    policy_version = Column(String(40), nullable=False, default="v1")
+    source_url = Column(Text, nullable=True)
+    capture_config = Column(JSON, nullable=True)
+    failure_reason = Column(Text, nullable=True)
+    started_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class CapturedExchange(Base):
+    """One safe, normalized HTTP exchange captured during a CaptureSession."""
+
+    __tablename__ = "captured_exchanges"
+    __table_args__ = (
+        Index("idx_captured_exchanges_session", "session_id"),
+        Index("idx_captured_exchanges_fingerprint", "fingerprint"),
+        UniqueConstraint("session_id", "sequence", name="uq_captured_exchange_sequence"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(32), ForeignKey("capture_sessions.id", ondelete="CASCADE"), nullable=False)
+    sequence = Column(Integer, nullable=False)
+    method = Column(String(10), nullable=False)
+    url = Column(Text, nullable=False)
+    request_redacted = Column(JSON, nullable=False)
+    response_redacted = Column(JSON, nullable=True)
+    fingerprint = Column(String(64), nullable=False)
+    page_url = Column(Text, nullable=True)
+    resource_type = Column(String(30), nullable=True)
+    timing_ms = Column(Integer, nullable=True)
+    failure_reason = Column(Text, nullable=True)
+    selected = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ImportJob(Base):
+    """Auditable import preview/commit result for all import sources."""
+
+    __tablename__ = "import_jobs"
+    __table_args__ = (Index("idx_import_jobs_user_created", "user_id", "created_at"),)
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    user_id = Column(Integer, nullable=False, index=True)
+    source_type = Column(String(30), nullable=False)
+    status = Column(String(20), nullable=False, default="previewed")
+    summary = Column(JSON, nullable=True)
+    error_summary = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
 
 # ========== 数据库连接模型 ==========

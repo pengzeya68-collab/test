@@ -50,6 +50,7 @@ async def test_user(db_session):
 def _make_auth_override(user):
     async def override():
         return user
+
     return override
 
 
@@ -135,14 +136,17 @@ class TestBaselineCRUD:
 
     def test_create_baseline(self, auth_client):
         """POST /jmeter/baselines 创建基线"""
-        response = auth_client.post("/api/auto-test/jmeter/baselines", json={
-            "name": "API Baseline Test",
-            "script_hash": "c" * 64,
-            "p95_threshold_ms": 600,
-            "p99_threshold_ms": 1000,
-            "tps_threshold": 80.0,
-            "error_rate_threshold": 2.0,
-        })
+        response = auth_client.post(
+            "/api/auto-test/jmeter/baselines",
+            json={
+                "name": "API Baseline Test",
+                "script_hash": "c" * 64,
+                "p95_threshold_ms": 600,
+                "p99_threshold_ms": 1000,
+                "tps_threshold": 80.0,
+                "error_rate_threshold": 2.0,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "API Baseline Test"
@@ -151,16 +155,22 @@ class TestBaselineCRUD:
 
     def test_create_baseline_requires_name(self, auth_client):
         """name 缺失应返回 400"""
-        response = auth_client.post("/api/auto-test/jmeter/baselines", json={
-            "script_hash": "d" * 64,
-        })
+        response = auth_client.post(
+            "/api/auto-test/jmeter/baselines",
+            json={
+                "script_hash": "d" * 64,
+            },
+        )
         assert response.status_code == 400
 
     def test_create_baseline_requires_script_hash(self, auth_client):
         """script_hash 缺失应返回 400"""
-        response = auth_client.post("/api/auto-test/jmeter/baselines", json={
-            "name": "No Hash",
-        })
+        response = auth_client.post(
+            "/api/auto-test/jmeter/baselines",
+            json={
+                "name": "No Hash",
+            },
+        )
         assert response.status_code == 400
 
     def test_list_baselines_empty(self, auth_client):
@@ -224,7 +234,7 @@ class TestRunsListing:
             run = JmeterBenchRun(
                 user_id=test_user.id,
                 plan_name=f"Run {i}",
-                config_json='{}',
+                config_json="{}",
                 engine_type="quick",
                 status="success",
             )
@@ -265,7 +275,7 @@ class TestRunsCompare:
             run = JmeterBenchRun(
                 user_id=test_user.id,
                 plan_name=f"Compare {i}",
-                config_json='{}',
+                config_json="{}",
                 engine_type="quick",
                 status="success",
                 summary_json=f'{{"tps":{100 + i * 10},"p95_ms":{80 + i * 5}}}',
@@ -311,44 +321,81 @@ class TestJMeterRunEndpoint:
 
     def test_run_without_jmeter_returns_503(self, auth_client):
         """未启用 JMeter 时返回 503"""
-        response = auth_client.post("/api/auto-test/jmeter/run", json={
-            "plan_name": "Test Run",
-            "script_tree": [{"type": "ThreadGroup", "name": "TG", "props": {}, "children": [
-                {"type": "HttpSampler", "name": "Req", "props": {"method": "GET", "url": "https://api.example.com", "headers": []}, "children": []}
-            ]}],
-            "concurrency": 1,
-            "duration": 5,
-        })
+        response = auth_client.post(
+            "/api/auto-test/jmeter/run",
+            json={
+                "plan_name": "Test Run",
+                "script_tree": [
+                    {
+                        "type": "ThreadGroup",
+                        "name": "TG",
+                        "props": {},
+                        "children": [
+                            {
+                                "type": "HttpSampler",
+                                "name": "Req",
+                                "props": {"method": "GET", "url": "https://api.example.com", "headers": []},
+                                "children": [],
+                            }
+                        ],
+                    }
+                ],
+                "concurrency": 1,
+                "duration": 5,
+            },
+        )
         assert response.status_code == 503
         assert "JMeter" in response.json()["detail"] or "未启用" in response.json()["detail"]
 
     def test_run_without_jmx_or_script_tree_returns_400(self, auth_client, monkeypatch):
         """mock is_jmeter_available=True 但无 jmx_content/script_tree 应返回 400"""
         from fastapi_backend.routers import autotest_jmeter
+
         monkeypatch.setattr(autotest_jmeter, "is_jmeter_available", lambda: True)
 
-        response = auth_client.post("/api/auto-test/jmeter/run", json={
-            "plan_name": "No Body",
-        })
+        response = auth_client.post(
+            "/api/auto-test/jmeter/run",
+            json={
+                "plan_name": "No Body",
+            },
+        )
         assert response.status_code == 400
 
     def test_run_with_mocked_jmeter_available(self, auth_client, monkeypatch):
         """mock is_jmeter_available=True + script_tree 应成功提交"""
         from fastapi_backend.routers import autotest_jmeter
+
         monkeypatch.setattr(autotest_jmeter, "is_jmeter_available", lambda: True)
+
         # 也 mock submit_bench 避免触发 Celery
         async def fake_submit(**kwargs):
             return {"run_id": 999, "task_id": "fake-task-id", "status": "pending"}
+
         monkeypatch.setattr(autotest_jmeter, "jmeter_submit_bench", fake_submit)
 
-        response = auth_client.post("/api/auto-test/jmeter/run", json={
-            "plan_name": "Mocked Run",
-            "script_tree": [{"type": "ThreadGroup", "name": "TG", "props": {}, "children": [
-                {"type": "HttpSampler", "name": "Req", "props": {"method": "GET", "url": "https://api.example.com", "headers": []}, "children": []}
-            ]}],
-            "concurrency": 1,
-            "duration": 5,
-        })
+        response = auth_client.post(
+            "/api/auto-test/jmeter/run",
+            json={
+                "plan_name": "Mocked Run",
+                "script_tree": [
+                    {
+                        "type": "ThreadGroup",
+                        "name": "TG",
+                        "props": {},
+                        "children": [
+                            {
+                                "type": "HttpSampler",
+                                "name": "Req",
+                                "props": {"method": "GET", "url": "https://api.example.com", "headers": []},
+                                "children": [],
+                            }
+                        ],
+                    }
+                ],
+                "concurrency": 1,
+                "duration": 5,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["run_id"] == 999

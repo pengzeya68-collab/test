@@ -1,4 +1,4 @@
-﻿"""UI Automation data models."""
+"""UI Automation data models."""
 
 from __future__ import annotations
 
@@ -26,29 +26,29 @@ class JSONColumn(TypeDecorator):
     cache_ok = True
 
     def load_dialect_impl(self, dialect):
-        if dialect.name == 'postgresql':
+        if dialect.name == "postgresql":
             return dialect.type_descriptor(JSONB())
         return dialect.type_descriptor(JSON())
 
 
 class UICase(Base):
-    __tablename__ = 'ui_cases'
+    __tablename__ = "ui_cases"
     __table_args__ = (
-        Index('idx_ui_cases_user_id', 'user_id'),
-        Index('idx_ui_cases_project_id', 'project_id'),
-        Index('idx_ui_cases_group_id', 'group_id'),
-        Index('idx_ui_cases_status', 'status'),
+        Index("idx_ui_cases_user_id", "user_id"),
+        Index("idx_ui_cases_project_id", "project_id"),
+        Index("idx_ui_cases_group_id", "group_id"),
+        Index("idx_ui_cases_status", "status"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, nullable=True, index=True)
-    group_id = Column(Integer, ForeignKey('ui_case_groups.id', ondelete='SET NULL'), nullable=True)
+    group_id = Column(Integer, ForeignKey("ui_case_groups.id", ondelete="SET NULL"), nullable=True)
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     user_id = Column(Integer, nullable=False, index=True)
     owner_id = Column(Integer, nullable=True)
-    status = Column(String(20), nullable=False, default='draft')
-    priority = Column(String(20), nullable=False, default='medium')
+    status = Column(String(20), nullable=False, default="draft")
+    priority = Column(String(20), nullable=False, default="medium")
     tags = Column(JSONColumn, nullable=True, default=list)
     base_url = Column(Text, nullable=True)
     default_timeout_ms = Column(Integer, nullable=False, default=10000)
@@ -59,30 +59,32 @@ class UICase(Base):
     color_scheme = Column(String(20), nullable=True)
     storage_state_ref = Column(String(500), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
-    current_version_id = Column(Integer, ForeignKey('ui_case_versions.id', ondelete='SET NULL', use_alter=True), nullable=True)
+    current_version_id = Column(
+        Integer, ForeignKey("ui_case_versions.id", ondelete="SET NULL", use_alter=True), nullable=True
+    )
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     versions = relationship(
-        'UICaseVersion',
-        back_populates='case',
-        foreign_keys='UICaseVersion.case_id',
-        cascade='all, delete-orphan',
+        "UICaseVersion",
+        back_populates="case",
+        foreign_keys="UICaseVersion.case_id",
+        cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    group = relationship('UICaseGroup', back_populates='cases')
-    current_version = relationship('UICaseVersion', foreign_keys=[current_version_id], post_update=True)
+    group = relationship("UICaseGroup", back_populates="cases")
+    current_version = relationship("UICaseVersion", foreign_keys=[current_version_id], post_update=True)
 
 
 class UICaseVersion(Base):
-    __tablename__ = 'ui_case_versions'
+    __tablename__ = "ui_case_versions"
     __table_args__ = (
-        Index('idx_ui_case_versions_case_id', 'case_id'),
-        UniqueConstraint('case_id', 'version_number', name='uq_ui_case_version_number'),
+        Index("idx_ui_case_versions_case_id", "case_id"),
+        UniqueConstraint("case_id", "version_number", name="uq_ui_case_version_number"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    case_id = Column(Integer, ForeignKey('ui_cases.id', ondelete='CASCADE'), nullable=False)
+    case_id = Column(Integer, ForeignKey("ui_cases.id", ondelete="CASCADE"), nullable=False)
     version_number = Column(Integer, nullable=False)
     snapshot_json = Column(JSONColumn, nullable=False)
     change_summary = Column(Text, nullable=True)
@@ -90,18 +92,18 @@ class UICaseVersion(Base):
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     is_current = Column(Boolean, nullable=False, default=False)
 
-    case = relationship('UICase', back_populates='versions', foreign_keys=[case_id])
+    case = relationship("UICase", back_populates="versions", foreign_keys=[case_id])
 
 
 class UIStep(Base):
-    __tablename__ = 'ui_steps'
+    __tablename__ = "ui_steps"
     __table_args__ = (
-        Index('idx_ui_steps_case_id', 'case_id'),
-        Index('idx_ui_steps_order', 'case_id', 'order'),
+        Index("idx_ui_steps_case_id", "case_id"),
+        Index("idx_ui_steps_order", "case_id", "order"),
     )
 
     id = Column(String(36), primary_key=True, default=_gen_uuid_str)
-    case_id = Column(Integer, ForeignKey('ui_cases.id', ondelete='CASCADE'), nullable=False)
+    case_id = Column(Integer, ForeignKey("ui_cases.id", ondelete="CASCADE"), nullable=False)
     order = Column(Integer, nullable=False, default=10)
     name = Column(String(200), nullable=True)
     type = Column(String(40), nullable=False)
@@ -112,36 +114,36 @@ class UIStep(Base):
     timeout_ms = Column(Integer, nullable=True)
     retry = Column(JSONColumn, nullable=True)
     continue_on_failure = Column(Boolean, nullable=False, default=False)
-    screenshot = Column(String(20), nullable=True, default='on-failure')
+    screenshot = Column(String(20), nullable=True, default="on-failure")
     condition = Column(Text, nullable=True)
     children = Column(JSONColumn, nullable=True, default=list)
 
 
 class UICaseGroup(Base):
-    __tablename__ = 'ui_case_groups'
+    __tablename__ = "ui_case_groups"
     __table_args__ = (
-        Index('idx_ui_case_groups_parent_id', 'parent_id'),
-        Index('idx_ui_case_groups_user_id', 'user_id'),
+        Index("idx_ui_case_groups_parent_id", "parent_id"),
+        Index("idx_ui_case_groups_user_id", "user_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
-    parent_id = Column(Integer, ForeignKey('ui_case_groups.id', ondelete='SET NULL'), nullable=True)
+    parent_id = Column(Integer, ForeignKey("ui_case_groups.id", ondelete="SET NULL"), nullable=True)
     description = Column(Text, nullable=True)
     sort_order = Column(Integer, nullable=False, default=0)
     user_id = Column(Integer, nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
-    parent = relationship('UICaseGroup', remote_side='UICaseGroup.id', backref='children')
-    cases = relationship('UICase', back_populates='group', passive_deletes=True)
+    parent = relationship("UICaseGroup", remote_side="UICaseGroup.id", backref="children")
+    cases = relationship("UICase", back_populates="group", passive_deletes=True)
 
 
 class UISuite(Base):
-    __tablename__ = 'ui_suites'
+    __tablename__ = "ui_suites"
     __table_args__ = (
-        Index('idx_ui_suites_user_id', 'user_id'),
-        Index('idx_ui_suites_project_id', 'project_id'),
+        Index("idx_ui_suites_user_id", "user_id"),
+        Index("idx_ui_suites_project_id", "project_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -154,47 +156,57 @@ class UISuite(Base):
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
-    items = relationship('UISuiteItem', back_populates='suite', cascade='all, delete-orphan', passive_deletes=True, order_by='UISuiteItem.order')
+    items = relationship(
+        "UISuiteItem",
+        back_populates="suite",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="UISuiteItem.order",
+    )
 
 
 class UISuiteItem(Base):
-    __tablename__ = 'ui_suite_items'
-    __table_args__ = (Index('idx_ui_suite_items_suite_id', 'suite_id'),)
+    __tablename__ = "ui_suite_items"
+    __table_args__ = (Index("idx_ui_suite_items_suite_id", "suite_id"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    suite_id = Column(Integer, ForeignKey('ui_suites.id', ondelete='CASCADE'), nullable=False)
-    case_id = Column(Integer, ForeignKey('ui_cases.id', ondelete='CASCADE'), nullable=False)
-    pinned_version_id = Column(Integer, ForeignKey('ui_case_versions.id', ondelete='SET NULL', use_alter=True), nullable=True)
+    suite_id = Column(Integer, ForeignKey("ui_suites.id", ondelete="CASCADE"), nullable=False)
+    case_id = Column(Integer, ForeignKey("ui_cases.id", ondelete="CASCADE"), nullable=False)
+    pinned_version_id = Column(
+        Integer, ForeignKey("ui_case_versions.id", ondelete="SET NULL", use_alter=True), nullable=True
+    )
     order = Column(Integer, nullable=False, default=10)
     enabled = Column(Boolean, nullable=False, default=True)
     data_source = Column(JSONColumn, nullable=True)
     overrides = Column(JSONColumn, nullable=True)
 
-    suite = relationship('UISuite', back_populates='items')
+    suite = relationship("UISuite", back_populates="items")
 
 
 class UIRun(Base):
-    __tablename__ = 'ui_runs'
+    __tablename__ = "ui_runs"
     __table_args__ = (
-        Index('idx_ui_runs_run_key', 'run_key', unique=True),
-        Index('idx_ui_runs_user_id', 'user_id'),
-        Index('idx_ui_runs_project_id', 'project_id'),
-        Index('idx_ui_runs_status', 'status'),
-        Index('idx_ui_runs_agent_id', 'agent_id'),
-        Index('idx_ui_runs_user_client_run_key', 'user_id', 'client_run_key', unique=True),
+        Index("idx_ui_runs_run_key", "run_key", unique=True),
+        Index("idx_ui_runs_user_id", "user_id"),
+        Index("idx_ui_runs_project_id", "project_id"),
+        Index("idx_ui_runs_status", "status"),
+        Index("idx_ui_runs_agent_id", "agent_id"),
+        Index("idx_ui_runs_user_client_run_key", "user_id", "client_run_key", unique=True),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     run_key = Column(String(36), nullable=False, default=_gen_uuid_str)
     project_id = Column(Integer, nullable=True)
-    case_id = Column(Integer, ForeignKey('ui_cases.id', ondelete='SET NULL'), nullable=True)
-    case_version_id = Column(Integer, ForeignKey('ui_case_versions.id', ondelete='SET NULL', use_alter=True), nullable=True)
-    suite_id = Column(Integer, ForeignKey('ui_suites.id', ondelete='SET NULL'), nullable=True)
-    agent_id = Column(Integer, ForeignKey('desktop_agents.id', ondelete='SET NULL'), nullable=True)
+    case_id = Column(Integer, ForeignKey("ui_cases.id", ondelete="SET NULL"), nullable=True)
+    case_version_id = Column(
+        Integer, ForeignKey("ui_case_versions.id", ondelete="SET NULL", use_alter=True), nullable=True
+    )
+    suite_id = Column(Integer, ForeignKey("ui_suites.id", ondelete="SET NULL"), nullable=True)
+    agent_id = Column(Integer, ForeignKey("desktop_agents.id", ondelete="SET NULL"), nullable=True)
     client_run_key = Column(String(64), nullable=True)
-    trigger_type = Column(String(20), nullable=False, default='manual')
+    trigger_type = Column(String(20), nullable=False, default="manual")
     triggered_by = Column(Integer, nullable=True)
-    status = Column(String(20), nullable=False, default='queued')
+    status = Column(String(20), nullable=False, default="queued")
     queued_at = Column(DateTime(timezone=True), default=_utcnow)
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)
@@ -204,7 +216,13 @@ class UIRun(Base):
     engine_version = Column(String(50), nullable=True)
     environment_id = Column(Integer, nullable=True)
     dataset_iteration = Column(Integer, nullable=True)
-    retry_of_run_id = Column(Integer, ForeignKey('ui_runs.id', ondelete='SET NULL'), nullable=True)
+    retry_of_run_id = Column(Integer, ForeignKey("ui_runs.id", ondelete="SET NULL"), nullable=True)
+    # The UI-specific row keeps Playwright metadata; AutomationExecution is the
+    # authoritative cross-module lifecycle and event stream.
+    automation_execution_id = Column(Integer, nullable=True, unique=True, index=True)
+    attempt = Column(Integer, nullable=False, default=1)
+    last_heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    lease_expires_at = Column(DateTime(timezone=True), nullable=True)
     total_steps = Column(Integer, nullable=False, default=0)
     passed_steps = Column(Integer, nullable=False, default=0)
     failed_steps = Column(Integer, nullable=False, default=0)
@@ -214,22 +232,24 @@ class UIRun(Base):
     artifact_manifest = Column(JSONColumn, nullable=True)
     user_id = Column(Integer, nullable=False)
 
-    step_results = relationship('UIStepResult', back_populates='run', cascade='all, delete-orphan', passive_deletes=True)
+    step_results = relationship(
+        "UIStepResult", back_populates="run", cascade="all, delete-orphan", passive_deletes=True
+    )
 
 
 class UIStepResult(Base):
-    __tablename__ = 'ui_step_results'
+    __tablename__ = "ui_step_results"
     __table_args__ = (
-        Index('idx_ui_step_results_run_id', 'run_id'),
-        Index('idx_ui_step_results_step_id', 'step_id'),
+        Index("idx_ui_step_results_run_id", "run_id"),
+        Index("idx_ui_step_results_step_id", "step_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    run_id = Column(Integer, ForeignKey('ui_runs.id', ondelete='CASCADE'), nullable=False)
+    run_id = Column(Integer, ForeignKey("ui_runs.id", ondelete="CASCADE"), nullable=False)
     step_id = Column(String(36), nullable=False)
     iteration = Column(Integer, nullable=False, default=0)
     attempt = Column(Integer, nullable=False, default=1)
-    status = Column(String(20), nullable=False, default='pending')
+    status = Column(String(20), nullable=False, default="pending")
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)
     duration_ms = Column(Integer, nullable=True)
@@ -240,18 +260,19 @@ class UIStepResult(Base):
     screenshot_artifact_id = Column(Integer, nullable=True)
     trace_event_ref = Column(String(200), nullable=True)
 
-    run = relationship('UIRun', back_populates='step_results')
+    run = relationship("UIRun", back_populates="step_results")
 
 
 class DesktopAgent(Base):
-    __tablename__ = 'desktop_agents'
+    __tablename__ = "desktop_agents"
     __table_args__ = (
-        Index('idx_desktop_agents_agent_key', 'agent_key', unique=True),
-        Index('idx_desktop_agents_status', 'status'),
+        Index("idx_desktop_agents_agent_key", "agent_key", unique=True),
+        Index("idx_desktop_agents_status", "status"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     agent_key = Column(String(36), nullable=False, default=_gen_uuid_str)
+    agent_token_hash = Column(String(64), nullable=True)
     name = Column(String(200), nullable=False)
     owner_id = Column(Integer, nullable=False)
     team_id = Column(Integer, nullable=True)
@@ -259,7 +280,7 @@ class DesktopAgent(Base):
     os_version = Column(String(100), nullable=True)
     desktop_version = Column(String(50), nullable=True)
     capabilities = Column(JSONColumn, nullable=True, default=dict)
-    status = Column(String(20), nullable=False, default='offline')
+    status = Column(String(20), nullable=False, default="offline")
     last_heartbeat_at = Column(DateTime(timezone=True), nullable=True)
     max_parallel = Column(Integer, nullable=False, default=1)
     current_runs = Column(Integer, nullable=False, default=0)
@@ -269,19 +290,77 @@ class DesktopAgent(Base):
 
 
 class UIArtifact(Base):
-    __tablename__ = 'ui_artifacts'
+    __tablename__ = "ui_artifacts"
     __table_args__ = (
-        Index('idx_ui_artifacts_run_id', 'run_id'),
-        Index('idx_ui_artifacts_type', 'type'),
+        Index("idx_ui_artifacts_run_id", "run_id"),
+        Index("idx_ui_artifacts_type", "type"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    run_id = Column(Integer, ForeignKey('ui_runs.id', ondelete='CASCADE'), nullable=False)
+    run_id = Column(Integer, ForeignKey("ui_runs.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(30), nullable=False)
     filename = Column(String(500), nullable=False)
     mime_type = Column(String(100), nullable=True)
     size_bytes = Column(Integer, nullable=True)
     storage_path = Column(Text, nullable=False)
-    storage_type = Column(String(20), nullable=False, default='local')
+    storage_type = Column(String(20), nullable=False, default="local")
+    artifact_manifest_id = Column(Integer, nullable=True, unique=True, index=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
+
+class ArtifactAnnotation(Base):
+    """Editable annotation layer; the immutable source artifact is never modified."""
+
+    __tablename__ = "artifact_annotations"
+    __table_args__ = (Index("idx_artifact_annotations_artifact_user", "artifact_manifest_id", "user_id", unique=True),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    artifact_manifest_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, nullable=False)
+    annotations = Column(JSONColumn, nullable=False, default=list)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+
+class AIAnalysisRecord(Base):
+    """Auditable, redacted output from a controlled AI assistance request."""
+
+    __tablename__ = "ai_analysis_records"
+    __table_args__ = (
+        Index("idx_ai_analysis_records_user_created", "user_id", "created_at"),
+        Index("idx_ai_analysis_records_target", "target_type", "target_id"),
+    )
+
+    id = Column(String(32), primary_key=True, default=lambda: _uuid.uuid4().hex)
+    user_id = Column(Integer, nullable=False, index=True)
+    analysis_type = Column(String(40), nullable=False)
+    target_type = Column(String(40), nullable=True)
+    target_id = Column(Integer, nullable=True)
+    traceability_id = Column(String(100), nullable=True, index=True)
+    engine = Column(String(100), nullable=False, default="guarded-heuristic-v1")
+    status = Column(String(20), nullable=False, default="completed")
+    input_redacted = Column(JSONColumn, nullable=False, default=dict)
+    output = Column(JSONColumn, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+
+
+class AIAnalysisFeedback(Base):
+    """Human acceptance or correction for one controlled AI analysis."""
+
+    __tablename__ = "ai_analysis_feedback"
+    __table_args__ = (
+        UniqueConstraint("analysis_id", "user_id", name="uq_ai_analysis_feedback_user"),
+        Index("idx_ai_analysis_feedback_user_created", "user_id", "created_at"),
+        Index("idx_ai_analysis_feedback_type", "analysis_type"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    analysis_id = Column(String(32), ForeignKey("ai_analysis_records.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, nullable=False, index=True)
+    analysis_type = Column(String(40), nullable=False)
+    predicted_category = Column(String(40), nullable=True)
+    accepted = Column(Boolean, nullable=False)
+    corrected_category = Column(String(40), nullable=True)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)

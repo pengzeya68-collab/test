@@ -45,7 +45,9 @@ def _deep_diff(a: Any, b: Any, path: str = "") -> List[Dict]:
     elif isinstance(a, list):
         # 先检查 b 是否也是 list，避免 b 不是 list 时 len(b) 抛 TypeError
         if not isinstance(b, list):
-            diffs.append({"path": path or "$", "type": "type_changed", "from": type(a).__name__, "to": type(b).__name__})
+            diffs.append(
+                {"path": path or "$", "type": "type_changed", "from": type(a).__name__, "to": type(b).__name__}
+            )
             return diffs
         for i in range(min(len(a), len(b))):
             diffs.extend(_deep_diff(a[i], b[i], f"{path}[{i}]"))

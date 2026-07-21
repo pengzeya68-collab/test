@@ -180,6 +180,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/import-center',
+    name: 'ImportCenter',
+    component: () => import(/* webpackChunkName: "autotest" */ '@/views/ImportCenter.vue'),
+    meta: { requiresAuth: true, title: '导入中心' }
+  },
+  {
     path: '/api-docs-shared/:token',
     name: 'ApiDocShared',
     component: () => import(/* webpackChunkName: "autotest" */ '@/views/ApiDocShared.vue')
@@ -208,6 +214,9 @@ const routes = [
   },
   {
     path: '/ui-automation/suites', name: 'UISuiteManager', component: () => import('@/views/ui-automation/UISuiteManager.vue'), meta: { requiresAuth: true, title: 'UI 回归套件' }
+  },
+  {
+    path: '/ui-automation/ai-design', name: 'AIRequirementDesign', component: () => import('@/views/ui-automation/AIRequirementDesign.vue'), meta: { requiresAuth: true, title: '需求测试设计' }
   },
   {
     path: '/ui-automation/cases/:id', name: 'UICaseEditor', component: () => import('@/views/ui-automation/UICaseEditor.vue'), meta: { requiresAuth: true, title: 'UI 用例编辑器' }

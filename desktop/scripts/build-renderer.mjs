@@ -3,9 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const frontendDir = path.resolve(scriptDir, '..', '..', 'frontend');
+const desktopDir = path.resolve(scriptDir, '..');
+const frontendDir = path.resolve(desktopDir, '..', 'frontend');
+// 桌面 renderer 直接输出到 desktop/dist/renderer，不再借道 frontend/dist。
+// 之前的做法（先构建进 frontend/dist 再拷贝）会让桌面产物污染 Web 构建目录，
+// 导致 frontend/dist 残留孤立的桌面 chunk，且"最后一次构建决定目录内容"，极易部署错版本。
+const rendererOutDir = path.resolve(desktopDir, 'dist', 'renderer');
 const npmCli = path.resolve(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
-const child = spawn(process.execPath, [npmCli, 'run', 'build'], {
+const child = spawn(process.execPath, [npmCli, 'run', 'build', '--', '--outDir', rendererOutDir, '--emptyOutDir'], {
   cwd: frontendDir,
   env: {
     ...process.env,

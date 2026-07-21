@@ -20,6 +20,7 @@ from fastapi_backend.utils.autotest_helpers import convert_to_dict
 
 _logger = logging.getLogger(__name__)
 
+
 async def shutdown_http_client():
     """保留启动/关闭契约；请求客户端现在按运行隔离，不再全局共享 Cookie。"""
     return None
@@ -113,6 +114,7 @@ def apply_variable_substitution(
 
 def _substitute_config_values(value: Any, variables: Dict[str, Any]) -> Any:
     from fastapi_backend.utils.parser import replace_variables
+
     if isinstance(value, dict):
         return {key: _substitute_config_values(item, variables) for key, item in value.items()}
     if isinstance(value, list):
@@ -170,11 +172,17 @@ async def execute_http_request(
         config = _substitute_config_values(config, variables)
     try:
         from fastapi_backend.schemas.autotest import AutoTestRequestConfig
+
         config = AutoTestRequestConfig.model_validate(config).model_dump(by_alias=True)
     except Exception as exc:
         return {
-            "success": False, "error": f"请求配置无效: {exc}", "execution_time": 0,
-            "status_code": None, "response_content": None, "headers": {}, "attempts": [],
+            "success": False,
+            "error": f"请求配置无效: {exc}",
+            "execution_time": 0,
+            "status_code": None,
+            "response_content": None,
+            "headers": {},
+            "attempts": [],
         }
     auth_config = config.get("auth") if isinstance(config.get("auth"), dict) else {}
     auth_type = str(auth_config.get("type") or "none").lower()
@@ -198,12 +206,13 @@ async def execute_http_request(
     timeout_ms = max(100, min(int(config.get("timeout_ms") or 30000), 600000))
     retry_config = config.get("retry") if isinstance(config.get("retry"), dict) else {}
     retry_count = max(0, min(int(retry_config.get("count") or 0), 10))
-    if method.upper() not in {"GET", "HEAD", "OPTIONS", "PUT", "DELETE"} and not retry_config.get("retry_non_idempotent"):
+    if method.upper() not in {"GET", "HEAD", "OPTIONS", "PUT", "DELETE"} and not retry_config.get(
+        "retry_non_idempotent"
+    ):
         retry_count = 0
     retry_interval_ms = max(0, min(int(retry_config.get("interval_ms") or 0), 60000))
     retry_statuses = {
-        int(value) for value in retry_config.get("status_codes", [408, 429, 500, 502, 503, 504])
-        if str(value).isdigit()
+        int(value) for value in retry_config.get("status_codes", [408, 429, 500, 502, 503, 504]) if str(value).isdigit()
     }
     follow_redirects = bool(config.get("follow_redirects", True))
     max_redirects = max(0, min(int(config.get("max_redirects") or 10), 20))
@@ -221,7 +230,9 @@ async def execute_http_request(
         }
         if params:
             req_kwargs["params"] = params
-        processed_body = convert_to_dict(body) if body_type in ("form", "form-data", "x-www-form-urlencoded", "urlencoded") else body
+        processed_body = (
+            convert_to_dict(body) if body_type in ("form", "form-data", "x-www-form-urlencoded", "urlencoded") else body
+        )
         # An empty JSON editor means "no request body". Parsing an empty string as
         # JSON makes ordinary GET requests fail before they reach the target.
         if body_type == "json" and isinstance(processed_body, str) and not processed_body.strip():
@@ -239,7 +250,7 @@ async def execute_http_request(
             form_fields = {}
             files = {}
             total_file_bytes = 0
-            for key, value in (processed_body.items() if isinstance(processed_body, dict) else []):
+            for key, value in processed_body.items() if isinstance(processed_body, dict) else []:
                 if isinstance(value, dict) and value.get("type") == "file":
                     encoded = value.get("content_base64") or ""
                     if len(files) >= 20:
@@ -256,7 +267,9 @@ async def execute_http_request(
                         value.get("content_type") or "application/octet-stream",
                     )
                 else:
-                    form_fields[key] = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else str(value)
+                    form_fields[key] = (
+                        json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else str(value)
+                    )
             req_kwargs["data"] = form_fields
             if files:
                 req_kwargs["files"] = files
@@ -320,7 +333,9 @@ async def execute_http_request(
                     if redirect_index == 0:
                         merged_cookie_values.update({str(key): str(value) for key, value in cookies.items()})
                     if merged_cookie_values:
-                        request_headers["Cookie"] = "; ".join(f"{key}={value}" for key, value in merged_cookie_values.items())
+                        request_headers["Cookie"] = "; ".join(
+                            f"{key}={value}" for key, value in merged_cookie_values.items()
+                        )
                     else:
                         request_headers.pop("Cookie", None)
                     current_kwargs["headers"] = request_headers
@@ -342,20 +357,24 @@ async def execute_http_request(
                     if current_origin.scheme == "https" and next_origin.scheme == "http":
                         raise ValueError("禁止从 HTTPS 重定向降级到 HTTP")
                     if (current_origin.scheme, current_origin.hostname, current_origin.port) != (
-                        next_origin.scheme, next_origin.hostname, next_origin.port
+                        next_origin.scheme,
+                        next_origin.hostname,
+                        next_origin.port,
                     ):
                         redirect_headers = dict(current_kwargs.get("headers") or {})
                         sensitive_redirect_headers = {"authorization", "proxy-authorization", "cookie"}
                         if auth_type == "api_key" and str(auth_config.get("in") or "header").lower() != "query":
                             sensitive_redirect_headers.add(str(auth_config.get("key") or "").lower())
                         current_kwargs["headers"] = {
-                            key: value for key, value in redirect_headers.items()
+                            key: value
+                            for key, value in redirect_headers.items()
                             if key.lower() not in sensitive_redirect_headers
                         }
                         if auth_type == "api_key" and str(auth_config.get("in") or "header").lower() == "query":
                             api_key_name = str(auth_config.get("key") or "")
                             current_kwargs["params"] = {
-                                key: value for key, value in (current_kwargs.get("params") or {}).items()
+                                key: value
+                                for key, value in (current_kwargs.get("params") or {}).items()
                                 if key != api_key_name
                             }
                     if response.status_code == 303 or (
@@ -363,45 +382,55 @@ async def execute_http_request(
                     ):
                         current_method = "GET"
                         current_kwargs = {
-                            key: value for key, value in current_kwargs.items()
+                            key: value
+                            for key, value in current_kwargs.items()
                             if key not in {"json", "data", "content", "files"}
                         }
                     current_url = next_url
-                attempts.append({
-                    "attempt": attempt + 1,
-                    "status_code": response.status_code,
-                    "elapsed_ms": int((time.time() - attempt_started) * 1000),
-                })
+                attempts.append(
+                    {
+                        "attempt": attempt + 1,
+                        "status_code": response.status_code,
+                        "elapsed_ms": int((time.time() - attempt_started) * 1000),
+                    }
+                )
                 if response.status_code not in retry_statuses or attempt >= retry_count:
                     break
             except (httpx.TimeoutException, httpx.ConnectError) as exc:
-                attempts.append({
-                    "attempt": attempt + 1,
-                    "error": type(exc).__name__,
-                    "elapsed_ms": int((time.time() - attempt_started) * 1000),
-                })
+                attempts.append(
+                    {
+                        "attempt": attempt + 1,
+                        "error": type(exc).__name__,
+                        "elapsed_ms": int((time.time() - attempt_started) * 1000),
+                    }
+                )
                 if attempt >= retry_count:
                     raise
-            except httpx.DecodingError as exc:
-                attempts.append({
-                    "attempt": attempt + 1,
-                    "error": "DecodingError",
-                    "elapsed_ms": int((time.time() - attempt_started) * 1000),
-                })
+            except httpx.DecodingError:
+                attempts.append(
+                    {
+                        "attempt": attempt + 1,
+                        "error": "DecodingError",
+                        "elapsed_ms": int((time.time() - attempt_started) * 1000),
+                    }
+                )
                 fallback_headers = dict(req_kwargs.get("headers") or {})
                 fallback_headers["Accept-Encoding"] = "identity"
                 req_kwargs["headers"] = fallback_headers
                 if attempt >= retry_count:
                     response = await active_client.request(method, url, **req_kwargs)
-                    attempts.append({
-                        "attempt": attempt + 2,
-                        "status_code": response.status_code,
-                        "elapsed_ms": int((time.time() - attempt_started) * 1000),
-                        "recovery": "identity_encoding",
-                    })
+                    attempts.append(
+                        {
+                            "attempt": attempt + 2,
+                            "status_code": response.status_code,
+                            "elapsed_ms": int((time.time() - attempt_started) * 1000),
+                            "recovery": "identity_encoding",
+                        }
+                    )
                     break
             if retry_interval_ms:
                 import asyncio
+
                 await asyncio.sleep(retry_interval_ms / 1000)
 
         resp = response
@@ -423,10 +452,12 @@ async def execute_http_request(
         sensitive_query_names = {"token", "access_token", "api_key", "apikey", "key", "secret", "password"}
         if auth_type == "api_key" and str(auth_config.get("in") or "header").lower() == "query":
             sensitive_query_names.add(str(auth_config.get("key") or "").lower())
-        masked_query = urlencode([
-            (key, "******" if key.lower() in sensitive_query_names else value)
-            for key, value in parse_qsl(request_url_parts.query, keep_blank_values=True)
-        ])
+        masked_query = urlencode(
+            [
+                (key, "******" if key.lower() in sensitive_query_names else value)
+                for key, value in parse_qsl(request_url_parts.query, keep_blank_values=True)
+            ]
+        )
         masked_request_url = urlunsplit(request_url_parts._replace(query=masked_query))
 
         return {

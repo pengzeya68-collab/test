@@ -81,8 +81,6 @@ async def execute_db_query(
         database = conn.database_name or ""
         username = conn.username or ""
 
-    elapsed_ms = int((time.time() - start_time) * 1000)
-
     if db_type == "postgresql":
         return await _exec_postgresql(host, port, database, username, password, query, start_time)
     elif db_type == "mysql":

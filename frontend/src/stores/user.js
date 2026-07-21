@@ -28,6 +28,7 @@ export const useUserStore = defineStore('user', () => {
     try {
       await request.post('/auth/logout', {})
     } catch {
+      // Local credentials must still be cleared when the server session has expired.
     }
     resetSession()
   }

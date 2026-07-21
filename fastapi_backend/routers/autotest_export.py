@@ -10,7 +10,7 @@ AutoTest 导出路由
 """
 
 import json
-from typing import Dict, List, Optional
+from typing import List, Optional
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -68,8 +68,6 @@ class ExportRequest(BaseModel):
 
 
 # ========== cURL 导入 ==========
-
-
 
 
 @router.post("/import/curl")

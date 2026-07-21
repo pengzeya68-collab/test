@@ -6,16 +6,26 @@ AutoTest 数据库模块（已合并到主数据库）
 """
 
 import logging
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.database import (
-    engine,
+    AsyncSession,
     AsyncSessionLocal,
-    get_db,
     async_session,
+    engine,
+    get_db,
 )
 
 _logger = logging.getLogger(__name__)
+
+__all__ = [
+    "AsyncSession",
+    "AsyncSessionLocal",
+    "async_session",
+    "engine",
+    "get_autotest_db",
+    "get_db",
+    "init_autotest_db",
+]
 
 # 向后兼容别名，供所有 autotest 路由使用
 get_autotest_db = get_db
@@ -47,6 +57,12 @@ async def init_autotest_db() -> None:
         tables_found = await conn.run_sync(_tables_exist)
 
         if tables_found:
+            if settings.ENVIRONMENT == "production":
+                # Production schema changes are exclusively owned by Alembic.
+                # Running create_all/ALTER TABLE in every API process races in
+                # multi-instance PostgreSQL deployments and can leave partial DDL.
+                _logger.info("AutoTest 数据库已存在；生产环境跳过所有运行时 DDL。")
+                return
             _logger.info("AutoTest 数据库检测到现有表，正在补齐缺失的新表。")
             await conn.run_sync(Base.metadata.create_all)
 
@@ -106,9 +122,7 @@ async def init_autotest_db() -> None:
                         _logger.info("已为 environments 表添加 services 列")
                     # environments: parent_id（环境变量继承机制）
                     if "parent_id" not in cols:
-                        sync_conn.execute(
-                            text("ALTER TABLE environments ADD COLUMN parent_id INTEGER")
-                        )
+                        sync_conn.execute(text("ALTER TABLE environments ADD COLUMN parent_id INTEGER"))
                         _logger.info("已为 environments 表添加 parent_id 列（环境变量继承）")
                         # 尝试添加外键约束（PostgreSQL/MySQL 支持，SQLite 跳过）
                         # 注意：PG 在事务中执行 ALTER 失败会污染整个事务，必须用 savepoint 隔离
@@ -136,10 +150,7 @@ async def init_autotest_db() -> None:
                         # 添加索引加速继承链查询
                         try:
                             sync_conn.execute(
-                                text(
-                                    "CREATE INDEX IF NOT EXISTS idx_environments_parent_id "
-                                    "ON environments(parent_id)"
-                                )
+                                text("CREATE INDEX IF NOT EXISTS idx_environments_parent_id ON environments(parent_id)")
                             )
                         except Exception:
                             pass
@@ -159,10 +170,7 @@ async def init_autotest_db() -> None:
                     # 补齐 sort_order 索引（加速排序查询）
                     try:
                         sync_conn.execute(
-                            text(
-                                "CREATE INDEX IF NOT EXISTS idx_api_groups_sort_order "
-                                "ON api_groups(sort_order)"
-                            )
+                            text("CREATE INDEX IF NOT EXISTS idx_api_groups_sort_order ON api_groups(sort_order)")
                         )
                     except Exception:
                         pass
@@ -233,6 +241,28 @@ async def init_autotest_db() -> None:
                     if "password_hash" not in cols:
                         sync_conn.execute(text("ALTER TABLE api_doc_shares ADD COLUMN password_hash TEXT"))
                         _logger.info("已为 api_doc_shares 表添加 password_hash 列（分享密码保护）")
+
+                # Database-backed suite foundation. create_all above creates new tables;
+                # existing desktop databases still need these additive suite columns.
+                if "test_suites" in existing_tables:
+                    cols = [c["name"] for c in insp.get_columns("test_suites")]
+                    migrations = [
+                        ("kind", "VARCHAR(20) NOT NULL DEFAULT 'scenario'"),
+                        ("is_active", "BOOLEAN NOT NULL DEFAULT TRUE"),
+                        ("legacy_key", "VARCHAR(100)"),
+                    ]
+                    for col_name, col_type in migrations:
+                        if col_name not in cols:
+                            sync_conn.execute(text(f"ALTER TABLE test_suites ADD COLUMN {col_name} {col_type}"))
+                    try:
+                        sync_conn.execute(
+                            text(
+                                "CREATE UNIQUE INDEX IF NOT EXISTS ix_test_suites_legacy_key "
+                                "ON test_suites (legacy_key)"
+                            )
+                        )
+                    except Exception:
+                        _logger.warning("Unable to create legacy suite index", exc_info=True)
 
             await conn.run_sync(_migrate_columns)
             return

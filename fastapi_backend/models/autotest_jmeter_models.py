@@ -1,12 +1,14 @@
 """
 JMeter 模块数据模型 - 压测运行记录 / 实时快照 / 性能基线
 """
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, func, Boolean
 from fastapi_backend.core.database import Base
 
 
 class JmeterBenchRun(Base):
     """JMeter 压测运行记录(支持真实 JMeter 引擎与快速预览模式)"""
+
     __tablename__ = "jmeter_bench_runs"
 
     id = Column(Integer, primary_key=True)
@@ -32,6 +34,7 @@ class JmeterBenchSample(Base):
     """单次采样的请求/响应详情(Stage F.4 修复 BUG 2 引入)。
     之前 sampler 详情被丢弃,导致前端"采样器列表"全 200 + 空响应。
     现在每条 JTL 记录都落库,前端通过 /runs/{id}/samples 查询。"""
+
     __tablename__ = "jmeter_bench_samples"
 
     id = Column(Integer, primary_key=True)
@@ -58,6 +61,7 @@ class JmeterBenchSample(Base):
 
 class JmeterBenchSnapshot(Base):
     """实时进度快照,用于前端轮询图表"""
+
     __tablename__ = "jmeter_bench_snapshots"
 
     id = Column(Integer, primary_key=True)
@@ -73,6 +77,7 @@ class JmeterBenchSnapshot(Base):
 
 class JmeterPerformanceBaseline(Base):
     """性能基线 - Stage E 使用,本迁移一并创建避免二次迁移"""
+
     __tablename__ = "jmeter_perf_baselines"
 
     id = Column(Integer, primary_key=True)

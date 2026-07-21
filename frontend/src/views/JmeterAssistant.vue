@@ -493,6 +493,7 @@
                   <p><strong>什么是 BeanShell 断言？</strong> 用 Java 代码自定义判断规则，只要你会写 if/else 就能用</p>
                   <p><strong>📌 核心变量速查：</strong></p>
                   <table class="teaching-table">
+                    <tbody>
                     <tr><td><code>ResponseCode</code></td><td>HTTP 状态码（字符串），如 "200"</td></tr>
                     <tr><td><code>ResponseMessage</code></td><td>HTTP 消息，如 "OK"</td></tr>
                     <tr><td><code>ResponseData</code></td><td>响应体（字节数组），转字符串用 <code>new String(ResponseData)</code></td></tr>
@@ -500,13 +501,16 @@
                     <tr><td><code>Failure</code></td><td>设为 <code>true</code> 表示断言失败</td></tr>
                     <tr><td><code>FailureMessage</code></td><td>失败时的错误描述</td></tr>
                     <tr><td><code>prev</code></td><td>等同于 SampleResult（类型: SampleResult）</td></tr>
+                    </tbody>
                   </table>
                   <p><strong>📌 常用示例：</strong></p>
                   <table class="teaching-table">
+                    <tbody>
                     <tr><td>状态码断言</td><td><code>if (!ResponseCode.equals("200")) { Failure=true; FailureMessage="状态码不是200"; }</code></td></tr>
                     <tr><td>响应包含</td><td><code>if (!new String(ResponseData).contains("success")) { Failure=true; FailureMessage="响应无success"; }</code></td></tr>
                     <tr><td>响应时间</td><td><code>if (prev.getTime() > 3000) { Failure=true; FailureMessage="超过3秒"; }</code></td></tr>
                     <tr><td>JSON断言</td><td><code>import org.json.*; JSONObject j=new JSONObject(new String(ResponseData)); if (!j.has("token")) { Failure=true; FailureMessage="缺少token"; }</code></td></tr>
+                    </tbody>
                   </table>
                 </div>
               </div>
@@ -561,9 +565,11 @@
                 <div class="teaching-body">
                   <p><strong>推荐用 Groovy</strong>，比 BeanShell 快 10 倍。核心变量：</p>
                   <table class="teaching-table">
+                    <tbody>
                     <tr><td><code>prev</code></td><td>SampleResult，可调用 getResponseDataAsString()、getTime()等</td></tr>
                     <tr><td><code>log</code></td><td>日志对象，log.info("xxx") 打印日志</td></tr>
                     <tr><td><code>AssertionResult</code></td><td>断言结果，.setFailure(true) 标记失败</td></tr>
+                    </tbody>
                   </table>
                 </div>
               </div>
@@ -761,12 +767,14 @@
                   <p><strong>{{ selectedNode.type === 'BeanShellPreProcessor' ? '前置处理器' : '后置处理器' }}是什么？</strong> {{ selectedNode.type === 'BeanShellPreProcessor' ? '在请求发送前执行，用于修改请求参数、添加签名等' : '在请求返回后执行，用于提取数据、修改变量等' }}</p>
                   <p><strong>📌 核心变量速查：</strong></p>
                   <table class="teaching-table">
+                    <tbody>
                     <tr><td><code>vars</code></td><td>JMeter变量字典，vars.put("k","v") 存 / vars.get("k") 取</td></tr>
                     <tr><td><code>prev</code></td><td>上一个采样结果（后置可用），prev.getResponseDataAsString()</td></tr>
                     <tr><td><code>log</code></td><td>日志对象，log.info("xxx") 打印日志</td></tr>
                     <tr><td><code>ctx</code></td><td>JMeter上下文，ctx.getCurrentSampler() 获取当前采样器</td></tr>
                     <tr v-if="selectedNode.type === 'BeanShellPostProcessor'"><td><code>ResponseData</code></td><td>响应体字节数组，new String(ResponseData) 转字符串</td></tr>
                     <tr v-if="selectedNode.type === 'BeanShellPostProcessor'"><td><code>ResponseCode</code></td><td>HTTP状态码，如 "200"</td></tr>
+                    </tbody>
                   </table>
                 </div>
               </div>
@@ -812,11 +820,13 @@
                 <div class="teaching-body">
                   <p><strong>推荐用 Groovy</strong>，比 BeanShell 快 10 倍。核心变量：</p>
                   <table class="teaching-table">
+                    <tbody>
                     <tr><td><code>vars</code></td><td>JMeter变量字典，vars.put("k","v") / vars.get("k")</td></tr>
                     <tr><td><code>prev</code></td><td>SampleResult，可调用 getResponseDataAsString()、getTime()</td></tr>
                     <tr><td><code>log</code></td><td>日志对象，log.info("xxx")</td></tr>
                     <tr><td><code>ctx</code></td><td>JMeter上下文</td></tr>
                     <tr><td><code>out</code></td><td>System.out，调试用</td></tr>
+                    </tbody>
                   </table>
                 </div>
               </div>
@@ -986,6 +996,7 @@
                     <el-tabs v-model="selectedSampleTab" size="small" class="vrt-tabs">
                       <el-tab-pane label="采样器结果" name="sampler">
                         <table class="vrt-table">
+                          <tbody>
                           <tr><td class="vrt-label">Thread Name</td><td>{{ selectedSample.thread_name || '线程组 1-' + (selectedSampleIdx + 1) }}</td></tr>
                           <tr><td class="vrt-label">Sample Start</td><td>{{ selectedSample.start_time || '-' }}</td></tr>
                           <tr><td class="vrt-label">Load time</td><td><b>{{ selectedSample.elapsed_ms || 0 }}</b> ms</td></tr>
@@ -998,6 +1009,7 @@
                           <tr><td class="vrt-label">Data type</td><td>{{ selectedSample.data_type || 'text' }}</td></tr>
                           <tr><td class="vrt-label">Response code</td><td><el-tag :type="selectedSample.status >= 200 && selectedSample.status < 400 ? 'success' : 'danger'" size="small">{{ selectedSample.status || 'ERR' }}</el-tag></td></tr>
                           <tr><td class="vrt-label">Response message</td><td>{{ selectedSample.response_message || (selectedSample.status >= 200 && selectedSample.status < 400 ? 'OK' : 'Error') }}</td></tr>
+                          </tbody>
                         </table>
                       </el-tab-pane>
                       <el-tab-pane label="请求" name="request">
@@ -1082,10 +1094,13 @@
                 <div class="form-group"><label>用户数据（每行一个用户）</label>
                   <div style="max-height:200px;overflow-y:auto;border: 1px solid var(--tm-border-light);border-radius:8px;padding:8px;background: var(--bg-surface);">
                     <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
+                      <thead>
                       <tr style="background: rgba(var(--tm-color-primary-rgb), 0.06);">
                         <th style="padding:3px 6px;text-align:left;font-size:10px;color: var(--tm-color-primary);">用户#</th>
                         <th v-for="(n, ni) in selectedNode.props.names" :key="'h'+ni" style="padding:3px 6px;text-align:left;font-size:10px;color: var(--tm-color-primary);">{{ n || '参数'+(ni+1) }}</th>
                       </tr>
+                      </thead>
+                      <tbody>
                       <tr v-for="(user, ui) in selectedNode.props.users" :key="ui" style="border-top: 1px solid var(--tm-border-light);">
                         <td style="padding:3px 6px;font-weight:700;color:var(--tm-text-secondary);font-size:10px;">{{ ui+1 }}</td>
                         <td v-for="(val, vi) in user" :key="vi" style="padding:2px;">
@@ -1095,6 +1110,7 @@
                           <el-button link size="small" type="danger" @click="selectedNode.props.users.splice(ui,1)" style="font-size:11px;">×</el-button>
                         </td>
                       </tr>
+                      </tbody>
                     </table>
                     <el-button size="small" @click="selectedNode.props.users.push(selectedNode.props.names.map(()=>''))" style="margin-top:6px;width:100%;">+ 添加用户</el-button>
                     <el-button size="small" @click="selectedNode.props.users = []" type="danger" plain style="margin-top:4px;width:100%;">清空全部</el-button>
@@ -1477,6 +1493,7 @@
                           <!-- 采样器结果 -->
                           <el-tab-pane label="采样器结果" name="sampler">
                             <table class="vrt-table">
+                              <tbody>
                               <tr><td class="vrt-label">Thread Name</td><td>{{ selectedSample.thread_name || '线程组 1-' + (selectedSampleIdx + 1) }}</td></tr>
                               <tr><td class="vrt-label">Sample Start</td><td>{{ selectedSample.start_time || '-' }}</td></tr>
                               <tr><td class="vrt-label">Load time</td><td><b>{{ selectedSample.elapsed_ms || 0 }}</b> ms</td></tr>
@@ -1496,6 +1513,7 @@
                                 <tr><td class="vrt-label indent1">ContentType</td><td>{{ selectedSample.http_fields.content_type || '-' }}</td></tr>
                                 <tr><td class="vrt-label indent1">DataEncoding</td><td>{{ selectedSample.http_fields.encoding || 'null' }}</td></tr>
                               </template>
+                              </tbody>
                             </table>
                           </el-tab-pane>
                           <!-- 请求 -->
@@ -1563,6 +1581,7 @@
                     <el-tabs v-model="debugTab" size="small" class="vrt-tabs">
                       <el-tab-pane label="采样器结果" name="dsampler">
                         <table class="vrt-table">
+                          <tbody>
                           <tr><td class="vrt-label">Thread Name</td><td>Debug-1</td></tr>
                           <tr><td class="vrt-label">Sample Start</td><td>{{ new Date().toLocaleString() }}</td></tr>
                           <tr><td class="vrt-label">Load time</td><td><b>{{ debugResult.response?.elapsed_ms || 0 }}</b> ms</td></tr>
@@ -1577,6 +1596,7 @@
                           <tr><td class="vrt-label">Data type</td><td>text</td></tr>
                           <tr><td class="vrt-label">Response code</td><td><el-tag :type="debugResult.response?.status_code === 200 ? 'success' : 'danger'" size="small">{{ debugResult.response?.status_code || 'ERR' }}</el-tag></td></tr>
                           <tr><td class="vrt-label">Response message</td><td>{{ debugResult.response?.status_code === 200 ? 'OK' : 'Error' }}</td></tr>
+                          </tbody>
                         </table>
                       </el-tab-pane>
                       <el-tab-pane label="请求" name="drequest">
@@ -1977,7 +1997,7 @@ const showGuide = ref(false)
 const showScriptHistory = ref(false)
 const scriptHistory = ref(loadScriptsList())
 
-const scriptTree = reactive(createElement('TestPlan', { name: 'TestMaster 性能测试' }))
+let scriptTree = reactive(createElement('TestPlan', { name: 'TestMaster 性能测试' }))
 const selectedUid = ref(null)
 const selectedNode = ref(null)
 

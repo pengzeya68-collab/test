@@ -69,9 +69,7 @@ async def list_paths(
                 Exercise.learning_path_id,
                 func.count(func.distinct(ExerciseSubmissionRecord.user_id)),
                 func.count(ExerciseSubmissionRecord.id),
-                func.coalesce(
-                    func.sum((ExerciseSubmissionRecord.result == "pass").cast(Integer)), 0
-                ),
+                func.coalesce(func.sum((ExerciseSubmissionRecord.result == "pass").cast(Integer)), 0),
             )
             .join(ExerciseSubmissionRecord, ExerciseSubmissionRecord.exercise_id == Exercise.id)
             .where(Exercise.learning_path_id.in_(path_ids))
@@ -116,9 +114,7 @@ async def get_path(
         raise HTTPException(status_code=404, detail="路径不存在")
 
     # 查询真实关联的习题ID列表
-    exercise_ids_result = await db.execute(
-        select(Exercise.id).where(Exercise.learning_path_id == path_id)
-    )
+    exercise_ids_result = await db.execute(select(Exercise.id).where(Exercise.learning_path_id == path_id))
     exercise_ids = [row[0] for row in exercise_ids_result.all()]
 
     return {
@@ -165,14 +161,10 @@ async def create_path(
     exercise_ids = path_data_dict.get("exerciseIds") or path_data_dict.get("exercise_ids")
     if exercise_ids is not None:
         # 先清除旧关联（保险起见）
-        await db.execute(
-            update(Exercise).where(Exercise.learning_path_id == new_path.id).values(learning_path_id=None)
-        )
+        await db.execute(update(Exercise).where(Exercise.learning_path_id == new_path.id).values(learning_path_id=None))
         # 再设置新关联
         if exercise_ids:
-            await db.execute(
-                update(Exercise).where(Exercise.id.in_(exercise_ids)).values(learning_path_id=new_path.id)
-            )
+            await db.execute(update(Exercise).where(Exercise.id.in_(exercise_ids)).values(learning_path_id=new_path.id))
 
     await db.commit()
     await db.refresh(new_path)
@@ -211,14 +203,10 @@ async def update_path(
     exercise_ids = path_data_dict.get("exerciseIds") or path_data_dict.get("exercise_ids")
     if exercise_ids is not None:
         # 先清除旧关联
-        await db.execute(
-            update(Exercise).where(Exercise.learning_path_id == path_id).values(learning_path_id=None)
-        )
+        await db.execute(update(Exercise).where(Exercise.learning_path_id == path_id).values(learning_path_id=None))
         # 再设置新关联
         if exercise_ids:
-            await db.execute(
-                update(Exercise).where(Exercise.id.in_(exercise_ids)).values(learning_path_id=path_id)
-            )
+            await db.execute(update(Exercise).where(Exercise.id.in_(exercise_ids)).values(learning_path_id=path_id))
 
     await db.commit()
     return {"message": "更新成功"}

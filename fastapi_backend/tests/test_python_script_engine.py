@@ -14,6 +14,7 @@ Python 脚本引擎单元测试
 - ScriptEngine 按语言分派
 - run_as_context 上下文回写
 """
+
 import os
 import sys
 
@@ -60,11 +61,11 @@ def _exec(script: str, ctx=None, timeout=None):
 def test_variables_set_and_get():
     """pm.variables 的 set/get/unset/to_dict"""
     ctx = _make_ctx()
-    script = '''
+    script = """
 pm.variables.set("name", "tester")
 pm.variables.set("count", 3)
 pm.environment.set("env", "prod")
-'''
+"""
     r = _exec(script, ctx)
     assert r.success is True
     assert r.error is None
@@ -76,10 +77,10 @@ pm.environment.set("env", "prod")
 def test_variables_get_returns_default():
     """pm.variables.get 取不存在的键返回 None"""
     ctx = _make_ctx()
-    script = '''
+    script = """
 val = pm.variables.get("not_exist")
 pm.variables.set("result", val)
-'''
+"""
     r = _exec(script, ctx)
     assert r.success is True
     assert ctx["session_vars"]["result"] is None
@@ -88,11 +89,11 @@ pm.variables.set("result", val)
 def test_globals_set_and_persist():
     """pm.globals.set + persist 标记"""
     ctx = _make_ctx()
-    script = '''
+    script = """
 pm.globals.set("token", "abc123")
 pm.globals.persist("token")
 pm.globals.set("temp", "x")
-'''
+"""
     r = _exec(script, ctx)
     assert r.success is True
     assert r.persisted_globals.get("token") == "abc123"
@@ -107,7 +108,7 @@ def test_response_json_access():
     """pm.response.json() / status_code / headers / text"""
     body = {"code": 0, "data": {"token": "abc", "id": 42}}
     ctx = _make_ctx(body=body, status_code=200, headers={"Content-Type": "application/json", "X-Trace": "t1"})
-    script = '''
+    script = """
 body = pm.response.json()
 status = pm.response.status_code
 ct = pm.response.get_header("content-type")
@@ -118,7 +119,7 @@ pm.variables.set("status", status)
 pm.variables.set("ct", ct)
 pm.variables.set("trace", trace)
 pm.variables.set("text_len", len(text))
-'''
+"""
     r = _exec(script, ctx)
     assert r.success is True, r.error
     assert ctx["session_vars"]["token"] == "abc"
@@ -131,11 +132,11 @@ pm.variables.set("text_len", len(text))
 def test_response_json_from_string_body():
     """响应体为字符串时 pm.response.json() 自动解析"""
     ctx = _make_ctx(body='{"code": 1, "msg": "ok"}', status_code=201)
-    script = '''
+    script = """
 body = pm.response.json()
 pm.variables.set("code", body["code"])
 pm.variables.set("status", pm.response.status_code)
-'''
+"""
     r = _exec(script, ctx)
     assert r.success is True, r.error
     assert ctx["session_vars"]["code"] == 1
@@ -148,7 +149,7 @@ pm.variables.set("status", pm.response.status_code)
 def test_expect_pass():
     """pm.expect 断言全部通过"""
     ctx = _make_ctx(body={"code": 0, "list": [1, 2, 3]}, status_code=200)
-    script = '''
+    script = """
 status = pm.response.status_code
 body = pm.response.json()
 pm.expect(status).to_equal(200)
@@ -159,7 +160,7 @@ pm.expect("hello world").to_match_regex(r"hello")
 pm.expect(body["list"]).to_be_truthy()
 pm.expect(5).to_be_greater_than(3)
 pm.expect("abc").to_start_with("ab")
-'''
+"""
     r = _exec(script, ctx)
     assert r.success is True, r.error
     assert len(r.assertions) == 8
@@ -169,11 +170,11 @@ pm.expect("abc").to_start_with("ab")
 def test_expect_fail_recorded_not_raised():
     """失败的断言被记录但不抛异常，脚本继续执行"""
     ctx = _make_ctx(body={"code": 1}, status_code=500)
-    script = '''
+    script = """
 pm.expect(pm.response.status_code).to_equal(200)
 pm.expect(pm.response.json()["code"]).to_equal(0)
 pm.variables.set("after_assert", "reached")
-'''
+"""
     r = _exec(script, ctx)
     # 断言失败不影响脚本完成（success 取决于是否抛异常，而非断言）
     assert r.success is True
@@ -186,7 +187,7 @@ pm.variables.set("after_assert", "reached")
 def test_pm_test_block_pass_and_fail():
     """pm.test 测试块：通过/失败均被收集"""
     ctx = _make_ctx(body={"v": 10})
-    script = '''
+    script = """
 def test_ok():
     assert pm.response.json()["v"] == 10
 
@@ -195,7 +196,7 @@ def test_fail():
 
 pm.test("正常用例", test_ok)
 pm.test("失败用例", test_fail)
-'''
+"""
     r = _exec(script, ctx)
     assert r.success is True
     names = {a["name"]: a["passed"] for a in r.assertions}
@@ -209,10 +210,10 @@ pm.test("失败用例", test_fail)
 def test_extract_from_body():
     """pm.extract 按 JSONPath 从响应体提取"""
     ctx = _make_ctx(body={"data": {"id": 42, "items": [{"name": "a"}, {"name": "b"}]}})
-    script = '''
+    script = """
 pm.extract("user_id", "$.data.id", from_body=True)
 pm.extract("first_name", "$.data.items[0].name", from_body=True)
-'''
+"""
     r = _exec(script, ctx)
     assert r.success is True, r.error
     assert r.extracted_vars["user_id"] == 42
@@ -249,10 +250,10 @@ def test_dunder_attribute_access_blocked():
 def test_allowed_import_json_works():
     """白名单模块（json）可正常导入并使用"""
     ctx = _make_ctx()
-    script = '''
+    script = """
 import json
 pm.variables.set("serialized", json.dumps({"a": 1}))
-'''
+"""
     r = _exec(script, ctx)
     assert r.success is True, r.error
     assert ctx["session_vars"]["serialized"] == '{"a": 1}'
@@ -291,13 +292,13 @@ def test_empty_script_returns_success():
 def test_run_as_context_writes_keys():
     """run_as_context 将结果回写到 context 的标准键"""
     ctx = _make_ctx(body={"code": 0, "data": {"id": 7}})
-    script = '''
+    script = """
 pm.expect(pm.response.json()["code"]).to_equal(0)
 pm.extract("uid", "$.data.id")
 pm.globals.set("g", "v")
 pm.variables.set("s", "1")
 pm.environment.set("e", "2")
-'''
+"""
     out = PythonScriptEngine.run_as_context(script, ctx, phase="post")
     assert out is ctx
     assert out["python_language"] == "python"
@@ -331,10 +332,10 @@ def test_script_engine_dispatch_default_is_js():
 def test_script_engine_dispatch_post_python():
     """ScriptEngine.run_post_script(language='python') 路由到 Python 引擎"""
     ctx = _make_ctx(body={"code": 0}, status_code=200)
-    script = '''
+    script = """
 pm.expect(pm.response.status_code).to_equal(200)
 pm.variables.set("done", True)
-'''
+"""
     ScriptEngine.run_post_script(script, ctx, language="python")
     assert ctx.get("python_language") == "python"
     assert ctx["session_vars"]["done"] is True

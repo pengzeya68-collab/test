@@ -61,6 +61,52 @@ jobs:
       - name: Build check
         run: npm run build
 
+  test-backend:
+    name: Backend and PostgreSQL Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: testmaster_ci
+          POSTGRES_USER: testmaster
+          POSTGRES_PASSWORD: testmaster_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U testmaster -d testmaster_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://testmaster:testmaster_ci_password@localhost:5432/testmaster_ci
+      TEST_POSTGRES_URL: postgresql+asyncpg://testmaster:testmaster_ci_password@localhost:5432/testmaster_ci
+      ENVIRONMENT: testing
+      SECRET_KEY: ci-test-secret-key
+      ADMIN_PASSWORD: ci-test-admin-password
+      ADMIN_SECRET_KEY: ci-test-admin-secret-key
+      AUTO_CREATE_TABLES_ON_STARTUP: "false"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply PostgreSQL migrations
+        run: python -m alembic -c fastapi_backend/alembic.ini upgrade head
+
+      - name: Run backend tests
+        run: python -m pytest fastapi_backend/tests -q
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -103,7 +149,7 @@ jobs:
 
   deploy:
     name: Deploy to Server
-    needs: [lint-backend, lint-frontend, security-scan]
+    needs: [lint-backend, lint-frontend, test-backend, security-scan]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:

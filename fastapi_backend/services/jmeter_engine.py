@@ -11,7 +11,10 @@ import xml.etree.ElementTree as ET
 from typing import Optional
 
 from fastapi_backend.core.jmeter_settings import (
-    JMETER_BIN, JAVA_HOME, JMETER_REPORT_DIR, JMETER_TASK_TIMEOUT,
+    JMETER_BIN,
+    JAVA_HOME,
+    JMETER_REPORT_DIR,
+    JMETER_TASK_TIMEOUT,
 )
 
 _logger = logging.getLogger(__name__)
@@ -100,9 +103,7 @@ class JmeterEngine:
         )
 
         try:
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=JMETER_TASK_TIMEOUT
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=JMETER_TASK_TIMEOUT)
         except asyncio.TimeoutError:
             _logger.warning("[JMeter] 任务超时,终止子进程: run_id=%s", run_id)
             await JmeterEngine.stop(process)
@@ -119,7 +120,8 @@ class JmeterEngine:
         }
         _logger.info(
             "[JMeter] 子进程结束: run_id=%s, exit_code=%s",
-            run_id, process.returncode,
+            run_id,
+            process.returncode,
         )
         return result
 
@@ -206,27 +208,29 @@ class JtlParser:
                     response_data = response_data[:2000] + "..."
                 if len(sampler_data) > 2000:
                     sampler_data = sampler_data[:2000] + "..."
-                samples.append({
-                    "elapsed": int(row.get("elapsed", 0) or 0),
-                    "success": str(row.get("success", "true")).lower() == "true",
-                    "label": row.get("label", "") or "",
-                    "ts": int(row.get("timeStamp", 0) or 0),
-                    # 详情字段(原本被丢弃,导致采样器列表全空)
-                    "response_code": row.get("responseCode", "") or "",
-                    "response_message": row.get("responseMessage", "") or "",
-                    "thread_name": row.get("threadName", "") or "",
-                    "url": row.get("URL") or row.get("url") or "",
-                    "method": row.get("method") or _extract_method(row.get("samplerData", "") or ""),
-                    "bytes": int(row.get("bytes", 0) or 0),
-                    "sent_bytes": int(row.get("sentBytes", 0) or 0),
-                    "latency": int(row.get("Latency", 0) or 0),
-                    "connect": int(row.get("Connect", 0) or 0),
-                    "failure_message": row.get("failureMessage", "") or "",
-                    "request_data": sampler_data,
-                    "response_data": response_data,
-                    "request_headers": row.get("requestHeaders", "") or "",
-                    "response_headers": row.get("responseHeaders", "") or "",
-                })
+                samples.append(
+                    {
+                        "elapsed": int(row.get("elapsed", 0) or 0),
+                        "success": str(row.get("success", "true")).lower() == "true",
+                        "label": row.get("label", "") or "",
+                        "ts": int(row.get("timeStamp", 0) or 0),
+                        # 详情字段(原本被丢弃,导致采样器列表全空)
+                        "response_code": row.get("responseCode", "") or "",
+                        "response_message": row.get("responseMessage", "") or "",
+                        "thread_name": row.get("threadName", "") or "",
+                        "url": row.get("URL") or row.get("url") or "",
+                        "method": row.get("method") or _extract_method(row.get("samplerData", "") or ""),
+                        "bytes": int(row.get("bytes", 0) or 0),
+                        "sent_bytes": int(row.get("sentBytes", 0) or 0),
+                        "latency": int(row.get("Latency", 0) or 0),
+                        "connect": int(row.get("Connect", 0) or 0),
+                        "failure_message": row.get("failureMessage", "") or "",
+                        "request_data": sampler_data,
+                        "response_data": response_data,
+                        "request_headers": row.get("requestHeaders", "") or "",
+                        "response_headers": row.get("responseHeaders", "") or "",
+                    }
+                )
             except (ValueError, TypeError):
                 continue
         return samples
@@ -267,6 +271,7 @@ class JtlParser:
         </httpSample>
         """
         samples = []
+
         # 提取 httpSample 子节点 body 字段的辅助函数
         def _extract_sub_nodes(s) -> dict:
             out = {
@@ -315,22 +320,24 @@ class JtlParser:
                             response_data = sub.text[:2000] + ("..." if len(sub.text) > 2000 else "")
                         elif sub.tag == "samplerData" and sub.text:
                             request_data = sub.text[:2000] + ("..." if len(sub.text) > 2000 else "")
-                    item.update({
-                        "response_code": s.attrib.get("rc", "") or "",
-                        "response_message": s.attrib.get("rm", "") or "",
-                        "thread_name": s.attrib.get("tn", "") or "",
-                        "url": s.attrib.get("url") or s.attrib.get("URL") or "",
-                        "method": _extract_method(request_data),
-                        "bytes": int(s.attrib.get("by", 0) or 0),
-                        "sent_bytes": int(s.attrib.get("sby", 0) or 0),
-                        "latency": int(s.attrib.get("lt", 0) or 0),
-                        "connect": int(s.attrib.get("ct", 0) or 0),
-                        "failure_message": s.attrib.get("fm", "") or "",
-                        "request_data": request_data,
-                        "response_data": response_data,
-                        "request_headers": request_headers,
-                        "response_headers": response_headers,
-                    })
+                    item.update(
+                        {
+                            "response_code": s.attrib.get("rc", "") or "",
+                            "response_message": s.attrib.get("rm", "") or "",
+                            "thread_name": s.attrib.get("tn", "") or "",
+                            "url": s.attrib.get("url") or s.attrib.get("URL") or "",
+                            "method": _extract_method(request_data),
+                            "bytes": int(s.attrib.get("by", 0) or 0),
+                            "sent_bytes": int(s.attrib.get("sby", 0) or 0),
+                            "latency": int(s.attrib.get("lt", 0) or 0),
+                            "connect": int(s.attrib.get("ct", 0) or 0),
+                            "failure_message": s.attrib.get("fm", "") or "",
+                            "request_data": request_data,
+                            "response_data": response_data,
+                            "request_headers": request_headers,
+                            "response_headers": response_headers,
+                        }
+                    )
                 samples.append(item)
             except (ValueError, TypeError):
                 continue
@@ -358,22 +365,24 @@ class JtlParser:
                     url = sub_data["url"] or s.attrib.get("url") or s.attrib.get("URL") or ""
                     request_headers = sub_data["request_headers"] or s.attrib.get("requestHeaders", "") or ""
                     response_headers = sub_data["response_headers"] or s.attrib.get("responseHeaders", "") or ""
-                    item.update({
-                        "response_code": s.attrib.get("rc", "") or "",
-                        "response_message": s.attrib.get("rm", "") or "",
-                        "thread_name": s.attrib.get("tn", "") or "",
-                        "url": url,
-                        "method": method,
-                        "bytes": int(s.attrib.get("by", 0) or 0),
-                        "sent_bytes": int(s.attrib.get("sby", 0) or 0),
-                        "latency": int(s.attrib.get("lt", 0) or 0),
-                        "connect": int(s.attrib.get("ct", 0) or 0),
-                        "failure_message": s.attrib.get("fm", "") or "",
-                        "request_data": request_data,
-                        "response_data": response_data,
-                        "request_headers": request_headers,
-                        "response_headers": response_headers,
-                    })
+                    item.update(
+                        {
+                            "response_code": s.attrib.get("rc", "") or "",
+                            "response_message": s.attrib.get("rm", "") or "",
+                            "thread_name": s.attrib.get("tn", "") or "",
+                            "url": url,
+                            "method": method,
+                            "bytes": int(s.attrib.get("by", 0) or 0),
+                            "sent_bytes": int(s.attrib.get("sby", 0) or 0),
+                            "latency": int(s.attrib.get("lt", 0) or 0),
+                            "connect": int(s.attrib.get("ct", 0) or 0),
+                            "failure_message": s.attrib.get("fm", "") or "",
+                            "request_data": request_data,
+                            "response_data": response_data,
+                            "request_headers": request_headers,
+                            "response_headers": response_headers,
+                        }
+                    )
                 samples.append(item)
             except (ValueError, TypeError):
                 continue
@@ -392,11 +401,22 @@ class JtlParser:
         """
         if not samples:
             return {
-                "total": 0, "success": 0, "failure": 0, "error_rate": 0,
-                "tps": 0, "avg_ms": 0, "p50_ms": 0, "p95_ms": 0, "p99_ms": 0,
-                "min_ms": 0, "max_ms": 0,
-                "per_url": [], "status_distribution": {},
-                "rt_distribution": {}, "throughput_trend": [], "errors": [],
+                "total": 0,
+                "success": 0,
+                "failure": 0,
+                "error_rate": 0,
+                "tps": 0,
+                "avg_ms": 0,
+                "p50_ms": 0,
+                "p95_ms": 0,
+                "p99_ms": 0,
+                "min_ms": 0,
+                "max_ms": 0,
+                "per_url": [],
+                "status_distribution": {},
+                "rt_distribution": {},
+                "throughput_trend": [],
+                "errors": [],
             }
 
         elapsed = sorted(s["elapsed"] for s in samples)
@@ -441,6 +461,7 @@ class JtlParser:
         for entry in per_url_map.values():
             cnt = entry["count"]
             elapsed_sorted = sorted(entry["elapsed_list"])
+
             def _pct(arr, p):
                 if not arr:
                     return 0
@@ -448,21 +469,24 @@ class JtlParser:
                 if idx >= len(arr):
                     idx = len(arr) - 1
                 return arr[idx]
-            per_url.append({
-                "name": entry["name"],
-                "method": entry["method"],
-                "url": entry["url"],
-                "count": cnt,
-                "success": entry["success"],
-                "failed": entry["failed"],
-                "success_rate": round(entry["success"] / cnt * 100, 2) if cnt > 0 else 0,
-                "avg_ms": round(entry["elapsed_total"] / cnt, 2) if cnt > 0 else 0,
-                "min_ms": elapsed_sorted[0] if elapsed_sorted else 0,
-                "max_ms": elapsed_sorted[-1] if elapsed_sorted else 0,
-                "p50_ms": _pct(elapsed_sorted, 0.5),
-                "p95_ms": _pct(elapsed_sorted, 0.95),
-                "p99_ms": _pct(elapsed_sorted, 0.99),
-            })
+
+            per_url.append(
+                {
+                    "name": entry["name"],
+                    "method": entry["method"],
+                    "url": entry["url"],
+                    "count": cnt,
+                    "success": entry["success"],
+                    "failed": entry["failed"],
+                    "success_rate": round(entry["success"] / cnt * 100, 2) if cnt > 0 else 0,
+                    "avg_ms": round(entry["elapsed_total"] / cnt, 2) if cnt > 0 else 0,
+                    "min_ms": elapsed_sorted[0] if elapsed_sorted else 0,
+                    "max_ms": elapsed_sorted[-1] if elapsed_sorted else 0,
+                    "p50_ms": _pct(elapsed_sorted, 0.5),
+                    "p95_ms": _pct(elapsed_sorted, 0.95),
+                    "p99_ms": _pct(elapsed_sorted, 0.99),
+                }
+            )
 
         # 2) status_distribution: 按响应码计数
         status_distribution = {}
@@ -476,9 +500,13 @@ class JtlParser:
 
         # 3) rt_distribution: 响应时间分布(<10/10-50/50-100/100-500/500-1000/1000-3000/>3000ms)
         rt_buckets = [
-            ("<10ms", 0, 10), ("10-50ms", 10, 50), ("50-100ms", 50, 100),
-            ("100-500ms", 100, 500), ("500-1000ms", 500, 1000),
-            ("1000-3000ms", 1000, 3000), (">3000ms", 3000, float("inf")),
+            ("<10ms", 0, 10),
+            ("10-50ms", 10, 50),
+            ("50-100ms", 50, 100),
+            ("100-500ms", 100, 500),
+            ("500-1000ms", 500, 1000),
+            ("1000-3000ms", 1000, 3000),
+            (">3000ms", 3000, float("inf")),
         ]
         rt_distribution = {label: 0 for label, _, _ in rt_buckets}
         for s in samples:
@@ -504,11 +532,13 @@ class JtlParser:
                 e = trend_buckets[t]
                 # 改为相对时间 (从0开始)
                 rel = t - first_sec
-                throughput_trend.append({
-                    "t": rel,
-                    "count": e["count"],
-                    "tps": round(e["count"] / 5.0, 2),
-                })
+                throughput_trend.append(
+                    {
+                        "t": rel,
+                        "count": e["count"],
+                        "tps": round(e["count"] / 5.0, 2),
+                    }
+                )
         else:
             throughput_trend = []
 
@@ -516,17 +546,19 @@ class JtlParser:
         errors = []
         for s in sorted(samples, key=lambda x: x.get("ts", 0), reverse=True):
             if not s.get("success"):
-                errors.append({
-                    "name": s.get("label", "") or "",
-                    "method": s.get("method", "GET") or "GET",
-                    "url": s.get("url", "") or "",
-                    "status": int(s.get("response_code", "0") or 0),
-                    "response_message": s.get("response_message", "") or "",
-                    "elapsed_ms": s.get("elapsed", 0) or 0,
-                    "error": s.get("failure_message", "") or s.get("response_message", "") or "请求失败",
-                    "request_body": s.get("request_data", "") or "",
-                    "response_body": s.get("response_data", "") or "",
-                })
+                errors.append(
+                    {
+                        "name": s.get("label", "") or "",
+                        "method": s.get("method", "GET") or "GET",
+                        "url": s.get("url", "") or "",
+                        "status": int(s.get("response_code", "0") or 0),
+                        "response_message": s.get("response_message", "") or "",
+                        "elapsed_ms": s.get("elapsed", 0) or 0,
+                        "error": s.get("failure_message", "") or s.get("response_message", "") or "请求失败",
+                        "request_body": s.get("request_data", "") or "",
+                        "response_body": s.get("response_data", "") or "",
+                    }
+                )
                 if len(errors) >= 50:
                     break
 

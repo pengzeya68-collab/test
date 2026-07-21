@@ -364,7 +364,11 @@ async def _validate_step_definition(step_type, config, scenario_id, db, user_id,
         )
         if result.scalar_one_or_none() is None:
             raise HTTPException(status_code=404, detail="引用的场景不存在或无权访问")
-    if not allow_incomplete and step_type == "db_query" and (not config.get("connection_id") or not config.get("query")):
+    if (
+        not allow_incomplete
+        and step_type == "db_query"
+        and (not config.get("connection_id") or not config.get("query"))
+    ):
         raise HTTPException(status_code=400, detail="数据库查询步骤必须配置连接和 SQL")
 
 
@@ -419,7 +423,9 @@ async def add_step(
         else:
             raise HTTPException(status_code=400, detail="API 请求类型步骤必须指定 api_case_id")
 
-    await _validate_step_definition(step.step_type, step.step_config, scenario_id, db, current_user.id, allow_incomplete=True)
+    await _validate_step_definition(
+        step.step_type, step.step_config, scenario_id, db, current_user.id, allow_incomplete=True
+    )
     await _validate_control_references(step.step_config, scenario_id, db)
     duplicate = await db.execute(
         select(AutoTestScenarioStep.id).where(
@@ -764,9 +770,9 @@ async def debug_scenario(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(AutoTestScenario).options(selectinload(AutoTestScenario.steps)).where(
-            AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id
-        )
+        select(AutoTestScenario)
+        .options(selectinload(AutoTestScenario.steps))
+        .where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
     )
     scenario = result.scalar_one_or_none()
     if not scenario:
@@ -790,9 +796,14 @@ async def debug_scenario(
     if target and (target.id in consumed_ids or target.step_order in consumed_orders):
         raise HTTPException(status_code=400, detail="该步骤属于条件、循环或分组内部，请从所属流控步骤开始调试")
     from fastapi_backend.services.autotest_scenario_runner import run_scenario_debug
+
     return await run_scenario_debug(
-        scenario_id, request.env_id, request.start_step_id, request.stop_after_step_id,
-        request.context_vars, current_user.id,
+        scenario_id,
+        request.env_id,
+        request.start_step_id,
+        request.stop_after_step_id,
+        request.context_vars,
+        current_user.id,
     )
 
 

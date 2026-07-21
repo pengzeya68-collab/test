@@ -65,6 +65,14 @@ AUTO_CREATE_TABLES_ON_STARTUP=true
 
 本地 Windows 环境可以继续在本地 `.env` 使用 SQLite；服务器和 Docker 部署不要使用 SQLite。
 
+**桌面端连接说明**：如果要让 TestMaster 桌面版连接到这台远程服务器，`CORS_ORIGINS` 必须额外包含 `null`——桌面端基于 `file://` 加载页面，浏览器发出的 `Origin` 头是 `null`。例如：
+
+```env
+CORS_ORIGINS=http://你的服务器IP,null
+```
+
+如果缺少 `null`，桌面端的所有请求都会被 CORS 静默拦截，登录页只会显示"离线 / 无法连接"，不会给出明确报错，排查时很容易误判为服务没启动。纯 Web 部署（不需要桌面端连接）可以去掉 `null` 以收紧安全策略。
+
 ---
 
 ## 第四步：构建前端（如果有新前端代码）

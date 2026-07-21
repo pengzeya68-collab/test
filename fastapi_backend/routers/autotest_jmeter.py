@@ -671,9 +671,7 @@ async def quick_benchmark_status(task_id: str, current_user: User = Depends(get_
 
 
 @router.post("/bench/stop")
-async def stop_benchmark(
-    body: Dict[str, Any] = Body(...), current_user: User = Depends(get_current_active_user)
-):
+async def stop_benchmark(body: Dict[str, Any] = Body(...), current_user: User = Depends(get_current_active_user)):
     """
     停止正在运行的压测任务
 
@@ -1474,6 +1472,7 @@ async def submit_jmeter_run(
         )
 
     from datetime import datetime as _dt_now
+
     plan_name = body.get("plan_name") or f"JMeter Run {_dt_now.utcnow().strftime('%Y-%m-%d %H:%M')}"
     jmx_content = body.get("jmx_content") or ""
     if not jmx_content:
@@ -1483,9 +1482,14 @@ async def submit_jmeter_run(
             try:
                 # 注意:必须用 service 中的同步函数,避免解析到本模块 L540 的 async router 函数
                 from fastapi_backend.services.autotest_jmeter_service import export_tree_to_jmx as _export_tree_to_jmx
+
                 # 兼容前端传整个 TestPlan 根对象或子节点列表两种形式
                 # export_tree_to_jmx 已自动处理 dict 输入(包装为列表)和 TestPlan 节点(视为透明容器)
-                plan_vars = body.get("plan_variables") or (script_tree.get("props", {}).get("variables") if isinstance(script_tree, dict) else []) or []
+                plan_vars = (
+                    body.get("plan_variables")
+                    or (script_tree.get("props", {}).get("variables") if isinstance(script_tree, dict) else [])
+                    or []
+                )
                 jmx_content = _export_tree_to_jmx(script_tree, plan_name, plan_vars)
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"JMX 生成失败: {e}")
@@ -1558,6 +1562,7 @@ async def get_jmeter_report(
     if html is None:
         raise HTTPException(status_code=404, detail="报告尚未生成或不存在")
     from fastapi.responses import HTMLResponse
+
     return HTMLResponse(content=html)
 
 
@@ -1594,8 +1599,11 @@ async def get_jmeter_samples(
     if limit < 1 or limit > 500:
         limit = 100
     return await jmeter_list_samples(
-        db, run_id, current_user.id,
-        limit=limit, only_failures=only_failures,
+        db,
+        run_id,
+        current_user.id,
+        limit=limit,
+        only_failures=only_failures,
     )
 
 

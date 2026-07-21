@@ -219,6 +219,7 @@ async def get_database_info(
     try:
         await db.execute(text("SELECT 1"))
         connected = True
+
         # 反射查询表数量（同步 API 在异步上下文中用 run_sync）
         def _count_tables(sync_session):
             inspector = sa_inspect(sync_session.bind)
@@ -228,7 +229,11 @@ async def get_database_info(
     except Exception:
         connected = False
 
-    db_type = "sqlite" if db_url.startswith("sqlite") else ("postgresql" if db_url.startswith("postgres") else "mysql" if db_url.startswith("mysql") else "unknown")
+    db_type = (
+        "sqlite"
+        if db_url.startswith("sqlite")
+        else ("postgresql" if db_url.startswith("postgres") else "mysql" if db_url.startswith("mysql") else "unknown")
+    )
 
     return {
         "type": db_type,

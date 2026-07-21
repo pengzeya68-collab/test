@@ -17,12 +17,15 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select, update, desc
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.jmeter_settings import is_jmeter_available
 from fastapi_backend.models.autotest_jmeter_models import (
-    JmeterBenchRun, JmeterBenchSample, JmeterBenchSnapshot, JmeterPerformanceBaseline,
+    JmeterBenchRun,
+    JmeterBenchSample,
+    JmeterBenchSnapshot,
+    JmeterPerformanceBaseline,
 )
 
 _logger = logging.getLogger(__name__)
@@ -83,6 +86,7 @@ async def submit_bench(
                 "error": run.error_msg,
             }
         from fastapi_backend.tasks import task_run_jmeter_bench
+
         celery_result = task_run_jmeter_bench.delay(run.id)
         task_id = celery_result.id
         run.task_id = task_id
@@ -130,7 +134,9 @@ async def get_run(db: AsyncSession, run_id: int, user_id: Optional[int] = None) 
             "p95_ms": snapshot.p95_ms,
             "error_rate": snapshot.error_rate,
             "ts": snapshot.ts.isoformat() if snapshot.ts else None,
-        } if snapshot else None,
+        }
+        if snapshot
+        else None,
         "started_at": run.started_at.isoformat() if run.started_at else None,
         "finished_at": run.finished_at.isoformat() if run.finished_at else None,
         "created_at": run.created_at.isoformat() if run.created_at else None,
@@ -164,11 +170,7 @@ async def list_runs(
 
 async def get_snapshots(db: AsyncSession, run_id: int) -> List[Dict[str, Any]]:
     """时序快照数组,前端轮询图表"""
-    stmt = (
-        select(JmeterBenchSnapshot)
-        .where(JmeterBenchSnapshot.run_id == run_id)
-        .order_by(JmeterBenchSnapshot.ts)
-    )
+    stmt = select(JmeterBenchSnapshot).where(JmeterBenchSnapshot.run_id == run_id).order_by(JmeterBenchSnapshot.ts)
     result = await db.execute(stmt)
     snapshots = result.scalars().all()
     return [
@@ -202,6 +204,7 @@ async def stop_run(db: AsyncSession, run_id: int, user_id: Optional[int] = None)
     if run.task_id:
         try:
             from fastapi_backend.celery_config import app as celery_app
+
             celery_app.control.revoke(run.task_id, terminate=True, signal="SIGTERM")
         except Exception as e:
             _logger.warning("Celery revoke 失败(忽略): %s", e)
@@ -224,6 +227,7 @@ async def get_html_report(db: AsyncSession, run_id: int) -> Optional[str]:
         return None
 
     import os
+
     index_path = os.path.join(run.html_report_path, "index.html")
     if not os.path.exists(index_path):
         return None
@@ -253,15 +257,25 @@ async def compare_runs(db: AsyncSession, run_ids: List[int]) -> List[Dict[str, A
 
 # ===== 基线管理(Stage E)=====
 
+
 async def create_baseline(
-    db: AsyncSession, user_id: int, name: str, script_hash: str,
-    p95_threshold_ms: Optional[int] = None, p99_threshold_ms: Optional[int] = None,
-    tps_threshold: Optional[float] = None, error_rate_threshold: Optional[float] = None,
+    db: AsyncSession,
+    user_id: int,
+    name: str,
+    script_hash: str,
+    p95_threshold_ms: Optional[int] = None,
+    p99_threshold_ms: Optional[int] = None,
+    tps_threshold: Optional[float] = None,
+    error_rate_threshold: Optional[float] = None,
 ) -> Dict[str, Any]:
     baseline = JmeterPerformanceBaseline(
-        user_id=user_id, name=name, script_hash=script_hash,
-        p95_threshold_ms=p95_threshold_ms, p99_threshold_ms=p99_threshold_ms,
-        tps_threshold=tps_threshold, error_rate_threshold=error_rate_threshold,
+        user_id=user_id,
+        name=name,
+        script_hash=script_hash,
+        p95_threshold_ms=p95_threshold_ms,
+        p99_threshold_ms=p99_threshold_ms,
+        tps_threshold=tps_threshold,
+        error_rate_threshold=error_rate_threshold,
     )
     db.add(baseline)
     await db.commit()
@@ -281,9 +295,13 @@ async def list_baselines(
     baselines = result.scalars().all()
     return [
         {
-            "id": b.id, "name": b.name, "script_hash": b.script_hash,
-            "p95_threshold_ms": b.p95_threshold_ms, "p99_threshold_ms": b.p99_threshold_ms,
-            "tps_threshold": b.tps_threshold, "error_rate_threshold": b.error_rate_threshold,
+            "id": b.id,
+            "name": b.name,
+            "script_hash": b.script_hash,
+            "p95_threshold_ms": b.p95_threshold_ms,
+            "p99_threshold_ms": b.p99_threshold_ms,
+            "tps_threshold": b.tps_threshold,
+            "error_rate_threshold": b.error_rate_threshold,
             "created_at": b.created_at.isoformat() if b.created_at else None,
         }
         for b in baselines
@@ -301,9 +319,7 @@ async def delete_baseline(db: AsyncSession, baseline_id: int) -> bool:
     return True
 
 
-async def match_baseline_by_hash(
-    db: AsyncSession, script_hash: str
-) -> Optional[JmeterPerformanceBaseline]:
+async def match_baseline_by_hash(db: AsyncSession, script_hash: str) -> Optional[JmeterPerformanceBaseline]:
     """根据 script_hash 自动匹配基线(压测完成后调用)"""
     stmt = (
         select(JmeterPerformanceBaseline)
@@ -331,6 +347,7 @@ def check_regression(summary: Dict[str, Any], baseline: JmeterPerformanceBaselin
 
 
 # ===== 采样器详情(Stage F.4 修复 BUG 2 引入)=====
+
 
 async def save_samples(
     db: AsyncSession,

@@ -34,21 +34,48 @@ class TestJmxTypeMap:
         """关键 JMeter 5.6.3 规范 tag 必须存在"""
         must_have = [
             "HTTPSamplerProxy",  # HTTP 请求
-            "TestPlan", "ThreadGroup",
-            "ResponseAssertion", "JSONPathAssertion", "DurationAssertion",
-            "SizeAssertion", "XPath2Assertion", "BeanShellAssertion",
-            "JSR223Assertion", "CompareAssertion",
-            "JSONPostProcessor", "RegexExtractor", "BoundaryExtractor",
-            "CSSSelectorExtractor", "XPathExtractor",
-            "HeaderManager", "CookieManager", "CacheManager", "AuthManager",
-            "CSVDataSet", "RandomVariableConfig",
-            "ConstantTimer", "UniformRandomTimer", "GaussianRandomTimer",
-            "PoissonRandomTimer", "ConstantThroughputTimer", "SynchronizingTimer",
-            "IfController", "LoopController", "WhileController",
-            "TransactionController", "OnceOnlyController", "ThroughputController",
-            "ModuleController", "RunTimeController", "IncludeController",
-            "ViewResultsFullVisualizer", "SummaryReport", "StatGraphVisualizer",
-            "Summariser", "BackendListener", "DebugSampler",
+            "TestPlan",
+            "ThreadGroup",
+            "ResponseAssertion",
+            "JSONPathAssertion",
+            "DurationAssertion",
+            "SizeAssertion",
+            "XPath2Assertion",
+            "BeanShellAssertion",
+            "JSR223Assertion",
+            "CompareAssertion",
+            "JSONPostProcessor",
+            "RegexExtractor",
+            "BoundaryExtractor",
+            "CSSSelectorExtractor",
+            "XPathExtractor",
+            "HeaderManager",
+            "CookieManager",
+            "CacheManager",
+            "AuthManager",
+            "CSVDataSet",
+            "RandomVariableConfig",
+            "ConstantTimer",
+            "UniformRandomTimer",
+            "GaussianRandomTimer",
+            "PoissonRandomTimer",
+            "ConstantThroughputTimer",
+            "SynchronizingTimer",
+            "IfController",
+            "LoopController",
+            "WhileController",
+            "TransactionController",
+            "OnceOnlyController",
+            "ThroughputController",
+            "ModuleController",
+            "RunTimeController",
+            "IncludeController",
+            "ViewResultsFullVisualizer",
+            "SummaryReport",
+            "StatGraphVisualizer",
+            "Summariser",
+            "BackendListener",
+            "DebugSampler",
         ]
         for tag in must_have:
             assert tag in _JMX_TYPE_MAP, f"缺失关键 JMeter tag: {tag}"
@@ -59,6 +86,7 @@ class TestJmxTypeMap:
         # 允许少量已知重复(HTTPSamplerProxy 和 HTTPSampler 都映射到 HttpSampler)
         # 但其他类型应唯一
         from collections import Counter
+
         counts = Counter(values)
         duplicates = {v: c for v, c in counts.items() if c > 1}
         # 仅允许 HttpSampler 重复
@@ -97,8 +125,9 @@ class TestTypeBuildAliases:
         """所有别名目标必须是 _JMX_TYPE_MAP 中已映射的规范名"""
         canonical_types = set(_JMX_TYPE_MAP.values())
         for alias, target in _TYPE_BUILD_ALIASES.items():
-            assert target in canonical_types or target == "HttpSampler", \
+            assert target in canonical_types or target == "HttpSampler", (
                 f"别名 {alias} → {target},但 {target} 不在规范类型集合中"
+            )
 
 
 # ========== export_cases_to_jmx XML 解析 ==========
@@ -153,8 +182,6 @@ class TestExportCasesToJmx:
         root = ET.fromstring(jmx)
         tg = root.find(".//ThreadGroup")
         assert tg is not None
-        # 验证 num_threads 通过 elementProp 写入
-        props = {p.get("name"): p for p in tg.findall(".//elementProp")}
         # elementProp 的 value 子元素存储实际值
         for prop_name in ["ThreadGroup.num_threads", "ThreadGroup.ramp_time"]:
             elem = tg.find(f".//elementProp[@name='{prop_name}']")
@@ -172,7 +199,7 @@ class TestExportCasesToJmx:
         root = ET.fromstring(jmx)
         tg = root.find(".//ThreadGroup")
         # 找到 scheduler elementProp 并检查其值
-        sched_elem = tg.find(f".//elementProp[@name='ThreadGroup.scheduler']")
+        sched_elem = tg.find(".//elementProp[@name='ThreadGroup.scheduler']")
         if sched_elem is not None:
             value_elem = sched_elem.find(".//string")
             if value_elem is not None:
@@ -205,19 +232,53 @@ class TestExportTreeNewElements:
             ],
         }
 
-    @pytest.mark.parametrize("element_type,props", [
-        ("BoundaryExtractor", {"referenceName": "var1", "leftBoundary": "[", "rightBoundary": "]", "matchNumber": "1", "defaultValue": ""}),
-        ("CSSSelectorExtractor", {"referenceName": "cssVar", "selector": ".title", "attribute": "text", "matchNumber": "0", "defaultValue": ""}),
-        ("XPathExtractor", {"referenceName": "xv", "xPath": "/root/item", "matchNumber": "1", "defaultValue": ""}),
-        ("ConstantThroughputTimer", {"throughput": "600", "calcMode": "1"}),
-        ("PoissonRandomTimer", {"delay": "100", "range": "200", "factor": "1.0"}),
-        ("HttpCacheManager", {"clearEachIteration": True, "useExpires": True, "maxSize": "5000"}),
-        ("HttpAuthManager", {"users": [{"name": "user1", "user": "admin", "pass": "pass", "url": "https://api.example.com"}]}),
-        ("ModuleController", {"nodePath": "/Test Plan/TG/HTTP Req"}),
-        ("RunTimeController", {"runtime": "60"}),
-        ("Summariser", {"interval": "30", "ignoreTCGA": True}),
-        ("RandomVariableConfig", {"variableName": "rv", "minimumValue": "1", "maximumValue": "100", "outputFormat": "", "randomSeed": "", "perIteration": False}),
-    ])
+    @pytest.mark.parametrize(
+        "element_type,props",
+        [
+            (
+                "BoundaryExtractor",
+                {
+                    "referenceName": "var1",
+                    "leftBoundary": "[",
+                    "rightBoundary": "]",
+                    "matchNumber": "1",
+                    "defaultValue": "",
+                },
+            ),
+            (
+                "CSSSelectorExtractor",
+                {
+                    "referenceName": "cssVar",
+                    "selector": ".title",
+                    "attribute": "text",
+                    "matchNumber": "0",
+                    "defaultValue": "",
+                },
+            ),
+            ("XPathExtractor", {"referenceName": "xv", "xPath": "/root/item", "matchNumber": "1", "defaultValue": ""}),
+            ("ConstantThroughputTimer", {"throughput": "600", "calcMode": "1"}),
+            ("PoissonRandomTimer", {"delay": "100", "range": "200", "factor": "1.0"}),
+            ("HttpCacheManager", {"clearEachIteration": True, "useExpires": True, "maxSize": "5000"}),
+            (
+                "HttpAuthManager",
+                {"users": [{"name": "user1", "user": "admin", "pass": "pass", "url": "https://api.example.com"}]},
+            ),
+            ("ModuleController", {"nodePath": "/Test Plan/TG/HTTP Req"}),
+            ("RunTimeController", {"runtime": "60"}),
+            ("Summariser", {"interval": "30", "ignoreTCGA": True}),
+            (
+                "RandomVariableConfig",
+                {
+                    "variableName": "rv",
+                    "minimumValue": "1",
+                    "maximumValue": "100",
+                    "outputFormat": "",
+                    "randomSeed": "",
+                    "perIteration": False,
+                },
+            ),
+        ],
+    )
     def test_new_element_generates_valid_xml(self, element_type, props):
         """每个新元素生成的 JMX 必须可被 XML 解析"""
         tree = self._build_tree_with(element_type, props)

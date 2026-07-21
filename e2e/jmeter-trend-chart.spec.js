@@ -17,7 +17,7 @@ test.describe('JMeter 趋势对比与基线管理', () => {
     await page.getByRole('button', { name: /基线管理/ }).click();
     const dialog = page.locator('.el-dialog').filter({ hasText: /基线/ });
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator('.el-table').or(dialog.getByText(/暂无|空/))).toBeVisible();
+    await expect(dialog.locator('.el-table')).toBeVisible();
   });
 
   test('趋势对比对话框在有压测结果后可打开', async ({ page }) => {

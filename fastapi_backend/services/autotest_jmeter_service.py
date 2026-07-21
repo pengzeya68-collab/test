@@ -1140,11 +1140,11 @@ def _add_http_sampler(parent, case, index):
         ET.SubElement(sampler_hash_tree, "hashTree")
 
     # 添加 case 自带的断言
-    for rule in (case.get("assert_rules") or []):
+    for rule in case.get("assert_rules") or []:
         _add_case_assertion(sampler_hash_tree, case, index, rule)
 
     # 添加 case 自带的提取器
-    for extractor in (case.get("extractors") or []):
+    for extractor in case.get("extractors") or []:
         _add_case_extractor(sampler_hash_tree, case, index, extractor)
 
     return sampler_hash_tree
@@ -1211,7 +1211,6 @@ def _add_case_assertion(parent, case, index, rule):
     if not isinstance(rule, dict):
         return
     field = rule.get("field") or rule.get("target", "")
-    operator = rule.get("operator") or rule.get("condition", "equals")
     expected = rule.get("expectedValue")
     if expected is None:
         expected = rule.get("expected")
@@ -1665,9 +1664,8 @@ def _build_tree_node(parent_hash_tree, node: Dict):
         _build_include_controller(parent_hash_tree, name, props)
     else:
         import logging as _logging
-        _logging.getLogger(__name__).warning(
-            "Unknown JMeter element type '%s', generating generic placeholder", ntype
-        )
+
+        _logging.getLogger(__name__).warning("Unknown JMeter element type '%s', generating generic placeholder", ntype)
         # 生成通用占位元素,避免静默丢失
         ph = ET.SubElement(parent_hash_tree, "GenericController")
         ph.set("testname", name or ntype)
@@ -2470,8 +2468,12 @@ def _build_cache_manager(parent, name, props):
     cm.set("testclass", "CacheManager")
     cm.set("testname", name or "HTTP Cache Manager")
     cm.set("enabled", "true")
-    _add_element_prop(cm, "CacheManager.clearEachIteration", "true" if props.get("clearEachIteration", True) else "false")
-    _add_element_prop(cm, "CacheManager.useCacheControlHeader", "true" if props.get("useCacheControlHeaders", True) else "false")
+    _add_element_prop(
+        cm, "CacheManager.clearEachIteration", "true" if props.get("clearEachIteration", True) else "false"
+    )
+    _add_element_prop(
+        cm, "CacheManager.useCacheControlHeader", "true" if props.get("useCacheControlHeaders", True) else "false"
+    )
     _add_element_prop(cm, "CacheManager.maxAge", str(props.get("maxAge", 0)))
     _add_element_prop(cm, "CacheManager.useExpires", "true" if props.get("useExpires", True) else "false")
     ET.SubElement(parent, "hashTree")
@@ -2484,7 +2486,9 @@ def _build_auth_manager(parent, name, props):
     am.set("testclass", "AuthManager")
     am.set("testname", name or "HTTP Authorization Manager")
     am.set("enabled", "true")
-    _add_element_prop(am, "AuthManager.clearEachIteration", "true" if props.get("clearEachIteration", False) else "false")
+    _add_element_prop(
+        am, "AuthManager.clearEachIteration", "true" if props.get("clearEachIteration", False) else "false"
+    )
     cp = ET.SubElement(am, "collectionProp")
     cp.set("name", "AuthManager.auth_list")
     for auth in props.get("authList") or []:

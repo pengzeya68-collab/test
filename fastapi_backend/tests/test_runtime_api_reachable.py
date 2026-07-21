@@ -26,6 +26,7 @@ from fastapi.testclient import TestClient
 # 尝试导入 app
 try:
     from fastapi_backend.main import app
+
     HAS_APP = True
     IMPORT_ERROR = ""
 except Exception as e:
@@ -69,41 +70,48 @@ def client(_ensure_tables):
 # (method, path, 允许的状态码集合, 描述)
 EXPECTED_ROUTES = [
     # 1. 接口分组管理
-    ("GET",    "/api/auto-test/groups/tree",                 {200, 401, 403}, "分组树"),
-    ("POST",   "/api/auto-test/groups",                      {201, 401, 403, 422}, "创建分组"),
-    ("PUT",    "/api/auto-test/groups/1",                    {200, 401, 403, 404, 422}, "更新分组"),
-    ("DELETE", "/api/auto-test/groups/1",                    {200, 401, 403, 404}, "删除分组"),
-    ("PUT",    "/api/auto-test/groups/1/move",               {200, 401, 403, 404, 422}, "移动分组"),
-
+    ("GET", "/api/auto-test/groups/tree", {200, 401, 403}, "分组树"),
+    ("POST", "/api/auto-test/groups", {201, 401, 403, 422}, "创建分组"),
+    ("PUT", "/api/auto-test/groups/1", {200, 401, 403, 404, 422}, "更新分组"),
+    ("DELETE", "/api/auto-test/groups/1", {200, 401, 403, 404}, "删除分组"),
+    ("PUT", "/api/auto-test/groups/1/move", {200, 401, 403, 404, 422}, "移动分组"),
     # 2. 接口版本管理
-    ("GET",    "/api/auto-test/cases/1/versions",            {200, 401, 403, 404}, "版本列表"),
-    ("POST",   "/api/auto-test/cases/1/versions",            {201, 401, 403, 404, 422}, "创建版本"),
-    ("GET",    "/api/auto-test/cases/1/versions/1",          {200, 401, 403, 404}, "版本详情"),
-    ("PUT",    "/api/auto-test/cases/1/versions/1/restore",  {200, 401, 403, 404}, "恢复版本"),
-    ("DELETE", "/api/auto-test/cases/1/versions/1",          {204, 401, 403, 404}, "删除版本"),
-    ("GET",    "/api/auto-test/cases/1/versions/diff?v1=1&v2=2", {200, 401, 403, 400, 404}, "版本对比"),
-
+    ("GET", "/api/auto-test/cases/1/versions", {200, 401, 403, 404}, "版本列表"),
+    ("POST", "/api/auto-test/cases/1/versions", {201, 401, 403, 404, 422}, "创建版本"),
+    ("GET", "/api/auto-test/cases/1/versions/1", {200, 401, 403, 404}, "版本详情"),
+    ("PUT", "/api/auto-test/cases/1/versions/1/restore", {200, 401, 403, 404}, "恢复版本"),
+    ("DELETE", "/api/auto-test/cases/1/versions/1", {204, 401, 403, 404}, "删除版本"),
+    ("GET", "/api/auto-test/cases/1/versions/diff?v1=1&v2=2", {200, 401, 403, 400, 404}, "版本对比"),
     # 3. API 文档
-    ("GET",    "/api/auto-test/api-docs/openapi",            {200, 401, 403}, "OpenAPI 文档"),
-    ("GET",    "/api/auto-test/api-docs/markdown",           {200, 401, 403}, "Markdown 文档"),
-    ("GET",    "/api/auto-test/api-docs/html",               {200, 401, 403}, "HTML 文档"),
-    ("POST",   "/api/auto-test/api-docs/share",              {200, 201, 401, 403, 422}, "创建分享链接"),
-    ("GET",    "/api/auto-test/api-docs/shared/nonexistent-token-xyz", {200, 404, 410}, "公开访问分享文档"),
-
+    ("GET", "/api/auto-test/api-docs/openapi", {200, 401, 403}, "OpenAPI 文档"),
+    ("GET", "/api/auto-test/api-docs/markdown", {200, 401, 403}, "Markdown 文档"),
+    ("GET", "/api/auto-test/api-docs/html", {200, 401, 403}, "HTML 文档"),
+    ("POST", "/api/auto-test/api-docs/share", {200, 201, 401, 403, 422}, "创建分享链接"),
+    ("GET", "/api/auto-test/api-docs/shared/nonexistent-token-xyz", {200, 404, 410}, "公开访问分享文档"),
     # 4. RBAC
-    ("GET",    "/api/v1/admin/rbac/roles",                   {200, 401, 403}, "角色列表"),
-    ("POST",   "/api/v1/admin/rbac/roles",                   {200, 201, 401, 403, 422}, "创建角色"),
-    ("GET",    "/api/v1/admin/rbac/permissions",             {200, 401, 403}, "权限列表"),
-    ("GET",    "/api/v1/admin/rbac/users/me/permissions",    {200, 401, 403}, "当前用户权限"),
-
+    ("GET", "/api/v1/admin/rbac/roles", {200, 401, 403}, "角色列表"),
+    ("POST", "/api/v1/admin/rbac/roles", {200, 201, 401, 403, 422}, "创建角色"),
+    ("GET", "/api/v1/admin/rbac/permissions", {200, 401, 403}, "权限列表"),
+    ("GET", "/api/v1/admin/rbac/users/me/permissions", {200, 401, 403}, "当前用户权限"),
     # 5. 审计日志
-    ("GET",    "/api/v1/admin/audit-logs",                   {200, 401, 403}, "审计日志列表"),
-    ("GET",    "/api/v1/admin/audit-logs/stats",             {200, 401, 403}, "审计日志统计"),
-    ("GET",    "/api/v1/admin/audit-logs/export",            {200, 401, 403}, "导出审计日志"),
-
+    ("GET", "/api/v1/admin/audit-logs", {200, 401, 403}, "审计日志列表"),
+    ("GET", "/api/v1/admin/audit-logs/stats", {200, 401, 403}, "审计日志统计"),
+    ("GET", "/api/v1/admin/audit-logs/export", {200, 401, 403}, "导出审计日志"),
     # 6. 环境继承
-    ("GET",    "/api/auto-test/environments/1/effective-variables",  {200, 401, 403, 404}, "有效变量"),
-    ("GET",    "/api/auto-test/environments/1/inheritance-chain",    {200, 401, 403, 404}, "继承链"),
+    ("GET", "/api/auto-test/environments/1/effective-variables", {200, 401, 403, 404}, "有效变量"),
+    ("GET", "/api/auto-test/environments/1/inheritance-chain", {200, 401, 403, 404}, "继承链"),
+    # 7. 签名 Webhook 管理与公开入口
+    ("POST", "/api/auto-test/webhooks", {201, 401, 403, 422}, "创建回归 Webhook"),
+    ("GET", "/api/auto-test/webhooks", {200, 401, 403}, "Webhook 列表"),
+    ("PATCH", "/api/auto-test/webhooks/nonexistent-webhook", {200, 401, 403, 404, 422}, "更新 Webhook"),
+    ("POST", "/api/auto-test/webhooks/nonexistent-webhook/rotate-secret", {200, 401, 403, 404}, "轮换 Webhook 密钥"),
+    ("POST", "/api/auto-test/webhooks/inbound/nonexistent-webhook", {202, 400, 401, 403, 404, 422}, "Webhook 公开入口"),
+    (
+        "GET",
+        "/api/auto-test/webhooks/inbound/nonexistent-webhook/executions/nonexistent-execution",
+        {200, 400, 401, 403, 404},
+        "Webhook 执行状态",
+    ),
 ]
 
 # 用于路由注册检查的路径模板（去掉查询字符串）
@@ -129,6 +137,11 @@ ROUTE_PATHS = [
     "/api/v1/admin/audit-logs/export",
     "/api/auto-test/environments/{env_id}/effective-variables",
     "/api/auto-test/environments/{env_id}/inheritance-chain",
+    "/api/auto-test/webhooks",
+    "/api/auto-test/webhooks/{webhook_id}",
+    "/api/auto-test/webhooks/{webhook_id}/rotate-secret",
+    "/api/auto-test/webhooks/inbound/{webhook_id}",
+    "/api/auto-test/webhooks/inbound/{webhook_id}/executions/{execution_id}",
 ]
 
 
@@ -178,21 +191,19 @@ def test_endpoint_reachable(client, method, path, allowed_codes, desc):
         r = client.post(path, json={})
     elif method == "PUT":
         r = client.put(path, json={})
+    elif method == "PATCH":
+        r = client.patch(path, json={})
     elif method == "DELETE":
         r = client.delete(path)
     else:
         pytest.fail(f"不支持的方法: {method}")
 
     # 关键断言：不应 404（路由未注册）
-    assert r.status_code != 404 or base_path.endswith("nonexistent-token-xyz"), (
-        f"[{method} {path}] {desc}: 返回 404，路由可能未注册"
-    )
+    expected_missing_resource = base_path.endswith("nonexistent-token-xyz") or "nonexistent-webhook" in base_path
+    assert r.status_code != 404 or expected_missing_resource, f"[{method} {path}] {desc}: 返回 404，路由可能未注册"
     # 不应 500（运行时错误）
-    assert r.status_code != 500, (
-        f"[{method} {path}] {desc}: 返回 500，运行时错误: {r.text[:300]}"
-    )
+    assert r.status_code != 500, f"[{method} {path}] {desc}: 返回 500，运行时错误: {r.text[:300]}"
     # 状态码应在允许范围内
     assert r.status_code in allowed_codes, (
-        f"[{method} {path}] {desc}: 意外状态码 {r.status_code}，"
-        f"预期 {sorted(allowed_codes)}，响应: {r.text[:300]}"
+        f"[{method} {path}] {desc}: 意外状态码 {r.status_code}，预期 {sorted(allowed_codes)}，响应: {r.text[:300]}"
     )

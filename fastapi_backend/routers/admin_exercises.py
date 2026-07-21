@@ -49,9 +49,7 @@ async def list_exercises(
             select(
                 ExerciseSubmissionRecord.exercise_id,
                 func.count(ExerciseSubmissionRecord.id),
-                func.coalesce(
-                    func.sum((ExerciseSubmissionRecord.result == "pass").cast(Integer)), 0
-                ),
+                func.coalesce(func.sum((ExerciseSubmissionRecord.result == "pass").cast(Integer)), 0),
             )
             .where(ExerciseSubmissionRecord.exercise_id.in_(exercise_ids))
             .group_by(ExerciseSubmissionRecord.exercise_id)

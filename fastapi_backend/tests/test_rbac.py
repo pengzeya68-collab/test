@@ -30,6 +30,7 @@ from fastapi_backend.core.rbac import (
 from fastapi_backend.core.rbac_init import (
     PRESET_PERMISSIONS,
     PRESET_ROLES,
+    VIEWER_PERMS,
     init_rbac_data,
 )
 from fastapi_backend.deps.auth import get_current_user
@@ -118,6 +119,9 @@ async def test_preset_data_initialized(rbac_db: AsyncSession):
     assert "scenario:create" in perm_codes
     assert "audit:read" in perm_codes
     assert "role:delete" in perm_codes
+    assert "mock:fault-inject" in perm_codes
+    assert "execution:cancel" in perm_codes
+    assert {"ui:read", "ui:write", "ui:execute", "ui:agent", "ai:analyze", "ai:feedback"}.issubset(perm_codes)
     assert len(perms) >= len(PRESET_PERMISSIONS)
 
 
@@ -138,6 +142,36 @@ async def test_init_rbac_idempotent(rbac_factory):
 
 
 @pytest.mark.asyncio
+async def test_init_rbac_accepts_legacy_role_without_code(rbac_factory):
+    """A legacy name-only admin role must be reused during initialization."""
+    async with rbac_factory() as db:
+        db.add(
+            Role(
+                name="admin",
+                code=None,
+                display_name="Legacy admin",
+                description="Historical role record",
+                is_system=True,
+            )
+        )
+        await db.commit()
+
+    await init_rbac_data(rbac_factory)
+
+    async with rbac_factory() as db:
+        admin_roles = (await db.execute(select(Role).where(Role.name == "admin"))).scalars().all()
+        assert len(admin_roles) == 1
+        assert admin_roles[0].code is None
+
+        role_permissions = (
+            (await db.execute(select(RolePermissionMapping).where(RolePermissionMapping.role_id == admin_roles[0].id)))
+            .scalars()
+            .all()
+        )
+        assert len(role_permissions) == len(PRESET_PERMISSIONS)
+
+
+@pytest.mark.asyncio
 async def test_assign_role_and_check_pass(rbac_db: AsyncSession):
     """2&3. 给用户分配角色后，权限检查通过。"""
     user = await _make_user(rbac_db, "tester1")
@@ -149,6 +183,9 @@ async def test_assign_role_and_check_pass(rbac_db: AsyncSession):
     perms = await get_user_permissions(user, rbac_db)
     assert "case:execute" in perms
     assert "scenario:create" in perms
+    assert "mock:fault-inject" in perms
+    assert "execution:cancel" in perms
+    assert {"ui:read", "ui:write", "ui:execute", "ui:agent", "ai:analyze", "ai:feedback"}.issubset(perms)
     assert "role:delete" not in perms  # TESTER 无角色管理权限
 
 
@@ -177,6 +214,32 @@ async def test_permission_check_pass(rbac_db: AsyncSession):
     checker = PermissionChecker(["case:read"])  # VIEWER 有 case:read
     result = await checker(current_user=user, db=rbac_db)
     assert result.id == user.id
+
+
+@pytest.mark.asyncio
+async def test_viewer_cannot_manage_schedules_or_webhook_credentials(rbac_db: AsyncSession, rbac_factory):
+    """Existing installations must revoke the previously over-broad preset grants."""
+    assert "suite:schedule" not in VIEWER_PERMS
+    assert "webhook:manage" not in VIEWER_PERMS
+    viewer_role = await _get_role_by_code(rbac_db, "VIEWER")
+    for permission_code in ("suite:schedule", "webhook:manage"):
+        rbac_db.add(
+            RolePermissionMapping(
+                role_id=viewer_role.id,
+                permission_id=await _get_perm_id(rbac_db, permission_code),
+            )
+        )
+    await rbac_db.commit()
+    await init_rbac_data(rbac_factory)
+    mappings = set(
+        (
+            await rbac_db.scalars(
+                select(RolePermissionMapping.permission_id).where(RolePermissionMapping.role_id == viewer_role.id)
+            )
+        ).all()
+    )
+    assert await _get_perm_id(rbac_db, "suite:schedule") not in mappings
+    assert await _get_perm_id(rbac_db, "webhook:manage") not in mappings
 
 
 @pytest.mark.asyncio
@@ -217,9 +280,7 @@ async def test_remove_role_revokes_permission(rbac_db: AsyncSession):
     assert "case:execute" in perms
 
     # 移除角色
-    await rbac_db.execute(
-        UserRole.__table__.delete().where(UserRole.user_id == user.id)
-    )
+    await rbac_db.execute(UserRole.__table__.delete().where(UserRole.user_id == user.id))
     await rbac_db.commit()
 
     # 无角色 → 回退到 TESTER 默认权限（向后兼容设计）
@@ -242,9 +303,7 @@ async def test_role_permission_update_realtime(rbac_db: AsyncSession):
 
     # 给 VIEWER 角色追加 case:create 权限
     case_create_id = await _get_perm_id(rbac_db, "case:create")
-    rbac_db.add(
-        RolePermissionMapping(role_id=viewer_role.id, permission_id=case_create_id)
-    )
+    rbac_db.add(RolePermissionMapping(role_id=viewer_role.id, permission_id=case_create_id))
     await rbac_db.commit()
 
     # 实时生效
@@ -317,6 +376,7 @@ def rbac_client(rbac_db: AsyncSession, rbac_factory):
     app.dependency_overrides[get_current_user] = _override_get_current_user
     # get_db 被 PermissionChecker 与路由依赖
     from fastapi_backend.core.database import get_db
+
     app.dependency_overrides[get_db] = _override_get_db
 
     with TestClient(app) as client:

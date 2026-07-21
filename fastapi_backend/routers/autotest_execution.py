@@ -685,20 +685,39 @@ async def _run_case_batch_task(task_id: str, body: BatchRunRequest, user_id: int
                         execution = {"success": False, "error": str(exc), "execution_time": 0}
                     async with result_lock:
                         results.append({"case_id": case.id, "case_name": case.name, **execution})
-                        session.add(AutoTestHistory(
-                            case_id=case.id, user_id=user_id,
-                            status="success" if execution.get("success") else "failed",
-                            execution_time=execution.get("execution_time") or 0,
-                            response_data=execution.get("response"), error_message=execution.get("error"),
-                        ))
+                        session.add(
+                            AutoTestHistory(
+                                case_id=case.id,
+                                user_id=user_id,
+                                status="success" if execution.get("success") else "failed",
+                                execution_time=execution.get("execution_time") or 0,
+                                response_data=execution.get("response"),
+                                error_message=execution.get("error"),
+                            )
+                        )
                         await session.commit()
                         completed = len(results)
                         succeeded = sum(1 for item in results if item.get("success"))
-                        await update_task(task_id, {
-                            "status": "PROGRESS", "user_id": user_id,
-                            "progress": {"current": completed, "total": total, "percent": int(completed * 100 / max(total, 1)), "current_api": case.name},
-                            "result": {"total": total, "completed": completed, "success": succeeded, "failed": completed - succeeded, "results": list(results)},
-                        })
+                        await update_task(
+                            task_id,
+                            {
+                                "status": "PROGRESS",
+                                "user_id": user_id,
+                                "progress": {
+                                    "current": completed,
+                                    "total": total,
+                                    "percent": int(completed * 100 / max(total, 1)),
+                                    "current_api": case.name,
+                                },
+                                "result": {
+                                    "total": total,
+                                    "completed": completed,
+                                    "success": succeeded,
+                                    "failed": completed - succeeded,
+                                    "results": list(results),
+                                },
+                            },
+                        )
                     queue.task_done()
 
             await asyncio.gather(*[worker() for _ in range(min(body.concurrency, max(total, 1)))])
@@ -707,13 +726,22 @@ async def _run_case_batch_task(task_id: str, body: BatchRunRequest, user_id: int
                 return
             success = sum(1 for item in results if item.get("success"))
             result_payload = {"total": total, "success": success, "failed": total - success, "results": results}
-            await update_task(task_id, {
-                "status": "completed", "state": "completed", "user_id": user_id,
-                "progress": {"current": total, "total": total, "percent": 100, "current_api": "执行完成"},
-                "result": result_payload, "completed_at": time.time(),
-            })
+            await update_task(
+                task_id,
+                {
+                    "status": "completed",
+                    "state": "completed",
+                    "user_id": user_id,
+                    "progress": {"current": total, "total": total, "percent": 100, "current_api": "执行完成"},
+                    "result": result_payload,
+                    "completed_at": time.time(),
+                },
+            )
     except Exception as exc:
-        await update_task(task_id, {"status": "failed", "state": "failed", "user_id": user_id, "error": str(exc), "completed_at": time.time()})
+        await update_task(
+            task_id,
+            {"status": "failed", "state": "failed", "user_id": user_id, "error": str(exc), "completed_at": time.time()},
+        )
 
 
 @router.post("/cases/batch-run-async", status_code=202)
@@ -726,10 +754,17 @@ async def start_batch_run(
     if len(body.case_ids) > 500:
         raise HTTPException(status_code=400, detail="单次后台批量运行最多支持 500 个用例")
     task_id = f"case-batch-{uuid.uuid4()}"
-    await update_task(task_id, {
-        "task_id": task_id, "task_type": "case_batch", "status": "PENDING", "state": "PENDING",
-        "user_id": current_user.id, "progress": {"current": 0, "total": len(body.case_ids), "percent": 0, "current_api": "等待执行"},
-    })
+    await update_task(
+        task_id,
+        {
+            "task_id": task_id,
+            "task_type": "case_batch",
+            "status": "PENDING",
+            "state": "PENDING",
+            "user_id": current_user.id,
+            "progress": {"current": 0, "total": len(body.case_ids), "percent": 0, "current_api": "等待执行"},
+        },
+    )
     task = asyncio.create_task(_run_case_batch_task(task_id, body, current_user.id))
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
@@ -1181,9 +1216,7 @@ async def run_scenario_data_driven(
             "created_at": time.time(),
         },
     )
-    background_tasks.add_task(
-        run_scenario_data_driven_task, scenario_id, env_id, task_id, current_user.id
-    )
+    background_tasks.add_task(run_scenario_data_driven_task, scenario_id, env_id, task_id, current_user.id)
     return {"task_id": task_id, "status": "running", "message": "数据驱动执行已启动"}
 
 
@@ -1384,6 +1417,7 @@ async def create_scheduler_task(
         except Exception:
             # Compensate the already-created APScheduler job.
             from fastapi_backend.services.autotest_scheduler import remove_scheduled_task
+
             remove_scheduled_task(result["task_id"])
             raise
         return result
@@ -1401,7 +1435,7 @@ async def delete_scheduler_task(
     current_user: User = Depends(get_current_active_user),
 ):
     """删除定时任务"""
-    from fastapi_backend.services.autotest_scheduler import get_scheduled_task, remove_scheduled_task
+    from fastapi_backend.services.autotest_scheduler import remove_scheduled_task
     from fastapi_backend.services.autotest_schedule_persistence import clear_schedule_from_db
 
     t = await _get_owned_scheduler_task(task_id, current_user.id)
@@ -1415,6 +1449,7 @@ async def delete_scheduler_task(
         except Exception:
             # Restore the job if persistence failed, keeping both stores aligned.
             from fastapi_backend.services.autotest_scheduler import add_scheduled_task
+
             add_scheduled_task(
                 scenario_id=int(t["scenario_id"]),
                 cron_expression=t["cron_expression"],
@@ -1435,7 +1470,7 @@ async def run_scheduler_task_now(
     current_user: User = Depends(get_current_active_user),
 ):
     """立即执行定时任务（手动触发）"""
-    task = await _get_owned_scheduler_task(task_id, current_user.id)
+    await _get_owned_scheduler_task(task_id, current_user.id)
 
     scenario_id = task.get("scenario_id")
     user_id = None
@@ -1457,8 +1492,8 @@ async def run_scheduler_task_now(
             user_id = scenario.user_id
 
     try:
-
         from fastapi_backend.tasks import task_run_scenario
+
         celery_task = task_run_scenario.delay(task["scenario_id"], task.get("env_id"), user_id)
         return {"message": "任务已触发执行", "celery_task_id": celery_task.id}
     except HTTPException:
@@ -1476,7 +1511,7 @@ async def toggle_scheduler_task(
     from fastapi_backend.services.autotest_scheduler import get_scheduled_task, toggle_task_status
     from fastapi_backend.services.autotest_schedule_persistence import persist_schedule_is_active_db
 
-    task = await _get_owned_scheduler_task(task_id, current_user.id)
+    await _get_owned_scheduler_task(task_id, current_user.id)
 
     try:
         result = toggle_task_status(task_id)
@@ -1636,17 +1671,13 @@ async def import_postman(
                         payload = {"raw": body.get("raw", "")}
                 elif body_mode == "urlencoded":
                     payload = {
-                        field["key"]: field.get("value", "")
-                        for field in body.get("urlencoded", [])
-                        if field.get("key")
+                        field["key"]: field.get("value", "") for field in body.get("urlencoded", []) if field.get("key")
                     }
                     body_type = "form"
                     content_type = "application/x-www-form-urlencoded"
                 elif body_mode == "formdata":
                     payload = {
-                        field["key"]: field.get("value", "")
-                        for field in body.get("formdata", [])
-                        if field.get("key")
+                        field["key"]: field.get("value", "") for field in body.get("formdata", []) if field.get("key")
                     }
                     body_type = "form-data"
                     content_type = "multipart/form-data"

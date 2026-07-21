@@ -19,8 +19,11 @@ Create Date: 2026-07-13
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
-from fastapi_backend.models.ui_automation import JSONColumn
+# Migrations must remain runnable before the application package is importable.
+# Keep the database-specific JSONB behaviour without importing runtime models.
+JSONColumn = sa.JSON().with_variant(postgresql.JSONB(), "postgresql")
 
 
 # revision identifiers, used by Alembic.

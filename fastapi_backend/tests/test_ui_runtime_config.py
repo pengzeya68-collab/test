@@ -1,6 +1,8 @@
-﻿from types import SimpleNamespace
+from types import SimpleNamespace
 
 import pytest
+from fastapi import Response
+from fastapi_backend.core.exceptions import BusinessException
 
 from fastapi_backend.routers import ui_automation as module
 
@@ -36,27 +38,32 @@ class FakeSession:
 @pytest.mark.asyncio
 async def test_runtime_config_merges_globals_environment_and_masks_metadata(monkeypatch):
     monkeypatch.setattr(module.settings, "UI_AUTOMATION_ENABLED", True)
-    monkeypatch.setattr(module, "decrypt", lambda value: "decrypted-password")
-    async def effective(_db, _env_id, user_id=None):
-        assert user_id == 42
-        return [
-            {"name": "API_URL", "value": "https://env.example"},
-            {"name": "api_token", "value": "env-token"},
-        ]
-    monkeypatch.setattr(module, "get_effective_variables", effective)
 
-    globals_ = [
-        SimpleNamespace(name="PASSWORD", value="cipher", is_encrypted=True),
-        SimpleNamespace(name="API_URL", value="https://global.example", is_encrypted=False),
-        SimpleNamespace(name="PUBLIC_NAME", value="tester", is_encrypted=False),
-    ]
-    environment = SimpleNamespace(id=7, env_name="测试环境", base_url="https://app.example")
-    db = FakeSession([FakeResult(items=globals_), FakeResult(one=environment)])
+    async def resolve(_db, *, user_id, environment_id):
+        assert user_id == 42
+        assert environment_id == 7
+        return {
+            "id": 7,
+            "name": "测试环境",
+            "base_url": "https://app.example",
+            "services": [],
+            "variables": {
+                "PASSWORD": "decrypted-password",
+                "API_URL": "https://env.example",
+                "api_token": "env-token",
+                "PUBLIC_NAME": "tester",
+            },
+            "secret_keys": ["PASSWORD", "api_token"],
+        }
+
+    monkeypatch.setattr(module, "resolve_runtime_environment", resolve)
+    response = Response()
 
     result = await module.get_runtime_config(
+        response=response,
         environment_id=7,
         current_user=SimpleNamespace(id=42),
-        autotest_db=db,
+        autotest_db=FakeSession([]),
     )
 
     assert result["base_url"] == "https://app.example"
@@ -66,19 +73,24 @@ async def test_runtime_config_merges_globals_environment_and_masks_metadata(monk
     assert result["variables"]["api_token"] == "env-token"
     assert result["variables"]["PUBLIC_NAME"] == "tester"
     assert result["secret_keys"] == ["PASSWORD", "api_token"]
+    assert response.headers["Cache-Control"] == "private, no-store"
 
 
 @pytest.mark.asyncio
 async def test_runtime_config_rejects_environment_not_owned_by_user(monkeypatch):
     monkeypatch.setattr(module.settings, "UI_AUTOMATION_ENABLED", True)
-    db = FakeSession([FakeResult(items=[]), FakeResult(one=None)])
+
+    async def resolve(_db, *, user_id, environment_id):
+        raise BusinessException("Environment not found", code="ENVIRONMENT_NOT_FOUND", status_code=404)
+
+    monkeypatch.setattr(module, "resolve_runtime_environment", resolve)
 
     with pytest.raises(Exception) as exc:
         await module.get_runtime_config(
+            response=Response(),
             environment_id=999,
             current_user=SimpleNamespace(id=42),
-            autotest_db=db,
+            autotest_db=FakeSession([]),
         )
 
     assert getattr(exc.value, "code", None) == "ENVIRONMENT_NOT_FOUND"
-

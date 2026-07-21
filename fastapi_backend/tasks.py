@@ -24,6 +24,7 @@ _logger = logging.getLogger(__name__)
 # 调试: 启动时打印 metadata 注册状态
 try:
     from fastapi_backend.core.database import Base as _Base
+
     _logger.info(
         "[Celery startup] Base.metadata tables count=%d, has users=%s, has jmeter_bench_runs=%s",
         len(_Base.metadata.tables),
@@ -188,9 +189,7 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
 
         async def _run_scenario_async():
             # 所有async操作内层使用await，禁止在此处再调用asyncio.run
-            return await execute_scenario_async(
-                scenario_id, env_id, progress_callback=on_progress, user_id=user_id
-            )
+            return await execute_scenario_async(scenario_id, env_id, progress_callback=on_progress, user_id=user_id)
 
         # 确保asyncio.run在最外层；若已在事件循环中（异常情况），使用线程池隔离避免嵌套
         try:
@@ -253,6 +252,17 @@ def task_run_scenario(self, scenario_id: int, env_id: int = None, user_id: int =
                 execution_lock.release()
             except Exception as lock_error:
                 _logger.warning("Failed to release scenario execution lock: %s", lock_error)
+
+
+@app.task(bind=True, name="fastapi_backend.tasks.run_suite_execution")
+def task_run_suite_execution(self, execution_id: int):
+    """Execute a persisted regression suite in a Celery worker."""
+    import asyncio
+
+    from fastapi_backend.services.suite_execution_service import run_suite_execution
+
+    asyncio.run(run_suite_execution(execution_id, runner_id=f"celery:{self.request.id}"))
+    return {"execution_id": execution_id, "status": "dispatched"}
 
 
 @app.task(bind=True, max_retries=2, name="fastapi_backend.tasks.send_email")
@@ -330,12 +340,12 @@ def task_run_jmeter_bench(self, run_id: int):
         from sqlalchemy import create_engine as _create_sync_engine
         from sqlalchemy.orm import sessionmaker as _sessionmaker
         from fastapi_backend.core.config import settings as _settings
-        from fastapi_backend.core.jmeter_settings import is_jmeter_available, JMETER_REPORT_DIR
         from fastapi_backend.services.jmeter_engine import JmeterEngine, JtlParser
-        from fastapi_backend.services.autotest_jmeter_service import export_tree_to_jmx
         from fastapi_backend.services.jmeter_bench_service import check_regression
         from fastapi_backend.models.autotest_jmeter_models import (
-            JmeterBenchRun, JmeterBenchSnapshot, JmeterPerformanceBaseline,
+            JmeterBenchRun,
+            JmeterBenchSnapshot,
+            JmeterPerformanceBaseline,
         )
 
         def _normalize_url(url: str) -> str:
@@ -379,8 +389,12 @@ def task_run_jmeter_bench(self, run_id: int):
                 try:
                     with SyncSession() as snap_db:
                         snap = JmeterBenchSnapshot(
-                            run_id=run_id, percent=percent, tps=tps,
-                            avg_ms=avg_ms, p95_ms=p95_ms, error_rate=error_rate,
+                            run_id=run_id,
+                            percent=percent,
+                            tps=tps,
+                            avg_ms=avg_ms,
+                            p95_ms=p95_ms,
+                            error_rate=error_rate,
                             active_threads=active,
                         )
                         snap_db.add(snap)
@@ -408,6 +422,7 @@ def task_run_jmeter_bench(self, run_id: int):
             engine_result = asyncio.run(_run_jmeter_async())
         else:
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 engine_result = pool.submit(asyncio.run, _run_jmeter_async()).result()
 
@@ -472,6 +487,7 @@ def task_run_jmeter_bench(self, run_id: int):
             if samples:
                 try:
                     from fastapi_backend.models.autotest_jmeter_models import JmeterBenchSample
+
                     MAX_SAMPLES_PER_RUN = 500
                     truncated = samples[:MAX_SAMPLES_PER_RUN]
                     sample_rows = [
@@ -501,7 +517,9 @@ def task_run_jmeter_bench(self, run_id: int):
                     sync_db.commit()
                     _logger.info(
                         "[JMeter] run_id=%s 写入 %d/%d 条样本到 jmeter_bench_samples",
-                        run_id, len(sample_rows), len(samples),
+                        run_id,
+                        len(sample_rows),
+                        len(samples),
                     )
                 except Exception as sample_err:
                     _logger.warning("[JMeter] 写样本表失败(忽略): %s", sample_err)
@@ -509,9 +527,12 @@ def task_run_jmeter_bench(self, run_id: int):
 
             # 最终 snapshot
             snap = JmeterBenchSnapshot(
-                run_id=run_id, percent=100,
-                tps=summary.get("tps", 0), avg_ms=summary.get("avg_ms", 0),
-                p95_ms=summary.get("p95_ms", 0), error_rate=summary.get("error_rate", 0),
+                run_id=run_id,
+                percent=100,
+                tps=summary.get("tps", 0),
+                avg_ms=summary.get("avg_ms", 0),
+                p95_ms=summary.get("p95_ms", 0),
+                error_rate=summary.get("error_rate", 0),
                 active_threads=0,
             )
             sync_db.add(snap)
@@ -541,6 +562,7 @@ def task_run_jmeter_bench(self, run_id: int):
             from sqlalchemy.orm import sessionmaker as _sm
             from fastapi_backend.core.config import settings as _s
             from datetime import datetime as _dt_fail
+
             _url = _s.DATABASE_URL
             if _url.startswith("postgresql+asyncpg://"):
                 _url = _url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)

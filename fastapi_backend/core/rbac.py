@@ -109,9 +109,7 @@ async def get_user_permissions(user: User, db: AsyncSession) -> set[str]:
 
 async def _has_user_roles(user: User, db: AsyncSession) -> bool:
     """用户是否在 user_roles 表中存在记录。"""
-    result = await db.execute(
-        select(UserRole.role_id).where(UserRole.user_id == user.id).limit(1)
-    )
+    result = await db.execute(select(UserRole.role_id).where(UserRole.user_id == user.id).limit(1))
     return result.first() is not None
 
 
@@ -169,10 +167,7 @@ class PermissionChecker:
             missing = self.required_permissions
         else:
             # 需全部满足
-            missing = [
-                p for p in self.required_permissions
-                if not _has_permission(p, user_permissions)
-            ]
+            missing = [p for p in self.required_permissions if not _has_permission(p, user_permissions)]
             if not missing:
                 return current_user
 

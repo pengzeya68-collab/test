@@ -65,12 +65,14 @@ BUILTIN_TEMPLATES = [
         "category": "响应结构",
         "name": "响应头含 application/json",
         "description": "验证响应头 Content-Type 包含 application/json",
-        "rules": [{
-            "type": "response_header",
-            "operator": "contains",
-            "expected": "application/json",
-            "expression": "Content-Type",
-        }],
+        "rules": [
+            {
+                "type": "response_header",
+                "operator": "contains",
+                "expected": "application/json",
+                "expression": "Content-Type",
+            }
+        ],
         "code_snippet": 'assert "application/json" in response.headers["Content-Type"]',
     },
     {
@@ -78,12 +80,14 @@ BUILTIN_TEMPLATES = [
         "category": "响应结构",
         "name": "字段 code 存在",
         "description": "验证响应 JSON 中存在 code 字段",
-        "rules": [{
-            "type": "response_body",
-            "operator": "exists",
-            "expected": "",
-            "expression": "$.code",
-        }],
+        "rules": [
+            {
+                "type": "response_body",
+                "operator": "exists",
+                "expected": "",
+                "expression": "$.code",
+            }
+        ],
         "code_snippet": 'assert "code" in response.json()',
     },
     {
@@ -91,12 +95,14 @@ BUILTIN_TEMPLATES = [
         "category": "响应结构",
         "name": "字段 message 存在",
         "description": "验证响应 JSON 中存在 message 字段",
-        "rules": [{
-            "type": "response_body",
-            "operator": "exists",
-            "expected": "",
-            "expression": "$.message",
-        }],
+        "rules": [
+            {
+                "type": "response_body",
+                "operator": "exists",
+                "expected": "",
+                "expression": "$.message",
+            }
+        ],
         "code_snippet": 'assert "message" in response.json()',
     },
     {
@@ -104,12 +110,14 @@ BUILTIN_TEMPLATES = [
         "category": "响应结构",
         "name": "data 字段非空",
         "description": "验证响应 JSON 中 data 字段不为空",
-        "rules": [{
-            "type": "response_body",
-            "operator": "not_empty",
-            "expected": "",
-            "expression": "$.data",
-        }],
+        "rules": [
+            {
+                "type": "response_body",
+                "operator": "not_empty",
+                "expected": "",
+                "expression": "$.data",
+            }
+        ],
         "code_snippet": 'assert response.json().get("data")',
     },
     {
@@ -117,12 +125,14 @@ BUILTIN_TEMPLATES = [
         "category": "响应结构",
         "name": "data.id 字段存在",
         "description": "验证响应中 data.id 字段存在（常用于创建接口）",
-        "rules": [{
-            "type": "response_body",
-            "operator": "exists",
-            "expected": "",
-            "expression": "$.data.id",
-        }],
+        "rules": [
+            {
+                "type": "response_body",
+                "operator": "exists",
+                "expected": "",
+                "expression": "$.data.id",
+            }
+        ],
         "code_snippet": 'assert "id" in response.json().get("data", {})',
     },
     {
@@ -130,12 +140,14 @@ BUILTIN_TEMPLATES = [
         "category": "数据结构",
         "name": "列表非空检查",
         "description": "验证 data.list 列表字段不为空",
-        "rules": [{
-            "type": "response_body",
-            "operator": "not_empty",
-            "expected": "",
-            "expression": "$.data.list",
-        }],
+        "rules": [
+            {
+                "type": "response_body",
+                "operator": "not_empty",
+                "expected": "",
+                "expression": "$.data.list",
+            }
+        ],
         "code_snippet": 'assert len(response.json()["data"]["list"]) > 0',
     },
     {
@@ -143,12 +155,14 @@ BUILTIN_TEMPLATES = [
         "category": "业务逻辑",
         "name": "code = 0（成功）",
         "description": "验证业务码 code 等于 0（表示成功）",
-        "rules": [{
-            "type": "response_body",
-            "operator": "==",
-            "expected": "0",
-            "expression": "$.code",
-        }],
+        "rules": [
+            {
+                "type": "response_body",
+                "operator": "==",
+                "expected": "0",
+                "expression": "$.code",
+            }
+        ],
         "code_snippet": 'assert response.json()["code"] == 0',
     },
     {
@@ -156,12 +170,14 @@ BUILTIN_TEMPLATES = [
         "category": "业务逻辑",
         "name": "code = 200（成功）",
         "description": "验证业务码 code 等于 200（表示成功）",
-        "rules": [{
-            "type": "response_body",
-            "operator": "==",
-            "expected": "200",
-            "expression": "$.code",
-        }],
+        "rules": [
+            {
+                "type": "response_body",
+                "operator": "==",
+                "expected": "200",
+                "expression": "$.code",
+            }
+        ],
         "code_snippet": 'assert response.json()["code"] == 200',
     },
     {
@@ -211,7 +227,7 @@ BUILTIN_TEMPLATES = [
         "code_snippet": (
             "assert response.status_code == 200\n"
             'assert "application/json" in response.headers["Content-Type"]\n'
-            'data = response.json()\n'
+            "data = response.json()\n"
             'assert "code" in data\n'
             'assert "message" in data\n'
             "assert response.elapsed.total_seconds() < 2.0"
@@ -222,9 +238,12 @@ BUILTIN_TEMPLATES = [
 
 # ========== Schemas ==========
 
+
 class AssertTemplateRule(BaseModel):
     type: str = Field(..., description="status_code/response_body/response_header/response_time")
-    operator: str = Field(..., description="==/!=/contains/not_contains/</>/<=/>=/range/regex/not_empty/empty/exists/not_exists")
+    operator: str = Field(
+        ..., description="==/!=/contains/not_contains/</>/<=/>=/range/regex/not_empty/empty/exists/not_exists"
+    )
     expected: str = Field("", description="期望值")
     expression: str = Field("", description="JSONPath 表达式或响应头名")
 
@@ -260,6 +279,7 @@ class AssertTemplateOut(BaseModel):
 
 # ========== 种子化 ==========
 
+
 async def seed_builtin_templates(db: AsyncSession) -> None:
     """启动时若表为空，把内置模板插入为 is_builtin=True 的记录。"""
     count_stmt = select(func.count()).select_from(AssertTemplate)
@@ -268,20 +288,23 @@ async def seed_builtin_templates(db: AsyncSession) -> None:
         return
 
     for tpl in BUILTIN_TEMPLATES:
-        db.add(AssertTemplate(
-            name=tpl["name"],
-            description=tpl["description"],
-            category=tpl["category"],
-            rules=tpl["rules"],
-            code_snippet=tpl.get("code_snippet"),
-            is_builtin=True,
-            user_id=None,
-        ))
+        db.add(
+            AssertTemplate(
+                name=tpl["name"],
+                description=tpl["description"],
+                category=tpl["category"],
+                rules=tpl["rules"],
+                code_snippet=tpl.get("code_snippet"),
+                is_builtin=True,
+                user_id=None,
+            )
+        )
     await db.commit()
     logger.info(f"已种子化 {len(BUILTIN_TEMPLATES)} 个内置断言模板")
 
 
 # ========== 路由 ==========
+
 
 @router.get("/categories")
 async def get_assertion_categories(db: AsyncSession = Depends(get_db)):

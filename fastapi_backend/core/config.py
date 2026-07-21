@@ -1,4 +1,4 @@
-﻿"""
+"""
 Core application settings for fastapi_backend.
 """
 
@@ -124,6 +124,31 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+
+def validate_production_database(config: Settings) -> None:
+    if config.ENVIRONMENT != "production":
+        return
+    if not config.DATABASE_URL.lower().startswith("postgresql+asyncpg://"):
+        raise RuntimeError(
+            "Production requires PostgreSQL through a postgresql+asyncpg:// DATABASE_URL; "
+            "SQLite is supported only for local development and tests."
+        )
+
+
+validate_production_database(settings)
+
+if settings.ENVIRONMENT == "production":
+    unsafe_flags = [
+        name
+        for name, enabled in (
+            ("DISABLE_SSL_VERIFY", settings.DISABLE_SSL_VERIFY),
+            ("DISABLE_SSRF_GUARD", settings.DISABLE_SSRF_GUARD),
+        )
+        if enabled
+    ]
+    if unsafe_flags:
+        raise RuntimeError(f"Production refuses unsafe security flags: {', '.join(unsafe_flags)}")
+
 if not settings.SECRET_KEY:
     if settings.ENVIRONMENT == "production":
         raise RuntimeError("鐢熶骇鐜蹇呴』鍦?.env 涓缃?SECRET_KEY")
@@ -160,5 +185,3 @@ if settings.ENVIRONMENT == "production":
             "鐢熶骇鐜 CORS_ORIGINS 鍖呭惈 localhost 鍦板潃: %s锛岃鍦?.env 涓缃纭殑 CORS_ORIGINS",
             localhost_origins,
         )
-
-

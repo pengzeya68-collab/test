@@ -50,9 +50,7 @@ def _serialize_group(group: AutoTestGroup) -> Dict[str, Any]:
     }
 
 
-async def _detect_cycle(
-    db: AsyncSession, group_id: int, new_parent_id: Optional[int], user_id: int
-) -> None:
+async def _detect_cycle(db: AsyncSession, group_id: int, new_parent_id: Optional[int], user_id: int) -> None:
     """循环检测：确保将 group_id 的父设为 new_parent_id 不会形成 A→B→A 环。
 
     若检测到循环或父分组不存在/不属于当前用户，抛出 HTTPException。
@@ -83,16 +81,12 @@ async def _detect_cycle(
         current_parent_id = parent_group.parent_id
 
 
-async def _validate_parent_belongs(
-    db: AsyncSession, parent_id: Optional[int], user_id: int
-) -> None:
+async def _validate_parent_belongs(db: AsyncSession, parent_id: Optional[int], user_id: int) -> None:
     """校验父分组存在且属于当前用户（parent_id 为 None 时跳过）"""
     if parent_id is None:
         return
     result = await db.execute(
-        select(AutoTestGroup).where(
-            AutoTestGroup.id == parent_id, AutoTestGroup.user_id == user_id
-        )
+        select(AutoTestGroup).where(AutoTestGroup.id == parent_id, AutoTestGroup.user_id == user_id)
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="父分组不存在或不属于当前用户")
@@ -164,9 +158,7 @@ async def get_group(
 ):
     """获取单个分组详情"""
     result = await db.execute(
-        select(AutoTestGroup).filter(
-            AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id
-        )
+        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
     )
     group = result.scalar_one_or_none()
     if not group:
@@ -199,9 +191,7 @@ async def update_group(
 ):
     """更新分组（含移动到新父分组，带循环检测）"""
     result = await db.execute(
-        select(AutoTestGroup).filter(
-            AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id
-        )
+        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
     )
     group = result.scalar_one_or_none()
     if not group:
@@ -234,9 +224,7 @@ async def move_group(
 ):
     """移动分组：改变 parent_id 和/或 sort_order（带循环检测）"""
     result = await db.execute(
-        select(AutoTestGroup).filter(
-            AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id
-        )
+        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
     )
     group = result.scalar_one_or_none()
     if not group:
@@ -275,9 +263,7 @@ async def delete_group(
       * 否则：解除场景步骤引用并删除分组下用例。
     """
     result = await db.execute(
-        select(AutoTestGroup).filter(
-            AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id
-        )
+        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
     )
     group = result.scalar_one_or_none()
     if not group:
@@ -338,7 +324,7 @@ async def delete_group(
     await db.delete(group)
     await db.commit()
 
-    detail_parts = [f"删除成功"]
+    detail_parts = ["删除成功"]
     if moved_count:
         detail_parts.append(f"移动 {moved_count} 个用例到父分组")
     if deleted_count:

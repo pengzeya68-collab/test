@@ -12,21 +12,104 @@ API Mock 服务路由（DB 持久化版）
 
 import json
 import logging
+import math
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 
 from fastapi_backend.core.autotest_database import AsyncSessionLocal
-from fastapi_backend.deps.auth import get_current_active_user
+from fastapi_backend.core.audit_decorator import audit_log
+from fastapi_backend.core.database import AsyncSessionLocal as AuthSessionLocal
+from fastapi_backend.core.exceptions import AuthorizationException
+from fastapi_backend.core.rbac import get_user_permissions, require_permissions
 from fastapi_backend.models.autotest import MockProject, MockRule, MockRequestLog
 from fastapi_backend.models.models import User
-from fastapi_backend.services.mock_service import mock_engine
+from fastapi_backend.services.mock_service import _safe_custom_headers, mock_engine
 
 _logger = logging.getLogger(__name__)
+_FAULT_TYPES = {"status_error", "delay", "timeout_response", "invalid_json", "custom_headers"}
+
+
+def _validate_fault_type(value: Optional[str]) -> Optional[str]:
+    normalized = (value or "").strip().lower()
+    if not normalized:
+        return None
+    if normalized not in _FAULT_TYPES:
+        raise HTTPException(status_code=422, detail="不支持的故障类型")
+    return normalized
+
+
+def _validate_fault_config(fault_type: Optional[str], value: Optional[dict]) -> Optional[dict]:
+    """Normalize fault settings at write time so invalid rules cannot be saved."""
+    if fault_type is None:
+        if value not in (None, {}):
+            raise HTTPException(status_code=422, detail="故障参数必须与故障类型一起配置")
+        return None
+    if value is not None and not isinstance(value, dict):
+        raise HTTPException(status_code=422, detail="故障参数必须是 JSON 对象")
+
+    config = dict(value or {})
+    probability = config.get("trigger_probability", 1)
+    if isinstance(probability, bool):
+        raise HTTPException(status_code=422, detail="触发概率必须是 0 到 1 之间的数字")
+    try:
+        probability = float(probability)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="触发概率必须是 0 到 1 之间的数字") from exc
+    if not math.isfinite(probability) or not 0 <= probability <= 1:
+        raise HTTPException(status_code=422, detail="触发概率必须是 0 到 1 之间的数字")
+    config["trigger_probability"] = probability
+
+    seed = config.get("random_seed")
+    if seed is not None:
+        seed = str(seed).strip()
+        if len(seed) > 200:
+            raise HTTPException(status_code=422, detail="随机种子不能超过 200 个字符")
+        if seed:
+            config["random_seed"] = seed
+        else:
+            config.pop("random_seed", None)
+
+    if fault_type in {"delay", "timeout_response"} and "delay_ms" in config:
+        try:
+            delay_ms = int(config["delay_ms"])
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail="故障延迟必须是 0 到 60000 之间的整数") from exc
+        if not 0 <= delay_ms <= 60_000:
+            raise HTTPException(status_code=422, detail="故障延迟必须是 0 到 60000 之间的整数")
+        config["delay_ms"] = delay_ms
+
+    if fault_type in {"status_error", "invalid_json"} and "status_code" in config:
+        try:
+            status_code = int(config["status_code"])
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail="故障状态码必须是 100 到 599 的整数") from exc
+        minimum = 400 if fault_type == "status_error" else 100
+        if not minimum <= status_code <= 599:
+            raise HTTPException(status_code=422, detail=f"故障状态码必须是 {minimum} 到 599 的整数")
+        config["status_code"] = status_code
+
+    if fault_type == "custom_headers":
+        headers = config.get("headers", {})
+        if not isinstance(headers, dict) or _safe_custom_headers(headers) != {
+            str(name).strip(): str(header).strip() for name, header in headers.items()
+        }:
+            raise HTTPException(status_code=422, detail="自定义响应头包含不安全或无效的名称/值")
+        config["headers"] = _safe_custom_headers(headers)
+    return config
+
+
+async def _require_fault_injection_permission(current_user: User) -> None:
+    """Keep controlled failure injection separate from ordinary Mock editing."""
+    async with AuthSessionLocal() as auth_db:
+        permissions = await get_user_permissions(current_user, auth_db)
+    if "*" not in permissions and "mock:fault-inject" not in permissions and "mock:*" not in permissions:
+        raise AuthorizationException("权限不足。需要 mock:fault-inject 权限才能配置故障注入")
+
 
 router = APIRouter(
     prefix="/api/mock",
@@ -69,6 +152,8 @@ class MockRuleCreate(BaseModel):
     response_headers: dict = Field(default_factory=dict)
     response_body: Any = None
     delay_ms: int = 0
+    fault_type: Optional[str] = None
+    fault_config: Optional[dict] = None
     condition: Optional[dict] = None
     priority: int = 0
     is_active: bool = True
@@ -83,6 +168,8 @@ class MockRuleUpdate(BaseModel):
     response_headers: Optional[dict] = None
     response_body: Any = None
     delay_ms: Optional[int] = None
+    fault_type: Optional[str] = None
+    fault_config: Optional[dict] = None
     condition: Optional[dict] = None
     priority: Optional[int] = None
     is_active: Optional[bool] = None
@@ -92,7 +179,7 @@ class MockRuleUpdate(BaseModel):
 
 
 @router.post("/projects")
-async def create_project(body: MockProjectCreate, current_user: User = Depends(get_current_active_user)):
+async def create_project(body: MockProjectCreate, current_user: User = Depends(require_permissions("mock:create"))):
     """创建 Mock 项目"""
     async with AsyncSessionLocal() as db:
         # 检查 slug 唯一性
@@ -120,7 +207,7 @@ async def create_project(body: MockProjectCreate, current_user: User = Depends(g
 
 
 @router.get("/projects")
-async def list_projects(page: int = 1, size: int = 20, current_user: User = Depends(get_current_active_user)):
+async def list_projects(page: int = 1, size: int = 20, current_user: User = Depends(require_permissions("mock:read"))):
     """列出 Mock 项目"""
     async with AsyncSessionLocal() as db:
         total_result = await db.execute(
@@ -161,7 +248,7 @@ async def list_projects(page: int = 1, size: int = 20, current_user: User = Depe
 
 
 @router.get("/projects/{project_id}")
-async def get_project(project_id: int, current_user: User = Depends(get_current_active_user)):
+async def get_project(project_id: int, current_user: User = Depends(require_permissions("mock:read"))):
     """获取 Mock 项目详情"""
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -183,7 +270,7 @@ async def get_project(project_id: int, current_user: User = Depends(get_current_
 
 @router.put("/projects/{project_id}")
 async def update_project(
-    project_id: int, body: MockProjectUpdate, current_user: User = Depends(get_current_active_user)
+    project_id: int, body: MockProjectUpdate, current_user: User = Depends(require_permissions("mock:update"))
 ):
     """更新 Mock 项目"""
     async with AsyncSessionLocal() as db:
@@ -212,7 +299,7 @@ async def update_project(
 
 
 @router.delete("/projects/{project_id}")
-async def delete_project(project_id: int, current_user: User = Depends(get_current_active_user)):
+async def delete_project(project_id: int, current_user: User = Depends(require_permissions("mock:delete"))):
     """删除 Mock 项目（级联删除关联的规则和日志）"""
     from sqlalchemy import delete as sa_delete
 
@@ -241,7 +328,10 @@ async def delete_project(project_id: int, current_user: User = Depends(get_curre
 
 
 @router.post("/projects/{project_id}/rules")
-async def create_rule(project_id: int, body: MockRuleCreate, current_user: User = Depends(get_current_active_user)):
+@audit_log("create_rule", "mock_rule", resource_id_param="project_id")
+async def create_rule(
+    project_id: int, body: MockRuleCreate, current_user: User = Depends(require_permissions("mock:create"))
+):
     """创建 Mock 规则"""
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -250,6 +340,9 @@ async def create_rule(project_id: int, body: MockRuleCreate, current_user: User 
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="项目不存在")
 
+        fault_type = _validate_fault_type(body.fault_type)
+        if fault_type is not None or body.fault_config not in (None, {}):
+            await _require_fault_injection_permission(current_user)
         rule = MockRule(
             project_id=project_id,
             method=body.method.upper(),
@@ -260,6 +353,8 @@ async def create_rule(project_id: int, body: MockRuleCreate, current_user: User 
             response_headers=body.response_headers,
             response_body=body.response_body,
             delay_ms=body.delay_ms,
+            fault_type=fault_type,
+            fault_config=_validate_fault_config(fault_type, body.fault_config),
             condition=body.condition,
             priority=body.priority,
             is_active=body.is_active,
@@ -275,7 +370,7 @@ async def list_rules(
     project_id: int,
     page: int = 1,
     size: int = 50,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions("mock:read")),
 ):
     """列出项目的 Mock 规则"""
     async with AsyncSessionLocal() as db:
@@ -309,6 +404,8 @@ async def list_rules(
                 "response_headers": r.response_headers,
                 "response_body": r.response_body,
                 "delay_ms": r.delay_ms,
+                "fault_type": r.fault_type,
+                "fault_config": r.fault_config,
                 "condition": r.condition,
                 "priority": r.priority,
                 "is_active": r.is_active,
@@ -321,11 +418,12 @@ async def list_rules(
 
 
 @router.put("/projects/{project_id}/rules/{rule_id}")
+@audit_log("update_rule", "mock_rule", resource_id_param="rule_id")
 async def update_rule(
     project_id: int,
     rule_id: int,
     body: MockRuleUpdate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions("mock:update")),
 ):
     """更新 Mock 规则"""
     async with AsyncSessionLocal() as db:
@@ -341,7 +439,20 @@ async def update_rule(
         if not rule:
             raise HTTPException(status_code=404, detail="规则不存在")
 
-        for field, value in body.dict(exclude_unset=True).items():
+        updates = body.dict(exclude_unset=True)
+        if "fault_type" in updates or "fault_config" in updates:
+            await _require_fault_injection_permission(current_user)
+        if "fault_type" in updates:
+            updates["fault_type"] = _validate_fault_type(updates["fault_type"])
+        effective_fault_type = updates.get("fault_type", rule.fault_type)
+        if "fault_config" in updates:
+            updates["fault_config"] = _validate_fault_config(effective_fault_type, updates["fault_config"])
+        elif "fault_type" in updates and effective_fault_type is None:
+            updates["fault_config"] = None
+        elif "fault_type" in updates:
+            updates["fault_config"] = _validate_fault_config(effective_fault_type, rule.fault_config)
+
+        for field, value in updates.items():
             if field == "method" and value:
                 value = value.upper()
             setattr(rule, field, value)
@@ -354,7 +465,7 @@ async def update_rule(
 async def delete_rule(
     project_id: int,
     rule_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions("mock:delete")),
 ):
     """删除 Mock 规则"""
     async with AsyncSessionLocal() as db:
@@ -383,7 +494,7 @@ async def list_logs(
     page: int = 1,
     size: int = 50,
     method: Optional[str] = None,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions("mock:read")),
 ):
     """查看 Mock 请求日志"""
     async with AsyncSessionLocal() as db:
@@ -420,6 +531,9 @@ async def list_logs(
                 "response_body": l.response_body,
                 "response_time_ms": l.response_time_ms,
                 "matched_rule_name": l.matched_rule_name,
+                "fault_triggered": l.fault_triggered,
+                "fault_type": l.fault_type,
+                "fault_random_value": l.fault_random_value,
                 "created_at": str(l.created_at),
             }
             for l in logs
@@ -435,7 +549,7 @@ async def list_logs(
 async def import_swagger(
     project_id: int,
     body: dict,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permissions("mock:create")),
 ):
     """从 Swagger 文档导入 Mock 规则"""
     swagger_data = body.get("swagger_data", body)
@@ -581,10 +695,18 @@ async def mock_dynamic_endpoint(request: Request, slug: str, rest_of_path: str):
                 response_body_str,
                 elapsed,
                 rule.name,
+                response_info.get("fault"),
             )
         except Exception as log_exc:
             _logger.warning("Mock log_request failed: %s", log_exc)
 
+        if response_info.get("raw_body") is not None:
+            return PlainTextResponse(
+                status_code=response_info["status"],
+                content=response_info["raw_body"],
+                headers=response_info["headers"],
+                media_type=response_info.get("content_type", "application/json"),
+            )
         return JSONResponse(
             status_code=response_info["status"],
             content=response_info["body"],

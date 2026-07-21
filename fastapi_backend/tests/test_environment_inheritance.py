@@ -122,13 +122,9 @@ class TestInheritanceService:
     """直接测试服务层继承解析逻辑"""
 
     @pytest.mark.asyncio
-    async def test_single_level_inheritance_child_overrides_parent(
-        self, autotest_session_factory
-    ):
+    async def test_single_level_inheritance_child_overrides_parent(self, autotest_session_factory):
         """单层继承：子环境变量覆盖父环境同名变量"""
-        parent = await _create_env(
-            autotest_session_factory, "基础环境", {"host": "prod.example.com", "port": "443"}
-        )
+        parent = await _create_env(autotest_session_factory, "基础环境", {"host": "prod.example.com", "port": "443"})
         child = await _create_env(
             autotest_session_factory,
             "测试环境",
@@ -155,9 +151,7 @@ class TestInheritanceService:
     @pytest.mark.asyncio
     async def test_multi_level_inheritance_a_to_b_to_c(self, autotest_session_factory):
         """多层继承：A(根) → B → C，变量逐层合并"""
-        env_a = await _create_env(
-            autotest_session_factory, "A", {"v1": "a1", "v2": "a2", "shared": "from_a"}
-        )
+        env_a = await _create_env(autotest_session_factory, "A", {"v1": "a1", "v2": "a2", "shared": "from_a"})
         env_b = await _create_env(
             autotest_session_factory,
             "B",
@@ -198,9 +192,7 @@ class TestInheritanceService:
     async def test_cyclic_inheritance_detected(self, autotest_session_factory):
         """循环继承检测：A→B→A 抛出 CyclicInheritanceError"""
         env_a = await _create_env(autotest_session_factory, "A", {"v": "a"})
-        env_b = await _create_env(
-            autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id
-        )
+        env_b = await _create_env(autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id)
         # 直接通过 ORM 构造循环（绕过 validate_parent_id）
         async with autotest_session_factory() as session:
             env_a_obj = await session.get(AutoTestEnvironment, env_a.id)
@@ -217,21 +209,11 @@ class TestInheritanceService:
         """最大深度限制：超过 MAX_INHERITANCE_DEPTH 层抛出 MaxDepthExceededError"""
         # 构造 6 层链：A→B→C→D→E→F，超出 5 层限制
         env_a = await _create_env(autotest_session_factory, "A", {"v": "a"})
-        env_b = await _create_env(
-            autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id
-        )
-        env_c = await _create_env(
-            autotest_session_factory, "C", {"v": "c"}, parent_id=env_b.id
-        )
-        env_d = await _create_env(
-            autotest_session_factory, "D", {"v": "d"}, parent_id=env_c.id
-        )
-        env_e = await _create_env(
-            autotest_session_factory, "E", {"v": "e"}, parent_id=env_d.id
-        )
-        env_f = await _create_env(
-            autotest_session_factory, "F", {"v": "f"}, parent_id=env_e.id
-        )
+        env_b = await _create_env(autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id)
+        env_c = await _create_env(autotest_session_factory, "C", {"v": "c"}, parent_id=env_b.id)
+        env_d = await _create_env(autotest_session_factory, "D", {"v": "d"}, parent_id=env_c.id)
+        env_e = await _create_env(autotest_session_factory, "E", {"v": "e"}, parent_id=env_d.id)
+        env_f = await _create_env(autotest_session_factory, "F", {"v": "f"}, parent_id=env_e.id)
 
         async with autotest_session_factory() as session:
             with pytest.raises(MaxDepthExceededError) as exc_info:
@@ -242,18 +224,10 @@ class TestInheritanceService:
     async def test_max_depth_boundary_ok(self, autotest_session_factory):
         """恰好 5 层（边界）应该正常工作，不抛异常"""
         env_a = await _create_env(autotest_session_factory, "A", {"v": "a"})
-        env_b = await _create_env(
-            autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id
-        )
-        env_c = await _create_env(
-            autotest_session_factory, "C", {"v": "c"}, parent_id=env_b.id
-        )
-        env_d = await _create_env(
-            autotest_session_factory, "D", {"v": "d"}, parent_id=env_c.id
-        )
-        env_e = await _create_env(
-            autotest_session_factory, "E", {"v": "e"}, parent_id=env_d.id
-        )
+        env_b = await _create_env(autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id)
+        env_c = await _create_env(autotest_session_factory, "C", {"v": "c"}, parent_id=env_b.id)
+        env_d = await _create_env(autotest_session_factory, "D", {"v": "d"}, parent_id=env_c.id)
+        env_e = await _create_env(autotest_session_factory, "E", {"v": "e"}, parent_id=env_d.id)
 
         async with autotest_session_factory() as session:
             chain = await get_inheritance_chain(session, env_e.id)
@@ -263,9 +237,7 @@ class TestInheritanceService:
     @pytest.mark.asyncio
     async def test_no_parent_falls_back_to_original_behavior(self, autotest_session_factory):
         """无 parent_id 时回退到原有行为：只返回自身变量"""
-        env = await _create_env(
-            autotest_session_factory, "独立环境", {"host": "localhost", "port": "8080"}
-        )
+        env = await _create_env(autotest_session_factory, "独立环境", {"host": "localhost", "port": "8080"})
 
         async with autotest_session_factory() as session:
             chain = await get_inheritance_chain(session, env.id)
@@ -291,46 +263,30 @@ class TestInheritanceService:
                 await validate_parent_id(session, env_id=env_a.id, parent_id=env_a.id)
 
     @pytest.mark.asyncio
-    async def test_validate_parent_id_rejects_nonexistent_parent(
-        self, autotest_session_factory
-    ):
+    async def test_validate_parent_id_rejects_nonexistent_parent(self, autotest_session_factory):
         """validate_parent_id 拒绝不存在的父环境"""
         async with autotest_session_factory() as session:
             with pytest.raises(EnvironmentNotFoundError):
                 await validate_parent_id(session, env_id=None, parent_id=999999)
 
     @pytest.mark.asyncio
-    async def test_validate_parent_id_rejects_cycle_on_update(
-        self, autotest_session_factory
-    ):
+    async def test_validate_parent_id_rejects_cycle_on_update(self, autotest_session_factory):
         """更新环境时检测会形成循环的 parent_id"""
         env_a = await _create_env(autotest_session_factory, "A", {"v": "a"})
-        env_b = await _create_env(
-            autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id
-        )
+        env_b = await _create_env(autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id)
         # 尝试把 A 的 parent 设为 B，会形成 A→B→A 循环
         async with autotest_session_factory() as session:
             with pytest.raises(CyclicInheritanceError):
                 await validate_parent_id(session, env_id=env_a.id, parent_id=env_b.id)
 
     @pytest.mark.asyncio
-    async def test_validate_parent_id_rejects_exceeding_depth_on_create(
-        self, autotest_session_factory
-    ):
+    async def test_validate_parent_id_rejects_exceeding_depth_on_create(self, autotest_session_factory):
         """创建环境时检测会超出最大深度的 parent_id"""
         env_a = await _create_env(autotest_session_factory, "A", {"v": "a"})
-        env_b = await _create_env(
-            autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id
-        )
-        env_c = await _create_env(
-            autotest_session_factory, "C", {"v": "c"}, parent_id=env_b.id
-        )
-        env_d = await _create_env(
-            autotest_session_factory, "D", {"v": "d"}, parent_id=env_c.id
-        )
-        env_e = await _create_env(
-            autotest_session_factory, "E", {"v": "e"}, parent_id=env_d.id
-        )
+        env_b = await _create_env(autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id)
+        env_c = await _create_env(autotest_session_factory, "C", {"v": "c"}, parent_id=env_b.id)
+        env_d = await _create_env(autotest_session_factory, "D", {"v": "d"}, parent_id=env_c.id)
+        env_e = await _create_env(autotest_session_factory, "E", {"v": "e"}, parent_id=env_d.id)
         # E 已是第 5 层，再以 E 为父创建 F 会超出限制
         async with autotest_session_factory() as session:
             with pytest.raises(MaxDepthExceededError):
@@ -344,13 +300,9 @@ class TestInheritanceAPI:
     """通过 HTTP API 测试继承相关端点"""
 
     @pytest.mark.asyncio
-    async def test_effective_variables_api_returns_source_annotation(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_effective_variables_api_returns_source_annotation(self, autotest_client, autotest_session_factory):
         """effective-variables API 返回合并后变量及来源标注"""
-        parent = await _create_env(
-            autotest_session_factory, "基础环境", {"host": "prod.example.com", "port": "443"}
-        )
+        parent = await _create_env(autotest_session_factory, "基础环境", {"host": "prod.example.com", "port": "443"})
         child = await _create_env(
             autotest_session_factory,
             "测试环境",
@@ -358,9 +310,7 @@ class TestInheritanceAPI:
             parent_id=parent.id,
         )
 
-        resp = autotest_client.get(
-            f"/api/auto-test/environments/{child.id}/effective-variables"
-        )
+        resp = autotest_client.get(f"/api/auto-test/environments/{child.id}/effective-variables")
         assert resp.status_code == 200
         body = resp.json()
         assert body["env_id"] == child.id
@@ -379,21 +329,13 @@ class TestInheritanceAPI:
         assert body["count"] == 3
 
     @pytest.mark.asyncio
-    async def test_inheritance_chain_api_returns_chain(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_inheritance_chain_api_returns_chain(self, autotest_client, autotest_session_factory):
         """inheritance-chain API 返回从根到当前的链路"""
         env_a = await _create_env(autotest_session_factory, "A", {"v": "a"})
-        env_b = await _create_env(
-            autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id
-        )
-        env_c = await _create_env(
-            autotest_session_factory, "C", {"v": "c"}, parent_id=env_b.id
-        )
+        env_b = await _create_env(autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id)
+        env_c = await _create_env(autotest_session_factory, "C", {"v": "c"}, parent_id=env_b.id)
 
-        resp = autotest_client.get(
-            f"/api/auto-test/environments/{env_c.id}/inheritance-chain"
-        )
+        resp = autotest_client.get(f"/api/auto-test/environments/{env_c.id}/inheritance-chain")
         assert resp.status_code == 200
         body = resp.json()
         assert body["env_id"] == env_c.id
@@ -409,13 +351,9 @@ class TestInheritanceAPI:
         assert chain[2]["parent_id"] == env_b.id
 
     @pytest.mark.asyncio
-    async def test_create_environment_with_parent_id(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_create_environment_with_parent_id(self, autotest_client, autotest_session_factory):
         """创建环境时指定 parent_id，响应中应包含 parent_id 与 parent_name"""
-        parent = await _create_env(
-            autotest_session_factory, "父环境", {"k": "v"}
-        )
+        parent = await _create_env(autotest_session_factory, "父环境", {"k": "v"})
 
         resp = autotest_client.post(
             "/api/auto-test/environments",
@@ -433,9 +371,7 @@ class TestInheritanceAPI:
         assert body["parent_name"] == "父环境"
 
     @pytest.mark.asyncio
-    async def test_create_environment_rejects_nonexistent_parent(
-        self, autotest_client
-    ):
+    async def test_create_environment_rejects_nonexistent_parent(self, autotest_client):
         """创建环境时 parent_id 指向不存在的环境应返回 404"""
         resp = autotest_client.post(
             "/api/auto-test/environments",
@@ -451,14 +387,10 @@ class TestInheritanceAPI:
         assert "999999" in body["detail"]
 
     @pytest.mark.asyncio
-    async def test_update_environment_rejects_cyclic_parent(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_update_environment_rejects_cyclic_parent(self, autotest_client, autotest_session_factory):
         """更新环境时设置会形成循环的 parent_id 应返回 400"""
         env_a = await _create_env(autotest_session_factory, "A", {"v": "a"})
-        env_b = await _create_env(
-            autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id
-        )
+        env_b = await _create_env(autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id)
 
         # 尝试把 A 的 parent 设为 B，形成 A→B→A 循环
         resp = autotest_client.put(
@@ -470,23 +402,13 @@ class TestInheritanceAPI:
         assert body["code"] == "cyclic_inheritance"
 
     @pytest.mark.asyncio
-    async def test_update_environment_rejects_exceeding_depth(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_update_environment_rejects_exceeding_depth(self, autotest_client, autotest_session_factory):
         """更新环境时设置会超出最大深度的 parent_id 应返回 400"""
         env_a = await _create_env(autotest_session_factory, "A", {"v": "a"})
-        env_b = await _create_env(
-            autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id
-        )
-        env_c = await _create_env(
-            autotest_session_factory, "C", {"v": "c"}, parent_id=env_b.id
-        )
-        env_d = await _create_env(
-            autotest_session_factory, "D", {"v": "d"}, parent_id=env_c.id
-        )
-        env_e = await _create_env(
-            autotest_session_factory, "E", {"v": "e"}, parent_id=env_d.id
-        )
+        env_b = await _create_env(autotest_session_factory, "B", {"v": "b"}, parent_id=env_a.id)
+        env_c = await _create_env(autotest_session_factory, "C", {"v": "c"}, parent_id=env_b.id)
+        env_d = await _create_env(autotest_session_factory, "D", {"v": "d"}, parent_id=env_c.id)
+        env_e = await _create_env(autotest_session_factory, "E", {"v": "e"}, parent_id=env_d.id)
 
         # 尝试以 E 为父创建 F，应被拒绝
         resp = autotest_client.post(
@@ -501,14 +423,10 @@ class TestInheritanceAPI:
         assert body["code"] == "max_depth_exceeded"
 
     @pytest.mark.asyncio
-    async def test_get_environment_returns_parent_fields(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_get_environment_returns_parent_fields(self, autotest_client, autotest_session_factory):
         """GET /environments/{id} 返回 parent_id 与 parent_name"""
         parent = await _create_env(autotest_session_factory, "父", {"k": "v"})
-        child = await _create_env(
-            autotest_session_factory, "子", {"k2": "v2"}, parent_id=parent.id
-        )
+        child = await _create_env(autotest_session_factory, "子", {"k2": "v2"}, parent_id=parent.id)
 
         resp = autotest_client.get(f"/api/auto-test/environments/{child.id}")
         assert resp.status_code == 200
@@ -517,14 +435,10 @@ class TestInheritanceAPI:
         assert body["parent_name"] == "父"
 
     @pytest.mark.asyncio
-    async def test_list_environments_returns_parent_fields(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_list_environments_returns_parent_fields(self, autotest_client, autotest_session_factory):
         """GET /environments 列表也返回 parent_id / parent_name"""
         parent = await _create_env(autotest_session_factory, "父列表", {"k": "v"})
-        child = await _create_env(
-            autotest_session_factory, "子列表", {"k2": "v2"}, parent_id=parent.id
-        )
+        child = await _create_env(autotest_session_factory, "子列表", {"k2": "v2"}, parent_id=parent.id)
 
         resp = autotest_client.get("/api/auto-test/environments")
         assert resp.status_code == 200
@@ -535,17 +449,11 @@ class TestInheritanceAPI:
         assert envs[parent.id]["parent_name"] is None
 
     @pytest.mark.asyncio
-    async def test_effective_variables_api_no_parent(
-        self, autotest_client, autotest_session_factory
-    ):
+    async def test_effective_variables_api_no_parent(self, autotest_client, autotest_session_factory):
         """无 parent 的环境调用 effective-variables 应返回自身变量且无覆盖"""
-        env = await _create_env(
-            autotest_session_factory, "独立", {"host": "localhost"}
-        )
+        env = await _create_env(autotest_session_factory, "独立", {"host": "localhost"})
 
-        resp = autotest_client.get(
-            f"/api/auto-test/environments/{env.id}/effective-variables"
-        )
+        resp = autotest_client.get(f"/api/auto-test/environments/{env.id}/effective-variables")
         assert resp.status_code == 200
         body = resp.json()
         assert body["count"] == 1
@@ -558,10 +466,10 @@ class TestInheritanceAPI:
     @pytest.mark.asyncio
     async def test_effective_variables_api_not_found(self, autotest_client):
         """不存在的环境 ID 返回 404"""
-        resp = autotest_client.get(
-            "/api/auto-test/environments/999999/effective-variables"
-        )
+        resp = autotest_client.get("/api/auto-test/environments/999999/effective-variables")
         assert resp.status_code == 404
+
+
 @pytest.mark.asyncio
 async def test_inheritance_rejects_parent_owned_by_another_user(autotest_session_factory):
     foreign_parent = await _create_env(

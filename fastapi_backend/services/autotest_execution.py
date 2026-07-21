@@ -299,7 +299,9 @@ async def replace_case_variables(
         "content_type": content_type,
         "payload": payload,
         "assert_rules": assert_rules,
-        "request_config": __import__("fastapi_backend.services.autotest_request_config", fromlist=["reveal_request_config"]).reveal_request_config(getattr(case, "request_config", None)),
+        "request_config": __import__(
+            "fastapi_backend.services.autotest_request_config", fromlist=["reveal_request_config"]
+        ).reveal_request_config(getattr(case, "request_config", None)),
     }
 
 
@@ -336,7 +338,6 @@ async def quick_run_case(
         params = override_params if override_params is not None else case_data.get("params", {})
         payload = case_data["payload"]
         body_type = case_data.get("body_type", "none")
-        content_type = case_data.get("content_type", "application/json")
 
         # 处理 payload 为字符串的情况
         if isinstance(payload, str) and payload:
@@ -377,9 +378,7 @@ async def quick_run_case(
         from fastapi_backend.services.autotest_request_service import execute_http_request
 
         request_config = dict(case_data.get("request_config") or {})
-        request_config.setdefault(
-            "timeout_ms", int(settings.AUTOTEST_QUICK_RUN_TIMEOUT_SECONDS * 1000)
-        )
+        request_config.setdefault("timeout_ms", int(settings.AUTOTEST_QUICK_RUN_TIMEOUT_SECONDS * 1000))
         transport_result = await execute_http_request(
             method=method,
             url=url,
@@ -394,6 +393,7 @@ async def quick_run_case(
         )
         if transport_result.get("status_code") is None:
             from fastapi_backend.services.autotest_request_config import sanitize_request_headers, sanitize_request_url
+
             return {
                 "success": False,
                 "status_code": 408 if "超时" in str(transport_result.get("error")) else 503,
@@ -415,7 +415,9 @@ async def quick_run_case(
         response_headers = transport_result.get("_raw_headers") or transport_result.get("headers") or {}
         public_response_headers = transport_result.get("headers") or {}
         public_request = transport_result.get("request") or {}
-        response_text = response_data if isinstance(response_data, str) else json.dumps(response_data, ensure_ascii=False)
+        response_text = (
+            response_data if isinstance(response_data, str) else json.dumps(response_data, ensure_ascii=False)
+        )
         response_status = transport_result["status_code"]
 
         # 执行断言（不再提前拦截 status_code >= 400，让断言引擎根据用户配置判断）
@@ -436,7 +438,9 @@ async def quick_run_case(
                 from fastapi_backend.services.script_engine import ScriptEngine
 
                 script_ctx = ScriptEngine.build_context(
-                    {}, {}, user_id,
+                    {},
+                    {},
+                    user_id,
                     response_body=response_data,
                     status_code=response_status,
                     response_headers=response_headers,

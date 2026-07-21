@@ -123,9 +123,7 @@ async def _create_case(
         return case
 
 
-async def _update_case_via_orm(
-    session_factory, case_id: int, **fields
-) -> AutoTestCase:
+async def _update_case_via_orm(session_factory, case_id: int, **fields) -> AutoTestCase:
     """直接通过 ORM 更新用例字段，模拟用户编辑后保存"""
     async with session_factory() as session:
         case = await session.get(AutoTestCase, case_id)
@@ -143,9 +141,7 @@ class TestCaseVersionCRUD:
     """版本管理核心 CRUD 测试"""
 
     @pytest.mark.asyncio
-    async def test_create_version_with_auto_number(
-        self, version_client, version_session_factory
-    ):
+    async def test_create_version_with_auto_number(self, version_client, version_session_factory):
         """创建版本：不指定版本号时自动生成 v1"""
         case = await _create_case(version_session_factory)
         resp = version_client.post(
@@ -164,9 +160,7 @@ class TestCaseVersionCRUD:
         assert body["snapshot"]["payload"]["username"] == "admin"
 
     @pytest.mark.asyncio
-    async def test_create_version_with_custom_number(
-        self, version_client, version_session_factory
-    ):
+    async def test_create_version_with_custom_number(self, version_client, version_session_factory):
         """创建版本：使用自定义版本号"""
         case = await _create_case(version_session_factory)
         resp = version_client.post(
@@ -179,26 +173,20 @@ class TestCaseVersionCRUD:
         assert body["is_current"] is True
 
     @pytest.mark.asyncio
-    async def test_create_version_auto_increment_sequence(
-        self, version_client, version_session_factory
-    ):
+    async def test_create_version_auto_increment_sequence(self, version_client, version_session_factory):
         """自动版本号递增：连续创建应得到 v1, v2, v3"""
         case = await _create_case(version_session_factory)
 
         numbers = []
         for _ in range(3):
-            resp = version_client.post(
-                f"/api/auto-test/cases/{case.id}/versions", json={}
-            )
+            resp = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={})
             assert resp.status_code == 201
             numbers.append(resp.json()["version_number"])
 
         assert numbers == ["v1", "v2", "v3"]
 
     @pytest.mark.asyncio
-    async def test_list_versions_ordered_desc(
-        self, version_client, version_session_factory
-    ):
+    async def test_list_versions_ordered_desc(self, version_client, version_session_factory):
         """获取版本列表：按创建时间倒序，最新版本在前"""
         case = await _create_case(version_session_factory)
         # 创建 3 个版本
@@ -223,19 +211,13 @@ class TestCaseVersionCRUD:
         assert "snapshot" not in body["items"][0]
 
     @pytest.mark.asyncio
-    async def test_get_version_detail_with_snapshot(
-        self, version_client, version_session_factory
-    ):
+    async def test_get_version_detail_with_snapshot(self, version_client, version_session_factory):
         """获取版本详情：包含完整 snapshot 数据"""
         case = await _create_case(version_session_factory, payload={"username": "alice"})
-        create_resp = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        )
+        create_resp = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={})
         version_id = create_resp.json()["id"]
 
-        resp = version_client.get(
-            f"/api/auto-test/cases/{case.id}/versions/{version_id}"
-        )
+        resp = version_client.get(f"/api/auto-test/cases/{case.id}/versions/{version_id}")
         assert resp.status_code == 200
         body = resp.json()
         assert body["id"] == version_id
@@ -243,14 +225,10 @@ class TestCaseVersionCRUD:
         assert body["snapshot"]["payload"]["username"] == "alice"
 
     @pytest.mark.asyncio
-    async def test_get_nonexistent_version_returns_404(
-        self, version_client, version_session_factory
-    ):
+    async def test_get_nonexistent_version_returns_404(self, version_client, version_session_factory):
         """获取不存在的版本返回 404"""
         case = await _create_case(version_session_factory)
-        resp = version_client.get(
-            f"/api/auto-test/cases/{case.id}/versions/999999"
-        )
+        resp = version_client.get(f"/api/auto-test/cases/{case.id}/versions/999999")
         assert resp.status_code == 404
 
 
@@ -261,9 +239,7 @@ class TestCaseVersionRestore:
     """版本恢复测试"""
 
     @pytest.mark.asyncio
-    async def test_restore_version_writes_back_snapshot(
-        self, version_client, version_session_factory
-    ):
+    async def test_restore_version_writes_back_snapshot(self, version_client, version_session_factory):
         """恢复版本：将快照写回用例，覆盖当前数据"""
         case = await _create_case(
             version_session_factory,
@@ -296,9 +272,7 @@ class TestCaseVersionRestore:
         assert case_resp.json()["url"] == "/api/v2/login"
 
         # 恢复到 v1
-        restore_resp = version_client.put(
-            f"/api/auto-test/cases/{case.id}/versions/{v1_id}/restore"
-        )
+        restore_resp = version_client.put(f"/api/auto-test/cases/{case.id}/versions/{v1_id}/restore")
         assert restore_resp.status_code == 200
         body = restore_resp.json()
         assert body["is_current"] is True
@@ -316,28 +290,24 @@ class TestCaseVersionRestore:
         assert items[v2_id]["is_current"] is False
 
     @pytest.mark.asyncio
-    async def test_restore_updates_current_version_field(
-        self, version_client, version_session_factory
-    ):
+    async def test_restore_updates_current_version_field(self, version_client, version_session_factory):
         """恢复版本：AutoTestCase.current_version 冗余字段同步更新"""
         case = await _create_case(version_session_factory)
         v1 = version_client.post(
             f"/api/auto-test/cases/{case.id}/versions",
             json={"version_number": "1.0.0"},
         ).json()
-        v2 = version_client.post(
+        version_client.post(
             f"/api/auto-test/cases/{case.id}/versions",
             json={"version_number": "2.0.0"},
-        ).json()
+        )
 
         # 此时 current_version 应为 2.0.0
         list_resp = version_client.get(f"/api/auto-test/cases/{case.id}/versions")
         assert list_resp.json()["current_version"] == "2.0.0"
 
         # 恢复到 1.0.0
-        version_client.put(
-            f"/api/auto-test/cases/{case.id}/versions/{v1['id']}/restore"
-        )
+        version_client.put(f"/api/auto-test/cases/{case.id}/versions/{v1['id']}/restore")
 
         list_resp = version_client.get(f"/api/auto-test/cases/{case.id}/versions")
         assert list_resp.json()["current_version"] == "1.0.0"
@@ -350,42 +320,28 @@ class TestCaseVersionDelete:
     """版本删除测试"""
 
     @pytest.mark.asyncio
-    async def test_cannot_delete_current_version(
-        self, version_client, version_session_factory
-    ):
+    async def test_cannot_delete_current_version(self, version_client, version_session_factory):
         """不能删除当前版本：返回 400"""
         case = await _create_case(version_session_factory)
-        create_resp = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        )
+        create_resp = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={})
         version_id = create_resp.json()["id"]
         # 刚创建的版本为当前版本
         assert create_resp.json()["is_current"] is True
 
-        resp = version_client.delete(
-            f"/api/auto-test/cases/{case.id}/versions/{version_id}"
-        )
+        resp = version_client.delete(f"/api/auto-test/cases/{case.id}/versions/{version_id}")
         assert resp.status_code == 400
         assert "当前版本" in resp.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_delete_non_current_version_succeeds(
-        self, version_client, version_session_factory
-    ):
+    async def test_delete_non_current_version_succeeds(self, version_client, version_session_factory):
         """删除非当前版本：成功返回 204"""
         case = await _create_case(version_session_factory)
-        v1 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
-        v2 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
+        v1 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
+        v2 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
         # v2 为当前版本，v1 非当前
         assert v2["is_current"] is True
 
-        resp = version_client.delete(
-            f"/api/auto-test/cases/{case.id}/versions/{v1['id']}"
-        )
+        resp = version_client.delete(f"/api/auto-test/cases/{case.id}/versions/{v1['id']}")
         assert resp.status_code == 204
 
         # 确认已删除
@@ -394,21 +350,13 @@ class TestCaseVersionDelete:
         assert list_resp.json()["items"][0]["id"] == v2["id"]
 
     @pytest.mark.asyncio
-    async def test_delete_last_version_clears_current_version(
-        self, version_client, version_session_factory
-    ):
+    async def test_delete_last_version_clears_current_version(self, version_client, version_session_factory):
         """删除最后一个版本后，current_version 冗余字段被清空"""
         case = await _create_case(version_session_factory)
-        v1 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
-        v2 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
+        v1 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
+        v2 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
         # 恢复到 v1，使 v2 不再是当前版本
-        version_client.put(
-            f"/api/auto-test/cases/{case.id}/versions/{v1['id']}/restore"
-        )
+        version_client.put(f"/api/auto-test/cases/{case.id}/versions/{v1['id']}/restore")
 
         # 删除 v2（非当前）
         version_client.delete(f"/api/auto-test/cases/{case.id}/versions/{v2['id']}")
@@ -426,17 +374,11 @@ class TestCaseVersionDiff:
     """版本对比（深度 diff）测试"""
 
     @pytest.mark.asyncio
-    async def test_diff_identical_versions(
-        self, version_client, version_session_factory
-    ):
+    async def test_diff_identical_versions(self, version_client, version_session_factory):
         """对比完全相同的版本：is_identical=True，diffs 为空"""
         case = await _create_case(version_session_factory)
-        v1 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
-        v2 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
+        v1 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
+        v2 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
 
         resp = version_client.get(
             f"/api/auto-test/cases/{case.id}/versions/diff",
@@ -449,20 +391,14 @@ class TestCaseVersionDiff:
         assert body["diffs"] == []
 
     @pytest.mark.asyncio
-    async def test_diff_modified_scalar_field(
-        self, version_client, version_session_factory
-    ):
+    async def test_diff_modified_scalar_field(self, version_client, version_session_factory):
         """对比：标量字段修改"""
         case = await _create_case(version_session_factory, url="/api/v1/login")
-        v1 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
+        v1 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
 
         # 修改 url
         await _update_case_via_orm(version_session_factory, case.id, url="/api/v2/login")
-        v2 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
+        v2 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
 
         resp = version_client.get(
             f"/api/auto-test/cases/{case.id}/versions/diff",
@@ -476,17 +412,13 @@ class TestCaseVersionDiff:
         assert url_diff["new_value"] == "/api/v2/login"
 
     @pytest.mark.asyncio
-    async def test_diff_added_and_removed_nested_keys(
-        self, version_client, version_session_factory
-    ):
+    async def test_diff_added_and_removed_nested_keys(self, version_client, version_session_factory):
         """对比：嵌套对象新增/删除字段"""
         case = await _create_case(
             version_session_factory,
             payload={"username": "admin", "password": "123"},
         )
-        v1 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
+        v1 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
 
         # 修改 payload：删除 password，新增 token
         await _update_case_via_orm(
@@ -494,9 +426,7 @@ class TestCaseVersionDiff:
             case.id,
             payload={"username": "admin", "token": "abc123"},
         )
-        v2 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
+        v2 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
 
         resp = version_client.get(
             f"/api/auto-test/cases/{case.id}/versions/diff",
@@ -516,19 +446,13 @@ class TestCaseVersionDiff:
         assert diffs["payload.token"]["new_value"] == "abc123"
 
     @pytest.mark.asyncio
-    async def test_diff_array_length_change(
-        self, version_client, version_session_factory
-    ):
+    async def test_diff_array_length_change(self, version_client, version_session_factory):
         """对比：数组长度变化（新增/删除元素）"""
         case = await _create_case(
             version_session_factory,
-            assert_rules=[
-                {"target": "status_code", "operator": "==", "expected": "200"}
-            ],
+            assert_rules=[{"target": "status_code", "operator": "==", "expected": "200"}],
         )
-        v1 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
+        v1 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
 
         # 增加一条断言
         await _update_case_via_orm(
@@ -539,9 +463,7 @@ class TestCaseVersionDiff:
                 {"target": "response_body", "operator": "contains", "expected": "ok"},
             ],
         )
-        v2 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
+        v2 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
 
         resp = version_client.get(
             f"/api/auto-test/cases/{case.id}/versions/diff",
@@ -553,14 +475,10 @@ class TestCaseVersionDiff:
         assert any("assert_rules[1]" in d["field"] for d in added)
 
     @pytest.mark.asyncio
-    async def test_diff_same_version_rejected(
-        self, version_client, version_session_factory
-    ):
+    async def test_diff_same_version_rejected(self, version_client, version_session_factory):
         """对比同一版本：返回 400"""
         case = await _create_case(version_session_factory)
-        v1 = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        ).json()
+        v1 = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={}).json()
 
         resp = version_client.get(
             f"/api/auto-test/cases/{case.id}/versions/diff",
@@ -576,9 +494,7 @@ class TestCaseVersionUniqueness:
     """版本号唯一性约束测试"""
 
     @pytest.mark.asyncio
-    async def test_duplicate_version_number_returns_409(
-        self, version_client, version_session_factory
-    ):
+    async def test_duplicate_version_number_returns_409(self, version_client, version_session_factory):
         """同一 case 下重复版本号：返回 409"""
         case = await _create_case(version_session_factory)
         resp1 = version_client.post(
@@ -595,9 +511,7 @@ class TestCaseVersionUniqueness:
         assert "1.0.0" in resp2.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_same_version_number_across_different_cases_allowed(
-        self, version_client, version_session_factory
-    ):
+    async def test_same_version_number_across_different_cases_allowed(self, version_client, version_session_factory):
         """不同 case 可以使用相同版本号"""
         case1 = await _create_case(version_session_factory, name="用例A")
         case2 = await _create_case(version_session_factory, name="用例B")
@@ -621,30 +535,18 @@ class TestCaseVersionAccessControl:
     """跨用户访问控制测试"""
 
     @pytest.mark.asyncio
-    async def test_cannot_access_other_users_case_versions(
-        self, version_client, version_session_factory
-    ):
+    async def test_cannot_access_other_users_case_versions(self, version_client, version_session_factory):
         """无法访问他人用例的版本列表：返回 404"""
         # 创建他人用例（user_id=2）
-        other_case = await _create_case(
-            version_session_factory, name="他人用例", user_id=2
-        )
-        resp = version_client.get(
-            f"/api/auto-test/cases/{other_case.id}/versions"
-        )
+        other_case = await _create_case(version_session_factory, name="他人用例", user_id=2)
+        resp = version_client.get(f"/api/auto-test/cases/{other_case.id}/versions")
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_cannot_create_version_for_other_users_case(
-        self, version_client, version_session_factory
-    ):
+    async def test_cannot_create_version_for_other_users_case(self, version_client, version_session_factory):
         """无法为他人用例创建版本：返回 404"""
-        other_case = await _create_case(
-            version_session_factory, name="他人用例", user_id=2
-        )
-        resp = version_client.post(
-            f"/api/auto-test/cases/{other_case.id}/versions", json={}
-        )
+        other_case = await _create_case(version_session_factory, name="他人用例", user_id=2)
+        resp = version_client.post(f"/api/auto-test/cases/{other_case.id}/versions", json={})
         assert resp.status_code == 404
 
 
@@ -655,9 +557,7 @@ class TestCaseVersionBackwardCompat:
     """向后兼容测试"""
 
     @pytest.mark.asyncio
-    async def test_first_save_becomes_v1(
-        self, version_client, version_session_factory
-    ):
+    async def test_first_save_becomes_v1(self, version_client, version_session_factory):
         """现有用例无版本时，首次保存版本作为 v1"""
         case = await _create_case(version_session_factory)
         # 用例初始 current_version 为 None
@@ -666,9 +566,7 @@ class TestCaseVersionBackwardCompat:
         assert list_resp.json()["current_version"] is None
 
         # 首次保存版本
-        create_resp = version_client.post(
-            f"/api/auto-test/cases/{case.id}/versions", json={}
-        )
+        create_resp = version_client.post(f"/api/auto-test/cases/{case.id}/versions", json={})
         assert create_resp.status_code == 201
         assert create_resp.json()["version_number"] == "v1"
         assert create_resp.json()["is_current"] is True
