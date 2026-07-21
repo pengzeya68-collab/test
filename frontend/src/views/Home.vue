@@ -2,24 +2,24 @@
   <div class="home-page">
     <div class="hero-card">
       <div>
-        <div class="eyebrow">桌面版已恢复</div>
-        <h1>UI 自动化工作台</h1>
-        <p>现在可以直接进入 UI 自动化模块，管理用例、编辑步骤、保存版本并执行本地回放。</p>
+        <div class="eyebrow">TestMaster 测试工程师成长平台</div>
+        <h1>测试学习与实践平台</h1>
+        <p>围绕学习路径、实战习题、测试工具和自动化能力，持续提升测试技能。</p>
       </div>
       <div class="hero-actions">
-        <el-button type="primary" size="large" @click="$router.push('/ui-automation/cases')">进入 UI 自动化</el-button>
-        <el-button size="large" @click="$router.push('/auto-test')">查看工作台</el-button>
+        <el-button type="primary" size="large" @click="$router.push('/learning-paths')">开始学习</el-button>
+        <el-button size="large" @click="$router.push('/tools')">测试工具</el-button>
       </div>
     </div>
 
     <div class="cards">
       <el-card shadow="hover">
-        <h3>你现在可以做什么</h3>
-        <p>创建 UI 用例，配置基础 URL，维护执行步骤，查看运行记录和版本历史。</p>
+        <h3>系统化学习</h3>
+        <p>从测试基础到自动化实践，按学习路径循序提升，并通过习题巩固知识。</p>
       </el-card>
       <el-card shadow="hover">
-        <h3>当前修复策略</h3>
-        <p>先恢复最关键的桌面自动化能力，避免学习类页面乱码继续影响主流程。</p>
+        <h3>测试实践工具</h3>
+        <p>使用接口、场景、UI 自动化、数据与性能工具，把测试能力落到真实项目中。</p>
       </el-card>
     </div>
   </div>
