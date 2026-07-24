@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { persistentDesktopPassword, readLocalBackendCredentials, resolveDesktopJMeterRuntime } from '../src/main/backend-service';
+import {
+  persistentDesktopPassword,
+  readLocalBackendCredentials,
+  resolveDesktopJMeterRuntime,
+  resolveLocalBackendPort,
+} from '../src/main/backend-service';
 
 describe('bundled local backend credentials', () => {
   it('creates a stable local-only password and reads it back', () => {
@@ -27,6 +32,18 @@ describe('bundled local backend credentials', () => {
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('bundled local backend port', () => {
+  it('uses the default production loopback port without an override', () => {
+    expect(resolveLocalBackendPort({})).toBe(5001);
+  });
+
+  it('accepts a valid isolated desktop port and rejects invalid values', () => {
+    expect(resolveLocalBackendPort({ TESTMASTER_DESKTOP_BACKEND_PORT: '5501' })).toBe(5501);
+    expect(resolveLocalBackendPort({ TESTMASTER_DESKTOP_BACKEND_PORT: '80' })).toBe(5001);
+    expect(resolveLocalBackendPort({ TESTMASTER_DESKTOP_BACKEND_PORT: 'not-a-port' })).toBe(5001);
   });
 });
 

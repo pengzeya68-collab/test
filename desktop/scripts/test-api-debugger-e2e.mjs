@@ -93,8 +93,20 @@ try {
   // Regression for the timeout control: the UI value must reach request_config.timeout_ms.
   await urlInput.fill(`${origin}/slow`)
   await timeoutInput.fill('1')
+  const timeoutRequest = page.waitForRequest(request => {
+    if (!request.url().includes('/api/auto-test/send') || request.method() !== 'POST') return false
+    try {
+      return request.postDataJSON()?.url === `${origin}/slow`
+    } catch {
+      return false
+    }
+  }, { timeout: 10000 })
   const timeoutStarted = Date.now()
   await send(page)
+  const timeoutPayload = timeoutRequest ? await timeoutRequest : null
+  if (timeoutPayload?.postDataJSON()?.request_config?.timeout_ms !== 1000) {
+    throw new Error(`DEBUGGER_TIMEOUT_NOT_SERIALIZED:${JSON.stringify(timeoutPayload?.postDataJSON()?.request_config)}`)
+  }
   await page.getByText(/超时|timeout/i).first().waitFor({ timeout: 6000 })
   if (Date.now() - timeoutStarted > 1900) throw new Error('DEBUGGER_TIMEOUT_WAS_NOT_APPLIED')
 

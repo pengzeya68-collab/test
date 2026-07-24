@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const HEALTH_URL = 'http://127.0.0.1:5001/api/ui-automation/health';
+const DEFAULT_BACKEND_PORT = 5001;
 let backendProcess: ChildProcess | null = null;
 
 interface DesktopJMeterRuntime {
@@ -12,6 +12,24 @@ interface DesktopJMeterRuntime {
   JMETER_HOME?: string;
   JMETER_BIN?: string;
   JMETER_REPORT_DIR: string;
+}
+
+/**
+ * Keep normal installations on the conventional loopback port while allowing
+ * isolated support and acceptance launches to avoid attaching to an older
+ * desktop process that is still listening on 5001.
+ */
+export function resolveLocalBackendPort(environment: NodeJS.ProcessEnv = process.env): number {
+  const raw = environment.TESTMASTER_DESKTOP_BACKEND_PORT || environment.TESTMASTER_BACKEND_PORT;
+  if (!raw) return DEFAULT_BACKEND_PORT;
+  const port = Number(raw);
+  return Number.isInteger(port) && port >= 1024 && port <= 65535
+    ? port
+    : DEFAULT_BACKEND_PORT;
+}
+
+function localHealthUrl(environment: NodeJS.ProcessEnv = process.env): string {
+  return `http://127.0.0.1:${resolveLocalBackendPort(environment)}/api/ui-automation/health`;
 }
 
 function jmeterExecutableName(platform = process.platform): string {
@@ -88,7 +106,7 @@ export function getLocalBackendCredentials(): { username: string; password: stri
 
 async function isHealthy(): Promise<boolean> {
   try {
-    const response = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(1500) });
+    const response = await fetch(localHealthUrl(), { signal: AbortSignal.timeout(1500) });
     if (!response.ok) return false;
     const body = await response.json() as { status?: string; enabled?: boolean };
     return body.status === 'ok' && body.enabled === true;
@@ -144,6 +162,7 @@ export async function ensureLocalBackend(): Promise<{ ready: boolean; managed: b
     env: {
       ...process.env,
       DATABASE_URL: `sqlite:///${databasePath}`,
+      TESTMASTER_BACKEND_PORT: String(resolveLocalBackendPort()),
       SECRET_KEY: persistentSecret(dataDir, '.service-secret'),
       ADMIN_SECRET_KEY: persistentSecret(dataDir, '.admin-secret'),
       ADMIN_PASSWORD: desktopPassword,

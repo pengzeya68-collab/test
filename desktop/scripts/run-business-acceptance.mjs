@@ -10,6 +10,8 @@ await rm(profile, { recursive: true, force: true })
 await mkdir(path.dirname(resultPath), { recursive: true })
 
 const packagedExe = process.env.TESTMASTER_PACKAGED_EXE
+const localBackendPort = Number(process.env.TESTMASTER_DESKTOP_BACKEND_PORT || '5001')
+const localBackendUrl = `http://127.0.0.1:${localBackendPort}`
 const launchOptions = packagedExe
   ? { executablePath: packagedExe, args: ['--remote-debugging-port=9333', `--user-data-dir=${profile}`] }
   : { args: [root, '--remote-debugging-port=9333', `--user-data-dir=${profile}`] }
@@ -25,6 +27,16 @@ const pageErrors = []
 page.on('pageerror', error => pageErrors.push(error.message))
 
 try {
+  // firstWindow() resolves as soon as Electron creates the BrowserWindow, not
+  // when Vue has mounted the login form. Wait for the rendered page boundary
+  // before locating form controls so a slow cold start cannot make acceptance
+  // results flaky.
+  await page.getByTestId('desktop-login-page').waitFor({ state: 'visible', timeout: 45000 })
+  // An isolated packaged run must connect to its own bundled backend rather
+  // than silently reusing a normal desktop instance on the default port.
+  const serverInput = page.getByLabel('服务地址')
+  await serverInput.fill(localBackendUrl)
+  await serverInput.press('Tab')
   await page.getByLabel('用户名').fill('admin')
   const loginButton = page.getByRole('button', { name: '登录', exact: true })
   await loginButton.waitFor({ state: 'visible', timeout: 45000 })
