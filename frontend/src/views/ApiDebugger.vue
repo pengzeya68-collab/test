@@ -300,7 +300,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Right, Delete, Clock, Timer, MagicStick, DocumentCopy, DataAnalysis, Document, Plus, Search, Edit, FullScreen, Upload } from '@element-plus/icons-vue'
+import { Right, Delete, Clock, MagicStick, DocumentCopy, DataAnalysis, Plus, Search, Edit, FullScreen, Upload } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import HelpDrawer from '@/components/HelpDrawer.vue'
 import BaseSplitter from '@/components/base/BaseSplitter.vue'
@@ -322,7 +322,7 @@ const applyLayoutPreset = (preset) => {
   }
   const width = presets[preset] ?? 560
   requestPanelWidth.value = Math.max(320, Math.min(960, width))
-  try { localStorage.setItem('tm-apidebugger-panel-width', String(requestPanelWidth.value)) } catch {}
+  try { localStorage.setItem('tm-apidebugger-panel-width', String(requestPanelWidth.value)) } catch (error) { console.warn('保存面板宽度失败', error) }
   ElMessage?.success?.(`布局已切换：请求面板 ${requestPanelWidth.value}px`)
 }
 
@@ -333,6 +333,14 @@ const emit = defineEmits(['case-saved'])
 
 const isFullscreen = ref(false)
 const debugEnvId = ref(null)
+const loadedEnvironments = ref([])
+// The web workspace supplies this prop, while the desktop router renders this
+// page directly. Keep both entry points working instead of leaving a blank
+// selector in the desktop application.
+const environmentList = computed(() => {
+  const provided = Array.isArray(props.environmentList) ? props.environmentList : []
+  return provided.length > 0 ? provided : loadedEnvironments.value
+})
 const debugForm = ref({
   method: 'GET', url: '', headers: [], body: '', formData: [],
   bodyType: 'json', timeout: 5, params: []
@@ -360,8 +368,15 @@ const handleCurlImport = (parsedData) => {
   if (!parsedData) return
   debugForm.value.method = parsedData.method || 'GET'
   debugForm.value.url = parsedData.url || ''
-  debugForm.value.body = parsedData.body || ''
-  debugForm.value.bodyType = 'json'
+  const isFormData = parsedData.body_type === 'form-data'
+  const importedBody = parsedData.body
+  debugForm.value.bodyType = isFormData ? 'form-data' : 'json'
+  debugForm.value.body = isFormData || importedBody == null
+    ? ''
+    : (typeof importedBody === 'string' ? importedBody : JSON.stringify(importedBody, null, 2))
+  debugForm.value.formData = isFormData && importedBody && typeof importedBody === 'object'
+    ? Object.entries(importedBody).map(([key, value]) => ({ key, value: String(value) }))
+    : []
   if (parsedData.headers && typeof parsedData.headers === 'object') {
     debugForm.value.headers = Object.entries(parsedData.headers).map(([key, value]) => ({ key, value: String(value) }))
   }
@@ -443,7 +458,11 @@ const sendDebugRequest = async () => {
       body: debugForm.value.bodyType === 'form-data'
         ? Object.fromEntries((debugForm.value.formData || []).filter(item => item.key).map(item => [replaceVariables(item.key, varsArray), replaceVariables(item.value, varsArray)]))
         : (debugForm.value.bodyType === 'json' && !bodyText.trim() ? null : bodyText),
-      body_type: debugForm.value.bodyType
+      body_type: debugForm.value.bodyType,
+      // The editor exposes seconds while the execution contract uses milliseconds.
+      // Keep it in request_config so the backend applies it rather than silently
+      // falling back to the 30-second default.
+      request_config: { timeout_ms: Math.round(debugForm.value.timeout * 1000) }
     }
     if (debugEnvId.value) payload.env_id = debugEnvId.value
     debugRequestDetails.value = { method: debugForm.value.method, url: replaceVariables(debugForm.value.url, varsArray), headers: headersObj, params: paramsObj, body: payload.body, bodyType: debugForm.value.bodyType, timeout: debugForm.value.timeout }
@@ -522,6 +541,18 @@ const saveToApiLibrary = async () => {
 }
 
 const loadApiGroups = async () => { try { const res = await autoTestRequest.get('/auto-test/groups'); apiGroups.value = res || [] } catch (error) { console.error('加载分组失败', error) } }
+
+const loadEnvironments = async () => {
+  try {
+    const res = await autoTestRequest.get('/auto-test/environments')
+    loadedEnvironments.value = Array.isArray(res) ? res : []
+  } catch (error) {
+    // An unavailable environment service must not block ordinary request
+    // debugging, but retain an empty list rather than stale data.
+    loadedEnvironments.value = []
+    console.error('加载环境列表失败', error)
+  }
+}
 
 const confirmSaveToApiLibrary = async () => {
   if (!apiLibraryForm.value.name) { ElMessage.warning('请输入接口名称'); return }
@@ -621,7 +652,10 @@ watch(() => variableSearch.value, (search) => {
   else filteredVariables.value = variables.value.filter(v => v.name.toLowerCase().includes(search.toLowerCase()) || (v.description && v.description.toLowerCase().includes(search.toLowerCase())))
 })
 
-onMounted(() => { document.addEventListener('fullscreenchange', handleFullscreenChange) })
+onMounted(() => {
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  loadEnvironments()
+})
 onUnmounted(() => { document.removeEventListener('fullscreenchange', handleFullscreenChange) })
 </script>
 

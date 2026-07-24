@@ -9,7 +9,7 @@
         </el-tag>
       </div>
       <div class="panel-actions">
-        <el-button size="small" @click="handleRunDataDriven" :disabled="datasetRows.length === 0">
+        <el-button size="small" @click="handleRunDataDriven" :disabled="datasetRows.length === 0" :loading="dataDrivenRunning">
           <el-icon><VideoPlay /></el-icon>
           数据驱动执行
         </el-button>
@@ -179,9 +179,12 @@ const datasetRows = ref([])
 const fileInputRef = ref(null)
 const dataDrivenResultDialogVisible = ref(false)
 const dataDrivenResult = ref(null)
+const dataDrivenRunning = ref(false)
 let datasetSaveTimer = null
 let datasetDirty = false
 let datasetSaving = false
+let dataDrivenPollTimer = null
+let dataDrivenPollController = null
 
 const getMethodType = (method) => {
   const types = { GET: 'success', POST: 'warning', PUT: 'primary', DELETE: 'danger', PATCH: 'info' }
@@ -214,7 +217,7 @@ watch(
   { immediate: true }
 )
 
-const loadDataset = async () => {
+async function loadDataset() {
   try {
     const res = await autoTestRequest.get(`/auto-test/scenarios/${props.scenarioId}/dataset`)
     if (res && res.data_matrix) {
@@ -407,21 +410,70 @@ const formatDataRow = (dataRow) => {
   return Object.entries(dataRow).map(([k, v]) => `${k}=${v}`).join(', ')
 }
 
+const stopDataDrivenPolling = () => {
+  if (dataDrivenPollTimer) {
+    clearInterval(dataDrivenPollTimer)
+    dataDrivenPollTimer = null
+  }
+  if (dataDrivenPollController) {
+    dataDrivenPollController.abort()
+    dataDrivenPollController = null
+  }
+}
+
+const completeDataDrivenRun = (result) => {
+  stopDataDrivenPolling()
+  dataDrivenRunning.value = false
+  dataDrivenResult.value = result
+  dataDrivenResultDialogVisible.value = true
+  emit('run-data-driven', result)
+}
+
+const pollDataDrivenTask = (taskId) => {
+  stopDataDrivenPolling()
+  dataDrivenPollController = new AbortController()
+  const signal = dataDrivenPollController.signal
+  dataDrivenPollTimer = setInterval(async () => {
+    try {
+      const task = await autoTestRequest.get(`/auto-test/tasks/${taskId}`, { signal })
+      const state = String(task?.status || '').toLowerCase()
+      if (state === 'completed' || state === 'success') {
+        completeDataDrivenRun(task.result || task)
+      } else if (state === 'failed' || state === 'failure' || state === 'revoked' || state === 'cancelled') {
+        stopDataDrivenPolling()
+        dataDrivenRunning.value = false
+        ElMessage.error('数据驱动执行失败: ' + (task.error || task.info || '未知错误'))
+      }
+    } catch (error) {
+      if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
+      stopDataDrivenPolling()
+      dataDrivenRunning.value = false
+      ElMessage.error('查询数据驱动执行状态失败: ' + (error.response?.data?.detail || error.message))
+    }
+  }, 800)
+}
+
 const handleRunDataDriven = async () => {
   if (datasetRows.value.length === 0) {
     ElMessage.warning('请先添加数据')
     return
   }
+  if (dataDrivenRunning.value) return
   try {
     // 确保数据集已保存，避免执行旧数据
     await flushDatasetSave()
+    dataDrivenRunning.value = true
     const payload = {}
     if (props.envId) payload.env_id = props.envId
     const res = await autoTestRequest.post(`/auto-test/scenarios/${props.scenarioId}/run-data-driven`, payload)
-    dataDrivenResult.value = res
-    dataDrivenResultDialogVisible.value = true
-    emit('run-data-driven', res)
+    if (!res?.task_id) {
+      dataDrivenRunning.value = false
+      ElMessage.error('数据驱动任务未返回任务编号，无法获取执行结果')
+      return
+    }
+    pollDataDrivenTask(res.task_id)
   } catch (error) {
+    dataDrivenRunning.value = false
     ElMessage.error('数据驱动执行失败: ' + (error.response?.data?.detail || error.message))
   }
 }
@@ -435,6 +487,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  stopDataDrivenPolling()
   window.removeEventListener('pagehide', flushDatasetSave)
   flushDatasetSave()
 })
@@ -526,7 +579,7 @@ onUnmounted(() => {
 }
 
 .matrix-table td .el-input__inner:focus {
-  border: 1px solid #409eff;
+  border: 1px solid var(--tm-color-primary);
   border-radius: 4px;
 }
 

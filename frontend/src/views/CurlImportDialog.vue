@@ -73,7 +73,9 @@ const parseCurl = async () => {
     const res = await autoTestRequest.post('/auto-test/import/curl', {
       curl_string: curlString.value
     })
-    parsedResult.value = res
+    // The API wraps the parser output in { data, message }. Keep the dialog
+    // contract stable by exposing the actual request model to the parent.
+    parsedResult.value = res?.data ?? res
     ElMessage.success('解析成功')
   } catch (err) {
     ElMessage.error('解析失败: ' + (err.response?.data?.detail || err.message))
@@ -100,7 +102,7 @@ const getMethodType = (method) => {
 }
 
 .tip {
-  color: #909399;
+  color: var(--tm-color-info);
   font-size: 14px;
   margin-bottom: 15px;
 }
@@ -108,14 +110,14 @@ const getMethodType = (method) => {
 .parsed-result {
   margin-top: 20px;
   padding: 15px;
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   border-radius: 8px;
 }
 
 .parsed-result h4 {
   margin: 0 0 15px 0;
   font-size: 16px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .header-item {

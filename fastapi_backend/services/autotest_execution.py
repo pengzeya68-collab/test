@@ -191,38 +191,36 @@ async def replace_case_variables(
     """
     替换用例中的变量占位符
     """
-    variables = {}
+    from fastapi_backend.services.autotest_variable_service import merge_variable_layers
 
-    # 使用缓存的全局变量（按用户隔离）
+    # 使用缓存的全局变量（按用户隔离）作为 project 层
     global_vars = await _get_global_variables_cached(user_id)
-    variables.update(global_vars)
+    env_vars: Dict[str, Any] = {}
+    defaults: Dict[str, Any] = {"api_prefix": ""}
 
     if env:
         if env.base_url:
-            variables["base_url"] = env.base_url.rstrip("/")
-        variables["api_prefix"] = ""
+            defaults["base_url"] = env.base_url.rstrip("/")
+        # 环境变量继承——当 env 设置了 parent_id 时，需要合并整条继承链上的变量
+        # （子环境覆盖父环境同名变量），否则场景/用例执行时拿不到父环境的变量。
+        if getattr(env, "parent_id", None) is not None:
+            try:
+                from fastapi_backend.services.autotest_variable_service import get_effective_variables
 
-    # 🔥 修复：环境变量继承——当 env 设置了 parent_id 时，需要合并整条继承链上的变量
-    # （子环境覆盖父环境同名变量），否则场景/用例执行时拿不到父环境的变量。
-    if env and getattr(env, "parent_id", None) is not None:
-        try:
-            from fastapi_backend.services.autotest_variable_service import get_effective_variables
+                async with AsyncSessionLocal() as session:
+                    effective_vars = await get_effective_variables(session, env.id, user_id=user_id)
+                for v in effective_vars:
+                    env_vars[v["name"]] = v["value"]
+            except Exception as e:
+                _logger.warning(f"合并环境继承变量失败，回退到仅当前环境变量: {e}")
+                if env.variables and isinstance(env.variables, dict):
+                    env_vars.update(env.variables)
+        elif env.variables and isinstance(env.variables, dict):
+            env_vars.update(env.variables)
+        if env.base_url:
+            defaults["base_url"] = env.base_url.rstrip("/")
 
-            async with AsyncSessionLocal() as session:
-                effective_vars = await get_effective_variables(session, env.id, user_id=user_id)
-            # effective_vars 是 [{name, value, source_environment_id, ...}, ...]
-            for v in effective_vars:
-                variables[v["name"]] = v["value"]
-            # 子环境自身的 base_url 已经在前面覆盖到 variables["base_url"]，
-            # 这里若 effective 中包含父环境的 base_url 也不要覆盖（子优先）
-            if env.base_url:
-                variables["base_url"] = env.base_url.rstrip("/")
-        except Exception as e:
-            _logger.warning(f"合并环境继承变量失败，回退到仅当前环境变量: {e}")
-            if env.variables and isinstance(env.variables, dict):
-                variables.update(env.variables)
-    elif env and env.variables and isinstance(env.variables, dict):
-        variables.update(env.variables)
+    variables = merge_variable_layers(defaults=defaults, project=global_vars, env=env_vars)
 
     url = case.url
     url = replace_variables(url, variables)
@@ -482,21 +480,70 @@ async def quick_run_case(
             for k, v in script_extracted_vars.items():
                 extracted_vars.setdefault(k, v)
 
+        # Contract validation: when an active APIContractRule exists for this case, fail closed.
+        contract_result = None
+        try:
+            from fastapi_backend.services.contract_testing_service import contract_testing_service
+            from urllib.parse import urlsplit
+
+            project_id = int(getattr(case, "project_id", None) or 0) or 0
+            if not project_id:
+                try:
+                    from fastapi_backend.services.project_service import ensure_personal_project
+
+                    async with AsyncSessionLocal() as _pdb:
+                        personal = await ensure_personal_project(_pdb, int(user_id or getattr(case, "user_id", 0) or 0))
+                        await _pdb.commit()
+                        project_id = int(personal.id)
+                except Exception:
+                    project_id = 0
+            path = urlsplit(str(public_request.get("url") or url or "")).path or "/"
+            if project_id and getattr(case, "id", None):
+                async with AsyncSessionLocal() as contract_db:
+                    contract_result = await contract_testing_service.validate_response(
+                        contract_db,
+                        project_id=project_id,
+                        case_id=int(case.id),
+                        method=method,
+                        path=path,
+                        status_code=int(response_status or 0),
+                        response_body=response_data,
+                    )
+                if (
+                    isinstance(contract_result, dict)
+                    and not contract_result.get("skipped")
+                    and contract_result.get("valid") is False
+                ):
+                    errors = contract_result.get("errors") or ["contract validation failed"]
+                    assert_result = dict(assert_result or {})
+                    assert_result["passed"] = False
+                    assert_result["message"] = (
+                        (assert_result.get("message") or "")
+                        + (" | " if assert_result.get("message") else "")
+                        + "契约校验失败: "
+                        + "; ".join(str(e) for e in errors)
+                    ).strip()
+        except Exception as contract_exc:
+            _logger.warning("contract validation skipped due to error: %s", contract_exc)
+
         return {
-            "success": assert_result["passed"],
+            "success": bool(assert_result.get("passed")) if isinstance(assert_result, dict) else False,
             "status_code": response_status,
             "response": response_data,
             "response_headers": public_response_headers,
             "execution_time": execution_time,
-            "error": None if assert_result["passed"] else assert_result["message"],
+            "error": None if (isinstance(assert_result, dict) and assert_result.get("passed")) else (
+                assert_result.get("message") if isinstance(assert_result, dict) else "assert failed"
+            ),
             "assert_result": assert_result,
+            "contract_result": contract_result,
             "request_body": payload,
             "request_url": public_request.get("url", url),
             "request_method": method,
             "request_headers": public_request.get("headers", {}),
             "request_params": params,
             "extracted_variables": extracted_vars,
-            # 🔥 新增：后置脚本断言结果与错误信息（Flow 5 关键）
+            # 后置脚本断言结果与错误信息
             "script_test_results": script_test_results,
             "script_error": script_error,
             "attempts": transport_result.get("attempts", []),

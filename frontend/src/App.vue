@@ -18,7 +18,6 @@
           </div>
         </div>
         <div class="nav-right">
-          <span v-if="isDesktopBuild" :class="['desktop-engine', { ready: desktopReady }]"><i></i>{{ desktopReady ? '桌面执行引擎正常' : '桌面执行引擎未连接' }}</span>
           <el-dropdown trigger="click" @command="changeTheme" v-if="!isAuthPage">
             <el-button link class="theme-btn">
               <el-icon><Brush /></el-icon>
@@ -177,16 +176,13 @@ import { useRouter, useRoute } from 'vue-router'
 import { User, ArrowDown, Brush, Calendar, Menu, House, MapLocation, EditPen, Notebook, Tickets, Microphone, List, Folder, ChatDotRound, Monitor, Setting, Lightning, DocumentCopy, DataLine, Guide, TrendCharts, Trophy, Calendar as CalendarIcon, Medal, ChatLineRound, Aim } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
-import { themes, loadSavedTheme, applyTheme } from '@/utils/ThemeConfig'
+import { themes, applyTheme } from '@/utils/ThemeConfig'
 import { useUserStore } from '@/stores/user'
 import NotificationBell from '@/components/NotificationBell.vue'
 import request from '@/utils/request'
-import { isDesktopBuild } from '@/utils/build-target'
-
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
-const desktopReady = computed(() => typeof window !== 'undefined' && typeof window.testmaster?.execution?.runCase === 'function')
 
 // 移动端汉堡菜单状态
 const navOpen = ref(false)
@@ -203,30 +199,8 @@ const isAuthPage = computed(() => {
 
 const activeMenu = computed(() => route.path)
 
+// 网页端侧栏：仅学习/面试/工具/成长/社区（桌面端使用 DesktopApp.vue）
 const sidebarGroups = computed(() => {
-  if (isDesktopBuild) return [
-    { label: '工作台', items: [
-      { name: '自动化总览', path: '/auto-test', icon: House },
-      { name: '接口自动化', path: '/auto-test', icon: Setting },
-      { name: 'UI 自动化用例', path: '/ui-automation/cases', icon: Monitor },
-      { name: 'UI 回归套件', path: '/ui-automation/suites', icon: Tickets },
-    ]},
-    { label: '接口资产', items: [
-      { name: '接口用例', path: '/cases', icon: DocumentCopy },
-      { name: '业务场景', path: '/scenarios', icon: Guide },
-      { name: '接口回归套件', path: '/suites', icon: Folder },
-      { name: '测试数据工厂', path: '/data-factory', icon: DataLine },
-      { name: 'Mock 服务', path: '/mock-service', icon: Lightning },
-    ]},
-    { label: '质量工具', items: [
-      { name: 'JMeter 性能助手', path: '/jmeter-assistant', icon: Lightning },
-      { name: 'AI 生成用例', path: '/ai-generate-cases', icon: DocumentCopy },
-      { name: '测试覆盖率', path: '/test-coverage', icon: TrendCharts },
-      { name: 'API 文档', path: '/api-docs', icon: Notebook },
-      { name: '自动化资产备份', path: '/backup-manager', icon: Folder },
-      { name: '测试工具导航', path: '/tools', icon: Guide },
-    ]},
-  ]
   const groups = [
     {
       label: '学习',
@@ -307,8 +281,6 @@ const checkinStatus = ref({
 })
 
 onMounted(async () => {
-  const savedThemeId = isDesktopBuild && !localStorage.getItem('testmaster-theme') ? 'apple-light' : loadSavedTheme()
-  applyTheme(savedThemeId)
   window.addEventListener('resize', closeNavOnResize)
   if (userStore.isLoggedIn && !isAuthPage.value) {
     fetchCheckinStatus()
@@ -365,7 +337,15 @@ const doCheckin = async () => {
   }
 }
 
-const themeDisplayName = (theme) => ({ sakura: '粉色樱落', cyberpunk: '赛博魅紫', 'mojito-green': '莫兰迪绿', 'apple-light': '极简明亮', 'deep-ocean': '深邃之海' }[theme.id] || theme.name)
+const themeDisplayName = (theme) => ({
+  'professional-dark': '专业深色',
+  cyberpunk: '赛博魅紫',
+  'deep-ocean': '深邃之海',
+  sakura: '粉色樱落',
+  'mojito-green': '莫兰迪绿',
+  'professional-light': '专业浅色',
+  'apple-light': '极简明亮'
+}[theme.id] || theme.name)
 
 const changeTheme = (themeId) => {
   const theme = applyTheme(themeId)
@@ -514,10 +494,6 @@ body {
   background: var(--tm-color-primary);
   border-radius: 2px;
 }
-
-.desktop-engine { display:flex;align-items:center;gap:6px;font-size:12px;color:#b42318;padding:6px 10px;border:1px solid var(--tm-border-light);border-radius:20px;background:var(--tm-card-bg); }
-.desktop-engine.ready { color:#28724f; }
-.desktop-engine i { width:7px;height:7px;border-radius:50%;background:currentColor; }
 
 .nav-right {
   display: flex;

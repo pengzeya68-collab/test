@@ -49,8 +49,8 @@
           </el-tag>
           <span style="margin-left: 15px; color: var(--tm-text-regular);">
             总步骤: {{ runResult.total_steps || 0 }} |
-            成功: <span style="color: #67c23a">{{ runResult.success_count || runResult.success_steps || 0 }}</span> |
-            失败: <span style="color: #f56c6c">{{ runResult.failed_count || runResult.failed_steps || 0 }}</span> |
+            成功: <span style="color: var(--tm-color-success)">{{ runResult.success_count || runResult.success_steps || 0 }}</span> |
+            失败: <span style="color: var(--tm-color-danger)">{{ runResult.failed_count || runResult.failed_steps || 0 }}</span> |
             跳过: <span style="color: var(--tm-text-secondary)">{{ runResult.skipped_count || runResult.skipped_steps || 0 }}</span> |
             总耗时: {{ formatTotalTime(runResult.total_time) }}
           </span>
@@ -77,7 +77,7 @@
             <el-tag type="info" size="small">{{ step.method || 'N/A' }}</el-tag>
             <span class="step-name">{{ step.api_case_name }}</span>
             <el-tag type="info" size="small">未执行/跳过</el-tag>
-            <span class="step-skipped-hint">因前置步骤失败，此步骤被跳过</span>
+            <span class="step-skipped-hint">{{ step.error || '因前置步骤失败，此步骤被跳过' }}</span>
           </div>
 
           <div v-else class="step-header" @click="toggleStep(index)">
@@ -474,7 +474,7 @@ defineExpose({ startExecution })
 .header-actions { display: flex; gap: 8px; margin-left: auto; }
 .step-results { display: flex; flex-direction: column; gap: 12px; }
 .step-result-card { border: 1px solid var(--tm-border-light); border-radius: var(--tm-radius-base); padding: 16px; background: var(--tm-bg-card); transition: all 0.3s; }
-.step-result-card.is-failed { border-color: rgba(245,108,108,0.4); background: rgba(245,108,108,0.02); }
+.step-result-card.is-failed { border-color: color-mix(in srgb, var(--tm-color-danger) 40%, transparent); background: color-mix(in srgb, var(--tm-color-danger) 2%, transparent); }
 .step-result-card.is-skipped { opacity: 0.6; }
 .step-header { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 4px 8px; border-radius: var(--tm-radius-small); transition: background-color 0.2s; }
 .step-header:hover { background: var(--tm-bg-hover); }
@@ -492,11 +492,11 @@ defineExpose({ startExecution })
 .info-row { margin-bottom: 8px; }
 .info-label { display: inline-block; min-width: 60px; color: var(--tm-text-secondary); font-size: 13px; margin-right: 8px; }
 .info-value { color: var(--tm-text-primary); font-size: 13px; word-break: break-all; }
-.code-block { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: var(--tm-radius-small); max-height: 300px; overflow: auto; font-family: 'Monaco','Menlo','Ubuntu Mono',monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; margin: 8px 0 0; }
+.code-block { background: var(--tm-bg-elevated); color: var(--tm-border-light); padding: 12px; border-radius: var(--tm-radius-small); max-height: 300px; overflow: auto; font-family: 'Monaco','Menlo','Ubuntu Mono',monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; margin: 8px 0 0; }
 .step-error { margin-top: 12px; }
 .response-info { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .response-body h5 { margin: 12px 0 8px; color: var(--tm-color-primary); font-size: 13px; font-weight: 600; }
-.body-display { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: var(--tm-radius-small); max-height: 200px; overflow: auto; font-family: 'Monaco','Menlo','Ubuntu Mono',monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; margin: 0; box-shadow: inset 0 2px 8px rgba(0,0,0,0.2); }
+.body-display { background: var(--tm-bg-elevated); color: var(--tm-border-light); padding: 16px; border-radius: var(--tm-radius-small); max-height: 200px; overflow: auto; font-family: 'Monaco','Menlo','Ubuntu Mono',monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; margin: 0; box-shadow: inset 0 2px 8px rgba(0,0,0,0.2); }
 .assertion-summary { display: flex; gap: 8px; margin-bottom: 12px; }
 .assertion-errors { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .context-vars h4 { margin: 0 0 12px; color: var(--tm-text-primary); }

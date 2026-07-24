@@ -11,36 +11,24 @@
   --bg-surface-hover: var(--tm-bg-elevated);
   --bg-elevated: var(--tm-bg-elevated);
   --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-focus: rgba(99, 102, 241, 0.45);
+  --border-focus: rgba(var(--tm-color-primary-rgb), 0.45);
   --border-neon: 1px solid rgba(255, 255, 255, 0.06);
   --text-primary: var(--tm-text-primary);
   --text-secondary: var(--tm-text-regular);
   --text-muted: var(--tm-text-secondary);
   --accent-primary: var(--tm-color-primary);
   --accent-hover: var(--tm-color-primary-light);
-  --accent-glow: rgba(99, 102, 241, 0.2);
+  --accent-glow: rgba(var(--tm-color-primary-rgb), 0.2);
   --accent-purple: var(--tm-color-primary-dark);
-  --accent-purple-glow: rgba(139, 92, 246, 0.2);
+  --accent-purple-glow: rgba(var(--tm-color-primary-rgb), 0.2);
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --tm-primary-color: var(--tm-color-primary);
   --tm-primary-dark: var(--tm-color-primary-dark);
-  --tm-color-primary-glow: rgba(99, 102, 241, 0.25);
+  --tm-color-primary-glow: rgba(var(--tm-color-primary-rgb), 0.25);
   --tm-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.35);
   --tm-bg-color: var(--tm-bg-page);
-  --tm-bg-page: var(--tm-bg-page);
-  --tm-card-bg: var(--tm-bg-card);
-  --tm-bg-card: var(--tm-bg-card);
-  --tm-card-border: 1px solid rgba(255, 255, 255, 0.06);
-  --tm-border-light: rgba(255, 255, 255, 0.06);
-  --tm-text-primary: var(--tm-text-primary);
-  --tm-text-secondary: var(--tm-text-secondary);
-  --tm-text-regular: var(--tm-text-regular);
-  --tm-text-secondary-rgb: 148, 163, 184;
-  --tm-sidebar-bg: rgba(15, 23, 42, 0.92);
-  --tm-glow-effect: 0 4px 20px rgba(99, 102, 241, 0.12);
-  --tm-shadow-base: 0 4px 16px rgba(0, 0, 0, 0.25);
   --tm-radius-base: var(--radius-md);
   --tm-radius-small: var(--radius-sm);
 }
@@ -60,18 +48,33 @@
   box-shadow: var(--tm-glow-effect);
 }
 
-// 全局基础
+// 全局基础：深色优先工程平台底色 + 低对比网格/环境光
 html, body {
   height: 100%;
   font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color: var(--tm-text-primary);
-  background-color: var(--bg-base);
+  background-color: var(--tm-bg-page, var(--bg-base));
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.12), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(139, 92, 246, 0.08), transparent);
+    radial-gradient(ellipse 80% 50% at 15% -10%, rgba(var(--tm-color-primary-rgb), 0.14), transparent 55%),
+    radial-gradient(ellipse 55% 40% at 100% 100%, color-mix(in srgb, var(--tm-neon-cyan) 6%, transparent), transparent 50%),
+    linear-gradient(rgba(var(--tm-color-primary-rgb), 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--tm-color-primary-rgb), 0.03) 1px, transparent 1px);
+  background-size: auto, auto, 48px 48px, 48px 48px;
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+[data-color-scheme="light"] body,
+[data-theme="professional-light"] body,
+[data-theme="apple-light"] body,
+[data-theme="sakura"] body,
+[data-theme="mojito-green"] body {
+  background-image:
+    radial-gradient(ellipse 70% 40% at 20% 0%, rgba(var(--tm-color-primary-rgb), 0.1), transparent 55%),
+    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+  background-size: auto, 48px 48px, 48px 48px;
 }
 
 #app {
@@ -158,13 +161,13 @@ html, body {
   transition: all 0.3s ease;
 
   &:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-    border-color: rgba(99, 102, 241, 0.25) !important;
+    box-shadow: var(--tm-shadow-hover);
+    border-color: rgba(var(--tm-color-primary-rgb), 0.35) !important;
   }
 
   &__header {
     padding: 16px 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     font-weight: 600;
     color: var(--tm-text-primary) !important;
   }
@@ -174,58 +177,70 @@ html, body {
   }
 }
 
-// 杈撳叆妗嗘牱寮?
+// 输入框：深色内嵌
 .el-input {
-  --el-input-focus-border-color: var(--accent-primary);
+  --el-input-focus-border-color: var(--tm-color-primary);
   --el-input-bg-color: var(--bg-elevated);
   --el-input-border-color: var(--border-subtle);
-  --el-input-text-color: var(--text-primary);
+  --el-input-text-color: var(--tm-text-primary);
+  --el-input-placeholder-color: var(--tm-text-muted, var(--tm-text-secondary));
 
   .el-input__wrapper {
     background-color: var(--el-input-bg-color) !important;
     border: 1px solid var(--el-input-border-color) !important;
     box-shadow: none !important;
     border-radius: var(--tm-radius-small);
-    transition: all 0.3s;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
     &.is-focus, &:hover {
-      border-color: var(--accent-primary) !important;
-      box-shadow: 0 0 10px rgba(0, 242, 254, 0.3) !important;
+      border-color: var(--tm-color-primary) !important;
+      box-shadow: 0 0 0 1px rgba(var(--tm-color-primary-rgb), 0.25) !important;
     }
   }
 }
 
-// 鎸夐挳鏍峰紡浼樺寲
+// 按钮：克制品牌紫，无霓虹青光
 .el-button {
   border-radius: var(--tm-radius-small);
   font-weight: 500;
   letter-spacing: 0.01em;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: var(--tm-control-height, 36px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, background 0.2s ease;
 
   &--primary {
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-purple)) !important;
+    background: var(--tm-gradient-brand) !important;
     border: none !important;
-    color: #fff !important;
-    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3) !important;
+    color: var(--tm-button-text-color, #fff) !important;
+    box-shadow: 0 4px 14px rgba(var(--tm-color-primary-rgb), 0.28) !important;
 
     &:hover,
     &:focus {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(176, 38, 255, 0.5) !important;
-      filter: brightness(1.1);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(var(--tm-color-primary-rgb), 0.35) !important;
+      filter: brightness(1.06);
     }
 
     &:active {
       transform: translateY(0);
     }
+
+    &.is-disabled,
+    &.is-loading {
+      transform: none;
+      filter: none;
+    }
   }
 
   &--default {
+    background: var(--tm-bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--tm-text-primary) !important;
+
     &:hover,
     &:focus {
-      color: $tm-color-primary;
-      border-color: $tm-color-primary-light-5;
-      background-color: $tm-color-primary-light-9;
+      color: var(--tm-color-primary) !important;
+      border-color: rgba(var(--tm-color-primary-rgb), 0.45) !important;
+      background: rgba(var(--tm-color-primary-rgb), 0.08) !important;
     }
   }
 
@@ -235,12 +250,12 @@ html, body {
   }
 }
 
-// 琛ㄦ牸鏍峰紡
+// 表格样式（全部走运行时 token，换肤生效）
 .el-table {
   --el-table-border-color: transparent;
   --el-table-header-bg-color: var(--bg-surface);
   --el-table-row-hover-bg-color: var(--bg-surface-hover);
-  --el-table-current-row-bg-color: #{rgba($tm-color-primary, 0.05)};
+  --el-table-current-row-bg-color: rgba(var(--tm-color-primary-rgb), 0.05);
 
   border: none;
   border-radius: var(--tm-radius-base);
@@ -266,7 +281,6 @@ html, body {
     background-color: var(--bg-surface-hover);
   }
 
-  // 琛ㄦ牸 hover 鏁堟灉
   .el-table__row {
     transition: background-color 0.2s;
 
@@ -276,48 +290,43 @@ html, body {
   }
 }
 
-// 鏍囩鏍峰紡浼樺寲 - Method Tags
+// 标签样式 - Method Tags（token 化）
 .el-tag {
-  border-radius: $tm-border-radius-small;
+  border-radius: var(--tm-radius-small);
   font-weight: 600;
   font-size: 12px;
   padding: 0 8px;
   height: 24px;
   line-height: 22px;
 
-  // GET - 缁胯壊
   &--success {
-    background-color: rgba($tm-color-success, 0.1);
-    border-color: rgba($tm-color-success, 0.3);
-    color: $tm-color-success;
+    background-color: color-mix(in srgb, var(--tm-color-success) 12%, transparent);
+    border-color: color-mix(in srgb, var(--tm-color-success) 30%, transparent);
+    color: var(--tm-color-success);
   }
 
-  // POST - 钃濊壊
   &--warning {
-    background-color: rgba($tm-color-primary, 0.1);
-    border-color: rgba($tm-color-primary, 0.3);
-    color: $tm-color-primary;
+    background-color: color-mix(in srgb, var(--tm-color-warning) 12%, transparent);
+    border-color: color-mix(in srgb, var(--tm-color-warning) 30%, transparent);
+    color: var(--tm-color-warning);
   }
 
-  // PUT - 姗欒壊
   &--primary {
-    background-color: rgba($tm-color-warning, 0.1);
-    border-color: rgba($tm-color-warning, 0.3);
-    color: $tm-color-warning-dark;
+    background-color: rgba(var(--tm-color-primary-rgb), 0.1);
+    border-color: rgba(var(--tm-color-primary-rgb), 0.3);
+    color: var(--tm-color-primary);
   }
 
-  // DELETE - 绾㈣壊
   &--danger {
-    background-color: rgba($tm-color-danger, 0.1);
-    border-color: rgba($tm-color-danger, 0.3);
-    color: $tm-color-danger;
+    background-color: color-mix(in srgb, var(--tm-color-danger) 12%, transparent);
+    border-color: color-mix(in srgb, var(--tm-color-danger) 30%, transparent);
+    color: var(--tm-color-danger);
   }
 
-  // PATCH - 鐏拌壊
   &--info {
-    background-color: rgba($tm-color-info, 0.1);
-    border-color: rgba($tm-color-info, 0.3);
-    color: $tm-color-info;
+    background-color: color-mix(in srgb, var(--tm-color-info) 12%, transparent);
+    border-color: color-mix(in srgb, var(--tm-color-info) 30%, transparent);
+    color: var(--tm-color-info);
   }
 }
 
@@ -348,9 +357,9 @@ html, body {
   }
 }
 
-// 涓嬫媺鑿滃崟
+// 下拉菜单
 .el-dropdown-menu {
-  border-radius: $tm-border-radius-small;
+  border-radius: var(--tm-radius-small);
   box-shadow: var(--tm-shadow-base);
   border: 1px solid var(--tm-border-light);
   padding: 4px 0;
@@ -362,8 +371,8 @@ html, body {
     transition: all 0.2s;
 
     &:hover {
-      background-color: rgba($tm-color-primary, 0.05);
-      color: $tm-color-primary;
+      background-color: rgba(var(--tm-color-primary-rgb), 0.08);
+      color: var(--tm-color-primary);
     }
 
     &--divided {
@@ -373,13 +382,13 @@ html, body {
   }
 }
 
-// 娑堟伅鎻愮ず
+// 消息提示
 .el-message {
-  border-radius: $tm-border-radius-small;
+  border-radius: var(--tm-radius-small);
   box-shadow: var(--tm-shadow-base);
 }
 
-// 鏍囩椤?
+// 标签页
 .el-tabs {
   &__header {
     margin-bottom: 0;
@@ -395,51 +404,52 @@ html, body {
     transition: color 0.3s;
 
     &:hover {
-      color: $tm-color-primary;
+      color: var(--tm-color-primary);
     }
 
     &.is-active {
-      color: $tm-color-primary;
+      color: var(--tm-color-primary);
       font-weight: 600;
     }
   }
 
   &__active-bar {
-    background-color: $tm-color-primary;
+    background-color: var(--tm-color-primary);
   }
 }
 
 // Radio Button
 .el-radio-button__inner {
-  border-radius: $tm-border-radius-small;
+  border-radius: var(--tm-radius-small);
   transition: all 0.3s;
 
   &:hover {
-    color: $tm-color-primary;
+    color: var(--tm-color-primary);
   }
 }
 
 .el-radio-button__original-radio:checked + .el-radio-button__inner {
-  background-color: $tm-color-primary;
-  border-color: $tm-color-primary;
+  background-color: var(--tm-color-primary);
+  border-color: var(--tm-color-primary);
   box-shadow: none;
+  color: #fff;
 }
 
-// 鍒嗛〉
+// 分页
 .el-pagination {
-  --el-pagination-hover-color: #{$tm-color-primary};
+  --el-pagination-hover-color: var(--tm-color-primary);
 
   .el-pager li {
-    border-radius: $tm-border-radius-small;
+    border-radius: var(--tm-radius-small);
     transition: all 0.2s;
 
     &:hover {
-      color: $tm-color-primary;
+      color: var(--tm-color-primary);
     }
 
     &.is-active {
-      background-color: $tm-color-primary;
-      color: var(--text-primary);
+      background-color: var(--tm-color-primary);
+      color: #fff;
     }
   }
 }
@@ -562,19 +572,19 @@ html, body {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: $tm-border-radius-small;
+  border-radius: var(--tm-radius-small);
   cursor: pointer;
   transition: all 0.2s;
   color: var(--tm-text-secondary);
 
   &:hover {
-    background-color: rgba($tm-color-primary, 0.08);
-    color: $tm-color-primary;
+    background-color: rgba(var(--tm-color-primary-rgb), 0.08);
+    color: var(--tm-color-primary);
   }
 
   &--danger:hover {
-    background-color: rgba($tm-color-danger, 0.08);
-    color: $tm-color-danger;
+    background-color: color-mix(in srgb, var(--tm-color-danger) 12%, transparent);
+    color: var(--tm-color-danger);
   }
 }
 
@@ -806,36 +816,36 @@ html, body {
 
   // 鎴愬姛鎸夐挳
   &--success {
-    background: linear-gradient(135deg, #67c23a, #84cc16) !important;
-    border-color: #67c23a !important;
-    box-shadow: 0 4px 14px rgba(103, 194, 58, 0.35) !important;
+    background: linear-gradient(135deg, var(--tm-color-success), var(--tm-color-success)) !important;
+    border-color: var(--tm-color-success) !important;
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--tm-color-success) 35%, transparent) !important;
 
     &:hover {
-      box-shadow: 0 6px 20px rgba(103, 194, 58, 0.45) !important;
+      box-shadow: 0 6px 20px color-mix(in srgb, var(--tm-color-success) 45%, transparent) !important;
       transform: translateY(-2px);
     }
   }
 
-  // 璀﹀憡鎸夐挳
+  // 警告按钮
   &--warning {
-    background: linear-gradient(135deg, #e6a23c, #f56c6c) !important;
-    border-color: #e6a23c !important;
-    box-shadow: 0 4px 14px rgba(230, 162, 60, 0.35) !important;
+    background: linear-gradient(135deg, var(--tm-color-warning), var(--tm-color-warning)) !important;
+    border-color: var(--tm-color-warning) !important;
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--tm-color-warning) 35%, transparent) !important;
 
     &:hover {
-      box-shadow: 0 6px 20px rgba(230, 162, 60, 0.45) !important;
+      box-shadow: 0 6px 20px color-mix(in srgb, var(--tm-color-warning) 45%, transparent) !important;
       transform: translateY(-2px);
     }
   }
 
   // 鍗遍櫓鎸夐挳
   &--danger {
-    background: linear-gradient(135deg, #f56c6c, #dc2626) !important;
-    border-color: #f56c6c !important;
-    box-shadow: 0 4px 14px rgba(245, 108, 108, 0.35) !important;
+    background: linear-gradient(135deg, var(--tm-color-danger), var(--tm-color-danger)) !important;
+    border-color: var(--tm-color-danger) !important;
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--tm-color-danger) 35%, transparent) !important;
 
     &:hover {
-      box-shadow: 0 6px 20px rgba(245, 108, 108, 0.45) !important;
+      box-shadow: 0 6px 20px color-mix(in srgb, var(--tm-color-danger) 45%, transparent) !important;
       transform: translateY(-2px);
     }
   }
@@ -891,377 +901,130 @@ html, body {
 }
 
 // ========================================
-// 缁堟瀬寮哄姏瑕嗗啓 - 鎸夐挳寮哄埗閲嶅 (Ultimate Force Overrides)
-// 鏉冮噸鎷夋弧锛岀‘淇濇棤璁哄浣曢兘瑕嗙洊榛樿鏍峰紡
+// 按钮兜底（避免被 Element 默认浅色样式冲掉）
+// 注意：不强制覆盖 type=primary/success/danger 的填充色
 // ========================================
-.el-button {
-  background-color: var(--tm-card-bg) !important;
-  border: 1px solid var(--tm-border-light) !important;
+.el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--danger):not(.el-button--warning):not(.el-button--info):not(.is-link):not(.is-text) {
+  background-color: var(--tm-bg-elevated) !important;
+  border: 1px solid var(--border-subtle) !important;
   color: var(--tm-text-primary) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  border-radius: 8px !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: var(--tm-radius-small) !important;
   font-weight: 500 !important;
-  letter-spacing: 0.5px !important;
 }
 
-// 纭繚娴呰壊涓婚涓嬫寜閽枃瀛楅鑹蹭笌鑳屾櫙鏈夎冻澶熷姣斿害
+// 浅色主题：全部走 token，避免硬编码 #000 / #fff 对比度翻车
+[data-color-scheme="light"],
+[data-theme="professional-light"],
+[data-theme="apple-light"],
 [data-theme="sakura"],
-[data-theme="mojito-green"],
-[data-theme="apple-light"] {
-  // 鍏ㄥ眬鏂囧瓧棰滆壊
-  color: #000000 !important;
-  
-  // 鏅€氭寜閽?
-  .el-button {
-    color: #000000 !important;
+[data-theme="mojito-green"] {
+  color: var(--tm-text-primary);
+
+  .el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--danger):not(.el-button--warning):not(.is-link):not(.is-text) {
+    color: var(--tm-text-primary) !important;
     background-color: var(--tm-bg-elevated) !important;
     border-color: var(--tm-border-color) !important;
   }
-  
-  .el-button:hover {
-    color: var(--tm-color-primary) !important;
-    background-color: rgba(var(--tm-color-primary-rgb), 0.12) !important;
-    border-color: var(--tm-color-primary) !important;
-  }
-  
-  // 涓昏鎸夐挳
+
   .el-button--primary {
     color: #ffffff !important;
-    background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark)) !important;
+    background: var(--tm-gradient-brand) !important;
   }
-  
-  // 鍗遍櫓鎸夐挳
-  .el-button--danger {
-    color: #ffffff !important;
-  }
-  
-  // 鎴愬姛鎸夐挳
-  .el-button--success {
-    color: #ffffff !important;
-  }
-  
-  // 璀﹀憡鎸夐挳
-  .el-button--warning {
-    color: #ffffff !important;
-  }
-  
-  // 閾炬帴鎸夐挳锛堟搷浣滃垪涓殑鎸夐挳锛?
-  .el-button--primary.is-link {
-    color: #000000 !important;
+
+  .el-button.is-link,
+  .el-button.is-text {
     background-color: transparent !important;
-  }
-  
-  .el-button--primary.is-link:hover {
     color: var(--tm-color-primary) !important;
-    background-color: rgba(var(--tm-color-primary-rgb), 0.1) !important;
   }
-  
-  .el-button--danger.is-link {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  .el-button--success.is-link {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  .el-button--info.is-link {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  // 琛ㄦ牸鎿嶄綔鍒椾腑鐨勬寜閽?
-  .el-table .el-button--primary.is-link {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  .el-table .el-button--danger.is-link {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  .el-table .el-button--success.is-link {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  .el-table .el-button--info.is-link {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  // 琛ㄦ牸鏂囧瓧
-  .el-table {
-    color: #000000 !important;
-  }
-  
-  .el-table th {
-    color: #000000 !important;
-  }
-  
+
+  .el-table,
+  .el-table th,
   .el-table td {
-    color: #000000 !important;
-  }
-  
-  // 绌块€忛€夋嫨鍣紝纭繚瑕嗙洊UI缁勪欢搴撶殑榛樿鏍峰紡
-  :deep(.el-button) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-button--primary) {
-    color: #ffffff !important;
-  }
-  
-  :deep(.el-button--danger) {
-    color: #ffffff !important;
-  }
-  
-  :deep(.el-button--success) {
-    color: #ffffff !important;
-  }
-  
-  :deep(.el-button--warning) {
-    color: #ffffff !important;
-  }
-  
-  // 绌块€忛€夋嫨鍣紝纭繚瑕嗙洊閾炬帴鎸夐挳鐨勯粯璁ゆ牱寮?
-  :deep(.el-button--primary.is-link) {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  :deep(.el-button--primary.is-link:hover) {
-    color: var(--tm-color-primary) !important;
-    background-color: rgba(var(--tm-color-primary-rgb), 0.1) !important;
-  }
-  
-  :deep(.el-button--danger.is-link) {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  :deep(.el-button--success.is-link) {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  :deep(.el-button--info.is-link) {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  // 绌块€忛€夋嫨鍣紝纭繚瑕嗙洊琛ㄦ牸鎿嶄綔鍒椾腑鎸夐挳鐨勯粯璁ゆ牱寮?
-  :deep(.el-table .el-button--primary.is-link) {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  :deep(.el-table .el-button--danger.is-link) {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  :deep(.el-table .el-button--success.is-link) {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  :deep(.el-table .el-button--info.is-link) {
-    color: #000000 !important;
-    background-color: transparent !important;
-  }
-  
-  // 纭繚鍥炬爣棰滆壊涔熸纭?
-  :deep(.el-button--primary.is-link .el-icon) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-button--primary.is-link:hover .el-icon) {
-    color: var(--tm-color-primary) !important;
-  }
-  
-  :deep(.el-button--danger.is-link .el-icon) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-button--success.is-link .el-icon) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-button--info.is-link .el-icon) {
-    color: #000000 !important;
-  }
-  
-  // 纭繚鍏朵粬鏂囨湰鍏冪礌棰滆壊姝ｇ‘
-  :deep(.el-tooltip__content) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-tag) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-input__inner) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-select__input) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-pagination__total) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-pagination__sizes) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-pagination__jump) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-pagination__number) {
-    color: #000000 !important;
-  }
-  
-  :deep(.el-empty__text) {
-    color: #000000 !important;
-  }
-
-  // ========== 寮€鍏?Switch锛堟牳蹇冧慨澶嶏細鐧藉瓧绮夊簳闂锛?=========
-  .el-switch__core {
-    background-color: #d1d5db !important;
-    border: 1px solid #9ca3af !important;
-  }
-
-  .el-switch.is-checked .el-switch__core {
-    background-color: var(--tm-color-primary-dark) !important;
-    border-color: var(--tm-color-primary-dark) !important;
-  }
-
-  .el-switch__label {
     color: var(--tm-text-primary) !important;
   }
 
-  // ========== 琛ㄥご鑳屾櫙锛堜笉瑕?transparent锛?=========
   .el-table th.el-table__cell {
-    background-color: var(--tm-bg-card) !important;
+    background-color: var(--tm-bg-card-solid, var(--tm-bg-card)) !important;
   }
 
-  // ========== 杈撳叆妗?涓嬫媺妗嗚儗鏅?==========
   .el-input__wrapper,
   .el-select .el-input__wrapper,
   .el-textarea__inner {
-    background-color: #ffffff !important;
-    border-color: #d1d5db !important;
+    background-color: var(--tm-bg-elevated) !important;
+    border-color: var(--border-subtle) !important;
   }
 
   .el-input__inner,
   .el-textarea__inner {
-    color: #1f2937 !important;
+    color: var(--tm-text-primary) !important;
   }
 
-  // ========== 鏍囩 Tag ==========
-  .el-tag--success {
-    color: #166534 !important;
-    background-color: #dcfce7 !important;
-    border-color: #bbf7d0 !important;
+  .el-switch__label,
+  .el-pagination,
+  .el-empty__description {
+    color: var(--tm-text-secondary) !important;
   }
 
-  .el-tag--danger {
-    color: #991b1b !important;
-    background-color: #fee2e2 !important;
-    border-color: #fecaca !important;
-  }
-
-  .el-tag--warning {
-    color: #92400e !important;
-    background-color: #fef3c7 !important;
-    border-color: #fde68a !important;
-  }
-
-  .el-tag--info {
-    color: #1e40af !important;
-    background-color: #dbeafe !important;
-    border-color: #bfdbfe !important;
-  }
-
-  // ========== 澶嶉€夋/鍗曢€夋 ==========
-  .el-checkbox__inner {
-    background-color: #ffffff !important;
-    border-color: #d1d5db !important;
-  }
-
-  .el-radio__inner {
-    background-color: #ffffff !important;
-    border-color: #d1d5db !important;
+  .el-switch.is-checked .el-switch__core {
+    background-color: var(--tm-color-primary) !important;
+    border-color: var(--tm-color-primary) !important;
   }
 }
 
-.el-button:hover {
-  background-color: rgba(var(--tm-color-primary-rgb), 0.2) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 4px 15px rgba(var(--tm-color-primary-rgb), 0.4) !important;
-  border-color: var(--tm-color-primary) !important;
-  color: var(--tm-color-primary) !important;
-}
-
-/* 閽堝 Primary, Danger 绛夌壒娈婃寜閽繚鐣欎富棰樿壊鍊惧悜 */
+// 语义按钮（克制阴影，避免全局 hover 把 primary 染成描边色）
 .el-button--primary {
-  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark)) !important;
-  color: var(--tm-button-text-color) !important;
-  opacity: 0.9;
+  background: var(--tm-gradient-brand) !important;
+  color: var(--tm-button-text-color, #fff) !important;
   border: none !important;
-  box-shadow: 0 4px 15px rgba(var(--tm-color-primary-rgb), 0.4) !important;
+  box-shadow: 0 4px 14px rgba(var(--tm-color-primary-rgb), 0.28) !important;
 }
-.el-button--primary:hover {
-  opacity: 1 !important;
-  box-shadow: 0 6px 20px rgba(var(--tm-color-primary-rgb), 0.6) !important;
-  transform: translateY(-3px) !important;
+.el-button--primary:hover,
+.el-button--primary:focus {
+  filter: brightness(1.06);
+  box-shadow: 0 8px 22px rgba(var(--tm-color-primary-rgb), 0.35) !important;
+  transform: translateY(-1px);
+  color: var(--tm-button-text-color, #fff) !important;
 }
 
 .el-button--danger {
-  background: linear-gradient(135deg, #f56c6c, #dc2626) !important;
-  color: var(--tm-button-text-color) !important;
-  opacity: 0.9;
+  background: linear-gradient(135deg, var(--tm-color-danger), var(--tm-color-danger)) !important;
+  color: #fff !important;
   border: none !important;
-  box-shadow: 0 4px 15px rgba(245, 108, 108, 0.4) !important;
 }
-.el-button--danger:hover {
-  opacity: 1 !important;
-  box-shadow: 0 6px 20px rgba(245, 108, 108, 0.6) !important;
-  transform: translateY(-3px) !important;
-}
-
 .el-button--success {
-  background: linear-gradient(135deg, #67c23a, #84cc16) !important;
-  color: var(--tm-button-text-color) !important;
-  opacity: 0.9;
+  background: linear-gradient(135deg, var(--tm-color-success), var(--tm-color-success)) !important;
+  color: #fff !important;
   border: none !important;
-  box-shadow: 0 4px 15px rgba(103, 194, 58, 0.4) !important;
 }
-.el-button--success:hover {
-  opacity: 1 !important;
-  box-shadow: 0 6px 20px rgba(103, 194, 58, 0.6) !important;
-  transform: translateY(-3px) !important;
+.el-button--warning {
+  background: linear-gradient(135deg, var(--tm-color-warning), #ca8a04) !important;
+  color: var(--tm-on-warning) !important;
+  border: none !important;
 }
 
-.el-button--warning {
-  background: linear-gradient(135deg, #e6a23c, #f59e0b) !important;
-  color: var(--tm-button-text-color) !important;
-  opacity: 0.9;
-  border: none !important;
-  box-shadow: 0 4px 15px rgba(230, 162, 60, 0.4) !important;
+.el-button.is-link,
+.el-button.is-text {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
-.el-button--warning:hover {
-  opacity: 1 !important;
-  box-shadow: 0 6px 20px rgba(230, 162, 60, 0.6) !important;
-  transform: translateY(-3px) !important;
+
+@media (prefers-reduced-motion: reduce) {
+  .el-button,
+  .el-button--primary,
+  .el-button--danger,
+  .el-button--success,
+  .el-button--warning {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+// 通用 focus-visible（可访问性）
+:where(a, button, .el-button, .el-input__wrapper, .nav-item, .sidebar-item):focus-visible {
+  outline: 2px solid rgba(var(--tm-color-primary-rgb), 0.55);
+  outline-offset: 2px;
 }
 
 // ========================================
@@ -1301,7 +1064,6 @@ html, body {
 // 纭繚鍥炬爣棰滆壊鑳藉鏍规嵁涓婚鍙樺寲
 // ========================================
 .el-icon {
-  color: var(--tm-text-primary, #fff) !important;
   transition: color 0.3s ease !important;
 }
 
@@ -1330,33 +1092,25 @@ html, body {
 // Tooltip 鎸傝浇鍦?body锛屽繀椤诲叏灞€寮哄埗瑕嗗啓
 // ========================================
 
-// 娴呰壊涓婚涓嬶紝寮哄埗鎮诞姘旀场鏂囧瓧涓烘繁鑹?
-[data-theme="sakura"] .action-tooltip,
-[data-theme="mojito-green"] .action-tooltip,
-[data-theme="apple-light"] .action-tooltip {
-  color: #000000 !important;
-  background-color: #ffffff !important;
+// Tooltip 随 color-scheme 切换
+[data-color-scheme="light"] .action-tooltip {
+  color: var(--tm-text-primary) !important;
+  background-color: var(--tm-bg-card-solid, #fff) !important;
   border: 1px solid var(--tm-border-color) !important;
 }
 
-// 纭繚鍐呴儴濡傛灉鏈?span 绛夋爣绛句篃涓€骞剁户鎵?
-[data-theme="sakura"] .action-tooltip *,
-[data-theme="mojito-green"] .action-tooltip *,
-[data-theme="apple-light"] .action-tooltip * {
-  color: #000000 !important;
+[data-color-scheme="light"] .action-tooltip * {
+  color: var(--tm-text-primary) !important;
 }
 
-// 娣辫壊涓婚涓嬶紝淇濇寔鐧借壊鏂囧瓧
-[data-theme="cyberpunk"] .action-tooltip,
-[data-theme="deep-ocean"] .action-tooltip {
-  color: #ffffff !important;
-  background-color: rgba(30, 30, 30, 0.9) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+[data-color-scheme="dark"] .action-tooltip {
+  color: var(--tm-text-primary) !important;
+  background-color: var(--tm-bg-elevated) !important;
+  border: 1px solid var(--border-subtle) !important;
 }
 
-[data-theme="cyberpunk"] .action-tooltip *,
-[data-theme="deep-ocean"] .action-tooltip * {
-  color: #ffffff !important;
+[data-color-scheme="dark"] .action-tooltip * {
+  color: var(--tm-text-primary) !important;
 }
 
 // ============================================
@@ -1625,3 +1379,165 @@ html::after {
   }
 }
 
+
+
+/* === TM FULL-SKIN FORCE LAYER === */
+/* 业务页通用外壳：卡片/面板/工具条/页面容器统一 token */
+.page-container,
+.page-wrap,
+.page-content,
+.main-content,
+.content-area {
+  color: var(--tm-text-primary);
+}
+
+.glass-card,
+.tm-card,
+.stat-card,
+.feature-card,
+.panel,
+.panel-card,
+.section-card,
+.list-card,
+.editor-panel,
+.toolbar-card {
+  background: var(--tm-bg-card) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--tm-radius-base);
+  color: var(--tm-text-primary);
+  box-shadow: var(--tm-shadow-base);
+}
+
+.btn-primary,
+.primary-btn,
+.submit-btn,
+.login-btn,
+.cta-btn {
+  background: var(--tm-gradient-brand) !important;
+  border-color: transparent !important;
+  color: var(--tm-button-text-color, #fff) !important;
+  box-shadow: 0 4px 14px rgba(var(--tm-color-primary-rgb), 0.28) !important;
+}
+
+.btn-primary:hover,
+.primary-btn:hover,
+.submit-btn:hover,
+.login-btn:hover,
+.cta-btn:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 8px 22px rgba(var(--tm-color-primary-rgb), 0.35) !important;
+}
+
+.el-message-box,
+.el-notification,
+.el-popover.el-popper,
+.el-picker__popper {
+  background: var(--tm-bg-card-solid, var(--tm-bg-card)) !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: var(--tm-text-primary) !important;
+}
+
+.el-message-box__title,
+.el-message-box__content,
+.el-notification__title,
+.el-notification__content {
+  color: var(--tm-text-primary) !important;
+}
+
+.el-drawer {
+  background: var(--tm-bg-card-solid, var(--tm-bg-card)) !important;
+  color: var(--tm-text-primary) !important;
+}
+
+.el-drawer__header {
+  color: var(--tm-text-primary) !important;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 0;
+  padding-bottom: 16px;
+}
+
+.el-menu {
+  background: transparent !important;
+  border-right: none !important;
+}
+
+.el-menu-item,
+.el-sub-menu__title {
+  color: var(--tm-text-secondary) !important;
+}
+
+.el-menu-item:hover,
+.el-sub-menu__title:hover,
+.el-menu-item.is-active {
+  background: rgba(var(--tm-color-primary-rgb), 0.1) !important;
+  color: var(--tm-color-primary) !important;
+}
+
+.el-breadcrumb__inner,
+.el-breadcrumb__item:last-child .el-breadcrumb__inner {
+  color: var(--tm-text-secondary) !important;
+}
+
+.el-descriptions__label,
+.el-descriptions__content {
+  color: var(--tm-text-primary) !important;
+}
+
+.el-descriptions__body .el-descriptions__table.is-bordered .el-descriptions__cell {
+  border-color: var(--border-subtle) !important;
+  background: transparent !important;
+}
+
+.el-collapse,
+.el-collapse-item__header,
+.el-collapse-item__wrap {
+  background: transparent !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--tm-text-primary) !important;
+}
+
+.el-slider__runway {
+  background-color: var(--border-subtle) !important;
+}
+
+.el-slider__bar {
+  background-color: var(--tm-color-primary) !important;
+}
+
+.el-progress-bar__outer {
+  background-color: var(--border-subtle) !important;
+}
+
+.el-progress-bar__inner {
+  background-image: var(--tm-gradient-brand) !important;
+}
+
+.el-steps .el-step__title {
+  color: var(--tm-text-secondary) !important;
+}
+.el-steps .el-step__title.is-process,
+.el-steps .el-step__title.is-finish {
+  color: var(--tm-color-primary) !important;
+}
+.el-step__icon.is-text {
+  border-color: var(--tm-color-primary);
+  color: var(--tm-color-primary);
+}
+.el-step__head.is-process .el-step__icon.is-text,
+.el-step__head.is-finish .el-step__icon.is-text {
+  background: var(--tm-color-primary);
+  color: #fff;
+  border-color: var(--tm-color-primary);
+}
+
+.el-table__empty-text,
+.el-loading-text {
+  color: var(--tm-text-secondary) !important;
+}
+
+a {
+  color: var(--tm-color-primary);
+}
+a:hover {
+  color: var(--tm-color-primary-light);
+}

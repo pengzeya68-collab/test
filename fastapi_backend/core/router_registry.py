@@ -40,6 +40,7 @@ _ROUTER_MODULES = {
         "fastapi_backend.routers.autotest_artifacts",
         "fastapi_backend.routers.autotest_import_center",
         "fastapi_backend.routers.autotest_capture",
+        "fastapi_backend.routers.autotest_notification_channels",
         "fastapi_backend.routers.autotest_ai_generate",
         "fastapi_backend.routers.autotest_coverage",
         "fastapi_backend.routers.autotest_export",
@@ -65,6 +66,10 @@ _ROUTER_MODULES = {
     ],
     "ui_automation": [
         "fastapi_backend.routers.ui_automation",
+        "fastapi_backend.routers.feature_upgrades",
+    ],
+    "workspace": [
+        "fastapi_backend.routers.workspace_projects",
     ],
     "standalone": [
         "fastapi_backend.routers.auth",

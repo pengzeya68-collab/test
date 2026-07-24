@@ -283,7 +283,7 @@ const viewSession = (session) => {
 .tabs-container {
   display: flex;
   gap: 28px;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
   margin-bottom: 32px;
   flex-shrink: 0;
 }
@@ -405,9 +405,9 @@ const viewSession = (session) => {
   font-size: 12px;
   font-weight: 600;
 }
-.status-tag.ongoing { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
-.status-tag.done { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-.status-tag.abandoned { background: rgba(161, 161, 170, 0.12); color: #a1a1aa; }
+.status-tag.ongoing { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); }
+.status-tag.done { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.status-tag.abandoned { background: rgba(161, 161, 170, 0.12); color: var(--tm-text-secondary); }
 
 .session-meta {
   display: flex;
@@ -428,9 +428,9 @@ const viewSession = (session) => {
   font-size: 22px;
   font-weight: 800;
 }
-.score-value.excellent { color: #34d399; }
-.score-value.good { color: #fbbf24; }
-.score-value.poor { color: #f87171; }
+.score-value.excellent { color: var(--tm-color-success); }
+.score-value.good { color: var(--tm-color-warning); }
+.score-value.poor { color: var(--tm-color-danger); }
 .score-value.pending { font-size: 14px; color: var(--tm-text-regular); font-weight: 500; }
 
 .result-badge {
@@ -439,8 +439,8 @@ const viewSession = (session) => {
   font-size: 12px;
   font-weight: 600;
 }
-.result-badge.pass { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-.result-badge.fail { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+.result-badge.pass { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.result-badge.fail { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); }
 
 .progress-row {
   display: flex;
@@ -470,7 +470,7 @@ const viewSession = (session) => {
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
-.footer-time { font-size: 12px; color: #52525b; }
+.footer-time { font-size: 12px; color: var(--tm-text-muted); }
 
 .btn-sm {
   padding: 7px 18px;

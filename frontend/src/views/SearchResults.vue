@@ -65,7 +65,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import autoTestRequest from '@/utils/autoTestRequest'
@@ -107,9 +107,9 @@ h2 { margin-bottom: 20px; color: var(--tm-text-primary); }
   padding: 14px 16px; background: var(--tm-card-bg); border: 1px solid var(--tm-border);
   border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all .2s;
 }
-.result-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); border-color: #409EFF; }
+.result-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); border-color: var(--tm-color-primary); }
 .result-item .title { flex: 1; font-size: 14px; font-weight: 500; color: var(--tm-text-primary); }
-.result-item .meta { font-size: 12px; color: #909399; white-space: nowrap; }
-.empty-hint { text-align: center; color: #909399; margin-top: 80px; font-size: 15px; }
+.result-item .meta { font-size: 12px; color: var(--tm-color-info); white-space: nowrap; }
+.empty-hint { text-align: center; color: var(--tm-color-info); margin-top: 80px; font-size: 15px; }
 </style>
 

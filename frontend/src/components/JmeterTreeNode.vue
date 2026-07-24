@@ -101,14 +101,14 @@
               <el-dropdown-item @click="$emit('toggle-enabled', node.uid)">
                 {{ node.enabled === false ? '✅ 启用' : '🚫 禁用' }}
               </el-dropdown-item>
-              <el-dropdown-item divided @click="$emit('remove', node.uid)" style="color:#F87171">🗑️ 删除</el-dropdown-item>
+              <el-dropdown-item divided @click="$emit('remove', node.uid)" style="color:var(--tm-color-danger)">🗑️ 删除</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
       </div>
     </div>
     <draggable
-      v-model="node.children"
+      v-model="childrenModel"
       :group="{ name: 'jmeter-tree', pull: true, put: checkPut }"
       :item-key="(c) => c.uid"
       ghost-class="drag-ghost"
@@ -136,6 +136,7 @@
           @toggle-enabled="$emit('toggle-enabled', $event)"
           @move-node="(uid, parentUid, idx) => $emit('move-node', uid, parentUid, idx)"
           @tree-changed="$emit('tree-changed', $event)"
+          @replace-children="(uid, children) => $emit('replace-children', uid, children)"
         />
       </template>
     </draggable>
@@ -145,11 +146,8 @@
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue'
 import draggable from 'vuedraggable'
-import { ElMessage } from 'element-plus'
 import {
-  NODE_TYPES,
   nodeTypeInfo,
-  resolveType,
   isValidParentChild,
   reassignUids,
 } from '../views/jmeter/shared/nodeTypes'
@@ -164,12 +162,20 @@ const props = defineProps({
 const emit = defineEmits([
   'select', 'remove', 'add-child', 'duplicate',
   'cut', 'copy', 'paste', 'move-to', 'toggle-enabled',
-  'move-node', 'tree-changed',
+  'move-node', 'tree-changed', 'replace-children',
 ])
 
 // 展开/折叠状态(与 node._expanded 双向同步,便于 TreeEditor 批量控制)
 const expanded = ref(props.node._expanded !== undefined ? props.node._expanded : true)
-watch(expanded, (newVal) => { props.node._expanded = newVal })
+// vuedraggable requires a writable model. Keep it bound to the node's actual
+// children so nested requests remain visible after a template is applied.
+const childrenModel = computed({
+  get: () => props.node.children || [],
+  set: (children) => { emit('replace-children', props.node.uid, children) },
+})
+watch(expanded, (newVal) => {
+  if (props.node) Reflect.set(props.node, '_expanded', newVal)
+})
 watch(() => props.node._expanded, (newVal) => {
   if (newVal !== undefined && newVal !== expanded.value) expanded.value = newVal
 })
@@ -228,16 +234,16 @@ const onDragChange = (evt) => {
 .node-row { display: flex; align-items: center; gap: 3px; padding: 5px 8px; border-radius: 4px; cursor: grab; transition: background .1s; }
 .node-row:hover { background: rgba(255,255,255,0.04); }
 .node-row:active { cursor: grabbing; }
-.tree-node.selected > .node-row { background: rgba(64,158,255,0.12); color: #60a5fa; }
+.tree-node.selected > .node-row { background: rgba(var(--tm-color-primary-rgb),0.12); color: var(--tm-neon-cyan); }
 .tree-node.disabled > .node-row { opacity: 0.45; text-decoration: line-through; }
-.node-row.search-match { background: rgba(250,204,21,0.15); border-left: 3px solid #f59e0b; }
-.tree-node.selected > .node-row.search-match { background: rgba(64,158,255,0.15); border-left-color: #409eff; }
+.node-row.search-match { background: color-mix(in srgb, var(--tm-color-warning) 15%, transparent); border-left: 3px solid var(--tm-color-warning); }
+.tree-node.selected > .node-row.search-match { background: rgba(var(--tm-color-primary-rgb),0.15); border-left-color: var(--tm-color-primary); }
 .node-toggle { font-size: 8px; width: 12px; color: var(--tm-text-secondary); cursor: pointer; }
 .node-icon { font-size: 13px; flex-shrink: 0; }
 .node-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .node-type-tag { font-size: 10px; color: var(--tm-text-secondary); background: rgba(255,255,255,0.05); padding: 0 4px; border-radius: 2px; }
 .node-actions { flex-shrink: 0; display: none; }
 .node-row:hover .node-actions { display: block; }
-.drag-ghost { opacity: 0.4; background: rgba(64,158,255,0.1); border: 1px dashed var(--tm-color-primary); border-radius: 4px; }
-.drag-fallback { background: rgba(64,158,255,0.12); }
+.drag-ghost { opacity: 0.4; background: rgba(var(--tm-color-primary-rgb),0.1); border: 1px dashed var(--tm-color-primary); border-radius: 4px; }
+.drag-fallback { background: rgba(var(--tm-color-primary-rgb),0.12); }
 </style>

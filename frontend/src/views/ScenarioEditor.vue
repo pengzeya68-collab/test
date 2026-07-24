@@ -28,6 +28,13 @@
             :value="env.id"
           />
         </el-select>
+        <el-tooltip content="开启后，任一步骤失败会跳过后续步骤" placement="top">
+          <el-switch
+            v-model="scenarioForm.fail_fast"
+            active-text="失败即停"
+            @change="handleSaveBasic"
+          />
+        </el-tooltip>
         <el-button type="primary" @click="handleSave" :loading="saving">
           <el-icon><DocumentCopy /></el-icon>
           保存
@@ -45,7 +52,7 @@
     </div>
 
     <!-- 主内容区带标签页 -->
-    <el-tabs v-model="activeTab" class="scenario-tabs">
+    <el-tabs v-if="scenarioReady" v-model="activeTab" class="scenario-tabs">
       <el-tab-pane label="步骤编排" name="steps">
         <StepList
           :steps="steps"
@@ -135,6 +142,7 @@
         </div>
       </el-tab-pane>
     </el-tabs>
+    <el-empty v-else description="正在加载场景" />
 
     <!-- 添加步骤对话框 -->
     <el-dialog v-model="addStepDialogVisible" title="添加步骤" width="70%" destroy-on-close append-to-body>
@@ -209,7 +217,7 @@
 
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, VideoPlay, Back, Search, Refresh, DocumentCopy } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
@@ -228,12 +236,14 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['back'])
+const router = useRouter()
+const scenarioReady = ref(false)
 
 const scenarioForm = ref({
   name: '',
   description: '',
-  is_active: true
+  is_active: true,
+  fail_fast: false
 })
 
 const steps = ref([])
@@ -280,7 +290,8 @@ const resetEditorState = () => {
   scenarioForm.value = {
     name: '',
     description: '',
-    is_active: true
+    is_active: true,
+    fail_fast: false
   }
   steps.value = []
   dataset.value = { columns: [], rows: [] }
@@ -295,16 +306,22 @@ const resetEditorState = () => {
 }
 
 const loadScenario = async () => {
+  scenarioReady.value = false
   try {
     const res = await autoTestRequest.get(`/auto-test/scenarios/${props.scenarioId}`)
     scenarioForm.value = {
       name: res.name,
       description: res.description,
-      is_active: res.is_active
+      is_active: res.is_active,
+      fail_fast: Boolean(res.fail_fast)
     }
     steps.value = res.steps || []
+    scenarioReady.value = true
+    return true
   } catch (error) {
-    ElMessage.error('加载场景失败')
+    ElMessage.error(error.response?.status === 404 ? '场景不存在或已被删除，已返回场景列表' : '加载场景失败')
+    if (error.response?.status === 404) router.replace('/scenarios')
+    return false
   }
 }
 
@@ -330,7 +347,7 @@ const handleSave = async () => {
 }
 
 const handleBack = () => {
-  emit('back')
+  router.push('/scenarios')
 }
 
 const handleAddStep = async () => {
@@ -409,7 +426,6 @@ const handleRemoveStep = async (step) => {
 }
 
 const handleStepActiveChange = async (step) => {
-  const oldActive = step.is_active
   // 注意：此时 step.is_active 已被 switch 组件改为新值
   try {
     await autoTestRequest.put(`/auto-test/scenarios/${props.scenarioId}/steps/${step.id}`, {
@@ -501,8 +517,12 @@ const stopPolling = () => {
 }
 
 const handleRun = async () => {
+  if (!steps.value.length) {
+    ElMessage.warning('当前场景没有可执行步骤。请先添加接口用例或流程控制步骤。')
+    return
+  }
   if (!selectedEnvId.value) {
-    ElMessage.warning('请先选择执行环境！')
+    ElMessage.warning('请先选择执行环境；环境为空时请先在环境管理中创建。')
     return
   }
   if (scenarioForm.value && !scenarioForm.value.is_active) {
@@ -635,19 +655,21 @@ const loadEnvironments = async () => {
   }
 }
 
-onMounted(() => {
-  loadEnvironments()
+const reloadScenario = async () => {
+    stopPolling()
+    resetEditorState()
+  const loaded = await loadScenario()
+  if (loaded) await loadExecutionHistory()
+}
+
+onMounted(async () => {
+  await loadEnvironments()
+  await reloadScenario()
 })
 
 watch(
   () => props.scenarioId,
-  async () => {
-    stopPolling()
-    resetEditorState()
-    await loadScenario()
-    await loadExecutionHistory()
-  },
-  { immediate: true }
+  () => reloadScenario()
 )
 
 onUnmounted(() => {
@@ -739,8 +761,8 @@ onBeforeRouteLeave(async () => {
 }
 
 .step-result-card.is-failed {
-  border-color: rgba(245, 108, 108, 0.6);
-  background: rgba(245, 108, 108, 0.05);
+  border-color: color-mix(in srgb, var(--tm-color-danger) 60%, transparent);
+  background: color-mix(in srgb, var(--tm-color-danger) 5%, transparent);
 }
 
 .step-header {
@@ -810,9 +832,9 @@ onBeforeRouteLeave(async () => {
 }
 
 .step-error .error-block {
-  background: rgba(245, 108, 108, 0.1);
-  color: #f56c6c;
-  border: 1px solid rgba(245, 108, 108, 0.3);
+  background: color-mix(in srgb, var(--tm-color-danger) 10%, transparent);
+  color: var(--tm-color-danger);
+  border: 1px solid color-mix(in srgb, var(--tm-color-danger) 30%, transparent);
   border-radius: 6px;
   padding: 12px;
   font-family: 'Courier New', monospace;
@@ -835,12 +857,12 @@ onBeforeRouteLeave(async () => {
 }
 
 .success-text {
-  color: #67c23a;
+  color: var(--tm-color-success);
   font-weight: 500;
 }
 
 .failed-text {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
   font-weight: 500;
 }
 </style>

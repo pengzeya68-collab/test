@@ -20,6 +20,9 @@ const applyToken = (config, baseURL) => {
   const token = isAdminRequest ? getAdminToken() : getUserToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   else delete config.headers.Authorization
+  const projectId = localStorage.getItem('desktop-active-project-id')
+  if (projectId && Number(projectId) > 0) config.headers['X-Project-Id'] = String(projectId)
+  else delete config.headers['X-Project-Id']
   return config
 }
 service.interceptors.request.use(config => applyToken(config, apiBaseURL()))

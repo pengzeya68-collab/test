@@ -58,8 +58,13 @@
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import * as echarts from 'echarts'
+import { init, use } from 'echarts/core'
+import { LineChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
 import { autoTestRequest } from '@/utils/request'
+
+use([CanvasRenderer, GridComponent, LegendComponent, LineChart, TooltipComponent])
 
 const props = defineProps({
   modelValue: Boolean,
@@ -140,7 +145,7 @@ const removeBaseline = (id) => {
 const renderChart = () => {
   if (!chartRef.value) return
   if (!chartInstance) {
-    chartInstance = echarts.init(chartRef.value)
+    chartInstance = init(chartRef.value)
   }
 
   const metricLabels = {
@@ -182,7 +187,7 @@ const renderChart = () => {
     symbol: 'circle',
     symbolSize: 8,
     lineStyle: { width: 3 },
-    itemStyle: { color: '#409EFF' },
+    itemStyle: { color: 'var(--tm-color-primary)' },
     areaStyle: { opacity: 0.15 },
     markLine: markLines.length > 0 ? {
       symbol: ['none', 'none'],
@@ -190,7 +195,7 @@ const renderChart = () => {
         yAxis: m.yAxis,
         name: m.name,
         label: { formatter: m.name, position: 'end' },
-        lineStyle: { color: '#E6A23C', type: 'dashed', width: 2 },
+        lineStyle: { color: 'var(--tm-color-warning)', type: 'dashed', width: 2 },
       })),
     } : undefined,
   }]
@@ -261,7 +266,7 @@ watch(() => props.historyRuns, (runs) => {
 }
 .trend-summary {
   margin-bottom: 16px;
-  border: 1px solid var(--tm-border-color, #e4e7ed);
+  border: 1px solid var(--tm-border-color, var(--tm-border-light));
   border-radius: 4px;
 }
 .trend-chart-box {

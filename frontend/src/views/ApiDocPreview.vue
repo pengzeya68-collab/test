@@ -144,15 +144,15 @@
         </el-form-item>
       </el-form>
       <div v-if="shareResult" class="share-result">
-        <el-alert title="分享链接已生成" type="success" :closable="false" show-icon />
-        <el-input :model-value="shareResult.fullUrl" readonly class="share-url-input">
+        <el-alert :title="shareResult.offline ? '离线文档已导出' : '分享链接已生成'" type="success" :closable="false" show-icon />
+        <el-input v-if="!shareResult.offline" :model-value="shareResult.fullUrl" readonly class="share-url-input">
           <template #append>
             <el-button @click="copyShareUrl">复制</el-button>
           </template>
         </el-input>
         <p class="share-info">
           接口数: {{ shareResult.case_count }} · 格式: {{ shareResult.format }} ·
-          有效期: {{ shareResult.expires_hours }} 小时
+          {{ shareResult.offline ? '本机离线模式，文件可作为附件发送' : `有效期: ${shareResult.expires_hours} 小时` }}
         </p>
       </div>
       <template #footer>
@@ -174,6 +174,8 @@ import {
   CopyDocument, FullScreen,
 } from '@element-plus/icons-vue'
 import { autoTestRequest } from '@/utils/request'
+import { getServerUrl } from '@/utils/server-config'
+import { isDesktopBuild } from '@/utils/build-target'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
@@ -194,6 +196,16 @@ const shareForm = ref({
   format: 'html',
   expiresHours: 24,
 })
+
+const isLocalDesktopService = () => {
+  if (!isDesktopBuild) return false
+  try {
+    const hostname = new URL(getServerUrl()).hostname
+    return hostname === '127.0.0.1' || hostname === 'localhost'
+  } catch {
+    return true
+  }
+}
 
 const treeProps = {
   children: 'children',
@@ -412,6 +424,30 @@ const handleExport = () => {
   ElMessage.success('文档已导出')
 }
 
+const downloadDocument = (content, format, title = 'api-doc') => {
+  const extension = format === 'openapi' ? 'json' : format === 'markdown' ? 'md' : 'html'
+  const mime = format === 'openapi' ? 'application/json' : format === 'markdown' ? 'text/markdown' : 'text/html'
+  const safeTitle = String(title).replace(/[\\/:*?"<>|]/g, '_').trim() || 'api-doc'
+  const blob = new Blob([typeof content === 'string' ? content : JSON.stringify(content, null, 2)], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `${safeTitle}.${extension}`
+  anchor.click()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+const exportOfflineShareDocument = async () => {
+  const params = { case_ids: selectedCaseIds.value.join(',') }
+  const format = shareForm.value.format
+  const endpoint = format === 'openapi' ? 'openapi' : format === 'markdown' ? 'markdown' : 'html'
+  const response = await autoTestRequest.get(`/auto-test/api-docs/${endpoint}`, {
+    params,
+    ...(format === 'openapi' ? {} : { responseType: 'text', transformResponse: [(data) => data] }),
+  })
+  downloadDocument(response, format, shareForm.value.title)
+}
+
 // 复制 JSON
 const copyJson = () => {
   navigator.clipboard.writeText(formattedJson.value).then(() => {
@@ -443,6 +479,12 @@ const handleShare = async () => {
   sharing.value = true
   shareResult.value = null
   try {
+    if (isLocalDesktopService()) {
+      await exportOfflineShareDocument()
+      shareResult.value = { offline: true, case_count: selectedCaseIds.value.length, format: shareForm.value.format }
+      ElMessage.success('离线文档已导出。本机服务不生成不可访问的分享链接')
+      return
+    }
     const resp = await autoTestRequest.post('/auto-test/api-docs/share', {
       case_ids: selectedCaseIds.value,
       expires_hours: shareForm.value.expiresHours,
@@ -451,7 +493,9 @@ const handleShare = async () => {
     })
     shareResult.value = {
       ...resp,
-      fullUrl: window.location.origin + resp.url,
+      // Electron is loaded from file://. A share created on a configured
+      // enterprise server must point to that server, never to file://.
+      fullUrl: (isDesktopBuild ? getServerUrl() : window.location.origin) + resp.url,
     }
     ElMessage.success('分享链接已生成')
   } catch (error) {
@@ -486,7 +530,7 @@ watch(showShareDialog, (val) => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
 }
 
 .doc-header {
@@ -495,7 +539,7 @@ watch(showShareDialog, (val) => {
   align-items: center;
   padding: 12px 20px;
   background: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--tm-border-light);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   flex-shrink: 0;
 }
@@ -509,17 +553,17 @@ watch(showShareDialog, (val) => {
 .header-left h2 {
   font-size: 18px;
   margin: 0;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .back-icon {
   cursor: pointer;
   font-size: 20px;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .back-icon:hover {
-  color: #409eff;
+  color: var(--tm-color-primary);
 }
 
 .header-right {
@@ -538,7 +582,7 @@ watch(showShareDialog, (val) => {
 .doc-sidebar {
   width: 300px;
   background: #fff;
-  border-right: 1px solid #e4e7ed;
+  border-right: 1px solid var(--tm-border-light);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -549,10 +593,10 @@ watch(showShareDialog, (val) => {
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--tm-border-light);
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .sidebar-header span:first-child {
@@ -562,7 +606,7 @@ watch(showShareDialog, (val) => {
 .sidebar-stats {
   padding: 6px 16px;
   font-size: 12px;
-  color: #909399;
+  color: var(--tm-color-info);
   border-bottom: 1px solid #f0f0f0;
 }
 
@@ -612,14 +656,14 @@ watch(showShareDialog, (val) => {
   align-items: center;
   padding: 10px 20px;
   background: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--tm-border-light);
   flex-shrink: 0;
 }
 
 .preview-title {
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .json-viewer {
@@ -627,8 +671,8 @@ watch(showShareDialog, (val) => {
   overflow: auto;
   padding: 16px 20px;
   margin: 0;
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: var(--tm-bg-elevated);
+  color: var(--tm-border-light);
   font-family: Consolas, Monaco, 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.6;
@@ -651,7 +695,7 @@ watch(showShareDialog, (val) => {
 .markdown-body :deep(h1) {
   font-size: 24px;
   margin: 16px 0 12px;
-  border-bottom: 2px solid #e4e7ed;
+  border-bottom: 2px solid var(--tm-border-light);
   padding-bottom: 8px;
 }
 
@@ -668,7 +712,7 @@ watch(showShareDialog, (val) => {
 .markdown-body :deep(h4) {
   font-size: 14px;
   margin: 10px 0 6px;
-  border-left: 3px solid #409eff;
+  border-left: 3px solid var(--tm-color-primary);
   padding-left: 8px;
 }
 
@@ -681,19 +725,19 @@ watch(showShareDialog, (val) => {
 
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--tm-border-light);
   padding: 8px 10px;
   text-align: left;
 }
 
 .markdown-body :deep(th) {
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   font-weight: 500;
 }
 
 .markdown-body :deep(pre) {
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: var(--tm-bg-elevated);
+  color: var(--tm-border-light);
   padding: 14px;
   border-radius: 4px;
   overflow-x: auto;
@@ -706,10 +750,10 @@ watch(showShareDialog, (val) => {
 
 .markdown-body :deep(p code),
 .markdown-body :deep(li code) {
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   padding: 1px 6px;
   border-radius: 3px;
-  color: #e6a23c;
+  color: var(--tm-color-warning);
 }
 
 .html-iframe {
@@ -731,6 +775,6 @@ watch(showShareDialog, (val) => {
 .share-info {
   margin-top: 8px;
   font-size: 12px;
-  color: #909399;
+  color: var(--tm-color-info);
 }
 </style>

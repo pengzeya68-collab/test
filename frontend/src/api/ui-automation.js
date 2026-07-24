@@ -29,9 +29,16 @@ uiAxios.interceptors.request.use((config) => {
   if (isDesktopBuild) {
     config.baseURL = `${getServerUrl()}/api/ui-automation`
   }
+  config.headers = config.headers || {}
   const token = localStorage.getItem('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+  const projectId = localStorage.getItem('desktop-active-project-id')
+  if (projectId && Number(projectId) > 0) {
+    config.headers['X-Project-Id'] = String(projectId)
+  } else {
+    delete config.headers['X-Project-Id']
   }
   return config
 })
@@ -216,10 +223,15 @@ export const uiAutomationApi = {
       const end = Math.min(offset + chunkSize, binary.byteLength)
       const start = offset
       try {
-        await retryUpload(() => autoTestRequest.put(session.chunk_endpoint, binary.slice(start, end), {
+        // chunk_endpoint is an absolute API path returned by the server. Do
+        // not feed it back through autoTestRequest (/api base), otherwise it
+        // becomes /api/api/auto-test/... and every artifact upload 404s.
+        const chunkUrl = `${getServerUrl()}${session.chunk_endpoint}`
+        await retryUpload(() => axios.put(chunkUrl, binary.slice(start, end), {
           headers: {
             'Content-Type': 'application/octet-stream',
             'Content-Range': `bytes ${start}-${end - 1}/${binary.byteLength}`,
+            Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
           },
         }))
         offset = end

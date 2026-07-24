@@ -28,14 +28,17 @@ async def shutdown_http_client():
 
 async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any], user_id: int = None) -> Dict[str, Any]:
     """
-    加载全局变量和环境变量，合并到 variables 中
+    加载全局变量和环境变量，合并到 variables 中。
+
+    优先级（规范 §4.3）：runtime(caller) > env > project/global > default。
+    不得用 global/env 覆盖调用方已传入的 runtime 变量。
     """
     from fastapi_backend.core.autotest_database import AsyncSessionLocal
     from fastapi_backend.models.autotest import AutoTestGlobalVariable, AutoTestEnvironment
     from fastapi_backend.utils.encryption import decrypt
-    from fastapi_backend.services.autotest_variable_service import deserialize_var_value
+    from fastapi_backend.services.autotest_variable_service import deserialize_var_value, merge_variable_layers
 
-    variables = dict(variables)
+    runtime = dict(variables or {})
 
     async with AsyncSessionLocal() as session:
         query = select(AutoTestGlobalVariable)
@@ -50,8 +53,8 @@ async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any], us
             # 反序列化以还原原始类型（int/float/bool/dict/list 等）
             value = deserialize_var_value(value)
             global_vars[var.name] = value
-        variables.update(global_vars)
 
+        env_vars: Dict[str, Any] = {}
         if env_id:
             env_query = select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id)
             if user_id is not None:
@@ -59,7 +62,12 @@ async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any], us
             result = await session.execute(env_query)
             env = result.scalar_one_or_none()
             if env:
-                # 🔥 修复：环境变量继承——当 env 设置了 parent_id 时，合并整条继承链上的变量
+                # The environment base URL is stored separately from its custom
+                # variables, but {{base_url}} is the canonical template used by
+                # the debugger and generated scenarios.
+                if getattr(env, "base_url", None):
+                    env_vars.setdefault("base_url", env.base_url)
+                # 环境变量继承——当 env 设置了 parent_id 时，合并整条继承链上的变量
                 # （子环境覆盖父环境同名变量），与 replace_case_variables 保持一致
                 if getattr(env, "parent_id", None) is not None:
                     try:
@@ -69,14 +77,15 @@ async def resolve_variables(env_id: Optional[int], variables: Dict[str, Any], us
 
                         effective_vars = await get_effective_variables(session, env.id, user_id=user_id)
                         for v in effective_vars:
-                            variables[v["name"]] = v["value"]
+                            env_vars[v["name"]] = v["value"]
                     except Exception:
                         if env.variables and isinstance(env.variables, dict):
-                            variables.update(env.variables)
+                            env_vars.update(env.variables)
                 elif env.variables and isinstance(env.variables, dict):
-                    variables.update(env.variables)
+                    env_vars.update(env.variables)
 
-    return variables
+        # Low → high: project/global, env, then runtime wins on conflict.
+        return merge_variable_layers(project=global_vars, env=env_vars, runtime=runtime)
 
 
 def apply_variable_substitution(
@@ -149,10 +158,6 @@ async def execute_http_request(
     """
     if variables is None:
         variables = {}
-
-    safe, reason = validate_url_safety(url)
-    if not safe:
-        return {"success": False, "error": reason, "execution_time": 0}
 
     if resolve_persisted_variables:
         variables = await resolve_variables(env_id, variables, user_id=user_id)

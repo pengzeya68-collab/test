@@ -1,5 +1,5 @@
 import { Browser, BrowserContext, BrowserContextOptions, Page, chromium } from 'playwright';
-import { bundledChromiumExecutable } from './browser-runtime';
+import { chromiumLaunchTarget } from './browser-runtime';
 import { randomUUID } from 'crypto';
 import { Locator as TestMasterLocator } from '../shared/contracts/locator';
 
@@ -13,6 +13,7 @@ export type RecorderEvent =
       type: 'network'; method: string; url: string; status: number; failed: boolean;
       resourceType?: string; requestHeaders?: Record<string, string>; requestBody?: unknown;
       responseHeaders?: Record<string, string>; responseBody?: unknown; durationMs?: number; pageUrl?: string;
+      failureReason?: string; captureEventId?: string;
     }
   | { type: 'page'; url: string; title: string }
   | { type: 'error'; message: string };
@@ -24,7 +25,7 @@ export interface RecorderStartOptions {
   storageState?: BrowserContextOptions['storageState'] | null;
 }
 
-const MAX_CAPTURED_NETWORK_EVENTS = 500;
+const MAX_CAPTURED_NETWORK_EVENTS = 2000;
 const MAX_CAPTURED_BODY_BYTES = 1024 * 1024;
 const SENSITIVE_NETWORK_FIELD = /password|passwd|secret|token|api[_-]?key|authorization|cookie|session|id_?card|phone/i;
 
@@ -178,20 +179,28 @@ export class RecorderSession {
 
   async start(options: RecorderStartOptions): Promise<{ sessionId: string; browserVersion: string }> {
     if (!/^https?:\/\//i.test(options.url) && !options.url.startsWith('data:')) throw new Error('INVALID_RECORDER_URL');
-    this.browser = await chromium.launch({ headless: false, slowMo: options.slowMo ?? 0, executablePath: bundledChromiumExecutable() });
-    this.context = await this.browser.newContext({
-      viewport: options.viewport ?? { width: 1365, height: 768 },
-      storageState: options.storageState ?? undefined,
-    });
-    await this.context.exposeBinding('__testmasterRecord', async (source, payload: any) => this.handleBrowserEvent(payload, source.frame));
-    await this.context.addInitScript(RECORDER_SCRIPT);
-    this.context.on('page', page => void this.attachPage(page));
-    const page = await this.context.newPage();
-    await this.attachPage(page);
-    await page.goto(options.url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-    this.emitAction('goto', '打开网页', null, { url: this.redactNetworkUrl(options.url) });
-    this.onEvent({ type: 'ready', sessionId: this.id, url: this.redactNetworkUrl(page.url()), title: await page.title() });
-    return { sessionId: this.id, browserVersion: this.browser.version() };
+    this.browser = await chromium.launch({ headless: false, slowMo: options.slowMo ?? 0, ...chromiumLaunchTarget() });
+    try {
+      this.context = await this.browser.newContext({
+        viewport: options.viewport ?? { width: 1365, height: 768 },
+        storageState: options.storageState ?? undefined,
+      });
+      await this.context.exposeBinding('__testmasterRecord', async (source, payload: any) => this.handleBrowserEvent(payload, source.frame));
+      await this.context.addInitScript(RECORDER_SCRIPT);
+      this.context.on('page', page => void this.attachPage(page));
+      const page = await this.context.newPage();
+      await this.attachPage(page);
+      await page.goto(options.url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      this.emitAction('goto', '打开网页', null, { url: this.redactNetworkUrl(options.url) });
+      this.onEvent({ type: 'ready', sessionId: this.id, url: this.redactNetworkUrl(page.url()), title: await page.title() });
+      return { sessionId: this.id, browserVersion: this.browser.version() };
+    } catch (error) {
+      await this.browser.close().catch(() => {});
+      this.browser = null;
+      this.context = null;
+      this.pages.clear();
+      throw error;
+    }
   }
 
   async setMode(mode: RecorderMode): Promise<void> {
@@ -284,7 +293,7 @@ export class RecorderSession {
       type: 'console', level: message.type(), text: this.redactDiagnosticText(message.text()), url: this.redactNetworkUrl(page.url()),
     }));
     page.on('response', response => void this.captureResponse(response));
-    page.on('requestfailed', request => this.onEvent({ type: 'network', method: request.method(), url: this.redactNetworkUrl(request.url()), status: 0, failed: true }));
+    page.on('requestfailed', request => void this.captureRequestFailure(request));
     page.on('framenavigated', async frame => { if (frame === page.mainFrame()) this.onEvent({ type: 'page', url: this.redactNetworkUrl(page.url()), title: await page.title().catch(() => '') }); });
     page.on('dialog', dialog => {
       this.onEvent({ type: 'action', insertBeforeLast: true, step: this.makeStep('accept_dialog', '自动确认弹窗', null, { message: this.redactDiagnosticText(dialog.message()), dialogType: dialog.type() }) });
@@ -372,7 +381,9 @@ export class RecorderSession {
   private async captureResponse(response: import('playwright').Response): Promise<void> {
     const request = response.request();
     const resourceType = request.resourceType();
-    if (!['xhr', 'fetch'].includes(resourceType) || this.capturedNetworkEvents >= MAX_CAPTURED_NETWORK_EVENTS) return;
+    // Keep API calls and failed top-level document loads. Static assets are
+    // intentionally excluded to avoid drowning a test session in noise.
+    if (!['xhr', 'fetch', 'document'].includes(resourceType) || this.capturedNetworkEvents >= MAX_CAPTURED_NETWORK_EVENTS) return;
     this.capturedNetworkEvents += 1;
     const requestHeaders = this.redactNetworkHeaders(request.headers());
     const responseHeaders = this.redactNetworkHeaders(await response.allHeaders().catch(() => ({})));
@@ -380,7 +391,7 @@ export class RecorderSession {
     const requestText = request.postData();
     if (requestText && Buffer.byteLength(requestText, 'utf8') <= MAX_CAPTURED_BODY_BYTES) {
       try { requestBody = this.redactNetworkValue(JSON.parse(requestText)); }
-      catch { requestBody = '[non-JSON request body omitted]'; }
+      catch { requestBody = this.redactDiagnosticText(requestText); }
     }
     let responseBody: unknown = null;
     const contentLength = Number(responseHeaders['content-length'] || 0);
@@ -389,9 +400,9 @@ export class RecorderSession {
       try {
         const body = await response.body();
         if (body.length <= MAX_CAPTURED_BODY_BYTES) {
-          const text = body.toString('utf8');
-          try { responseBody = this.redactNetworkValue(JSON.parse(text)); }
-          catch { responseBody = '[non-JSON response body omitted]'; }
+        const text = body.toString('utf8');
+        try { responseBody = this.redactNetworkValue(JSON.parse(text)); }
+        catch { responseBody = this.redactDiagnosticText(text); }
         }
       } catch {}
     }
@@ -402,7 +413,25 @@ export class RecorderSession {
     this.onEvent({
       type: 'network', method: request.method(), url: this.redactNetworkUrl(response.url()), status: response.status(),
       failed: response.status() >= 400, resourceType, requestHeaders, requestBody, responseHeaders, responseBody,
-      durationMs, pageUrl: this.redactNetworkUrl(request.frame().page().url()),
+      durationMs, pageUrl: this.redactNetworkUrl(request.frame().page().url()), captureEventId: randomUUID(),
+    });
+  }
+
+  private async captureRequestFailure(request: import('playwright').Request): Promise<void> {
+    const resourceType = request.resourceType();
+    if (!['xhr', 'fetch', 'document'].includes(resourceType) || this.capturedNetworkEvents >= MAX_CAPTURED_NETWORK_EVENTS) return;
+    this.capturedNetworkEvents += 1;
+    const requestText = request.postData();
+    let requestBody: unknown = null;
+    if (requestText && Buffer.byteLength(requestText, 'utf8') <= MAX_CAPTURED_BODY_BYTES) {
+      try { requestBody = this.redactNetworkValue(JSON.parse(requestText)); }
+      catch { requestBody = this.redactDiagnosticText(requestText); }
+    }
+    this.onEvent({
+      type: 'network', method: request.method(), url: this.redactNetworkUrl(request.url()), status: 0, failed: true,
+      resourceType, requestHeaders: this.redactNetworkHeaders(request.headers()), requestBody,
+      failureReason: this.redactDiagnosticText(request.failure()?.errorText || 'request failed'),
+      pageUrl: this.redactNetworkUrl(request.frame().page().url()), captureEventId: randomUUID(),
     });
   }
 

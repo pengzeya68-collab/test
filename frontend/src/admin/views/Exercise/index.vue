@@ -69,9 +69,9 @@
             show-icon
           />
           <div v-if="importResult.fail_reasons.length > 0" style="margin-top: 10px; max-height: 200px; overflow-y: auto;">
-            <p style="font-weight: bold; margin-bottom: 5px; color: #e0e0e0;">失败原因：</p>
+            <p style="font-weight: bold; margin-bottom: 5px; color: var(--tm-border-light);">失败原因：</p>
             <ul>
-              <li v-for="(reason, index) in importResult.fail_reasons" :key="reason || index" style="color: #f56c6c; font-size: 12px;">
+              <li v-for="(reason, index) in importResult.fail_reasons" :key="reason || index" style="color: var(--tm-color-danger); font-size: 12px;">
                 {{ reason }}
               </li>
             </ul>
@@ -260,12 +260,6 @@ const handleSearch = () => {
 }
 
 const handleSizeChange = () => {
-  page.value = 1
-  fetchList()
-}
-
-// 难度变化时回到第一页并重新查询。
-const handleDifficultyChange = () => {
   page.value = 1
   fetchList()
 }
@@ -483,7 +477,7 @@ onMounted(() => {
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #67c23a, #84cc16);
+  background: linear-gradient(135deg, var(--tm-color-success), var(--tm-color-success));
   border: none;
 }
 
@@ -534,7 +528,7 @@ onMounted(() => {
 
 .bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #67c23a, #84cc16);
+  background: linear-gradient(90deg, var(--tm-color-success), var(--tm-color-success));
   border-radius: 4px;
   transition: width 0.3s ease;
 }

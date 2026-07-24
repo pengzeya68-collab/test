@@ -128,7 +128,7 @@ const getLevelClass = (level) => {
 
 .page-header {
   padding-bottom: 20px;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
 }
 .header-titles {
   display: flex;
@@ -293,10 +293,10 @@ const getLevelClass = (level) => {
   font-size: 11px;
   font-weight: 700;
 }
-.lv-beginner { background: rgba(52,211,153,0.12); color: #34d399; }
-.lv-medium { background: rgba(251,191,36,0.12); color: #fbbf24; }
-.lv-advanced { background: rgba(248,113,113,0.12); color: #f87171; }
-.lv-expert { background: rgba(139,92,246,0.15); color: var(--tm-color-primary); }
+.lv-beginner { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.lv-medium { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); }
+.lv-advanced { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); }
+.lv-expert { background: rgba(var(--tm-color-primary-rgb),0.15); color: var(--tm-color-primary); }
 
 .cert-status-tag {
   padding: 2px 10px;
@@ -308,7 +308,7 @@ const getLevelClass = (level) => {
 }
 .locked-tag {
   background: rgba(255, 255, 255, 0.04);
-  color: #52525b;
+  color: var(--tm-text-muted);
 }
 
 .cert-body {
@@ -354,7 +354,7 @@ const getLevelClass = (level) => {
   text-align: right;
   font-weight: 600;
 }
-.score-divider { color: #52525b; margin: 0 2px; }
+.score-divider { color: var(--tm-text-muted); margin: 0 2px; }
 
 .cert-footer {
   display: flex;
@@ -379,7 +379,7 @@ const getLevelClass = (level) => {
 }
 .unlock-hint {
   font-size: 12px;
-  color: #52525b;
+  color: var(--tm-text-muted);
 }
 
 /* Empty */

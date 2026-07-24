@@ -246,7 +246,7 @@ onMounted(() => {
 <style scoped>
 .shared-doc-container {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   display: flex;
   flex-direction: column;
 }
@@ -259,7 +259,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  color: #909399;
+  color: var(--tm-color-info);
 }
 
 .loading-state p {
@@ -305,7 +305,7 @@ onMounted(() => {
   align-items: center;
   padding: 12px 24px;
   background: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--tm-border-light);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   flex-shrink: 0;
 }
@@ -319,7 +319,7 @@ onMounted(() => {
 .meta-left h2 {
   font-size: 18px;
   margin: 0;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .meta-right {
@@ -333,7 +333,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #909399;
+  color: var(--tm-color-info);
 }
 
 .json-viewer {
@@ -341,8 +341,8 @@ onMounted(() => {
   overflow: auto;
   padding: 16px 24px;
   margin: 0;
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: var(--tm-bg-elevated);
+  color: var(--tm-border-light);
   font-family: Consolas, Monaco, 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.6;
@@ -367,7 +367,7 @@ onMounted(() => {
 .markdown-body :deep(h1) {
   font-size: 24px;
   margin: 16px 0 12px;
-  border-bottom: 2px solid #e4e7ed;
+  border-bottom: 2px solid var(--tm-border-light);
   padding-bottom: 8px;
 }
 
@@ -384,7 +384,7 @@ onMounted(() => {
 .markdown-body :deep(h4) {
   font-size: 14px;
   margin: 10px 0 6px;
-  border-left: 3px solid #409eff;
+  border-left: 3px solid var(--tm-color-primary);
   padding-left: 8px;
 }
 
@@ -397,19 +397,19 @@ onMounted(() => {
 
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--tm-border-light);
   padding: 8px 10px;
   text-align: left;
 }
 
 .markdown-body :deep(th) {
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   font-weight: 500;
 }
 
 .markdown-body :deep(pre) {
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: var(--tm-bg-elevated);
+  color: var(--tm-border-light);
   padding: 14px;
   border-radius: 4px;
   overflow-x: auto;
@@ -422,9 +422,9 @@ onMounted(() => {
 
 .markdown-body :deep(p code),
 .markdown-body :deep(li code) {
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   padding: 1px 6px;
   border-radius: 3px;
-  color: #e6a23c;
+  color: var(--tm-color-warning);
 }
 </style>

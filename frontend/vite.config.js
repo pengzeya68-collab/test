@@ -20,12 +20,12 @@ export default defineConfig(({ mode }) => {
     plugins: [
       vue(),
       AutoImport({
-        resolvers: [ElementPlusResolver()],
+        resolvers: [ElementPlusResolver({ importStyle: 'css' })],
         imports: ['vue', 'vue-router', 'pinia'],
         dts: false,
       }),
       Components({
-        resolvers: [ElementPlusResolver()],
+        resolvers: [ElementPlusResolver({ importStyle: 'css' })],
         dts: false,
       }),
       removeConsole({ excludes: ['error', 'warn'] }),
@@ -36,6 +36,24 @@ export default defineConfig(({ mode }) => {
           api: 'modern-compiler'
         }
       }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          // Keep large, route-specific libraries out of the desktop dashboard
+          // and web landing bundle. They are loaded only when their editor or
+          // analysis workspace is opened.
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined
+            if (id.includes('@codemirror')) return 'vendor-codemirror'
+            if (id.includes('echarts') || id.includes('zrender')) return 'vendor-charts'
+            if (id.includes('xlsx') || id.includes('papaparse')) return 'vendor-data'
+            if (id.includes('marked') || id.includes('dompurify')) return 'vendor-markdown'
+            if (id.includes('vuedraggable') || id.includes('sortablejs')) return 'vendor-dragdrop'
+            return undefined
+          },
+        },
+      },
     },
     resolve: {
       alias: {
@@ -79,19 +97,5 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
-    build: {
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            // 仅对真正独立且体积较大的库做显式分包，避免循环 chunk 依赖
-            if (id.includes('node_modules/element-plus')) return 'element-plus'
-            if (id.includes('node_modules/echarts')) return 'echarts'
-            if (id.includes('node_modules/xlsx')) return 'xlsx'
-            if (id.includes('node_modules/papaparse')) return 'papaparse'
-            if (id.includes('node_modules/vuedraggable') || id.includes('node_modules/sortablejs')) return 'draggable'
-          }
-        }
-      }
-    }
   }
 })

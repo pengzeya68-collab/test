@@ -196,7 +196,6 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -224,11 +223,11 @@ use([
 
 const router = useRouter()
 
-const PRIMARY_PURPLE = '#8b5cf6'
-const PRIMARY_MAGENTA = '#d946ef'
-const LIGHT_PURPLE = '#c084fc'
-const TEXT_LIGHT = '#e2e8f0'
-const TEXT_DIM = '#94a3b8'
+const PRIMARY_PURPLE = 'var(--tm-color-primary)'
+const PRIMARY_MAGENTA = 'var(--tm-neon-pink)'
+const LIGHT_PURPLE = 'var(--tm-color-primary-light)'
+const TEXT_LIGHT = 'var(--tm-text-regular)'
+const TEXT_DIM = 'var(--tm-text-secondary)'
 
 const DEFAULT_SKILLS = [
   { key: 'api_automation', name: '接口自动化测试', score: 82, level: '熟练', description: '掌握 REST 和 GraphQL 接口测试。', suggestion: '深入学习契约测试与 Mock 服务治理。' },
@@ -375,8 +374,8 @@ const radarOption = computed(() => {
         {
           value: radarData.value.industry_data,
           name: '琛屼笟骞冲潎',
-          itemStyle: { color: '#64748b' },
-          lineStyle: { width: 1.5, color: '#64748b', type: 'dashed' },
+          itemStyle: { color: 'var(--tm-text-muted)' },
+          lineStyle: { width: 1.5, color: 'var(--tm-text-muted)', type: 'dashed' },
           areaStyle: { color: 'rgba(100, 116, 139, 0.08)' }
         }
       ]
@@ -464,7 +463,7 @@ const lineOption = computed(() => {
       name: '缁煎悎鑳藉姏', type: 'line', smooth: true,
       symbol: 'circle', symbolSize: 8,
       lineStyle: { width: 3, color: PRIMARY_PURPLE, shadowColor: 'rgba(var(--tm-color-primary-rgb), 0.5)', shadowBlur: 10 },
-      itemStyle: { color: PRIMARY_PURPLE, borderColor: '#12121f', borderWidth: 2 },
+      itemStyle: { color: PRIMARY_PURPLE, borderColor: 'var(--tm-bg-card-solid)', borderWidth: 2 },
       areaStyle: {
         color: {
           type: 'linear',
@@ -507,7 +506,8 @@ const fetchSkillData = async () => {
   try {
     const res = await request.get('/skills/progress')
     if (res.progress) {
-      // 浣跨敤鏃堕棿缁村害浣滀负X杞达紝鑰岄潪鎶€鑳藉悕绉?      const months = res.progress.map(p => p.month || p.date || p.period || p.skill).slice(-6)
+      // 使用时间维度作为 X 轴，而非技能名称。
+      const months = res.progress.map(p => p.month || p.date || p.period || p.skill).slice(-6)
       const scores = res.progress.map(p => {
         if (!p.target || p.target === 0) return p.score || p.progress || 0
         return Math.round((p.current || 0) / p.target * 100)
@@ -529,7 +529,7 @@ const getScoreClass = (score) => {
 const getScoreGradient = (score) => {
   if (score >= 80) return 'linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-primary-dark))'
   if (score >= 60) return 'linear-gradient(90deg, var(--tm-color-primary), #a855f7)'
-  return 'linear-gradient(90deg, #64748b, var(--tm-color-primary))'
+  return 'linear-gradient(90deg, var(--tm-text-muted), var(--tm-color-primary))'
 }
 
 const getLevelClass = (level) => {
@@ -584,7 +584,7 @@ const goToExercise = (exerciseId) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
   padding-bottom: 24px;
 }
 .header-titles {
@@ -631,7 +631,7 @@ const goToExercise = (exerciseId) => {
 .badge-level {
   font-size: 12px;
   font-weight: 600;
-  color: #d946ef;
+  color: var(--tm-neon-pink);
 }
 
 .analysis-main-content {
@@ -749,7 +749,7 @@ const goToExercise = (exerciseId) => {
   border: 1px solid rgba(var(--tm-color-primary-rgb), 0.15);
   border-radius: 8px;
   font-size: 14px;
-  color: #c084fc;
+  color: var(--tm-color-primary-light);
 }
 
 .charts-grid {
@@ -783,7 +783,7 @@ const goToExercise = (exerciseId) => {
 
 .skill-block-card {
   background: var(--tm-card-bg);
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
   border-radius: 12px;
   padding: 24px 28px;
   display: flex;
@@ -851,12 +851,12 @@ const goToExercise = (exerciseId) => {
   font-size: 12px;
   font-weight: 500;
 }
-.status-tag.lv-beginner { background: rgba(148,163,184,0.12); color: #94a3b8; }
-.status-tag.lv-familiar { background: rgba(251,191,36,0.12); color: #fbbf24; }
-.status-tag.lv-proficient { background: rgba(52,211,153,0.12); color: #34d399; }
-.status-tag.lv-skilled { background: rgba(59,130,246,0.12); color: #3b82f6; }
-.status-tag.lv-expert { background: rgba(239,68,68,0.12); color: #ef4444; }
-.status-tag.lv-master { background: rgba(139,92,246,0.12); color: var(--tm-color-primary); }
+.status-tag.lv-beginner { background: rgba(148,163,184,0.12); color: var(--tm-text-secondary); }
+.status-tag.lv-familiar { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); }
+.status-tag.lv-proficient { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.status-tag.lv-skilled { background: rgba(59,130,246,0.12); color: var(--tm-color-primary); }
+.status-tag.lv-expert { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); }
+.status-tag.lv-master { background: rgba(var(--tm-color-primary-rgb),0.12); color: var(--tm-color-primary); }
 
 .card-analysis-body {
   padding-left: 34px;
@@ -914,7 +914,7 @@ const goToExercise = (exerciseId) => {
   width: 100%;
   max-width: 600px;
   background: var(--tm-card-bg);
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   overflow: hidden;
@@ -924,7 +924,7 @@ const goToExercise = (exerciseId) => {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
 }
 .modal-title {
   font-size: 18px;
@@ -1004,7 +1004,7 @@ const goToExercise = (exerciseId) => {
   border: 1px solid rgba(var(--tm-color-primary-rgb), 0.12);
   border-radius: 8px;
   line-height: 1.8;
-  color: #c084fc;
+  color: var(--tm-color-primary-light);
   margin: 0;
   font-size: 14px;
 }
@@ -1037,9 +1037,9 @@ const goToExercise = (exerciseId) => {
   font-size: 11px;
   font-weight: 500;
 }
-.exercise-diff-tag.diff-easy { background: rgba(52,211,153,0.12); color: #34d399; }
-.exercise-diff-tag.diff-medium { background: rgba(251,191,36,0.12); color: #fbbf24; }
-.exercise-diff-tag.diff-hard { background: rgba(248,113,113,0.12); color: #f87171; }
+.exercise-diff-tag.diff-easy { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.exercise-diff-tag.diff-medium { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); }
+.exercise-diff-tag.diff-hard { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); }
 .exercise-time { font-size: 12px; color: var(--tm-text-secondary); }
 
 @media (max-width: 1200px) {

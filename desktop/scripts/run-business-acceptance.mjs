@@ -1,48 +1,89 @@
 import { _electron as electron } from 'playwright'
 import { spawn } from 'node:child_process'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const root = path.resolve(import.meta.dirname, '..')
-const profile = path.join(root, '.business-acceptance-profile')
+const profile = process.env.TESTMASTER_ACCEPTANCE_DATA_DIR || 'D:\\TestMasterAcceptance\\runs\\business-acceptance'
 const resultPath = path.join(root, 'test-artifacts', 'business-acceptance.json')
 await rm(profile, { recursive: true, force: true })
 await mkdir(path.dirname(resultPath), { recursive: true })
 
-const app = await electron.launch({ args: [root, '--remote-debugging-port=9333', `--user-data-dir=${profile}`] })
+const packagedExe = process.env.TESTMASTER_PACKAGED_EXE
+const launchOptions = packagedExe
+  ? { executablePath: packagedExe, args: ['--remote-debugging-port=9333', `--user-data-dir=${profile}`] }
+  : { args: [root, '--remote-debugging-port=9333', `--user-data-dir=${profile}`] }
+const app = await electron.launch({
+  ...launchOptions,
+  // Only the isolated acceptance profile permits loopback targets. This lets the
+  // script use a deterministic local HTTP server while release builds retain
+  // their default SSRF protections.
+  env: { ...process.env, TESTMASTER_DESKTOP_DATA_DIR: profile, DISABLE_SSRF_GUARD: 'true' },
+})
 const page = await app.firstWindow()
 const pageErrors = []
 page.on('pageerror', error => pageErrors.push(error.message))
 
 try {
   await page.getByLabel('用户名').fill('admin')
-  await page.getByLabel('密码').fill('admin123')
   const loginButton = page.getByRole('button', { name: '登录', exact: true })
   await loginButton.waitFor({ state: 'visible', timeout: 45000 })
-  await page.getByText('服务连接正常', { exact: true }).waitFor({ timeout: 45000 })
+  await page.getByText('服务连接正常', { exact: true }).waitFor({ timeout: 90000 })
+  const passwordPath = path.join(profile, 'service', '.desktop-admin-password')
+  let password
+  try {
+    password = (await readFile(passwordPath, 'utf8')).trim()
+  } catch (error) {
+    throw new Error(`Desktop local administrator password was not created at ${passwordPath}: ${error?.message || error}`)
+  }
+  if (password.length < 16) throw new Error(`Desktop local administrator password is invalid at ${passwordPath}`)
+  await page.getByLabel('密码').fill(password)
   await loginButton.click()
   await page.locator('.desktop-sidebar').waitFor({ timeout: 30000 })
 
-  const scripts = [
-    'test-suite-e2e.mjs',
-    'test-failure-report-e2e.mjs',
-    'test-run-history-artifacts.mjs',
-    'test-auth-state-e2e.mjs',
-  ]
-  const completed = []
+  const manifestPath = path.join(root, 'acceptance', 'suites.json')
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  const allScripts = [...new Set(Object.values(manifest.groups || {}).flat())]
+  if (!allScripts.length) throw new Error(`No acceptance scripts defined in ${manifestPath}`)
+  const selectedScripts = new Set((process.env.TESTMASTER_ACCEPTANCE_ONLY || '').split(',').map(value => value.trim()).filter(Boolean))
+  const scripts = selectedScripts.size ? allScripts.filter(script => selectedScripts.has(script)) : allScripts
+  if (!scripts.length) throw new Error('No acceptance script matched TESTMASTER_ACCEPTANCE_ONLY')
+  const unknownScripts = [...selectedScripts].filter(script => !allScripts.includes(script))
+  if (unknownScripts.length) throw new Error(`Acceptance scripts are not registered: ${unknownScripts.join(', ')}`)
   for (const script of scripts) {
-    await new Promise((resolve, reject) => {
+    try {
+      await access(path.join(import.meta.dirname, script))
+    } catch {
+      throw new Error(`Acceptance script declared but missing: ${script}`)
+    }
+  }
+  const completed = []
+  const failures = []
+  for (const script of scripts) {
+    const outcome = await new Promise(resolve => {
       const child = spawn(process.execPath, [path.join(import.meta.dirname, script)], { cwd: root, stdio: 'inherit' })
-      child.once('exit', code => code === 0 ? resolve() : reject(new Error(`${script} failed with ${code}`)))
-      child.once('error', reject)
+      child.once('exit', code => resolve({ code }))
+      child.once('error', error => resolve({ error: error.message }))
     })
-    completed.push(script)
-    await writeFile(resultPath, JSON.stringify({ passed: false, running: true, completed, pageErrors }, null, 2))
+    completed.push({ script, ...outcome })
+    if (outcome.code !== 0 || outcome.error) failures.push({ script, ...outcome })
+    await writeFile(resultPath, JSON.stringify({ passed: false, running: true, completed, failures, pageErrors }, null, 2))
+    // Each workflow shares one Electron renderer. Reset transient dialogs,
+    // drawers and route state so one failed flow cannot mask later findings.
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.locator('.desktop-sidebar').waitFor({ timeout: 15000 })
+    // Element Plus mounts messages and notifications outside the routed view.
+    // They can outlive a page reload while their leave transition is pending,
+    // so remove only those completed transient containers before the next
+    // independent workflow begins.  Functional errors remain asserted inside
+    // the workflow that triggered them.
+    await page.locator('.el-message, .el-notification').evaluateAll(nodes => nodes.forEach(node => node.remove()))
   }
   if (pageErrors.length) throw new Error(`Renderer errors: ${pageErrors.join(' | ')}`)
-  const result = { passed: true, scripts, rendererErrors: 0 }
+  const result = { passed: failures.length === 0, scripts, completed, failures, rendererErrors: 0 }
   await writeFile(resultPath, JSON.stringify(result, null, 2))
   console.log(JSON.stringify(result))
+  if (failures.length) process.exitCode = 1
 } catch (error) {
   await writeFile(resultPath, JSON.stringify({ passed: false, error: error?.stack || String(error), pageErrors }, null, 2))
   throw error

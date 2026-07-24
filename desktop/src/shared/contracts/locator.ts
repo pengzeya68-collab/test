@@ -29,6 +29,8 @@ export interface Locator {
   options: Record<string, unknown>;
   fallbacks: Locator[];
   framePath: string[];
+  /** Optional element repository id for healing / shared locators */
+  elementId?: number | null;
 }
 
 // ------------------------------------------------------------------
@@ -41,6 +43,7 @@ export const LocatorSchema: z.ZodType<Locator> = z.object({
   options: z.record(z.unknown()).default({}),
   fallbacks: z.array(z.lazy(() => LocatorSchema)).default([]),
   framePath: z.array(z.string()).default([]),
+  elementId: z.number().int().positive().nullable().optional(),
 });
 
 // ------------------------------------------------------------------

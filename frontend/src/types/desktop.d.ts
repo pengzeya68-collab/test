@@ -95,6 +95,7 @@ interface DesktopApi {
         warning: string | null
       }
     }>
+    localCredentials: () => Promise<{ username: string; password: string }>
   }
   recorder: any
   files: any

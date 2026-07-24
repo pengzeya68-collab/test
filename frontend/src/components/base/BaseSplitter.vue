@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
 
 .base-splitter:hover .base-splitter__dot,
 .base-splitter--dragging .base-splitter__dot {
-  background: var(--tm-color-primary, #6366f1);
+  background: var(--tm-color-primary, var(--tm-color-primary));
 }
 
 .base-splitter--dragging {
@@ -293,7 +293,7 @@ onBeforeUnmount(() => {
 }
 
 .base-splitter:focus-visible {
-  outline: 2px solid var(--tm-color-primary, #6366f1);
+  outline: 2px solid var(--tm-color-primary, var(--tm-color-primary));
   outline-offset: -1px;
 }
 </style>

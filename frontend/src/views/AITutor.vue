@@ -214,7 +214,6 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import request from '@/utils/request'
 import { useAICosts } from '@/composables/useAICosts'
 import { renderMarkdown } from '@/utils/markdown'
 import {
@@ -380,9 +379,9 @@ const startInterview = async () => {
 
   try {
     const res = await aiStartInterview({
-      position: interviewForm.position_level,
-      experience: interviewForm.years_of_experience,
-      round: interviewForm.interview_round
+      position: interviewForm.value.position_level,
+      experience: interviewForm.value.years_of_experience,
+      round: interviewForm.value.interview_round
     })
     const last = messages.value[messages.value.length - 1]
     messages.value[messages.value.length - 1] = {
@@ -476,7 +475,7 @@ onMounted(() => {
 
 .page-header {
   padding-bottom: 16px;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
 }
 .header-titles {
   display: flex;
@@ -665,7 +664,7 @@ onMounted(() => {
 }
 .message-time {
   font-size: 11px;
-  color: #52525b;
+  color: var(--tm-text-muted);
 }
 .message-text {
   background: var(--tm-card-bg);
@@ -721,7 +720,7 @@ onMounted(() => {
   font-weight: 700;
   color: var(--tm-text-primary);
 }
-.markdown-content h1 { font-size: 18px; border-bottom: 1px solid #27272a; padding-bottom: 6px; }
+.markdown-content h1 { font-size: 18px; border-bottom: 1px solid var(--tm-bg-elevated); padding-bottom: 6px; }
 .markdown-content h2 { font-size: 16px; }
 .markdown-content h3 { font-size: 15px; }
 .markdown-content p { margin: 8px 0; color: var(--tm-text-regular); }
@@ -734,7 +733,7 @@ onMounted(() => {
   border-radius: 4px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
-  color: #c084fc;
+  color: var(--tm-color-primary-light);
 }
 .markdown-content pre {
   background: var(--tm-card-bg);
@@ -742,7 +741,7 @@ onMounted(() => {
   border-radius: 8px;
   overflow-x: auto;
   margin: 10px 0;
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
 }
 .markdown-content pre code {
   background: none;
@@ -766,7 +765,7 @@ onMounted(() => {
 }
 .markdown-content th,
 .markdown-content td {
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
   padding: 6px 10px;
   text-align: left;
 }
@@ -787,7 +786,7 @@ onMounted(() => {
   width: 100%;
   resize: none;
   background: rgba(9, 9, 11, 0.8);
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
   border-radius: 10px;
   padding: 14px;
   color: var(--tm-text-primary);
@@ -802,7 +801,7 @@ onMounted(() => {
   border-color: var(--tm-color-primary);
 }
 .chat-textarea::placeholder {
-  color: #52525b;
+  color: var(--tm-text-muted);
 }
 .code-textarea {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -858,7 +857,7 @@ onMounted(() => {
 }
 .native-select {
   background: rgba(9, 9, 11, 0.8);
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
   border-radius: 6px;
   padding: 8px 12px;
   color: var(--tm-text-primary);
@@ -933,13 +932,13 @@ onMounted(() => {
 
 .ai-cost-hint {
   font-size: 11px;
-  color: #ffa502;
+  color: var(--tm-color-warning);
   margin-left: 8px;
   white-space: nowrap;
 }
 .ai-cost-tag {
   font-size: 10px;
-  color: #ffa502;
+  color: var(--tm-color-warning);
   background: rgba(255,165,2,0.1);
   padding: 1px 6px;
   border-radius: 8px;

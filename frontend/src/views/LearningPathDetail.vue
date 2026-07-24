@@ -72,7 +72,7 @@
             馃摉 璇剧▼鍐呭 <span class="ctab-badge" v-if="lessons.length > 0">{{ lessons.length }}鑺</span>
           </button>
           <button class="ctab" :class="{ active: activeTab === 'exercises' }" @click="activeTab = 'exercises'">
-            鉁忥笍 缁冧範棰?<span class="ctab-badge" v-if="path?.exercises?.length > 0">{{ path.exercises.length }}棰</span>
+            练习题 <span class="ctab-badge" v-if="path?.exercises?.length > 0">{{ path.exercises.length }} 题</span>
           </button>
           <button class="ctab" :class="{ active: activeTab === 'project' }" @click="activeTab = 'project'">
             馃殌 椤圭洰瀹炴垬
@@ -212,7 +212,9 @@ const fetchProgress = async () => {
   try {
     const res = await request.get(`/learning-paths/${pathId.value}/progress`)
     progressData.value = res
-  } catch {}
+  } catch (error) {
+    console.warn('获取学习进度失败', error)
+  }
 }
 
 const isExerciseCompleted = (id) => {
@@ -276,7 +278,9 @@ const fetchLessons = async () => {
   try {
     const res = await request.get(`/learning-paths/${pathId.value}/lessons`)
     lessons.value = res.lessons || []
-  } catch {} finally { lessonsLoading.value = false }
+  } catch (error) {
+    console.warn('获取课程列表失败', error)
+  } finally { lessonsLoading.value = false }
 }
 
 const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons/${lid}`)
@@ -318,16 +322,16 @@ const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons
   letter-spacing: 0.5px;
 }
 
-.stage-1 { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
-.stage-2 { background: rgba(34, 211, 238, 0.15); color: #22d3ee; border: 1px solid rgba(34, 211, 238, 0.25); }
-.stage-3 { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.25); }
-.stage-4 { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
-.stage-5 { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.25); }
-.tag-lang { background: rgba(139, 92, 246, 0.1); color: var(--tm-color-primary-dark); border: 1px solid rgba(139, 92, 246, 0.2); }
+.stage-1 { background: rgba(59, 130, 246, 0.15); color: var(--tm-color-primary); border: 1px solid rgba(59, 130, 246, 0.25); }
+.stage-2 { background: color-mix(in srgb, var(--tm-neon-cyan) 15%, transparent); color: var(--tm-neon-cyan); border: 1px solid color-mix(in srgb, var(--tm-neon-cyan) 25%, transparent); }
+.stage-3 { background: color-mix(in srgb, var(--tm-color-warning) 15%, transparent); color: var(--tm-color-warning); border: 1px solid color-mix(in srgb, var(--tm-color-warning) 25%, transparent); }
+.stage-4 { background: color-mix(in srgb, var(--tm-color-danger) 15%, transparent); color: var(--tm-color-danger); border: 1px solid color-mix(in srgb, var(--tm-color-danger) 25%, transparent); }
+.stage-5 { background: rgba(var(--tm-color-primary-rgb), 0.15); color: var(--tm-color-primary); border: 1px solid rgba(var(--tm-color-primary-rgb), 0.25); }
+.tag-lang { background: rgba(var(--tm-color-primary-rgb), 0.1); color: var(--tm-color-primary-dark); border: 1px solid rgba(var(--tm-color-primary-rgb), 0.2); }
 
-.diff-beginner { background: rgba(52, 211, 153, 0.12); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.25); }
-.diff-intermediate { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.25); }
-.diff-advanced { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
+.diff-beginner { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); border: 1px solid color-mix(in srgb, var(--tm-color-success) 25%, transparent); }
+.diff-intermediate { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); border: 1px solid color-mix(in srgb, var(--tm-color-warning) 25%, transparent); }
+.diff-advanced { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); border: 1px solid color-mix(in srgb, var(--tm-color-danger) 25%, transparent); }
 
 .hero-title {
   font-size: 30px;
@@ -345,11 +349,11 @@ const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons
 }
 
 .progress-bar-wrap {
-  background: rgba(139, 92, 246, 0.06);
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
   border-radius: 10px;
   padding: 18px 22px;
   margin-bottom: 22px;
-  border: 1px solid rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .pb-header {
@@ -382,14 +386,14 @@ const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons
   align-items: center;
   gap: 20px;
   padding: 22px 26px;
-  background: rgba(52, 211, 153, 0.06);
+  background: color-mix(in srgb, var(--tm-color-success) 6%, transparent);
   border-radius: 12px;
-  border: 1px solid rgba(52, 211, 153, 0.18);
+  border: 1px solid color-mix(in srgb, var(--tm-color-success) 18%, transparent);
   margin-bottom: 22px;
 }
 
 .cb-icon { font-size: 42px; flex-shrink: 0; }
-.cb-text h3 { font-size: 17px; font-weight: 700; color: #34d399; margin: 0 0 4px; }
+.cb-text h3 { font-size: 17px; font-weight: 700; color: var(--tm-color-success); margin: 0 0 4px; }
 .cb-text p { font-size: 13px; color: var(--tm-text-regular); margin: 0; line-height: 1.5; }
 
 .hero-stats {
@@ -486,7 +490,7 @@ const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons
   font-weight: 600;
   padding: 1px 8px;
   border-radius: 10px;
-  background: rgba(139, 92, 246, 0.15);
+  background: rgba(var(--tm-color-primary-rgb), 0.15);
   color: var(--tm-color-primary);
 }
 
@@ -512,8 +516,8 @@ const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons
 }
 
 .lesson-card:hover {
-  background: rgba(139, 92, 246, 0.06);
-  border-color: rgba(139, 92, 246, 0.2);
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.2);
   transform: translateX(4px);
 }
 
@@ -581,13 +585,13 @@ const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons
 
 .ex-card:hover {
   background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(139, 92, 246, 0.15);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.15);
   transform: translateX(4px);
 }
 
 .ex-card.done {
-  border-left: 3px solid #34d399;
-  background: rgba(52, 211, 153, 0.03);
+  border-left: 3px solid var(--tm-color-success);
+  background: color-mix(in srgb, var(--tm-color-success) 3%, transparent);
 }
 
 .ex-top {
@@ -617,10 +621,10 @@ const goToLesson = (lid) => router.push(`/learning-paths/${pathId.value}/lessons
   border-radius: 12px;
 }
 
-.badge-success { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-.badge-beginner { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-.badge-intermediate { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
-.badge-advanced { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.badge-success { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.badge-beginner { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.badge-intermediate { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); }
+.badge-advanced { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); }
 
 .ex-desc {
   color: var(--tm-text-regular);

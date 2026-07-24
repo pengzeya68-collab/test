@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿<template>
+<template>
   <div class="code-evaluation-result">
     <!-- 状态指示器 -->
     <div class="status-indicator" :class="statusClass">
@@ -292,21 +292,21 @@ const judgeSummary = computed(() => {
 }
 
 .status-indicator.success {
-  background: rgba(103, 194, 58, 0.1);
-  color: #67c23a;
-  border-left: 4px solid #67c23a;
+  background: color-mix(in srgb, var(--tm-color-success) 10%, transparent);
+  color: var(--tm-color-success);
+  border-left: 4px solid var(--tm-color-success);
 }
 
 .status-indicator.failed {
-  background: rgba(245, 108, 108, 0.1);
-  color: #f56c6c;
-  border-left: 4px solid #f56c6c;
+  background: color-mix(in srgb, var(--tm-color-danger) 10%, transparent);
+  color: var(--tm-color-danger);
+  border-left: 4px solid var(--tm-color-danger);
 }
 
 .status-indicator.timeout {
-  background: rgba(230, 162, 60, 0.1);
-  color: #e6a23c;
-  border-left: 4px solid #e6a23c;
+  background: color-mix(in srgb, var(--tm-color-warning) 10%, transparent);
+  color: var(--tm-color-warning);
+  border-left: 4px solid var(--tm-color-warning);
 }
 
 .status-indicator.pending {
@@ -346,15 +346,15 @@ const judgeSummary = computed(() => {
 }
 
 .score-high {
-  color: #67c23a;
+  color: var(--tm-color-success);
 }
 
 .score-medium {
-  color: #e6a23c;
+  color: var(--tm-color-warning);
 }
 
 .score-low {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
 }
 
 .score-feedback {
@@ -404,11 +404,11 @@ const judgeSummary = computed(() => {
 }
 
 .stdout .output-header {
-  color: #67c23a;
+  color: var(--tm-color-success);
 }
 
 .stderr .output-header {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
 }
 
 /* 测试用例部分 */
@@ -448,13 +448,13 @@ const judgeSummary = computed(() => {
 }
 
 .test-case-item.passed {
-  background: rgba(103, 194, 58, 0.05);
-  border-color: rgba(103, 194, 58, 0.3);
+  background: color-mix(in srgb, var(--tm-color-success) 5%, transparent);
+  border-color: color-mix(in srgb, var(--tm-color-success) 30%, transparent);
 }
 
 .test-case-item.failed {
-  background: rgba(245, 108, 108, 0.05);
-  border-color: rgba(245, 108, 108, 0.3);
+  background: color-mix(in srgb, var(--tm-color-danger) 5%, transparent);
+  border-color: color-mix(in srgb, var(--tm-color-danger) 30%, transparent);
 }
 
 .test-case-info {
@@ -469,11 +469,11 @@ const judgeSummary = computed(() => {
 }
 
 .test-case-item.passed .test-case-icon {
-  color: #67c23a;
+  color: var(--tm-color-success);
 }
 
 .test-case-item.failed .test-case-icon {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
 }
 
 .test-case-name {
@@ -490,10 +490,10 @@ const judgeSummary = computed(() => {
 
 .test-case-error {
   padding: 8px;
-  background: rgba(245, 108, 108, 0.1);
+  background: color-mix(in srgb, var(--tm-color-danger) 10%, transparent);
   border-radius: 4px;
   font-size: 12px;
-  color: #f56c6c;
+  color: var(--tm-color-danger);
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
 }
 
@@ -556,9 +556,9 @@ const judgeSummary = computed(() => {
 
 .optimization-content {
   padding: 16px;
-  background: rgba(230, 162, 60, 0.1);
+  background: color-mix(in srgb, var(--tm-color-warning) 10%, transparent);
   border-radius: 8px;
-  border-left: 4px solid #e6a23c;
+  border-left: 4px solid var(--tm-color-warning);
   font-size: 14px;
   line-height: 1.8;
   color: var(--tm-text-primary);

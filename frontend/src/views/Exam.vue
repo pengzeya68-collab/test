@@ -66,12 +66,12 @@
         <!-- 涓棿棰樼洰鍐呭 -->
         <div class="question-content" v-if="currentQuestion">
           <div class="question-header">
-            <div class="question-number">绗?{{ currentQuestionIndex + 1 }} 棰?({{ currentQuestion.score }}鍒?</div>
+            <div class="question-number">第 {{ currentQuestionIndex + 1 }} 题（{{ currentQuestion.score }} 分）</div>
             <el-button 
               link 
               :icon="markedQuestions.includes(currentQuestion.id) ? StarFilled : Star"
               @click="toggleMarkQuestion"
-              :style="{ color: markedQuestions.includes(currentQuestion.id) ? '#e6a23c' : 'var(--tm-text-secondary)' }"
+              :style="{ color: markedQuestions.includes(currentQuestion.id) ? 'var(--tm-color-warning)' : 'var(--tm-text-secondary)' }"
             >
               {{ markedQuestions.includes(currentQuestion.id) ? '已标记' : '标记此题' }}
             </el-button>
@@ -241,7 +241,7 @@
 <script setup>
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Timer, Star, StarFilled, CircleCheck, Collection } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { renderMarkdown } from '@/utils/markdown'
@@ -281,9 +281,9 @@ const timePercentage = computed(() => {
 })
 
 const timeProgressColor = computed(() => {
-  if (remainingTime.value <= 60) return '#f56c6c'
-  if (remainingTime.value <= 300) return '#e6a23c'
-  return '#67c23a'
+  if (remainingTime.value <= 60) return 'var(--tm-color-danger)'
+  if (remainingTime.value <= 300) return 'var(--tm-color-warning)'
+  return 'var(--tm-color-success)'
 })
 
 onMounted(() => {
@@ -572,7 +572,7 @@ const submitExam = async () => {
   color: var(--tm-text-primary);
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tm-bg-page);
 }
 
 .nav-grid {
@@ -599,25 +599,25 @@ const submitExam = async () => {
 
 .nav-item:hover {
   background: #ecf5ff;
-  color: #409eff;
+  color: var(--tm-color-primary);
 }
 
 .nav-item.active {
-  background: #409eff;
+  background: var(--tm-color-primary);
   color: white;
-  border-color: #409eff;
+  border-color: var(--tm-color-primary);
 }
 
 .nav-item.answered {
-  background: #67c23a;
+  background: var(--tm-color-success);
   color: white;
-  border-color: #67c23a;
+  border-color: var(--tm-color-success);
 }
 
 .nav-item.marked {
-  background: #e6a23c;
+  background: var(--tm-color-warning);
   color: white;
-  border-color: #e6a23c;
+  border-color: var(--tm-color-warning);
 }
 
 .nav-legend {
@@ -625,7 +625,7 @@ const submitExam = async () => {
   flex-direction: column;
   gap: 8px;
   padding-top: 16px;
-  border-top: 1px solid #f0f2f5;
+  border-top: 1px solid var(--tm-bg-page);
 }
 
 .legend-item {
@@ -645,13 +645,13 @@ const submitExam = async () => {
 }
 
 .legend-dot.answered {
-  background: #67c23a;
-  border-color: #67c23a;
+  background: var(--tm-color-success);
+  border-color: var(--tm-color-success);
 }
 
 .legend-dot.marked {
-  background: #e6a23c;
-  border-color: #e6a23c;
+  background: var(--tm-color-warning);
+  border-color: var(--tm-color-warning);
 }
 
 .question-content {
@@ -667,7 +667,7 @@ const submitExam = async () => {
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tm-bg-page);
 }
 
 .question-number {
@@ -709,7 +709,7 @@ const submitExam = async () => {
 .question-actions {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid #f0f2f5;
+  border-top: 1px solid var(--tm-bg-page);
   padding-top: 24px;
 }
 
@@ -754,15 +754,15 @@ const submitExam = async () => {
 }
 
 .info-item .value.answered {
-  color: #67c23a;
+  color: var(--tm-color-success);
 }
 
 .info-item .value.unanswered {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
 }
 
 .info-item .value.marked {
-  color: #e6a23c;
+  color: var(--tm-color-warning);
 }
 
 .info-item .total {
@@ -818,7 +818,7 @@ const submitExam = async () => {
   border-radius: 4px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
-  color: #e6a23c;
+  color: var(--tm-color-warning);
 }
 
 .question-text pre {

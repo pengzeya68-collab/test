@@ -2,24 +2,29 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
+from collections import Counter
 from fnmatch import fnmatch
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.core.audit_decorator import audit_log
 from fastapi_backend.core.rbac import require_permissions
+from fastapi_backend.deps.project_context import get_active_project_id, get_active_project_id_member
 from fastapi_backend.models.autotest import (
     AutoTestCase,
     AutoTestGroup,
+    AutoTestEnvironment,
     AutoTestScenario,
     AutoTestScenarioStep,
     CapturedExchange,
@@ -33,26 +38,85 @@ from fastapi_backend.services.capture_import import (
     MAX_CAPTURE_EXCHANGES,
     candidate_from_exchange,
     normalize_captured_exchange,
+    redact_capture_headers,
     redact_capture_source_url,
+    redact_capture_value,
 )
+from fastapi_backend.services.har_import import HarImportError, MAX_HAR_BYTES, parse_har
 
 router = APIRouter(prefix="/api/auto-test/import/captures", tags=["Import Center"])
 _VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,99}$")
 _HOST_NAME = re.compile(r"^[A-Za-z0-9.*-]{1,253}$")
 _ASSERTION_OPERATORS = {"equals", "not_equals", "contains", "json_exists", "gte", "lte", "matches"}
+# Preview runs a whole generated scenario inside one HTTP request; bound it so a
+# slow target service or a long step chain cannot hang the request indefinitely.
+_PREVIEW_TIMEOUT_SECONDS = 180
+_REPLAY_VARIABLE_LIMIT = 100
+_CAPTURE_SESSION_MAX_AGE = timedelta(hours=24)
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-async def _session_or_404(db: AsyncSession, session_id: str, user_id: int) -> CaptureSession:
-    capture = await db.scalar(
-        select(CaptureSession).where(CaptureSession.id == session_id, CaptureSession.user_id == user_id)
+async def _expire_stale_capture_sessions(db: AsyncSession, user_id: int | None = None) -> int:
+    """Close abandoned recordings so a crashed desktop app cannot leave them live."""
+    now = _utcnow()
+    query = select(CaptureSession).where(
+        CaptureSession.status.in_(("capturing", "paused")),
+        CaptureSession.started_at < now - _CAPTURE_SESSION_MAX_AGE,
     )
+    if user_id is not None:
+        query = query.where(CaptureSession.user_id == user_id)
+    stale = list((await db.scalars(query)).all())
+    for capture in stale:
+        capture.status = "cancelled"
+        capture.ended_at = now
+        capture.failure_reason = "capture session expired after 24 hours without completion"
+    if stale:
+        await db.commit()
+    return len(stale)
+
+
+async def _session_or_404(
+    db: AsyncSession, session_id: str, user_id: int, project_id: int, *, for_update: bool = False
+) -> CaptureSession:
+    await _expire_stale_capture_sessions(db, user_id)
+    query = select(CaptureSession).where(
+        CaptureSession.id == session_id,
+        CaptureSession.user_id == user_id,
+        CaptureSession.project_id == project_id,
+    )
+    if for_update:
+        query = query.with_for_update()
+    capture = await db.scalar(query)
     if capture is None:
         raise HTTPException(status_code=404, detail="capture session not found")
     return capture
+
+
+async def _replay_url_for_environment(
+    db: AsyncSession, original_url: str, environment_id: int | None, user_id: int, project_id: int
+) -> str:
+    """Apply an owned environment base URL without losing the captured route."""
+    if environment_id is None:
+        return original_url
+    environment = await db.scalar(
+        select(AutoTestEnvironment).where(
+            AutoTestEnvironment.id == environment_id,
+            AutoTestEnvironment.user_id == user_id,
+            AutoTestEnvironment.project_id == project_id,
+        )
+    )
+    if environment is None:
+        raise HTTPException(status_code=404, detail="replay environment not found")
+    base = urlsplit(str(environment.base_url or "").strip())
+    captured = urlsplit(original_url)
+    if base.scheme not in {"http", "https"} or not base.netloc or not captured.path:
+        raise HTTPException(status_code=422, detail="replay environment base URL is invalid")
+    prefix = base.path.rstrip("/")
+    route = captured.path if captured.path.startswith("/") else "/" + captured.path
+    return urlunsplit((base.scheme, base.netloc, prefix + route, captured.query, ""))
 
 
 def _capture_payload(capture: CaptureSession, exchanges: list[CapturedExchange]) -> dict[str, Any]:
@@ -69,6 +133,65 @@ def _capture_payload(capture: CaptureSession, exchanges: list[CapturedExchange])
         "total": len(exchanges),
         "candidates": [candidate_from_exchange(exchange) for exchange in exchanges],
     }
+
+
+def _exchange_detail(exchange: CapturedExchange) -> dict[str, Any]:
+    """Return only the already-redacted evidence held by a capture session."""
+    request = exchange.request_redacted or {}
+    response = exchange.response_redacted or {}
+    return {
+        **candidate_from_exchange(exchange),
+        "request": {
+            "headers": request.get("headers") or {},
+            "params": request.get("params") or {},
+            "body_type": request.get("body_type") or "none",
+            "content_type": request.get("content_type") or "application/json",
+            "body": request.get("payload"),
+        },
+        "response": {
+            "status": int(response.get("status") or 0),
+            "headers": response.get("headers") or {},
+            "body": response.get("body"),
+        },
+        "sequence": exchange.sequence,
+        "created_at": exchange.created_at,
+        "source_event_id": exchange.source_event_id,
+    }
+
+
+def _json_diff(expected: Any, actual: Any, path: str = "$") -> list[dict[str, Any]]:
+    """Small, bounded semantic diff suitable for a replay review pane."""
+    if len(path) > 500:
+        return []
+    if isinstance(expected, str) and (expected.startswith("{{") or "[REDACTED]" in expected):
+        return []
+    if type(expected) is not type(actual):
+        return [{"path": path, "kind": "type", "expected": type(expected).__name__, "actual": type(actual).__name__}]
+    if isinstance(expected, dict):
+        differences: list[dict[str, Any]] = []
+        for key in sorted(set(expected) | set(actual)):
+            if len(differences) >= 100:
+                break
+            child_path = f"{path}.{key}"
+            if key not in expected:
+                differences.append({"path": child_path, "kind": "added"})
+            elif key not in actual:
+                differences.append({"path": child_path, "kind": "removed"})
+            else:
+                differences.extend(_json_diff(expected[key], actual[key], child_path))
+        return differences[:100]
+    if isinstance(expected, list):
+        differences = []
+        if len(expected) != len(actual):
+            differences.append({"path": path, "kind": "length", "expected": len(expected), "actual": len(actual)})
+        for index, value in enumerate(expected[:50]):
+            if index >= len(actual) or len(differences) >= 100:
+                break
+            differences.extend(_json_diff(value, actual[index], f"{path}[{index}]"))
+        return differences[:100]
+    if expected != actual:
+        return [{"path": path, "kind": "changed", "expected": redact_capture_value(expected), "actual": redact_capture_value(actual)}]
+    return []
 
 
 def _normalize_capture_config(value: Any) -> dict[str, list[str]]:
@@ -263,6 +386,7 @@ async def create_capture_session(
     body: dict[str, Any] = Body(default_factory=dict),
     current_user: User = Depends(require_permissions("capture:create")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     origin = str(body.get("origin") or "desktop_browser").strip().lower()
     if origin not in {"desktop_browser", "har_import"}:
@@ -273,6 +397,7 @@ async def create_capture_session(
     source_url = redact_capture_source_url(raw_source_url)
     capture = CaptureSession(
         user_id=current_user.id,
+        project_id=project_id,
         origin=origin,
         source_url=source_url,
         capture_config=_normalize_capture_config(body.get("capture_config")),
@@ -289,17 +414,88 @@ async def create_capture_session(
     }
 
 
+@router.post("/har", status_code=status.HTTP_201_CREATED)
+@audit_log("import_har", "capture_session")
+async def import_har_as_capture_session(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_permissions("capture:create")),
+    db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
+):
+    """Create a reviewable capture session from a standard HAR export.
+
+    Importing a HAR must not immediately create executable test cases.  The
+    resulting evidence is redacted by the parser and follows the same manual
+    review, replay and conversion path as desktop-recorded traffic.
+    """
+    raw = await file.read(MAX_HAR_BYTES + 1)
+    if len(raw) > MAX_HAR_BYTES:
+        raise HTTPException(status_code=413, detail="HAR file exceeds the 25 MB limit")
+    try:
+        candidates = parse_har(raw)
+    except HarImportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if not candidates:
+        raise HTTPException(status_code=422, detail="HAR does not contain importable HTTP exchanges")
+    capture = CaptureSession(
+        user_id=current_user.id,
+        project_id=project_id,
+        origin="har_import",
+        status="completed",
+        policy_version="v1",
+        source_url=redact_capture_source_url(str(file.filename or "HAR import")),
+        capture_config={"domain_allowlist": [], "path_exclude": [], "source_filename": str(file.filename or "")[:200]},
+        ended_at=_utcnow(),
+    )
+    db.add(capture)
+    await db.flush()
+    exchanges: list[CapturedExchange] = []
+    for sequence, candidate in enumerate(candidates[:MAX_CAPTURE_EXCHANGES], start=1):
+        metadata = candidate.get("source_metadata") if isinstance(candidate.get("source_metadata"), dict) else {}
+        response_metadata = metadata.get("response") if isinstance(metadata.get("response"), dict) else {}
+        exchanges.append(
+            CapturedExchange(
+                session_id=capture.id,
+                sequence=sequence,
+                method=candidate["method"],
+                url=candidate["url"],
+                request_redacted={
+                    "headers": candidate.get("headers") or {},
+                    "params": candidate.get("params") or {},
+                    "body_type": candidate.get("body_type") or "none",
+                    "content_type": candidate.get("content_type") or "application/json",
+                    "payload": candidate.get("payload"),
+                    "assert_rules": candidate.get("assert_rules") or [],
+                },
+                response_redacted={
+                    "status": int(candidate.get("response_status") or 0),
+                    "headers": response_metadata.get("headers") or {},
+                    "body": response_metadata.get("json_sample"),
+                },
+                fingerprint=candidate["fingerprint"],
+                resource_type=str(candidate.get("resource_type") or "fetch")[:30],
+                timing_ms=max(0, min(int(candidate.get("timing_ms") or 0), 600_000)) or None,
+                source_event_id=f"har-{sequence}-{candidate['fingerprint'][:24]}",
+            )
+        )
+    db.add_all(exchanges)
+    await db.commit()
+    return {"id": capture.id, "status": capture.status, "imported_exchanges": len(exchanges)}
+
+
 @router.get("")
 async def list_capture_sessions(
     limit: int = 50,
     current_user: User = Depends(require_permissions("capture:export")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id),
 ):
+    await _expire_stale_capture_sessions(db, current_user.id)
     captures = list(
         (
             await db.scalars(
                 select(CaptureSession)
-                .where(CaptureSession.user_id == current_user.id)
+                .where(CaptureSession.user_id == current_user.id, CaptureSession.project_id == project_id)
                 .order_by(CaptureSession.created_at.desc())
                 .limit(min(max(limit, 1), 100))
             )
@@ -328,8 +524,12 @@ async def append_capture_exchanges(
     body: dict[str, Any] = Body(default_factory=dict),
     current_user: User = Depends(require_permissions("capture:create")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
-    capture = await _session_or_404(db, session_id, current_user.id)
+    # Lock the session row so concurrent appends to the same session serialize;
+    # without this, two writers can read the same MAX(sequence) and collide on the
+    # (session_id, sequence) unique constraint.
+    capture = await _session_or_404(db, session_id, current_user.id, project_id, for_update=True)
     if capture.status == "paused":
         raise HTTPException(status_code=409, detail="capture session is paused")
     if capture.status != "capturing":
@@ -351,9 +551,29 @@ async def append_capture_exchanges(
     )
     if count >= MAX_CAPTURE_EXCHANGES:
         raise HTTPException(status_code=409, detail="capture session reached its exchange limit")
-    existing_fingerprints = set(
-        (await db.scalars(select(CapturedExchange.fingerprint).where(CapturedExchange.session_id == capture.id))).all()
+    # Sequence numbering must follow MAX(sequence), not COUNT(*), so it stays
+    # monotonic even if exchanges are ever deleted from a session.
+    max_sequence = (
+        await db.scalar(select(func.max(CapturedExchange.sequence)).where(CapturedExchange.session_id == capture.id))
+        or 0
     )
+    event_ids = {
+        str(item.get("captureEventId") or item.get("capture_event_id") or "").strip()
+        for item in values
+        if isinstance(item, dict) and str(item.get("captureEventId") or item.get("capture_event_id") or "").strip()
+    }
+    existing_event_ids = set()
+    if event_ids:
+        existing_event_ids = set(
+            (
+                await db.scalars(
+                    select(CapturedExchange.source_event_id).where(
+                        CapturedExchange.session_id == capture.id,
+                        CapturedExchange.source_event_id.in_(event_ids),
+                    )
+                )
+            ).all()
+        )
     accepted: list[CapturedExchange] = []
     errors: list[dict[str, Any]] = []
     for index, raw_exchange in enumerate(values):
@@ -368,12 +588,16 @@ async def append_capture_exchanges(
         except CaptureImportError as exc:
             errors.append({"index": index, "error": str(exc)})
             continue
-        if normalized["fingerprint"] in existing_fingerprints:
+        # Browser-to-server retry must be idempotent, but calls that happen to
+        # have the same redacted payload are still independent business events.
+        source_event_id = normalized.get("source_event_id")
+        if source_event_id and source_event_id in existing_event_ids:
             continue
-        existing_fingerprints.add(normalized["fingerprint"])
+        if source_event_id:
+            existing_event_ids.add(source_event_id)
         exchange = CapturedExchange(
             session_id=capture.id,
-            sequence=count + len(accepted) + 1,
+            sequence=max_sequence + len(accepted) + 1,
             method=normalized["method"],
             url=normalized["url"],
             request_redacted={
@@ -390,10 +614,18 @@ async def append_capture_exchanges(
             resource_type=normalized["resource_type"],
             timing_ms=normalized["timing_ms"],
             failure_reason=normalized.get("failure_reason"),
+            source_event_id=source_event_id,
         )
         db.add(exchange)
         accepted.append(exchange)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="capture exchanges were modified concurrently, please retry the batch",
+        ) from exc
     for exchange in accepted:
         await db.refresh(exchange)
     return {
@@ -410,8 +642,9 @@ async def complete_capture_session(
     session_id: str,
     current_user: User = Depends(require_permissions("capture:create")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
-    capture = await _session_or_404(db, session_id, current_user.id)
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
     if capture.status == "completed":
         return {"id": capture.id, "status": capture.status}
     if capture.status != "capturing":
@@ -428,8 +661,9 @@ async def pause_capture_session(
     session_id: str,
     current_user: User = Depends(require_permissions("capture:create")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
-    capture = await _session_or_404(db, session_id, current_user.id)
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
     if capture.status == "completed":
         raise HTTPException(status_code=409, detail="completed capture session cannot be paused")
     capture.status = "paused"
@@ -443,8 +677,9 @@ async def resume_capture_session(
     session_id: str,
     current_user: User = Depends(require_permissions("capture:create")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
-    capture = await _session_or_404(db, session_id, current_user.id)
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
     if capture.status != "paused":
         raise HTTPException(status_code=409, detail="capture session is not paused")
     capture.status = "capturing"
@@ -459,9 +694,10 @@ async def cancel_capture_session(
     body: dict[str, Any] = Body(default_factory=dict),
     current_user: User = Depends(require_permissions("capture:create")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """Explicitly terminate an incomplete capture instead of leaving it active."""
-    capture = await _session_or_404(db, session_id, current_user.id)
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
     if capture.status == "completed":
         raise HTTPException(status_code=409, detail="completed capture session cannot be cancelled")
     if capture.status == "cancelled":
@@ -479,8 +715,9 @@ async def get_capture_session(
     session_id: str,
     current_user: User = Depends(require_permissions("capture:export")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id),
 ):
-    capture = await _session_or_404(db, session_id, current_user.id)
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
     exchanges = list(
         (
             await db.scalars(
@@ -493,15 +730,200 @@ async def get_capture_session(
     return _capture_payload(capture, exchanges)
 
 
+@router.get("/{session_id}/exchanges/{exchange_id}")
+async def get_capture_exchange_detail(
+    session_id: str,
+    exchange_id: int,
+    current_user: User = Depends(require_permissions("capture:export")),
+    db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id),
+):
+    """Inspect one redacted exchange without loading a whole long session."""
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
+    exchange = await db.scalar(
+        select(CapturedExchange).where(CapturedExchange.session_id == capture.id, CapturedExchange.id == exchange_id)
+    )
+    if exchange is None:
+        raise HTTPException(status_code=404, detail="captured exchange not found")
+    return _exchange_detail(exchange)
+
+
+@router.post("/{session_id}/exchanges/{exchange_id}/replay")
+@audit_log("replay", "capture_exchange", resource_id_param="exchange_id")
+async def replay_capture_exchange(
+    session_id: str,
+    exchange_id: int,
+    body: dict[str, Any] = Body(default_factory=dict),
+    current_user: User = Depends(require_permissions("capture:export", "case:execute")),
+    db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
+):
+    """Explicitly replay one safe capture and compare it with its baseline.
+
+    Captures often include create/update calls.  Replaying therefore always
+    needs an affirmative request flag; the UI explains the target and presents
+    a confirmation dialog instead of silently sending a side-effecting call.
+    """
+    if body.get("confirm_replay") is not True:
+        raise HTTPException(status_code=422, detail="confirm_replay must be true before sending a captured request")
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
+    exchange = await db.scalar(
+        select(CapturedExchange).where(CapturedExchange.session_id == capture.id, CapturedExchange.id == exchange_id)
+    )
+    if exchange is None:
+        raise HTTPException(status_code=404, detail="captured exchange not found")
+    if (exchange.resource_type or "").lower() not in {"xhr", "fetch"}:
+        raise HTTPException(status_code=409, detail="only XHR or fetch exchanges can be replayed as API requests")
+
+    variables = body.get("variables") or {}
+    overrides = body.get("overrides") or {}
+    if not isinstance(variables, dict) or len(variables) > _REPLAY_VARIABLE_LIMIT:
+        raise HTTPException(status_code=422, detail="variables is invalid")
+    if not isinstance(overrides, dict) or set(overrides) - {"url", "headers", "params", "payload", "body_type"}:
+        raise HTTPException(status_code=422, detail="replay overrides are invalid")
+    if any(len(str(key)) > 100 or len(str(value)) > 20_000 for key, value in variables.items()):
+        raise HTTPException(status_code=422, detail="replay variables are too large")
+    request = exchange.request_redacted or {}
+    request_headers = dict(request.get("headers") or {})
+    request_params = dict(request.get("params") or {})
+    if overrides.get("headers") is not None:
+        if not isinstance(overrides["headers"], dict):
+            raise HTTPException(status_code=422, detail="override headers must be an object")
+        request_headers.update({str(key): str(value) for key, value in overrides["headers"].items()})
+    if overrides.get("params") is not None:
+        if not isinstance(overrides["params"], dict):
+            raise HTTPException(status_code=422, detail="override params must be an object")
+        request_params.update({str(key): str(value) for key, value in overrides["params"].items()})
+    if overrides.get("url") is not None:
+        replay_url = str(overrides["url"]).strip()
+    else:
+        replay_url = await _replay_url_for_environment(
+            db, exchange.url, body.get("environment_id"), current_user.id, project_id
+        )
+    if not replay_url or len(replay_url) > 4000:
+        raise HTTPException(status_code=422, detail="replay URL is invalid")
+    replay_body = overrides.get("payload", request.get("payload"))
+    replay_body_type = str(overrides.get("body_type") or request.get("body_type") or "none").lower()
+    if replay_body_type not in {"none", "json", "raw", "form", "form-data", "x-www-form-urlencoded", "binary", "graphql"}:
+        raise HTTPException(status_code=422, detail="replay body_type is invalid")
+
+    from fastapi_backend.services.autotest_request_service import execute_http_request
+
+    replay = await execute_http_request(
+        method=exchange.method,
+        url=replay_url,
+        headers=request_headers,
+        params=request_params,
+        body=replay_body,
+        body_type=replay_body_type,
+        env_id=body.get("environment_id"),
+        variables=variables,
+        user_id=current_user.id,
+        request_config={"timeout_ms": min(max(int(body.get("timeout_ms") or 30_000), 100), 120_000)},
+    )
+    baseline = exchange.response_redacted or {}
+    replay_body_safe = redact_capture_value(replay.get("response_content"), "response_body")
+    baseline_body = baseline.get("body")
+    return {
+        "exchange_id": exchange.id,
+        "replay": {
+            "success": bool(replay.get("success")),
+            "status": replay.get("status_code"),
+            "elapsed_ms": replay.get("elapsed_ms", replay.get("execution_time", 0)),
+            "headers": redact_capture_headers(replay.get("headers") or {}),
+            "body": replay_body_safe,
+            "error": redact_capture_value(replay.get("error"), "error") if replay.get("error") else None,
+            "attempts": replay.get("attempts") or [],
+        },
+        "comparison": {
+            "baseline_status": int(baseline.get("status") or 0),
+            "status_matches": int(baseline.get("status") or 0) == int(replay.get("status_code") or 0),
+            "baseline_timing_ms": exchange.timing_ms,
+            "timing_delta_ms": (
+                int(replay.get("elapsed_ms", replay.get("execution_time", 0)) or 0) - exchange.timing_ms
+                if exchange.timing_ms is not None
+                else None
+            ),
+            "body_differences": _json_diff(baseline_body, replay_body_safe)[:100],
+        },
+    }
+
+
+@router.get("/{session_id}/analysis")
+async def analyze_capture_session(
+    session_id: str,
+    current_user: User = Depends(require_permissions("capture:export")),
+    db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id),
+):
+    """Return explainable, redaction-safe traffic quality signals.
+
+    This deliberately provides suggestions instead of mutating cases.  A
+    recording is evidence, not a ready-to-run regression asset: the tester
+    reviews candidates, variable mappings and assertions before conversion.
+    """
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
+    exchanges = list((await db.scalars(
+        select(CapturedExchange).where(CapturedExchange.session_id == capture.id).order_by(CapturedExchange.sequence)
+    )).all())
+    status_codes = Counter()
+    methods = Counter()
+    hosts = Counter()
+    fingerprints = Counter()
+    slow = []
+    failed = []
+    redacted_fields = 0
+    timings = sorted(item.timing_ms for item in exchanges if item.timing_ms is not None)
+    p95 = timings[max(0, int(len(timings) * 0.95) - 1)] if timings else None
+    for item in exchanges:
+        response = item.response_redacted or {}
+        status_code = int(response.get("status") or 0)
+        status_codes[f"{status_code // 100}xx" if status_code else "unknown"] += 1
+        methods[item.method] += 1
+        hosts[urlsplit(item.url).hostname or "unknown"] += 1
+        fingerprints[item.fingerprint] += 1
+        if item.timing_ms is not None and p95 is not None and item.timing_ms >= p95 and len(timings) >= 3:
+            slow.append({"id": item.id, "sequence": item.sequence, "url": item.url, "timing_ms": item.timing_ms})
+        if status_code >= 400 or item.failure_reason:
+            failed.append({"id": item.id, "sequence": item.sequence, "url": item.url, "status": status_code, "reason": item.failure_reason})
+        serialized = json.dumps({"request": item.request_redacted, "response": response}, ensure_ascii=False)
+        redacted_fields += serialized.count("******")
+    suggestions = []
+    if failed:
+        suggestions.append({"type": "failure", "title": "先处理异常请求", "detail": f"发现 {len(failed)} 条 HTTP 异常或网络失败记录；不要直接把它们作为成功断言导入。"})
+    if len(fingerprints) < len(exchanges):
+        suggestions.append({"type": "deduplicate", "title": "合并重复调用", "detail": f"检测到 {len(exchanges) - len(fingerprints)} 条重复流量；转换时保留有业务意义的一次调用即可。"})
+    if p95 is not None:
+        suggestions.append({"type": "performance", "title": "设置性能断言", "detail": f"本次流量 P95 为 {p95} ms；可为关键接口添加小于等于该阈值或团队 SLA 的响应时间断言。"})
+    if redacted_fields:
+        suggestions.append({"type": "security", "title": "敏感数据已脱敏", "detail": f"检测到 {redacted_fields} 处令牌、Cookie 或敏感字段已遮蔽；请通过环境变量或登录态配置恢复执行所需凭据。"})
+    if capture.origin == "har_import":
+        suggestions.append({"type": "mobile", "title": "移动端流量导入", "detail": "HAR 可以来自移动设备代理工具；TLS 证书固定的应用无法通过常规代理解密，应使用应用提供的测试开关或导入可用 HAR。"})
+    return {
+        "session_id": capture.id,
+        "total": len(exchanges),
+        "methods": dict(methods),
+        "status_classes": dict(status_codes),
+        "top_hosts": [{"host": host, "count": count} for host, count in hosts.most_common(10)],
+        "p95_timing_ms": p95,
+        "slow_exchanges": slow[:20],
+        "failed_exchanges": failed[:50],
+        "duplicate_count": len(exchanges) - len(fingerprints),
+        "redacted_field_count": redacted_fields,
+        "suggestions": suggestions,
+    }
+
+
 @router.get("/{session_id}/export")
 @audit_log("export", "capture_session", resource_id_param="session_id")
 async def export_capture_har(
     session_id: str,
     current_user: User = Depends(require_permissions("capture:export")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     """Export only the already-redacted capture representation as HAR-compatible JSON."""
-    capture = await _session_or_404(db, session_id, current_user.id)
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
     exchanges = list(
         (
             await db.scalars(
@@ -515,33 +937,46 @@ async def export_capture_har(
     for exchange in exchanges:
         request = exchange.request_redacted or {}
         response = exchange.response_redacted or {}
+        request_payload = request.get("payload")
+        request_entry: dict[str, Any] = {
+            "method": exchange.method,
+            "url": exchange.url,
+            "httpVersion": "HTTP/1.1",
+            "headers": [{"name": key, "value": value} for key, value in (request.get("headers") or {}).items()],
+            "queryString": [{"name": key, "value": value} for key, value in (request.get("params") or {}).items()],
+            "cookies": [],
+            "headersSize": -1,
+            "bodySize": -1,
+        }
+        if request_payload is not None:
+            request_entry["postData"] = {
+                "mimeType": request.get("content_type") or "application/octet-stream",
+                "text": request_payload if isinstance(request_payload, str) else json.dumps(request_payload, ensure_ascii=False),
+            }
+        response_body = response.get("body")
+        response_entry: dict[str, Any] = {
+            "status": int(response.get("status") or 0),
+            "statusText": "",
+            "httpVersion": "HTTP/1.1",
+            "headers": [{"name": key, "value": value} for key, value in (response.get("headers") or {}).items()],
+            "cookies": [],
+            "content": {"size": -1, "mimeType": (response.get("headers") or {}).get("content-type", "")},
+            "redirectURL": "",
+            "headersSize": -1,
+            "bodySize": -1,
+        }
+        if response_body is not None:
+            response_entry["content"]["text"] = (
+                response_body if isinstance(response_body, str) else json.dumps(response_body, ensure_ascii=False)
+            )
         entries.append(
             {
                 "startedDateTime": exchange.created_at.isoformat() if exchange.created_at else None,
                 "time": exchange.timing_ms or 0,
-                "request": {
-                    "method": exchange.method,
-                    "url": exchange.url,
-                    "headers": [{"name": key, "value": value} for key, value in (request.get("headers") or {}).items()],
-                    "postData": {
-                        "mimeType": request.get("content_type"),
-                        "text": json.dumps(request.get("payload"), ensure_ascii=False),
-                    }
-                    if request.get("payload") is not None
-                    else None,
-                },
-                "response": {
-                    "status": int(response.get("status") or 0),
-                    "headers": [
-                        {"name": key, "value": value} for key, value in (response.get("headers") or {}).items()
-                    ],
-                    "content": {
-                        "text": json.dumps(response.get("body"), ensure_ascii=False),
-                        "mimeType": "application/json",
-                    }
-                    if response.get("body") is not None
-                    else {},
-                },
+                "request": request_entry,
+                "response": response_entry,
+                "cache": {},
+                "timings": {"blocked": -1, "dns": -1, "connect": -1, "send": 0, "wait": exchange.timing_ms or 0, "receive": 0, "ssl": -1},
                 "_resourceType": exchange.resource_type,
                 "_failureReason": exchange.failure_reason,
             }
@@ -562,8 +997,9 @@ async def convert_capture_to_assets(
     body: dict[str, Any] = Body(default_factory=dict),
     current_user: User = Depends(require_permissions("capture:export", "case:create", "scenario:create")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
-    capture = await _session_or_404(db, session_id, current_user.id)
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
     if capture.status != "completed":
         raise HTTPException(status_code=409, detail="complete the capture session before converting it")
     exchange_ids = body.get("exchange_ids")
@@ -586,6 +1022,11 @@ async def convert_capture_to_assets(
     )
     if len(exchanges) != len(selected_ids):
         raise HTTPException(status_code=404, detail="one or more captured exchanges were not found")
+    if any((exchange.resource_type or "").lower() not in {"xhr", "fetch"} for exchange in exchanges):
+        raise HTTPException(
+            status_code=422,
+            detail="only XHR and fetch exchanges can be converted to API cases; inspect page traffic in the workbench",
+        )
     candidates = [candidate_from_exchange(exchange) for exchange in exchanges]
     _apply_variable_mappings(candidates, body.get("variable_mappings"))
     _apply_candidate_overrides(candidates, body.get("candidate_overrides"))
@@ -599,12 +1040,21 @@ async def convert_capture_to_assets(
     target_group_id = body.get("target_group_id")
     if target_group_id is not None:
         group = await db.scalar(
-            select(AutoTestGroup).where(AutoTestGroup.id == target_group_id, AutoTestGroup.user_id == current_user.id)
+            select(AutoTestGroup).where(
+                AutoTestGroup.id == target_group_id,
+                AutoTestGroup.user_id == current_user.id,
+                AutoTestGroup.project_id == project_id,
+            )
         )
         if group is None:
             raise HTTPException(status_code=404, detail="target group not found")
 
-    job = ImportJob(user_id=current_user.id, source_type="browser_capture", status="running")
+    job = ImportJob(
+        user_id=current_user.id,
+        project_id=project_id,
+        source_type="browser_capture",
+        status="running",
+    )
     db.add(job)
     await db.flush()
     selected_cases: list[AutoTestCase] = []
@@ -637,6 +1087,7 @@ async def convert_capture_to_assets(
         case = AutoTestCase(
             group_id=target_group_id,
             user_id=current_user.id,
+            project_id=project_id,
             name=name,
             method=candidate["method"],
             url=candidate["url"],
@@ -663,6 +1114,7 @@ async def convert_capture_to_assets(
             name=scenario_name,
             description="Generated from selected browser capture exchanges. It requires a successful preview run before regression use.",
             user_id=current_user.id,
+            workspace_project_id=project_id,
             is_active=False,
         )
         db.add(scenario)
@@ -705,14 +1157,16 @@ async def preview_capture_scenario(
     body: dict[str, Any] = Body(default_factory=dict),
     current_user: User = Depends(require_permissions("capture:export", "scenario:execute", "scenario:update")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """Run a generated capture flow once; only a passing preview activates it for regression."""
-    capture = await _session_or_404(db, session_id, current_user.id)
+    capture = await _session_or_404(db, session_id, current_user.id, project_id)
     scenario_id = int(body.get("scenario_id") or 0)
     scenario = await db.scalar(
         select(AutoTestScenario).where(
             AutoTestScenario.id == scenario_id,
             AutoTestScenario.user_id == current_user.id,
+            AutoTestScenario.workspace_project_id == project_id,
         )
     )
     if scenario is None:
@@ -722,6 +1176,7 @@ async def preview_capture_scenario(
             await db.scalars(
                 select(ImportJob).where(
                     ImportJob.user_id == current_user.id,
+                    ImportJob.project_id == project_id,
                     ImportJob.source_type == "browser_capture",
                     ImportJob.status == "completed",
                 )
@@ -741,7 +1196,40 @@ async def preview_capture_scenario(
         raise HTTPException(status_code=409, detail="scenario is not a pending preview generated from this capture")
     from fastapi_backend.services.autotest_scenario_runner import run_scenario
 
-    result = await run_scenario(scenario.id, env_id=body.get("env_id"), user_id=current_user.id)
+    try:
+        result = await asyncio.wait_for(
+            run_scenario(scenario.id, env_id=body.get("env_id"), user_id=current_user.id),
+            timeout=_PREVIEW_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError as exc:
+        scenario.is_active = False
+        job.summary = {
+            **(job.summary or {}),
+            "preview_status": "timed_out",
+            "preview_result": {"success": False, "timeout_seconds": _PREVIEW_TIMEOUT_SECONDS},
+        }
+        await db.commit()
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                f"场景预览超过 {_PREVIEW_TIMEOUT_SECONDS} 秒未结束，已按未通过处理并保持场景未启用。"
+                "请减少预览步骤数量或确认被测服务响应正常后重试。"
+            ),
+        ) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        scenario.is_active = False
+        job.summary = {
+            **(job.summary or {}),
+            "preview_status": "error",
+            "preview_result": {"success": False, "error": str(exc)[:500]},
+        }
+        await db.commit()
+        raise HTTPException(
+            status_code=502,
+            detail=f"场景预览执行异常，已按未通过处理：{str(exc)[:300]}",
+        ) from exc
     success = bool(result.get("success"))
     scenario.is_active = success
     job.summary = {

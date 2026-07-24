@@ -304,10 +304,6 @@ const handleContextMenu = (event, data) => {
   contextMenu.groupData = data
 }
 
-const closeContextMenu = () => {
-  contextMenu.visible = false
-}
-
 const handleMenuCommand = (command) => {
   const data = contextMenu.groupData
   contextMenu.visible = false

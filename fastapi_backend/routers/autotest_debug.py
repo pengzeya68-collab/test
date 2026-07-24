@@ -7,13 +7,18 @@ JMeter 调试执行器 - 后端代理 HTTP 请求
 
 import time
 import json
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.deps.auth import get_current_active_user
+from fastapi_backend.deps.project_context import (
+    get_active_project_id,
+    is_personal_project,
+    project_scope_with_legacy_null,
+)
 from fastapi_backend.models.autotest import AutoTestCase
 from fastapi_backend.models.models import User
 from fastapi_backend.core.ssrf_guard import validate_url_safety
@@ -25,6 +30,7 @@ router = APIRouter(prefix="/api/auto-test/debug", tags=["JMeter调试器"])
 async def debug_execute_request(
     body: Dict[str, Any] = Body(...),
     current_user: User = Depends(get_current_active_user),
+    project_id: int = Depends(get_active_project_id),
 ):
     """
     代理执行 HTTP 请求并返回详细结果
@@ -46,6 +52,7 @@ async def debug_execute_request(
     headers = body.get("headers", {}) or {}
     request_body = body.get("body", "")
     timeout = body.get("timeout", 30)
+    case_id = body.get("case_id") or body.get("api_case_id")
 
     # 校验 HTTP 方法
     allowed_methods = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
@@ -132,6 +139,44 @@ async def debug_execute_request(
             "elapsed_ms": elapsed,
         }
 
+    # Optional case binding: when debugger sends case_id, enforce contract gate.
+    if case_id is not None and isinstance(result.get("response"), dict):
+        try:
+            from fastapi_backend.services.contract_testing_service import contract_testing_service
+
+            resp = result["response"]
+            body_text = resp.get("body")
+            parsed_body: Any = body_text
+            if isinstance(body_text, str) and body_text.strip():
+                try:
+                    parsed_body = json.loads(body_text)
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    parsed_body = body_text
+            flat = {
+                "success": bool(resp.get("status_code")) and int(resp.get("status_code") or 0) < 400,
+                "status_code": resp.get("status_code"),
+                "response_content": parsed_body,
+                "request": result.get("request") or {"method": method, "url": url},
+            }
+            # 强制使用 header 工作区 project_id，禁止 body 伪装
+            contract_project_id = int(project_id)
+            flat = await contract_testing_service.attach_contract_validation(
+                flat,
+                project_id=contract_project_id,
+                case_id=int(case_id),
+                method=method,
+                url=url,
+                status_code=resp.get("status_code"),
+                response_body=parsed_body,
+            )
+            result["contract_result"] = flat.get("contract_result")
+            if flat.get("success") is False and flat.get("error"):
+                result["response"]["contract_error"] = flat.get("error")
+                result["success"] = False
+                result["error"] = flat.get("error")
+        except Exception:
+            pass
+
     return result
 
 
@@ -141,33 +186,50 @@ async def debug_execute_from_case(
     env_id: Optional[int] = None,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id),
 ):
-    """从已有接口用例执行调试请求，支持变量替换和环境URL拼接"""
+    """从已有接口用例执行调试请求，支持变量替换和环境URL拼接（按项目隔离）"""
     from fastapi_backend.models.autotest import AutoTestEnvironment
     from fastapi_backend.utils.parser import replace_variables
 
+    personal = await is_personal_project(db, project_id)
+    case_scope = project_scope_with_legacy_null(
+        AutoTestCase.project_id,
+        project_id,
+        user_id_column=AutoTestCase.user_id,
+        user_id=current_user.id,
+        is_personal_active=personal,
+    )
+    env_scope = project_scope_with_legacy_null(
+        AutoTestEnvironment.project_id,
+        project_id,
+        user_id_column=AutoTestEnvironment.user_id,
+        user_id=current_user.id,
+        is_personal_active=personal,
+    )
+
     result = await db.execute(
-        select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id)
+        select(AutoTestCase).where(AutoTestCase.id == case_id, case_scope)
     )
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
 
-    # 加载环境配置
+    # 加载环境配置（项目成员共享）
     env = None
     base_url = ""
     env_vars = {}
     if env_id:
         result = await db.execute(
             select(AutoTestEnvironment).where(
-                AutoTestEnvironment.id == env_id, AutoTestEnvironment.user_id == current_user.id
+                AutoTestEnvironment.id == env_id, env_scope
             )
         )
         env = result.scalar_one_or_none()
     if env is None:
         result = await db.execute(
             select(AutoTestEnvironment).where(
-                AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id
+                AutoTestEnvironment.is_default.is_(True), env_scope
             )
         )
         env = result.scalars().first()
@@ -233,6 +295,23 @@ async def debug_execute_from_case(
             request_config=__import__(
                 "fastapi_backend.services.autotest_request_config", fromlist=["reveal_request_config"]
             ).reveal_request_config(getattr(case, "request_config", None)),
+        )
+        # Case-bound debug must honor active contract rules (same gate as quick_run / scenario).
+        from fastapi_backend.services.contract_testing_service import contract_testing_service
+
+        project_id = int(getattr(case, "project_id", None) or 0) or 0
+        if not project_id:
+            from fastapi_backend.services.project_service import ensure_personal_project
+
+            personal = await ensure_personal_project(db, int(current_user.id))
+            project_id = int(personal.id)
+        result = await contract_testing_service.attach_contract_validation(
+            result if isinstance(result, dict) else {},
+            project_id=project_id,
+            case_id=int(case.id),
+            method=case.method or "GET",
+            url=url,
+            db=db,
         )
         return result
     except ValueError as e:

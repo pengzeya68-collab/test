@@ -19,6 +19,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.core.audit_decorator import audit_log
 from fastapi_backend.core.rbac import require_permissions
+from fastapi_backend.deps.project_context import (
+    get_active_project_id,
+    get_active_project_id_member,
+    is_personal_project,
+    project_scope_with_legacy_null,
+)
 from fastapi_backend.models.autotest import (
     AutomationExecution,
     AutomationExecutionItem,
@@ -31,6 +37,7 @@ from fastapi_backend.models.autotest import (
     TestSuiteScenario,
 )
 from fastapi_backend.models.models import User
+from fastapi_backend.services import execution_ai_assistance
 from fastapi_backend.services.suite_execution_service import dispatch_suite_execution
 from fastapi_backend.services.suite_schedule_service import (
     install_suite_schedule_job,
@@ -409,24 +416,40 @@ async def _dispatch_execution(execution: AutomationExecution) -> None:
     await dispatch_suite_execution(execution.id)
 
 
+async def _suite_scope(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        TestSuite.project_id,
+        project_id,
+        user_id_column=TestSuite.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
+
+
 @router.get("")
 async def list_suites(
     page: int = 1,
     size: int = 20,
     current_user: User = Depends(require_permissions("suite:read")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     await _migrate_legacy_suites(db, current_user.id)
     page = max(page, 1)
     size = min(max(size, 1), 100)
+    scope = await _suite_scope(db, current_user.id, project_id)
     total = (
-        await db.scalar(select(func.count()).select_from(TestSuite).where(TestSuite.user_id == current_user.id)) or 0
+        await db.scalar(
+            select(func.count()).select_from(TestSuite).where(TestSuite.user_id == current_user.id, scope)
+        )
+        or 0
     )
     suites = list(
         (
             await db.scalars(
                 select(TestSuite)
-                .where(TestSuite.user_id == current_user.id)
+                .where(TestSuite.user_id == current_user.id, scope)
                 .order_by(TestSuite.updated_at.desc(), TestSuite.id.desc())
                 .offset((page - 1) * size)
                 .limit(size)
@@ -494,12 +517,33 @@ async def list_execution_events(
     }
 
 
+@router.post("/executions/{execution_id}/ai/failure-analysis")
+async def analyze_execution_failure(
+    execution_id: str,
+    current_user: User = Depends(require_permissions("ai:analyze", "execution:read")),
+    db: AsyncSession = Depends(get_autotest_db),
+):
+    """Return a redacted advisory analysis; it never changes the execution or suite."""
+    execution = await db.scalar(
+        select(AutomationExecution).where(
+            AutomationExecution.public_id == execution_id,
+            AutomationExecution.user_id == current_user.id,
+        )
+    )
+    if execution is None:
+        raise HTTPException(status_code=404, detail="执行记录不存在或无权访问")
+    if execution.status not in execution_ai_assistance._TERMINAL_FAILURE_STATUSES:
+        raise HTTPException(status_code=409, detail="失败归因仅适用于已结束且未通过的执行记录")
+    return await execution_ai_assistance.analyze_execution_failure(db, current_user.id, execution)
+
+
 @router.post("")
 @audit_log("create", "suite")
 async def create_suite(
     body: dict[str, Any] = Body(default_factory=dict),
     current_user: User = Depends(require_permissions("suite:create")),
     db: AsyncSession = Depends(get_autotest_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     await _migrate_legacy_suites(db, current_user.id)
     name = str(body.get("name") or "").strip()
@@ -511,6 +555,7 @@ async def create_suite(
         description=str(body.get("description") or ""),
         env_id=body.get("env_id"),
         user_id=current_user.id,
+        project_id=int(project_id),
         kind="scenario",
     )
     db.add(suite)

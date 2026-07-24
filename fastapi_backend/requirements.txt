@@ -28,7 +28,20 @@ aiohttp>=3.9.0
 python-docx>=0.8.11
 matplotlib>=3.7.0
 numpy>=1.24.0
+Pillow>=10.0.0
+beautifulsoup4>=4.12.0
+# Keep the runtime compiler on the protobuf 4 ABI.  Newer grpcio-tools releases
+# currently upgrade protobuf beyond the versions used by our observability and
+# database drivers, making a fresh deployment resolve an incompatible set.
+grpcio>=1.60.0,<1.70.0
+grpcio-tools>=1.60.0,<1.70.0
+grpcio-reflection>=1.60.0,<1.70.0
+protobuf>=4.25.0,<5.0.0
+websockets>=12.0
+paho-mqtt>=2.0.0,<3.0.0
 dukpy>=0.4.0
 RestrictedPython>=7.0
 faker>=18.0.0
 jsonschema>=4.20.0
+Jinja2>=3.1.0
+PyYAML>=6.0

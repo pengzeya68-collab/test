@@ -275,7 +275,7 @@ const viewProfile = (item) => {
 .tabs-container {
   display: flex;
   gap: 28px;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
   margin-bottom: 32px;
 }
 .tab-item {
@@ -374,17 +374,17 @@ const viewProfile = (item) => {
 }
 .bar-gold {
   height: 110px;
-  background: linear-gradient(180deg, #fbbf24, #d97706);
-  box-shadow: 0 -8px 24px rgba(251, 191, 36, 0.3);
+  background: linear-gradient(180deg, var(--tm-color-warning), var(--tm-color-warning));
+  box-shadow: 0 -8px 24px color-mix(in srgb, var(--tm-color-warning) 30%, transparent);
 }
 .bar-silver {
   height: 80px;
-  background: linear-gradient(180deg, #cbd5e1, #64748b);
+  background: linear-gradient(180deg, var(--tm-text-regular), var(--tm-text-muted));
   box-shadow: 0 -6px 20px rgba(203, 213, 225, 0.2);
 }
 .bar-bronze {
   height: 60px;
-  background: linear-gradient(180deg, #d97706, #92400e);
+  background: linear-gradient(180deg, var(--tm-color-warning), #92400e);
   box-shadow: 0 -4px 16px rgba(217, 119, 6, 0.2);
 }
 
@@ -428,17 +428,17 @@ const viewProfile = (item) => {
   flex-shrink: 0;
 }
 .rank-num.gold {
-  background: linear-gradient(135deg, #fbbf24, #d97706);
+  background: linear-gradient(135deg, var(--tm-color-warning), var(--tm-color-warning));
   color: #fff;
-  box-shadow: 0 0 14px rgba(251, 191, 36, 0.3);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tm-color-warning) 30%, transparent);
 }
 .rank-num.silver {
-  background: linear-gradient(135deg, #cbd5e1, #64748b);
+  background: linear-gradient(135deg, var(--tm-text-regular), var(--tm-text-muted));
   color: #fff;
   box-shadow: 0 0 12px rgba(203, 213, 225, 0.2);
 }
 .rank-num.bronze {
-  background: linear-gradient(135deg, #d97706, #92400e);
+  background: linear-gradient(135deg, var(--tm-color-warning), #92400e);
   color: #fff;
   box-shadow: 0 0 10px rgba(217, 119, 6, 0.2);
 }

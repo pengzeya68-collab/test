@@ -355,38 +355,40 @@ async def _queue_retry_execution(
 
 
 async def _notify_execution_result(execution_id: int, context: dict) -> None:
+    """Queue durable channel deliveries after an execution has committed.
+
+    Legacy schedule webhook configuration remains available for old schedules;
+    the new user-managed channels are persisted and retried by the outbox.
+    """
+    from fastapi_backend.services.automation_notification_outbox import queue_execution_notifications
     from fastapi_backend.services.suite_schedule_service import notification_config_runtime
 
-    config = notification_config_runtime(context.get("notification_config") or {})
-    status = str(context.get("status") or "")
-    if not config.get("enabled", True) or status not in (config.get("notify_on") or []):
-        return
-    from fastapi_backend.services.webhook_notify import send_bot_webhook_async
-
-    text = "\n".join(
-        [
-            "【TestMaster】接口套件执行结果",
-            f"套件 ID：{context.get('suite_id')}",
-            f"执行编号：{context.get('public_id')}",
-            f"结果：{status}",
-            f"尝试次数：{context.get('attempt')}",
-            f"场景：通过 {context.get('passed', 0)}，失败 {context.get('failed', 0)}，超时 {context.get('timed_out', 0)}，取消 {context.get('cancelled', 0)}",
-            f"耗时：{context.get('duration_ms', 0)} ms",
-        ]
-    )
-    ok, detail = await send_bot_webhook_async(config["webhook_url"], text)
     async with AsyncSessionLocal() as db:
         execution = await db.get(AutomationExecution, execution_id)
         if execution is None:
             return
-        await _append_event(
-            db,
-            execution_id,
-            "notification_delivered" if ok else "notification_failed",
-            {"provider": "bot_webhook", "status": status, "detail": detail[:500]},
-            "info" if ok else "warning",
-        )
+        queued = await queue_execution_notifications(db, execution, context)
+        if queued:
+            await _append_event(db, execution_id, "notification_queued", {"channels": queued})
         await db.commit()
+
+    # Existing schedules may still contain the older single robot URL.  Keep
+    # them working while steering new configuration to notification channels.
+    config = notification_config_runtime(context.get("notification_config") or {})
+    status = str(context.get("status") or "")
+    if config.get("enabled", True) and status in (config.get("notify_on") or []):
+        from fastapi_backend.services.webhook_notify import send_bot_webhook_async
+        text = "\n".join(("【TestMaster】接口套件执行结果", f"执行编号：{context.get('public_id')}", f"结果：{status}"))
+        ok, detail = await send_bot_webhook_async(config["webhook_url"], text)
+        async with AsyncSessionLocal() as db:
+            execution = await db.get(AutomationExecution, execution_id)
+            if execution is not None:
+                await _append_event(
+                    db, execution_id, "notification_delivered" if ok else "notification_failed",
+                    {"provider": "legacy_bot_webhook", "status": status, "detail": detail[:500]},
+                    "info" if ok else "warning",
+                )
+                await db.commit()
 
 
 async def run_suite_execution(execution_id: int, runner_id: str = "server") -> None:

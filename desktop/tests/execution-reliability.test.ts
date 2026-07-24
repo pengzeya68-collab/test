@@ -29,6 +29,13 @@ it('uses recorded fallback locator when primary locator is stale', async () => {
   expect(result.status, JSON.stringify(result)).toBe('passed');
 });
 
+it('uses the case navigation timeout instead of a short action timeout for page loads', async () => {
+  const result = await new CaseExecutionEngine().execute(snapshot([
+    step('open', 'goto', null, { url: 'data:text/html,<h1>导航完成</h1>' }, { timeout_ms: 1 }),
+  ]), null, { headless: true, screenshotsOnFailure: false, traceOnFailure: false }, () => {});
+  expect(result.status, JSON.stringify(result)).toBe('passed');
+});
+
 it('retries a transiently unavailable element and emits retry log', async () => {
   const events: any[] = [];
   const html = '<script>setTimeout(()=>document.body.innerHTML=\'<button data-testid="late">继续</button>\',450)</script>';

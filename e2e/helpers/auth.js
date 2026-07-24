@@ -19,10 +19,9 @@ async function login(page) {
     localStorage.setItem('testmaster_server_url', serverURL);
   }, { token: session.access_token, user: session.user, serverURL: backendURL });
   await page.goto('/#/');
-  // Wait for Vue Router's initial navigation to finish. A visible body is
-  // immediate and lets a following hash navigation be overwritten by the
-  // app's initial route, especially while several E2E workers start at once.
-  await expect(page.getByRole('heading', { name: 'UI 自动化工作台' })).toBeVisible({ timeout: 20_000 });
+  // Wait for the authenticated home page. This button is a stable navigation
+  // contract, unlike a historical page heading that no longer exists.
+  await expect(page.getByRole('button', { name: '进入自动化工作台', exact: true })).toBeVisible({ timeout: 20_000 });
 }
 
 async function openJmeterAssistant(page) {

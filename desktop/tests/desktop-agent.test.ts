@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { AgentCredentialStore, AgentCredentials } from '../src/main/agent-state-store';
-import { DesktopAgentService } from '../src/main/desktop-agent-service';
+import { AgentCredentialStore, AgentCredentials, AgentOutboxRecord, AgentOutboxStore } from '../src/main/agent-state-store';
+import { AgentEventOutbox, DesktopAgentService } from '../src/main/desktop-agent-service';
 import { CaseSnapshot, EnvironmentConfig, RunOptions, RunResult, StepEvent } from '../src/worker/execution-engine';
 
 class MemoryStore implements AgentCredentialStore {
@@ -11,6 +11,22 @@ class MemoryStore implements AgentCredentialStore {
   load(): AgentCredentials | null { return this.value ? { ...this.value } : null; }
   save(value: AgentCredentials): void { this.value = { ...value }; }
   clear(): void { this.value = null; }
+}
+
+class MemoryOutboxStore implements AgentOutboxStore {
+  records = new Map<number, AgentOutboxRecord[]>();
+  load(agentId: number): AgentOutboxRecord[] {
+    return (this.records.get(agentId) || []).map(record => JSON.parse(JSON.stringify(record)));
+  }
+  save(agentId: number, record: AgentOutboxRecord): void {
+    const records = this.load(agentId).filter(item => item.runId !== record.runId);
+    records.push(JSON.parse(JSON.stringify(record)));
+    this.records.set(agentId, records);
+  }
+  remove(agentId: number, runId: number): void {
+    this.records.set(agentId, this.load(agentId).filter(item => item.runId !== runId));
+  }
+  clear(agentId: number): void { this.records.delete(agentId); }
 }
 
 class FakeEngine {
@@ -72,6 +88,33 @@ afterEach(async () => {
 });
 
 describe('Desktop Agent', () => {
+  it('persists undelivered events and replays their original sequences after restart', async () => {
+    const persistence = new MemoryOutboxStore();
+    const credentials: AgentCredentials = {
+      serverUrl: 'https://testmaster.example.test', agentId: 77, agentKey: 'agent-77', name: 'Recovery runner',
+      token: 'agent-bootstrap-token-persisted', authStateId: null, enabled: true, headless: true,
+      maxParallel: 1, browserEngine: 'chromium', registeredAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    const offlineApi: any = { appendEvents: async () => { throw new Error('network offline'); } };
+    const first = new AgentEventOutbox(offlineApi, credentials, 701, () => {}, persistence);
+    first.enqueue({ type: 'run:start', totalSteps: 1 });
+    first.enqueue({ type: 'step:start', stepId: 'open', stepName: 'Open', stepType: 'goto' });
+    expect(persistence.load(77)[0]?.events.map(event => event.sequence)).toEqual([1, 2]);
+    await first.stopAndFlush(0);
+
+    const delivered: any[][] = [];
+    const onlineApi: any = {
+      appendEvents: async (_credentials: AgentCredentials, _runId: number, events: any[]) => {
+        delivered.push(events);
+        return { accepted: events.length, ignored: 0, last_sequence: events.at(-1).sequence, status: 'running' };
+      },
+    };
+    const restored = new AgentEventOutbox(onlineApi, credentials, 701, () => {}, persistence);
+    await restored.flush();
+    expect(delivered.flat().map(event => event.sequence)).toEqual([1, 2]);
+    expect(persistence.load(77)).toEqual([]);
+  });
+
   it('registers with the signed-in user but persists only the Agent credential', async () => {
     const store = new MemoryStore();
     const uploaded: any[][] = [];

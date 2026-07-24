@@ -29,8 +29,8 @@
           <select v-model="form.type">
             <option value="">璇烽€夋嫨</option>
             <option value="鎶€鏈潰">鎶€鏈潰璇</option>
-            <option value="HR闈?>HR闈㈣瘯</option>
-            <option value="缁煎悎闈?>缁煎悎闈㈣瘯</option>
+            <option value="HR闈">HR闈㈣瘯</option>
+            <option value="缁煎悎闈">缁煎悎闈㈣瘯</option>
           </select>
         </div>
 
@@ -251,7 +251,7 @@
           <div class="score-stats">
             <span>鏈€楂樺垎: <strong>{{ result.report.score_range.max }}</strong></span>
             <span>鏈€浣庡垎: <strong>{{ result.report.score_range.min }}</strong></span>
-            <span>閫氳繃鐜? <strong>{{ result.report.pass_rate }}%</strong></span>
+            <span>通过率：<strong>{{ result.report.pass_rate }}%</strong></span>
           </div>
         </div>
 
@@ -285,7 +285,6 @@
 import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, VideoPlay, Star } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { useAICosts } from '@/composables/useAICosts'
 import { renderMarkdown } from '@/utils/markdown'
@@ -548,6 +547,7 @@ const getCodeTemplate = () => {
   }
   return '# 请在此处编写你的代码\n# 完成题目要求的功能'
 }
+void getDifficultyTagType
 
 const getScoreClass = (score) => {
   if (score === null || score === undefined) return ''
@@ -652,7 +652,7 @@ const submitFollowUp = async () => {
 .mock-interview-card {
   width: 480px;
   background: var(--tm-card-bg);
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
   border-radius: 12px;
   padding: 40px;
   display: flex;
@@ -686,7 +686,7 @@ const submitFollowUp = async () => {
 .form-group select {
   flex: 1;
   background: var(--tm-bg-page);
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
   color: var(--tm-text-primary);
   padding: 10px 12px;
   border-radius: 6px;
@@ -746,7 +746,7 @@ const submitFollowUp = async () => {
   flex: none;
 }
 .empty-hint {
-  color: #52525b;
+  color: var(--tm-text-muted);
   font-size: 13px;
 }
 
@@ -789,7 +789,7 @@ const submitFollowUp = async () => {
   gap: 20px;
   padding: 24px 28px;
   background: var(--tm-card-bg);
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
   border-radius: 12px;
 }
 
@@ -830,9 +830,9 @@ const submitFollowUp = async () => {
 }
 
 .btn-end-session {
-  background: rgba(248, 113, 113, 0.15);
-  border: 1px solid rgba(248, 113, 113, 0.25);
-  color: #f87171;
+  background: color-mix(in srgb, var(--tm-color-danger) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tm-color-danger) 25%, transparent);
+  color: var(--tm-color-danger);
   padding: 8px 20px;
   border-radius: 6px;
   font-size: 13px;
@@ -842,13 +842,13 @@ const submitFollowUp = async () => {
   white-space: nowrap;
 }
 .btn-end-session:hover {
-  background: rgba(248, 113, 113, 0.25);
+  background: color-mix(in srgb, var(--tm-color-danger) 25%, transparent);
 }
 
 /* ========== Question Section ========== */
 .question-section {
   background: var(--tm-card-bg);
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
   border-radius: 12px;
   padding: 32px;
   display: flex;
@@ -869,10 +869,10 @@ const submitFollowUp = async () => {
   background: var(--bg-surface-hover);
   color: var(--tm-text-regular);
 }
-.q-tag.cat { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; }
-.q-tag.diff-easy, .q-tag.diff-beginner { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-.q-tag.diff-medium, .q-tag.diff-intermediate { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
-.q-tag.diff-hard, .q-tag.diff-advanced { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+.q-tag.cat { background: rgba(var(--tm-color-primary-rgb), 0.15); color: var(--tm-color-primary-light); }
+.q-tag.diff-easy, .q-tag.diff-beginner { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.q-tag.diff-medium, .q-tag.diff-intermediate { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); }
+.q-tag.diff-hard, .q-tag.diff-advanced { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); }
 
 .q-title {
   font-size: 18px;
@@ -889,7 +889,7 @@ const submitFollowUp = async () => {
   padding: 16px;
   background: var(--tm-card-bg);
   border-radius: 8px;
-  border-left: 3px solid #27272a;
+  border-left: 3px solid var(--tm-bg-elevated);
 }
 
 /* ========== Answer ========== */
@@ -908,18 +908,18 @@ const submitFollowUp = async () => {
 .btn-hint {
   background: none;
   border: none;
-  color: #fbbf24;
+  color: var(--tm-color-warning);
   font-size: 13px;
   cursor: pointer;
   font-weight: 500;
 }
 .hint-box {
   padding: 14px 16px;
-  background: rgba(251, 191, 36, 0.06);
+  background: color-mix(in srgb, var(--tm-color-warning) 6%, transparent);
   border-radius: 8px;
-  border: 1px solid rgba(251, 191, 36, 0.15);
+  border: 1px solid color-mix(in srgb, var(--tm-color-warning) 15%, transparent);
   font-size: 13px;
-  color: #fcd34d;
+  color: var(--tm-color-warning);
   margin-bottom: 14px;
   line-height: 1.6;
 }
@@ -928,7 +928,7 @@ const submitFollowUp = async () => {
   width: 100%;
   box-sizing: border-box;
   background: var(--tm-bg-page);
-  border: 1px solid #27272a;
+  border: 1px solid var(--tm-bg-elevated);
   border-radius: 8px;
   color: var(--tm-text-regular);
   padding: 14px 16px;
@@ -956,7 +956,7 @@ const submitFollowUp = async () => {
   font-weight: 700;
   color: var(--tm-text-primary);
   padding-bottom: 10px;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
   margin-bottom: 14px;
 }
 .score-row {
@@ -989,14 +989,14 @@ const submitFollowUp = async () => {
 }
 .follow-up-q {
   padding: 14px 16px;
-  background: rgba(251, 191, 36, 0.06);
+  background: color-mix(in srgb, var(--tm-color-warning) 6%, transparent);
   border-radius: 8px;
-  border: 1px solid rgba(251, 191, 36, 0.15);
+  border: 1px solid color-mix(in srgb, var(--tm-color-warning) 15%, transparent);
   margin-bottom: 14px;
 }
 .follow-up-q p {
   margin: 0;
-  color: #fcd34d;
+  color: var(--tm-color-warning);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -1008,7 +1008,7 @@ const submitFollowUp = async () => {
 .btn-submit-follow {
   margin-top: 8px;
   padding: 8px 22px;
-  background: linear-gradient(135deg, #fbbf24, #d97706);
+  background: linear-gradient(135deg, var(--tm-color-warning), var(--tm-color-warning));
   border: none;
   border-radius: 6px;
   color: #fff;
@@ -1017,16 +1017,16 @@ const submitFollowUp = async () => {
   cursor: pointer;
   transition: all 0.2s;
 }
-.btn-submit-follow:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(251,191,36,0.3); }
+.btn-submit-follow:hover { transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--tm-color-warning) 30%, transparent); }
 .btn-submit-follow:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .follow-up-result {
   margin-top: 12px;
   padding: 12px 16px;
-  background: rgba(52, 211, 153, 0.06);
+  background: color-mix(in srgb, var(--tm-color-success) 6%, transparent);
   border-radius: 8px;
   font-size: 14px;
-  color: #34d399;
+  color: var(--tm-color-success);
   line-height: 1.6;
 }
 
@@ -1037,14 +1037,14 @@ const submitFollowUp = async () => {
 }
 .btn-follow-up {
   padding: 8px 18px;
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  color: #fbbf24;
+  background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tm-color-warning) 20%, transparent);
+  color: var(--tm-color-warning);
   font-size: 13px;
   border-radius: 6px;
   cursor: pointer;
 }
-.btn-follow-up:hover { background: rgba(251, 191, 36, 0.2); }
+.btn-follow-up:hover { background: color-mix(in srgb, var(--tm-color-warning) 20%, transparent); }
 .btn-follow-up:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-skip {
   padding: 8px 18px;
@@ -1085,7 +1085,7 @@ const submitFollowUp = async () => {
   justify-content: space-between;
   align-items: center;
   padding-top: 24px;
-  border-top: 1px solid #27272a;
+  border-top: 1px solid var(--tm-bg-elevated);
 }
 .question-nav-buttons button {
   padding: 10px 28px;
@@ -1127,7 +1127,7 @@ const submitFollowUp = async () => {
   gap: 30px;
   margin-bottom: 28px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
 }
 .score-badge {
   width: 110px;
@@ -1140,10 +1140,10 @@ const submitFollowUp = async () => {
   flex-shrink: 0;
 }
 .score-badge.passed {
-  background: linear-gradient(135deg, #34d399, #059669);
+  background: linear-gradient(135deg, var(--tm-color-success), var(--tm-color-success));
 }
 .score-badge.failed {
-  background: linear-gradient(135deg, #f87171, #dc2626);
+  background: linear-gradient(135deg, var(--tm-color-danger), var(--tm-color-danger));
 }
 .big-score {
   font-size: 34px;
@@ -1169,9 +1169,9 @@ const submitFollowUp = async () => {
 }
 .suggestions-box {
   padding: 20px;
-  background: rgba(251, 191, 36, 0.06);
+  background: color-mix(in srgb, var(--tm-color-warning) 6%, transparent);
   border-radius: 8px;
-  border-left: 3px solid #fbbf24;
+  border-left: 3px solid var(--tm-color-warning);
 }
 .suggestions-box h4 {
   font-size: 16px;
@@ -1200,7 +1200,7 @@ const submitFollowUp = async () => {
   border-radius: 4px;
   font-family: 'Courier New', monospace;
   font-size: 13px;
-  color: #fbbf24;
+  color: var(--tm-color-warning);
 }
 .question-section :deep(ul),
 .question-section :deep(ol),
@@ -1220,7 +1220,7 @@ const submitFollowUp = async () => {
 
 .ai-cost-hint {
   font-size: 11px;
-  color: #ffa502;
+  color: var(--tm-color-warning);
   margin-left: 8px;
   white-space: nowrap;
 }
@@ -1231,7 +1231,7 @@ const submitFollowUp = async () => {
   align-items: center;
   gap: 12px;
   padding: 16px 0;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
   margin-bottom: 16px;
 }
 .score-label {
@@ -1242,18 +1242,18 @@ const submitFollowUp = async () => {
   font-size: 28px;
   font-weight: 900;
 }
-.score-value.score-high { color: #34d399; }
-.score-value.score-mid { color: #fbbf24; }
-.score-value.score-low { color: #f87171; }
+.score-value.score-high { color: var(--tm-color-success); }
+.score-value.score-mid { color: var(--tm-color-warning); }
+.score-value.score-low { color: var(--tm-color-danger); }
 .score-level {
   font-size: 14px;
   font-weight: 600;
   padding: 2px 10px;
   border-radius: 4px;
 }
-.score-level.score-high { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-.score-level.score-mid { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
-.score-level.score-low { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+.score-level.score-high { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.score-level.score-mid { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); }
+.score-level.score-low { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); }
 .score-evaluating {
   font-size: 13px;
   color: var(--tm-text-secondary);
@@ -1281,16 +1281,16 @@ const submitFollowUp = async () => {
   border-left-color: var(--tm-color-primary);
 }
 .fb-strengths {
-  background: rgba(52, 211, 153, 0.06);
-  border-left-color: #34d399;
+  background: color-mix(in srgb, var(--tm-color-success) 6%, transparent);
+  border-left-color: var(--tm-color-success);
 }
 .fb-weaknesses {
-  background: rgba(251, 191, 36, 0.06);
-  border-left-color: #fbbf24;
+  background: color-mix(in srgb, var(--tm-color-warning) 6%, transparent);
+  border-left-color: var(--tm-color-warning);
 }
 .fb-suggestion {
-  background: rgba(99, 102, 241, 0.06);
-  border-left-color: #6366f1;
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
+  border-left-color: var(--tm-color-primary);
 }
 .fb-title {
   font-size: 13px;
@@ -1324,7 +1324,7 @@ const submitFollowUp = async () => {
   gap: 30px;
   margin-bottom: 28px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
 }
 .score-meta {
   flex: 1;
@@ -1337,9 +1337,9 @@ const submitFollowUp = async () => {
   border-radius: 6px;
   margin-bottom: 10px;
 }
-.level-badge.score-high { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-.level-badge.score-mid { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
-.level-badge.score-low { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.level-badge.score-high { background: color-mix(in srgb, var(--tm-color-success) 15%, transparent); color: var(--tm-color-success); }
+.level-badge.score-mid { background: color-mix(in srgb, var(--tm-color-warning) 15%, transparent); color: var(--tm-color-warning); }
+.level-badge.score-low { background: color-mix(in srgb, var(--tm-color-danger) 15%, transparent); color: var(--tm-color-danger); }
 .score-summary {
   font-size: 15px;
   color: var(--tm-text-regular);
@@ -1354,7 +1354,7 @@ const submitFollowUp = async () => {
   color: var(--tm-text-primary);
   margin: 0 0 10px;
   padding-bottom: 6px;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--tm-bg-elevated);
 }
 .report-section ul, .report-section ol {
   margin: 0;

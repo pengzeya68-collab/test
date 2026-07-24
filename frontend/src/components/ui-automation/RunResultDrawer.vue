@@ -73,10 +73,20 @@
         <template #header>
           <div class="analysis-header">
             <span>缺陷报告与运行产物</span>
-            <el-button size="small" type="primary" :loading="reportLoading" @click="openDefectReport">查看报告</el-button>
+            <div class="analysis-actions">
+              <el-button size="small" :loading="upgradeDefectLoading" @click="createUpgradeDefect">一键建缺陷</el-button>
+              <el-button size="small" @click="openTracePage">打开 Trace</el-button>
+              <el-button size="small" @click="openVisualPage">视觉对比</el-button>
+              <el-button size="small" type="primary" :loading="reportLoading" @click="openDefectReport">查看报告</el-button>
+            </div>
           </div>
         </template>
-        <span class="report-hint">报告基于已保存的执行版本、脱敏环境摘要、失败步骤和已上传产物生成。</span>
+        <span class="report-hint">报告基于已保存的执行版本、脱敏环境摘要、失败步骤和已上传产物生成。一键建缺陷会同步到已配置的 Tracker。</span>
+        <div v-if="createdDefect" class="created-defect">
+          已创建缺陷 #{{ createdDefect.id }}
+          <span v-if="createdDefect.external_id">· 外部 {{ createdDefect.external_id }}</span>
+          <span v-if="createdDefect.attachments?.push_error" class="error-text"> · 推送失败：{{ createdDefect.attachments.push_error }}</span>
+        </div>
       </el-card>
 
       <el-card class="events-card" shadow="never" v-if="running || events.length">
@@ -222,16 +232,24 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import uiAutomationApi from '@/api/ui-automation'
+import { featureUpgradesApi } from '@/api/feature-upgrades'
+import { useProjectStore } from '@/stores/project'
 import { getServerUrl } from '@/utils/server-config'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue', 'run-finished'])
+const router = useRouter()
+const { projectId } = storeToRefs(useProjectStore())
 
 const visible = ref(props.modelValue)
+const upgradeDefectLoading = ref(false)
+const createdDefect = ref(null)
 const running = ref(false)
 const events = ref([])
 const result = ref(null)
@@ -286,7 +304,7 @@ watch(visible, (val) => {
 function authValidationUrl(snapshot) {
   const firstGoto=(snapshot.steps||[]).find(step=>step.enabled!==false&&step.type==='goto')?.input?.url||''
   if(/^https?:\/\//i.test(firstGoto))return firstGoto
-  if(snapshot.base_url&&firstGoto){try{return new URL(firstGoto,snapshot.base_url).toString()}catch{}}
+  if(snapshot.base_url&&firstGoto){try{return new URL(firstGoto,snapshot.base_url).toString()}catch(error){console.warn('无法拼接登录态校验地址',error)}}
   return /^https?:\/\//i.test(snapshot.base_url||'')?snapshot.base_url:''
 }
 async function ensureAuthStateReady(authStateId,caseSnapshot) {
@@ -311,6 +329,7 @@ async function startRun({ caseSnapshot, runContext, onEvent, debugMode = false, 
   analysisFeedbackAccepted.value = true
   analysisCorrectedCategory.value = ''
   defectReport.value = null
+  createdDefect.value = null
   running.value = true
   visible.value = true
   runRecord.value = null
@@ -337,6 +356,18 @@ async function startRun({ caseSnapshot, runContext, onEvent, debugMode = false, 
   }
 
   try {
+    let networkRules = []
+    try {
+      const targetId = Number(runContext.caseId || caseSnapshot.case_id || 0)
+      // Network rules are project-scoped. A user who has not selected a
+      // workspace must not issue an invalid request with project_id=null.
+      if (targetId && projectId.value) {
+        const ruleRes = await featureUpgradesApi.rulesForTarget(projectId.value, 'ui_case', targetId)
+        networkRules = ruleRes.agent_payload || []
+      }
+    } catch {
+      networkRules = []
+    }
     const { correlationId, promise } = window.testmaster.execution.runCase(caseSnapshot, {
       headless: false,
       screenshotsOnFailure: true,
@@ -345,6 +376,11 @@ async function startRun({ caseSnapshot, runContext, onEvent, debugMode = false, 
       debugMode,
       authStateId,
       runtimeConfigRequest: environmentId == null ? null : { serverUrl: getServerUrl(), token: localStorage.getItem('token') || '', environmentId },
+      projectId: projectId.value,
+      runId: runRecord.value?.id || null,
+      accessToken: localStorage.getItem('token') || '',
+      healingEndpoint: `${getServerUrl()}/api/feature-upgrades/healing/heal`,
+      networkRules,
       onEvent: async (event) => {
         events.value.push(event)
         if (event.type === 'run:paused') { paused.value = true; pausedStep.value = event }
@@ -522,8 +558,9 @@ function readPersistedOutbox(key) {
       return null
     }
     return { runId: parsed.runId, events }
-  } catch {
-    try { window.localStorage.removeItem(key) } catch {}
+  } catch (error) {
+    console.warn('读取运行事件缓存失败，已清除损坏缓存', error)
+    try { window.localStorage.removeItem(key) } catch (removeError) { console.warn('清除运行事件缓存失败', removeError) }
     return null
   }
 }
@@ -727,6 +764,44 @@ async function openDefectReport () {
   }
 }
 
+async function createUpgradeDefect () {
+  if (!runRecord.value?.id) return
+  upgradeDefectLoading.value = true
+  try {
+    const failedStep = (runRecord.value.stepResults || []).find((s) => s.status === 'failed' || s.status === 'error')
+    const title = `UI Run #${runRecord.value.id} 失败`
+    const description = [
+      `run_id=${runRecord.value.id}`,
+      `status=${runRecord.value.status || result.value?.status}`,
+      failedStep ? `step=${failedStep.step_name || failedStep.step_id || failedStep.stepId}` : '',
+      failedStep?.error_message || failedStep?.error || result.value?.error || '',
+    ].filter(Boolean).join('\n')
+    createdDefect.value = await featureUpgradesApi.createDefectFromFailure({
+      project_id: projectId.value,
+      run_id: runRecord.value.id,
+      step_result_id: failedStep?.id,
+      title,
+      description,
+      priority: 'High',
+      case_type: 'ui',
+      case_id: runRecord.value.case_id,
+    })
+    ElMessage.success(createdDefect.value.external_id ? `缺陷已同步：${createdDefect.value.external_id}` : '缺陷记录已创建')
+  } catch (error) {
+    ElMessage.error(error?.message || '创建缺陷失败')
+  } finally {
+    upgradeDefectLoading.value = false
+  }
+}
+
+function openTracePage () {
+  router.push({ path: '/ui-automation/traces', query: runRecord.value?.id ? { runId: String(runRecord.value.id) } : {} })
+}
+
+function openVisualPage () {
+  router.push({ path: '/ui-automation/visual' })
+}
+
 async function reportArtifactBlob (artifact) {
   if (!runRecord.value?.id || !artifact?.id) throw new Error('运行产物信息不完整')
   const blob = await uiAutomationApi.getRunArtifactContent(runRecord.value.id, artifact.id)
@@ -838,8 +913,8 @@ async function downloadAnnotatedScreenshot () {
     const context = canvas.getContext('2d')
     if (!context) throw new Error('浏览器不支持图片标注导出')
     context.drawImage(image, 0, 0)
-    context.strokeStyle = '#dc2626'
-    context.fillStyle = '#dc2626'
+    context.strokeStyle = 'var(--tm-color-danger)'
+    context.fillStyle = 'var(--tm-color-danger)'
     context.lineWidth = Math.max(2, Math.round(image.naturalWidth / 500))
     context.font = `${Math.max(14, Math.round(image.naturalWidth / 48))}px sans-serif`
     annotations.value.forEach((annotation, index) => {
@@ -1068,7 +1143,9 @@ defineExpose({ startRun })
 .run-controls { display: flex; align-items: center; gap: 8px; }
 .screenshot-preview { display: block; max-width: 100%; max-height: 72vh; margin: 0 auto; }
 .analysis-card { margin-bottom: 16px; }
-.analysis-header { display: flex; align-items: center; justify-content: space-between; }
+.analysis-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.analysis-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.created-defect { margin-top: 8px; font-size: 13px; color: var(--el-color-success); }
 .analysis-content { display: flex; flex-direction: column; gap: 12px; font-size: 13px; line-height: 1.55; }
 .analysis-content ul, .analysis-content ol { margin: 6px 0 0; padding-left: 20px; }
 .analysis-feedback { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
@@ -1087,8 +1164,8 @@ defineExpose({ startRun })
 .annotation-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; color: var(--el-text-color-secondary); font-size: 13px; }
 .annotation-canvas { position: relative; align-self: center; max-width: 100%; line-height: 0; cursor: crosshair; touch-action: none; user-select: none; }
 .annotation-canvas img { display: block; max-width: 100%; max-height: 62vh; object-fit: contain; }
-.annotation-box { position: absolute; border: 2px solid #dc2626; box-sizing: border-box; pointer-events: none; }
-.annotation-box span { position: absolute; top: -12px; left: -2px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #dc2626; color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.annotation-box { position: absolute; border: 2px solid var(--tm-color-danger); box-sizing: border-box; pointer-events: none; }
+.annotation-box span { position: absolute; top: -12px; left: -2px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--tm-color-danger); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
 .annotation-notes { display: flex; flex-direction: column; gap: 8px; }
 .annotation-note-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
 @media (max-width: 640px) { .artifact-row { align-items: flex-start; flex-direction: column; } .annotation-note-row { grid-template-columns: 1fr auto; } .annotation-note-row .el-input { grid-column: 1 / -1; grid-row: 2; } }

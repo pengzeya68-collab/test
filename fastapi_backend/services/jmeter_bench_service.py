@@ -11,9 +11,12 @@ JMeter 压测业务编排层 - 协调 DB 记录、Celery 任务、引擎调用
 - compare_runs: 多次压测结果对比
 """
 
+import asyncio
 import hashlib
 import json
 import logging
+import os
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -29,6 +32,20 @@ from fastapi_backend.models.autotest_jmeter_models import (
 )
 
 _logger = logging.getLogger(__name__)
+_desktop_background_tasks: set[asyncio.Task] = set()
+
+
+def _start_desktop_jmeter_task(run_id: int, task_id: str) -> None:
+    """Run the existing JMeter task without requiring a separate Celery worker."""
+    from fastapi_backend.tasks import task_run_jmeter_bench
+
+    task_run_jmeter_bench.apply(args=(run_id,), task_id=task_id)
+
+
+def _schedule_desktop_jmeter_task(run_id: int, task_id: str) -> None:
+    task = asyncio.create_task(asyncio.to_thread(_start_desktop_jmeter_task, run_id, task_id))
+    _desktop_background_tasks.add(task)
+    task.add_done_callback(_desktop_background_tasks.discard)
 
 
 def _compute_script_hash(jmx_content: str) -> str:
@@ -85,6 +102,16 @@ async def submit_bench(
                 "status": "failed",
                 "error": run.error_msg,
             }
+        if os.getenv("TESTMASTER_DESKTOP_LOCAL") == "1":
+            # Desktop bundles one local API service but no Celery worker. Keep
+            # the same task implementation and run it in a background thread
+            # so submitting a benchmark returns immediately to the UI.
+            task_id = str(uuid.uuid4())
+            run.task_id = task_id
+            await db.commit()
+            _schedule_desktop_jmeter_task(run.id, task_id)
+            return {"run_id": run.id, "task_id": task_id, "status": "pending"}
+
         from fastapi_backend.tasks import task_run_jmeter_bench
 
         celery_result = task_run_jmeter_bench.delay(run.id)

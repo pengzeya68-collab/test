@@ -466,7 +466,7 @@ const handleClose = () => {
   align-items: center;
   margin-bottom: 16px;
   padding: 10px 12px;
-  background: var(--tm-bg-page, #f5f7fa);
+  background: var(--tm-bg-page, var(--tm-bg-elevated));
   border-radius: 6px;
   flex-wrap: wrap;
   gap: 8px;
@@ -480,13 +480,13 @@ const handleClose = () => {
 
 .info-label {
   font-size: 13px;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .info-count {
   margin-left: 12px;
   font-size: 12px;
-  color: #909399;
+  color: var(--tm-color-info);
 }
 
 .toolbar-actions {
@@ -504,7 +504,7 @@ const handleClose = () => {
 }
 
 .version-card.is-current {
-  border-left: 3px solid #67c23a;
+  border-left: 3px solid var(--tm-color-success);
 }
 
 .version-card-header {
@@ -523,18 +523,18 @@ const handleClose = () => {
 .version-number {
   font-weight: 600;
   font-size: 14px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .version-label {
   font-size: 13px;
-  color: #606266;
+  color: var(--tm-text-regular);
   margin-top: 2px;
 }
 
 .version-meta {
   font-size: 12px;
-  color: #909399;
+  color: var(--tm-color-info);
   margin: 6px 0;
 }
 
@@ -542,7 +542,7 @@ const handleClose = () => {
   display: flex;
   gap: 4px;
   margin-top: 8px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--tm-border-light);
   padding-top: 8px;
 }
 
@@ -554,11 +554,11 @@ const handleClose = () => {
   margin: 16px 0 8px;
   font-weight: 600;
   font-size: 14px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .snapshot-content {
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
   padding: 12px;
   border-radius: 4px;
   font-size: 12px;
@@ -595,11 +595,11 @@ const handleClose = () => {
 }
 
 .diff-value.old {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
 }
 
 .diff-value.new {
-  color: #67c23a;
+  color: var(--tm-color-success);
 }
 
 :deep(.el-timeline-item__timestamp) {

@@ -12,6 +12,12 @@ from sqlalchemy import select, delete
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.core.audit_decorator import audit_log
 from fastapi_backend.deps.auth import get_current_active_user, require_admin
+from fastapi_backend.deps.project_context import (
+    get_active_project_id,
+    get_active_project_id_member,
+    is_personal_project,
+    project_scope_with_legacy_null,
+)
 from fastapi_backend.models.autotest import AutoTestGlobalVariable
 from fastapi_backend.models.models import User
 from fastapi_backend.services.audit_service import AuditService
@@ -69,20 +75,34 @@ def _variable_to_dict(variable, reveal: bool = False):
         "value": value,
         "description": variable.description,
         "is_encrypted": variable.is_encrypted,
+        "project_id": getattr(variable, "project_id", None),
         "created_at": variable.created_at.isoformat() if variable.created_at else None,
         "updated_at": variable.updated_at.isoformat() if variable.updated_at else None,
     }
+
+
+async def _var_scope(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestGlobalVariable.project_id,
+        project_id,
+        user_id_column=AutoTestGlobalVariable.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
 
 
 @router.get("")
 async def get_all_global_variables(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
-    """获取所有全局变量"""
+    """获取所有全局变量（按工作区项目隔离，成员共享）"""
+    scope = await _var_scope(db, current_user.id, project_id)
     result = await db.execute(
         select(AutoTestGlobalVariable)
-        .where(AutoTestGlobalVariable.user_id == current_user.id)
+        .where(scope)
         .order_by(AutoTestGlobalVariable.name)
     )
     variables = result.scalars().all()
@@ -94,11 +114,14 @@ async def get_global_variable(
     variable_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     """获取单个全局变量（加密变量返回 *** 脱敏）"""
+    scope = await _var_scope(db, current_user.id, project_id)
     result = await db.execute(
         select(AutoTestGlobalVariable).filter(
-            AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id
+            AutoTestGlobalVariable.id == variable_id,
+            scope,
         )
     )
     variable = result.scalar_one_or_none()
@@ -132,13 +155,15 @@ async def create_global_variable(
     request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
-    """创建全局变量"""
-    # 检查变量名是否已存在（同一用户下）
+    """创建全局变量（同项目内变量名唯一）"""
+    scope = await _var_scope(db, current_user.id, project_id)
+    # 检查变量名是否已存在（当前项目内成员共享唯一）
     result = await db.execute(
         select(AutoTestGlobalVariable)
         .where(AutoTestGlobalVariable.name == variable_in.name)
-        .where(AutoTestGlobalVariable.user_id == current_user.id)
+        .where(scope)
     )
     existing_variable = result.scalar_one_or_none()
     if existing_variable:
@@ -150,6 +175,7 @@ async def create_global_variable(
         data["value"] = encrypt(data["value"])
 
     data["user_id"] = current_user.id
+    data["project_id"] = int(project_id)
     variable = AutoTestGlobalVariable(**data)
     db.add(variable)
     await db.commit()
@@ -164,11 +190,14 @@ async def update_global_variable(
     request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """更新全局变量"""
+    scope = await _var_scope(db, current_user.id, project_id)
     result = await db.execute(
         select(AutoTestGlobalVariable).filter(
-            AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id
+            AutoTestGlobalVariable.id == variable_id,
+            scope,
         )
     )
     variable = result.scalar_one_or_none()
@@ -176,17 +205,20 @@ async def update_global_variable(
         raise HTTPException(status_code=404, detail="全局变量不存在")
 
     update_data = variable_in.model_dump(exclude_unset=True)
+    update_data.pop("project_id", None)
+    if getattr(variable, "project_id", None) is None:
+        variable.project_id = int(project_id)
 
     # 🔥 修复：当 value 为 "***"（脱敏占位符）时，视为前端未修改加密变量值，保留原值不更新
     if update_data.get("value") == "***" and variable.is_encrypted:
         update_data.pop("value", None)
 
-    # 检查变量名是否已被同一用户的其他变量使用
+    # 检查变量名是否已被同项目其他变量使用
     if "name" in update_data and update_data["name"] != variable.name:
         result = await db.execute(
             select(AutoTestGlobalVariable)
             .where(AutoTestGlobalVariable.name == update_data["name"])
-            .where(AutoTestGlobalVariable.user_id == current_user.id)
+            .where(AutoTestGlobalVariable.id != variable_id, scope)
         )
         existing_variable = result.scalar_one_or_none()
         if existing_variable:
@@ -255,11 +287,14 @@ async def delete_global_variable(
     request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
-    """删除全局变量"""
+    """删除全局变量（项目成员可删项目内变量）"""
+    scope = await _var_scope(db, current_user.id, project_id)
     result = await db.execute(
         select(AutoTestGlobalVariable).filter(
-            AutoTestGlobalVariable.id == variable_id, AutoTestGlobalVariable.user_id == current_user.id
+            AutoTestGlobalVariable.id == variable_id,
+            scope,
         )
     )
     variable = result.scalar_one_or_none()

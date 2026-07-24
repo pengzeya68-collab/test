@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "runner": "../scripts/run-business-acceptance.mjs",
+  "groups": {
+    "core": ["test-api-debugger-e2e.mjs", "test-api-script-upload-e2e.mjs", "test-environment-variable-e2e.mjs", "test-environment-auth-ui.mjs", "test-interface-assets-scenarios-e2e.mjs"],
+    "scenario": ["test-scenario-deep-e2e.mjs", "test-scenario-failure-policy-e2e.mjs", "test-schedule-cicd-e2e.mjs", "test-scenario-cancel-e2e.mjs", "test-suite-e2e.mjs", "test-failure-report-e2e.mjs", "test-run-history-artifacts.mjs"],
+    "ui": ["test-recorder.mjs", "test-contenteditable-recorder.mjs", "test-editor-recorder.mjs", "test-ui-manual-authoring-e2e.mjs", "test-traffic-capture-import-e2e.mjs", "test-data-factory-e2e.mjs", "test-auth-state-e2e.mjs"],
+    "platform": ["test-mock-service-e2e.mjs", "test-traffic-workbench-e2e.mjs", "test-jmeter-e2e.mjs", "test-backup-manager-e2e.mjs", "test-api-doc-preview-e2e.mjs", "test-notification-center-e2e.mjs"],
+    "exploratory": ["test-exploratory-route-sweep.mjs", "test-exploratory-error-feedback.mjs", "test-exploratory-layout-audit.mjs", "test-workspace-project-isolation-e2e.mjs"]
+  }
+}

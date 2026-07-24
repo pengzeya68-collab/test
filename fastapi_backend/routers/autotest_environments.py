@@ -16,6 +16,12 @@ from sqlalchemy.orm import selectinload
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.core.exceptions import BusinessException
 from fastapi_backend.deps.auth import get_current_active_user
+from fastapi_backend.deps.project_context import (
+    get_active_project_id,
+    get_active_project_id_member,
+    is_personal_project,
+    project_scope_with_legacy_null,
+)
 from fastapi_backend.models.autotest import AutoTestEnvironment
 from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import AutoTestEnvironmentCreate, AutoTestEnvironmentUpdate
@@ -60,8 +66,20 @@ def _env_to_dict(env):
         "is_default": env.is_default,
         "parent_id": env.parent_id,
         "parent_name": parent_name,
+        "project_id": getattr(env, "project_id", None),
         "created_at": env.created_at.isoformat() if env.created_at else None,
     }
+
+
+async def _env_scope(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestEnvironment.project_id,
+        project_id,
+        user_id_column=AutoTestEnvironment.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
 
 
 def _raise_inheritance_error(exc: InheritanceError) -> None:
@@ -72,15 +90,23 @@ def _raise_inheritance_error(exc: InheritanceError) -> None:
     raise BusinessException(detail=exc.message, code=exc.code, status_code=400)
 
 
-async def _load_env_with_parent(db: AsyncSession, env_id: int, user_id: int) -> Optional[AutoTestEnvironment]:
-    """按 id+user_id 加载环境并 eager load parent 关系"""
+async def _load_env_with_parent(
+    db: AsyncSession,
+    env_id: int,
+    user_id: int,
+    *,
+    project_id: int | None = None,
+) -> Optional[AutoTestEnvironment]:
+    """按 id + 项目可见范围加载环境并 eager load parent 关系（成员共享）"""
+    filters = [AutoTestEnvironment.id == env_id]
+    if project_id is not None:
+        filters.append(await _env_scope(db, user_id, project_id))
+    else:
+        filters.append(AutoTestEnvironment.user_id == user_id)
     result = await db.execute(
         select(AutoTestEnvironment)
         .options(selectinload(AutoTestEnvironment.parent))
-        .filter(
-            AutoTestEnvironment.id == env_id,
-            AutoTestEnvironment.user_id == user_id,
-        )
+        .filter(*filters)
     )
     return result.scalar_one_or_none()
 
@@ -89,12 +115,14 @@ async def _load_env_with_parent(db: AsyncSession, env_id: int, user_id: int) -> 
 async def get_all_environments(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
-    """获取所有环境（含 parent_id / parent_name）"""
+    """获取所有环境（含 parent_id / parent_name，按项目隔离，成员共享）"""
+    scope = await _env_scope(db, current_user.id, project_id)
     result = await db.execute(
         select(AutoTestEnvironment)
         .options(selectinload(AutoTestEnvironment.parent))
-        .where(AutoTestEnvironment.user_id == current_user.id)
+        .where(scope)
         .order_by(AutoTestEnvironment.created_at)
     )
     envs = result.scalars().all()
@@ -106,9 +134,10 @@ async def get_environment(
     env_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     """获取单个环境"""
-    env = await _load_env_with_parent(db, env_id, current_user.id)
+    env = await _load_env_with_parent(db, env_id, current_user.id, project_id=project_id)
     if not env:
         raise HTTPException(status_code=404, detail="环境不存在")
     return _env_to_dict(env)
@@ -119,6 +148,7 @@ async def create_environment(
     env_in: AutoTestEnvironmentCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """创建环境（支持 parent_id 设置父环境实现变量继承）"""
     data = env_in.model_dump()
@@ -131,17 +161,21 @@ async def create_environment(
     except InheritanceError as exc:
         _raise_inheritance_error(exc)
 
+    scope = await _env_scope(db, current_user.id, project_id)
     if data.get("is_default"):
         await db.execute(
-            update(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id).values(is_default=False)
+            update(AutoTestEnvironment)
+            .where(scope)
+            .values(is_default=False)
         )
 
     data["user_id"] = current_user.id
+    data["project_id"] = int(project_id)
     env = AutoTestEnvironment(**data)
     db.add(env)
     await db.commit()
     # 重新查询以 eager load parent 关系
-    env = await _load_env_with_parent(db, env.id, current_user.id)
+    env = await _load_env_with_parent(db, env.id, current_user.id, project_id=project_id)
     return _env_to_dict(env)
 
 
@@ -151,13 +185,15 @@ async def update_environment(
     env_in: AutoTestEnvironmentUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """更新环境（支持修改 parent_id，会校验不形成循环继承）"""
-    env = await _load_env_with_parent(db, env_id, current_user.id)
+    env = await _load_env_with_parent(db, env_id, current_user.id, project_id=project_id)
     if not env:
         raise HTTPException(status_code=404, detail="环境不存在")
 
     _set_fields = env_in.model_dump(exclude_unset=True)
+    _set_fields.pop("project_id", None)
 
     # 如果显式传入了 parent_id，校验循环继承与深度
     if "parent_id" in _set_fields:
@@ -166,12 +202,18 @@ async def update_environment(
         except InheritanceError as exc:
             _raise_inheritance_error(exc)
 
+    scope = await _env_scope(db, current_user.id, project_id)
     if _set_fields.get("is_default"):
         await db.execute(
             update(AutoTestEnvironment)
-            .where(AutoTestEnvironment.user_id == current_user.id, AutoTestEnvironment.id != env_id)
+            .where(
+                AutoTestEnvironment.id != env_id,
+                scope,
+            )
             .values(is_default=False)
         )
+    if getattr(env, "project_id", None) is None:
+        env.project_id = int(project_id)
 
     for field, value in _set_fields.items():
         if field == "name":
@@ -188,7 +230,7 @@ async def update_environment(
 
     await db.commit()
     # 重新查询以 eager load 最新的 parent 关系
-    env = await _load_env_with_parent(db, env_id, current_user.id)
+    env = await _load_env_with_parent(db, env_id, current_user.id, project_id=project_id)
     return _env_to_dict(env)
 
 
@@ -197,14 +239,10 @@ async def delete_environment(
     env_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """删除环境"""
-    result = await db.execute(
-        select(AutoTestEnvironment).filter(
-            AutoTestEnvironment.id == env_id, AutoTestEnvironment.user_id == current_user.id
-        )
-    )
-    env = result.scalar_one_or_none()
+    env = await _load_env_with_parent(db, env_id, current_user.id, project_id=project_id)
     if not env:
         raise HTTPException(status_code=404, detail="环境不存在")
 
@@ -225,7 +263,7 @@ async def get_effective_variables_endpoint(
     返回继承链上所有环境变量合并后的结果，子环境覆盖父环境同名变量。
     每个变量附带 source_environment_id / source_environment_name / is_overridden 字段。
     """
-    # 校验环境归属当前用户
+    # 校验环境在当前用户可见范围（兼容旧路径：无 project header 时按 user）
     result = await db.execute(
         select(AutoTestEnvironment).filter(
             AutoTestEnvironment.id == env_id, AutoTestEnvironment.user_id == current_user.id

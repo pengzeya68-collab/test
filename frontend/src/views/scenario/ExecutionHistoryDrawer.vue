@@ -17,7 +17,7 @@
         <el-col :span="8">
           <el-card shadow="hover" class="stat-card">
             <div class="stat-content">
-              <div class="stat-value" style="color: #67c23a;">{{ historyStats.passed_reports }}</div>
+              <div class="stat-value" style="color: var(--tm-color-success);">{{ historyStats.passed_reports }}</div>
               <div class="stat-label">通过报告数</div>
             </div>
           </el-card>
@@ -25,7 +25,7 @@
         <el-col :span="8">
           <el-card shadow="hover" class="stat-card">
             <div class="stat-content">
-              <div class="stat-value" :style="{ color: historyStats.pass_rate >= 80 ? '#67c23a' : (historyStats.pass_rate >= 60 ? '#e6a23c' : '#f56c6c') }">
+              <div class="stat-value" :style="{ color: historyStats.pass_rate >= 80 ? 'var(--tm-color-success)' : (historyStats.pass_rate >= 60 ? 'var(--tm-color-warning)' : 'var(--tm-color-danger)') }">
                 {{ historyStats.pass_rate }}%
               </div>
               <div class="stat-label">通过率</div>
@@ -176,8 +176,8 @@
           </el-tag>
           <span style="margin-left: 15px; color: var(--tm-text-regular);">
             总步骤: {{ reportDetailData.total_steps || 0 }} |
-            成功: <span style="color: #67c23a">{{ reportDetailData.success_steps || 0 }}</span> |
-            失败: <span style="color: #f56c6c">{{ reportDetailData.failed_steps || 0 }}</span> |
+            成功: <span style="color: var(--tm-color-success)">{{ reportDetailData.success_steps || 0 }}</span> |
+            失败: <span style="color: var(--tm-color-danger)">{{ reportDetailData.failed_steps || 0 }}</span> |
             总耗时: {{ (reportDetailData.total_time || 0) }}ms
           </span>
           <el-button
@@ -455,6 +455,7 @@ const formatExpectedValue = (assertion) => {
 
   return `${field} ${operator} ${expected}`
 }
+void formatExpectedValue
 
 const loadExecutionHistory = async () => {
   if (!props.scenarioId) return
@@ -605,12 +606,12 @@ watch(() => props.visible, async (newVal) => {
 }
 
 .success-text {
-  color: #67c23a;
+  color: var(--tm-color-success);
   font-weight: 500;
 }
 
 .failed-text {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
   font-weight: 500;
 }
 
@@ -819,7 +820,7 @@ watch(() => props.visible, async (newVal) => {
 
 .code-block {
   background: var(--tm-card-bg);
-  color: #d4d4d4;
+  color: var(--tm-border-light);
   padding: 12px;
   border-radius: var(--tm-radius-small);
   max-height: 300px;

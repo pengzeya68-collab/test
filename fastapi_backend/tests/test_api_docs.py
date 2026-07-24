@@ -26,6 +26,8 @@ from fastapi_backend.core.database import Base as AutoTestBase
 from fastapi_backend.deps.auth import get_current_user
 from fastapi_backend.main import app
 from fastapi_backend.models.autotest import ApiDocShare, AutoTestCase, AutoTestGroup
+from fastapi_backend.routers import autotest_export
+from fastapi_backend.routers.autotest_export import ExportRequest, generate_enhanced_api_doc
 
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 API_DOCS = "/api/auto-test/api-docs"
@@ -305,6 +307,20 @@ class TestApiDocGeneration:
         resp = docs_client.get(f"{API_DOCS}/html")
         assert resp.status_code == 200, resp.text
         assert "暂无用例数据" in resp.text
+
+    @pytest.mark.asyncio
+    async def test_enhanced_document_is_a_valid_empty_state(self, docs_session_factory, monkeypatch):
+        """首次进入 API 文档不能因尚未创建用例而报 400。"""
+        monkeypatch.setattr(autotest_export, "AsyncSessionLocal", docs_session_factory)
+        result = await generate_enhanced_api_doc(
+            ExportRequest(),
+            current_user=SimpleNamespace(id=1),
+        )
+        assert result["doc"]["openapi"] == "3.0.0"
+        assert result["doc"]["paths"] == {}
+        assert result["case_ids"] == []
+        assert result["stats"]["total"] == 0
+        assert result["stats"]["total_cases"] == 0
 
     @pytest.mark.asyncio
     async def test_case_without_response_schema_uses_default(self, docs_client, docs_session_factory):

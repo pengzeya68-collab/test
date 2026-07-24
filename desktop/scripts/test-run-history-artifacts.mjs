@@ -15,8 +15,19 @@ try {
     const version = await req('/cases/' + c.id + '/versions', { method: 'POST', body: '{}' });
     const run = await req('/runs', { method: 'POST', body: JSON.stringify({ case_id: c.id, case_version_id: version.id }) });
     await req('/runs/' + run.id + '/events', { method: 'POST', body: JSON.stringify({ events: [{ sequence: 1, type: 'run:start', totalSteps: 1 }, { sequence: 2, type: 'step:start', stepId: id }, { sequence: 3, type: 'step:pass', stepId: id, durationMs: 10 }, { sequence: 4, type: 'run:finish', status: 'passed', passedSteps: 1, failedSteps: 0 }] }) });
-    await req('/runs/' + run.id + '/artifacts/upload', { method: 'POST', body: JSON.stringify({ type: 'screenshot', filename: 'history.png', mime_type: 'image/png', content_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nEAAAAAASUVORK5CYII=' }) });
-    await req('/runs/' + run.id + '/artifacts/upload', { method: 'POST', body: JSON.stringify({ type: 'trace', filename: 'history-trace.zip', mime_type: 'application/zip', content_base64: 'emlwLWNvbnRlbnQ=' }) });
+    const upload = async (type, filename, mimeType, contentBase64) => {
+      const bytes = Uint8Array.from(atob(contentBase64), char => char.charCodeAt(0));
+      const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), value => value.toString(16).padStart(2, '0')).join('');
+      const session = await (await fetch('http://127.0.0.1:5001/api/auto-test/artifacts/upload-sessions', { method: 'POST', headers, body: JSON.stringify({ execution_id: run.execution_id, kind: type, filename, content_type: mimeType, size_bytes: bytes.byteLength, sha256: hash }) })).json();
+      const uploadResponse = await fetch('http://127.0.0.1:5001' + session.chunk_endpoint, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/octet-stream', 'Content-Range': `bytes 0-${bytes.byteLength - 1}/${bytes.byteLength}` }, body: bytes });
+      if (!uploadResponse.ok) throw new Error('ARTIFACT_CHUNK_' + uploadResponse.status + ':' + await uploadResponse.text());
+      const completeResponse = await fetch('http://127.0.0.1:5001/api/auto-test/artifacts/upload-sessions/' + session.upload_id + '/complete', { method: 'POST', headers });
+      if (!completeResponse.ok) throw new Error('ARTIFACT_COMPLETE_' + completeResponse.status + ':' + await completeResponse.text());
+      const complete = await completeResponse.json();
+      await req('/runs/' + run.id + '/artifacts/link', { method: 'POST', body: JSON.stringify({ artifact_manifest_id: complete.artifact_id }) });
+    };
+    await upload('screenshot', 'history.png', 'image/png', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nEAAAAAASUVORK5CYII=');
+    await upload('trace', 'history-trace.zip', 'application/zip', 'emlwLWNvbnRlbnQ=');
     return { caseId: c.id, name };
   });
   caseId = setup.caseId;

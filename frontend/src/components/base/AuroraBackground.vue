@@ -61,8 +61,8 @@ const random = (seed, max = 100, min = 0) => {
   height: 380px;
   top: 40%;
   left: 55%;
-  background: radial-gradient(circle, #00f2fe, transparent 70%);
-  opacity: 0.35;
+  background: radial-gradient(circle, var(--tm-neon-cyan, var(--tm-neon-cyan)), transparent 70%);
+  opacity: 0.22;
   animation: blob-float-3 26s ease-in-out infinite;
 }
 
@@ -71,8 +71,8 @@ const random = (seed, max = 100, min = 0) => {
   height: 300px;
   top: 70%;
   left: 10%;
-  background: radial-gradient(circle, #ec4899, transparent 70%);
-  opacity: 0.3;
+  background: radial-gradient(circle, var(--tm-color-primary-dark), transparent 70%);
+  opacity: 0.2;
   animation: blob-float-4 20s ease-in-out infinite;
 }
 

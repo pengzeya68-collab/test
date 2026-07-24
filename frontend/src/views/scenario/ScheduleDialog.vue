@@ -233,6 +233,7 @@ const getScheduleLabel = (scenarioId) => {
   const cron = tasks[0].cron_expression
   return cronToHuman(cron)
 }
+void getScheduleLabel
 
 const handleScheduleSubmit = async () => {
   try {

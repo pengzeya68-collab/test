@@ -74,6 +74,12 @@ async function desktopInfo(): Promise<any> {
   if (!result?.success) throw new Error(result?.errorMessage || 'Desktop information unavailable');
   return result.data;
 }
+async function localCredentials(): Promise<{ username: string; password: string }> {
+  const correlationId = newCorrelationId();
+  const result = await ipcRenderer.invoke('ipc:desktop.local-credentials', { correlationId, type: 'desktop.local-credentials', payload: {} });
+  if (!result?.success) throw new Error(result?.errorMessage || 'Local credentials unavailable');
+  return result.data;
+}
 
 async function recorderCall(type: 'execution.pause' | 'execution.resume' | 'file.choose' | 'recorder.start' | 'recorder.mode' | 'recorder.validate' | 'recorder.stop' | 'auth-state.validate', payload: unknown): Promise<any> {
   const correlationId = newCorrelationId();
@@ -141,10 +147,19 @@ const desktopApi = {
         headless?: boolean;
         screenshotsOnFailure?: boolean;
         traceOnFailure?: boolean;
+        videoOnFailure?: boolean;
         debugMode?: boolean;
         authStateId?: string | null;
         runtimeConfigRequest?: { serverUrl: string; token: string; environmentId?: number | null } | null;
         variables?: Record<string, string>;
+        browserEngine?: 'chromium' | 'firefox' | 'webkit';
+        healingEndpoint?: string | null;
+        projectId?: number | null;
+        runId?: number | null;
+        accessToken?: string | null;
+        agentToken?: string | null;
+        agentId?: number | null;
+        networkRules?: unknown[] | null;
         onEvent?: (event: unknown) => void;
       }
     ) => {
@@ -167,10 +182,19 @@ const desktopApi = {
           headless: opts?.headless ?? false,
           screenshotsOnFailure: opts?.screenshotsOnFailure ?? true,
           traceOnFailure: opts?.traceOnFailure ?? true,
+          videoOnFailure: opts?.videoOnFailure ?? true,
           debugMode: opts?.debugMode ?? false,
           authStateId: opts?.authStateId ?? null,
           runtimeConfigRequest: opts?.runtimeConfigRequest ?? null,
           variables: opts?.variables ?? {},
+          browserEngine: opts?.browserEngine ?? 'chromium',
+          healingEndpoint: opts?.healingEndpoint ?? null,
+          projectId: opts?.projectId ?? null,
+          runId: opts?.runId ?? null,
+          accessToken: opts?.accessToken ?? null,
+          agentToken: opts?.agentToken ?? null,
+          agentId: opts?.agentId ?? null,
+          networkRules: opts?.networkRules ?? null,
         },
       }).then((result: any) => {
         ipcRenderer.removeAllListeners(channel);
@@ -232,6 +256,7 @@ const desktopApi = {
       serverUrl: string;
       accessToken: string;
       name: string;
+      projectId?: number | null;
       authStateId?: string | null;
       headless?: boolean;
     }) => agentCall('register', options),
@@ -247,6 +272,7 @@ const desktopApi = {
   },
   appInfo: {
     get: desktopInfo,
+    localCredentials,
   },
 
   versions: {

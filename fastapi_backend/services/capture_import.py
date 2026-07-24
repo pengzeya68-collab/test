@@ -9,11 +9,14 @@ from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
-MAX_CAPTURE_EXCHANGES = 500
+MAX_CAPTURE_EXCHANGES = 2000
 MAX_CAPTURE_BATCH = 100
 MAX_CAPTURE_BODY_BYTES = 1024 * 1024
 _SENSITIVE = re.compile(r"password|passwd|secret|token|api[_-]?key|authorization|cookie|session|id_?card|phone", re.I)
 _HEADER_NAME = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
+_INLINE_SECRET = re.compile(
+    r"(?i)(\b(?:password|passwd|secret|token|api[_-]?key|authorization|cookie|session)\b\s*(?:[=:]|\")\s*)([^\s,;\"'&<>}]+)"
+)
 
 
 class CaptureImportError(ValueError):
@@ -31,8 +34,12 @@ def _redact_value(value: Any, field_name: str = "value") -> Any:
         return {str(key): _redact_value(item, str(key)) for key, item in value.items()}
     if isinstance(value, list):
         return [_redact_value(item, field_name) for item in value]
-    if isinstance(value, str) and len(value.encode("utf-8", errors="ignore")) > MAX_CAPTURE_BODY_BYTES:
-        return "[body omitted: size limit exceeded]"
+    if isinstance(value, str):
+        if len(value.encode("utf-8", errors="ignore")) > MAX_CAPTURE_BODY_BYTES:
+            return "[body omitted: size limit exceeded]"
+        # Text/XML/form payloads cannot be parsed into named JSON fields.  Keep
+        # them useful for diagnosis, but never persist obvious inline secrets.
+        return _INLINE_SECRET.sub(lambda match: match.group(1) + "[REDACTED]", value)
     return value
 
 
@@ -89,6 +96,16 @@ def redact_capture_source_url(raw_url: Any) -> str | None:
     return _safe_page_url(raw_url)
 
 
+def redact_capture_value(value: Any, field_name: str = "value") -> Any:
+    """Public boundary for returning replay diagnostics without leaking secrets."""
+    return _safe_json(value, field_name)
+
+
+def redact_capture_headers(value: Any) -> dict[str, str]:
+    """Public boundary for request/response header diagnostics."""
+    return _redact_headers(value)
+
+
 def _body_type(content_type: str, body: Any) -> str:
     if body in (None, "", "[non-JSON request body omitted]"):
         return "none"
@@ -98,6 +115,24 @@ def _body_type(content_type: str, body: Any) -> str:
     if "application/x-www-form-urlencoded" in lowered:
         return "form"
     return "raw"
+
+
+def _normalize_request_body(raw_body: Any, content_type: str) -> Any:
+    """Preserve replayable textual request payloads without persisting files."""
+    if raw_body in (None, ""):
+        return None
+    lowered = content_type.lower()
+    if "application/x-www-form-urlencoded" in lowered and isinstance(raw_body, str):
+        return {
+            key: _redact_value(value, key)
+            for key, value in parse_qsl(raw_body, keep_blank_values=True)
+        }
+    if "multipart/form-data" in lowered:
+        # Browser APIs do not expose a reliable, safe reconstruction of file
+        # bytes.  Keep the request visible but require an explicit test file
+        # selection before any generated case is run.
+        return {"_capture_note": "multipart body captured; select test files before replay"}
+    return _safe_json(raw_body, "request_body")
 
 
 def _fingerprint(method: str, url: str, body_type: str, payload: Any) -> str:
@@ -116,8 +151,6 @@ def normalize_captured_exchange(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise CaptureImportError("capture exchange must be an object")
     resource_type = str(value.get("resourceType") or value.get("resource_type") or "").lower()
-    if resource_type and resource_type not in {"xhr", "fetch"}:
-        raise CaptureImportError("only XHR and fetch exchanges can become API candidates")
     method = str(value.get("method") or "GET").upper()
     if method not in {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}:
         raise CaptureImportError("unsupported HTTP method")
@@ -130,7 +163,7 @@ def normalize_captured_exchange(value: Any) -> dict[str, Any]:
         .strip()
         .lower()
     )
-    payload = _safe_json(value.get("requestBody", value.get("request_body")), "request_body")
+    payload = _normalize_request_body(value.get("requestBody", value.get("request_body")), content_type)
     body_type = _body_type(content_type, payload)
     try:
         status = int(value.get("status") or 0)
@@ -141,10 +174,8 @@ def normalize_captured_exchange(value: Any) -> dict[str, Any]:
     except (TypeError, ValueError):
         timing_ms = 0
     response_body = _safe_json(value.get("responseBody", value.get("response_body")), "response_body")
-    failure_reason = (
-        str(value.get("failureReason") or value.get("failure_reason") or value.get("error") or "").strip()[:1000]
-        or None
-    )
+    raw_failure_reason = str(value.get("failureReason") or value.get("failure_reason") or value.get("error") or "").strip()
+    failure_reason = str(_redact_value(raw_failure_reason, "failure_reason"))[:1000] or None
     fingerprint = _fingerprint(method, url, body_type, payload)
     return {
         "method": method,
@@ -161,6 +192,7 @@ def normalize_captured_exchange(value: Any) -> dict[str, Any]:
         "page_url": _safe_page_url(value.get("pageUrl") or value.get("page_url")),
         "timing_ms": timing_ms or None,
         "failure_reason": failure_reason,
+        "source_event_id": str(value.get("captureEventId") or value.get("capture_event_id") or "").strip()[:64] or None,
     }
 
 
@@ -184,4 +216,6 @@ def candidate_from_exchange(exchange: Any) -> dict[str, Any]:
         "timing_ms": exchange.timing_ms,
         "failure_reason": exchange.failure_reason,
         "page_url": exchange.page_url,
+        "resource_type": exchange.resource_type,
+        "convertible": (exchange.resource_type or "").lower() in {"xhr", "fetch"},
     }

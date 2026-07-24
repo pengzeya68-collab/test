@@ -583,7 +583,7 @@ const randomPractice = () => {
 }
 
 .stat-value--success {
-  color: var(--tm-color-success, #4ADE80);
+  color: var(--tm-color-success, var(--tm-color-success));
 }
 
 .stat-value--accent {
@@ -619,8 +619,8 @@ const randomPractice = () => {
   font-weight: 500;
   padding: 8px 18px;
   border-radius: 20px;
-  background: rgba(236, 72, 153, 0.08);
-  border: 1px solid rgba(236, 72, 153, 0.2);
+  background: color-mix(in srgb, var(--tm-neon-pink) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tm-neon-pink) 20%, transparent);
   transition: all 0.3s ease;
   white-space: nowrap;
   max-width: 400px;
@@ -629,9 +629,9 @@ const randomPractice = () => {
 }
 
 .stat-continue:hover {
-  background: rgba(236, 72, 153, 0.15);
-  border-color: rgba(236, 72, 153, 0.4);
-  box-shadow: 0 0 12px rgba(236, 72, 153, 0.2);
+  background: color-mix(in srgb, var(--tm-neon-pink) 15%, transparent);
+  border-color: color-mix(in srgb, var(--tm-neon-pink) 40%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--tm-neon-pink) 20%, transparent);
 }
 
 .continue-icon {
@@ -697,40 +697,40 @@ const randomPractice = () => {
 }
 
 .pill--active {
-  background: rgba(236, 72, 153, 0.12);
-  border-color: rgba(236, 72, 153, 0.3);
+  background: color-mix(in srgb, var(--tm-neon-pink) 12%, transparent);
+  border-color: color-mix(in srgb, var(--tm-neon-pink) 30%, transparent);
   color: var(--tm-color-primary);
   font-weight: 500;
 }
 
 .pill--active:hover {
-  background: rgba(236, 72, 153, 0.18);
-  border-color: rgba(236, 72, 153, 0.4);
+  background: color-mix(in srgb, var(--tm-neon-pink) 18%, transparent);
+  border-color: color-mix(in srgb, var(--tm-neon-pink) 40%, transparent);
 }
 
 .pill--easy.pill--active {
-  background: rgba(74, 222, 128, 0.1);
-  border-color: rgba(74, 222, 128, 0.3);
-  color: #4ADE80;
+  background: color-mix(in srgb, var(--tm-color-success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--tm-color-success) 30%, transparent);
+  color: var(--tm-color-success);
 }
 
 .pill--medium.pill--active {
-  background: rgba(250, 204, 21, 0.1);
-  border-color: rgba(250, 204, 21, 0.3);
-  color: #FACC15;
+  background: color-mix(in srgb, var(--tm-color-warning) 10%, transparent);
+  border-color: color-mix(in srgb, var(--tm-color-warning) 30%, transparent);
+  color: var(--tm-color-warning);
 }
 
 .pill--hard.pill--active {
-  background: rgba(248, 113, 113, 0.1);
-  border-color: rgba(248, 113, 113, 0.3);
-  color: #F87171;
+  background: color-mix(in srgb, var(--tm-color-danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--tm-color-danger) 30%, transparent);
+  color: var(--tm-color-danger);
 }
 
 .pill--lang.pill--active {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
-  border-color: rgba(139, 92, 246, 0.4);
-  color: #A78BFA;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+  background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb), 0.15), rgba(var(--tm-color-primary-rgb), 0.15));
+  border-color: rgba(var(--tm-color-primary-rgb), 0.4);
+  color: var(--tm-color-primary-light);
+  box-shadow: 0 2px 8px rgba(var(--tm-color-primary-rgb), 0.15);
 }
 
 .filter-row--tools {
@@ -753,8 +753,8 @@ const randomPractice = () => {
   font-size: 13px;
   cursor: pointer;
   color: var(--tm-color-primary);
-  background: rgba(236, 72, 153, 0.08);
-  border: 1px solid rgba(236, 72, 153, 0.2);
+  background: color-mix(in srgb, var(--tm-neon-pink) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tm-neon-pink) 20%, transparent);
   transition: all 0.3s ease;
   white-space: nowrap;
   margin-left: auto;
@@ -762,9 +762,9 @@ const randomPractice = () => {
 }
 
 .random-btn:hover {
-  background: rgba(236, 72, 153, 0.15);
-  border-color: rgba(236, 72, 153, 0.4);
-  box-shadow: 0 0 12px rgba(236, 72, 153, 0.2);
+  background: color-mix(in srgb, var(--tm-neon-pink) 15%, transparent);
+  border-color: color-mix(in srgb, var(--tm-neon-pink) 40%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--tm-neon-pink) 20%, transparent);
 }
 
 .random-icon {
@@ -781,8 +781,8 @@ const randomPractice = () => {
   align-items: flex-start;
   gap: 12px;
   padding: 14px 20px;
-  background: rgba(236, 72, 153, 0.04);
-  border: 1px solid rgba(236, 72, 153, 0.12);
+  background: color-mix(in srgb, var(--tm-neon-pink) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tm-neon-pink) 12%, transparent);
   border-radius: 12px;
 }
 
@@ -856,15 +856,15 @@ const randomPractice = () => {
 }
 
 .exercise-row:hover {
-  background: rgba(236, 72, 153, 0.04);
+  background: color-mix(in srgb, var(--tm-neon-pink) 4%, transparent);
 }
 
 .exercise-row--completed {
-  border-left: 3px solid rgba(74, 222, 128, 0.5);
+  border-left: 3px solid color-mix(in srgb, var(--tm-color-success) 50%, transparent);
 }
 
 .exercise-row--wrong {
-  border-left: 3px solid rgba(248, 113, 113, 0.5);
+  border-left: 3px solid color-mix(in srgb, var(--tm-color-danger) 50%, transparent);
 }
 
 /* 鍒楀瀹氫箟 */
@@ -966,13 +966,13 @@ const randomPractice = () => {
 .type-badge--single_choice,
 .type-badge--choice {
   background: rgba(96, 165, 250, 0.1);
-  color: #60A5FA;
+  color: var(--tm-neon-cyan);
   border: 1px solid rgba(96, 165, 250, 0.2);
 }
 
 .type-badge--multiple_choice {
   background: rgba(167, 139, 250, 0.1);
-  color: #A78BFA;
+  color: var(--tm-color-primary-light);
   border: 1px solid rgba(167, 139, 250, 0.2);
 }
 
@@ -983,20 +983,20 @@ const randomPractice = () => {
 }
 
 .type-badge--code {
-  background: rgba(251, 191, 36, 0.1);
-  color: #FBBF24;
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: color-mix(in srgb, var(--tm-color-warning) 10%, transparent);
+  color: var(--tm-color-warning);
+  border: 1px solid color-mix(in srgb, var(--tm-color-warning) 20%, transparent);
 }
 
 .type-badge--sql {
-  background: rgba(74, 222, 128, 0.1);
-  color: #4ADE80;
-  border: 1px solid rgba(74, 222, 128, 0.2);
+  background: color-mix(in srgb, var(--tm-color-success) 10%, transparent);
+  color: var(--tm-color-success);
+  border: 1px solid color-mix(in srgb, var(--tm-color-success) 20%, transparent);
 }
 
 .type-badge--text {
   background: rgba(161, 161, 170, 0.1);
-  color: #A1A1AA;
+  color: var(--tm-text-secondary);
   border: 1px solid rgba(161, 161, 170, 0.2);
 }
 
@@ -1013,23 +1013,23 @@ const randomPractice = () => {
 
 .diff-badge--easy,
 .diff-badge--beginner {
-  background: rgba(74, 222, 128, 0.1);
-  color: #4ADE80;
-  border: 1px solid rgba(74, 222, 128, 0.2);
+  background: color-mix(in srgb, var(--tm-color-success) 10%, transparent);
+  color: var(--tm-color-success);
+  border: 1px solid color-mix(in srgb, var(--tm-color-success) 20%, transparent);
 }
 
 .diff-badge--medium,
 .diff-badge--intermediate {
-  background: rgba(250, 204, 21, 0.1);
-  color: #FACC15;
-  border: 1px solid rgba(250, 204, 21, 0.2);
+  background: color-mix(in srgb, var(--tm-color-warning) 10%, transparent);
+  color: var(--tm-color-warning);
+  border: 1px solid color-mix(in srgb, var(--tm-color-warning) 20%, transparent);
 }
 
 .diff-badge--hard,
 .diff-badge--advanced {
-  background: rgba(248, 113, 113, 0.1);
-  color: #F87171;
-  border: 1px solid rgba(248, 113, 113, 0.2);
+  background: color-mix(in srgb, var(--tm-color-danger) 10%, transparent);
+  color: var(--tm-color-danger);
+  border: 1px solid color-mix(in srgb, var(--tm-color-danger) 20%, transparent);
 }
 
 /* 鐭ヨ瘑鐐规爣绛?*/
@@ -1039,7 +1039,7 @@ const randomPractice = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: rgba(236, 72, 153, 0.08);
+  background: color-mix(in srgb, var(--tm-neon-pink) 8%, transparent);
   color: var(--tm-color-primary);
   padding: 2px 8px;
   border-radius: 4px;
@@ -1057,7 +1057,7 @@ const randomPractice = () => {
 .score-text {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tm-color-success, #4ADE80);
+  color: var(--tm-color-success, var(--tm-color-success));
   font-variant-numeric: tabular-nums;
 }
 
@@ -1084,7 +1084,7 @@ const randomPractice = () => {
 }
 
 .practice-btn:hover {
-  box-shadow: 0 0 14px rgba(236, 72, 153, 0.35);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tm-neon-pink) 35%, transparent);
   transform: translateY(-1px);
 }
 

@@ -453,7 +453,7 @@ const escapeHtml = (str) => {
 const syntaxHighlight = (json) => {
   json = escapeHtml(json)
   return json.replace(
-    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
     (match) => {
       let cls = 'json-number'
       if (/^"/.test(match)) {
@@ -582,9 +582,9 @@ const copyResponseBody = () => {
 .assert-generator {
   margin: 12px 0 20px;
   padding: 14px;
-  border: 1px solid var(--tm-border, #e4e7ed);
+  border: 1px solid var(--tm-border, var(--tm-border-light));
   border-radius: 8px;
-  background: var(--tm-bg-card, #fafafa);
+  background: var(--tm-bg-card, var(--tm-text-primary));
 }
 
 .assert-generator-header {
@@ -613,7 +613,7 @@ const copyResponseBody = () => {
   justify-content: space-between;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px dashed var(--tm-border, #e4e7ed);
+  border-top: 1px dashed var(--tm-border, var(--tm-border-light));
 }
 
 .footer-actions {
@@ -624,7 +624,7 @@ const copyResponseBody = () => {
 
 .selected-count {
   font-size: 12px;
-  color: var(--tm-color-secondary, #909399);
+  color: var(--tm-color-secondary, var(--tm-color-info));
 }
 
 .response-display {
@@ -721,7 +721,7 @@ const copyResponseBody = () => {
 
 .assertion-fail-detail {
   margin-top: 16px;
-  border: 1px solid rgba(245, 108, 108, 0.3);
+  border: 1px solid color-mix(in srgb, var(--tm-color-danger) 30%, transparent);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -731,7 +731,7 @@ const copyResponseBody = () => {
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  background: rgba(245, 108, 108, 0.08);
+  background: color-mix(in srgb, var(--tm-color-danger) 8%, transparent);
   cursor: pointer;
   user-select: none;
 }
@@ -740,7 +740,7 @@ const copyResponseBody = () => {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #f56c6c;
+  color: var(--tm-color-danger);
   font-size: 14px;
   font-weight: 500;
 }
@@ -810,14 +810,14 @@ const copyResponseBody = () => {
 }
 
 .compare-value.expected {
-  background: rgba(103, 194, 58, 0.1);
-  color: #67c23a;
-  border: 1px solid rgba(103, 194, 58, 0.2);
+  background: color-mix(in srgb, var(--tm-color-success) 10%, transparent);
+  color: var(--tm-color-success);
+  border: 1px solid color-mix(in srgb, var(--tm-color-success) 20%, transparent);
 }
 
 .compare-value.actual {
-  background: rgba(245, 108, 108, 0.1);
-  color: #f56c6c;
-  border: 1px solid rgba(245, 108, 108, 0.2);
+  background: color-mix(in srgb, var(--tm-color-danger) 10%, transparent);
+  color: var(--tm-color-danger);
+  border: 1px solid color-mix(in srgb, var(--tm-color-danger) 20%, transparent);
 }
 </style>

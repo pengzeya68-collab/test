@@ -197,6 +197,9 @@ const routes = [
     path: '/scenarios', name: 'ScenarioList', component: () => import('@/views/ScenarioList.vue'), meta: { requiresAuth: true, title: '业务场景' }
   },
   {
+    path: '/scenarios/:scenarioId', name: 'ScenarioEditor', component: () => import('@/views/ScenarioEditor.vue'), props: true, meta: { requiresAuth: true, title: '场景编辑器' }
+  },
+  {
     path: '/suites', name: 'SuiteManager', component: () => import('@/views/SuiteManager.vue'), meta: { requiresAuth: true, title: '接口回归套件' }
   },
   {
@@ -219,7 +222,47 @@ const routes = [
   },
   {
     path: '/ui-automation/cases/:id', name: 'UICaseEditor', component: () => import('@/views/ui-automation/UICaseEditor.vue'), meta: { requiresAuth: true, title: 'UI 用例编辑器' }
-  },  {
+  },
+  {
+    path: '/ui-automation/elements', name: 'ElementRepository', component: () => import('@/views/ui-automation/ElementRepository.vue'), meta: { requiresAuth: true, title: '元素仓库' }
+  },
+  {
+    path: '/ui-automation/flaky', name: 'FlakyDashboard', component: () => import('@/views/ui-automation/FlakyDashboard.vue'), meta: { requiresAuth: true, title: 'Flaky 检测' }
+  },
+  {
+    path: '/ui-automation/visual', name: 'VisualDashboard', component: () => import('@/views/ui-automation/VisualDashboard.vue'), meta: { requiresAuth: true, title: '视觉回归' }
+  },
+  {
+    path: '/ui-automation/defects', name: 'DefectCenter', component: () => import('@/views/ui-automation/DefectCenter.vue'), meta: { requiresAuth: true, title: '缺陷中心' }
+  },
+  {
+    path: '/ui-automation/traces', name: 'TraceViewer', component: () => import('@/views/ui-automation/TraceViewer.vue'), meta: { requiresAuth: true, title: 'Trace Viewer' }
+  },
+  {
+    path: '/ui-automation/healing', name: 'HealingHistory', component: () => import('@/views/ui-automation/HealingHistory.vue'), meta: { requiresAuth: true, title: '自愈历史' }
+  },
+  {
+    path: '/ui-automation/network-rules', name: 'NetworkRules', component: () => import('@/views/ui-automation/NetworkRules.vue'), meta: { requiresAuth: true, title: '网络拦截' }
+  },
+  {
+    path: '/ui-automation/contracts', name: 'ContractTesting', component: () => import('@/views/ui-automation/ContractTesting.vue'), meta: { requiresAuth: true, title: '契约测试' }
+  },
+  {
+    path: '/ui-automation/health', name: 'APIHealth', component: () => import('@/views/ui-automation/APIHealth.vue'), meta: { requiresAuth: true, title: 'API 健康' }
+  },
+  {
+    path: '/ui-automation/reviews', name: 'ReviewCenter', component: () => import('@/views/ui-automation/ReviewCenter.vue'), meta: { requiresAuth: true, title: '评审与覆盖' }
+  },
+  {
+    path: '/ui-automation/flow', name: 'FlowEditor', component: () => import('@/views/ui-automation/FlowEditor.vue'), meta: { requiresAuth: true, title: '流程编排' }
+  },
+  {
+    path: '/ui-automation/shards', name: 'ShardProgress', component: () => import('@/views/ui-automation/ShardProgress.vue'), meta: { requiresAuth: true, title: '分片进度' }
+  },
+  {
+    path: '/ui-automation/protocols', name: 'ProtocolDebugger', component: () => import('@/views/ui-automation/ProtocolDebugger.vue'), meta: { requiresAuth: true, title: '协议调试' }
+  },
+  {
     path: '/assessment',
     name: 'OnboardingAssessment',
     component: () => import(/* webpackChunkName: "learning" */ '@/views/OnboardingAssessment.vue'),

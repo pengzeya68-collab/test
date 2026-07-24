@@ -77,6 +77,7 @@ import { Bell, ArrowRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import autoTestRequest from '@/utils/autoTestRequest'
+import request from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
@@ -120,7 +121,8 @@ const fetchUnreadCount = async () => {
     const res = await request.get('/notifications/unread-count')
     unreadCount.value = res.unread_count || 0
   } catch (e) {
-    // silent
+    // 未读角标轮询失败时静默，避免打扰用户
+    console.warn('获取未读通知数失败', e)
   }
 }
 
@@ -195,13 +197,13 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .notification-bell { cursor: pointer; }
-.bell-btn { font-size: 20px; color: #606266; padding: 4px; }
-.bell-btn:hover { color: #409EFF; }
+.bell-btn { font-size: 20px; color: var(--tm-text-regular); padding: 4px; }
+.bell-btn:hover { color: var(--tm-color-primary); }
 
 .notification-panel { max-height: 480px; display: flex; flex-direction: column; }
 .panel-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding-bottom: 12px; border-bottom: 1px solid #ebeef5; margin-bottom: 8px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--tm-border-light); margin-bottom: 8px;
 }
 .panel-title { font-size: 15px; font-weight: 600; }
 
@@ -212,16 +214,16 @@ onBeforeUnmount(() => {
   padding: 10px 8px; border-radius: 6px; cursor: pointer;
   position: relative; transition: background .2s;
 }
-.notif-item:hover { background: #f5f7fa; }
+.notif-item:hover { background: var(--tm-bg-elevated); }
 .notif-item.unread { background: #ecf5ff; }
 .notif-icon { flex-shrink: 0; margin-top: 2px; }
 .notif-content { flex: 1; min-width: 0; }
-.notif-title { font-size: 13px; font-weight: 500; color: #303133; }
-.notif-text { font-size: 12px; color: #909399; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.notif-time { font-size: 11px; color: #c0c4cc; margin-top: 4px; }
-.unread-dot { width: 8px; height: 8px; border-radius: 50%; background: #f56c6c; flex-shrink: 0; margin-top: 6px; }
+.notif-title { font-size: 13px; font-weight: 500; color: var(--tm-text-primary); }
+.notif-text { font-size: 12px; color: var(--tm-color-info); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notif-time { font-size: 11px; color: var(--tm-text-muted); margin-top: 4px; }
+.unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tm-color-danger); flex-shrink: 0; margin-top: 6px; }
 
-.panel-footer { text-align: center; padding-top: 10px; border-top: 1px solid #ebeef5; margin-top: 8px; }
+.panel-footer { text-align: center; padding-top: 10px; border-top: 1px solid var(--tm-border-light); margin-top: 8px; }
 
 /* 测评提示 */
 .assessment-tip {
@@ -233,7 +235,7 @@ onBeforeUnmount(() => {
 .assessment-tip:hover { background: linear-gradient(135deg, #d9ecff 0%, #e1f3d8 100%); }
 .assessment-tip-icon { font-size: 24px; flex-shrink: 0; }
 .assessment-tip-content { flex: 1; min-width: 0; }
-.assessment-tip-title { font-size: 13px; font-weight: 600; color: #303133; }
-.assessment-tip-desc { font-size: 12px; color: #909399; margin-top: 2px; }
-.assessment-tip-arrow { color: #c0c4cc; flex-shrink: 0; }
+.assessment-tip-title { font-size: 13px; font-weight: 600; color: var(--tm-text-primary); }
+.assessment-tip-desc { font-size: 12px; color: var(--tm-color-info); margin-top: 2px; }
+.assessment-tip-arrow { color: var(--tm-text-muted); flex-shrink: 0; }
 </style>

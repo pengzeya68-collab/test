@@ -436,7 +436,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, onBeforeUnmount } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -448,7 +448,6 @@ import {
   Setting,
   Upload,
   ArrowDown,
-  ArrowRight,
   UploadFilled,
   Download,
   Timer,
@@ -464,7 +463,7 @@ import {
   EditPen,
   RefreshRight,
   Expand,
-  Fold
+
 } from '@element-plus/icons-vue'
 import CaseTreeSidebar from '@/components/CaseTreeSidebar.vue'
 import EditorTabContainer from '@/components/EditorTabContainer.vue'
@@ -501,6 +500,13 @@ const getDefaultLayout = (containerWidth) => {
 const _initialLayout = getDefaultLayout()
 const sidebarWidth = ref(_initialLayout.sidebar)
 const listMaxWidth = ref(_initialLayout.listMaxWidth)
+// Must be initialized before the layout computed values below. Referencing a
+// later const here makes the complete case page fail during Vue setup.
+const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1920)
+const updateViewportWidth = () => { viewportWidth.value = window.innerWidth }
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', updateViewportWidth)
+}
 
 // listMaxLimit = layout 容器实际宽度 - sidebar - 编辑器最小宽 - 2 个 splitter 宽
 // 这是中间列表在不挤压编辑器（min=400）情况下能取到的最大宽度
@@ -509,6 +515,7 @@ const listMaxLimit = computed(() => {
   const vw = viewportWidth.value
   return Math.max(LIST_MIN_WIDTH, vw - sidebarWidth.value - EDITOR_MIN_WIDTH - SPLITTER_WIDTH * 2 - 20)
 })
+void listMaxLimit.value
 
 // 动态测量 layout 容器实际宽度（页面有左侧导航时,layout 容器宽度 < 视口宽度）
 const layoutWidth = ref(window.innerWidth)  // 初始用视口,onMounted 后用真实值
@@ -553,7 +560,7 @@ const expandSidebar = () => {
   const restored = Math.max(SIDEBAR_COLLAPSED + 10, 220)
   sidebarWidth.value = restored
   sidebarCollapsed.value = false
-  try { localStorage.setItem('tm-caselist-sidebar-width', String(restored)) } catch {}
+  try { localStorage.setItem('tm-caselist-sidebar-width', String(restored)) } catch (error) { console.warn('保存侧栏宽度失败', error) }
 }
 // 监听 sidebarWidth 变化，自动判断折叠/展开
 watch(sidebarWidth, (v) => {
@@ -598,11 +605,6 @@ const currentGroupId = ref(null)
 const sidebarRef = ref(null)
 
 // 响应式操作列宽度：宽屏 220（仅保留核心操作+更多菜单），中屏 180，窄屏固定右侧
-const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1920)
-const updateViewportWidth = () => { viewportWidth.value = window.innerWidth }
-if (typeof window !== 'undefined') {
-  window.addEventListener('resize', updateViewportWidth)
-}
 const actionColWidth = computed(() => {
   const w = viewportWidth.value
   if (w >= 1440) return 220
@@ -642,7 +644,9 @@ const applyLayoutPreset = (preset) => {
   try {
     localStorage.setItem('tm-caselist-sidebar-width', String(sidebarWidth.value))
     localStorage.setItem('tm-caselist-list-max-width', String(listMaxWidth.value))
-  } catch {}
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error.message || '操作失败')
+  }
   ElMessage?.success?.(`布局已切换：侧边 ${sidebarWidth.value}px / 列表最大 ${listMaxWidth.value}px`)
 }
 
@@ -674,7 +678,6 @@ const jmeterImportDialogVisible = ref(false)
 const jmeterImportFile = ref(null)
 const jmeterImporting = ref(false)
 const jmeterExporting = ref(false)
-const jmeterImportGroupId = ref(null) // JMeter 导入目标分组ID
 
 const historyDialogVisible = ref(false)
 const historyCaseName = ref('')
@@ -1252,7 +1255,7 @@ const handleExportSingleCase = async (row) => {
     const blob = new Blob([res], { type: 'application/octet-stream' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `${row.name.replace(/[\/\\:*?"<>|]/g, '_')}.jmx`
+    link.download = `${row.name.replace(/[/\\:*?"<>|]/g, '_')}.jmx`
     link.click()
     URL.revokeObjectURL(link.href)
 
@@ -1785,13 +1788,13 @@ defineExpose({
   transition: all 0.25s ease;
   font-family: 'JetBrains Mono', monospace;
 }
-.api-method-tag.get { background: rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.15) !important; color: var(--tm-method-get, #4ade80) !important; border: 1px solid rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.25), inset 0 0 8px rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.1); }
-.api-method-tag.post { background: rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.15) !important; color: var(--tm-method-post, #ec4899) !important; border: 1px solid rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.25), inset 0 0 8px rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.1); }
-.api-method-tag.put { background: rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.15) !important; color: var(--tm-method-put, #facc15) !important; border: 1px solid rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.25), inset 0 0 8px rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.1); }
-.api-method-tag.delete { background: rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.15) !important; color: var(--tm-method-delete, #f87171) !important; border: 1px solid rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.25), inset 0 0 8px rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.1); }
-.api-method-tag.patch { background: rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.15) !important; color: var(--tm-method-patch, #71717a) !important; border: 1px solid rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.25), inset 0 0 8px rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.1); }
-.api-method-tag.head { background: rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.15) !important; color: var(--tm-method-patch, #71717a) !important; border: 1px solid rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.4) !important; }
-.api-method-tag.options { background: rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.15) !important; color: var(--tm-method-patch, #71717a) !important; border: 1px solid rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.4) !important; }
+.api-method-tag.get { background: rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.15) !important; color: var(--tm-method-get, var(--tm-color-success)) !important; border: 1px solid rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.25), inset 0 0 8px rgba(var(--tm-method-get-rgb, 74, 222, 128), 0.1); }
+.api-method-tag.post { background: rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.15) !important; color: var(--tm-method-post, var(--tm-neon-pink)) !important; border: 1px solid rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.25), inset 0 0 8px rgba(var(--tm-method-post-rgb, 236, 72, 153), 0.1); }
+.api-method-tag.put { background: rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.15) !important; color: var(--tm-method-put, var(--tm-color-warning)) !important; border: 1px solid rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.25), inset 0 0 8px rgba(var(--tm-method-put-rgb, 250, 204, 21), 0.1); }
+.api-method-tag.delete { background: rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.15) !important; color: var(--tm-method-delete, var(--tm-color-danger)) !important; border: 1px solid rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.25), inset 0 0 8px rgba(var(--tm-method-delete-rgb, 248, 113, 113), 0.1); }
+.api-method-tag.patch { background: rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.15) !important; color: var(--tm-method-patch, var(--tm-text-muted)) !important; border: 1px solid rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.4) !important; box-shadow: 0 0 12px rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.25), inset 0 0 8px rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.1); }
+.api-method-tag.head { background: rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.15) !important; color: var(--tm-method-patch, var(--tm-text-muted)) !important; border: 1px solid rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.4) !important; }
+.api-method-tag.options { background: rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.15) !important; color: var(--tm-method-patch, var(--tm-text-muted)) !important; border: 1px solid rgba(var(--tm-method-patch-rgb, 113, 113, 122), 0.4) !important; }
 
 .api-method-tag:hover {
   transform: translateY(-1px);

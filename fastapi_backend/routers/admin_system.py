@@ -3,7 +3,7 @@
 从 admin_manage.py 拆分
 """
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,12 +23,10 @@ from fastapi_backend.models.models import (
     AuditLog,
 )
 import os
-import subprocess
 import platform
-import asyncio
 import random
 import psutil
-from fastapi.responses import FileResponse
+from fastapi_backend.routers import backup as backup_management
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin-系统管理"])
 
@@ -63,21 +61,8 @@ def _pg_connection_params() -> dict:
 async def list_backups(
     current_user: User = Depends(require_admin),
 ):
-    """获取备份列表"""
-    os.makedirs(BACKUP_DIR, exist_ok=True)
-    backups = []
-    for f in sorted(os.listdir(BACKUP_DIR), reverse=True):
-        if f.endswith(".sql") or f.endswith(".zip"):
-            filepath = os.path.join(BACKUP_DIR, f)
-            stat = os.stat(filepath)
-            backups.append(
-                {
-                    "name": f,
-                    "size": round(stat.st_size / (1024 * 1024), 2),
-                    "time": int(stat.st_mtime * 1000),
-                }
-            )
-    return {"backups": backups, "max_backups": MAX_BACKUPS}
+    """Compatibility route backed by the single shared backup implementation."""
+    return await backup_management.get_backups(current_user)
 
 
 @router.post("/backups")
@@ -85,52 +70,10 @@ async def create_backup(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建数据库备份 (pg_dump)"""
-    os.makedirs(BACKUP_DIR, exist_ok=True)
-    params = _pg_connection_params()
-    if not params:
-        raise HTTPException(status_code=500, detail="数据库不是 PostgreSQL，无法备份")
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    backup_name = f"testmaster_backup_{timestamp}.sql"
-    backup_path = os.path.join(BACKUP_DIR, backup_name)
-
-    env = os.environ.copy()
-    env["PGPASSWORD"] = params["password"]
-
-    cmd = [
-        "pg_dump",
-        "-h",
-        params["host"],
-        "-p",
-        params["port"],
-        "-U",
-        params["user"],
-        "-d",
-        params["dbname"],
-        "--no-password",
-        "--format=plain",
-        "--no-owner",
-    ]
-
-    try:
-        result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, env=env, timeout=120)
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"pg_dump 失败: {result.stderr[:200]}")
-        with open(backup_path, "w", encoding="utf-8") as f:
-            f.write(result.stdout)
-        await _write_audit_log(
-            db,
-            user_id=current_user.id,
-            action="创建数据库备份",
-            action_type="backup",
-            detail=f"备份文件: {backup_name}",
-        )
-        return {"message": "备份创建成功", "name": backup_name}
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="pg_dump 命令未找到")
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=500, detail="pg_dump 超时")
+    response = await backup_management.create_new_backup(current_user)
+    backup_name = response["backup_name"]
+    await _write_audit_log(db, user_id=current_user.id, action="创建数据库备份", action_type="backup", detail=f"备份文件: {backup_name}")
+    return {"message": "备份创建成功", "name": backup_name}
 
 
 @router.delete("/backups/old")
@@ -138,22 +81,9 @@ async def delete_old_backups(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """清理旧备份（保留最近5个）"""
-    os.makedirs(BACKUP_DIR, exist_ok=True)
-    files = sorted([f for f in os.listdir(BACKUP_DIR) if f.endswith(".sql") or f.endswith(".zip")])
-
-    if len(files) <= 5:
-        return {"message": "没有需要清理的旧备份"}
-
-    deleted = 0
-    for f in files[:-5]:
-        os.remove(os.path.join(BACKUP_DIR, f))
-        deleted += 1
-
-    await _write_audit_log(
-        db, user_id=current_user.id, action="清理旧备份", action_type="backup", detail=f"清理了 {deleted} 个旧备份文件"
-    )
-    return {"message": f"已清理 {deleted} 个旧备份"}
+    response = await backup_management.clean_old(current_user)
+    await _write_audit_log(db, user_id=current_user.id, action="清理旧备份", action_type="backup", detail=response["message"])
+    return response
 
 
 def _safe_backup_path(name: str) -> str:
@@ -169,10 +99,7 @@ async def download_backup(
     name: str,
     current_user: User = Depends(require_admin),
 ):
-    filepath = _safe_backup_path(name)
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="备份文件不存在")
-    return FileResponse(filepath, filename=name)
+    return await backup_management.download_backup(name, current_user)
 
 
 @router.post("/backups/{name}/restore")
@@ -181,69 +108,8 @@ async def restore_backup(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """恢复备份 (psql)"""
-    backup_path = _safe_backup_path(name)
-    if not os.path.exists(backup_path):
-        raise HTTPException(status_code=404, detail="备份文件不存在")
-
-    params = _pg_connection_params()
-    if not params:
-        raise HTTPException(status_code=500, detail="数据库不是 PostgreSQL，无法恢复")
-
-    env = os.environ.copy()
-    env["PGPASSWORD"] = params["password"]
-
-    cmd = [
-        "psql",
-        "-h",
-        params["host"],
-        "-p",
-        params["port"],
-        "-U",
-        params["user"],
-        "-d",
-        params["dbname"],
-        "--no-password",
-        "-f",
-        backup_path,
-    ]
-
-    try:
-        result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, env=env, timeout=300)
-        if result.returncode != 0:
-            await _write_audit_log(
-                db,
-                user_id=current_user.id,
-                action="恢复数据库备份",
-                action_type="backup",
-                detail=f"恢复文件: {name}",
-                status="failed",
-            )
-            raise HTTPException(status_code=500, detail=f"恢复失败: {result.stderr[:200]}")
-        await _write_audit_log(
-            db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name}"
-        )
-        return {"message": "备份恢复成功"}
-    except FileNotFoundError:
-        await _write_audit_log(
-            db,
-            user_id=current_user.id,
-            action="恢复数据库备份",
-            action_type="backup",
-            detail=f"恢复文件: {name} - psql命令未找到",
-            status="failed",
-        )
-        raise HTTPException(status_code=500, detail="psql 命令未找到")
-    except subprocess.TimeoutExpired:
-        await _write_audit_log(
-            db,
-            user_id=current_user.id,
-            action="恢复数据库备份",
-            action_type="backup",
-            detail=f"恢复文件: {name} - 超时",
-            status="failed",
-        )
-        raise HTTPException(status_code=500, detail="恢复超时")
+    await _write_audit_log(db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name}")
+    return await backup_management.restore_backup(name, current_user)
 
 
 @router.delete("/backups/{name}")
@@ -252,15 +118,9 @@ async def delete_backup(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    filepath = _safe_backup_path(name)
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="备份文件不存在")
-
-    os.remove(filepath)
-    await _write_audit_log(
-        db, user_id=current_user.id, action="删除备份文件", action_type="backup", detail=f"删除文件: {name}"
-    )
-    return {"message": "备份删除成功"}
+    response = await backup_management.delete_backup(name, current_user)
+    await _write_audit_log(db, user_id=current_user.id, action="删除备份文件", action_type="backup", detail=f"删除文件: {name}")
+    return response
 
 
 # ============== 审计日志 ==============

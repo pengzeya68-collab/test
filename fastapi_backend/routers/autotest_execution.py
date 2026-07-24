@@ -18,12 +18,18 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, BackgroundTasks, Request
 from pydantic import BaseModel, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.core.audit_decorator import audit_log
 from fastapi_backend.core.rbac import require_permissions
 from fastapi_backend.deps.auth import get_current_active_user
+from fastapi_backend.deps.project_context import (
+    get_active_project_id,
+    get_active_project_id_member,
+    is_personal_project,
+    project_scope_with_legacy_null,
+)
 from fastapi_backend.models.autotest import (
     AutoTestCase,
     AutoTestEnvironment,
@@ -45,9 +51,53 @@ from fastapi_backend.schemas.autotest import (
     VariablePreviewResponse,
 )
 from fastapi_backend.utils.parser import replace_variables, find_variables
-from fastapi_backend.core.ssrf_guard import validate_url_safety
 
 router = APIRouter(prefix="/api/auto-test", tags=["AutoTest-执行与工具"])
+
+
+async def _case_scope(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestCase.project_id,
+        project_id,
+        user_id_column=AutoTestCase.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
+
+
+async def _env_scope(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestEnvironment.project_id,
+        project_id,
+        user_id_column=AutoTestEnvironment.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
+
+
+async def _scenario_scope(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestScenario.workspace_project_id,
+        project_id,
+        user_id_column=AutoTestScenario.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
+
+
+async def _group_scope(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestGroup.project_id,
+        project_id,
+        user_id_column=AutoTestGroup.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
+
 
 # 项目根目录（routers/autotest_execution.py -> fastapi_backend/ -> TestMasterProject/）
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -202,9 +252,8 @@ async def send_request(
     valid_methods = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
     if method not in valid_methods:
         raise HTTPException(status_code=400, detail=f"不支持的 HTTP 方法: {method}")
-    safe, reason = validate_url_safety(url)
-    if not safe:
-        raise HTTPException(status_code=400, detail=reason)
+    # URL templates are resolved against the selected environment in the
+    # request service, where the final post-substitution SSRF check is made.
     try:
         try:
             validated_config = AutoTestRequestConfig.model_validate(payload.get("request_config") or {})
@@ -223,6 +272,26 @@ async def send_request(
             request_config=validated_config.model_dump(by_alias=True),
         )
         result.pop("_raw_headers", None)
+        # Free-form send still enforces contract when client binds a case_id (debugger / workbench).
+        case_id = payload.get("case_id") or payload.get("api_case_id")
+        if case_id is not None:
+            from fastapi_backend.services.contract_testing_service import contract_testing_service
+            from fastapi_backend.services.project_service import ensure_personal_project
+            from fastapi_backend.core.database import AsyncSessionLocal as _MainSession
+
+            project_id = int(payload.get("project_id") or 0) or 0
+            if not project_id:
+                async with _MainSession() as _pdb:
+                    personal = await ensure_personal_project(_pdb, int(current_user.id))
+                    await _pdb.commit()
+                    project_id = int(personal.id)
+            result = await contract_testing_service.attach_contract_validation(
+                result if isinstance(result, dict) else {},
+                project_id=project_id,
+                case_id=int(case_id),
+                method=method,
+                url=url,
+            )
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -445,6 +514,7 @@ async def get_report_detail(
     report_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     """获取执行报告详情"""
     from fastapi_backend.services.autotest_report_service import get_report_detail as _get_report
@@ -457,7 +527,7 @@ async def get_report_detail(
         scenario_result = await db.execute(
             select(AutoTestScenario).where(
                 AutoTestScenario.id == result["scenario_id"],
-                AutoTestScenario.user_id == current_user.id,
+                await _scenario_scope(db, current_user.id, project_id),
             )
         )
         if not scenario_result.scalar_one_or_none():
@@ -491,11 +561,12 @@ async def run_case(
     body: CaseRunRequest = None,
     current_user: User = Depends(require_permissions("case:execute")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """执行用例并保存历史记录，返回完整执行结果"""
     env_id = body.env_id if body else None
     result = await db.execute(
-        select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id)
+        select(AutoTestCase).where(AutoTestCase.id == case_id, await _case_scope(db, current_user.id, project_id))
     )
     case = result.scalar_one_or_none()
     if not case:
@@ -514,7 +585,7 @@ async def run_case(
                 raise HTTPException(status_code=400, detail=f"无效的环境 ID: {env_id}")
             result = await db.execute(
                 select(AutoTestEnvironment).where(
-                    AutoTestEnvironment.id == env_id_int, AutoTestEnvironment.user_id == current_user.id
+                    AutoTestEnvironment.id == env_id_int, await _env_scope(db, current_user.id, project_id)
                 )
             )
             env = result.scalar_one_or_none()
@@ -525,12 +596,12 @@ async def run_case(
     if env is None:
         result = await db.execute(
             select(AutoTestEnvironment).where(
-                AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id
+                AutoTestEnvironment.is_default.is_(True), await _env_scope(db, current_user.id, project_id)
             )
         )
         env = result.scalars().first()
         if not env:
-            result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id))
+            result = await db.execute(select(AutoTestEnvironment).where(await _env_scope(db, current_user.id, project_id)))
             env = result.scalars().first()
 
     from fastapi_backend.services.autotest_execution import quick_run_case
@@ -560,11 +631,12 @@ async def quick_run(
     p: str = Query(None, description="已替换变量的请求参数字符串（JSON）"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """快速执行用例（结果自动保存历史记录）"""
     env_id = body.env_id if body else None
     result = await db.execute(
-        select(AutoTestCase).where(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id)
+        select(AutoTestCase).where(AutoTestCase.id == case_id, await _case_scope(db, current_user.id, project_id))
     )
     case = result.scalar_one_or_none()
     if not case:
@@ -577,7 +649,7 @@ async def quick_run(
             if env_id_int > 0:
                 result = await db.execute(
                     select(AutoTestEnvironment).where(
-                        AutoTestEnvironment.id == env_id_int, AutoTestEnvironment.user_id == current_user.id
+                        AutoTestEnvironment.id == env_id_int, await _env_scope(db, current_user.id, project_id)
                     )
                 )
                 env = result.scalar_one_or_none()
@@ -587,12 +659,12 @@ async def quick_run(
     if env is None:
         result = await db.execute(
             select(AutoTestEnvironment).where(
-                AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id
+                AutoTestEnvironment.is_default.is_(True), await _env_scope(db, current_user.id, project_id)
             )
         )
         env = result.scalars().first()
         if not env:
-            result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id))
+            result = await db.execute(select(AutoTestEnvironment).where(await _env_scope(db, current_user.id, project_id)))
             env = result.scalars().first()
 
     # 🔥 解析前端传来的 p（已替换变量的请求参数字符串）
@@ -651,7 +723,7 @@ async def _run_case_batch_task(task_id: str, body: BatchRunRequest, user_id: int
     try:
         async with AsyncSessionLocal() as session:
             case_result = await session.execute(
-                select(AutoTestCase).where(AutoTestCase.id.in_(body.case_ids), AutoTestCase.user_id == user_id)
+                select(AutoTestCase).where(AutoTestCase.id.in_(body.case_ids), await _case_scope(db, user_id, project_id))
             )
             case_map = {case.id: case for case in case_result.scalars().all()}
             cases = [case_map[case_id] for case_id in body.case_ids if case_id in case_map]
@@ -659,7 +731,7 @@ async def _run_case_batch_task(task_id: str, body: BatchRunRequest, user_id: int
             if body.env_id:
                 env_result = await session.execute(
                     select(AutoTestEnvironment).where(
-                        AutoTestEnvironment.id == body.env_id, AutoTestEnvironment.user_id == user_id
+                        AutoTestEnvironment.id == body.env_id, await _env_scope(db, user_id, project_id)
                     )
                 )
                 env = env_result.scalar_one_or_none()
@@ -776,6 +848,7 @@ async def batch_run(
     body: BatchRunRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """批量执行多个用例（并发执行）"""
     case_ids = body.case_ids
@@ -785,7 +858,7 @@ async def batch_run(
     if len(case_ids) > 50:
         raise HTTPException(status_code=400, detail="单次批量执行最多支持 50 个用例")
     result = await db.execute(
-        select(AutoTestCase).where(AutoTestCase.id.in_(case_ids), AutoTestCase.user_id == current_user.id)
+        select(AutoTestCase).where(AutoTestCase.id.in_(case_ids), await _case_scope(db, current_user.id, project_id))
     )
     cases = result.scalars().all()
 
@@ -793,19 +866,19 @@ async def batch_run(
     if env_id:
         result = await db.execute(
             select(AutoTestEnvironment).where(
-                AutoTestEnvironment.id == env_id, AutoTestEnvironment.user_id == current_user.id
+                AutoTestEnvironment.id == env_id, await _env_scope(db, current_user.id, project_id)
             )
         )
         env = result.scalar_one_or_none()
     else:
         result = await db.execute(
             select(AutoTestEnvironment).where(
-                AutoTestEnvironment.is_default.is_(True), AutoTestEnvironment.user_id == current_user.id
+                AutoTestEnvironment.is_default.is_(True), await _env_scope(db, current_user.id, project_id)
             )
         )
         env = result.scalars().first()
         if not env:
-            result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.user_id == current_user.id))
+            result = await db.execute(select(AutoTestEnvironment).where(await _env_scope(db, current_user.id, project_id)))
             env = result.scalars().first()
 
     from fastapi_backend.services.autotest_execution import quick_run_case
@@ -871,6 +944,7 @@ async def get_history(
     offset: int = 0,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """获取执行历史记录"""
     # 参数校验
@@ -906,6 +980,7 @@ async def delete_history(
     history_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """删除历史记录"""
     result = await db.execute(
@@ -924,6 +999,7 @@ async def get_history_detail(
     history_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """获取历史记录详情"""
     result = await db.execute(
@@ -946,18 +1022,19 @@ async def run_scenario(
     body: CaseRunRequest = None,
     background: bool = True,
     current_user: User = Depends(require_permissions("scenario:execute")),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """执行测试场景，使用Celery异步任务"""
     env_id = body.env_id if body else None
     try:
         from fastapi_backend.core.autotest_database import AsyncSessionLocal
-        from fastapi_backend.models.autotest import AutoTestScenario
+        from fastapi_backend.models.autotest import AutoTestScenario, AutoTestScenarioStep
         from sqlalchemy import select
 
         async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(AutoTestScenario).where(
-                    AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id
+                    AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id)
                 )
             )
             scenario = result.scalar_one_or_none()
@@ -965,6 +1042,14 @@ async def run_scenario(
                 raise HTTPException(status_code=404, detail="场景不存在")
             if not scenario.is_active:
                 raise HTTPException(status_code=400, detail="场景已停用，禁止执行")
+            active_step_count = await db.scalar(
+                select(func.count(AutoTestScenarioStep.id)).where(
+                    AutoTestScenarioStep.scenario_id == scenario_id,
+                    AutoTestScenarioStep.is_active.is_(True),
+                )
+            )
+            if not active_step_count:
+                raise HTTPException(status_code=400, detail="场景没有可执行步骤，请先添加并启用至少一个步骤")
 
         from fastapi_backend.tasks import task_run_scenario
         from fastapi_backend.services.autotest_task_store import update_task as seed_task
@@ -1047,10 +1132,11 @@ async def get_scenario_execution_history(
     limit: int = Query(20, ge=1, le=200),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     """获取某个场景的执行历史记录列表"""
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
     )
     scenario = result.scalar_one_or_none()
     if not scenario:
@@ -1151,11 +1237,12 @@ async def delete_scenario_execution_history(
     record_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """删除场景执行历史记录"""
     # 验证场景存在
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
     )
     scenario = result.scalar_one_or_none()
     if not scenario:
@@ -1185,6 +1272,7 @@ async def run_scenario_data_driven(
     body: CaseRunRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """数据驱动执行测试场景"""
     env_id = body.env_id
@@ -1195,7 +1283,7 @@ async def run_scenario_data_driven(
         result = await db.execute(
             select(AutoTestScenario).where(
                 AutoTestScenario.id == scenario_id,
-                AutoTestScenario.user_id == current_user.id,
+                await _scenario_scope(db, current_user.id, project_id),
             )
         )
         scenario = result.scalar_one_or_none()
@@ -1354,6 +1442,7 @@ async def list_scheduler_tasks(
 async def get_scenario_scheduler_tasks(
     scenario_id: int,
     current_user: User = Depends(get_current_active_user),
+    project_id: int = Depends(get_active_project_id),
 ):
     """获取指定场景的定时任务"""
     from fastapi_backend.services.autotest_scheduler import get_tasks_by_scenario
@@ -1363,7 +1452,7 @@ async def get_scenario_scheduler_tasks(
         owned = await db.execute(
             select(AutoTestScenario.id).where(
                 AutoTestScenario.id == scenario_id,
-                AutoTestScenario.user_id == current_user.id,
+                await _scenario_scope(db, current_user.id, project_id),
             )
         )
         if owned.scalar_one_or_none() is None:
@@ -1377,6 +1466,7 @@ async def get_scenario_scheduler_tasks(
 async def create_scheduler_task(
     task: ScheduleTaskCreate,
     current_user: User = Depends(get_current_active_user),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """创建定时任务"""
     from fastapi_backend.services.autotest_scheduler import add_scheduled_task
@@ -1388,7 +1478,7 @@ async def create_scheduler_task(
         result = await db.execute(
             select(AutoTestScenario).where(
                 AutoTestScenario.id == int(task.scenario_id),
-                AutoTestScenario.user_id == current_user.id,
+                await _scenario_scope(db, current_user.id, project_id),
             )
         )
         if not result.scalar_one_or_none():
@@ -1468,9 +1558,10 @@ async def delete_scheduler_task(
 async def run_scheduler_task_now(
     task_id: str,
     current_user: User = Depends(get_current_active_user),
+    project_id: int = Depends(get_active_project_id),
 ):
     """立即执行定时任务（手动触发）"""
-    await _get_owned_scheduler_task(task_id, current_user.id)
+    task = await _get_owned_scheduler_task(task_id, current_user.id)
 
     scenario_id = task.get("scenario_id")
     user_id = None
@@ -1482,7 +1573,7 @@ async def run_scheduler_task_now(
         async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(AutoTestScenario).where(
-                    AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id
+                    AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id)
                 )
             )
             scenario = result.scalar_one_or_none()
@@ -1616,6 +1707,7 @@ async def import_postman(
     target_group_id: Optional[int] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """导入 Postman Collection"""
     content = await file.read()
@@ -1708,7 +1800,7 @@ async def import_postman(
 
     if target_group_id is not None:
         group_result = await db.execute(
-            select(AutoTestGroup).where(AutoTestGroup.id == target_group_id, AutoTestGroup.user_id == current_user.id)
+            select(AutoTestGroup).where(AutoTestGroup.id == target_group_id, await _group_scope(db, current_user.id, project_id))
         )
         root_group = group_result.scalar_one_or_none()
         if not root_group:
@@ -1718,7 +1810,7 @@ async def import_postman(
             select(AutoTestGroup).where(
                 AutoTestGroup.name == root_name,
                 AutoTestGroup.parent_id.is_(None),
-                AutoTestGroup.user_id == current_user.id,
+                await _group_scope(db, current_user.id, project_id),
             )
         )
         root_group = result.scalar_one_or_none()
@@ -1778,6 +1870,7 @@ async def import_swagger(
     target_group_id: Optional[int] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """导入 Swagger/OpenAPI 文档"""
     content = await file.read()
@@ -1801,7 +1894,7 @@ async def import_swagger(
         if target_group_id is not None:
             group_result = await db.execute(
                 select(AutoTestGroup).where(
-                    AutoTestGroup.id == target_group_id, AutoTestGroup.user_id == current_user.id
+                    AutoTestGroup.id == target_group_id, await _group_scope(db, current_user.id, project_id)
                 )
             )
             root_group = group_result.scalar_one_or_none()
@@ -1812,7 +1905,7 @@ async def import_swagger(
                 select(AutoTestGroup).where(
                     AutoTestGroup.name == root_name,
                     AutoTestGroup.parent_id.is_(None),
-                    AutoTestGroup.user_id == current_user.id,
+                    await _group_scope(db, current_user.id, project_id),
                 )
             )
             root_group = result.scalar_one_or_none()

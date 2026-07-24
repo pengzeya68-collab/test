@@ -30,7 +30,7 @@ const router = useRouter()
 .error-code {
   font-size: 120px;
   font-weight: 700;
-  background: var(--tm-gradient-brand, linear-gradient(to right, #EC4899, #9333EA));
+  background: var(--tm-gradient-brand, linear-gradient(to right, var(--tm-neon-pink), #9333EA));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

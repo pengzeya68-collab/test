@@ -760,11 +760,11 @@ const submitPost = async () => {
 }
 
 .stat-item.active {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
 }
 
 .stat-item:nth-child(4).active {
-  color: #e6a23c;
+  color: var(--tm-color-warning);
 }
 
 .right-sidebar {
@@ -796,13 +796,13 @@ const submitPost = async () => {
 .stat-number {
   font-size: 24px;
   font-weight: bold;
-  color: #C084FC;
+  color: var(--tm-color-primary-light);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 12px;
-  color: #71717A;
+  color: var(--tm-text-muted);
 }
 
 .user-list {
@@ -820,13 +820,13 @@ const submitPost = async () => {
 .user-info .username {
   font-size: 14px;
   font-weight: 500;
-  color: #FAFAFA;
+  color: var(--tm-text-primary);
   margin-bottom: 2px;
 }
 
 .user-info .user-desc {
   font-size: 12px;
-  color: #71717A;
+  color: var(--tm-text-muted);
 }
 
 .pagination-container {

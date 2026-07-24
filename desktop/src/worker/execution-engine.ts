@@ -11,14 +11,15 @@
  *   - Screenshot on failure, trace on failure.
  */
 
-import { Browser, BrowserContext, Page, chromium } from 'playwright';
-import { bundledChromiumExecutable } from './browser-runtime';
+import { Browser, BrowserContext, Page, Route } from 'playwright';
+import { browserTypeForEngine, launchOptionsForEngine, type BrowserEngine } from './browser-runtime';
 import { expect } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { Locator } from '../shared/contracts/locator';
 import { StepSnapshot } from '../shared/contracts/steps';
+import { assertHttpNavigationUrl } from '../shared/safe-url';
 
 // ------------------------------------------------------------------
 // Types
@@ -39,6 +40,22 @@ export interface EnvironmentConfig {
   secretKeys?: string[];
 }
 
+export interface NetworkRulePayload {
+  id?: number | string;
+  name?: string;
+  urlPattern: string;
+  patternType?: string;
+  method?: string | null;
+  resourceType?: string | null;
+  action?: string;
+  status?: number | null;
+  headers?: Record<string, string> | null;
+  body?: string | null;
+  contentType?: string | null;
+  delayMs?: number | null;
+  abortReason?: string | null;
+}
+
 export interface RunOptions {
   headless: boolean;
   screenshotsOnFailure: boolean;
@@ -47,6 +64,16 @@ export interface RunOptions {
   debugMode?: boolean;
   storageState?: object | null;
   artifactRootDir?: string;
+  browserEngine?: BrowserEngine;
+  /** When set, locator healing will POST to this backend endpoint on failure. */
+  healingEndpoint?: string | null;
+  projectId?: number | null;
+  runId?: number | null;
+  accessToken?: string | null;
+  agentToken?: string | null;
+  agentId?: number | null;
+  /** Project/case-level network intercept rules applied at run start. */
+  networkRules?: NetworkRulePayload[] | null;
 }
 
 export interface StepResult {
@@ -74,7 +101,17 @@ export type StepEvent =
   | { type: 'step:fail'; stepId: string; durationMs: number; error: string; screenshotPath?: string }
   | { type: 'step:skip'; stepId: string; reason: string }
   | { type: 'run:start'; totalSteps: number }
-  | { type: 'run:finish'; status: string; passedSteps: number; failedSteps: number; durationMs: number }
+  | {
+      type: 'run:finish';
+      status: string;
+      passedSteps: number;
+      failedSteps: number;
+      durationMs: number;
+      shardId?: string | number | null;
+      caseIds?: Array<string | number>;
+      passedCases?: number;
+      failedCases?: number;
+    }
   | { type: 'run:paused'; stepId: string; stepName: string; stepType: string; variables: Record<string, string>; url: string; title: string; screenshotPath: string | null }
   | { type: 'run:resumed'; mode: 'continue' | 'step' }
   | { type: 'console'; level: string; text: string; url: string }
@@ -131,6 +168,11 @@ export class CaseExecutionEngine {
   private paused = false;
   private resumeResolver: (() => void) | null = null;
   private artifactRootDir = path.join(os.tmpdir(), 'testmaster-artifacts');
+  private intercepts = new Map<string, (route: Route) => Promise<void>>();
+  private runOptions: RunOptions | null = null;
+  private traceStopped = false;
+  private cancelledTracePath: string | null = null;
+  private navigationTimeoutMs = 30_000;
 
   /**
    * Execute a case snapshot.
@@ -157,36 +199,49 @@ export class CaseExecutionEngine {
 
     this.pauseMode = options.debugMode ? 'every-step' : 'breakpoints';
     this.artifactRootDir = path.resolve(options.artifactRootDir || path.join(os.tmpdir(), 'testmaster-artifacts'));
+    this.runOptions = options;
+    this.intercepts.clear();
+    this.traceStopped = false;
+    this.cancelledTracePath = null;
+    this.cancelled = false;
     onEvent({ type: 'run:start', totalSteps: snapshot.steps.length });
 
     try {
-      // Launch browser
-      this.browser = await chromium.launch({ headless: options.headless, executablePath: bundledChromiumExecutable() });
-      const videoDir = path.join(this.artifactRootDir, 'videos');
-      if (options.videoOnFailure && !fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
-      this.context = await this.browser.newContext({
-        viewport: { width: 1280, height: 720 },
-        storageState: options.storageState as any || undefined,
-        recordVideo: options.videoOnFailure ? { dir: videoDir, size: { width: 1280, height: 720 } } : undefined,
-      });
-
-      // Enable tracing if requested
-      if (options.traceOnFailure) {
-        await this.context.tracing.start({
-          screenshots: true,
-          snapshots: true,
-          sources: true,
+      const engine = options.browserEngine || 'chromium';
+      const browserType = browserTypeForEngine(engine);
+      try {
+        this.browser = await browserType.launch(launchOptionsForEngine(engine, options.headless) as any);
+        const videoDir = path.join(this.artifactRootDir, 'videos');
+        if (options.videoOnFailure && !fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
+        this.context = await this.browser.newContext({
+          viewport: { width: 1280, height: 720 },
+          storageState: options.storageState as any || undefined,
+          recordVideo: options.videoOnFailure ? { dir: videoDir, size: { width: 1280, height: 720 } } : undefined,
         });
-      }
 
-      this.context.on('page', diagnosticPage => this.attachPageDiagnostics(diagnosticPage, onEvent));
-      this.page = await this.context.newPage();
+        // Enable tracing if requested
+        if (options.traceOnFailure) {
+          await this.context.tracing.start({
+            screenshots: true,
+            snapshots: true,
+            sources: true,
+          });
+        }
+
+        this.context.on('page', diagnosticPage => this.attachPageDiagnostics(diagnosticPage, onEvent));
+        this.page = await this.context.newPage();
+      } catch (launchError) {
+        await this.cleanup();
+        throw launchError;
+      }
       currentVideo = this.page.video();
       this.attachPageDiagnostics(this.page, onEvent);
+      await this.applyNetworkRules(options.networkRules || []);
 
       // Set default timeouts
       this.page.setDefaultTimeout(snapshot.default_timeout_ms || 10000);
-      this.page.setDefaultNavigationTimeout(snapshot.navigation_timeout_ms || 30000);
+      this.navigationTimeoutMs = snapshot.navigation_timeout_ms || 30000;
+      this.page.setDefaultNavigationTimeout(this.navigationTimeoutMs);
 
       // Resolve base URL
       const baseUrl = env?.baseUrl || snapshot.base_url || '';
@@ -309,22 +364,26 @@ export class CaseExecutionEngine {
       onEvent({ type: 'log', level: 'error', message: `Run error: ${error?.message}` });
       infrastructureError = error;
     } finally {
-      // Save trace on failure
-      if (options.traceOnFailure && this.context) {
+      // Save trace on failure (skip if cancel already stopped tracing)
+      if (options.traceOnFailure && this.context && !this.traceStopped) {
         try {
-          if (failedSteps > 0 || infrastructureError) {
+          if (failedSteps > 0 || infrastructureError || this.cancelled) {
             const dir = path.join(this.artifactRootDir, 'traces');
             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
             const tracePath = uniqueArtifactPath(dir, `trace-${safeArtifactFilename(String(snapshot.case_id), 'case')}-${Date.now()}.zip`, 'trace.zip');
             savedTracePath = tracePath;
             await this.context.tracing.stop({ path: tracePath });
+            this.traceStopped = true;
             onEvent({ type: 'log', level: 'info', message: `Trace saved: ${tracePath}` });
           } else {
             await this.context.tracing.stop();
+            this.traceStopped = true;
           }
         } catch (e) {
           // Trace save failure is not fatal
         }
+      } else if (this.cancelledTracePath) {
+        savedTracePath = this.cancelledTracePath;
       }
 
       // Playwright only guarantees the final video path after its context closes.
@@ -378,6 +437,8 @@ export class CaseExecutionEngine {
     this.cancelled = true;
     this.resumeResolver?.();
     this.resumeResolver = null;
+    // Preserve trace before tearing down context/browser.
+    await this.stopTracingForCancel();
     await this.cleanup();
   }
 
@@ -395,13 +456,49 @@ export class CaseExecutionEngine {
 
   isPaused(): boolean { return this.paused; }
 
+  private async stopTracingForCancel(): Promise<void> {
+    if (!this.context || !this.runOptions?.traceOnFailure || this.traceStopped) return;
+    try {
+      const dir = path.join(this.artifactRootDir, 'traces');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const tracePath = uniqueArtifactPath(dir, `trace-cancel-${Date.now()}.zip`, 'trace.zip');
+      await this.context.tracing.stop({ path: tracePath });
+      this.traceStopped = true;
+      this.cancelledTracePath = tracePath;
+    } catch {
+      try {
+        await this.context.tracing.stop();
+        this.traceStopped = true;
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   private async waitForResume(step: StepSnapshot, onEvent: StepEventCallback): Promise<void> {
     this.paused = true;
     this.pauseRequested = false;
     const resumePromise = new Promise<void>(resolve => { this.resumeResolver = resolve; });
     const screenshotPath = await this.captureScreenshot(step.id, 'pass');
     onEvent({ type: 'run:paused', stepId: step.id, stepName: step.name || step.type, stepType: step.type, variables: Object.fromEntries(Object.entries(this.variables).map(([key, value]) => [key, this.secretKeys.has(key) ? '******' : value])), url: this.page?.url() || '', title: await this.page?.title().catch(() => '') || '', screenshotPath });
-    await resumePromise;
+    // Bound pause so unattended agent runs cannot hang forever.
+    const PAUSE_TIMEOUT_MS = 10 * 60 * 1000;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      this.resumeResolver?.();
+      this.resumeResolver = null;
+    }, PAUSE_TIMEOUT_MS);
+    timer.unref?.();
+    try {
+      await resumePromise;
+    } finally {
+      clearTimeout(timer);
+      this.paused = false;
+    }
+    if (timedOut && !this.cancelled) {
+      onEvent({ type: 'log', level: 'warn', message: `Pause timed out after ${PAUSE_TIMEOUT_MS}ms; continuing` });
+    }
   }
 
   // ------------------------------------------------------------------
@@ -439,14 +536,14 @@ export class CaseExecutionEngine {
       // Navigation
       case 'goto': {
         const url = this.resolveUrl(resolvedInput.url || '', baseUrl);
-        await page.goto(url, { timeout: timeoutMs, waitUntil: 'load' });
+        await page.goto(url, { timeout: this.navigationTimeoutMs, waitUntil: 'load' });
         break;
       }
       case 'reload':
-        await page.reload({ timeout: timeoutMs });
+        await page.reload({ timeout: this.navigationTimeoutMs });
         break;
       case 'go_back':
-        await page.goBack({ timeout: timeoutMs });
+        await page.goBack({ timeout: this.navigationTimeoutMs });
         break;
       case 'switch_page': {
         const pages = this.context?.pages() || [];
@@ -680,7 +777,25 @@ export class CaseExecutionEngine {
       }
       case 'extract_url':
         this.variables[resolvedInput.name || 'currentUrl'] = page.url();
-        break;      case 'extract_text': {
+        break;      case 'intercept_request': {
+        await this.installIntercept(resolvedInput);
+        break;
+      }
+      case 'remove_intercept': {
+        await this.removeIntercept(String(resolvedInput?.id || resolvedInput?.urlPattern || ''));
+        break;
+      }
+      case 'visual_assert': {
+        // Capture screenshot for backend pipeline compare; step fails closed if capture fails.
+        const shot = await this.captureScreenshot(step.id, 'pass');
+        if (!shot) {
+          throw new Error('VISUAL_ASSERT_CAPTURE_FAILED: 无法截图，视觉断言未通过');
+        }
+        // Surface artifact path so agents/backends can run baseline compare asynchronously.
+        this.variables.__last_visual_screenshot = shot;
+        break;
+      }
+      case 'extract_text': {
         const locator = await this.resolveLocatorWithFallback(page, step.locator!, timeoutMs);
         const text = await locator.textContent({ timeout: timeoutMs });
         this.variables[resolvedInput.name || 'extracted'] = text || '';
@@ -698,7 +813,7 @@ export class CaseExecutionEngine {
 
   private async resolveLocatorWithFallback(page: Page, loc: Locator, timeoutMs: number): Promise<import('playwright').Locator> {
     const candidates = [loc, ...(loc.fallbacks || [])];
-    const probeTimeout = Math.max(250, Math.min(1500, Math.floor(timeoutMs / candidates.length)));
+    const probeTimeout = Math.max(250, Math.min(1500, Math.floor(timeoutMs / Math.max(1, candidates.length))));
     const errors: string[] = [];
     for (const candidate of candidates) {
       const locator = this.resolveLocator(page, { ...candidate, framePath: candidate.framePath?.length ? candidate.framePath : loc.framePath });
@@ -709,7 +824,172 @@ export class CaseExecutionEngine {
         errors.push(candidate.strategy + '=' + candidate.value + ': ' + (error?.message || error));
       }
     }
+
+    const healed = await this.tryHealLocator(page, loc, errors.join('\n'));
+    if (healed) {
+      try {
+        const locator = this.resolveLocator(page, healed);
+        await locator.first().waitFor({ state: 'attached', timeout: Math.min(timeoutMs, 3000) });
+        if (await locator.count() > 0) return locator;
+      } catch (error: any) {
+        errors.push('healed: ' + (error?.message || error));
+      }
+    }
+
     throw new Error('LOCATOR_NOT_FOUND: ' + candidates.map(item => item.strategy + '=' + item.value).join(' -> ') + '\n' + errors.join('\n'));
+  }
+
+  private async tryHealLocator(page: Page, loc: Locator, failureReason: string): Promise<Locator | null> {
+    const endpoint = this.runOptions?.healingEndpoint;
+    if (!endpoint || !this.runOptions?.projectId) return null;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
+    timer.unref?.();
+    try {
+      // Cap DOM payload to reduce heal-latency / bandwidth under failure storms.
+      const page_dom = (await page.content()).slice(0, 80_000);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (this.runOptions.agentToken) {
+        headers['X-TestMaster-Agent-Token'] = this.runOptions.agentToken;
+      } else if (this.runOptions.accessToken) {
+        headers.Authorization = `Bearer ${this.runOptions.accessToken}`;
+      }
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        signal: controller.signal,
+        body: JSON.stringify({
+          project_id: this.runOptions.projectId,
+          original_locator: loc,
+          page_dom,
+          page_url: page.url(),
+          element_id: (loc as any).elementId || null,
+          run_id: this.runOptions.runId || null,
+          failure_reason: failureReason.slice(0, 2000),
+        }),
+      });
+      if (!response.ok) return null;
+      const data = await response.json() as { status?: string; healed_locator?: Locator | null };
+      // Only auto-apply high-confidence heals; suggested requires human review.
+      if (data.status === 'auto_applied' && data.healed_locator) {
+        return data.healed_locator;
+      }
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+    return null;
+  }
+
+  private async applyNetworkRules(rules: NetworkRulePayload[]): Promise<void> {
+    for (const rule of rules || []) {
+      if (!rule?.urlPattern) continue;
+      const action = String(rule.action || 'fulfill');
+      if (action === 'abort') {
+        await this.installIntercept({
+          id: `rule-${rule.id || rule.name || rule.urlPattern}`,
+          urlPattern: rule.urlPattern,
+          abort: true,
+          abortError: rule.abortReason || 'failed',
+          method: rule.method,
+          delayMs: rule.delayMs,
+        });
+      } else if (action === 'delay') {
+        await this.installIntercept({
+          id: `rule-${rule.id || rule.name || rule.urlPattern}`,
+          urlPattern: rule.urlPattern,
+          delayMs: rule.delayMs || 1000,
+          method: rule.method,
+        });
+      } else if (action === 'modify_headers') {
+        await this.installIntercept({
+          id: `rule-${rule.id || rule.name || rule.urlPattern}`,
+          urlPattern: rule.urlPattern,
+          headers: rule.headers || undefined,
+          method: rule.method,
+          delayMs: rule.delayMs,
+        });
+      } else {
+        await this.installIntercept({
+          id: `rule-${rule.id || rule.name || rule.urlPattern}`,
+          urlPattern: rule.urlPattern,
+          fulfill: {
+            status: rule.status || 200,
+            contentType: rule.contentType || 'application/json',
+            body: rule.body ?? '{}',
+            headers: rule.headers || undefined,
+          },
+          method: rule.method,
+          delayMs: rule.delayMs,
+        });
+      }
+    }
+  }
+
+  private async installIntercept(input: any): Promise<void> {
+    if (!this.page) throw new Error('PAGE_NOT_READY');
+    const urlPattern = String(input?.urlPattern || input?.url || '*');
+    const id = String(input?.id || urlPattern);
+    const methodFilter = input?.method ? String(input.method).toUpperCase() : null;
+    const delayMs = Number(input?.delayMs || 0);
+    const handler = async (route: Route) => {
+      try {
+        if (methodFilter && String(route.request().method() || '').toUpperCase() !== methodFilter) {
+          await route.continue();
+          return;
+        }
+        if (delayMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+        if (input?.abort) {
+          await route.abort(input.abortError || 'failed');
+          return;
+        }
+        if (input?.fulfill) {
+          await route.fulfill({
+            status: Number(input.fulfill.status || 200),
+            contentType: String(input.fulfill.contentType || 'application/json'),
+            body: typeof input.fulfill.body === 'string' ? input.fulfill.body : JSON.stringify(input.fulfill.body ?? {}),
+            headers: input.fulfill.headers || undefined,
+          });
+          return;
+        }
+        if (input?.headers || input?.method || input?.postData) {
+          await route.continue({
+            headers: input.headers || undefined,
+            method: input.method || undefined,
+            postData: input.postData || undefined,
+          });
+          return;
+        }
+        await route.continue();
+      } catch (error: any) {
+        // Do not silently fake a successful intercept; surface failure then fail-open.
+        console.warn('[NetworkIntercept] handler failed, falling back to continue:', error?.message || error);
+        try {
+          await route.continue();
+        } catch (continueError: any) {
+          console.warn('[NetworkIntercept] continue after failure also failed:', continueError?.message || continueError);
+        }
+      }
+    };
+    await this.page.route(urlPattern, handler);
+    this.intercepts.set(id, handler);
+  }
+
+  private async removeIntercept(id: string): Promise<void> {
+    if (!this.page || !id) return;
+    const handler = this.intercepts.get(id);
+    if (handler) {
+      await this.page.unroute('**/*', handler).catch(async () => {
+        // Fallback: clear all routes for this page if exact unroute fails.
+        await this.page?.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {});
+      });
+      this.intercepts.delete(id);
+    }
   }
   private resolveLocator(page: Page, loc: Locator): import('playwright').Locator {
     let target: Page | import('playwright').FrameLocator = page;
@@ -766,12 +1046,17 @@ export class CaseExecutionEngine {
   private resolveUrl(url: string, baseUrl: string): string {
     const resolved = this.resolveString(url);
     if (resolved.startsWith('http://') || resolved.startsWith('https://')) {
-      return resolved;
+      return assertHttpNavigationUrl(resolved, 'navigation_url');
+    }
+    // Block absolute non-http schemes even when relative resolution is intended.
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(resolved)) {
+      return assertHttpNavigationUrl(resolved, 'navigation_url');
     }
     if (baseUrl && !resolved.startsWith('http')) {
-      return baseUrl.replace(/\/$/, '') + '/' + resolved.replace(/^\//, '');
+      const joined = baseUrl.replace(/\/$/, '') + '/' + resolved.replace(/^\//, '');
+      return assertHttpNavigationUrl(joined, 'navigation_url');
     }
-    return resolved;
+    return assertHttpNavigationUrl(resolved, 'navigation_url');
   }
 
   // ------------------------------------------------------------------

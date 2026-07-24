@@ -81,6 +81,10 @@ async def ensure_dev_tables() -> None:
     if settings.ENVIRONMENT == "production":
         return
 
+    # Ensure upgrade models are registered on Base.metadata before create_all.
+    import fastapi_backend.models.feature_upgrades  # noqa: F401
+    import fastapi_backend.models.ui_automation  # noqa: F401
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # 补齐 audit_logs 表缺失的 detail 列（旧迁移未包含）
@@ -155,11 +159,17 @@ async def init_auto_test_runtime() -> None:
     from fastapi_backend.services.suite_execution_service import start_suite_execution_watchdog
     from fastapi_backend.services.artifact_maintenance import start_artifact_maintenance
     from fastapi_backend.services.ui_automation.agent_service import start_ui_execution_watchdog
+    from fastapi_backend.services.automation_notification_outbox import start_notification_delivery_worker
+    from fastapi_backend.services.api_health_service import start_api_health_worker
+    from fastapi_backend.services.contract_testing_service import start_contract_poll_worker
 
     await start_suite_execution_watchdog()
     await start_ui_execution_watchdog()
     await restore_suite_schedules()
     await start_artifact_maintenance()
+    await start_notification_delivery_worker()
+    await start_api_health_worker()
+    await start_contract_poll_worker()
 
 
 @asynccontextmanager
@@ -175,7 +185,11 @@ async def lifespan(_: FastAPI):
         yield
         return
 
-    if settings.AUTO_CREATE_TABLES_ON_STARTUP:
+    if os.getenv("TESTMASTER_DESKTOP_LOCAL") == "1":
+        # The frozen entry point applies Alembic before this lifespan starts.
+        # Do not mask an incomplete desktop upgrade with create_all().
+        pass
+    elif settings.AUTO_CREATE_TABLES_ON_STARTUP:
         await create_tables()
     else:
         await ensure_dev_tables()
@@ -229,11 +243,17 @@ async def lifespan(_: FastAPI):
                 from fastapi_backend.services.suite_execution_service import stop_suite_execution_watchdog
                 from fastapi_backend.services.artifact_maintenance import stop_artifact_maintenance
                 from fastapi_backend.services.ui_automation.agent_service import stop_ui_execution_watchdog
+                from fastapi_backend.services.automation_notification_outbox import stop_notification_delivery_worker
+                from fastapi_backend.services.api_health_service import stop_api_health_worker
+                from fastapi_backend.services.contract_testing_service import stop_contract_poll_worker
 
                 stop_scheduler()
                 await stop_suite_execution_watchdog()
                 await stop_ui_execution_watchdog()
                 await stop_artifact_maintenance()
+                await stop_notification_delivery_worker()
+                await stop_api_health_worker()
+                await stop_contract_poll_worker()
             except Exception as e:
                 _logger.warning("AutoTest 清理失败: %s", e)
 
@@ -356,7 +376,7 @@ from fastapi_backend.core.router_registry import discover_routers
 
 _routers = discover_routers()
 
-for group_name in ("admin", "autotest", "learning", "ai_tools", "ui_automation"):
+for group_name in ("admin", "autotest", "learning", "ai_tools", "ui_automation", "workspace"):
     group_router = _routers.get(group_name)
     if group_router is not None:
         app.include_router(group_router)

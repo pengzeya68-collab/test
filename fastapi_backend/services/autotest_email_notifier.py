@@ -115,6 +115,19 @@ class EmailNotifier:
 
         return await asyncio.to_thread(self._send_smtp, to_email, msg)
 
+    async def send_plain_result(self, to_email: str, subject: str, content: str) -> bool:
+        """Send a compact result message for the durable notification outbox."""
+        if not self.smtp_host or not self.smtp_user or not self.smtp_password:
+            _logger.warning("[EmailNotifier] 邮件配置不完整，无法发送结果通知")
+            return False
+        safe_content = html_module.escape(content).replace("\n", "<br>")
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject[:200]
+        msg["From"] = self.from_email
+        msg["To"] = to_email
+        msg.attach(MIMEText(f"<html><body><pre style=\"font-family:Arial,sans-serif;white-space:pre-wrap\">{safe_content}</pre></body></html>", "html", "utf-8"))
+        return await asyncio.to_thread(self._send_smtp, to_email, msg)
+
     async def send_scenario_result(
         self,
         to_email: str,

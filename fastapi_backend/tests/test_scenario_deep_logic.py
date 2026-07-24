@@ -1,5 +1,6 @@
 import httpx
 import pytest
+import sys
 from unittest.mock import AsyncMock
 import json
 import threading
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from fastapi_backend.services.autotest_scenario_runner import ScenarioExecutionEngine
+from fastapi_backend.services.protocol_executor_service import ProtocolResult, protocol_executor_service
 import fastapi_backend.services.autotest_scenario_runner as scenario_runner
 from fastapi_backend.core.database import Base
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment, AutoTestScenario, AutoTestScenarioStep
@@ -21,6 +23,30 @@ def make_step(step_id, order, step_type="api_request", config=None):
         "step_config": config or {},
         "api_case_id": step_id,
     }
+
+
+@pytest.mark.asyncio
+async def test_frozen_desktop_never_treats_backend_executable_as_python(monkeypatch, tmp_path):
+    """A packaged backend must fall back to the in-process HTML report path."""
+    engine = ScenarioExecutionEngine(1)
+    invoked = False
+
+    def unexpected_subprocess(*_args, **_kwargs):
+        nonlocal invoked
+        invoked = True
+        raise AssertionError("a frozen backend must not spawn pytest or pip")
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(scenario_runner.subprocess, "run", unexpected_subprocess)
+    try:
+        generated = await engine._run_pytest_and_generate_report(
+            tmp_path / "scenario.py", str(tmp_path / "results"), str(tmp_path / "report")
+        )
+    finally:
+        monkeypatch.delattr(sys, "frozen", raising=False)
+
+    assert generated is False
+    assert invoked is False
 
 
 @pytest.mark.asyncio
@@ -76,6 +102,32 @@ def test_condition_supports_placeholder_and_nested_variable_paths():
     engine.context_vars = {"token": "abc", "user": {"level": 3}}
     assert engine._evaluate_condition({"variable": "{{token}}", "operator": "equals", "value": "abc"})
     assert engine._evaluate_condition({"variable": "user.level", "operator": ">", "value": 2})
+
+
+@pytest.mark.asyncio
+async def test_protocol_step_uses_shared_executor_and_exposes_extracted_variables(monkeypatch):
+    engine = ScenarioExecutionEngine(1)
+    engine.context_vars = {}
+    engine.session_vars = {"tenant": "qa"}
+
+    async def execute(protocol, config, variables):
+        assert protocol == "grpc"
+        assert variables["tenant"] == "qa"
+        return ProtocolResult(status="OK", protocol="grpc", duration_ms=12, response={"data": {"orderId": "o-1"}})
+
+    monkeypatch.setattr(protocol_executor_service, "execute", execute)
+    result = await engine._execute_protocol(
+        make_step(3, 30, "protocol", {
+            "protocol": "grpc",
+            "extractors": [{"variableName": "order_id", "expression": "$.data.orderId"}],
+        }),
+        [],
+        0,
+    )
+
+    assert result["success"] is True
+    assert result["protocol"] == "grpc"
+    assert engine.context_vars["order_id"] == "o-1"
 
 
 @pytest.mark.asyncio

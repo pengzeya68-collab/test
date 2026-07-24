@@ -30,9 +30,11 @@ import { RecorderMode, RecorderSession } from '../worker/recorder-session';
 import { getMainWindow } from './window';
 import { deleteAuthState, listAuthStates, loadAuthState, saveAuthState } from './auth-state-store';
 import { chromium } from 'playwright';
-import { bundledChromiumExecutable } from '../worker/browser-runtime';
+import { chromiumLaunchTarget } from '../worker/browser-runtime';
 import { DesktopAgentService } from './desktop-agent-service';
 import { getDesktopDataDirectoryStatus } from './desktop-data-directory';
+import { assertHttpNavigationUrl } from '../shared/safe-url';
+import { getLocalBackendCredentials } from './backend-service';
 
 const activeOperations = new Map<string, AbortController>();
 const activeEngines = new Map<string, CaseExecutionEngine>();
@@ -93,10 +95,19 @@ type RunCasePayload = {
   headless: boolean;
   screenshotsOnFailure: boolean;
   traceOnFailure: boolean;
+  videoOnFailure?: boolean;
   debugMode: boolean;
   authStateId?: string | null;
   runtimeConfigRequest?: { serverUrl: string; token: string; environmentId?: number | null } | null;
   variables?: Record<string, string>;
+  browserEngine?: 'chromium' | 'firefox' | 'webkit';
+  healingEndpoint?: string | null;
+  projectId?: number | null;
+  runId?: number | null;
+  accessToken?: string | null;
+  agentToken?: string | null;
+  agentId?: number | null;
+  networkRules?: Array<Record<string, unknown>> | null;
 };
 
 type CancelPayload = {
@@ -153,8 +164,9 @@ async function handleBrowserStatus(): Promise<{
 async function handleGoto(
   payload: GotoPayload
 ): Promise<{ finalUrl: string; title: string }> {
+  const safeUrl = assertHttpNavigationUrl(payload.url, 'url');
   const page = getPage();
-  await page.goto(payload.url, {
+  await page.goto(safeUrl, {
     timeout: payload.timeoutMs,
     waitUntil: payload.waitUntil,
   });
@@ -249,7 +261,7 @@ async function validateAuthState(id: string, targetUrl: string): Promise<Record<
   if (cookies.length > 0 && persistent.length === cookies.length && persistent.every((cookie: any) => Number(cookie.expires) <= nowSeconds)) {
     return { valid: false, status: 'expired', reason: '登录 Cookie 已全部过期', targetUrl };
   }
-  const browser = await chromium.launch({ headless: true, executablePath: bundledChromiumExecutable() });
+  const browser = await chromium.launch({ headless: true, ...chromiumLaunchTarget() });
   try {
     const context = await browser.newContext({ storageState });
     const page = await context.newPage();
@@ -280,9 +292,18 @@ async function handleRunCase(
     headless: payload.headless,
     screenshotsOnFailure: payload.screenshotsOnFailure,
     traceOnFailure: payload.traceOnFailure,
+    videoOnFailure: payload.videoOnFailure,
     debugMode: payload.debugMode,
     storageState: payload.authStateId ? loadAuthState(payload.authStateId) : null,
     artifactRootDir,
+    browserEngine: payload.browserEngine || 'chromium',
+    healingEndpoint: payload.healingEndpoint || null,
+    projectId: payload.projectId || null,
+    runId: payload.runId || null,
+    accessToken: payload.accessToken || null,
+    agentToken: payload.agentToken || null,
+    agentId: payload.agentId || null,
+    networkRules: (payload.networkRules as any) || null,
   };
 
   const onEvent = (event: StepEvent) => {
@@ -409,12 +430,13 @@ export function registerIpcHandlers(): void {
       const senderWindow = assertTrustedSender(event);
       const payload = raw?.payload || {};
       if (typeof payload.url !== 'string' || payload.url.length > 4096) throw new Error('INVALID_RECORDER_URL');
+      const safeRecorderUrl = assertHttpNavigationUrl(payload.url, 'recorder_url');
       await stopActiveRecorder();
       activeRecorder = new RecorderSession((recorderEvent) => {
         if (!senderWindow.isDestroyed()) senderWindow.webContents.send(`ipc:recorder:event:${correlationId}`, recorderEvent);
       });
       const result = await activeRecorder.start({
-        url: payload.url,
+        url: safeRecorderUrl,
         viewport: payload.viewport ?? null,
         slowMo: payload.slowMo ?? 0,
         storageState: payload.authStateId ? loadAuthState(payload.authStateId) : null,
@@ -454,12 +476,18 @@ export function registerIpcHandlers(): void {
       return createErrorResponse(correlationId, 'recorder.validate', 'EXECUTION_ERROR', error?.message ?? String(error));
     }
   });
-  ipcMain.handle('ipc:auth-state.list', async (event, raw: any) => {
-    const correlationId = raw?.correlationId || 'unknown';
-    try { assertTrustedSender(event); return createSuccessResponse(correlationId, 'auth-state.list' as any, listAuthStates()); }
-    catch (error: any) { return createErrorResponse(correlationId, 'auth-state.list' as any, 'EXECUTION_ERROR', error?.message ?? String(error)); }
-  });
-
+  ipcMain.handle('ipc:auth-state.list', async (event, raw: any) => {
+
+    const correlationId = raw?.correlationId || 'unknown';
+
+    try { assertTrustedSender(event); return createSuccessResponse(correlationId, 'auth-state.list' as any, listAuthStates()); }
+
+    catch (error: any) { return createErrorResponse(correlationId, 'auth-state.list' as any, 'EXECUTION_ERROR', error?.message ?? String(error)); }
+
+  });
+
+
+
   ipcMain.handle('ipc:auth-state.validate', async (event, raw: any) => {
     const correlationId = raw?.correlationId || 'unknown';
     try {
@@ -470,20 +498,33 @@ export function registerIpcHandlers(): void {
       return createErrorResponse(correlationId, 'auth-state.validate' as any, 'EXECUTION_ERROR', error?.message ?? String(error));
     }
   });
-  ipcMain.handle('ipc:auth-state.save', async (event, raw: any) => {
-    const correlationId = raw?.correlationId || 'unknown';
-    try {
-      assertTrustedSender(event);
-      if (!activeRecorder) throw new Error('RECORDER_NOT_RUNNING');
-      const state = await activeRecorder.getStorageState();
-      return createSuccessResponse(correlationId, 'auth-state.save' as any, saveAuthState(raw?.payload?.name || '', state, raw?.payload?.id));
-    } catch (error: any) { return createErrorResponse(correlationId, 'auth-state.save' as any, 'EXECUTION_ERROR', error?.message ?? String(error)); }
-  });
-
+  ipcMain.handle('ipc:auth-state.save', async (event, raw: any) => {
+
+    const correlationId = raw?.correlationId || 'unknown';
+
+    try {
+
+      assertTrustedSender(event);
+
+      if (!activeRecorder) throw new Error('RECORDER_NOT_RUNNING');
+
+      const state = await activeRecorder.getStorageState();
+
+      return createSuccessResponse(correlationId, 'auth-state.save' as any, saveAuthState(raw?.payload?.name || '', state, raw?.payload?.id));
+
+    } catch (error: any) { return createErrorResponse(correlationId, 'auth-state.save' as any, 'EXECUTION_ERROR', error?.message ?? String(error)); }
+
+  });
+
+
+
   ipcMain.handle('ipc:auth-state.delete', async (event, raw: any) => {
-    const correlationId = raw?.correlationId || 'unknown';
-    try { assertTrustedSender(event); deleteAuthState(raw?.payload?.id); return createSuccessResponse(correlationId, 'auth-state.delete' as any, null); }
-    catch (error: any) { return createErrorResponse(correlationId, 'auth-state.delete' as any, 'EXECUTION_ERROR', error?.message ?? String(error)); }
+    const correlationId = raw?.correlationId || 'unknown';
+
+    try { assertTrustedSender(event); deleteAuthState(raw?.payload?.id); return createSuccessResponse(correlationId, 'auth-state.delete' as any, null); }
+
+    catch (error: any) { return createErrorResponse(correlationId, 'auth-state.delete' as any, 'EXECUTION_ERROR', error?.message ?? String(error)); }
+
   });
   ipcMain.handle('ipc:agent.status', async (event, raw: any) => {
     const correlationId = raw?.correlationId || 'unknown';
@@ -505,6 +546,17 @@ export function registerIpcHandlers(): void {
       return createErrorResponse(correlationId, 'desktop.info' as any, 'EXECUTION_ERROR', error?.message ?? String(error));
     }
   });
+  ipcMain.handle('ipc:desktop.local-credentials', async (event, raw: any) => {
+    const correlationId = raw?.correlationId || 'unknown';
+    try {
+      assertTrustedSender(event);
+      const credentials = getLocalBackendCredentials();
+      if (!credentials) throw new Error('LOCAL_CREDENTIALS_UNAVAILABLE');
+      return createSuccessResponse(correlationId, 'desktop.local-credentials' as any, credentials);
+    } catch (error: any) {
+      return createErrorResponse(correlationId, 'desktop.local-credentials' as any, 'EXECUTION_ERROR', error?.message ?? String(error));
+    }
+  });
 
   ipcMain.handle('ipc:agent.register', async (event, raw: any) => {
     const correlationId = raw?.correlationId || 'unknown';
@@ -515,6 +567,7 @@ export function registerIpcHandlers(): void {
         serverUrl: String(payload.serverUrl || ''),
         accessToken: String(payload.accessToken || ''),
         name: String(payload.name || ''),
+        projectId: Number.isInteger(payload.projectId) ? Number(payload.projectId) : null,
         authStateId: payload.authStateId ? String(payload.authStateId) : null,
         headless: payload.headless !== false,
       });
@@ -631,6 +684,7 @@ export function unregisterIpcHandlers(): void {
     'ipc:agent.disable',
     'ipc:agent.remove',
     'ipc:desktop.info',
+    'ipc:desktop.local-credentials',
   ];
   for (const ch of channels) {
     if (ipcMain.listenerCount(ch) > 0) {

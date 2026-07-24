@@ -5,10 +5,10 @@ test.describe('登录功能测试', () => {
   test('登录页面能正常显示', async ({ page }) => {
     await page.goto('/#/login');
 
-    await expect(page.locator('.login-page')).toBeVisible();
-    await expect(page.getByText('用户名', { exact: true })).toBeVisible();
-    await expect(page.getByText('密码', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible();
+    await expect(page.getByTestId('login-page')).toBeVisible();
+    await expect(page.getByTestId('login-username-input')).toBeVisible();
+    await expect(page.getByTestId('login-password-input')).toBeVisible();
+    await expect(page.getByTestId('login-submit-button')).toBeVisible();
   });
 });
 
@@ -64,9 +64,9 @@ test.describe('API健康检查', () => {
 test.describe('页面导航测试', () => {
   test('登录成功后可以进入自动化测试页', async ({ page }) => {
     await login(page);
-    await page.goto('/#/auto-test');
+    await page.getByRole('link', { name: '自动化测试', exact: true }).click();
 
-    await expect(page.getByTestId('auto-test-page')).toBeVisible();
+    await expect(page.getByTestId('auto-test-page')).toBeVisible({ timeout: 20_000 });
   });
 });
 
@@ -75,15 +75,15 @@ test.describe('响应式布局测试', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/#/login');
 
-    await expect(page.locator('.login-page')).toBeVisible();
-    await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible();
+    await expect(page.getByTestId('login-page')).toBeVisible();
+    await expect(page.getByTestId('login-submit-button')).toBeVisible();
   });
 
   test('桌面端登录页能正常显示', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto('/#/login');
 
-    await expect(page.locator('.login-page')).toBeVisible();
-    await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible();
+    await expect(page.getByTestId('login-page')).toBeVisible();
+    await expect(page.getByTestId('login-submit-button')).toBeVisible();
   });
 });

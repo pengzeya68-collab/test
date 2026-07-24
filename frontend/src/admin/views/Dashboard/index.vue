@@ -70,8 +70,8 @@ const getIcon = (title) => {
   return map[title] || 'D'
 }
 const getColor = (title) => {
-  const map = { '总用户数': '#409EFF', '习题总数': '#67C23A', '学习路径': '#E6A23C', '社区帖子': '#F56C6C' }
-  return map[title] || '#409EFF'
+  const map = { '总用户数': 'var(--tm-color-primary)', '习题总数': 'var(--tm-color-success)', '学习路径': 'var(--tm-color-warning)', '社区帖子': 'var(--tm-color-danger)' }
+  return map[title] || 'var(--tm-color-primary)'
 }
 const diffType = d => ({ easy: 'success', medium: 'warning', hard: 'danger' }[d] || 'info')
 const diffText = d => ({ easy: '简单', medium: '中等', hard: '困难' }[d] || d)

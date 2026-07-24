@@ -12,11 +12,11 @@
     <!-- 图例说明 -->
     <div class="legend">
       <div class="legend-item">
-        <span class="legend-color" style="background: #409eff;"></span>
+        <span class="legend-color" style="background: var(--tm-color-primary);"></span>
         <span>我的能力</span>
       </div>
       <div class="legend-item">
-        <span class="legend-color" style="background: #67c23a;"></span>
+        <span class="legend-color" style="background: var(--tm-color-success);"></span>
         <span>行业平均</span>
       </div>
     </div>
@@ -94,28 +94,28 @@ const chartOption = computed(() => {
             value: props.radarData.user_data,
             name: '我的能力',
             itemStyle: {
-              color: '#409eff'
+              color: 'var(--tm-color-primary)'
             },
             lineStyle: {
               width: 2,
-              color: '#409eff'
+              color: 'var(--tm-color-primary)'
             },
             areaStyle: {
-              color: 'rgba(64, 158, 255, 0.3)'
+              color: 'rgba(var(--tm-color-primary-rgb), 0.3)'
             }
           },
           {
             value: props.radarData.industry_data,
             name: '行业平均',
             itemStyle: {
-              color: '#67c23a'
+              color: 'var(--tm-color-success)'
             },
             lineStyle: {
               width: 2,
-              color: '#67c23a'
+              color: 'var(--tm-color-success)'
             },
             areaStyle: {
-              color: 'rgba(103, 194, 58, 0.2)'
+              color: 'color-mix(in srgb, var(--tm-color-success) 20%, transparent)'
             }
           }
         ]
@@ -127,7 +127,7 @@ const chartOption = computed(() => {
 
 <style scoped>
 .skill-radar {
-  background: #18181B;
+  background: var(--tm-bg-card-solid);
   border-radius: 12px;
   padding: 30px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);

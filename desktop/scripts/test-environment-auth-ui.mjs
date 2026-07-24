@@ -1,8 +1,19 @@
 ﻿import { chromium } from 'playwright';
 const browser = await chromium.connectOverCDP('http://127.0.0.1:9333');
+let caseId = null;
 try {
   const page = browser.contexts()[0].pages()[0];
-  await page.evaluate(() => { location.hash = '#/ui-automation/cases/2'; });
+  caseId = await page.evaluate(async () => {
+    const response = await fetch('http://127.0.0.1:5001/api/ui-automation/cases', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: `登录态运行配置验收-${Date.now()}` }),
+    });
+    const body = await response.json();
+    if (!response.ok || !body?.id) throw new Error(`AUTH_FIXTURE_CREATE_FAILED:${response.status}:${JSON.stringify(body)}`);
+    return body.id;
+  });
+  await page.evaluate(id => { location.hash = `#/ui-automation/cases/${id}`; }, caseId);
   await page.getByText('测试环境', { exact: true }).waitFor({ timeout: 15000 });
   const body = await page.locator('body').innerText();
   for (const text of ['测试环境', '登录态', '每次重新登录', '地址与超时']) {
@@ -37,6 +48,12 @@ try {
   await page.screenshot({ path: 'environment-auth-acceptance.png', fullPage: true });
   console.log(JSON.stringify({ passed: true, controls: true, authStateBridge: true, storedProfiles: bridge.authStates.length, runtimeConfigRun: runResult.status }));
 } finally {
+  if (caseId) {
+    const page = browser.contexts()[0].pages()[0];
+    await page.evaluate(async id => fetch(`http://127.0.0.1:5001/api/ui-automation/cases/${id}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    }), caseId).catch(() => {});
+  }
   await browser.close();
 }
 

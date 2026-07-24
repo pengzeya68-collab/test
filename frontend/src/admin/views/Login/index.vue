@@ -3,7 +3,7 @@
     <div class="login-card">
       <div class="login-header">
         <h2>TestMaster</h2>
-        <p>绠＄悊鍛樺悗鍙扮櫥褰</p>
+        <p>管理员后台登录</p>
       </div>
 
       <el-form :model="form" :rules="rules" ref="formRef" label-width="0">
@@ -13,6 +13,8 @@
             placeholder="用户名"
             size="large"
             class="dark-input"
+            autocomplete="username"
+            aria-label="管理员用户名"
           >
             <template #prefix>
               <el-icon><User /></el-icon>
@@ -23,9 +25,12 @@
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="瀵嗙爜"
+            show-password
+            placeholder="密码"
             size="large"
             class="dark-input"
+            autocomplete="current-password"
+            aria-label="管理员密码"
             @keyup.enter="handleLogin"
           >
             <template #prefix>
@@ -42,14 +47,13 @@
             @click="handleLogin"
             class="btn-login"
           >
-            鐧诲綍
+            登录
           </el-button>
         </el-form-item>
       </el-form>
 
-      <!-- 娴嬭瘯璐﹀彿鎻愮ず浠呭湪寮€鍙戠幆澧冩樉绀?-->
       <div v-if="isDev" class="login-footer">
-        <span>榛樿璐﹀彿: admin / admin123</span>
+        <span>开发环境默认账号见部署文档（生产环境不显示）</span>
       </div>
     </div>
   </div>
@@ -153,11 +157,13 @@ const handleLogin = async () => {
 .login-card {
   width: 100%;
   max-width: 420px;
-  background: var(--tm-card-bg);
+  background: var(--tm-glass-bg, var(--tm-card-bg));
   padding: 48px 40px;
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), var(--tm-glow-effect);
-  border: var(--tm-card-border);
+  border-radius: 14px;
+  box-shadow: var(--tm-shadow-card), var(--tm-glow-effect);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.28);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 @media (max-width: 480px) {

@@ -124,6 +124,7 @@ class UICaseGroup(Base):
     __table_args__ = (
         Index("idx_ui_case_groups_parent_id", "parent_id"),
         Index("idx_ui_case_groups_user_id", "user_id"),
+        Index("idx_ui_case_groups_workspace_project_id", "project_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -132,6 +133,7 @@ class UICaseGroup(Base):
     description = Column(Text, nullable=True)
     sort_order = Column(Integer, nullable=False, default=0)
     user_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(Integer, nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
@@ -220,6 +222,7 @@ class UIRun(Base):
     # The UI-specific row keeps Playwright metadata; AutomationExecution is the
     # authoritative cross-module lifecycle and event stream.
     automation_execution_id = Column(Integer, nullable=True, unique=True, index=True)
+    parent_run_id = Column(Integer, nullable=True, index=True)
     attempt = Column(Integer, nullable=False, default=1)
     last_heartbeat_at = Column(DateTime(timezone=True), nullable=True)
     lease_expires_at = Column(DateTime(timezone=True), nullable=True)
@@ -268,6 +271,7 @@ class DesktopAgent(Base):
     __table_args__ = (
         Index("idx_desktop_agents_agent_key", "agent_key", unique=True),
         Index("idx_desktop_agents_status", "status"),
+        Index("idx_desktop_agents_project_id", "project_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -275,6 +279,7 @@ class DesktopAgent(Base):
     agent_token_hash = Column(String(64), nullable=True)
     name = Column(String(200), nullable=False)
     owner_id = Column(Integer, nullable=False)
+    project_id = Column(Integer, nullable=True, index=True)
     team_id = Column(Integer, nullable=True)
     hostname = Column(String(200), nullable=True)
     os_version = Column(String(100), nullable=True)

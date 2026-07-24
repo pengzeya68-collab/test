@@ -32,5 +32,33 @@ function choose(type) { emit('select', type); visible.value = false; keyword.val
 function focusSearch() { nextTick(() => searchRef.value?.focus()) }
 </script>
 <style scoped>
-.action-groups { max-height: 62vh; overflow: auto; padding: 4px 2px 0; }.action-groups section { margin-top: 18px; }.action-groups h3 { margin: 0 0 8px; color: #66736b; font-size: 12px; }.action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }.action-grid button { height: 42px; border: 1px solid #d9e2dc; border-radius: 5px; background: #fff; display: flex; align-items: center; gap: 9px; padding: 0 12px; color: #26332c; cursor: pointer; text-align: left; }.action-grid button:hover { border-color: #4b9470; background: #f0f7f3; color: #28724f; }
+.action-groups { max-height: 62vh; overflow: auto; padding: 4px 2px 0; }
+.action-groups section { margin-top: 18px; }
+.action-groups h3 { margin: 0 0 8px; color: var(--tm-text-secondary); font-size: 12px; }
+.action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.action-grid button {
+  height: 42px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--tm-radius-small, 8px);
+  background: var(--tm-bg-elevated);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  color: var(--tm-text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+.action-grid button:hover {
+  border-color: rgba(var(--tm-color-primary-rgb), 0.45);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
+  color: var(--tm-color-primary);
+}
+.action-grid button:focus-visible {
+  outline: 2px solid rgba(var(--tm-color-primary-rgb), 0.5);
+  outline-offset: 1px;
+}
+@media (max-width: 640px) {
+  .action-grid { grid-template-columns: 1fr 1fr; }
+}
 </style>

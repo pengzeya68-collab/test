@@ -92,8 +92,8 @@ h2 { color: var(--tm-text-primary); margin-bottom: 16px; }
   padding: 14px 16px; background: var(--tm-card-bg); border: 1px solid var(--tm-border);
   border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all .2s;
 }
-.fav-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); border-color: #409EFF; }
+.fav-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); border-color: var(--tm-color-primary); }
 .fav-item .title { flex: 1; font-size: 14px; font-weight: 500; color: var(--tm-text-primary); }
-.fav-item .meta { font-size: 12px; color: #909399; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fav-item .meta { font-size: 12px; color: var(--tm-color-info); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pagination-wrap { display: flex; justify-content: center; margin-top: 20px; }
 </style>

@@ -2,11 +2,13 @@
 
 import asyncio
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
 from fastapi_backend.models.autotest import (
@@ -26,6 +28,9 @@ from fastapi_backend.models.autotest import (
 )
 from fastapi_backend.models.ui_automation import DesktopAgent, UIRun
 from fastapi_backend.services import suite_execution_service
+from fastapi_backend.services import autotest_request_service
+from fastapi_backend.services import jmeter_bench_service
+from fastapi_backend.services import jmeter_engine
 from fastapi_backend.services import suite_schedule_service
 from fastapi_backend.routers import autotest_suites as autotest_suites_router
 from fastapi_backend.services.ui_automation import agent_service, run_service
@@ -34,6 +39,30 @@ from fastapi_backend.services.capture_import import normalize_captured_exchange
 from fastapi_backend.services.mock_service import mock_engine
 from fastapi_backend.routers.mock_api import _validate_fault_config
 from fastapi_backend.tests.test_autotest_compat import autotest_client, autotest_engine, autotest_session_factory
+
+
+@pytest.mark.asyncio
+async def test_manual_scheduler_run_reads_the_owned_task_before_dispatch(monkeypatch):
+    """The manual Run Now endpoint must dispatch the task returned by ownership validation."""
+    from fastapi_backend.routers import autotest_execution as execution_router
+    from fastapi_backend.tasks import task_run_scenario
+
+    async def owned_task(task_id, user_id):
+        assert (task_id, user_id) == ("schedule-1", 7)
+        return {"scenario_id": None, "env_id": 3}
+
+    dispatched = []
+    monkeypatch.setattr(execution_router, "_get_owned_scheduler_task", owned_task)
+    monkeypatch.setattr(
+        task_run_scenario,
+        "delay",
+        lambda scenario_id, env_id, user_id: dispatched.append((scenario_id, env_id, user_id)) or SimpleNamespace(id="run-1"),
+    )
+
+    response = await execution_router.run_scheduler_task_now("schedule-1", SimpleNamespace(id=7), project_id=1)
+
+    assert response == {"message": "任务已触发执行", "celery_task_id": "run-1"}
+    assert dispatched == [(None, 3, None)]
 
 
 def _rule(**overrides):
@@ -62,6 +91,92 @@ def test_capture_normalization_redacts_page_url_query_credentials():
     )
     assert "api-secret" not in captured["url"]
     assert captured["page_url"] == "https://shop.example.test/checkout?access_token={{ACCESS_TOKEN}}&tab=confirm"
+
+
+@pytest.mark.asyncio
+async def test_request_template_is_resolved_before_final_ssrf_validation(monkeypatch):
+    validated_urls = []
+
+    async def _resolve_variables(env_id, variables, user_id=None):
+        assert env_id == 7
+        assert user_id == 11
+        return {**variables, "base_url": "https://resolved.example", "token": "environment-secret"}
+
+    def _validate(url):
+        validated_urls.append(url)
+        return (url == "https://resolved.example/health", "template or target was not allowed")
+
+    async def _handler(request):
+        assert request.url == httpx.URL("https://resolved.example/health")
+        assert request.headers["X-Token"] == "environment-secret"
+        return httpx.Response(200, json={"ok": True}, request=request)
+
+    monkeypatch.setattr(autotest_request_service, "resolve_variables", _resolve_variables)
+    monkeypatch.setattr(autotest_request_service, "validate_url_safety", _validate)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_handler)) as client:
+        result = await autotest_request_service.execute_http_request(
+            method="GET",
+            url="{{base_url}}/health",
+            headers={"X-Token": "{{token}}"},
+            params={},
+            body=None,
+            env_id=7,
+            user_id=11,
+            http_client=client,
+        )
+
+    assert result["success"] is True
+    assert validated_urls == ["https://resolved.example/health"]
+
+
+@pytest.mark.asyncio
+async def test_desktop_jmeter_submission_schedules_local_background_task(monkeypatch):
+    scheduled = []
+
+    class FakeDb:
+        def add(self, value):
+            self.value = value
+
+        async def commit(self):
+            return None
+
+        async def refresh(self, value):
+            value.id = 73
+
+    monkeypatch.setenv("TESTMASTER_DESKTOP_LOCAL", "1")
+    monkeypatch.setattr(jmeter_bench_service, "is_jmeter_available", lambda: True)
+    monkeypatch.setattr(
+        jmeter_bench_service,
+        "_schedule_desktop_jmeter_task",
+        lambda run_id, task_id: scheduled.append((run_id, task_id)),
+    )
+
+    result = await jmeter_bench_service.submit_bench(
+        FakeDb(),
+        user_id=11,
+        plan_name="desktop acceptance",
+        jmx_content="<jmeterTestPlan/>",
+        config={"duration": 3},
+    )
+
+    assert result["run_id"] == 73
+    assert result["status"] == "pending"
+    assert result["task_id"]
+    assert scheduled == [(73, result["task_id"])]
+
+
+def test_jmeter_runtime_uses_a_bin_directory_for_batch_launcher(monkeypatch):
+    monkeypatch.setattr(jmeter_engine, "JMETER_BIN", r"D:\\Tools\\JMeter\\bin\\jmeter.bat")
+    monkeypatch.setattr(jmeter_engine, "JAVA_HOME", r"D:\\missing-java")
+    monkeypatch.delenv("JMETER_BIN", raising=False)
+    monkeypatch.delenv("JMETER_HOME", raising=False)
+    monkeypatch.delenv("JAVA_HOME", raising=False)
+
+    env = jmeter_engine._build_jmeter_runtime_env()
+
+    assert env["JMETER_BIN"].endswith("bin" + jmeter_engine.os.sep)
+    assert env["JMETER_HOME"].endswith("JMeter")
+    assert "JAVA_HOME" not in env
 
 
 @pytest.mark.asyncio
@@ -480,6 +595,65 @@ async def test_artifact_maintenance_removes_expired_files_and_metadata(autotest_
         assert await db.get(ArtifactManifest, artifact_id) is None
         upload = await db.get(ArtifactUploadSession, "expired-upload-session")
         assert upload.status == "expired"
+
+
+@pytest.mark.asyncio
+async def test_artifact_maintenance_sweeps_orphaned_tmp_files(autotest_session_factory, tmp_path):
+    now = datetime.now(timezone.utc)
+    root = Path(tmp_path) / "artifacts"
+    tmp_dir = root / "tmp"
+    tmp_dir.mkdir(parents=True)
+    stale_orphan = tmp_dir / "orphan-stale.part"
+    stale_orphan.write_bytes(b"stale")
+    fresh_orphan = tmp_dir / "orphan-fresh.part"
+    fresh_orphan.write_bytes(b"fresh")
+    live_file = tmp_dir / "live-upload.part"
+    live_file.write_bytes(b"live")
+    not_a_part = tmp_dir / "notes.txt"
+    not_a_part.write_text("keep")
+    stale_mtime = (now - timedelta(hours=25)).timestamp()
+    os.utime(stale_orphan, (stale_mtime, stale_mtime))
+    os.utime(live_file, (stale_mtime, stale_mtime))
+
+    async with autotest_session_factory() as db:
+        execution = AutomationExecution(
+            public_id="orphan-sweep-execution",
+            execution_type="suite",
+            target_type="suite",
+            target_id=1,
+            user_id=1,
+            status="failed",
+            idempotency_key="orphan-sweep-execution-key",
+        )
+        db.add(execution)
+        await db.flush()
+        db.add(
+            ArtifactUploadSession(
+                id="live-upload-session",
+                execution_id=execution.id,
+                user_id=1,
+                kind="log",
+                filename="run.log",
+                content_type="text/plain",
+                expected_size_bytes=4,
+                expected_sha256="d" * 64,
+                temp_storage_key="live-upload.part",
+                status="open",
+                expires_at=now + timedelta(hours=1),
+            )
+        )
+        await db.commit()
+
+    result = await cleanup_expired_artifacts(
+        session_factory=autotest_session_factory,
+        storage_root=root,
+        now=now,
+    )
+    assert result["deleted_orphan_files"] == 1
+    assert not stale_orphan.exists()
+    assert fresh_orphan.exists()
+    assert live_file.exists()
+    assert not_a_part.exists()
 
 
 @pytest.mark.asyncio

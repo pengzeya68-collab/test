@@ -17,6 +17,9 @@ from fastapi_backend.models.autotest import ArtifactManifest, ArtifactUploadSess
 _logger = logging.getLogger(__name__)
 _CLEANUP_INTERVAL_SECONDS = 6 * 60 * 60
 _COMPLETED_SESSION_RETENTION = timedelta(days=7)
+# Orphaned part files (no live upload session record) must be older than this
+# before removal, so an in-flight upload that raced the sweep is never touched.
+_ORPHAN_TMP_RETENTION = timedelta(hours=24)
 _cleanup_task: asyncio.Task[None] | None = None
 
 
@@ -50,7 +53,7 @@ async def cleanup_expired_artifacts(
     current_time = now or datetime.now(timezone.utc)
     root = storage_root or artifact_storage_root()
     factory = session_factory or AsyncSessionLocal
-    result = {"expired_uploads": 0, "deleted_upload_records": 0, "deleted_artifacts": 0}
+    result = {"expired_uploads": 0, "deleted_upload_records": 0, "deleted_artifacts": 0, "deleted_orphan_files": 0}
 
     async with factory() as db:  # type: AsyncSession
         expired_uploads = list(
@@ -117,6 +120,37 @@ async def cleanup_expired_artifacts(
                 continue
             await db.delete(artifact)
             result["deleted_artifacts"] += 1
+
+        # Sweep orphaned part files whose upload session records no longer exist
+        # (e.g. process crashed between writing the file and committing the row,
+        # or the database was restored without its storage directory). Only files
+        # older than the retention window and not referenced by a live open
+        # session are removed, so in-flight uploads are never touched.
+        live_tmp_keys = set(
+            (
+                await db.scalars(
+                    select(ArtifactUploadSession.temp_storage_key).where(
+                        ArtifactUploadSession.status == "open",
+                        ArtifactUploadSession.expires_at >= current_time,
+                    )
+                )
+            ).all()
+        )
+        tmp_root = root / "tmp"
+        if tmp_root.is_dir():
+            orphan_cutoff = current_time.timestamp() - _ORPHAN_TMP_RETENTION.total_seconds()
+            for candidate in tmp_root.iterdir():
+                try:
+                    if not candidate.is_file() or not candidate.name.endswith(".part"):
+                        continue
+                    if candidate.name in live_tmp_keys:
+                        continue
+                    if candidate.stat().st_mtime >= orphan_cutoff:
+                        continue
+                    candidate.unlink()
+                    result["deleted_orphan_files"] += 1
+                except OSError as exc:
+                    _logger.warning("Unable to remove orphaned upload file %s: %s", candidate, exc)
         await db.commit()
     return result
 

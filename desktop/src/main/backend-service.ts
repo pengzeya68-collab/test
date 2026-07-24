@@ -7,6 +7,85 @@ import * as path from 'path';
 const HEALTH_URL = 'http://127.0.0.1:5001/api/ui-automation/health';
 let backendProcess: ChildProcess | null = null;
 
+interface DesktopJMeterRuntime {
+  JMETER_ENGINE_ENABLED: 'true' | 'false';
+  JMETER_HOME?: string;
+  JMETER_BIN?: string;
+  JMETER_REPORT_DIR: string;
+}
+
+function jmeterExecutableName(platform = process.platform): string {
+  return platform === 'win32' ? 'jmeter.bat' : 'jmeter';
+}
+
+/**
+ * Resolve a locally installed JMeter without making the desktop product depend
+ * on a machine-specific path. Explicit environment settings always win; the
+ * common Windows installation root is only a convenience fallback.
+ */
+export function resolveDesktopJMeterRuntime(
+  dataDir: string,
+  environment: NodeJS.ProcessEnv = process.env,
+  platform = process.platform,
+): DesktopJMeterRuntime {
+  const executableName = jmeterExecutableName(platform);
+  const reportDir = environment.JMETER_REPORT_DIR || path.join(dataDir, 'jmeter-reports');
+  const explicitlyDisabled = String(environment.JMETER_ENGINE_ENABLED || '').toLowerCase() === 'false';
+  const explicitBin = environment.JMETER_BIN;
+  const explicitHome = environment.JMETER_HOME;
+  const candidates = [
+    explicitBin,
+    explicitHome ? path.join(explicitHome, 'bin', executableName) : undefined,
+    platform === 'win32' ? 'D:\\Jmeter\\apache-jmeter-5.6.3\\bin\\jmeter.bat' : undefined,
+    platform === 'win32' ? 'D:\\Jmeter\\apache-jmeter-5.1.1\\bin\\jmeter.bat' : undefined,
+  ].filter((value): value is string => Boolean(value));
+  const bin = candidates.find(candidate => fs.existsSync(candidate));
+
+  if (!bin || explicitlyDisabled) {
+    return { JMETER_ENGINE_ENABLED: 'false', JMETER_REPORT_DIR: reportDir };
+  }
+  return {
+    JMETER_ENGINE_ENABLED: 'true',
+    JMETER_HOME: path.dirname(path.dirname(bin)),
+    JMETER_BIN: bin,
+    JMETER_REPORT_DIR: reportDir,
+  };
+}
+
+export function persistentDesktopPassword(dataDir: string): string {
+  const passwordPath = path.join(dataDir, '.desktop-admin-password');
+  try {
+    const current = fs.readFileSync(passwordPath, 'utf8').trim();
+    if (current.length >= 16) return current;
+  } catch {
+    // first launch
+  }
+  const password = crypto.randomBytes(18).toString('base64url');
+  fs.writeFileSync(passwordPath, password, { encoding: 'utf8', mode: 0o600 });
+  return password;
+}
+
+/**
+ * Returns the credentials created for the bundled loopback service.  This is
+ * deliberately a local-file capability: it is never exposed by FastAPI or
+ * persisted in renderer storage.  The IPC handler additionally limits access
+ * to the application's own main window.
+ */
+export function readLocalBackendCredentials(dataDir: string): { username: string; password: string } | null {
+  const passwordPath = path.join(dataDir, '.desktop-admin-password');
+  try {
+    const password = fs.readFileSync(passwordPath, 'utf8').trim();
+    if (password.length < 16) return null;
+    return { username: 'admin', password };
+  } catch {
+    return null;
+  }
+}
+
+export function getLocalBackendCredentials(): { username: string; password: string } | null {
+  return readLocalBackendCredentials(path.join(app.getPath('userData'), 'service'));
+}
+
 async function isHealthy(): Promise<boolean> {
   try {
     const response = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(1500) });
@@ -18,8 +97,8 @@ async function isHealthy(): Promise<boolean> {
   }
 }
 
-function persistentSecret(dataDir: string): string {
-  const secretPath = path.join(dataDir, '.service-secret');
+function persistentSecret(dataDir: string, filename = '.service-secret'): string {
+  const secretPath = path.join(dataDir, filename);
   try {
     const current = fs.readFileSync(secretPath, 'utf8').trim();
     if (current.length >= 32) return current;
@@ -50,9 +129,14 @@ export async function ensureLocalBackend(): Promise<{ ready: boolean; managed: b
   const databasePath = path.join(dataDir, 'testmaster.db').replace(/\\/g, '/');
   const isFrozen = app.isPackaged;
   const projectRoot = path.resolve(__dirname, '../../..');
-  const args = isFrozen ? [] : ['-m', 'uvicorn', 'fastapi_backend.main:app', '--host', '127.0.0.1', '--port', '5001'];
+  // Use the same entry point in development and packaged builds.  Starting
+  // Uvicorn directly bypassed the desktop database migration performed by the
+  // frozen executable, which could leave a fresh development profile blank.
+  const args = isFrozen ? [] : [path.join(projectRoot, 'desktop-backend-entry.py')];
   const stdout = fs.openSync(path.join(logDir, 'backend.log'), 'a');
   const stderr = fs.openSync(path.join(logDir, 'backend-error.log'), 'a');
+  const desktopPassword = persistentDesktopPassword(dataDir);
+  const jmeterRuntime = resolveDesktopJMeterRuntime(dataDir);
   backendProcess = spawn(executable, args, {
     cwd: isFrozen ? dataDir : projectRoot,
     windowsHide: true,
@@ -60,20 +144,36 @@ export async function ensureLocalBackend(): Promise<{ ready: boolean; managed: b
     env: {
       ...process.env,
       DATABASE_URL: `sqlite:///${databasePath}`,
-      SECRET_KEY: persistentSecret(dataDir),
-      ADMIN_SECRET_KEY: persistentSecret(dataDir),
-      ADMIN_PASSWORD: 'admin123',
+      SECRET_KEY: persistentSecret(dataDir, '.service-secret'),
+      ADMIN_SECRET_KEY: persistentSecret(dataDir, '.admin-secret'),
+      ADMIN_PASSWORD: desktopPassword,
       TESTMASTER_DESKTOP_LOCAL: '1',
       TESTMASTER_DESKTOP_ADMIN: 'admin',
-      TESTMASTER_DESKTOP_PASSWORD: 'admin123',
+      TESTMASTER_DESKTOP_PASSWORD: desktopPassword,
       TESTMASTER_DATA_DIR: dataDir,
-      AUTO_CREATE_TABLES_ON_STARTUP: 'true',
+      ...jmeterRuntime,
+      // The frozen backend runs its bundled Alembic migrations before Uvicorn
+      // starts. Never use create_all() for an existing desktop database.
+      AUTO_CREATE_TABLES_ON_STARTUP: 'false',
       CORS_ORIGINS: 'null,http://127.0.0.1:5173,http://localhost:5173',
     },
   });
-  backendProcess.once('exit', () => { backendProcess = null; });
+  backendProcess.once('error', (error) => {
+    console.error('[Backend] spawn failed:', error);
+    backendProcess = null;
+    try { fs.closeSync(stdout); } catch {}
+    try { fs.closeSync(stderr); } catch {}
+  });
+  backendProcess.once('exit', () => {
+    backendProcess = null;
+    try { fs.closeSync(stdout); } catch {}
+    try { fs.closeSync(stderr); } catch {}
+  });
 
-  const deadline = Date.now() + 45000;
+  // A frozen backend can spend longer on its first launch extracting runtime
+  // files and creating an isolated SQLite schema.  Do not report a false
+  // connection failure while that legitimate cold-start work is still active.
+  const deadline = Date.now() + 90000;
   while (Date.now() < deadline) {
     if (await isHealthy()) return { ready: true, managed: true };
     if (!backendProcess) break;

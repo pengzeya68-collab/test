@@ -3,14 +3,14 @@
 // EdTech / SaaS — Indigo + Slate (ui-ux-pro-max)
 // ============================================
 
-// 品牌主色 - Indigo-500 → Violet-500
-$--color-primary: #6366F1;
-$--color-primary-light-3: #818CF8;
-$--color-primary-light-5: #A5B4FC;
-$--color-primary-light-7: #C7D2FE;
-$--color-primary-light-8: #E0E7FF;
-$--color-primary-light-9: #EEF2FF;
-$--color-primary-dark-2: #8B5CF6;
+// 品牌主色 - Violet / Indigo（登录页视觉语言）
+$--color-primary: #7C3AED;
+$--color-primary-light-3: #8B5CF6;
+$--color-primary-light-5: #A78BFA;
+$--color-primary-light-7: #C4B5FD;
+$--color-primary-light-8: #DDD6FE;
+$--color-primary-light-9: #EDE9FE;
+$--color-primary-dark-2: #6D28D9;
 
 // 成功/警告/危险色 (Neon versions for dark mode)
 $--color-success: #4ADE80;
@@ -19,10 +19,10 @@ $--color-warning-dark: #EAB308;
 $--color-danger: #F87171;
 $--color-info: #71717A;
 
-// 背景色 - Slate 深色系统
-$--bg-color: #0F172A;
-$--bg-color-page: #0F172A;
-$--bg-color-light: #1E293B;
+// 背景色 - 专业深色系统（与登录页一致）
+$--bg-color: #0B0F1A;
+$--bg-color-page: #0B0F1A;
+$--bg-color-light: #161E2E;
 
 // 边框色 - 极其克制
 $--border-color-base: rgba(255, 255, 255, 0.05);
@@ -68,8 +68,8 @@ $--component-size-medium: 36px;
 $--component-size-small: 32px;
 $--component-size-mini: 24px;
 
-$--border-radius-base: 16px;
-$--border-radius-small: 12px;
+$--border-radius-base: 12px;
+$--border-radius-small: 8px;
 $--border-radius-circle: 50%;
 
 $--box-shadow-base: 0 2px 12px 0 rgba(0, 0, 0, 0.3);
@@ -105,34 +105,35 @@ $tm-spacing-xl: $--spacing-xl;
 // ============================================
 :root {
   // 品牌色
-  --tm-color-primary: #6366F1;
-  --tm-color-primary-light: #818CF8;
-  --tm-color-primary-dark: #8B5CF6;
-  --tm-color-primary-rgb: 99, 102, 241;
-  --tm-color-secondary: #818CF8;
+  --tm-color-primary: #7C3AED;
+  --tm-color-primary-light: #A78BFA;
+  --tm-color-primary-dark: #6D28D9;
+  --tm-color-primary-rgb: 124, 58, 237;
+  --tm-color-secondary: #8B5CF6;
 
   // 品牌渐变
-  --tm-gradient-brand: linear-gradient(135deg, #6366F1, #8B5CF6);
-  --tm-gradient-brand-hover: linear-gradient(135deg, #818CF8, #A78BFA);
-  --tm-gradient-brand-glow: 0 4px 24px rgba(99, 102, 241, 0.25);
+  --tm-gradient-brand: linear-gradient(135deg, #7C3AED, #6D28D9);
+  --tm-gradient-brand-hover: linear-gradient(135deg, #8B5CF6, #7C3AED);
+  --tm-gradient-brand-glow: 0 4px 24px rgba(124, 58, 237, 0.28);
 
-  // 背景 - Slate 系统
-  --tm-bg-page: #0F172A;
-  --tm-bg-page-rgb: 15, 23, 42;
-  --tm-bg-card: #1E293B;
-  --tm-bg-card-solid: #1E293B;
+  // 背景 - 专业深色系统
+  --tm-bg-page: #0B0F1A;
+  --tm-bg-page-rgb: 11, 15, 26;
+  --tm-bg-card: rgba(22, 30, 46, 0.88);
+  --tm-bg-card-solid: #161E2E;
   --tm-bg-hover: rgba(255, 255, 255, 0.04);
-  --tm-bg-elevated: #334155;
+  --tm-bg-elevated: #1C2740;
 
   // 边框 - 极其克制 border-white/5
   --tm-border-color: rgba(255, 255, 255, 0.05);
   --tm-border-light: rgba(255, 255, 255, 0.05);
 
-  // 文字 - Zinc 层级
-  --tm-text-primary: #FAFAFA;
-  --tm-text-regular: #A1A1AA;
-  --tm-text-secondary: #71717A;
-  --tm-text-secondary-rgb: 113, 113, 122;
+  // 文字 - Slate 层级（长时间可读）
+  --tm-text-primary: #F1F5F9;
+  --tm-text-regular: #CBD5E1;
+  --tm-text-secondary: #94A3B8;
+  --tm-text-muted: #64748B;
+  --tm-text-secondary-rgb: 148, 163, 184;
   --el-color-success-rgb: 103, 194, 58;
   --el-color-danger-rgb: 245, 108, 108;
   --el-color-warning-rgb: 250, 204, 21;
@@ -175,47 +176,64 @@ $tm-spacing-xl: $--spacing-xl;
   --tm-button-text-color: #ffffff;
 
   // 兼容旧变量
-  --accent-primary: #6366F1;
-  --accent-hover: #818CF8;
-  --accent-glow: rgba(99, 102, 241, 0.15);
-  --accent-primary-rgb: 99, 102, 241;
-  --tm-primary-color: #6366F1;
-  --tm-primary-dark: #8B5CF6;
-  --tm-bg-color: #0F172A;
-  --tm-card-bg: #1E293B;
-  --tm-bg-card: #1E293B;
-  --tm-card-border: 1px solid rgba(255, 255, 255, 0.06);
-  --tm-text-primary: #F8FAFC;
+  --accent-primary: #7C3AED;
+  --accent-hover: #A78BFA;
+  --accent-glow: rgba(124, 58, 237, 0.18);
+  --accent-primary-rgb: 124, 58, 237;
+  --tm-primary-color: #7C3AED;
+  --tm-primary-dark: #6D28D9;
+  --tm-bg-color: #0B0F1A;
+  --tm-card-bg: rgba(22, 30, 46, 0.88);
+  --tm-bg-card: rgba(22, 30, 46, 0.88);
+  --tm-card-border: 1px solid rgba(124, 58, 237, 0.22);
+  --tm-text-primary: #F1F5F9;
   --tm-text-secondary: #94A3B8;
   --tm-text-regular: #CBD5E1;
-  --tm-color-text-primary: #F8FAFC;
-  --tm-sidebar-bg: rgba(15, 23, 42, 0.92);
-  --tm-glow-effect: 0 4px 20px rgba(99, 102, 241, 0.12);
-  --tm-shadow-base: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --tm-color-text-primary: #F1F5F9;
+  --tm-sidebar-bg: rgba(11, 15, 26, 0.94);
+  --tm-glow-effect: 0 4px 20px rgba(124, 58, 237, 0.16);
+  --tm-shadow-base: 0 4px 16px rgba(0, 0, 0, 0.35);
   --tm-radius-base: 12px;
   --tm-radius-small: 8px;
-  --text-primary: #F8FAFC;
+  --text-primary: #F1F5F9;
   --text-secondary: #CBD5E1;
   --text-muted: #94A3B8;
-  --text-primary-rgb: 248, 250, 252;
+  --text-primary-rgb: 241, 245, 249;
   --text-secondary-rgb: 203, 213, 225;
   --text-muted-rgb: 148, 163, 184;
-  --bg-base: #0F172A;
-  --bg-surface: #1E293B;
-  --bg-surface-hover: #334155;
-  --bg-elevated: #334155;
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-focus: rgba(99, 102, 241, 0.5);
+  --bg-base: #0B0F1A;
+  --bg-surface: #161E2E;
+  --bg-surface-hover: rgba(255, 255, 255, 0.05);
+  --bg-elevated: #1C2740;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(124, 58, 237, 0.5);
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
 
-  // 响应式与基础设施 token（2026 现代化）
+  // 布局与基础设施
   --tm-scrollbar-size: 6px;
   --tm-scrollbar-thumb: rgba(255, 255, 255, 0.14);
   --tm-scrollbar-thumb-hover: rgba(var(--tm-color-primary-rgb), 0.5);
-  --tm-navbar-height: 64px;
+  --tm-navbar-height: 60px;
   --tm-tab-height: 44px;
+  --tm-sidebar-width: 240px;
+  --tm-sidebar-collapsed-width: 68px;
+  --tm-control-height: 36px;
+  --tm-control-height-lg: 44px;
+  --tm-page-max-width: 1440px;
+  --tm-space-xs: 4px;
+  --tm-space-sm: 8px;
+  --tm-space-md: 16px;
+  --tm-space-lg: 24px;
+  --tm-space-xl: 32px;
+  --tm-table-row-height: 48px;
+  --tm-font-xs: 11px;
+  --tm-font-sm: 12px;
+  --tm-font-md: 14px;
+  --tm-font-lg: 16px;
+  --tm-font-xl: 20px;
+  --tm-font-2xl: 28px;
 }
 
 // ============================================
@@ -231,10 +249,12 @@ $tm-bp-2xl: 1536px; // 大屏
 // Mixins
 // ============================================
 @mixin card-style {
-  background: #18181B;
-  border-radius: 16px;
+  background: var(--tm-bg-card);
+  border-radius: var(--tm-radius-base);
   box-shadow: var(--tm-shadow-card);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 // 响应式断点 mixin：@include respond-to(1024px) { ... }
@@ -269,7 +289,7 @@ $tm-bp-2xl: 1536px; // 大屏
 @mixin focus-ring {
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.3);
+    box-shadow: 0 0 0 2px rgba(var(--tm-color-primary-rgb), 0.35);
     border-color: var(--tm-color-primary);
   }
 }
@@ -280,10 +300,10 @@ $tm-bp-2xl: 1536px; // 大屏
 
 @mixin glow-hover {
   &:hover {
-    box-shadow: var(--tm-shadow-glow), var(--tm-shadow-hover);
-    border-color: rgba(255, 255, 255, 0.1);
-    background: #1E1E24;
-    transform: translateY(-2px);
+    box-shadow: var(--tm-shadow-hover);
+    border-color: rgba(var(--tm-color-primary-rgb), 0.35);
+    background: var(--tm-bg-elevated);
+    transform: translateY(-1px);
   }
 }
 

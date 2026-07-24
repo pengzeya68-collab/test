@@ -13,6 +13,7 @@ from fastapi_backend.core.database import get_db
 from fastapi_backend.core.autotest_database import get_autotest_db
 from fastapi_backend.core.exceptions import BusinessException
 from fastapi_backend.core.rbac import require_permissions
+from fastapi_backend.deps.project_context import get_active_project_id, get_active_project_id_member
 from fastapi_backend.models.models import User
 from fastapi_backend.models.autotest import (
     ArtifactManifest,
@@ -123,10 +124,18 @@ async def list_cases(
     status: Optional[str] = Query(None),
     current_user: User = Depends(require_permissions("ui:read")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
     cases, total = await case_service.list_cases(
-        db, current_user.id, page=page, page_size=page_size, group_id=group_id, keyword=keyword, status=status
+        db,
+        current_user.id,
+        page=page,
+        page_size=page_size,
+        group_id=group_id,
+        keyword=keyword,
+        status=status,
+        project_id=project_id,
     )
     return {
         "items": [UICaseOut.model_validate(case).model_dump() for case in cases],
@@ -138,10 +147,13 @@ async def list_cases(
 
 @router.get("/cases/{case_id}")
 async def get_case(
-    case_id: int, current_user: User = Depends(require_permissions("ui:read")), db: AsyncSession = Depends(get_db)
+    case_id: int,
+    current_user: User = Depends(require_permissions("ui:read")),
+    db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
-    case = await case_service.get_case(db, current_user.id, case_id)
+    case = await case_service.get_case(db, current_user.id, case_id, project_id=project_id)
     steps = await case_service.list_steps(db, case_id)
     payload = UICaseOut.model_validate(case).model_dump()
     payload["steps"] = [case_service.step_to_snapshot_dict(step) for step in steps]
@@ -153,9 +165,10 @@ async def create_case(
     body: UICaseCreate,
     current_user: User = Depends(require_permissions("ui:write")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    case = await case_service.create_case(db, current_user.id, body.model_dump())
+    case = await case_service.create_case(db, current_user.id, body.model_dump(), project_id=project_id)
     await db.commit()
     return UICaseOut.model_validate(case).model_dump()
 
@@ -166,19 +179,25 @@ async def update_case(
     body: UICaseUpdate,
     current_user: User = Depends(require_permissions("ui:write")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    case = await case_service.update_case(db, current_user.id, case_id, body.model_dump(exclude_unset=True))
+    case = await case_service.update_case(
+        db, current_user.id, case_id, body.model_dump(exclude_unset=True), project_id=project_id
+    )
     await db.commit()
     return UICaseOut.model_validate(case).model_dump()
 
 
 @router.delete("/cases/{case_id}")
 async def delete_case(
-    case_id: int, current_user: User = Depends(require_permissions("ui:write")), db: AsyncSession = Depends(get_db)
+    case_id: int,
+    current_user: User = Depends(require_permissions("ui:write")),
+    db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    await case_service.delete_case(db, current_user.id, case_id)
+    await case_service.delete_case(db, current_user.id, case_id, project_id=project_id)
     await db.commit()
     return {"message": "Case deleted"}
 
@@ -251,9 +270,13 @@ async def restore_version(
 
 
 @router.get("/groups")
-async def list_groups(current_user: User = Depends(require_permissions("ui:read")), db: AsyncSession = Depends(get_db)):
+async def list_groups(
+    current_user: User = Depends(require_permissions("ui:read")),
+    db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
+):
     _ensure_enabled()
-    groups = await case_service.list_groups(db, current_user.id)
+    groups = await case_service.list_groups(db, current_user.id, project_id=project_id)
     return {"items": [UICaseGroupOut.model_validate(group).model_dump() for group in groups], "total": len(groups)}
 
 
@@ -262,9 +285,10 @@ async def create_group(
     body: UICaseGroupCreate,
     current_user: User = Depends(require_permissions("ui:write")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    group = await case_service.create_group(db, current_user.id, body.model_dump())
+    group = await case_service.create_group(db, current_user.id, body.model_dump(), project_id=project_id)
     await db.commit()
     return UICaseGroupOut.model_validate(group).model_dump()
 
@@ -275,29 +299,37 @@ async def update_group(
     body: UICaseGroupUpdate,
     current_user: User = Depends(require_permissions("ui:write")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    group = await case_service.update_group(db, current_user.id, group_id, body.model_dump(exclude_unset=True))
+    group = await case_service.update_group(
+        db, current_user.id, group_id, body.model_dump(exclude_unset=True), project_id=project_id
+    )
     await db.commit()
     return UICaseGroupOut.model_validate(group).model_dump()
 
 
 @router.delete("/groups/{group_id}")
 async def delete_group(
-    group_id: int, current_user: User = Depends(require_permissions("ui:write")), db: AsyncSession = Depends(get_db)
+    group_id: int,
+    current_user: User = Depends(require_permissions("ui:write")),
+    db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    await case_service.delete_group(db, current_user.id, group_id)
+    await case_service.delete_group(db, current_user.id, group_id, project_id=project_id)
     await db.commit()
     return {"message": "Group deleted"}
 
 
 @router.get("/suites")
 async def list_ui_suites(
-    current_user: User = Depends(require_permissions("ui:read")), db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(require_permissions("ui:read")),
+    db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
-    suites = await suite_service.list_suites(db, current_user.id)
+    suites = await suite_service.list_suites(db, current_user.id, project_id=project_id)
     return {"items": [UISuiteOut.model_validate(item).model_dump() for item in suites], "total": len(suites)}
 
 
@@ -306,19 +338,23 @@ async def create_ui_suite(
     body: UISuiteCreate,
     current_user: User = Depends(require_permissions("ui:write")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    suite = await suite_service.create_suite(db, current_user.id, body.model_dump())
+    suite = await suite_service.create_suite(db, current_user.id, body.model_dump(), project_id=project_id)
     await db.commit()
     return UISuiteOut.model_validate(suite).model_dump()
 
 
 @router.get("/suites/{suite_id}")
 async def get_ui_suite(
-    suite_id: int, current_user: User = Depends(require_permissions("ui:read")), db: AsyncSession = Depends(get_db)
+    suite_id: int,
+    current_user: User = Depends(require_permissions("ui:read")),
+    db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
-    suite = await suite_service.get_suite(db, current_user.id, suite_id)
+    suite = await suite_service.get_suite(db, current_user.id, suite_id, project_id=project_id)
     return UISuiteOut.model_validate(suite).model_dump()
 
 
@@ -328,9 +364,12 @@ async def update_ui_suite(
     body: UISuiteUpdate,
     current_user: User = Depends(require_permissions("ui:write")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    suite = await suite_service.update_suite(db, current_user.id, suite_id, body.model_dump(exclude_unset=True))
+    suite = await suite_service.update_suite(
+        db, current_user.id, suite_id, body.model_dump(exclude_unset=True), project_id=project_id
+    )
     await db.commit()
     return UISuiteOut.model_validate(suite).model_dump()
 
@@ -341,27 +380,37 @@ async def replace_ui_suite_items(
     body: list[UISuiteItemCreate],
     current_user: User = Depends(require_permissions("ui:write")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    suite = await suite_service.replace_items(db, current_user.id, suite_id, [item.model_dump() for item in body])
+    suite = await suite_service.replace_items(
+        db, current_user.id, suite_id, [item.model_dump() for item in body], project_id=project_id
+    )
     await db.commit()
     return UISuiteOut.model_validate(suite).model_dump()
 
 
 @router.get("/suites/{suite_id}/execution-plan")
 async def get_ui_suite_execution_plan(
-    suite_id: int, current_user: User = Depends(require_permissions("ui:read")), db: AsyncSession = Depends(get_db)
+    suite_id: int,
+    current_user: User = Depends(require_permissions("ui:read")),
+    db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
+    await suite_service.get_suite(db, current_user.id, suite_id, project_id=project_id)
     return await suite_service.build_execution_plan(db, current_user.id, suite_id)
 
 
 @router.delete("/suites/{suite_id}")
 async def delete_ui_suite(
-    suite_id: int, current_user: User = Depends(require_permissions("ui:write")), db: AsyncSession = Depends(get_db)
+    suite_id: int,
+    current_user: User = Depends(require_permissions("ui:write")),
+    db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    await suite_service.delete_suite(db, current_user.id, suite_id)
+    await suite_service.delete_suite(db, current_user.id, suite_id, project_id=project_id)
     await db.commit()
     return {"message": "Suite deleted"}
 
@@ -375,10 +424,18 @@ async def list_runs(
     suite_id: Optional[int] = Query(None),
     current_user: User = Depends(require_permissions("ui:read", "execution:read")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
     runs, total = await run_service.list_runs(
-        db, current_user.id, page=page, page_size=page_size, status=status, case_id=case_id, suite_id=suite_id
+        db,
+        current_user.id,
+        page=page,
+        page_size=page_size,
+        status=status,
+        case_id=case_id,
+        suite_id=suite_id,
+        project_id=project_id,
     )
     return {"items": [await _run_payload(db, run) for run in runs], "total": total, "page": page, "size": page_size}
 
@@ -388,9 +445,12 @@ async def create_run(
     body: UIRunCreate,
     current_user: User = Depends(require_permissions("ui:execute")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    run = await run_service.create_run(db, current_user.id, body.model_dump())
+    payload = body.model_dump()
+    payload["project_id"] = int(project_id)
+    run = await run_service.create_run(db, current_user.id, payload, project_id=project_id)
     await db.commit()
     return await _run_payload(db, run)
 
@@ -400,9 +460,10 @@ async def get_run(
     run_id: int,
     current_user: User = Depends(require_permissions("ui:read", "execution:read")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
-    run = await run_service.get_run(db, current_user.id, run_id)
+    run = await run_service.get_run(db, current_user.id, run_id, project_id=project_id)
     return await _run_payload(db, run)
 
 
@@ -411,8 +472,10 @@ async def get_run_step_results(
     run_id: int,
     current_user: User = Depends(require_permissions("ui:read", "execution:read")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
+    await run_service.get_run(db, current_user.id, run_id, project_id=project_id)
     step_results = await run_service.list_step_results(db, current_user.id, run_id)
     return {
         "items": [UIStepResultOut.model_validate(item).model_dump() for item in step_results],
@@ -426,8 +489,10 @@ async def append_run_events(
     body: UIRunEventBatchIn,
     current_user: User = Depends(require_permissions("ui:execute")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
+    await run_service.get_run(db, current_user.id, run_id, project_id=project_id)
     accepted, ignored, last_sequence, run = await run_service.append_run_events(
         db,
         current_user.id,
@@ -442,9 +507,13 @@ async def append_run_events(
 
 @router.post("/runs/{run_id}/heartbeat")
 async def heartbeat_run(
-    run_id: int, current_user: User = Depends(require_permissions("ui:execute")), db: AsyncSession = Depends(get_db)
+    run_id: int,
+    current_user: User = Depends(require_permissions("ui:execute")),
+    db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
+    await run_service.get_run(db, current_user.id, run_id, project_id=project_id)
     run = await run_service.heartbeat_run(db, current_user.id, run_id)
     await db.commit()
     return await _run_payload(db, run)
@@ -455,8 +524,10 @@ async def cancel_run(
     run_id: int,
     current_user: User = Depends(require_permissions("execution:cancel")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
+    await run_service.get_run(db, current_user.id, run_id, project_id=project_id)
     run = await run_service.cancel_run(db, current_user.id, run_id)
     await db.commit()
     return await _run_payload(db, run)
@@ -467,8 +538,10 @@ async def list_run_artifacts(
     run_id: int,
     current_user: User = Depends(require_permissions("ui:read", "execution:read")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
+    await run_service.get_run(db, current_user.id, run_id, project_id=project_id)
     artifacts = await run_service.list_artifacts(db, current_user.id, run_id)
     return {"items": [UIArtifactOut.model_validate(item).model_dump() for item in artifacts], "total": len(artifacts)}
 
@@ -479,8 +552,10 @@ async def get_run_artifact_content(
     artifact_id: int,
     current_user: User = Depends(require_permissions("artifact:download")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
+    await run_service.get_run(db, current_user.id, run_id, project_id=project_id)
     artifacts = await run_service.list_artifacts(db, current_user.id, run_id)
     artifact_row = next((item for item in artifacts if item.id == artifact_id), None)
     if artifact_row is None:
@@ -504,8 +579,10 @@ async def register_run_artifact(
     body: UIArtifactCreate = Body(...),
     current_user: User = Depends(require_permissions("ui:execute")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
+    await run_service.get_run(db, current_user.id, run_id, project_id=project_id)
     artifact = await run_service.register_artifact(db, current_user.id, run_id, body.model_dump())
     await db.commit()
     return UIArtifactOut.model_validate(artifact).model_dump()
@@ -517,8 +594,10 @@ async def link_run_artifact(
     body: UIArtifactLinkIn,
     current_user: User = Depends(require_permissions("ui:execute")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
+    await run_service.get_run(db, current_user.id, run_id, project_id=project_id)
     artifact = await run_service.link_artifact_manifest(db, current_user.id, run_id, body.artifact_manifest_id)
     await db.commit()
     return UIArtifactOut.model_validate(artifact).model_dump()
@@ -526,10 +605,12 @@ async def link_run_artifact(
 
 @router.get("/agents")
 async def list_desktop_agents(
-    current_user: User = Depends(require_permissions("ui:agent")), db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(require_permissions("ui:agent")),
+    db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     _ensure_enabled()
-    agents = await agent_service.list_agents(db, current_user.id)
+    agents = await agent_service.list_agents(db, current_user.id, project_id=project_id)
     return {"items": [_agent_payload(agent) for agent in agents], "total": len(agents)}
 
 
@@ -538,9 +619,12 @@ async def register_desktop_agent(
     body: DesktopAgentRegister,
     current_user: User = Depends(require_permissions("ui:agent")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    agent, bootstrap_token = await agent_service.register_agent(db, current_user.id, body.model_dump())
+    agent, bootstrap_token = await agent_service.register_agent(
+        db, current_user.id, body.model_dump(), project_id=project_id
+    )
     await db.commit()
     payload = _agent_payload(agent)
     payload["bootstrap_token"] = bootstrap_token
@@ -554,9 +638,10 @@ async def revoke_desktop_agent(
     request: Request,
     current_user: User = Depends(require_permissions("ui:agent")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     _ensure_enabled()
-    agent = await agent_service.revoke_agent(db, current_user.id, agent_id)
+    agent = await agent_service.revoke_agent(db, current_user.id, agent_id, project_id=project_id)
     await db.commit()
     return _agent_payload(agent)
 
@@ -588,6 +673,73 @@ async def claim_desktop_agent_run(
     if run is None:
         return {"run": None}
     return {"run": await _run_payload(db, run), "plan": plan}
+
+
+@router.post("/agents/{agent_id}/claim-batch")
+async def claim_desktop_agent_runs_batch(
+    agent_id: int,
+    body: dict = Body(default_factory=dict),
+    agent_token: str | None = Header(default=None, alias="X-TestMaster-Agent-Token"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Claim multiple waiting runs for parallel desktop workers."""
+    _ensure_enabled()
+    agent = await agent_service.authenticate_agent(db, agent_id, agent_token)
+    limit = int((body or {}).get("limit") or agent.max_parallel or 1)
+    claimed = await agent_service.claim_runs(db, agent, limit=limit)
+    await db.commit()
+    items = []
+    for run, plan in claimed:
+        items.append({"run": await _run_payload(db, run), "plan": plan})
+    return {"items": items, "count": len(items)}
+
+
+@router.post("/agents/{agent_id}/healing/heal")
+async def agent_heal_locator(
+    agent_id: int,
+    body: dict = Body(default_factory=dict),
+    agent_token: str | None = Header(default=None, alias="X-TestMaster-Agent-Token"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Agent-authenticated locator healing (no user JWT required)."""
+    _ensure_enabled()
+    agent = await agent_service.authenticate_agent(db, agent_id, agent_token)
+    from fastapi_backend.services.element_repository_service import element_repository_service
+
+    project_id = body.get("project_id")
+    if project_id is None and body.get("run_id"):
+        from fastapi_backend.models.ui_automation import UIRun as _UIRun
+
+        run = await db.get(_UIRun, int(body["run_id"]))
+        if run is not None and getattr(run, "project_id", None):
+            project_id = run.project_id
+    if project_id is None:
+        from fastapi_backend.services.project_service import ensure_personal_project
+
+        personal = await ensure_personal_project(db, int(agent.owner_id))
+        project_id = personal.id
+    project_id = int(project_id)
+    result = await element_repository_service.heal(
+        db,
+        project_id=project_id,
+        original_locator=body.get("original_locator") or {},
+        page_dom=str(body.get("page_dom") or ""),
+        page_url=body.get("page_url"),
+        element_id=body.get("element_id"),
+        run_id=body.get("run_id"),
+        step_result_id=body.get("step_result_id"),
+        failure_reason=str(body.get("failure_reason") or ""),
+    )
+    await db.commit()
+    return {
+        "status": result.status,
+        "confidence": result.confidence,
+        "strategy_used": result.strategy_used,
+        "healed_locator": result.healed_locator,
+        "candidates": [
+            {"locator": c.locator, "score": c.score, "reason": c.reason} for c in result.candidates
+        ],
+    }
 
 
 @router.post("/agents/{agent_id}/runs/{run_id}/events")

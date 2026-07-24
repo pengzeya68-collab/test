@@ -3,7 +3,7 @@ import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 
 const root = path.resolve(import.meta.dirname, '..')
-const profile = path.join(root, '.smoke-profile')
+const profile = process.env.TESTMASTER_SMOKE_DATA_DIR || 'D:\\TestMasterDataSmoke'
 const artifacts = path.join(root, 'test-artifacts', 'desktop-shell')
 const smokeUser = process.env.TESTMASTER_SMOKE_USER
 const smokePassword = process.env.TESTMASTER_SMOKE_PASSWORD
@@ -13,11 +13,22 @@ await mkdir(artifacts, { recursive: true })
 
 const packagedExe = process.env.TESTMASTER_PACKAGED_EXE
 const app = await electron.launch(packagedExe
-  ? { executablePath: packagedExe, args: [`--user-data-dir=${profile}`] }
-  : { args: [root, `--user-data-dir=${profile}`] })
+  ? { executablePath: packagedExe, args: [`--user-data-dir=${profile}`], env: { ...process.env, TESTMASTER_DESKTOP_DATA_DIR: profile } }
+  : { args: [root, `--user-data-dir=${profile}`], env: { ...process.env, TESTMASTER_DESKTOP_DATA_DIR: profile } })
 const page = await app.firstWindow()
 const errors = []
+const failedRequests = []
+const failedNetworkRequests = []
 page.on('pageerror', error => errors.push(error.message))
+page.on('console', message => {
+  if (message.type() === 'error') errors.push(`console: ${message.text()}`)
+})
+page.on('response', response => {
+  if (response.status() >= 400) failedRequests.push({ status: response.status(), url: response.url(), route: page.url() })
+})
+page.on('requestfailed', request => {
+  failedNetworkRequests.push({ url: request.url(), failure: request.failure()?.errorText || 'unknown', route: page.url() })
+})
 let healthReady = false
 for (let attempt = 0; attempt < 90; attempt += 1) {
   try {
@@ -39,16 +50,26 @@ await page.evaluate(({ token, user }) => {
   localStorage.setItem('testmaster-theme', 'apple-light')
 }, { token: login.access_token, user: login.user })
 await page.reload({ waitUntil: 'domcontentloaded' })
+// The window is deliberately created before the managed backend finishes
+// booting. Do not confuse that startup race with a post-login user workflow
+// failure; only assertions below are part of the ready desktop session.
+errors.length = 0
+failedRequests.length = 0
+failedNetworkRequests.length = 0
 
 const routes = ['/auto-test', '/cases', '/scenarios', '/suites', '/data-factory', '/mock-service', '/ui-automation/cases', '/ui-automation/suites', '/jmeter-assistant', '/test-coverage', '/api-docs', '/backup-manager', '/tools']
+const expectedRoutes = { '/auto-test': '/api-debugger' }
 const results = []
 for (const route of routes) {
   await page.evaluate(hash => { location.hash = hash }, route)
-  await page.waitForTimeout(900)
+  await page.waitForTimeout(1200)
   const state = await page.evaluate(() => ({
     title: document.querySelector('.module-heading h1')?.textContent?.trim(),
     textLength: document.querySelector('.desktop-workspace')?.innerText?.trim().length || 0,
     shellVisible: Boolean(document.querySelector('.desktop-sidebar') && document.querySelector('.desktop-header')),
+    workspaceHeight: Math.round(document.querySelector('.desktop-workspace')?.getBoundingClientRect().height || 0),
+    componentHeight: Math.round(document.querySelector('.desktop-workspace > *')?.getBoundingClientRect().height || 0),
+    componentChildren: document.querySelector('.desktop-workspace > *')?.childElementCount || 0,
   }))
   results.push({ route, currentRoute: await page.evaluate(() => location.hash.slice(1)), ...state })
 }
@@ -59,6 +80,6 @@ await page.evaluate(() => { location.hash = '/cases' })
 await page.waitForTimeout(1000)
 await page.screenshot({ path: path.join(artifacts, 'interface-cases.png'), fullPage: true })
 
-console.log(JSON.stringify({ errors, results }, null, 2))
+console.log(JSON.stringify({ errors, failedRequests, failedNetworkRequests, results }, null, 2))
 await app.close()
-if (errors.length || results.some(item => !item.shellVisible || item.textLength < 10 || item.currentRoute !== item.route)) process.exitCode = 1
+if (errors.length || failedRequests.length || failedNetworkRequests.length || results.some(item => !item.shellVisible || item.textLength < 10 || item.currentRoute !== (expectedRoutes[item.route] || item.route) || item.componentHeight < 40)) process.exitCode = 1

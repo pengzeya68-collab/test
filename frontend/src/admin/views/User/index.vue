@@ -68,25 +68,25 @@
                   </el-dropdown-item>
                   <el-dropdown-item
                     @click="toggleStatus(row)"
-                    :style="{ color: row.status === 'active' ? '#E6A23C' : '#67C23A' }"
+                    :style="{ color: row.status === 'active' ? 'var(--tm-color-warning)' : 'var(--tm-color-success)' }"
                   >
-                    <el-icon :color="row.status === 'active' ? '#E6A23C' : '#67C23A'">
+                    <el-icon :color="row.status === 'active' ? 'var(--tm-color-warning)' : 'var(--tm-color-success)'">
                       {{ row.status === 'active' ? '馃敶' : '馃煝' }}
                     </el-icon>
                     {{ row.status === 'active' ? '禁用用户' : '启用用户' }}
                   </el-dropdown-item>
                   <el-dropdown-item
                     @click="toggleAdmin(row)"
-                    :style="{ color: row.is_admin ? 'var(--tm-text-secondary)' : '#409EFF' }"
+                    :style="{ color: row.is_admin ? 'var(--tm-text-secondary)' : 'var(--tm-color-primary)' }"
                     :disabled="row.id === currentAdminId"
                   >
-                    <el-icon :color="row.is_admin ? '#909399' : '#409EFF'">
+                    <el-icon :color="row.is_admin ? 'var(--tm-color-info)' : 'var(--tm-color-primary)'">
                       {{ row.is_admin ? '馃懁' : '馃憫' }}
                     </el-icon>
                     {{ row.is_admin ? '取消管理员' : '设为管理员' }}
                   </el-dropdown-item>
-                  <el-dropdown-item divided @click="handleDelete(row)" style="color: #F56C6C;">
-                    <el-icon color="#F56C6C"><Delete /></el-icon> 删除
+                  <el-dropdown-item divided @click="handleDelete(row)" style="color: var(--tm-color-danger);">
+                    <el-icon color="var(--tm-color-danger)"><Delete /></el-icon> 删除
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>

@@ -142,7 +142,7 @@
                 <p>{{ comment.content }}</p>
               </div>
               
-              <!-- 回复输入�?-->
+              <!-- 回复输入框 -->
               <div class="reply-input" v-if="replyToComment === comment.id">
                 <el-input
                   v-model="replyContent"
@@ -417,7 +417,7 @@ const toggleCommentLike = async (comment) => {
 }
 
 .back-btn:hover {
-  color: #409eff;
+  color: var(--tm-color-primary);
   transform: translateX(-4px);
 }
 
@@ -430,7 +430,7 @@ const toggleCommentLike = async (comment) => {
 
 .post-content {
   padding: 40px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tm-bg-page);
 }
 
 .post-header {
@@ -450,7 +450,7 @@ const toggleCommentLike = async (comment) => {
   justify-content: space-between;
   align-items: center;
   padding-bottom: 20px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tm-bg-page);
 }
 
 .meta-left {
@@ -492,7 +492,7 @@ const toggleCommentLike = async (comment) => {
 .post-actions {
   display: flex;
   gap: 16px;
-  border-top: 1px solid #f0f2f5;
+  border-top: 1px solid var(--tm-bg-page);
   padding-top: 24px;
 }
 
@@ -530,7 +530,7 @@ const toggleCommentLike = async (comment) => {
 
 .comment-item {
   padding-bottom: 24px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tm-bg-page);
 }
 
 .comment-item:last-child {
@@ -577,11 +577,11 @@ const toggleCommentLike = async (comment) => {
 }
 
 .action-item:hover {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
 }
 
 .action-item.active {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
 }
 
 .comment-content {
@@ -607,7 +607,7 @@ const toggleCommentLike = async (comment) => {
   margin-left: 48px;
   margin-top: 12px;
   padding-left: 16px;
-  border-left: 2px solid #f0f2f5;
+  border-left: 2px solid var(--tm-bg-page);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -716,7 +716,7 @@ const toggleCommentLike = async (comment) => {
   border-radius: 4px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
-  color: #e6a23c;
+  color: var(--tm-color-warning);
 }
 
 .markdown-content pre {
@@ -735,7 +735,7 @@ const toggleCommentLike = async (comment) => {
 }
 
 .markdown-content blockquote {
-  border-left: 4px solid #409eff;
+  border-left: 4px solid var(--tm-color-primary);
   padding-left: 16px;
   margin: 16px 0;
   color: var(--tm-text-regular);

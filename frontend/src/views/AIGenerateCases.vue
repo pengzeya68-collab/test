@@ -55,7 +55,7 @@
           type="primary"
           size="large"
           :disabled="!swaggerFile && !swaggerUrl"
-          @click="currentStep = 1"
+          @click="startConfiguration"
           style="margin-top: 20px; width: 100%;"
         >
           下一步：配置选项
@@ -403,6 +403,23 @@ const phaseLabel = computed(() => {
 
 const handleFileChange = (file) => {
   swaggerFile.value = file.raw
+}
+
+const startConfiguration = () => {
+  if (swaggerFile.value) {
+    currentStep.value = 1
+    return
+  }
+  const url = swaggerUrl.value.trim()
+  try {
+    const parsed = new URL(url)
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('unsupported protocol')
+  } catch {
+    ElMessage.warning('请输入有效的 HTTP 或 HTTPS Swagger 文档地址')
+    return
+  }
+  swaggerUrl.value = url
+  currentStep.value = 1
 }
 
 // 保存当前任务到 localStorage，页面切换后可恢复
@@ -1081,7 +1098,7 @@ onUnmounted(() => {
 
 .ai-cost-hint {
   font-size: 11px;
-  color: #ffa502;
+  color: var(--tm-color-warning);
   margin-left: 8px;
   white-space: nowrap;
 }

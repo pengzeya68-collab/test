@@ -223,12 +223,12 @@ const goToLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--tm-bg-page, #09090B);
+  background: var(--tm-bg-page, var(--tm-bg-page));
   padding: 20px;
 }
 
 .forgot-password-card {
-  background: var(--tm-bg-card, #18181B);
+  background: var(--tm-bg-card, var(--tm-bg-card-solid));
   border-radius: 16px;
   padding: 48px;
   width: 100%;
@@ -245,7 +245,7 @@ const goToLogin = () => {
 .title {
   font-size: 32px;
   font-weight: bold;
-  color: var(--tm-text-primary, #FAFAFA);
+  color: var(--tm-text-primary, var(--tm-text-primary));
   margin: 0 0 10px 0;
   background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-color-primary-dark));
   -webkit-background-clip: text;
@@ -255,7 +255,7 @@ const goToLogin = () => {
 
 .subtitle {
   font-size: 14px;
-  color: var(--tm-text-secondary, #71717A);
+  color: var(--tm-text-secondary, var(--tm-text-muted));
   margin: 0;
 }
 

@@ -119,11 +119,11 @@ onMounted(() => load())
   transition: all .2s;
 }
 .notif-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-.notif-card.unread { border-left: 3px solid #409EFF; background: #ecf5ff; }
+.notif-card.unread { border-left: 3px solid var(--tm-color-primary); background: #ecf5ff; }
 .notif-body { flex: 1; min-width: 0; }
 .notif-title { font-size: 14px; font-weight: 600; color: var(--tm-text-primary); }
 .notif-text { font-size: 13px; color: var(--tm-text-secondary); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.notif-time { font-size: 12px; color: #c0c4cc; margin-top: 6px; }
-.unread-dot { width: 10px; height: 10px; border-radius: 50%; background: #f56c6c; flex-shrink: 0; margin-top: 5px; }
+.notif-time { font-size: 12px; color: var(--tm-text-muted); margin-top: 6px; }
+.unread-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--tm-color-danger); flex-shrink: 0; margin-top: 5px; }
 .pagination-wrap { display: flex; justify-content: center; margin-top: 24px; }
 </style>

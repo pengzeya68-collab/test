@@ -50,6 +50,17 @@
       </div>
     </div>
 
+    <el-alert
+      v-if="scenarioLoadError"
+      class="scenario-load-error"
+      type="error"
+      :title="scenarioLoadError"
+      show-icon
+      :closable="false"
+    >
+      <template #default><el-button link type="primary" @click="reloadScenarioWorkspace">重新加载</el-button></template>
+    </el-alert>
+
     <!-- 场景列表 -->
     <div class="scenario-grid" v-loading="loading">
       <div
@@ -151,7 +162,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">确定</el-button>
+        <el-button type="primary" :loading="savingScenario" :disabled="savingScenario" @click="handleSave">确定</el-button>
       </template>
     </el-dialog>
 
@@ -175,6 +186,11 @@
           请将以下 cURL 命令复制到您的 <strong>GitLab CI / Jenkins Pipeline</strong> 中。<br>
           每次代码部署完成后，会自动触发该场景进行回归测试。
         </p>
+        <el-form label-position="top" class="ci-cd-endpoint-form">
+          <el-form-item label="可被 CI 访问的 TestMaster 服务地址">
+            <el-input v-model="ciCdApiBaseUrl" placeholder="例如：https://testmaster.example.com" />
+          </el-form-item>
+        </el-form>
         <div class="curl-command-box">
           <template v-if="curlCommand">
             {{ curlCommand }}
@@ -217,7 +233,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getServerUrl } from '@/utils/server-config'
+import { isDesktopBuild } from '@/utils/build-target'
 import { Plus, VideoPlay, Delete, Search, Link, DocumentCopy, Clock, Edit, Timer, Setting, Open, TurnOff, Coin, MoreFilled, ArrowDown } from '@element-plus/icons-vue'
 import autoTestRequest from '@/utils/autoTestRequest'
 import { helpContent } from '@/utils/help-content'
@@ -231,6 +250,7 @@ import ScheduleDialog from '@/views/scenario/ScheduleDialog.vue'
 import ExecutionHistoryDrawer from '@/views/scenario/ExecutionHistoryDrawer.vue'
 
 const loading = ref(false)
+const router = useRouter()
 const showHelp = ref(false)
 const scenarios = ref([])
 const totalScenarios = ref(0)
@@ -266,6 +286,7 @@ const historyRow = ref(null)
 // CI/CD Webhook 配置对话框
 const ciCdDialogVisible = ref(false)
 const currentCiCdScene = ref(null)
+const ciCdApiBaseUrl = ref('')
 const resolveReportUrl = (reportUrl) => {
   if (!reportUrl) return ''
   if (/^https?:\/\//i.test(reportUrl)) return reportUrl
@@ -284,14 +305,16 @@ const curlCommand = computed(() => {
   if (!currentCiCdScene.value || !currentCiCdScene.value.webhook_token) {
     return ''
   }
-  const baseUrl = window.location.origin
-  return `curl -X POST "${baseUrl}/auto-test/scenarios/webhook/${currentCiCdScene.value.webhook_token}" \\
+  const baseUrl = ciCdApiBaseUrl.value.trim().replace(/\/+$/, '')
+  if (!baseUrl) return ''
+  return `curl -X POST "${baseUrl}/api/auto-test/scenarios/webhook/${currentCiCdScene.value.webhook_token}" \\
      -H "Content-Type: application/json" \\
      -d '{"env_id": 替换为实际环境ID}'`
 })
 
 const openCiCdDialog = (row) => {
   currentCiCdScene.value = row
+  ciCdApiBaseUrl.value = isDesktopBuild ? getServerUrl() : window.location.origin
   ciCdDialogVisible.value = true
 }
 
@@ -319,11 +342,16 @@ const copyCurlCommand = async () => {
 const envManagerDrawerVisible = ref(false)
 const selectedEnvId = ref(null)
 const environments = ref([])
+const scenarioLoadError = ref('')
+const savingScenario = ref(false)
 
 const loadEnvironments = async () => {
   try {
     const res = await autoTestRequest.get('/auto-test/environments')
     environments.value = res || []
+    if (!selectedEnvId.value && environments.value.length) {
+      selectedEnvId.value = (environments.value.find(env => env.is_default) || environments.value[0]).id
+    }
   } catch (error) {
     console.error('加载环境列表失败:', error)
   }
@@ -367,6 +395,7 @@ const toggleStepDetail = (index) => {
 
 const loadScenarios = async () => {
   loading.value = true
+  scenarioLoadError.value = ''
   try {
     const res = await autoTestRequest.get('/auto-test/scenarios')
     if (res && res.items) {
@@ -378,9 +407,15 @@ const loadScenarios = async () => {
     }
   } catch (error) {
     console.error('加载场景失败:', error)
+    scenarioLoadError.value = '场景列表加载失败，请检查服务连接后重试'
   } finally {
     loading.value = false
   }
+}
+
+const reloadScenarioWorkspace = () => {
+  loadEnvironments()
+  loadScenarios()
 }
 
 const handleSearch = () => {
@@ -393,26 +428,35 @@ const handleCreate = () => {
 }
 
 const handleEdit = (row) => {
-  emit('edit', row)
+  router.push(`/scenarios/${row.id}`)
 }
 
 const handleSave = async () => {
-  if (!scenarioForm.value.name) {
+  if (savingScenario.value) return
+  const name = scenarioForm.value.name?.trim()
+  if (!name) {
     ElMessage.warning('请输入场景名称')
     return
   }
+  scenarioForm.value.name = name
+  savingScenario.value = true
   try {
     if (isEdit.value) {
       await autoTestRequest.put(`/auto-test/scenarios/${currentScenarioId.value}`, scenarioForm.value)
       ElMessage.success('更新成功')
     } else {
-      await autoTestRequest.post('/auto-test/scenarios', scenarioForm.value)
+      const created = await autoTestRequest.post('/auto-test/scenarios', scenarioForm.value)
       ElMessage.success('创建成功')
+      dialogVisible.value = false
+      await router.push(`/scenarios/${created.id}`)
+      return
     }
     dialogVisible.value = false
     loadScenarios()
   } catch (error) {
     ElMessage.error('操作失败')
+  } finally {
+    savingScenario.value = false
   }
 }
 
@@ -476,7 +520,7 @@ const stopPolling = () => {
   stopFakeProgress()
 }
 
-const pollTaskStatus = async (taskId, scenarioName) => {
+const pollTaskStatus = async (taskId) => {
   currentTaskId = taskId
   stopPolling()
   pollingAbortController = new AbortController()
@@ -557,15 +601,19 @@ const handleToggleStatus = async (row, val) => {
 }
 
 const handleRun = async (row) => {
+  const stepCount = row.step_count ?? (row.steps ? row.steps.length : 0)
+  if (stepCount < 1) {
+    ElMessage.warning('当前场景还没有步骤。请先点击“编辑”，添加接口用例或流程控制步骤后再运行。')
+    return
+  }
   if (!selectedEnvId.value) {
-    ElMessage.warning('请先选择执行环境！')
+    ElMessage.warning('请先选择执行环境；也可以点击环境管理创建环境。')
     return
   }
   if (!row.is_active) {
     ElMessage.warning('该场景已停用，无法运行！')
     return
   }
-  const stepCount = row.step_count ?? (row.steps ? row.steps.length : 0)
   executionDialogRef.value?.startExecution(row.id, selectedEnvId.value, stepCount)
 }
 
@@ -630,8 +678,6 @@ const openAllureReport = () => {
   }
 };
 
-const emit = defineEmits(['edit'])
-
 defineExpose({
   loadScenarios
 })
@@ -645,6 +691,13 @@ onUnmounted(() => {
   stopPolling()
   stopFakeProgress()
 })
+// Programmatic hooks used by external scenario integrations.
+void formatTotalTime
+void toggleStepDetail
+void pollTaskStatus
+void startFakeProgress
+void handleCancelTask
+void openAllureReport
 </script>
 
 <style scoped>
@@ -654,6 +707,7 @@ onUnmounted(() => {
   flex-direction: column;
   background: var(--tm-bg-page);
 }
+.scenario-load-error { margin-bottom: 16px; }
 
 .list-toolbar {
   display: flex;

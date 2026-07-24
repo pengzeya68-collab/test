@@ -22,6 +22,20 @@ interface DirectorySelectionOptions {
 
 let currentStatus: DesktopDataDirectoryStatus | null = null;
 
+/**
+ * Electron does not expose Chrome's --user-data-dir through app.getPath()
+ * before ready on every platform. Read it directly so an isolated test or a
+ * support launch cannot accidentally share the normal desktop profile.
+ */
+export function userDataDirectoryFromArgv(argv: string[] = process.argv): string | undefined {
+  for (let index = 0; index < argv.length; index += 1) {
+    const value = argv[index];
+    if (value.startsWith('--user-data-dir=')) return value.slice('--user-data-dir='.length).trim() || undefined;
+    if (value === '--user-data-dir') return argv[index + 1]?.trim() || undefined;
+  }
+  return undefined;
+}
+
 function normalizeDrive(value: string): string {
   return String(value || 'C:').replace(/[\\/]+$/, '').toUpperCase();
 }
@@ -98,7 +112,9 @@ export function selectDesktopDataDirectory(options: DirectorySelectionOptions): 
 
 export function configureDesktopDataDirectory(): DesktopDataDirectoryStatus {
   const selected = selectDesktopDataDirectory({
-    configuredPath: process.env.TESTMASTER_DESKTOP_DATA_DIR,
+    // An explicit environment configuration is the production override. The
+    // Chromium switch is next so Playwright and support launches are isolated.
+    configuredPath: process.env.TESTMASTER_DESKTOP_DATA_DIR || userDataDirectoryFromArgv(),
     systemUserData: app.getPath('userData'),
   });
   app.setPath('userData', selected.path);

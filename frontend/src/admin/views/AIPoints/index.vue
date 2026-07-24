@@ -77,7 +77,7 @@
           <el-table-column prop="username" label="用户名" width="110" />
           <el-table-column prop="amount" label="变动" width="90">
             <template #default="{ row }">
-              <span :style="{ color: row.amount > 0 ? '#67c23a' : '#f56c6c' }">
+              <span :style="{ color: row.amount > 0 ? 'var(--tm-color-success)' : 'var(--tm-color-danger)' }">
                 {{ row.amount > 0 ? '+' : '' }}{{ row.amount }}
               </span>
             </template>

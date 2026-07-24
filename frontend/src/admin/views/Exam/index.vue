@@ -619,7 +619,7 @@ const handleSubmit = async () => {
 
 .bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #67c23a, #84cc16);
+  background: linear-gradient(90deg, var(--tm-color-success), var(--tm-color-success));
   border-radius: 4px;
   transition: width 0.3s ease;
 }

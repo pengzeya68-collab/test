@@ -248,13 +248,13 @@ const getDifficultyText = (d) => {
 }
 
 .stat-icon-wrong {
-  background: rgba(248, 113, 113, 0.12);
-  color: #f87171;
+  background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent);
+  color: var(--tm-color-danger);
 }
 
 .stat-icon-mastered {
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
+  background: color-mix(in srgb, var(--tm-color-success) 12%, transparent);
+  color: var(--tm-color-success);
 }
 
 .stat-info {
@@ -271,11 +271,11 @@ const getDifficultyText = (d) => {
 }
 
 .stat-num-wrong {
-  color: #f87171;
+  color: var(--tm-color-danger);
 }
 
 .stat-num-mastered {
-  color: #34d399;
+  color: var(--tm-color-success);
 }
 
 .stat-label {
@@ -364,13 +364,13 @@ const getDifficultyText = (d) => {
 }
 
 .icon-fail {
-  background: rgba(248, 113, 113, 0.12);
-  color: #f87171;
+  background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent);
+  color: var(--tm-color-danger);
 }
 
 .icon-pass {
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
+  background: color-mix(in srgb, var(--tm-color-success) 12%, transparent);
+  color: var(--tm-color-success);
 }
 
 .card-body {
@@ -428,18 +428,18 @@ const getDifficultyText = (d) => {
 }
 
 .badge-danger {
-  background: rgba(248, 113, 113, 0.15);
-  color: #f87171;
+  background: color-mix(in srgb, var(--tm-color-danger) 15%, transparent);
+  color: var(--tm-color-danger);
 }
 
 .badge-success {
-  background: rgba(52, 211, 153, 0.15);
-  color: #34d399;
+  background: color-mix(in srgb, var(--tm-color-success) 15%, transparent);
+  color: var(--tm-color-success);
 }
 
 .badge-warning {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
+  background: color-mix(in srgb, var(--tm-color-warning) 15%, transparent);
+  color: var(--tm-color-warning);
 }
 
 .badge-info {

@@ -187,22 +187,25 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, defineAsyncComponent, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, FolderOpened, Position, DataAnalysis, Coin, Connection, Monitor, Collection, ArrowDown } from '@element-plus/icons-vue'
-import ScenarioList from './ScenarioList.vue'
-import ScenarioEditor from './ScenarioEditor.vue'
-import GlobalVariableManager from '../components/GlobalVariableManager.vue'
-import DataFactory from './DataFactory.vue'
-import ApiDebugger from './ApiDebugger.vue'
-import InterfaceLibrary from './InterfaceLibrary.vue'
-import JmeterAssistant from './JmeterAssistant.vue'
-import MockService from './MockService.vue'
-import SuiteManager from './SuiteManager.vue'
-import DBConnectionManager from './scenario/DBConnectionManager.vue'
-import ExecutionResultDialog from './ExecutionResultDialog.vue'
 import autoTestRequest from '@/utils/autoTestRequest'
+
+// Each workbench tab is independent. Loading it only after the user opens the
+// tab keeps the landing workbench responsive while retaining visited tabs.
+const ScenarioList = defineAsyncComponent(() => import('./ScenarioList.vue'))
+const ScenarioEditor = defineAsyncComponent(() => import('./ScenarioEditor.vue'))
+const GlobalVariableManager = defineAsyncComponent(() => import('../components/GlobalVariableManager.vue'))
+const DataFactory = defineAsyncComponent(() => import('./DataFactory.vue'))
+const ApiDebugger = defineAsyncComponent(() => import('./ApiDebugger.vue'))
+const InterfaceLibrary = defineAsyncComponent(() => import('./InterfaceLibrary.vue'))
+const JmeterAssistant = defineAsyncComponent(() => import('./JmeterAssistant.vue'))
+const MockService = defineAsyncComponent(() => import('./MockService.vue'))
+const SuiteManager = defineAsyncComponent(() => import('./SuiteManager.vue'))
+const DBConnectionManager = defineAsyncComponent(() => import('./scenario/DBConnectionManager.vue'))
+const ExecutionResultDialog = defineAsyncComponent(() => import('./ExecutionResultDialog.vue'))
 
 const route = useRoute()
 const router = useRouter()

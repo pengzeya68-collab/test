@@ -9,15 +9,23 @@ import sys
 from pathlib import Path
 
 from sqlalchemy import create_engine
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from fastapi_backend.core.database import Base
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ALEMBIC_CONFIG = PROJECT_ROOT / "fastapi_backend" / "alembic.ini"
-HEAD_REVISION = "ac1d2e3f4a5b"
 PRE_FEEDBACK_REVISION = "ab1c2d3e4f5a"
 WEBHOOK_REVISION = "aa0b1c2d3e4f"
 PRE_WEBHOOK_REVISION = "a9d0e1f2a3b4"
+
+
+def _head_revision() -> str:
+    return str(ScriptDirectory.from_config(Config(str(ALEMBIC_CONFIG))).get_current_head())
+
+
+HEAD_REVISION = _head_revision()
 
 
 def _alembic(env: dict[str, str], *arguments: str) -> subprocess.CompletedProcess[str]:

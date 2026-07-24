@@ -147,7 +147,7 @@
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="60" align="center">
-                <template #default="{ row, $index }">
+                <template #default="{ $index }">
                   <el-button type="danger" size="small" text @click="removeHeader($index)">
                     <el-icon><Delete /></el-icon>
                   </el-button>
@@ -199,7 +199,7 @@
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="60" align="center">
-                <template #default="{ row, $index }">
+                <template #default="{ $index }">
                   <el-button type="danger" size="small" text @click="removeParam($index)">
                     <el-icon><Delete /></el-icon>
                   </el-button>
@@ -285,7 +285,7 @@
                   </template>
                 </el-table-column>
                 <el-table-column label="操作" width="60" align="center">
-                  <template #default="{ row, $index }">
+                  <template #default="{ $index }">
                     <el-button type="danger" size="small" text @click="removeFormData($index)">
                       <el-icon><Delete /></el-icon>
                     </el-button>
@@ -336,7 +336,7 @@
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="60" align="center">
-                <template #default="{ row, $index }">
+                <template #default="{ $index }">
                   <el-button type="danger" size="small" text @click="removeExtractor($index)">
                     <el-icon><Delete /></el-icon>
                   </el-button>
@@ -645,7 +645,7 @@
 <script setup>
 import { ref, watch, toRaw, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox, ElDrawer } from 'element-plus'
-import { Plus, VideoPlay, Delete, Rank, Reading, Search, DocumentCopy, Collection, Clock } from '@element-plus/icons-vue'
+import { Plus, VideoPlay, Delete, Rank, Reading, DocumentCopy, Collection, Clock } from '@element-plus/icons-vue'
 import JsonEditor from './JsonEditor.vue'
 import CodeEditor from '@/components/CodeEditor.vue'
 import draggable from 'vuedraggable'
@@ -833,7 +833,7 @@ const handleGlobalKeydown = (e) => {
 }
 
 // 处理 Tab 容器请求保存当前 Tab 的事件
-const handleSaveActiveTab = (e) => {
+const handleSaveActiveTab = () => {
   // 只在嵌入式模式下响应（避免抽屉模式重复保存）
   if (!props.embedded) return
   handleSave({ skipVersionPrompt: true })
@@ -934,9 +934,6 @@ const assertTemplateCategories = ref([])
 const assertTemplatesLoading = ref(false)
 
 // === 变量补全逻辑 ===
-let currentInputPos = 0
-let isTriggeringVars = false
-
 const querySearchVars = (queryString, cb) => {
   // 如果输入包含 {{，则触发补全
   const lastIndex = queryString.lastIndexOf('{{')
@@ -1340,6 +1337,7 @@ const parseJson = (str, isAssertRules = false) => {
     return []
   }
 }
+void parseJson
 
 // 映射旧操作符到新操作符
 const mapOldOperator = (oldOp) => {
@@ -1874,7 +1872,9 @@ const addExtractorFromResponse = async () => {
     })
     activeTab.value = 'extractors'
     ElMessage.success(`已添加变量提取：${value}`)
-  } catch {}
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(`添加变量提取失败：${error.message || error}`)
+  }
 }
 
 const handleDraftSend = async () => {
@@ -2356,14 +2356,14 @@ const handleDraftSend = async () => {
 /* 断言模板卡片 */
 .template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
 .template-card {
-  border: 1px solid #e4e7ed; border-radius: 8px; padding: 14px; cursor: pointer;
-  transition: all .2s; background: #fafafa; position: relative;
+  border: 1px solid var(--tm-border-light); border-radius: 8px; padding: 14px; cursor: pointer;
+  transition: all .2s; background: var(--tm-text-primary); position: relative;
 }
-.template-card:hover { border-color: #409EFF; box-shadow: 0 2px 8px rgba(64,158,255,.1); transform: translateY(-1px); background: #fff; }
+.template-card:hover { border-color: var(--tm-color-primary); box-shadow: 0 2px 8px rgba(var(--tm-color-primary-rgb),.1); transform: translateY(-1px); background: #fff; }
 .template-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .template-name { font-weight: 600; font-size: 13px; flex: 1; }
 .template-delete-btn { margin-left: auto; padding: 4px; }
-.template-desc { font-size: 12px; color: #909399; margin-bottom: 8px; }
+.template-desc { font-size: 12px; color: var(--tm-color-info); margin-bottom: 8px; }
 .template-code {
   background: #2d3436; color: #dfe6e9; padding: 8px 10px; border-radius: 4px;
   font-size: 11px; overflow-x: auto; margin: 0; line-height: 1.5;

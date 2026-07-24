@@ -41,10 +41,12 @@
 
         <div class="lesson-footer">
           <button class="outline-btn" @click="goToExercises" title="鍋氶厤濂楃粌涔犻宸╁浐鐭ヨ瘑">
-            鉁忥笍 鍋氶厤濂楃粌涔?          </button>
+            做配套练习
+          </button>
           <div class="lesson-footer-right">
             <button class="outline-btn" @click="prevLesson" :disabled="!lesson?.prev_lesson">
-              鈫?涓婁竴鑺?            </button>
+              上一节
+            </button>
             <button class="primary-btn" @click="nextLesson">
               {{ lesson?.next_lesson ? '下一节' : '已完成全部课程' }}
             </button>
@@ -172,7 +174,7 @@ onMounted(() => fetchLesson())
   font-weight: 600;
   padding: 2px 10px;
   border-radius: 10px;
-  background: rgba(139, 92, 246, 0.12);
+  background: rgba(var(--tm-color-primary-rgb), 0.12);
   color: var(--tm-color-primary);
 }
 

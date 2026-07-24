@@ -20,6 +20,27 @@ from fastapi_backend.core.jmeter_settings import (
 _logger = logging.getLogger(__name__)
 
 
+def _build_jmeter_runtime_env() -> dict[str, str]:
+    """Prepare a process environment compatible with JMeter's shell launchers."""
+    env = os.environ.copy()
+    jmeter_bin_dir = os.path.dirname(os.path.abspath(JMETER_BIN))
+    # jmeter.bat interprets JMETER_BIN as a directory and concatenates
+    # ApacheJMeter.jar to it. The application setting is an executable path.
+    env["JMETER_BIN"] = jmeter_bin_dir + os.sep
+    env["JMETER_HOME"] = os.path.dirname(jmeter_bin_dir)
+
+    java_executable = "java.exe" if os.name == "nt" else "java"
+    configured_java = os.path.join(JAVA_HOME, "bin", java_executable) if JAVA_HOME else ""
+    if configured_java and os.path.isfile(configured_java):
+        env["JAVA_HOME"] = JAVA_HOME
+        env["PATH"] = f"{os.path.join(JAVA_HOME, 'bin')}{os.pathsep}{env.get('PATH', '')}"
+    else:
+        # The default Linux JAVA_HOME is not valid on Windows. Let JMeter find
+        # java from PATH instead of poisoning the child process environment.
+        env.pop("JAVA_HOME", None)
+    return env
+
+
 def _extract_method(sampler_data: str) -> str:
     """从 samplerData 文本中提取 HTTP 方法。samplerData 形如 'GET http://...'
     或 'POST http://...'。"""
@@ -88,10 +109,7 @@ class JmeterEngine:
             for k, v in props.items():
                 cmd.extend(["-J", f"{k}={v}"])
 
-        env = os.environ.copy()
-        if JAVA_HOME:
-            env["JAVA_HOME"] = JAVA_HOME
-            env["PATH"] = f"{JAVA_HOME}/bin:{env.get('PATH', '')}"
+        env = _build_jmeter_runtime_env()
 
         _logger.info("[JMeter] 启动子进程: run_id=%s, cmd=%s", run_id, " ".join(cmd))
         process = await asyncio.create_subprocess_exec(

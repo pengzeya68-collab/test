@@ -370,7 +370,7 @@ onMounted(() => {
 .pp-header h3 {
   margin: 0 0 4px;
   font-size: 18px;
-  color: #e0e0e0;
+  color: var(--tm-border-light);
 }
 
 .pp-subtitle {
@@ -395,8 +395,8 @@ onMounted(() => {
 }
 
 .project-card:hover {
-  border-color: rgba(64, 158, 255, .3);
-  background: rgba(64, 158, 255, .04);
+  border-color: rgba(var(--tm-color-primary-rgb), .3);
+  background: rgba(var(--tm-color-primary-rgb), .04);
   transform: translateY(-2px);
 }
 
@@ -415,9 +415,9 @@ onMounted(() => {
   color: #aaa;
 }
 
-.pc-difficulty.diff-medium { color: #e6a23c; }
-.pc-difficulty.diff-easy { color: #67c23a; }
-.pc-difficulty.diff-hard { color: #f56c6c; }
+.pc-difficulty.diff-medium { color: var(--tm-color-warning); }
+.pc-difficulty.diff-easy { color: var(--tm-color-success); }
+.pc-difficulty.diff-hard { color: var(--tm-color-danger); }
 
 .pc-hours {
   font-size: 12px;
@@ -427,7 +427,7 @@ onMounted(() => {
 .pc-title {
   margin: 0 0 6px;
   font-size: 16px;
-  color: #e0e0e0;
+  color: var(--tm-border-light);
 }
 
 .pc-desc {
@@ -459,7 +459,7 @@ onMounted(() => {
 
 .pcp-fill {
   height: 100%;
-  background: #409eff;
+  background: var(--tm-color-primary);
   border-radius: 3px;
   transition: width .3s;
 }
@@ -498,8 +498,8 @@ onMounted(() => {
 }
 
 .pd-hero {
-  background: rgba(64, 158, 255, .04);
-  border: 1px solid rgba(64, 158, 255, .12);
+  background: rgba(var(--tm-color-primary-rgb), .04);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), .12);
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
@@ -519,15 +519,15 @@ onMounted(() => {
   color: #aaa;
 }
 
-.tag.diff-medium { color: #e6a23c; }
-.tag.diff-easy { color: #67c23a; }
-.tag.diff-hard { color: #f56c6c; }
-.tag.tag-time { color: #409eff; }
+.tag.diff-medium { color: var(--tm-color-warning); }
+.tag.diff-easy { color: var(--tm-color-success); }
+.tag.diff-hard { color: var(--tm-color-danger); }
+.tag.tag-time { color: var(--tm-color-primary); }
 
 .pd-hero h2 {
   margin: 0 0 8px;
   font-size: 22px;
-  color: #e0e0e0;
+  color: var(--tm-border-light);
 }
 
 .pd-hero > p {
@@ -557,7 +557,7 @@ onMounted(() => {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #409eff, #67c23a);
+  background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-color-success));
   border-radius: 4px;
   transition: width .5s;
 }
@@ -585,14 +585,14 @@ onMounted(() => {
 
 .ctab:hover { color: #ccc !important; }
 .ctab.active {
-  color: #409eff !important;
-  border-bottom-color: #409eff !important;
+  color: var(--tm-color-primary) !important;
+  border-bottom-color: var(--tm-color-primary) !important;
 }
 
 .ctab-badge {
   font-size: 11px;
-  background: rgba(64,158,255,.15);
-  color: #409eff;
+  background: rgba(var(--tm-color-primary-rgb),.15);
+  color: var(--tm-color-primary);
   padding: 0 6px;
   border-radius: 10px;
 }
@@ -613,8 +613,8 @@ onMounted(() => {
 }
 
 .task-card.submitted {
-  border-color: rgba(103,194,58,.2);
-  background: rgba(103,194,58,.03);
+  border-color: color-mix(in srgb, var(--tm-color-success) 20%, transparent);
+  background: color-mix(in srgb, var(--tm-color-success) 3%, transparent);
 }
 
 .tc-header {
@@ -634,8 +634,8 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(64,158,255,.12);
-  color: #409eff;
+  background: rgba(var(--tm-color-primary-rgb),.12);
+  color: var(--tm-color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -647,7 +647,7 @@ onMounted(() => {
 .tch-left h4 {
   margin: 0 0 4px;
   font-size: 15px;
-  color: #e0e0e0;
+  color: var(--tm-border-light);
 }
 
 .tc-type {
@@ -660,7 +660,7 @@ onMounted(() => {
 
 .tc-score {
   font-size: 13px;
-  color: #e6a23c;
+  color: var(--tm-color-warning);
   font-weight: 600;
 }
 
@@ -679,7 +679,7 @@ onMounted(() => {
 .tc-hints h5 {
   margin: 0 0 4px;
   font-size: 12px;
-  color: #409eff;
+  color: var(--tm-color-primary);
 }
 
 .tc-requirements pre,
@@ -703,7 +703,7 @@ onMounted(() => {
 .tc-score-result {
   margin-left: auto;
   font-size: 13px;
-  color: #67c23a;
+  color: var(--tm-color-success);
   font-weight: 600;
 }
 
@@ -731,7 +731,7 @@ onMounted(() => {
 .rc-body h4 {
   margin: 0 0 4px;
   font-size: 14px;
-  color: #e0e0e0;
+  color: var(--tm-border-light);
 }
 
 .rc-type {
@@ -749,7 +749,7 @@ onMounted(() => {
 .rc-link {
   display: inline-block;
   margin-top: 8px;
-  color: #409eff;
+  color: var(--tm-color-primary);
   font-size: 13px;
   text-decoration: none;
 }
@@ -805,17 +805,17 @@ onMounted(() => {
 .ev-status {
   font-size: 20px;
   font-weight: 600;
-  color: #e6a23c;
+  color: var(--tm-color-warning);
   margin-bottom: 12px;
 }
 
 .ev-status.passed {
-  color: #67c23a;
+  color: var(--tm-color-success);
 }
 
 .ev-score {
   font-size: 16px;
-  color: #409eff;
+  color: var(--tm-color-primary);
   margin-bottom: 12px;
 }
 

@@ -38,7 +38,7 @@
             </el-table-column>
             <el-table-column label="绯荤粺" width="60" align="center">
               <template #default="{ row }">
-                <el-icon v-if="row.is_system" color="#E6A23C"><Star /></el-icon>
+                <el-icon v-if="row.is_system" color="var(--tm-color-warning)"><Star /></el-icon>
               </template>
             </el-table-column>
           </el-table>
@@ -65,9 +65,10 @@
             </div>
           </template>
 
-          <div v-if="!selectedRole" class="empty-tip">璇蜂粠宸︿晶閫夋嫨瑙掕壊</div>
+          <div v-if="!selectedRole" class="empty-tip">请从左侧选择角色</div>
           <div v-else-if="selectedRole.is_system && selectedRole.code === 'ADMIN'" class="empty-tip">
-            ADMIN 绯荤粺瑙掕壊鎷ユ湁鍏ㄩ儴鏉冮檺锛屼笉鍙慨鏀?          </div>
+            ADMIN 系统角色拥有全部权限，不可修改
+          </div>
           <div v-else>
             <el-tree
               ref="permTreeRef"
@@ -143,7 +144,8 @@ const roleLoading = ref(false)
 const saveLoading = ref(false)
 const assignLoading = ref(false)
 
-// 鐢ㄦ埛瑙掕壊鍒嗛厤瀵硅瘽妗?const assignDialogVisible = ref(false)
+// 用户角色分配对话框
+const assignDialogVisible = ref(false)
 const assignForm = ref({ userId: '', roleIds: [] })
 const userCurrentRoles = ref([])
 
@@ -341,7 +343,7 @@ onMounted(async () => {
 }
 .page-subtitle {
   margin: 0;
-  color: #909399;
+  color: var(--tm-color-info);
   font-size: 13px;
 }
 .card-header {
@@ -351,18 +353,18 @@ onMounted(async () => {
 }
 .empty-tip {
   text-align: center;
-  color: #909399;
+  color: var(--tm-color-info);
   padding: 40px 0;
 }
 .current-roles {
   margin-bottom: 12px;
 }
 .current-roles .label {
-  color: #606266;
+  color: var(--tm-text-regular);
   font-size: 13px;
 }
 .role-desc {
-  color: #909399;
+  color: var(--tm-color-info);
   font-size: 12px;
   margin-left: 8px;
 }

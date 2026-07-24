@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { selectDesktopDataDirectory } from '../src/main/desktop-data-directory';
+import { selectDesktopDataDirectory, userDataDirectoryFromArgv } from '../src/main/desktop-data-directory';
 
 describe('desktop data directory selection', () => {
   it('uses an explicit writable absolute directory first', () => {
@@ -33,5 +33,12 @@ describe('desktop data directory selection', () => {
     expect(selected.source).toBe('system-fallback');
     expect(selected.path).toBe(systemUserData);
     expect(selected.warning).toContain('系统盘');
+  });
+
+  it('reads an isolated Chromium profile from either supported switch form', () => {
+    expect(userDataDirectoryFromArgv(['electron', '.', '--user-data-dir=E:\\tmp\\testmaster-smoke']))
+      .toBe('E:\\tmp\\testmaster-smoke');
+    expect(userDataDirectoryFromArgv(['electron', '.', '--user-data-dir', 'E:\\tmp\\testmaster-smoke']))
+      .toBe('E:\\tmp\\testmaster-smoke');
   });
 });

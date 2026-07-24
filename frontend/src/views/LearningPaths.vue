@@ -60,7 +60,7 @@
             @click="switchStage(stage.id)"
           >
             <div class="stage-num-badge">
-              <el-icon v-if="isLoggedIn && getStageProgress(stage.id) >= 100" :size="18" style="color:#4ADE80"><CircleCheck /></el-icon>
+              <el-icon v-if="isLoggedIn && getStageProgress(stage.id) >= 100" :size="18" style="color:var(--tm-color-success)"><CircleCheck /></el-icon>
               <span v-else>{{ stage.id }}</span>
             </div>
             <div class="stage-body">
@@ -363,11 +363,11 @@ const getPathProgress = (pathId) => {
 
 const getPathProgressColor = (pathId) => {
   const p = getPathProgress(pathId)
-  if (!p) return '#909399'
-  if (p.progress_percent >= 100) return '#67c23a'
-  if (p.progress_percent >= 60) return '#409eff'
-  if (p.progress_percent >= 30) return '#e6a23c'
-  return '#909399'
+  if (!p) return 'var(--tm-color-info)'
+  if (p.progress_percent >= 100) return 'var(--tm-color-success)'
+  if (p.progress_percent >= 60) return 'var(--tm-color-primary)'
+  if (p.progress_percent >= 30) return 'var(--tm-color-warning)'
+  return 'var(--tm-color-info)'
 }
 
 const getStageProgress = (stageId) => {
@@ -382,6 +382,7 @@ const switchStage = (stageId) => {
 const handleStageChange = () => {
   fetchLearningPaths()
 }
+void handleStageChange
 
 const isPathCompleted = (pathId) => {
   const p = getPathProgress(pathId)
@@ -400,6 +401,7 @@ const getStageTagType = (stage) => {
   const types = ['', 'primary', 'success', 'warning', 'danger', 'info']
   return types[stage] || 'info'
 }
+void getStageTagType
 
 const getDifficultyTagType = (difficulty) => {
   const map = {
@@ -409,6 +411,7 @@ const getDifficultyTagType = (difficulty) => {
   }
   return map[difficulty] || 'info'
 }
+void getDifficultyTagType
 
 const getDifficultyText = (difficulty) => {
   const map = {
@@ -477,13 +480,13 @@ const goToDetail = (id) => {
 }
 
 .stat-icon-green {
-  background: rgba(74, 222, 128, 0.12);
-  color: #4ADE80;
+  background: color-mix(in srgb, var(--tm-color-success) 12%, transparent);
+  color: var(--tm-color-success);
 }
 
 .stat-icon-orange {
-  background: rgba(250, 204, 21, 0.12);
-  color: #FACC15;
+  background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent);
+  color: var(--tm-color-warning);
 }
 
 .stat-icon-purple {
@@ -722,10 +725,10 @@ const goToDetail = (id) => {
 }
 
 .hero-stage-1 { background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.08), rgba(24, 24, 27, 0.9)); }
-.hero-stage-2 { background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.08), rgba(24, 24, 27, 0.9)); }
-.hero-stage-3 { background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(139, 92, 246, 0.08), rgba(24, 24, 27, 0.9)); }
-.hero-stage-4 { background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(251, 146, 60, 0.08), rgba(24, 24, 27, 0.9)); }
-.hero-stage-5 { background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(244, 63, 94, 0.08), rgba(24, 24, 27, 0.9)); }
+.hero-stage-2 { background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(var(--tm-color-primary-rgb), 0.08), rgba(24, 24, 27, 0.9)); }
+.hero-stage-3 { background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(var(--tm-color-primary-rgb), 0.08), rgba(24, 24, 27, 0.9)); }
+.hero-stage-4 { background: linear-gradient(135deg, color-mix(in srgb, var(--tm-color-warning) 15%, transparent), rgba(251, 146, 60, 0.08), rgba(24, 24, 27, 0.9)); }
+.hero-stage-5 { background: linear-gradient(135deg, color-mix(in srgb, var(--tm-neon-pink) 15%, transparent), rgba(244, 63, 94, 0.08), rgba(24, 24, 27, 0.9)); }
 
 .hero-deco {
   position: absolute;
@@ -755,11 +758,11 @@ const goToDetail = (id) => {
   border: 1px solid rgba(var(--tm-color-primary-rgb), 0.25);
 }
 
-.hero-stage-1 .hero-badge { background: rgba(34, 197, 94, 0.15); color: #22C55E; border-color: rgba(34, 197, 94, 0.25); }
-.hero-stage-2 .hero-badge { background: rgba(59, 130, 246, 0.15); color: #3B82F6; border-color: rgba(59, 130, 246, 0.25); }
+.hero-stage-1 .hero-badge { background: rgba(34, 197, 94, 0.15); color: var(--tm-color-success); border-color: rgba(34, 197, 94, 0.25); }
+.hero-stage-2 .hero-badge { background: rgba(59, 130, 246, 0.15); color: var(--tm-color-primary); border-color: rgba(59, 130, 246, 0.25); }
 .hero-stage-3 .hero-badge { background: rgba(168, 85, 247, 0.15); color: #A855F7; border-color: rgba(168, 85, 247, 0.25); }
-.hero-stage-4 .hero-badge { background: rgba(245, 158, 11, 0.15); color: #F59E0B; border-color: rgba(245, 158, 11, 0.25); }
-.hero-stage-5 .hero-badge { background: rgba(236, 72, 153, 0.15); color: #EC4899; border-color: rgba(236, 72, 153, 0.25); }
+.hero-stage-4 .hero-badge { background: color-mix(in srgb, var(--tm-color-warning) 15%, transparent); color: var(--tm-color-warning); border-color: color-mix(in srgb, var(--tm-color-warning) 25%, transparent); }
+.hero-stage-5 .hero-badge { background: color-mix(in srgb, var(--tm-neon-pink) 15%, transparent); color: var(--tm-neon-pink); border-color: color-mix(in srgb, var(--tm-neon-pink) 25%, transparent); }
 
 .hero-title {
   font-size: 26px;
@@ -896,7 +899,7 @@ const goToDetail = (id) => {
 }
 
 .completed-check {
-  color: #4ADE80;
+  color: var(--tm-color-success);
 }
 
 .path-desc-snippet {
@@ -945,21 +948,21 @@ const goToDetail = (id) => {
 }
 
 .diff-beginner {
-  background: rgba(74, 222, 128, 0.1);
-  color: #4ADE80;
-  border: 1px solid rgba(74, 222, 128, 0.2);
+  background: color-mix(in srgb, var(--tm-color-success) 10%, transparent);
+  color: var(--tm-color-success);
+  border: 1px solid color-mix(in srgb, var(--tm-color-success) 20%, transparent);
 }
 
 .diff-intermediate {
-  background: rgba(250, 204, 21, 0.1);
-  color: #FACC15;
-  border: 1px solid rgba(250, 204, 21, 0.2);
+  background: color-mix(in srgb, var(--tm-color-warning) 10%, transparent);
+  color: var(--tm-color-warning);
+  border: 1px solid color-mix(in srgb, var(--tm-color-warning) 20%, transparent);
 }
 
 .diff-advanced {
-  background: rgba(248, 113, 113, 0.1);
-  color: #F87171;
-  border: 1px solid rgba(248, 113, 113, 0.2);
+  background: color-mix(in srgb, var(--tm-color-danger) 10%, transparent);
+  color: var(--tm-color-danger);
+  border: 1px solid color-mix(in srgb, var(--tm-color-danger) 20%, transparent);
 }
 
 .empty-state {

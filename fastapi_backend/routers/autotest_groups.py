@@ -18,6 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_active_user
+from fastapi_backend.deps.project_context import (
+    get_active_project_id,
+    get_active_project_id_member,
+    is_personal_project,
+    project_scope_with_legacy_null,
+)
 from fastapi_backend.models.autotest import (
     AutoTestCase,
     AutoTestGroup,
@@ -45,21 +51,52 @@ def _serialize_group(group: AutoTestGroup) -> Dict[str, Any]:
         "parent_id": group.parent_id,
         "description": group.description,
         "sort_order": group.sort_order or 0,
+        "project_id": getattr(group, "project_id", None),
         "created_at": group.created_at.isoformat() if group.created_at else None,
         "updated_at": group.updated_at.isoformat() if group.updated_at else None,
     }
 
 
-async def _detect_cycle(db: AsyncSession, group_id: int, new_parent_id: Optional[int], user_id: int) -> None:
+async def _group_scope(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestGroup.project_id,
+        project_id,
+        user_id_column=AutoTestGroup.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
+
+
+async def _case_scope(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestCase.project_id,
+        project_id,
+        user_id_column=AutoTestCase.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
+
+
+async def _detect_cycle(
+    db: AsyncSession,
+    group_id: int,
+    new_parent_id: Optional[int],
+    user_id: int,
+    *,
+    project_id: Optional[int] = None,
+) -> None:
     """循环检测：确保将 group_id 的父设为 new_parent_id 不会形成 A→B→A 环。
 
-    若检测到循环或父分组不存在/不属于当前用户，抛出 HTTPException。
+    若检测到循环或父分组不在当前项目可见范围，抛出 HTTPException。
     """
     if new_parent_id is None:
         return
     if new_parent_id == group_id:
         raise HTTPException(status_code=400, detail="不能将分组设为自身的子分组")
 
+    scope = await _group_scope(db, user_id, project_id) if project_id is not None else None
     visited = {group_id}
     current_parent_id = new_parent_id
     while current_parent_id is not None:
@@ -69,27 +106,32 @@ async def _detect_cycle(db: AsyncSession, group_id: int, new_parent_id: Optional
                 detail="检测到循环引用：目标父分组是当前分组的后代，无法移动",
             )
         visited.add(current_parent_id)
-        parent_result = await db.execute(
-            select(AutoTestGroup).where(
-                AutoTestGroup.id == current_parent_id,
-                AutoTestGroup.user_id == user_id,
-            )
-        )
+        filters = [AutoTestGroup.id == current_parent_id]
+        if scope is not None:
+            filters.append(scope)
+        parent_result = await db.execute(select(AutoTestGroup).where(*filters))
         parent_group = parent_result.scalar_one_or_none()
         if not parent_group:
-            raise HTTPException(status_code=400, detail="父分组不存在或不属于当前用户")
+            raise HTTPException(status_code=400, detail="父分组不存在或不在当前项目")
         current_parent_id = parent_group.parent_id
 
 
-async def _validate_parent_belongs(db: AsyncSession, parent_id: Optional[int], user_id: int) -> None:
-    """校验父分组存在且属于当前用户（parent_id 为 None 时跳过）"""
+async def _validate_parent_belongs(
+    db: AsyncSession,
+    parent_id: Optional[int],
+    user_id: int,
+    *,
+    project_id: Optional[int] = None,
+) -> None:
+    """校验父分组存在且在当前项目可见（parent_id 为 None 时跳过）"""
     if parent_id is None:
         return
-    result = await db.execute(
-        select(AutoTestGroup).where(AutoTestGroup.id == parent_id, AutoTestGroup.user_id == user_id)
-    )
+    filters = [AutoTestGroup.id == parent_id]
+    if project_id is not None:
+        filters.append(await _group_scope(db, user_id, project_id))
+    result = await db.execute(select(AutoTestGroup).where(*filters))
     if not result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="父分组不存在或不属于当前用户")
+        raise HTTPException(status_code=400, detail="父分组不存在或不在当前项目")
 
 
 # ========== 路由端点 ==========
@@ -99,20 +141,23 @@ async def _validate_parent_belongs(db: AsyncSession, parent_id: Optional[int], u
 async def get_group_tree(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     """获取所有分组，返回树形结构（按 sort_order 排序，含 case_count）"""
+    scope = await _group_scope(db, current_user.id, project_id)
+    case_scope = await _case_scope(db, current_user.id, project_id)
     result = await db.execute(
         select(AutoTestGroup)
-        .where(AutoTestGroup.user_id == current_user.id)
+        .where(scope)
         .order_by(AutoTestGroup.parent_id, AutoTestGroup.sort_order, AutoTestGroup.id)
     )
     groups = result.scalars().all()
 
-    # 计算每个分组的用例数（只统计当前用户的）
+    # 计算每个分组的用例数（项目成员共享）
     case_counts: Dict[Optional[int], int] = {}
     count_result = await db.execute(
         select(AutoTestCase.group_id, func.count(AutoTestCase.id))
-        .where(AutoTestCase.user_id == current_user.id)
+        .where(case_scope)
         .group_by(AutoTestCase.group_id)
     )
     for group_id, count in count_result.all():
@@ -139,11 +184,13 @@ async def get_group_tree(
 async def get_all_groups(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     """获取所有分组列表（扁平结构，按 sort_order 排序）"""
+    scope = await _group_scope(db, current_user.id, project_id)
     result = await db.execute(
         select(AutoTestGroup)
-        .where(AutoTestGroup.user_id == current_user.id)
+        .where(scope)
         .order_by(AutoTestGroup.parent_id, AutoTestGroup.sort_order, AutoTestGroup.name)
     )
     groups = result.scalars().all()
@@ -155,10 +202,15 @@ async def get_group(
     group_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     """获取单个分组详情"""
+    scope = await _group_scope(db, current_user.id, project_id)
     result = await db.execute(
-        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
+        select(AutoTestGroup).filter(
+            AutoTestGroup.id == group_id,
+            scope,
+        )
     )
     group = result.scalar_one_or_none()
     if not group:
@@ -171,11 +223,12 @@ async def create_group(
     group_in: AutoTestGroupCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """创建新分组"""
-    await _validate_parent_belongs(db, group_in.parent_id, current_user.id)
+    await _validate_parent_belongs(db, group_in.parent_id, current_user.id, project_id=project_id)
 
-    group = AutoTestGroup(**group_in.model_dump(), user_id=current_user.id)
+    group = AutoTestGroup(**group_in.model_dump(), user_id=current_user.id, project_id=int(project_id))
     db.add(group)
     await db.commit()
     await db.refresh(group)
@@ -188,25 +241,34 @@ async def update_group(
     group_in: AutoTestGroupUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """更新分组（含移动到新父分组，带循环检测）"""
+    scope = await _group_scope(db, current_user.id, project_id)
     result = await db.execute(
-        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
+        select(AutoTestGroup).filter(
+            AutoTestGroup.id == group_id,
+            scope,
+        )
     )
     group = result.scalar_one_or_none()
     if not group:
         raise HTTPException(status_code=404, detail="分组不存在")
 
     update_data = group_in.model_dump(exclude_unset=True)
+    update_data.pop("project_id", None)
     new_parent_id = update_data.get("parent_id", group.parent_id)
 
     # 若 parent_id 变更，则进行循环检测与归属校验
     if "parent_id" in update_data:
-        await _detect_cycle(db, group_id, new_parent_id, current_user.id)
-        await _validate_parent_belongs(db, new_parent_id, current_user.id)
+        await _detect_cycle(db, group_id, new_parent_id, current_user.id, project_id=project_id)
+        await _validate_parent_belongs(db, new_parent_id, current_user.id, project_id=project_id)
+
+    if getattr(group, "project_id", None) is None:
+        group.project_id = int(project_id)
 
     for field, value in update_data.items():
-        if field in ("id", "user_id", "created_at"):
+        if field in ("id", "user_id", "created_at", "project_id"):
             continue
         setattr(group, field, value)
 
@@ -221,10 +283,15 @@ async def move_group(
     move_in: AutoTestGroupMove,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """移动分组：改变 parent_id 和/或 sort_order（带循环检测）"""
+    scope = await _group_scope(db, current_user.id, project_id)
     result = await db.execute(
-        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
+        select(AutoTestGroup).filter(
+            AutoTestGroup.id == group_id,
+            scope,
+        )
     )
     group = result.scalar_one_or_none()
     if not group:
@@ -236,8 +303,8 @@ async def move_group(
 
     new_parent_id = move_data.get("parent_id", group.parent_id)
     if "parent_id" in move_data:
-        await _detect_cycle(db, group_id, new_parent_id, current_user.id)
-        await _validate_parent_belongs(db, new_parent_id, current_user.id)
+        await _detect_cycle(db, group_id, new_parent_id, current_user.id, project_id=project_id)
+        await _validate_parent_belongs(db, new_parent_id, current_user.id, project_id=project_id)
         group.parent_id = new_parent_id
 
     if "sort_order" in move_data:
@@ -254,6 +321,7 @@ async def delete_group(
     move_cases_to_parent: bool = True,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """删除分组。
 
@@ -262,8 +330,13 @@ async def delete_group(
       * move_cases_to_parent=True 且存在父分组：将用例移动到父分组。
       * 否则：解除场景步骤引用并删除分组下用例。
     """
+    scope = await _group_scope(db, current_user.id, project_id)
+    case_scope = await _case_scope(db, current_user.id, project_id)
     result = await db.execute(
-        select(AutoTestGroup).filter(AutoTestGroup.id == group_id, AutoTestGroup.user_id == current_user.id)
+        select(AutoTestGroup).filter(
+            AutoTestGroup.id == group_id,
+            scope,
+        )
     )
     group = result.scalar_one_or_none()
     if not group:
@@ -273,7 +346,7 @@ async def delete_group(
     child_result = await db.execute(
         select(AutoTestGroup).filter(
             AutoTestGroup.parent_id == group_id,
-            AutoTestGroup.user_id == current_user.id,
+            scope,
         )
     )
     children = child_result.scalars().all()
@@ -283,11 +356,11 @@ async def delete_group(
             detail=f"请先删除子分组（共 {len(children)} 个）",
         )
 
-    # 查找分组下所有用例
+    # 查找分组下所有用例（项目成员共享）
     cases_result = await db.execute(
         select(AutoTestCase).filter(
             AutoTestCase.group_id == group_id,
-            AutoTestCase.user_id == current_user.id,
+            case_scope,
         )
     )
     cases = cases_result.scalars().all()

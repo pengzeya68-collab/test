@@ -257,6 +257,31 @@ async def validate_parent_id(
             )
 
 
+def merge_variable_layers(
+    *,
+    runtime: Optional[Dict[str, Any]] = None,
+    data_row: Optional[Dict[str, Any]] = None,
+    scenario_extract: Optional[Dict[str, Any]] = None,
+    env: Optional[Dict[str, Any]] = None,
+    project: Optional[Dict[str, Any]] = None,
+    defaults: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Merge variable layers with fixed priority (spec §4.3):
+
+    runtime > data_row > scenario_extract > env > project > default
+
+    Lower-priority layers must never clobber higher ones.
+    """
+    merged: Dict[str, Any] = {}
+    for layer in (defaults, project, env, scenario_extract, data_row, runtime):
+        if not layer:
+            continue
+        if not isinstance(layer, dict):
+            continue
+        merged.update(layer)
+    return merged
+
+
 def _serialize_var_value(var_value: Any) -> str:
     """将变量值序列化为字符串，保留类型信息"""
     if isinstance(var_value, (dict, list)):

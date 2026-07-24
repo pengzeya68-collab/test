@@ -40,6 +40,9 @@
       </div>
 
       <div class="bcp-header-right">
+        <el-button v-if="benchResult" size="small" plain :icon="RefreshRight" data-testid="jmeter-bench-reset-button" @click.stop="resetBench">
+          重新配置
+        </el-button>
         <el-button v-if="!benching" type="danger" data-testid="jmeter-bench-start-button" @click.stop="startBench" size="default" class="bcp-start-btn">
           {{ benchEngine === 'jmeter' ? '🎯 JMeter 压测' : '⚡ 快速预览' }}（{{ benchConcurrency }}并发 × {{ benchDuration }}秒）
         </el-button>
@@ -285,7 +288,7 @@
                 </el-tabs>
                 <!-- 错误信息(若有) -->
                 <div v-if="(benchResult.body_samples || benchResult.samples)[selectedSampleIndex].failure_message" class="vt-error-box">
-                  <el-icon color="#f56c6c"><WarningFilled /></el-icon>
+                  <el-icon color="var(--tm-color-danger)"><WarningFilled /></el-icon>
                   <span>{{ (benchResult.body_samples || benchResult.samples)[selectedSampleIndex].failure_message }}</span>
                 </div>
               </div>
@@ -342,7 +345,7 @@
       </el-table-column>
       <el-table-column label="失败" width="70" align="right">
         <template #default="{ row }">
-          <span :style="{ color: (row.failed || 0) > 0 ? '#f56c6c' : '#67c23a' }">{{ row.failed || 0 }}</span>
+          <span :style="{ color: (row.failed || 0) > 0 ? 'var(--tm-color-danger)' : 'var(--tm-color-success)' }">{{ row.failed || 0 }}</span>
         </template>
       </el-table-column>
       <el-table-column label="TPS" width="80" align="right">
@@ -423,12 +426,17 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted, shallowRef } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { SwitchButton, ArrowDown, InfoFilled, WarningFilled } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import { SwitchButton, ArrowDown, InfoFilled, WarningFilled, RefreshRight } from '@element-plus/icons-vue'
+import { init, use } from 'echarts/core'
+import { BarChart, LineChart, PieChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
 import autoTestRequest from '@/utils/autoTestRequest'
 import { useAICosts } from '@/composables/useAICosts'
 import { useUserStore } from '@/stores/user'
 import TrendChart from './TrendChart.vue'
+
+use([BarChart, CanvasRenderer, GridComponent, LegendComponent, LineChart, PieChart, TooltipComponent])
 
 const props = defineProps({
   scriptTree: { type: Object, required: true },
@@ -458,7 +466,7 @@ const benching = ref(false)
 const runStatus = ref('idle')
 const showBenchHistory = ref(false)
 const userStore = useUserStore()
-const { fetchCosts, getCostText, getCost } = useAICosts()
+const { fetchCosts, getCostText } = useAICosts()
 const _uid = computed(() => userStore.userId || 'anon')
 const BENCH_HISTORY_KEY = computed(() => `benchHistory_${_uid.value}`)
 // Stage F.4 修复 BUG 1:历史分两层,localBenchHistory 来自 localStorage(quick-bench 模式),
@@ -566,7 +574,7 @@ const _computeScriptHash = async () => {
     if (node.type === 'HttpSampler') {
       samplers.push({ name: node.name, method: node.props.method || 'GET', url: node.props.url })
     }
-    ;(node.children || []).forEach(walk)
+    (node.children || []).forEach(walk)
   }
   walk(props.scriptTree)
   const scriptHashSource = JSON.stringify(samplers)
@@ -629,6 +637,41 @@ const shortUrl = (url) => {
   try { const u = new URL(url); return u.pathname + u.search || '/' } catch { return url.length > 50 ? url.substring(0, 50) + '...' : url }
 }
 
+const resolveChartThemeTokens = (value) => {
+  if (typeof value === 'string') {
+    return value.replace(/var\((--[\w-]+)(?:\s*,\s*([^)]+))?\)/g, (_, token, fallback = '') => {
+      return getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback || '#64748b'
+    })
+  }
+  if (Array.isArray(value)) return value.map(resolveChartThemeTokens)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolveChartThemeTokens(item)]))
+  }
+  return value
+}
+
+const disposeBenchCharts = () => {
+  [benchChartInstance, benchChartInstance2, benchChartInstance3, benchChartInstance4].forEach(instance => {
+    if (instance.value) {
+      instance.value.dispose()
+      instance.value = null
+    }
+  })
+}
+
+const resetBench = () => {
+  if (benching.value) return
+  benchResult.value = null
+  benchProgress.value = ''
+  benchPercent.value = 0
+  benchTaskId.value = null
+  benchRunId.value = null
+  benchSnapshots.value = []
+  selectedSampleIndex.value = null
+  disposeBenchCharts()
+  benchPanelExpanded.value = true
+}
+
 const startBench = async () => {
   const samplers = []
   const walk = (node) => {
@@ -637,7 +680,7 @@ const startBench = async () => {
       ;(node.props.headers || []).forEach(h => { if (h.key) headers[h.key] = h.value })
       samplers.push({ name: node.name, method: node.props.method || 'GET', url: node.props.url, headers, body: node.props.method !== 'GET' ? (node.props.body || '') : '' })
     }
-    ;(node.children || []).forEach(walk)
+    (node.children || []).forEach(walk)
   }
   walk(props.scriptTree)
   if (samplers.length === 0) { ElMessage.warning('脚本中没有 HTTP 请求'); return }
@@ -658,11 +701,13 @@ const startBench = async () => {
       benchRunId.value = res.run_id; benchTaskId.value = res.task_id
       benchProgress.value = `JMeter 任务已提交（run_id=${res.run_id}），等待执行...`
       benchPollTimer = setInterval(pollBench, 2000)
+      void pollBench()
     } else {
       // 快速预览模式：保持原有行为不变
       const res = await autoTestRequest.post('/auto-test/jmeter/quick-bench', { requests: samplers, concurrency: benchConcurrency.value, duration: benchDuration.value, ramp_up: benchRampUp.value })
       benchTaskId.value = res.task_id; benchProgress.value = '任务已提交，正在执行...'
       benchPollTimer = setInterval(pollBench, 1500)
+      void pollBench()
     }
   } catch (e) {
     ElMessage.error('提交失败: ' + (e.response?.data?.detail || e.message))
@@ -690,6 +735,8 @@ const pollBench = async () => {
             p99: 0,
             errors: 0,
           }))
+          await nextTick()
+          initAllBenchCharts()
           updateAllBenchCharts()
         }
       }
@@ -736,6 +783,10 @@ const pollBench = async () => {
             console.warn('加载采样器详情失败(忽略):', e)
           }
         }
+        benchPanelExpanded.value = true
+        await nextTick()
+        initAllBenchCharts()
+        updateAllBenchCharts()
         benching.value = false; runStatus.value = 'idle'
         if (res.status === 'success') {
           ElMessage.success(`JMeter 压测完成：${res.summary?.total || 0} 请求，TPS ${res.summary?.tps || 0}`)
@@ -763,18 +814,35 @@ const pollBench = async () => {
   try {
     const res = await autoTestRequest.get(`/auto-test/jmeter/quick-bench/${benchTaskId.value}`)
     benchRetryCount = 0; benchProgress.value = res.progress || ''; benchPercent.value = res.percent || 0
-    if (res.snapshots && res.snapshots.length > 0) { benchSnapshots.value = res.snapshots; updateAllBenchCharts() }
+    if (res.snapshots && res.snapshots.length > 0) {
+      benchSnapshots.value = res.snapshots
+      await nextTick()
+      initAllBenchCharts()
+      updateAllBenchCharts()
+    }
     if (res.status === 'done') {
       if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
-      benchResult.value = res.result; benchSnapshots.value = res.snapshots || []; updateAllBenchCharts()
+      // The report lives inside the collapsible panel. Reveal it when a task
+      // ends; otherwise a successful run appears to have produced no result.
+      benchResult.value = res.result || {}
+      benchSnapshots.value = res.snapshots || []
+      benchPanelExpanded.value = true
+      await nextTick()
+      initAllBenchCharts()
+      updateAllBenchCharts()
       benching.value = false; runStatus.value = 'idle'
-      if (res.result.failed > 0) { ElMessage.warning(`并发测试完成：${res.result.total} 请求，${res.result.failed} 失败`) }
-      else { ElMessage.success(`并发测试通过！${res.result.total} 请求全部成功，TPS ${res.result.tps}`) }
-      saveBenchHistory(res.result)
+      if (benchResult.value.failed > 0) { ElMessage.warning(`并发测试完成：${benchResult.value.total} 请求，${benchResult.value.failed} 失败`) }
+      else { ElMessage.success(`并发测试通过！${benchResult.value.total} 请求全部成功，TPS ${benchResult.value.tps}`) }
+      saveBenchHistory(benchResult.value)
+    } else if (['failed', 'cancelled', 'stopped'].includes(res.status)) {
+      if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
+      benching.value = false; runStatus.value = 'idle'; benchPanelExpanded.value = true
+      benchProgress.value = res.error || '压测任务未完成'
+      ElMessage.error(benchProgress.value)
     }
   } catch (e) {
     benchRetryCount++
-    if (benchRetryCount >= 3) { if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }; benching.value = false; benchRetryCount = 0; ElMessage.error('查询失败: ' + (e.response?.data?.detail || e.message)) }
+    if (benchRetryCount >= 3) { if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null } benching.value = false; benchRetryCount = 0; ElMessage.error('查询失败: ' + (e.response?.data?.detail || e.message)) }
   }
 }
 
@@ -828,7 +896,7 @@ const saveBenchHistory = (result) => {
   const entry = { time: new Date().toLocaleString(), planName: props.planName || '未命名', concurrency: benchConcurrency.value, duration: benchDuration.value, total: result.total, success: result.success, failed: result.failed, tps: result.tps, avg_ms: result.avg_ms, p95_ms: result.p95_ms, p99_ms: result.p99_ms, min_ms: result.min_ms, max_ms: result.max_ms, p50_ms: result.p50_ms, p90_ms: result.p90_ms, stddev_ms: result.stddev_ms, rt_distribution: result.rt_distribution, throughput_trend: result.throughput_trend, body_samples: result.body_samples, statusDistribution: result.status_distribution, perUrl: result.per_url, errors: result.errors, samples: result.samples }
   localBenchHistory.value.unshift(entry)
   if (localBenchHistory.value.length > 50) localBenchHistory.value = localBenchHistory.value.slice(0, 50)
-  try { localStorage.setItem(BENCH_HISTORY_KEY.value, JSON.stringify(localBenchHistory.value)) } catch (e) { localBenchHistory.value.pop(); try { localStorage.setItem(BENCH_HISTORY_KEY.value, JSON.stringify(localBenchHistory.value)) } catch (e2) {} }
+  try { localStorage.setItem(BENCH_HISTORY_KEY.value, JSON.stringify(localBenchHistory.value)) } catch (error) { localBenchHistory.value.pop(); try { localStorage.setItem(BENCH_HISTORY_KEY.value, JSON.stringify(localBenchHistory.value)) } catch (retryError) { console.warn('保存本地压测历史失败', retryError) } console.warn('压测历史空间不足，已丢弃最早记录', error) }
 }
 
 const openHistoryDialog = () => {
@@ -867,14 +935,21 @@ const loadBenchHistoryFromServer = async () => {
 
 const clearBenchHistoryLocal = () => {
   localBenchHistory.value = []
-  try { localStorage.removeItem(BENCH_HISTORY_KEY.value) } catch (e) {}
+  try { localStorage.removeItem(BENCH_HISTORY_KEY.value) } catch (error) { console.warn('清除本地压测历史失败', error) }
   ElMessage.success('本地历史已清空')
 }
 
 const initAllBenchCharts = () => {
   const refs = [benchChartRef, benchChartRef2, benchChartRef3, benchChartRef4]
   const instances = [benchChartInstance, benchChartInstance2, benchChartInstance3, benchChartInstance4]
-  refs.forEach((r, i) => { if (!r.value) return; if (instances[i].value) instances[i].value.dispose(); instances[i].value = echarts.init(r.value) })
+  refs.forEach((r, i) => {
+    if (!r.value) return
+    if (instances[i].value) instances[i].value.dispose()
+    const chart = init(r.value)
+    const nativeSetOption = chart.setOption.bind(chart)
+    chart.setOption = (option, ...args) => nativeSetOption(resolveChartThemeTokens(option), ...args)
+    instances[i].value = chart
+  })
 }
 
 const updateAllBenchCharts = () => {
@@ -888,22 +963,22 @@ const updateAllBenchCharts = () => {
 
   const chart1 = benchChartInstance.value
   if (chart1) {
-    chart1.setOption({ tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.9)', borderColor: '#334155', textStyle: { color: '#f1f5f9', fontSize: 12 }, formatter: (params) => { let tip = `<b style="color:#e2e8f0">${params[0]?.axisValue || ''}</b><br/>`; params.forEach(p => { tip += `${p.marker} ${p.seriesName}: <b>${p.value}</b><br/>` }); return tip } }, legend: { data: ['TPS', '累计错误'], bottom: 0, textStyle: { fontSize: 10, color: '#64748b' } }, grid: { top: 10, right: 50, bottom: 30, left: 50 }, xAxis: { type: 'category', data: times, axisLabel: { fontSize: 9, color: '#94a3b8', interval: Math.max(Math.floor(times.length / 10), 0) }, axisLine: { lineStyle: { color: '#e2e8f0' } } }, yAxis: [{ type: 'value', name: 'TPS', nameTextStyle: { fontSize: 10, color: '#3b82f6' }, axisLabel: { fontSize: 9, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#f1f5f9' } } }, { type: 'value', name: '错误数', nameTextStyle: { fontSize: 10, color: '#ef4444' }, axisLabel: { fontSize: 9, color: '#94a3b8' }, splitLine: { show: false } }], series: [{ name: 'TPS', type: 'bar', data: tpsData, itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#60a5fa' }, { offset: 1, color: '#3b82f6' }]), borderRadius: [2, 2, 0, 0] }, barMaxWidth: 16 }, { name: '累计错误', type: 'line', yAxisIndex: 1, data: errData, step: 'end', lineStyle: { color: '#ef4444', width: 1.5, type: 'dashed' }, itemStyle: { color: '#ef4444' }, symbol: 'none' }] }, true)
+chart1.setOption({ tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'var(--tm-text-regular)', textStyle: { color: 'var(--tm-text-primary)', fontSize: 12 }, formatter: (params) => { let tip = `<b style="color:var(--tm-text-regular)">${params[0]?.axisValue || ''}</b><br/>`; params.forEach(p => { tip += `${p.marker} ${p.seriesName}: <b>${p.value}</b><br/>` }); return tip } }, legend: { data: ['TPS', '累计错误'], bottom: 0, textStyle: { fontSize: 10, color: 'var(--tm-text-muted)' } }, grid: { top: 10, right: 50, bottom: 30, left: 50 }, xAxis: { type: 'category', data: times, axisLabel: { fontSize: 9, color: 'var(--tm-text-secondary)', interval: Math.max(Math.floor(times.length / 10), 0) }, axisLine: { lineStyle: { color: 'var(--tm-text-regular)' } } }, yAxis: [{ type: 'value', name: 'TPS', nameTextStyle: { fontSize: 10, color: 'var(--tm-color-primary)' }, axisLabel: { fontSize: 9, color: 'var(--tm-text-secondary)' }, splitLine: { lineStyle: { color: 'var(--tm-text-primary)' } } }, { type: 'value', name: '错误数', nameTextStyle: { fontSize: 10, color: 'var(--tm-color-danger)' }, axisLabel: { fontSize: 9, color: 'var(--tm-text-secondary)' }, splitLine: { show: false } }], series: [{ name: 'TPS', type: 'bar', data: tpsData, itemStyle: { color: '#22d3ee', borderRadius: [2, 2, 0, 0] }, barMaxWidth: 16 }, { name: '累计错误', type: 'line', yAxisIndex: 1, data: errData, step: 'end', lineStyle: { color: 'var(--tm-color-danger)', width: 1.5, type: 'dashed' }, itemStyle: { color: 'var(--tm-color-danger)' }, symbol: 'none' }] }, true)
   }
   const chart2 = benchChartInstance2.value
   if (chart2) {
-    chart2.setOption({ tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.9)', borderColor: '#334155', textStyle: { color: '#f1f5f9', fontSize: 12 }, formatter: (params) => { let tip = `<b style="color:#e2e8f0">${params[0]?.axisValue || ''}</b><br/>`; params.forEach(p => { tip += `${p.marker} ${p.seriesName}: <b>${p.value}ms</b><br/>` }); return tip } }, legend: { data: ['平均响应', 'P95响应', 'P99响应'], bottom: 0, textStyle: { fontSize: 10, color: '#64748b' } }, grid: { top: 10, right: 20, bottom: 30, left: 50 }, xAxis: { type: 'category', data: times, axisLabel: { fontSize: 9, color: '#94a3b8', interval: Math.max(Math.floor(times.length / 10), 0) }, axisLine: { lineStyle: { color: '#e2e8f0' } } }, yAxis: { type: 'value', name: 'ms', nameTextStyle: { fontSize: 10, color: '#64748b' }, axisLabel: { fontSize: 9, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#f1f5f9' } } }, series: [{ name: '平均响应', type: 'line', data: avgData, smooth: true, lineStyle: { color: '#f59e0b', width: 2 }, itemStyle: { color: '#f59e0b' }, symbol: 'circle', symbolSize: 3, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(245,158,11,0.3)' }, { offset: 1, color: 'rgba(245,158,11,0.02)' }]) } }, { name: 'P95响应', type: 'line', data: snaps.map(s => s.p95 || 0), smooth: true, lineStyle: { color: '#ef4444', width: 1.5, type: 'dashed' }, itemStyle: { color: '#ef4444' }, symbol: 'none' }, { name: 'P99响应', type: 'line', data: snaps.map(s => s.p99 || 0), smooth: true, lineStyle: { color: '#dc2626', width: 1, type: 'dotted' }, itemStyle: { color: '#dc2626' }, symbol: 'none' }] }, true)
+chart2.setOption({ tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'var(--tm-text-regular)', textStyle: { color: 'var(--tm-text-primary)', fontSize: 12 }, formatter: (params) => { let tip = `<b style="color:var(--tm-text-regular)">${params[0]?.axisValue || ''}</b><br/>`; params.forEach(p => { tip += `${p.marker} ${p.seriesName}: <b>${p.value}ms</b><br/>` }); return tip } }, legend: { data: ['平均响应', 'P95响应', 'P99响应'], bottom: 0, textStyle: { fontSize: 10, color: 'var(--tm-text-muted)' } }, grid: { top: 10, right: 20, bottom: 30, left: 50 }, xAxis: { type: 'category', data: times, axisLabel: { fontSize: 9, color: 'var(--tm-text-secondary)', interval: Math.max(Math.floor(times.length / 10), 0) }, axisLine: { lineStyle: { color: 'var(--tm-text-regular)' } } }, yAxis: { type: 'value', name: 'ms', nameTextStyle: { fontSize: 10, color: 'var(--tm-text-muted)' }, axisLabel: { fontSize: 9, color: 'var(--tm-text-secondary)' }, splitLine: { lineStyle: { color: 'var(--tm-text-primary)' } } }, series: [{ name: '平均响应', type: 'line', data: avgData, smooth: true, lineStyle: { color: 'var(--tm-color-warning)', width: 2 }, itemStyle: { color: 'var(--tm-color-warning)' }, symbol: 'circle', symbolSize: 3, areaStyle: { color: 'rgba(245, 158, 11, 0.20)' } }, { name: 'P95响应', type: 'line', data: snaps.map(s => s.p95 || 0), smooth: true, lineStyle: { color: 'var(--tm-color-danger)', width: 1.5, type: 'dashed' }, itemStyle: { color: 'var(--tm-color-danger)' }, symbol: 'none' }, { name: 'P99响应', type: 'line', data: snaps.map(s => s.p99 || 0), smooth: true, lineStyle: { color: 'var(--tm-color-danger)', width: 1, type: 'dotted' }, itemStyle: { color: 'var(--tm-color-danger)' }, symbol: 'none' }] }, true)
   }
   const chart3 = benchChartInstance3.value
   if (chart3 && benchResult.value && benchResult.value.status_distribution) {
     const dist = benchResult.value.status_distribution
     const pieData = Object.entries(dist).map(([code, count]) => ({ name: `${code}`, value: count }))
-    chart3.setOption({ tooltip: { trigger: 'item', backgroundColor: 'rgba(15,23,42,0.9)', borderColor: '#334155', textStyle: { color: '#f1f5f9', fontSize: 12 }, formatter: '{b}: {c}次 ({d}%)' }, legend: { orient: 'vertical', right: 10, top: 'center', textStyle: { fontSize: 10, color: '#64748b' } }, series: [{ type: 'pie', radius: ['40%', '70%'], center: ['40%', '50%'], avoidLabelOverlap: true, itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 }, label: { show: true, fontSize: 10, formatter: '{b}\n{d}%' }, emphasis: { label: { show: true, fontSize: 12, fontWeight: 'bold' }, itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } }, data: pieData, color: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'] }] }, true)
+    chart3.setOption({ tooltip: { trigger: 'item', backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'var(--tm-text-regular)', textStyle: { color: 'var(--tm-text-primary)', fontSize: 12 }, formatter: '{b}: {c}次 ({d}%)' }, legend: { orient: 'vertical', right: 10, top: 'center', textStyle: { fontSize: 10, color: 'var(--tm-text-muted)' } }, series: [{ type: 'pie', radius: ['40%', '70%'], center: ['40%', '50%'], avoidLabelOverlap: true, itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 }, label: { show: true, fontSize: 10, formatter: '{b}\n{d}%' }, emphasis: { label: { show: true, fontSize: 12, fontWeight: 'bold' }, itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } }, data: pieData, color: ['var(--tm-color-success)', 'var(--tm-color-primary)', 'var(--tm-color-warning)', 'var(--tm-color-danger)', 'var(--tm-color-primary)', '#6b7280'] }] }, true)
   }
   const chart4 = benchChartInstance4.value
   if (chart4 && benchResult.value && benchResult.value.per_url && benchResult.value.per_url.length > 0) {
     const perUrl = benchResult.value.per_url; const names = perUrl.map(pu => pu.name || pu.url); const rates = perUrl.map(pu => pu.success_rate)
-    chart4.setOption({ tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.9)', borderColor: '#334155', textStyle: { color: '#f1f5f9', fontSize: 12 }, formatter: (params) => { const p = params[0]; return `${p.name}<br/>成功率: <b>${p.value}%</b>` } }, grid: { top: 5, right: 20, bottom: 5, left: 120 }, xAxis: { type: 'value', max: 100, axisLabel: { fontSize: 9, color: '#94a3b8', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#f1f5f9' } } }, yAxis: { type: 'category', data: names, axisLabel: { fontSize: 9, color: '#64748b', width: 100, overflow: 'truncate' }, axisLine: { lineStyle: { color: '#e2e8f0' } } }, series: [{ type: 'bar', data: rates.map((r) => ({ value: r, itemStyle: { color: r >= 100 ? '#10b981' : r >= 90 ? '#f59e0b' : '#ef4444', borderRadius: [0, 4, 4, 0] } })), barMaxWidth: 20, label: { show: true, position: 'right', fontSize: 10, formatter: '{c}%', color: '#64748b' } }] }, true)
+    chart4.setOption({ tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'var(--tm-text-regular)', textStyle: { color: 'var(--tm-text-primary)', fontSize: 12 }, formatter: (params) => { const p = params[0]; return `${p.name}<br/>成功率: <b>${p.value}%</b>` } }, grid: { top: 5, right: 20, bottom: 5, left: 120 }, xAxis: { type: 'value', max: 100, axisLabel: { fontSize: 9, color: 'var(--tm-text-secondary)', formatter: '{value}%' }, splitLine: { lineStyle: { color: 'var(--tm-text-primary)' } } }, yAxis: { type: 'category', data: names, axisLabel: { fontSize: 9, color: 'var(--tm-text-muted)', width: 100, overflow: 'truncate' }, axisLine: { lineStyle: { color: 'var(--tm-text-regular)' } } }, series: [{ type: 'bar', data: rates.map((r) => ({ value: r, itemStyle: { color: r >= 100 ? 'var(--tm-color-success)' : r >= 90 ? 'var(--tm-color-warning)' : 'var(--tm-color-danger)', borderRadius: [0, 4, 4, 0] } })), barMaxWidth: 20, label: { show: true, position: 'right', fontSize: 10, formatter: '{c}%', color: 'var(--tm-text-muted)' } }] }, true)
   }
 }
 
@@ -964,7 +1039,7 @@ const exportReport = async () => {
   const scenarios = (r.per_url || []).map(pu => ({ name: pu.name || pu.url || '未命名接口', url: pu.url || '', method: pu.method || 'GET', target_qps: 0, actual_qps: pu.count > 0 && benchDuration.value > 0 ? Math.round(pu.count / benchDuration.value * 10) / 10 : 0, concurrency: benchConcurrency.value, threads: benchConcurrency.value, ramp_up: benchRampUp.value, loops: 1, duration: benchDuration.value, avg_ms: pu.avg_ms || 0, p50_ms: pu.p50_ms || 0, p90_ms: pu.p90_ms || 0, p95_ms: pu.p95_ms || 0, p99_ms: pu.p99_ms || 0, stddev_ms: pu.stddev_ms || 0, max_ms: pu.max_ms || 0, min_ms: pu.min_ms || 0, error_rate: pu.count > 0 ? ((pu.failed || 0) / pu.count * 100) : 0, total_requests: pu.count || 0, failed_requests: pu.failed || 0, result: pu.failed === 0 ? '通过' : '失败', test_start: testStart.toLocaleString(), test_end: now.toLocaleString() }))
   if (scenarios.length === 0 || (scenarios.length === 1 && !scenarios[0].url)) { scenarios.push({ name: planName, url: '', method: 'GET', target_qps: 0, actual_qps: r.tps || 0, concurrency: benchConcurrency.value, threads: benchConcurrency.value, ramp_up: benchRampUp.value, loops: 1, duration: benchDuration.value, avg_ms: r.avg_ms || 0, p50_ms: r.p50_ms || 0, p90_ms: r.p90_ms || 0, p95_ms: r.p95_ms || 0, p99_ms: r.p99_ms || 0, stddev_ms: r.stddev_ms || 0, max_ms: r.max_ms || 0, min_ms: r.min_ms || 0, error_rate: r.total > 0 ? ((r.failed / r.total) * 100) : 0, total_requests: r.total || 0, failed_requests: r.failed || 0, result: r.failed === 0 ? '通过' : '失败', test_start: testStart.toLocaleString(), test_end: now.toLocaleString() }) }
   const errorTypes = {}
-  if (r.errors && r.errors.length > 0) { r.errors.forEach(e => { let msg = typeof e === 'object' ? (e.response_message || e.message || e.error || '未知错误') : String(e); if (msg.includes('Cannot connect to host')) { const match = msg.match(/Cannot connect to host\s+([a-zA-Z0-9.-]+)/); if (match) { msg = `连接失败: ${match[1].split(':')[0]}` } else { msg = '连接失败' } } else if (msg.includes('ssl:default') || msg.includes('SSL')) { msg = 'SSL连接错误' } else if (msg.startsWith('https://') || msg.startsWith('http://')) { try { msg = `请求失败: ${new URL(msg).hostname}` } catch { const m = msg.match(/https?:\/\/([a-zA-Z0-9.-]+)/); msg = m ? `请求失败: ${m[1]}` : msg.substring(0, 40) + '...' } } else if (msg.includes('timeout') || msg.includes('Timeout')) { msg = '请求超时' } else if (msg.includes('500') || msg.includes('Internal Server Error')) { msg = '服务器错误 (500)' } else if (msg.includes('404') || msg.includes('Not Found')) { msg = '资源不存在 (404)' } else if (msg.includes('403') || msg.includes('Forbidden')) { msg = '权限拒绝 (403)' } else if (msg.includes('401') || msg.includes('Unauthorized')) { msg = '未授权 (401)' } else if (msg.includes('ECONNREFUSED') || msg.includes('Connection refused')) { msg = '连接被拒绝' } else if (msg.includes('ECONNRESET') || msg.includes('Connection reset')) { msg = '连接重置' } else if (msg.includes('ENOTFOUND') || msg.includes('Name or service not known')) { msg = 'DNS解析失败' }; const key = msg.length > 50 ? msg.substring(0, 47) + '...' : msg; errorTypes[key] = (errorTypes[key] || 0) + 1 }) }
+  if (r.errors && r.errors.length > 0) { r.errors.forEach(e => { let msg = typeof e === 'object' ? (e.response_message || e.message || e.error || '未知错误') : String(e); if (msg.includes('Cannot connect to host')) { const match = msg.match(/Cannot connect to host\s+([a-zA-Z0-9.-]+)/); if (match) { msg = `连接失败: ${match[1].split(':')[0]}` } else { msg = '连接失败' } } else if (msg.includes('ssl:default') || msg.includes('SSL')) { msg = 'SSL连接错误' } else if (msg.startsWith('https://') || msg.startsWith('http://')) { try { msg = `请求失败: ${new URL(msg).hostname}` } catch { const m = msg.match(/https?:\/\/([a-zA-Z0-9.-]+)/); msg = m ? `请求失败: ${m[1]}` : msg.substring(0, 40) + '...' } } else if (msg.includes('timeout') || msg.includes('Timeout')) { msg = '请求超时' } else if (msg.includes('500') || msg.includes('Internal Server Error')) { msg = '服务器错误 (500)' } else if (msg.includes('404') || msg.includes('Not Found')) { msg = '资源不存在 (404)' } else if (msg.includes('403') || msg.includes('Forbidden')) { msg = '权限拒绝 (403)' } else if (msg.includes('401') || msg.includes('Unauthorized')) { msg = '未授权 (401)' } else if (msg.includes('ECONNREFUSED') || msg.includes('Connection refused')) { msg = '连接被拒绝' } else if (msg.includes('ECONNRESET') || msg.includes('Connection reset')) { msg = '连接重置' } else if (msg.includes('ENOTFOUND') || msg.includes('Name or service not known')) { msg = 'DNS解析失败' } const key = msg.length > 50 ? msg.substring(0, 47) + '...' : msg; errorTypes[key] = (errorTypes[key] || 0) + 1 }) }
   try {
     ElMessage.info('正在生成专业 Word 报告...')
     const res = await autoTestRequest.post('/auto-test/report/generate', { report_name: planName + '_性能测试报告', test_env: { domain: props.scriptTree.props?.variables?.find(v => v.name === 'HOST')?.value || '未指定', env_name: '压测环境' }, author: localStorage.getItem('tm_username') || 'TestMaster', env_config: { 'CPU': '8核', '内存': '16GB', '操作系统': 'Linux (Docker)', '压测工具': 'TestMaster (JMeter引擎)', '网络环境': '内网', '并发模型': `线程数: ${benchConcurrency.value}, 持续时间: ${benchDuration.value}s` }, scenarios, summary: { total_requests: r.total, total_failed: r.failed, overall_error_rate: r.total > 0 ? ((r.failed / r.total) * 100).toFixed(2) : '0', overall_result: r.failed === 0 ? '通过' : '失败', notes: aiAnalysisText.value ? aiAnalysisText.value.substring(0, 200) : '' }, error_types: errorTypes, rt_distribution: r.rt_distribution || {}, throughput_trend: r.throughput_trend || [], status_distribution: r.status_distribution || {} }, { responseType: 'blob' })
@@ -986,9 +1061,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (benchPollTimer) { clearInterval(benchPollTimer); benchPollTimer = null }
   window.removeEventListener('resize', resizeAllBenchCharts)
-  ;[benchChartInstance, benchChartInstance2, benchChartInstance3, benchChartInstance4].forEach(inst => {
-    if (inst.value) { inst.value.dispose(); inst.value = null }
-  })
+  disposeBenchCharts()
 })
 
 defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurrency, benchDuration, benchRampUp, benchStartTime, benchEngine, benchRunId, jmeterEngineAvailable, aiAnalysisText, aiAnalysisDialogVisible, startBench, stopBench, openHtmlReport, fetchJmeterEngineStatus, shortUrl, resizeAllBenchCharts })
@@ -1109,8 +1182,8 @@ defineExpose({ benchResult, benching, benchProgress, benchPercent, benchConcurre
 .vt-section { margin-bottom: 12px; }
 .vt-section-title { font-size: 11px; font-weight: 600; color: var(--tm-text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 .vt-code { background: var(--bg-surface); color: var(--tm-text-primary); font-family: 'Consolas','Monaco',monospace; font-size: 11px; padding: 10px; border-radius: 6px; max-height: 280px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border: 1px solid var(--tm-border-light); }
-.vt-code-response { background: #1e293b; color: #e2e8f0; border-color: #334155; }
-.vt-code-headers { background: #f1f5f9; color: #334155; font-size: 10px; max-height: 160px; }
+.vt-code-response { background: var(--tm-bg-elevated); color: var(--tm-text-regular); border-color: var(--tm-text-regular); }
+.vt-code-headers { background: var(--tm-text-primary); color: var(--tm-text-regular); font-size: 10px; max-height: 160px; }
 .vt-empty-block { padding: 10px; color: var(--tm-text-secondary); font-size: 11px; font-style: italic; text-align: center; background: var(--bg-surface-hover); border-radius: 6px; }
 .vt-error-box { display: flex; align-items: center; gap: 6px; padding: 8px 12px; margin: 0 12px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; color: #b91c1c; font-size: 12px; }
 

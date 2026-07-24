@@ -9,7 +9,7 @@
             <defs>
               <linearGradient id="regLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stop-color="var(--tm-color-primary)"/>
-                <stop offset="50%" stop-color="#ec4899"/>
+                <stop offset="50%" stop-color="var(--tm-neon-pink)"/>
                 <stop offset="100%" stop-color="#00f2fe"/>
               </linearGradient>
             </defs>
@@ -215,6 +215,7 @@ const sendCode = () => {
     }
   }, 1000)
 }
+void sendCode
 
 onBeforeUnmount(() => {
   if (codeTimer) {
@@ -296,7 +297,7 @@ const goToLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--tm-bg-page, #09090b);
+  background: var(--tm-bg-page, var(--tm-bg-page));
   padding: 24px;
   overflow: hidden;
   perspective: 1200px;
@@ -329,7 +330,7 @@ const goToLogin = () => {
   padding: 1px;
   background: linear-gradient(135deg,
     rgba(var(--tm-color-primary-rgb), 0.6),
-    rgba(236, 72, 153, 0.3) 50%,
+    color-mix(in srgb, var(--tm-neon-pink) 30%, transparent) 50%,
     rgba(0, 242, 254, 0.5));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -367,9 +368,9 @@ const goToLogin = () => {
   font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--tm-text-primary, #fafafa);
+  color: var(--tm-text-primary, var(--tm-text-primary));
   margin: 0 0 8px 0;
-  background: linear-gradient(135deg, var(--tm-color-primary), #ec4899 50%, var(--tm-color-primary-dark));
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-neon-pink) 50%, var(--tm-color-primary-dark));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -378,7 +379,7 @@ const goToLogin = () => {
 
 .subtitle {
   font-size: 13px;
-  color: var(--tm-text-secondary, #71717a);
+  color: var(--tm-text-secondary, var(--tm-text-muted));
   margin: 0;
   letter-spacing: 0.04em;
 }
@@ -421,9 +422,9 @@ const goToLogin = () => {
   transition: all 0.3s ease;
 }
 
-.bar.active.level-weak { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
-.bar.active.level-medium { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
-.bar.active.level-strong { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+.bar.active.level-weak { background: var(--tm-color-danger); box-shadow: 0 0 8px color-mix(in srgb, var(--tm-color-danger) 50%, transparent); }
+.bar.active.level-medium { background: var(--tm-color-warning); box-shadow: 0 0 8px color-mix(in srgb, var(--tm-color-warning) 50%, transparent); }
+.bar.active.level-strong { background: var(--tm-color-success); box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
 .bar.active.level-excellent { background: var(--tm-color-primary); box-shadow: 0 0 8px rgba(var(--tm-color-primary-rgb), 0.6); }
 
 .strength-label {
@@ -433,9 +434,9 @@ const goToLogin = () => {
   text-align: right;
 }
 
-.strength-label.level-weak { color: #ef4444; }
-.strength-label.level-medium { color: #f59e0b; }
-.strength-label.level-strong { color: #10b981; }
+.strength-label.level-weak { color: var(--tm-color-danger); }
+.strength-label.level-medium { color: var(--tm-color-warning); }
+.strength-label.level-strong { color: var(--tm-color-success); }
 .strength-label.level-excellent { color: var(--tm-color-primary); }
 
 .register-btn {

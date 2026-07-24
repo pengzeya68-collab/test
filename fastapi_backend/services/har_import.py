@@ -208,6 +208,7 @@ def parse_har(content: bytes) -> list[dict[str, Any]]:
                     else []
                 ),
                 "response_status": response_status,
+                "resource_type": resource_type or "fetch",
                 "fingerprint": fingerprint,
                 "timing_ms": entry.get("time"),
                 "source_metadata": {

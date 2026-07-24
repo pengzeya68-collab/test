@@ -5,18 +5,26 @@ from __future__ import annotations
 import uuid as _uuid
 from typing import Any, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.core.exceptions import NotFoundException, ValidationException
-from fastapi_backend.models.models import ProjectSpace
 from fastapi_backend.models.ui_automation import UICase, UICaseGroup, UICaseVersion, UIStep
+from fastapi_backend.models.workspace import WorkspaceProject
 from fastapi_backend.schemas.ui_automation import STEP_TYPES
+from fastapi_backend.services import project_service
 
 
 def _normalize_step_dict(step: dict[str, Any]) -> dict[str, Any]:
     retry = step.get("retry") or {"count": 0, "delay_ms": 0}
     children = step.get("children") or []
+    locator = step.get("locator")
+    # Persist element repository binding on the locator JSON (UIStep has no element_id column).
+    element_id = step.get("element_id")
+    if element_id is None and isinstance(locator, dict):
+        element_id = locator.get("elementId") if locator.get("elementId") is not None else locator.get("element_id")
+    if isinstance(locator, dict) and element_id is not None:
+        locator = {**locator, "elementId": int(element_id) if str(element_id).isdigit() else element_id}
     return {
         "id": step.get("id") or str(_uuid.uuid4()),
         "order": step.get("order", 10),
@@ -24,7 +32,7 @@ def _normalize_step_dict(step: dict[str, Any]) -> dict[str, Any]:
         "type": step["type"],
         "enabled": step.get("enabled", True),
         "breakpoint": step.get("breakpoint", False),
-        "locator": step.get("locator"),
+        "locator": locator,
         "input": step.get("input"),
         "timeout_ms": step.get("timeout_ms"),
         "retry": retry,
@@ -35,30 +43,74 @@ def _normalize_step_dict(step: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def _validate_group_ownership(db: AsyncSession, user_id: int, group_id: Optional[int]) -> None:
+async def _validate_group_ownership(
+    db: AsyncSession,
+    user_id: int,
+    group_id: Optional[int],
+    *,
+    project_id: Optional[int] = None,
+) -> None:
     if group_id is None:
         return
     group = await db.get(UICaseGroup, group_id)
-    if not group or group.user_id != user_id:
+    if not group:
+        raise ValidationException("Invalid group_id for current user")
+    if project_id is not None:
+        if group.project_id is not None and int(group.project_id) != int(project_id):
+            raise ValidationException("group_id does not belong to active project")
+        # 团队项目：成员可引用同项目分组；个人项目：仅本人或 project 匹配
+        if group.project_id is None and group.user_id != user_id:
+            raise ValidationException("Invalid group_id for current user")
+    elif group.user_id != user_id:
         raise ValidationException("Invalid group_id for current user")
 
 
-async def _validate_parent_group(db: AsyncSession, user_id: int, group_id: int, parent_id: Optional[int]) -> None:
+async def _validate_parent_group(
+    db: AsyncSession,
+    user_id: int,
+    group_id: int,
+    parent_id: Optional[int],
+    *,
+    project_id: Optional[int] = None,
+) -> None:
     if parent_id is None:
         return
     parent = await db.get(UICaseGroup, parent_id)
-    if not parent or parent.user_id != user_id:
+    if not parent:
+        raise ValidationException("Invalid parent_id for current user")
+    if project_id is not None:
+        if parent.project_id is not None and int(parent.project_id) != int(project_id):
+            raise ValidationException("Invalid parent_id for current project")
+        if parent.project_id is None and parent.user_id != user_id:
+            raise ValidationException("Invalid parent_id for current user")
+    elif parent.user_id != user_id:
         raise ValidationException("Invalid parent_id for current user")
     if parent.id == group_id:
         raise ValidationException("A group cannot be its own parent")
 
 
-async def _validate_project_reference(db: AsyncSession, project_id: Optional[int]) -> None:
+async def _validate_project_reference(db: AsyncSession, user_id: int, project_id: Optional[int]) -> int:
+    """Validate WorkspaceProject membership; return resolved project id."""
     if project_id is None:
-        return
-    project = await db.get(ProjectSpace, project_id)
-    if not project:
-        raise ValidationException("Invalid project_id")
+        return await project_service.project_id_for_asset_owner(db, user_id)
+    try:
+        project = await project_service.require_project_access(
+            db, int(user_id), int(project_id), min_role="member"
+        )
+    except project_service.ProjectNotFoundError as exc:
+        raise ValidationException("Invalid project_id") from exc
+    except project_service.ProjectAccessError as exc:
+        raise ValidationException("No access to project_id") from exc
+    return int(project.id)
+
+
+def _ui_case_project_scope(project_id: int, user_id: int, is_personal: bool):
+    if is_personal:
+        return or_(
+            UICase.project_id == int(project_id),
+            and_(UICase.project_id.is_(None), UICase.user_id == int(user_id)),
+        )
+    return UICase.project_id == int(project_id)
 
 
 def _validate_step_payload(step: dict[str, Any]) -> None:
@@ -76,8 +128,18 @@ async def list_cases(
     group_id: Optional[int] = None,
     keyword: Optional[str] = None,
     status: Optional[str] = None,
+    project_id: Optional[int] = None,
 ) -> tuple[list[UICase], int]:
-    query = select(UICase).where(UICase.user_id == user_id, UICase.is_active.is_(True))
+    # 有 project_id：按项目共享；无 project_id：兼容仅本人
+    if project_id is not None:
+        project = await db.get(WorkspaceProject, int(project_id))
+        is_personal = bool(project and project.is_personal)
+        query = select(UICase).where(
+            UICase.is_active.is_(True),
+            _ui_case_project_scope(int(project_id), user_id, is_personal),
+        )
+    else:
+        query = select(UICase).where(UICase.user_id == user_id, UICase.is_active.is_(True))
     if group_id is not None:
         query = query.where(UICase.group_id == group_id)
     if status:
@@ -92,21 +154,48 @@ async def list_cases(
     return result.scalars().all(), total
 
 
-async def get_case(db: AsyncSession, user_id: int, case_id: int) -> UICase:
+async def get_case(
+    db: AsyncSession,
+    user_id: int,
+    case_id: int,
+    *,
+    project_id: Optional[int] = None,
+) -> UICase:
     case = await db.get(UICase, case_id)
-    if not case or case.user_id != user_id or not case.is_active:
+    if not case or not case.is_active:
+        raise NotFoundException(f"UI case {case_id} not found")
+    if project_id is not None:
+        project = await db.get(WorkspaceProject, int(project_id))
+        is_personal = bool(project and project.is_personal)
+        if case.project_id is not None and int(case.project_id) != int(project_id):
+            raise NotFoundException(f"UI case {case_id} not found")
+        if case.project_id is None:
+            # 个人项目可见本人遗留行；团队项目不暴露 NULL
+            if not is_personal or int(case.user_id) != int(user_id):
+                raise NotFoundException(f"UI case {case_id} not found")
+    elif case.user_id != user_id:
         raise NotFoundException(f"UI case {case_id} not found")
     return case
 
 
-async def create_case(db: AsyncSession, user_id: int, data: dict[str, Any]) -> UICase:
-    await _validate_group_ownership(db, user_id, data.get("group_id"))
-    await _validate_project_reference(db, data.get("project_id"))
+async def create_case(
+    db: AsyncSession,
+    user_id: int,
+    data: dict[str, Any],
+    *,
+    project_id: Optional[int] = None,
+) -> UICase:
+    resolved_project_id = await _validate_project_reference(
+        db, user_id, project_id if project_id is not None else data.get("project_id")
+    )
+    await _validate_group_ownership(db, user_id, data.get("group_id"), project_id=resolved_project_id)
 
+    payload = {k: v for k, v in data.items() if v is not None and k not in {"user_id", "owner_id", "project_id"}}
     case = UICase(
         user_id=user_id,
         owner_id=user_id,
-        **{k: v for k, v in data.items() if v is not None},
+        project_id=resolved_project_id,
+        **payload,
     )
     db.add(case)
     await db.flush()
@@ -135,20 +224,37 @@ async def create_case(db: AsyncSession, user_id: int, data: dict[str, Any]) -> U
     return case
 
 
-async def update_case(db: AsyncSession, user_id: int, case_id: int, data: dict[str, Any]) -> UICase:
-    case = await get_case(db, user_id, case_id)
+async def update_case(
+    db: AsyncSession,
+    user_id: int,
+    case_id: int,
+    data: dict[str, Any],
+    *,
+    project_id: Optional[int] = None,
+) -> UICase:
+    case = await get_case(db, user_id, case_id, project_id=project_id)
     if "group_id" in data:
-        await _validate_group_ownership(db, user_id, data.get("group_id"))
-    if "project_id" in data:
-        await _validate_project_reference(db, data.get("project_id"))
+        await _validate_group_ownership(
+            db, user_id, data.get("group_id"), project_id=project_id or case.project_id
+        )
+    # project_id is controlled by workspace context, not free client reassignment
+    data = {k: v for k, v in data.items() if k not in {"project_id", "user_id", "owner_id"}}
+    if case.project_id is None and project_id is not None:
+        case.project_id = int(project_id)
     for key, value in data.items():
         setattr(case, key, value)
     await db.flush()
     return case
 
 
-async def delete_case(db: AsyncSession, user_id: int, case_id: int) -> None:
-    case = await get_case(db, user_id, case_id)
+async def delete_case(
+    db: AsyncSession,
+    user_id: int,
+    case_id: int,
+    *,
+    project_id: Optional[int] = None,
+) -> None:
+    case = await get_case(db, user_id, case_id, project_id=project_id)
     case.is_active = False
     await db.flush()
 
@@ -192,6 +298,13 @@ async def batch_save_steps(db: AsyncSession, case_id: int, steps_data: list[dict
 
 
 def step_to_snapshot_dict(step: UIStep) -> dict[str, Any]:
+    locator = step.locator
+    element_id = None
+    if isinstance(locator, dict):
+        element_id = locator.get("elementId") if locator.get("elementId") is not None else locator.get("element_id")
+        # Ensure desktop engine can read elementId for healing / repo resolution.
+        if element_id is not None and "elementId" not in locator:
+            locator = {**locator, "elementId": element_id}
     return {
         "id": step.id,
         "order": step.order,
@@ -199,7 +312,8 @@ def step_to_snapshot_dict(step: UIStep) -> dict[str, Any]:
         "type": step.type,
         "enabled": step.enabled,
         "breakpoint": step.breakpoint,
-        "locator": step.locator,
+        "locator": locator,
+        "element_id": element_id,
         "input": step.input,
         "timeout_ms": step.timeout_ms,
         "retry": step.retry or {"count": 0, "delay_ms": 0},
@@ -307,38 +421,84 @@ async def restore_version(db: AsyncSession, case_id: int, version_id: int, user_
     return case
 
 
-async def list_groups(db: AsyncSession, user_id: int) -> list[UICaseGroup]:
-    result = await db.execute(
-        select(UICaseGroup).where(UICaseGroup.user_id == user_id).order_by(UICaseGroup.sort_order, UICaseGroup.id)
-    )
+async def list_groups(
+    db: AsyncSession,
+    user_id: int,
+    *,
+    project_id: Optional[int] = None,
+) -> list[UICaseGroup]:
+    query = select(UICaseGroup).where(UICaseGroup.user_id == user_id)
+    if project_id is not None:
+        project = await db.get(WorkspaceProject, int(project_id))
+        is_personal = bool(project and project.is_personal)
+        if is_personal:
+            query = query.where(
+                or_(
+                    UICaseGroup.project_id == int(project_id),
+                    and_(UICaseGroup.project_id.is_(None), UICaseGroup.user_id == int(user_id)),
+                )
+            )
+        else:
+            query = query.where(UICaseGroup.project_id == int(project_id))
+    result = await db.execute(query.order_by(UICaseGroup.sort_order, UICaseGroup.id))
     return result.scalars().all()
 
 
-async def create_group(db: AsyncSession, user_id: int, data: dict[str, Any]) -> UICaseGroup:
+async def create_group(
+    db: AsyncSession,
+    user_id: int,
+    data: dict[str, Any],
+    *,
+    project_id: Optional[int] = None,
+) -> UICaseGroup:
     parent_id = data.get("parent_id")
     if parent_id is not None:
         await _validate_parent_group(db, user_id, 0, parent_id)
-    group = UICaseGroup(user_id=user_id, **{k: v for k, v in data.items() if v is not None})
+    resolved = await _validate_project_reference(
+        db, user_id, project_id if project_id is not None else data.get("project_id")
+    )
+    payload = {k: v for k, v in data.items() if v is not None and k not in {"user_id", "project_id"}}
+    group = UICaseGroup(user_id=user_id, project_id=resolved, **payload)
     db.add(group)
     await db.flush()
     return group
 
 
-async def update_group(db: AsyncSession, user_id: int, group_id: int, data: dict[str, Any]) -> UICaseGroup:
+async def update_group(
+    db: AsyncSession,
+    user_id: int,
+    group_id: int,
+    data: dict[str, Any],
+    *,
+    project_id: Optional[int] = None,
+) -> UICaseGroup:
     group = await db.get(UICaseGroup, group_id)
     if not group or group.user_id != user_id:
         raise NotFoundException(f"UI case group {group_id} not found")
+    if project_id is not None and group.project_id is not None and int(group.project_id) != int(project_id):
+        raise NotFoundException(f"UI case group {group_id} not found")
     if "parent_id" in data:
         await _validate_parent_group(db, user_id, group_id, data.get("parent_id"))
+    data = {k: v for k, v in data.items() if k not in {"project_id", "user_id"}}
+    if group.project_id is None and project_id is not None:
+        group.project_id = int(project_id)
     for key, value in data.items():
         setattr(group, key, value)
     await db.flush()
     return group
 
 
-async def delete_group(db: AsyncSession, user_id: int, group_id: int) -> None:
+async def delete_group(
+    db: AsyncSession,
+    user_id: int,
+    group_id: int,
+    *,
+    project_id: Optional[int] = None,
+) -> None:
     group = await db.get(UICaseGroup, group_id)
     if not group or group.user_id != user_id:
+        raise NotFoundException(f"UI case group {group_id} not found")
+    if project_id is not None and group.project_id is not None and int(group.project_id) != int(project_id):
         raise NotFoundException(f"UI case group {group_id} not found")
     await db.delete(group)
     await db.flush()

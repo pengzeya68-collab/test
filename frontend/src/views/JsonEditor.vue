@@ -99,7 +99,7 @@ const compressJson = () => {
 }
 
 // 澶勭悊 Tab 閿?
-const handleTab = (e) => {
+const handleTab = () => {
   const textarea = textareaRef.value
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
@@ -210,7 +210,7 @@ defineExpose({
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
   line-height: 1.5;
-  color: #d4d4d4;
+  color: var(--tm-border-light);
   background: transparent;
   border: none;
   resize: none;
@@ -219,7 +219,7 @@ defineExpose({
   white-space: pre;
   overflow: auto;
   z-index: 2;
-  caret-color: #d4d4d4;
+  caret-color: var(--tm-border-light);
 }
 
 .editor-highlight {
@@ -232,7 +232,7 @@ defineExpose({
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
   line-height: 1.5;
-  color: #d4d4d4;
+  color: var(--tm-border-light);
   background: var(--tm-card-bg);
   border: none;
   margin: 0;

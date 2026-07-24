@@ -94,7 +94,9 @@
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
           </svg>
         </div>
-        <div class="empty-text">暂无环境，点击上方按钮创建</div>
+        <div class="empty-text">还没有执行环境</div>
+        <p>先创建一个环境并填写基础 URL，随后即可在接口、场景和回归套件中选择它。</p>
+        <el-button type="primary" @click="handleCreate"><el-icon><Plus /></el-icon>创建第一个环境</el-button>
       </div>
     </div>
 
@@ -452,7 +454,11 @@ watch(() => props.modelValue, (newVal) => {
 
 .actions-bar {
   margin-bottom: 20px;
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .env-list {
@@ -532,6 +538,41 @@ watch(() => props.modelValue, (newVal) => {
   color: var(--tm-text-placeholder);
   font-size: 14px;
   margin-top: 8px;
+}
+
+.empty-state {
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--tm-text-secondary);
+}
+
+.empty-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 12px;
+  color: var(--tm-color-primary);
+  background: var(--tm-bg-soft);
+  border-radius: 4px;
+}
+
+.empty-text {
+  color: var(--tm-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.empty-state p {
+  max-width: 360px;
+  margin: 8px 0 16px;
+  color: var(--tm-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .section-title {

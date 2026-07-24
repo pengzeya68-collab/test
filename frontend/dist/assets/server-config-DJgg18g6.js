@@ -1,0 +1,1 @@
+const n="testmaster_server_url",o="http://127.0.0.1:5001";function c(t){const e=String(t).trim();let r;try{r=new URL(e)}catch{throw new Error("服务地址格式不正确，请填写例如 http://127.0.0.1:5001")}if(!["http:","https:"].includes(r.protocol))throw new Error("服务地址只支持 HTTP 或 HTTPS");return r.origin}function i(){return c(localStorage.getItem(n)||void 0||o)}export{i as g};

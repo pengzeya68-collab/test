@@ -206,7 +206,7 @@
                 <div class="no-output-msg">
                   <span class="no-output-icon">鉁</span>
                   浠ｇ爜鎵ц鎴愬姛锛屾棤杈撳嚭鍐呭
-                  <div class="no-output-hint">馃挕 鎻愮ず锛氬嚱鏁板畾涔変笉浼氳嚜鍔ㄨ緭鍑猴紝璇峰湪浠ｇ爜涓坊鍔?<code>print()</code> 璋冪敤鎴栫偣鍑?鎻愪氦鍒ら"楠岃瘉姝ｇ‘鎬</div>
+                   <div class="no-output-hint">提示：函数定义不会自动输出。请在代码中调用 <code>print()</code>，或点击“提交判题”验证结果。</div>
                 </div>
               </div>
               <!-- 鏈夎緭鍑烘椂姝ｅ父鏄剧ず -->
@@ -291,7 +291,8 @@
               <span class="ai-avatar">&#x1f916;</span>
               <span class="ai-title">AI瀵煎笀鐐硅瘎</span>
               <div class="ai-score-badge" :class="getScoreClass(aiEvaluationResult.score)">
-                {{ aiEvaluationResult.score }}鍒?              </div>
+                 {{ aiEvaluationResult.score }} 分
+              </div>
             </div>
             <div class="ai-score-bar">
               <div class="score-bar-track">
@@ -341,7 +342,7 @@ const applyLayoutPreset = (preset) => {
   }
   const width = presets[preset] ?? 320
   leftPanelWidth.value = Math.max(220, Math.min(560, width))
-  try { localStorage.setItem('tm-codeplayground-sidebar-width', String(leftPanelWidth.value)) } catch {}
+  try { localStorage.setItem('tm-codeplayground-sidebar-width', String(leftPanelWidth.value)) } catch (error) { console.warn('保存侧栏宽度失败', error) }
   ElMessage?.success?.(`甯冨眬宸插垏鎹細棰樼洰鍒楄〃 ${leftPanelWidth.value}px`)
 }
 

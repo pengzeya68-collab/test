@@ -109,7 +109,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import request from '@/utils/request'
 
@@ -207,7 +207,7 @@ onMounted(() => {
   max-width: 800px;
   margin: 0 auto;
   padding: 24px 16px;
-  color: var(--tm-text-primary, #e0e0e0);
+  color: var(--tm-text-primary, var(--tm-border-light));
 }
 .points-header {
   display: flex;
@@ -230,8 +230,8 @@ onMounted(() => {
   font-size: 13px;
 }
 .back-btn:hover {
-  border-color: var(--tm-color-primary, #00D9C0);
-  color: var(--tm-color-primary, #00D9C0);
+  border-color: var(--tm-color-primary, var(--tm-neon-cyan));
+  color: var(--tm-color-primary, var(--tm-neon-cyan));
 }
 
 /* 姒傝鍗＄墖 */
@@ -242,7 +242,7 @@ onMounted(() => {
   margin-bottom: 24px;
 }
 .overview-card {
-  background: var(--tm-card-bg, #12121f);
+  background: var(--tm-card-bg, var(--tm-bg-card-solid));
   border: 1px solid var(--tm-border-light, rgba(255,255,255,0.06));
   border-radius: 12px;
   padding: 20px;
@@ -251,8 +251,8 @@ onMounted(() => {
   gap: 16px;
 }
 .overview-card.main-card {
-  border-color: rgba(0,217,192,0.3);
-  background: linear-gradient(135deg, rgba(0,217,192,0.08), transparent);
+  border-color: color-mix(in srgb, var(--tm-neon-cyan) 30%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--tm-neon-cyan) 8%, transparent), transparent);
 }
 .card-icon { font-size: 32px; }
 .card-value {
@@ -285,9 +285,9 @@ onMounted(() => {
   transition: all 0.2s;
 }
 .tab-btn.active {
-  color: var(--tm-color-primary, #00D9C0);
-  background: rgba(0,217,192,0.08);
-  border-bottom: 2px solid var(--tm-color-primary, #00D9C0);
+  color: var(--tm-color-primary, var(--tm-neon-cyan));
+  background: color-mix(in srgb, var(--tm-neon-cyan) 8%, transparent);
+  border-bottom: 2px solid var(--tm-color-primary, var(--tm-neon-cyan));
 }
 .tab-btn:hover:not(.active) {
   color: var(--tm-text-primary, #ddd);
@@ -308,9 +308,9 @@ onMounted(() => {
   margin-bottom: 14px;
 }
 .filter-select {
-  background: var(--tm-card-bg, #1a1a2e);
+  background: var(--tm-card-bg, var(--tm-bg-card-solid));
   border: 1px solid var(--tm-border-light, #333);
-  color: var(--tm-text-primary, #e0e0e0);
+  color: var(--tm-text-primary, var(--tm-border-light));
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 13px;
@@ -323,7 +323,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: var(--tm-card-bg, #12121f);
+  background: var(--tm-card-bg, var(--tm-bg-card-solid));
   border: 1px solid var(--tm-border-light, rgba(255,255,255,0.04));
   border-radius: 10px;
 }
@@ -338,14 +338,14 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 700;
 }
-.tx-icon.income { background: rgba(103,194,58,0.12); color: #67c23a; }
-.tx-icon.expense { background: rgba(245,108,108,0.12); color: #f56c6c; }
+.tx-icon.income { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.tx-icon.expense { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); }
 .tx-title { font-size: 14px; color: var(--tm-text-primary, #ddd); }
 .tx-time { font-size: 11px; color: var(--tm-text-secondary, #666); margin-top: 2px; }
 .tx-right { text-align: right; }
 .tx-amount { font-size: 16px; font-weight: 700; }
-.tx-amount.income { color: #67c23a; }
-.tx-amount.expense { color: #f56c6c; }
+.tx-amount.income { color: var(--tm-color-success); }
+.tx-amount.expense { color: var(--tm-color-danger); }
 .tx-balance { font-size: 11px; color: var(--tm-text-secondary, #666); margin-top: 2px; }
 
 /* 鍒嗛〉 */
@@ -357,7 +357,7 @@ onMounted(() => {
   margin-top: 16px;
 }
 .pagination button {
-  background: var(--tm-card-bg, #1a1a2e);
+  background: var(--tm-card-bg, var(--tm-bg-card-solid));
   border: 1px solid var(--tm-border-light, #333);
   color: var(--tm-text-primary, #ddd);
   padding: 6px 14px;
@@ -372,7 +372,7 @@ onMounted(() => {
 .usage-list { display: flex; flex-direction: column; gap: 12px; }
 .usage-item {
   padding: 14px 16px;
-  background: var(--tm-card-bg, #12121f);
+  background: var(--tm-card-bg, var(--tm-bg-card-solid));
   border: 1px solid var(--tm-border-light, rgba(255,255,255,0.04));
   border-radius: 10px;
 }
@@ -386,7 +386,7 @@ onMounted(() => {
 }
 .usage-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00D9C0, #00b89c);
+  background: linear-gradient(90deg, var(--tm-neon-cyan), #00b89c);
   border-radius: 3px;
   transition: width 0.3s ease;
 }
@@ -398,7 +398,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding: 14px 16px;
-  background: var(--tm-card-bg, #12121f);
+  background: var(--tm-card-bg, var(--tm-bg-card-solid));
   border: 1px solid var(--tm-border-light, rgba(255,255,255,0.04));
   border-radius: 10px;
   gap: 16px;
@@ -408,7 +408,7 @@ onMounted(() => {
 .cost-points {
   font-size: 15px;
   font-weight: 700;
-  color: var(--tm-color-primary, #00D9C0);
+  color: var(--tm-color-primary, var(--tm-neon-cyan));
   white-space: nowrap;
 }
 

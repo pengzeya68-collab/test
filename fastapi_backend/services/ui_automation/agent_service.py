@@ -56,11 +56,14 @@ async def _execution_event(
     )
 
 
-async def register_agent(db: AsyncSession, user_id: int, payload: dict[str, Any]) -> tuple[DesktopAgent, str]:
+async def register_agent(
+    db: AsyncSession, user_id: int, payload: dict[str, Any], *, project_id: int | None = None
+) -> tuple[DesktopAgent, str]:
     raw_token = secrets.token_urlsafe(32)
     agent = DesktopAgent(
         name=str(payload["name"]).strip(),
         owner_id=user_id,
+        project_id=project_id,
         hostname=str(payload.get("hostname") or "")[:200] or None,
         os_version=str(payload.get("os_version") or "")[:100] or None,
         desktop_version=str(payload.get("desktop_version") or "")[:50] or None,
@@ -75,20 +78,28 @@ async def register_agent(db: AsyncSession, user_id: int, payload: dict[str, Any]
     return agent, raw_token
 
 
-async def list_agents(db: AsyncSession, user_id: int) -> list[DesktopAgent]:
+async def list_agents(db: AsyncSession, user_id: int, *, project_id: int) -> list[DesktopAgent]:
     return list(
         (
             await db.scalars(
-                select(DesktopAgent).where(DesktopAgent.owner_id == user_id).order_by(DesktopAgent.created_at.desc())
+                select(DesktopAgent)
+                .where(DesktopAgent.owner_id == user_id, DesktopAgent.project_id == project_id)
+                .order_by(DesktopAgent.created_at.desc())
             )
         ).all()
     )
 
 
-async def revoke_agent(db: AsyncSession, user_id: int, agent_id: int) -> DesktopAgent:
+async def revoke_agent(db: AsyncSession, user_id: int, agent_id: int, *, project_id: int) -> DesktopAgent:
     """Idempotently revoke an Agent and terminalize work it can no longer run."""
     agent = await db.scalar(
-        select(DesktopAgent).where(DesktopAgent.id == agent_id, DesktopAgent.owner_id == user_id).with_for_update()
+        select(DesktopAgent)
+        .where(
+            DesktopAgent.id == agent_id,
+            DesktopAgent.owner_id == user_id,
+            DesktopAgent.project_id == project_id,
+        )
+        .with_for_update()
     )
     if agent is None:
         raise HTTPException(status_code=404, detail="Desktop Agent was not found")
@@ -103,6 +114,7 @@ async def revoke_agent(db: AsyncSession, user_id: int, agent_id: int) -> Desktop
                 .where(
                     UIRun.agent_id == agent.id,
                     UIRun.user_id == user_id,
+                    UIRun.project_id == project_id,
                     UIRun.status.in_(("waiting_for_agent", "assigned", "starting", "running", "cancel_requested")),
                 )
                 .with_for_update(skip_locked=True)
@@ -185,6 +197,111 @@ async def heartbeat_agent(db: AsyncSession, agent: DesktopAgent, payload: dict[s
     return cancel_run_ids
 
 
+def _suite_execution_id_for_run(run: UIRun) -> int:
+    """Parent suite run id is the shard suite_execution_id; child runs store parent_run_id."""
+    manifest = run.artifact_manifest if isinstance(run.artifact_manifest, dict) else {}
+    parent = manifest.get("parent_run_id") or manifest.get("suite_execution_id")
+    if parent is not None:
+        try:
+            return int(parent)
+        except (TypeError, ValueError):
+            pass
+    return int(run.id)
+
+
+async def _filter_suite_plan_for_shard(
+    db: AsyncSession,
+    agent: DesktopAgent,
+    run: UIRun,
+    plan: dict[str, Any],
+) -> dict[str, Any]:
+    """If suite shards exist for this run, claim one and filter plan entries to its case_ids.
+
+    Without shards the full suite plan is returned (single-agent serial path).
+    Child fan-out runs resolve suite_execution_id via artifact_manifest.parent_run_id.
+    """
+    from fastapi_backend.models.feature_upgrades import SuiteShard
+    from fastapi_backend.services.suite_sharding_service import suite_sharding_service
+
+    suite_execution_id = _suite_execution_id_for_run(run)
+    manifest = run.artifact_manifest if isinstance(run.artifact_manifest, dict) else {}
+    preferred_shard_id = manifest.get("shard_id")
+
+    has_shards = await db.scalar(
+        select(SuiteShard.id).where(SuiteShard.suite_execution_id == suite_execution_id).limit(1)
+    )
+    if has_shards is None:
+        return plan
+
+    shard = None
+    # Child runs created for a specific shard should bind that shard first.
+    if preferred_shard_id is not None:
+        shard = await db.get(SuiteShard, int(preferred_shard_id))
+        if shard is not None and int(shard.suite_execution_id) == suite_execution_id:
+            if shard.status == "pending" or (
+                shard.assigned_agent_id in (None, agent.id)
+                and shard.status in ("pending", "assigned", "running")
+            ):
+                shard.assigned_agent_id = agent.id
+                if shard.status == "pending":
+                    shard.status = "assigned"
+                    shard.assigned_at = _utcnow()
+                await db.flush()
+            elif shard.assigned_agent_id not in (None, agent.id) and shard.status in ("assigned", "running"):
+                shard = None
+
+    # Prefer a shard already assigned to this agent (reclaim after restart).
+    if shard is None:
+        shard = await db.scalar(
+            select(SuiteShard)
+            .where(
+                SuiteShard.suite_execution_id == suite_execution_id,
+                SuiteShard.assigned_agent_id == agent.id,
+                SuiteShard.status.in_(("assigned", "running")),
+            )
+            .order_by(SuiteShard.shard_index, SuiteShard.id)
+            .limit(1)
+        )
+    if shard is None:
+        # Claim next pending shard for this suite execution only.
+        result = await db.execute(
+            select(SuiteShard)
+            .where(
+                SuiteShard.suite_execution_id == suite_execution_id,
+                SuiteShard.status == "pending",
+            )
+            .order_by(SuiteShard.shard_index, SuiteShard.id)
+            .with_for_update(skip_locked=True)
+            .limit(1)
+        )
+        shard = result.scalar_one_or_none()
+        if shard is not None:
+            shard.assigned_agent_id = agent.id
+            shard.status = "assigned"
+            shard.assigned_at = _utcnow()
+            await db.flush()
+
+    if shard is None:
+        # All shards taken — return empty entries so agent finishes cleanly.
+        filtered = dict(plan)
+        filtered["entries"] = []
+        filtered["shard_id"] = None
+        filtered["shard_empty"] = True
+        return filtered
+
+    await suite_sharding_service.mark_shard_running(db, shard.id)
+    allowed = {int(cid) for cid in (shard.case_ids or []) if cid is not None}
+    entries = [entry for entry in (plan.get("entries") or []) if int(entry.get("case_id") or 0) in allowed]
+    filtered = dict(plan)
+    filtered["entries"] = entries
+    filtered["shard_id"] = shard.id
+    filtered["shard_index"] = shard.shard_index
+    filtered["total_shards"] = shard.total_shards
+    filtered["shard_case_ids"] = list(shard.case_ids or [])
+    filtered["suite_execution_id"] = suite_execution_id
+    return filtered
+
+
 async def _run_plan(db: AsyncSession, agent: DesktopAgent, run: UIRun) -> dict[str, Any]:
     environment = await resolve_runtime_environment(
         db,
@@ -193,52 +310,160 @@ async def _run_plan(db: AsyncSession, agent: DesktopAgent, run: UIRun) -> dict[s
     )
     if run.case_id:
         version = await case_service.get_version(db, run.case_id, run.case_version_id, agent.owner_id)
+        snapshot = await _enrich_snapshot_locators(db, version.snapshot_json or {})
         return {
             "kind": "case",
-            "snapshot": version.snapshot_json or {},
+            "snapshot": snapshot,
             "run_id": run.id,
             "environment": environment,
         }
     if run.suite_id:
         plan = await suite_service.build_execution_plan(db, agent.owner_id, run.suite_id)
+        # Enrich each entry snapshot locators from element repository.
+        enriched_entries = []
+        for entry in plan.get("entries") or []:
+            item = dict(entry)
+            item["snapshot"] = await _enrich_snapshot_locators(db, entry.get("snapshot") or {})
+            enriched_entries.append(item)
+        plan = {**plan, "entries": enriched_entries}
+        plan = await _filter_suite_plan_for_shard(db, agent, run, plan)
         return {
             "kind": "suite",
             "plan": plan,
             "run_id": run.id,
             "environment": environment,
+            "shard_id": plan.get("shard_id"),
         }
     raise HTTPException(status_code=409, detail="UI run target is no longer available")
 
 
+async def _enrich_snapshot_locators(db: AsyncSession, snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Resolve element repository locators as the source of truth when elementId is bound."""
+    from fastapi_backend.models.feature_upgrades import UIElement
+
+    steps = list(snapshot.get("steps") or [])
+    if not steps:
+        return snapshot
+    element_ids: list[int] = []
+    for step in steps:
+        loc = step.get("locator") if isinstance(step, dict) else None
+        eid = None
+        if isinstance(step, dict):
+            eid = step.get("element_id")
+        if eid is None and isinstance(loc, dict):
+            eid = loc.get("elementId") if loc.get("elementId") is not None else loc.get("element_id")
+        if eid is not None:
+            try:
+                element_ids.append(int(eid))
+            except (TypeError, ValueError):
+                pass
+    elements: dict[int, Any] = {}
+    if element_ids:
+        rows = list((await db.scalars(select(UIElement).where(UIElement.id.in_(set(element_ids))))).all())
+        elements = {int(row.id): row for row in rows}
+
+    new_steps = []
+    for step in steps:
+        if not isinstance(step, dict):
+            new_steps.append(step)
+            continue
+        item = dict(step)
+        loc = dict(item.get("locator") or {}) if isinstance(item.get("locator"), dict) else {}
+        eid = item.get("element_id")
+        if eid is None:
+            eid = loc.get("elementId") if loc.get("elementId") is not None else loc.get("element_id")
+        try:
+            eid_int = int(eid) if eid is not None else None
+        except (TypeError, ValueError):
+            eid_int = None
+        if eid_int is not None and eid_int in elements:
+            element = elements[eid_int]
+            primary = None
+            for candidate in element.locators or []:
+                if isinstance(candidate, dict) and candidate.get("strategy") and candidate.get("value") is not None:
+                    primary = candidate
+                    break
+            if primary:
+                # Repo locator is source of truth; keep original as first fallback.
+                original = loc if loc.get("strategy") and loc.get("value") is not None else None
+                fallbacks = list(primary.get("fallbacks") or [])
+                if original and (
+                    original.get("strategy") != primary.get("strategy")
+                    or str(original.get("value")) != str(primary.get("value"))
+                ):
+                    fallbacks = [original, *fallbacks]
+                loc = {
+                    **primary,
+                    "fallbacks": fallbacks,
+                    "elementId": eid_int,
+                    "framePath": primary.get("framePath")
+                    or primary.get("frame_path")
+                    or element.frame_path
+                    or loc.get("framePath")
+                    or [],
+                }
+            else:
+                loc = {**loc, "elementId": eid_int}
+            item["element_id"] = eid_int
+            item["locator"] = loc
+        elif eid_int is not None and loc:
+            loc = {**loc, "elementId": eid_int}
+            item["locator"] = loc
+            item["element_id"] = eid_int
+        new_steps.append(item)
+    return {**snapshot, "steps": new_steps}
+
+
 async def claim_next_run(db: AsyncSession, agent: DesktopAgent) -> tuple[UIRun | None, dict[str, Any] | None]:
-    await heartbeat_agent(db, agent)
-    if agent.current_runs >= agent.max_parallel:
+    items = await claim_runs(db, agent, limit=1)
+    if not items:
         return None, None
+    return items[0]
+
+
+async def claim_runs(
+    db: AsyncSession,
+    agent: DesktopAgent,
+    *,
+    limit: int = 1,
+) -> list[tuple[UIRun, dict[str, Any]]]:
+    """Claim up to `limit` waiting runs while respecting agent.max_parallel."""
+    await heartbeat_agent(db, agent)
+    available = max(0, int(agent.max_parallel or 1) - int(agent.current_runs or 0))
+    take = max(0, min(int(limit or 1), available, 16))
+    if take <= 0:
+        return []
+
     result = await db.execute(
         select(UIRun)
         .where(
             UIRun.agent_id == agent.id,
             UIRun.user_id == agent.owner_id,
+            UIRun.project_id == agent.project_id,
             UIRun.status == "waiting_for_agent",
         )
         .order_by(UIRun.queued_at, UIRun.id)
         .with_for_update(skip_locked=True)
-        .limit(1)
+        .limit(take)
     )
-    run = result.scalar_one_or_none()
-    if run is None:
-        return None, None
+    runs = list(result.scalars().all())
+    if not runs:
+        return []
+
     now = _utcnow()
-    run.status = "assigned"
-    run.last_heartbeat_at = now
-    run.lease_expires_at = run_service._lease_until(now)
-    execution = await run_service._ensure_authoritative_execution(db, run)
-    execution.status = "assigned"
-    execution.runner_id = f"desktop-agent:{agent.id}"
-    execution.heartbeat_at = now
-    await _execution_event(db, execution, "agent_assigned", {"agent_id": agent.id, "ui_run_id": run.id})
-    agent.current_runs += 1
-    return run, await _run_plan(db, agent, run)
+    claimed: list[tuple[UIRun, dict[str, Any]]] = []
+    for run in runs:
+        run.status = "assigned"
+        run.last_heartbeat_at = now
+        run.lease_expires_at = run_service._lease_until(now)
+        execution = await run_service._ensure_authoritative_execution(db, run)
+        execution.status = "assigned"
+        execution.runner_id = f"desktop-agent:{agent.id}"
+        execution.heartbeat_at = now
+        await _execution_event(db, execution, "agent_assigned", {"agent_id": agent.id, "ui_run_id": run.id})
+        agent.current_runs = int(agent.current_runs or 0) + 1
+        claimed.append((run, await _run_plan(db, agent, run)))
+    return claimed
 
 
 def _is_expired(value: datetime | None, now: datetime | None = None) -> bool:
@@ -262,6 +487,7 @@ async def get_agent_run(
         UIRun.id == run_id,
         UIRun.agent_id == agent.id,
         UIRun.user_id == agent.owner_id,
+        UIRun.project_id == agent.project_id,
     )
     if lock:
         query = query.with_for_update()

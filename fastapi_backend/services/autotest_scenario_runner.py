@@ -340,7 +340,7 @@ class ScenarioExecutionEngine:
                             "success": False,
                             "status": "skipped",
                             "response_time": 0,
-                            "error": "因前序步骤失败且启用 fail_fast，跳过此步骤",
+                            "error": "因前置步骤失败且启用 fail_fast，跳过此步骤",
                         }
                     )
                     if self.progress_callback:
@@ -725,9 +725,24 @@ class TestScenario{scenario_id}:
     async def _run_pytest_and_generate_report(
         self, test_file_path: Path, allure_results_dir: str, report_dir: str
     ) -> bool:
+        """Generate an Allure report when a real Python runtime is available.
+
+        The packaged desktop backend is a frozen executable, not a Python
+        interpreter.  Invoking ``sys.executable -m pytest`` there launches a
+        second backend process with arbitrary command-line arguments instead
+        of pytest, which can leave an orphan service on port 5001.  The caller
+        already writes a complete built-in HTML report when this returns
+        ``False``, so frozen builds deliberately use that deterministic path.
+        """
         import shutil
         import sys
         import os
+
+        if getattr(sys, "frozen", False):
+            _logger.info(
+                "[AllureReport] 检测到桌面冻结运行时，跳过 pytest/Allure 子进程，使用内置静态报告"
+            )
+            return False
 
         allure_results_dir_abs = str(Path(allure_results_dir).absolute())
         report_dir_abs = str(Path(report_dir).absolute())
@@ -958,9 +973,62 @@ class TestScenario{scenario_id}:
             "group": self._execute_group,
             "scenario_ref": self._execute_scenario_ref,
             "db_query": self._execute_db_query,
+            "protocol": self._execute_protocol,
         }
         handler = handlers.get(step_type, self._execute_api_request)
         return await handler(step_info, all_steps, current_idx)
+
+    async def _execute_protocol(self, step_info: Dict, all_steps: List[Dict], current_idx: int) -> Dict[str, Any]:
+        """Execute a first-class gRPC/WebSocket/SSE scenario step.
+
+        Protocol debugging and scenario execution intentionally share the same
+        executor.  This prevents a saved protocol call from becoming a visual
+        placeholder that cannot participate in variables or reports.
+        """
+        from fastapi_backend.services.protocol_executor_service import protocol_executor_service
+
+        config = dict(step_info.get("step_config") or {})
+        protocol = str(config.get("protocol") or "").lower()
+        started = time.time()
+        if protocol not in {"grpc", "websocket", "ws", "sse"}:
+            return {
+                "step_id": step_info["id"], "step_order": step_info["step_order"],
+                "step_type": "protocol", "success": False,
+                "error": "协议步骤缺少受支持的 protocol 配置", "response_time": 0,
+            }
+        variables = {**self.session_vars, **self.context_vars}
+        result = await protocol_executor_service.execute(protocol, config, variables)
+        body = result.response
+        if body is None:
+            body = result.responses or result.events or result.messages
+        successful = str(result.status).lower() in {"ok", "success", "passed"}
+        extractor_errors: list[str] = []
+        for extractor in config.get("extractors") or []:
+            if not isinstance(extractor, dict):
+                extractor_errors.append("提取器格式无效")
+                continue
+            name = str(extractor.get("variableName") or extractor.get("name") or "").strip()
+            expression = str(extractor.get("expression") or extractor.get("json_path") or "").strip()
+            if not name or not expression:
+                extractor_errors.append("提取器缺少变量名或 JSONPath")
+                continue
+            try:
+                value = extract_jsonpath_value(body, expression)
+                if value is None:
+                    value = extractor.get("defaultValue")
+                self.context_vars[name] = value
+            except Exception as exc:
+                extractor_errors.append(f"{name}: {str(exc)[:160]}")
+        if extractor_errors:
+            successful = False
+        return {
+            "step_id": step_info["id"], "step_order": step_info["step_order"],
+            "step_type": "protocol", "protocol": result.protocol,
+            "success": successful,
+            "response_time": int(result.duration_ms or ((time.time() - started) * 1000)),
+            "response": {"body": body, "messages": result.messages, "events": result.events, "meta": result.meta},
+            "error": result.error or "; ".join(extractor_errors) or None,
+        }
 
     async def _run_sub_step(self, sub_step: Dict, all_steps: List[Dict]) -> bool:
         """执行子步骤并将结果记入报告"""
@@ -1674,6 +1742,58 @@ class TestScenario{scenario_id}:
                     )
                     total_assertions += 1
 
+            # Contract gate: active APIContractRule for this case fails the step closed.
+            contract_result = None
+            api_case_id = step_info.get("api_case_id")
+            if api_case_id and self.user_id:
+                try:
+                    from urllib.parse import urlsplit
+
+                    from fastapi_backend.core.database import AsyncSessionLocal
+                    from fastapi_backend.services.contract_testing_service import contract_testing_service
+
+                    path = urlsplit(str(public_request.get("url") or request_config.get("url") or "")).path or "/"
+                    method = str(step_info.get("api_case_method") or request_config.get("method") or "GET").upper()
+                    body_for_contract = response_data.get("json")
+                    if body_for_contract is None:
+                        body_for_contract = response_data.get("body")
+                    project_id = int(getattr(self, "project_id", None) or 0) or 0
+                    if not project_id:
+                        try:
+                            from fastapi_backend.services.project_service import ensure_personal_project
+
+                            async with AsyncSessionLocal() as _pdb:
+                                personal = await ensure_personal_project(_pdb, int(self.user_id))
+                                await _pdb.commit()
+                                project_id = int(personal.id)
+                        except Exception:
+                            project_id = 0
+                    async with AsyncSessionLocal() as contract_db:
+                        contract_result = await contract_testing_service.validate_response(
+                            contract_db,
+                            project_id=int(project_id),
+                            case_id=int(api_case_id),
+                            method=method,
+                            path=path,
+                            status_code=int(response.status_code or 0),
+                            response_body=body_for_contract,
+                        )
+                    if (
+                        isinstance(contract_result, dict)
+                        and not contract_result.get("skipped")
+                        and contract_result.get("valid") is False
+                    ):
+                        errors = contract_result.get("errors") or ["contract validation failed"]
+                        failed_assertions.append(
+                            {
+                                "assertion": {"type": "api_contract", "rule_id": contract_result.get("rule_id")},
+                                "reason": "契约校验失败: " + "; ".join(str(e) for e in errors),
+                            }
+                        )
+                        total_assertions += 1
+                except Exception as contract_exc:
+                    _logger.warning("scenario contract validation skipped due to error: %s", contract_exc)
+
             # 安全解析 payload 为 JSON，解析失败时保留原始字符串
             if isinstance(raw_payload, (dict, list)):
                 payload_for_result = raw_payload
@@ -1703,6 +1823,7 @@ class TestScenario{scenario_id}:
                 "response": public_response_data,
                 "assertions": {"total": total_assertions, "passed": passed_assertions, "failed": failed_assertions},
                 "extracted_vars": step_extracted_vars or {},
+                "contract_result": contract_result,
             }
 
             return step_result

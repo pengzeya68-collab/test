@@ -48,6 +48,17 @@
       />
     </div>
 
+    <el-alert
+      v-if="loadError"
+      class="load-error"
+      type="error"
+      :title="loadError"
+      show-icon
+      :closable="false"
+    >
+      <template #default><el-button link type="primary" @click="reload">重新加载</el-button></template>
+    </el-alert>
+
     <!-- 热力图 -->
     <el-card class="heatmap-card" v-loading="loading">
       <div v-if="!heatmapData.apis?.length" class="empty-state">
@@ -95,7 +106,7 @@
                 <td class="stat-cell">
                   <el-progress
                     :percentage="api.pass_rate || 0"
-                    :color="api.pass_rate >= 80 ? '#67c23a' : api.pass_rate >= 50 ? '#e6a23c' : '#f56c6c'"
+                    :color="api.pass_rate >= 80 ? 'var(--tm-color-success)' : api.pass_rate >= 50 ? 'var(--tm-color-warning)' : 'var(--tm-color-danger)'"
                     :stroke-width="8"
                     :text-inside="false"
                     style="width: 80px;"
@@ -119,7 +130,7 @@
           <div class="group-count">{{ group.count }} 个接口</div>
           <el-progress
             :percentage="group.avg_pass_rate"
-            :color="group.avg_pass_rate >= 80 ? '#67c23a' : '#e6a23c'"
+            :color="group.avg_pass_rate >= 80 ? 'var(--tm-color-success)' : 'var(--tm-color-warning)'"
             :stroke-width="6"
           />
         </div>
@@ -165,6 +176,7 @@ import HelpDrawer from '@/components/HelpDrawer.vue'
 import { helpContent } from '@/utils/help-content'
 
 const loading = ref(false)
+const loadError = ref('')
 const detailLoading = ref(false)
 const detailVisible = ref(false)
 const detailTitle = ref('')
@@ -257,18 +269,26 @@ const loadSummary = async () => {
     summary.value = await autoTestRequest.get('/auto-test/coverage/summary')
   } catch (e) {
     console.error('加载汇总失败', e)
+    loadError.value = '测试覆盖率汇总加载失败，请检查服务连接后重试'
   }
 }
 
 const loadHeatmap = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     heatmapData.value = await autoTestRequest.get(`/auto-test/coverage/heatmap?days=${selectedDays.value}`)
   } catch (e) {
     console.error('加载热力图失败', e)
+    loadError.value = '测试覆盖率数据加载失败，请检查服务连接后重试'
   } finally {
     loading.value = false
   }
+}
+
+const reload = () => {
+  loadSummary()
+  loadHeatmap()
 }
 
 const showDetail = async (api, date) => {
@@ -291,10 +311,7 @@ const showDetail = async (api, date) => {
   }
 }
 
-onMounted(() => {
-  loadSummary()
-  loadHeatmap()
-})
+onMounted(reload)
 </script>
 
 <style scoped>
@@ -369,6 +386,7 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 16px;
 }
+.load-error { margin-bottom: 16px; }
 .heatmap-card {
   margin-bottom: 24px;
 }
@@ -389,9 +407,9 @@ onMounted(() => {
   border-radius: 3px;
 }
 .legend-dot.none { background: #ebedf0; }
-.legend-dot.passed { background: #67c23a; }
-.legend-dot.failed { background: #f56c6c; }
-.legend-dot.unknown { background: #e6a23c; }
+.legend-dot.passed { background: var(--tm-color-success); }
+.legend-dot.failed { background: var(--tm-color-danger); }
+.legend-dot.unknown { background: var(--tm-color-warning); }
 .heatmap-scroll {
   overflow-x: auto;
 }
@@ -471,9 +489,9 @@ onMounted(() => {
   display: block;
 }
 .heat-cell.none { background: #ebedf0; }
-.heat-cell.passed { background: #67c23a; }
-.heat-cell.failed { background: #f56c6c; }
-.heat-cell.unknown { background: #e6a23c; }
+.heat-cell.passed { background: var(--tm-color-success); }
+.heat-cell.failed { background: var(--tm-color-danger); }
+.heat-cell.unknown { background: var(--tm-color-warning); }
 .stat-cell {
   padding: 4px 8px !important;
 }

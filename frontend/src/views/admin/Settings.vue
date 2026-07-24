@@ -137,7 +137,6 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import request from '@/utils/request'
 import autoTestRequest from '@/utils/autoTestRequest'
 import { getAdminToken } from '@/utils/auth'
 

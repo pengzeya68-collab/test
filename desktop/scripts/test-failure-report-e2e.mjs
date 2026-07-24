@@ -3,6 +3,12 @@ const browser = await chromium.connectOverCDP('http://127.0.0.1:9333');
 let caseId = null;
 try {
   const page = browser.contexts()[0].pages()[0];
+  const artifactRequestFailures = [];
+  page.on('response', async response => {
+    if (response.status() >= 400 && response.url().includes('/artifacts/')) {
+      artifactRequestFailures.push({ status: response.status(), url: response.url(), body: (await response.text()).slice(0, 500) });
+    }
+  });
   await page.waitForTimeout(1200);
   const created = await page.evaluate(async () => {
     const token = localStorage.getItem('token');
@@ -38,7 +44,7 @@ try {
     return { run, artifacts: artifacts.items };
   }, caseId);
   const types = report.artifacts.map(item => item.type);
-  if (report.run.status !== 'failed' || !types.includes('screenshot') || !types.includes('trace')) throw new Error('REPORT_INCOMPLETE_' + JSON.stringify({ status: report.run.status, types }));
+  if (report.run.status !== 'failed' || !types.includes('screenshot') || !types.includes('trace')) throw new Error('REPORT_INCOMPLETE_' + JSON.stringify({ status: report.run.status, types, artifactRequestFailures }));
   console.log(JSON.stringify({ passed: true, status: report.run.status, artifactTypes: types, traceStored: report.artifacts.find(item => item.type === 'trace').storage_path }));
 } finally {
   if (caseId) {

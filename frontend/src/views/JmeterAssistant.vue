@@ -209,6 +209,7 @@
             @toggle-enabled="handleToggleEnabled"
             @move-node="handleMoveNode"
             @tree-changed="handleTreeChanged"
+            @replace-children="replaceNodeChildren"
           />
           <BaseSplitter
             v-show="!treeCollapsed"
@@ -885,7 +886,7 @@
             </template>
             <template v-if="selectedNode.type === 'WhileController'">
               <div class="form-section">
-                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 条件为真时不断循环子元素。如 <code>${__javaScript(${counter} < 5)}</code></div>
+                <div class="section-hint"><el-icon><InfoFilled /></el-icon> 条件为真时不断循环子元素。如 <code>${__javaScript(${counter} &lt; 5)}</code></div>
                 <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
                 <div class="form-group"><label>条件</label><el-input v-model="selectedNode.props.condition" size="small" placeholder="${__javaScript(vars.get('counter') < 5)}" /></div>
               </div>
@@ -1791,10 +1792,10 @@
           style="width: 100%;"
           empty-text="无可选节点"
         />
-        <div v-if="moveToDialog.targetUid && moveToDialog.sourceUid && !canMoveTo(moveToDialog.sourceUid, moveToDialog.targetUid)" style="color: #F87171; font-size: 12px; margin-top: 6px;">
+        <div v-if="moveToDialog.targetUid && moveToDialog.sourceUid && !canMoveTo(moveToDialog.sourceUid, moveToDialog.targetUid)" style="color: var(--tm-color-danger); font-size: 12px; margin-top: 6px;">
           ⚠ 该目标不可用(类型不匹配或为自身子节点)
         </div>
-        <div v-else-if="moveToDialog.targetUid && moveToDialog.sourceUid && canMoveTo(moveToDialog.sourceUid, moveToDialog.targetUid)" style="color: #67C23A; font-size: 12px; margin-top: 6px;">
+        <div v-else-if="moveToDialog.targetUid && moveToDialog.sourceUid && canMoveTo(moveToDialog.sourceUid, moveToDialog.targetUid)" style="color: var(--tm-color-success); font-size: 12px; margin-top: 6px;">
           ✓ 目标可用
         </div>
       </el-form-item>
@@ -1828,8 +1829,8 @@ import HelpDrawer from '@/components/HelpDrawer.vue'
 import BaseSplitter from '@/components/base/BaseSplitter.vue'
 import LayoutPresetDropdown from '@/components/LayoutPresetDropdown.vue'
 import { helpContent } from '@/utils/help-content'
-import { NODE_TYPES as _SHARED_NODE_TYPES, TYPE_ALIASES, nodeTypeInfo, isValidParentChild, reassignUids, newUid as sharedNewUid } from './jmeter/shared/nodeTypes'
-import { findNode, findParent, isDescendant, deepCopyWithNewUids } from './jmeter/shared/useJmeterTreeOps'
+import { NODE_TYPES as _SHARED_NODE_TYPES, TYPE_ALIASES, nodeTypeInfo, isValidParentChild, reassignUids } from './jmeter/shared/nodeTypes'
+import { findNode, findParent, isDescendant } from './jmeter/shared/useJmeterTreeOps'
 import { useJmeterClipboard } from './jmeter/shared/useJmeterClipboard'
 
 const router = useRouter()
@@ -1956,7 +1957,7 @@ const loadScriptsList = () => {
 }
 
 const saveScriptsList = (list) => {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)) } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)) } catch (error) { console.warn('保存脚本历史失败', error) }
 }
 
 const loadCurrentScript = () => {
@@ -1982,7 +1983,7 @@ const saveCurrentScript = () => {
     list.unshift(entry)
     if (list.length > MAX_SCRIPTS) list.length = MAX_SCRIPTS
     saveScriptsList(list)
-  } catch {}
+  } catch (error) { console.warn('保存当前脚本失败', error) }
 }
 
 const deleteScriptFromHistory = (name) => {
@@ -2006,7 +2007,6 @@ const {
   clipboard: jmeterClipboard,
   cutNode: _cutNode,
   copyToClipboard: _copyToClipboard,
-  copyNodeTo: _copyNodeTo,
   pasteNode: _pasteNode,
   moveNode: _moveNode,
   toggleEnabled: _toggleEnabled,
@@ -2153,7 +2153,7 @@ const allSamplers = computed(() => {
         url: node.props?.url || node.props?.path || ''
       })
     }
-    ;(node.children || []).forEach(walk)
+    (node.children || []).forEach(walk)
   }
   walk(scriptTree)
   return list
@@ -2244,7 +2244,6 @@ const naturalLanguageSummary = computed(() => {
     const items = []
     const walk = (node) => {
       if (node.type === 'HttpSampler') {
-        const tag = node.props.responseAssertion ? '✅' : ''
         items.push((node.props.method || 'GET') + ' ' + (node.name || node.props.url || ''))
       }
       (node.children || []).forEach(walk)
@@ -2353,7 +2352,7 @@ const handleCutNode = (uid) => _cutNode(uid)
 const handleCopyNode = (uid) => _copyToClipboard(uid)
 const handlePasteNode = (targetParentUid) => _pasteNode(targetParentUid)
 const handleToggleEnabled = (uid) => _toggleEnabled(uid)
-const handleMoveNode = (movedUid, newParentUid, newIndex) => {
+const handleMoveNode = (movedUid) => {
   // 拖拽触发的移动:composable 中已校验,这里只需更新选中状态
   const moved = findNode(scriptTree, movedUid)
   if (moved) {
@@ -2361,6 +2360,12 @@ const handleMoveNode = (movedUid, newParentUid, newIndex) => {
     selectedNode.value = moved
   }
   if (typeof saveCurrentScript === 'function') saveCurrentScript()
+}
+const replaceNodeChildren = (uid, children) => {
+  const node = findNode(scriptTree, uid)
+  if (!node) return
+  node.children = children
+  handleTreeChanged()
 }
 const handleTreeChanged = () => {
   if (typeof saveCurrentScript === 'function') saveCurrentScript()
@@ -2410,6 +2415,15 @@ watch(importGroupFilter, () => { selectedImportCases.value = []; if (currentStep
 
 const importSelectedCases = () => {
   if (selectedImportCases.value.length === 0) return
+  // Older versions created this exact demo plan on first mount. A real import
+  // must never silently retain an unrelated public request in the test plan.
+  const existingThreadGroup = scriptTree.children.find(c => c.type === 'ThreadGroup')
+  if (existingThreadGroup && scriptTree.children.length === 1) {
+    const realChildren = (existingThreadGroup.children || []).filter(c => c.type !== 'ViewResultsTree')
+    if (realChildren.length === 1 && realChildren[0].type === 'HttpSampler' && realChildren[0].name === '示例请求' && realChildren[0].props?.url === 'https://httpbin.org/get') {
+      scriptTree.children.splice(0, scriptTree.children.length)
+    }
+  }
   let tg = scriptTree.children.find(c => c.type === 'ThreadGroup')
   if (!tg) {
     tg = createElement('ThreadGroup')
@@ -2641,17 +2655,17 @@ const step3SidebarCollapsed = ref(false)
 const expandStep1Left = () => {
   step1LeftWidth.value = Math.max(PANEL_COLLAPSED + 10, 320)
   step1LeftCollapsed.value = false
-  try { localStorage.setItem('tm-jmeter-step1-left-width', String(step1LeftWidth.value)) } catch {}
+  try { localStorage.setItem('tm-jmeter-step1-left-width', String(step1LeftWidth.value)) } catch (error) { console.warn('保存面板宽度失败', error) }
 }
 const expandTree = () => {
   treeWidth.value = Math.max(PANEL_COLLAPSED + 10, 280)
   treeCollapsed.value = false
-  try { localStorage.setItem('tm-jmeter-tree-width', String(treeWidth.value)) } catch {}
+  try { localStorage.setItem('tm-jmeter-tree-width', String(treeWidth.value)) } catch (error) { console.warn('保存面板宽度失败', error) }
 }
 const expandStep3Sidebar = () => {
   step3SidebarWidth.value = Math.max(PANEL_COLLAPSED + 10, 360)
   step3SidebarCollapsed.value = false
-  try { localStorage.setItem('tm-jmeter-step3-sidebar-width', String(step3SidebarWidth.value)) } catch {}
+  try { localStorage.setItem('tm-jmeter-step3-sidebar-width', String(step3SidebarWidth.value)) } catch (error) { console.warn('保存面板宽度失败', error) }
 }
 
 // 监听宽度变化，自动判断折叠/展开
@@ -2694,7 +2708,7 @@ const applyLayoutPreset = (preset) => {
     if (isStep1 || preset === 'reset') localStorage.setItem('tm-jmeter-step1-left-width', String(step1LeftWidth.value))
     if (isStep2 || preset === 'reset') localStorage.setItem('tm-jmeter-tree-width', String(treeWidth.value))
     if (isStep3 || preset === 'reset') localStorage.setItem('tm-jmeter-step3-sidebar-width', String(step3SidebarWidth.value))
-  } catch {}
+  } catch (error) { console.warn('保存布局预设失败', error) }
   ElMessage?.success?.(`布局已切换：${preset === 'compact' ? '紧凑' : preset === 'wide' ? '宽屏' : preset === 'editor-focus' ? '编辑器专注' : preset === 'reset' ? '默认' : '默认'}`)
 }
 
@@ -2958,13 +2972,6 @@ onMounted(() => {
   loadCases()
   loadCaseGroups()
   restoreLastSession()
-  if (scriptTree.children.length === 0) {
-    const tg = createElement('ThreadGroup')
-    tg.name = '线程组 1'
-    const sampler = createElement('HttpSampler', { name: '示例请求', props: { method: 'GET', url: 'https://httpbin.org/get' } })
-    tg.children.push(sampler, createElement('ViewResultsTree'))
-    scriptTree.children.push(tg)
-  }
   window.addEventListener('resize', resizeHandler)
 })
 
@@ -3019,7 +3026,7 @@ const projectVariables = computed(() => {
         if (v.name) vars.push({ name: v.name, source: `测试计划变量` })
       })
     }
-    ;(node.children || []).forEach(walk)
+    (node.children || []).forEach(walk)
   }
   walk(scriptTree)
   return vars
@@ -3120,7 +3127,6 @@ const aiGenerateAssert = async (type) => {
   } else if (type === 'JSR223') {
     prompt = `你是一个JMeter专家。请为以下HTTP请求编写一个Groovy语言的JSR223断言脚本。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n${body ? '- 请求体: ' + body.substring(0, 300) : ''}\n\n要求：\n1. 写一个完整的Groovy断言\n2. 检查HTTP状态码是否为200（prev.getResponseCode()）\n3. 检查响应体是否非空\n4. 加上合理的中文FailureMessage\n5. 只输出代码，不要解释`
   } else if (type === 'Json') {
-    const suggestedPath = body && body.includes('{') ? '$.data' : '$.status'
     prompt = `你是一个API测试专家。请分析以下请求并建议合理的JSON断言。\n\n请求信息：\n- 方法: ${method}\n- URL: ${url}\n\n请输出JSON格式：{"jsonPath": "建议的JSONPath", "expected": "建议的期望值"}\n只输出JSON，不要解释`
   }
 
@@ -3167,6 +3173,11 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeHandler)
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
 })
+// Retain these programmatic extension points for embedded JMeter integrations.
+void deleteScriptFromHistory
+void bottomPanelVisible.value
+void bottomResultTab.value
+void onBottomResize
 </script>
 
 <style scoped>

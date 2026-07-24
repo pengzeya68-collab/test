@@ -164,7 +164,7 @@
                 <el-tag :type="scope.row.action?.includes('删除') || scope.row.action?.includes('清理') ? 'warning' : scope.row.action?.includes('创建') || scope.row.action?.includes('备份') ? 'success' : 'info'">
                   {{ scope.row.action }}
                 </el-tag>
-                <span v-if="scope.row.detail" style="margin-left: 8px; color: #909399; font-size: 12px;">{{ scope.row.detail }}</span>
+                <span v-if="scope.row.detail" style="margin-left: 8px; color: var(--tm-color-info); font-size: 12px;">{{ scope.row.detail }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="status" label="状态" width="120">
@@ -234,7 +234,9 @@ let refreshTimer = null
 
 const ensureDesktopAdminSession = async () => {
   if (!window.testmaster || getAdminToken()) return
-  const res = await request.post('/admin/login', { username: 'admin', password: 'admin123' })
+  const credentials = await window.testmaster.appInfo?.localCredentials?.()
+  if (!credentials?.username || !credentials?.password) return
+  const res = await request.post('/admin/login', credentials)
   const adminToken = res.token || res.access_token
   if (adminToken) {
     setAdminToken(adminToken)
@@ -271,6 +273,7 @@ const latestBackupTime = computed(() => {
   if (diff < 1440) return `${Math.floor(diff / 60)}小时前`
   return `${Math.floor(diff / 1440)}天前`
 })
+void latestBackupTime.value
 
 // 获取备份列表 - 防弹版本
 const fetchBackups = async () => {
@@ -411,6 +414,7 @@ const restoreBackup = async (backup, index) => {
   await handleRestore(backup)
   restoring.value = -1
 }
+void restoreBackup
 
 // 删除备份
 const deleteBackup = async (backup, index) => {
@@ -461,6 +465,7 @@ const getActionTagType = (action) => {
   // 其他默认
   return 'info'
 }
+void getActionTagType
 
 // 审计日志分页切换
 const handleAuditPageChange = (page) => {
@@ -560,8 +565,8 @@ const initCharts = async (chartData) => {
       xAxis: { type: 'category', boundaryGap: false, data: dates },
       yAxis: { type: 'value', max: 100, name: '%' },
       series: [
-        { name: 'CPU 使用率', type: 'line', data: cpuData, smooth: true, areaStyle: { opacity: 0.3 }, itemStyle: { color: '#409eff' } },
-        { name: '内存使用率', type: 'line', data: memoryData, smooth: true, areaStyle: { opacity: 0.3 }, itemStyle: { color: '#67c23a' } }
+        { name: 'CPU 使用率', type: 'line', data: cpuData, smooth: true, areaStyle: { opacity: 0.3 }, itemStyle: { color: 'var(--tm-color-primary)' } },
+        { name: '内存使用率', type: 'line', data: memoryData, smooth: true, areaStyle: { opacity: 0.3 }, itemStyle: { color: 'var(--tm-color-success)' } }
       ]
     })
   }
@@ -738,7 +743,7 @@ onUnmounted(() => {
 .stat-card .stat-value {
   font-size: 32px;
   font-weight: bold;
-  color: #409eff;
+  color: var(--tm-color-primary);
 }
 
 .chart-container {

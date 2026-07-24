@@ -17,7 +17,7 @@
             <span class="tb-icon">鈫</span>
           </button>
           <div class="progress-indicator">
-            <span class="progress-text">绗?<strong>{{ currentIndex + 1 }}</strong> / {{ totalCount }} 棰</span>
+            <span class="progress-text">第 <strong>{{ currentIndex + 1 }}</strong> / {{ totalCount }} 题</span>
           </div>
           <button class="topbar-btn nav-arrow" :disabled="currentIndex <= 0" @click="prevExercise" title="上一题">&lt;</button>
           <button class="topbar-btn nav-arrow" :disabled="!hasNextExercise" @click="nextExercise" title="下一题">&gt;</button>
@@ -292,7 +292,7 @@
             <div class="python-output-content">
               <pre v-if="pythonResult.stdout" class="python-stdout">{{ pythonResult.stdout }}</pre>
               <pre v-if="pythonResult.stderr" class="python-stderr">{{ pythonResult.stderr }}</pre>
-              <div v-if="!pythonResult.stdout && !pythonResult.stderr" class="python-no-output">(鏃犺緭鍑?</div>
+               <div v-if="!pythonResult.stdout && !pythonResult.stderr" class="python-no-output">（无输出）</div>
             </div>
           </div>
 
@@ -543,7 +543,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import request from '@/utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -801,19 +801,18 @@ const fetchExerciseDetail = async () => {
   loading.value = true
   try {
     const res = await request.get(`/exercises/${exerciseId.value}`)
-    console.log('[ExerciseDetail] API response:', res)
     exercise.value = res
     if (!res || !res.id) {
       console.warn('[ExerciseDetail] Invalid response data:', res)
-      ElMessage.warning('涔犻鏁版嵁寮傚父')
+      ElMessage.warning('习题数据异常')
     } else {
       if (res.exercise_type === 'code' && res.code_template) {
         userCode.value = res.code_template
       }
     }
   } catch (error) {
-    console.error('鑾峰彇涔犻璇︽儏澶辫触:', error?.response?.status, error?.response?.data || error.message)
-    ElMessage.error(`鑾峰彇涔犻璇︽儏澶辫触: ${error?.response?.data?.detail || error.message}`)
+    console.error('获取习题详情失败:', error?.response?.status, error?.response?.data || error.message)
+    ElMessage.error(`获取习题详情失败: ${error?.response?.data?.detail || error.message}`)
     exercise.value = null
   } finally {
     loading.value = false
@@ -862,20 +861,20 @@ const submitAnswer = async () => {
     })
     submitResult.value = res
     if (res.correct) {
-      ElMessage.success('绛旀姝ｇ‘锛佹妧鑳藉垎鏁板凡鏇存柊')
+      ElMessage.success('答案正确，技能分数已更新')
       userStore.checkNewAchievements()
     } else {
       ElMessage.warning('答案不正确，请再试一次')
     }
   } catch {
-    ElMessage.error('鎻愪氦澶辫触锛岃绋嶅悗閲嶈瘯')
+    ElMessage.error('提交失败，请稍后重试')
   } finally {
     submitting.value = false
   }
 }
 
 const goBack = () => { router.back() }
-const onCodeRun = (result) => { console.log('浠ｇ爜杩愯缁撴灉:', result) }
+const onCodeRun = () => {}
 
 const runCurrentCode = async () => {
   if (isSqlExercise.value) {
@@ -887,7 +886,7 @@ const runCurrentCode = async () => {
 
 const runPythonCode = async () => {
   if (!userCode.value || !userCode.value.trim()) {
-    ElMessage.warning('璇峰厛鍐欎唬鐮佸啀杩愯')
+    ElMessage.warning('请先编写代码再运行')
     return
   }
   pythonRunning.value = true
@@ -955,7 +954,7 @@ const showHintDialog = () => {
   if (!exercise.value?.hint) return
   const safeHint = DOMPurify.sanitize(exercise.value.hint)
   ElMessageBox.alert(
-    `<div style="color: #a5b4fc; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${safeHint}</div>`,
+    `<div style="color: var(--tm-color-primary-light); font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${safeHint}</div>`,
     '馃挕 鎻愮ず',
     {
       dangerouslyUseHTMLString: true,
@@ -1121,7 +1120,7 @@ const showHintDialog = () => {
 }
 
 .timer-warning .timer-text {
-  color: #f87171;
+  color: var(--tm-color-danger);
   animation: timerPulse 1s ease-in-out infinite;
 }
 
@@ -1138,12 +1137,12 @@ const showHintDialog = () => {
   white-space: nowrap;
 }
 
-.tag-badge.type { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; }
-.tag-badge.stage { background: rgba(52, 211, 153, 0.12); color: #6ee7b7; }
-.tag-badge.level { background: rgba(251, 191, 36, 0.12); color: #fcd34d; }
-.tag-badge.level-easy, .tag-badge.level-beginner { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-.tag-badge.level-medium, .tag-badge.level-intermediate { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
-.tag-badge.level-hard, .tag-badge.level-advanced { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+.tag-badge.type { background: rgba(var(--tm-color-primary-rgb), 0.15); color: var(--tm-color-primary-light); }
+.tag-badge.stage { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.tag-badge.level { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); }
+.tag-badge.level-easy, .tag-badge.level-beginner { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.tag-badge.level-medium, .tag-badge.level-intermediate { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); }
+.tag-badge.level-hard, .tag-badge.level-advanced { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); }
 .tag-badge.subject { background: rgba(var(--tm-color-primary-rgb), 0.12); color: var(--tm-color-primary); }
 
 .oj-split-layout {
@@ -1204,8 +1203,8 @@ const showHintDialog = () => {
   display: inline-block;
 }
 
-.dot-green { background: #34d399; }
-.dot-red { background: #f87171; }
+.dot-green { background: var(--tm-color-success); }
+.dot-red { background: var(--tm-color-danger); }
 
 .left-panel-body {
   flex: 1;
@@ -1274,18 +1273,18 @@ const showHintDialog = () => {
 
 .hint-inline-btn {
   padding: 6px 14px;
-  background: rgba(251, 191, 36, 0.1);
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: color-mix(in srgb, var(--tm-color-warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tm-color-warning) 20%, transparent);
   border-radius: 6px;
-  color: #fbbf24;
+  color: var(--tm-color-warning);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .hint-inline-btn:hover {
-  background: rgba(251, 191, 36, 0.18);
-  border-color: rgba(251, 191, 36, 0.35);
+  background: color-mix(in srgb, var(--tm-color-warning) 18%, transparent);
+  border-color: color-mix(in srgb, var(--tm-color-warning) 35%, transparent);
 }
 
 .oj-divider {
@@ -1333,9 +1332,9 @@ const showHintDialog = () => {
 
 .js-notice {
   padding: 10px 16px;
-  background: rgba(251, 191, 36, 0.1);
-  border-bottom: 1px solid rgba(251, 191, 36, 0.2);
-  color: #fbbf24;
+  background: color-mix(in srgb, var(--tm-color-warning) 10%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--tm-color-warning) 20%, transparent);
+  color: var(--tm-color-warning);
   font-size: 13px;
   font-weight: 500;
   text-align: center;
@@ -1385,17 +1384,17 @@ const showHintDialog = () => {
 
 .btn-hint-sm {
   padding: 5px 12px;
-  background: rgba(251, 191, 36, 0.1);
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: color-mix(in srgb, var(--tm-color-warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tm-color-warning) 20%, transparent);
   border-radius: 5px;
-  color: #fbbf24;
+  color: var(--tm-color-warning);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-hint-sm:hover {
-  background: rgba(251, 191, 36, 0.18);
+  background: color-mix(in srgb, var(--tm-color-warning) 18%, transparent);
 }
 
 .btn-outline-sm {
@@ -1419,7 +1418,7 @@ const showHintDialog = () => {
   background: rgba(59, 130, 246, 0.12);
   border: 1px solid rgba(59, 130, 246, 0.25);
   border-radius: 5px;
-  color: #60a5fa;
+  color: var(--tm-neon-cyan);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -1437,7 +1436,7 @@ const showHintDialog = () => {
 
 .btn-submit-sm {
   padding: 5px 16px;
-  background: linear-gradient(135deg, #34d399, #059669);
+  background: linear-gradient(135deg, var(--tm-color-success), var(--tm-color-success));
   border: none;
   border-radius: 5px;
   color: #fff;
@@ -1445,11 +1444,11 @@ const showHintDialog = () => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(52, 211, 153, 0.25);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tm-color-success) 25%, transparent);
 }
 
 .btn-submit-sm:hover:not(:disabled) {
-  box-shadow: 0 4px 14px rgba(52, 211, 153, 0.4);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--tm-color-success) 40%, transparent);
   transform: translateY(-1px);
 }
 
@@ -1496,13 +1495,13 @@ const showHintDialog = () => {
   font-weight: 600;
 }
 
-.sql-result-tag.success { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-.sql-result-tag.fail { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.sql-result-tag.success { background: color-mix(in srgb, var(--tm-color-success) 15%, transparent); color: var(--tm-color-success); }
+.sql-result-tag.fail { background: color-mix(in srgb, var(--tm-color-danger) 15%, transparent); color: var(--tm-color-danger); }
 
 .sql-result-error {
   padding: 10px 12px;
-  background: rgba(248, 113, 113, 0.06);
-  color: #f87171;
+  background: color-mix(in srgb, var(--tm-color-danger) 6%, transparent);
+  color: var(--tm-color-danger);
   font-family: monospace;
   font-size: 12px;
   white-space: pre-wrap;
@@ -1538,8 +1537,8 @@ const showHintDialog = () => {
 
 .sql-result-msg {
   padding: 10px 12px;
-  background: rgba(52, 211, 153, 0.06);
-  color: #34d399;
+  background: color-mix(in srgb, var(--tm-color-success) 6%, transparent);
+  color: var(--tm-color-success);
   font-size: 13px;
 }
 
@@ -1554,14 +1553,14 @@ const showHintDialog = () => {
 
 .python-stdout {
   margin: 0;
-  color: #a6e3a1;
+  color: var(--tm-color-success);
   white-space: pre-wrap;
   word-wrap: break-word;
 }
 
 .python-stderr {
   margin: 0;
-  color: #f38ba8;
+  color: var(--tm-color-danger);
   white-space: pre-wrap;
   word-wrap: break-word;
 }
@@ -1582,8 +1581,8 @@ const showHintDialog = () => {
   font-weight: 700;
 }
 
-.judge-quick-tag.pass { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-.judge-quick-tag.fail { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.judge-quick-tag.pass { background: color-mix(in srgb, var(--tm-color-success) 15%, transparent); color: var(--tm-color-success); }
+.judge-quick-tag.fail { background: color-mix(in srgb, var(--tm-color-danger) 15%, transparent); color: var(--tm-color-danger); }
 
 .judge-quick-body {
   display: flex;
@@ -1614,8 +1613,8 @@ const showHintDialog = () => {
   border: 1px solid var(--tm-border-light);
 }
 
-.judge-panel.judge-pass { border-color: rgba(52, 211, 153, 0.25); background: rgba(52, 211, 153, 0.04); }
-.judge-panel.judge-fail { border-color: rgba(248, 113, 113, 0.25); background: rgba(248, 113, 113, 0.04); }
+.judge-panel.judge-pass { border-color: color-mix(in srgb, var(--tm-color-success) 25%, transparent); background: color-mix(in srgb, var(--tm-color-success) 4%, transparent); }
+.judge-panel.judge-fail { border-color: color-mix(in srgb, var(--tm-color-danger) 25%, transparent); background: color-mix(in srgb, var(--tm-color-danger) 4%, transparent); }
 
 .judge-status-row {
   display: flex;
@@ -1631,8 +1630,8 @@ const showHintDialog = () => {
   font-weight: 700;
 }
 
-.judge-tag.success { background: rgba(52, 211, 153, 0.18); color: #34d399; }
-.judge-tag.fail { background: rgba(248, 113, 113, 0.18); color: #f87171; }
+.judge-tag.success { background: color-mix(in srgb, var(--tm-color-success) 18%, transparent); color: var(--tm-color-success); }
+.judge-tag.fail { background: color-mix(in srgb, var(--tm-color-danger) 18%, transparent); color: var(--tm-color-danger); }
 
 .judge-msg { font-size: 14px; font-weight: 600; color: var(--tm-text-primary); }
 
@@ -1655,8 +1654,8 @@ const showHintDialog = () => {
   gap: 10px;
 }
 
-.judge-case-item.case-ok { background: rgba(52, 211, 153, 0.06); border: 1px solid rgba(52, 211, 153, 0.12); }
-.judge-case-item.case-ng { background: rgba(248, 113, 113, 0.06); border: 1px solid rgba(248, 113, 113, 0.12); }
+.judge-case-item.case-ok { background: color-mix(in srgb, var(--tm-color-success) 6%, transparent); border: 1px solid color-mix(in srgb, var(--tm-color-success) 12%, transparent); }
+.judge-case-item.case-ng { background: color-mix(in srgb, var(--tm-color-danger) 6%, transparent); border: 1px solid color-mix(in srgb, var(--tm-color-danger) 12%, transparent); }
 
 .case-index { font-size: 13px; font-weight: 600; color: var(--tm-text-primary); min-width: 56px; }
 
@@ -1667,8 +1666,8 @@ const showHintDialog = () => {
   font-weight: 600;
 }
 
-.case-badge.success { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-.case-badge.fail { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.case-badge.success { background: color-mix(in srgb, var(--tm-color-success) 15%, transparent); color: var(--tm-color-success); }
+.case-badge.fail { background: color-mix(in srgb, var(--tm-color-danger) 15%, transparent); color: var(--tm-color-danger); }
 
 .case-fail-detail {
   width: 100%;
@@ -1684,7 +1683,7 @@ const showHintDialog = () => {
 }
 
 .case-fail-detail code {
-  color: #f87171;
+  color: var(--tm-color-danger);
   font-family: 'Courier New', monospace;
   font-size: 11px;
   background: rgba(var(--tm-bg-page-rgb), 0.5);
@@ -1692,7 +1691,7 @@ const showHintDialog = () => {
   border-radius: 3px;
 }
 
-.code-warn { color: #fbbf24 !important; }
+.code-warn { color: var(--tm-color-warning) !important; }
 
 .judge-footer {
   font-size: 13px;
@@ -1748,12 +1747,12 @@ const showHintDialog = () => {
 @keyframes barAnim { from { width: 0 !important; } }
 
 .skill-score { font-size: 12px; color: var(--tm-text-regular); min-width: 72px; text-align: center; font-variant-numeric: tabular-nums; }
-.skill-gain { font-size: 14px; font-weight: 800; color: #34d399; min-width: 36px; text-align: right; }
+.skill-gain { font-size: 14px; font-weight: 800; color: var(--tm-color-success); min-width: 36px; text-align: right; }
 
 .solution-card {
-  border-left: 3px solid #34d399;
+  border-left: 3px solid var(--tm-color-success);
   padding: 16px 20px;
-  background: rgba(52, 211, 153, 0.04);
+  background: color-mix(in srgb, var(--tm-color-success) 4%, transparent);
   border-radius: 0 8px 8px 0;
 }
 
@@ -1786,7 +1785,7 @@ const showHintDialog = () => {
 .note-delete-btn {
   background: none;
   border: none;
-  color: #f87171;
+  color: var(--tm-color-danger);
   font-size: 11px;
   cursor: pointer;
   margin-left: auto;
@@ -1849,7 +1848,7 @@ const showHintDialog = () => {
 }
 
 .recommend-item.rec-done {
-  border-left: 3px solid #34d399;
+  border-left: 3px solid var(--tm-color-success);
   opacity: 0.7;
 }
 
@@ -1876,9 +1875,9 @@ const showHintDialog = () => {
   font-weight: 600;
 }
 
-.rec-badge-diff.diff-easy, .rec-badge-diff.diff-beginner { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-.rec-badge-diff.diff-medium, .rec-badge-diff.diff-intermediate { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
-.rec-badge-diff.diff-hard, .rec-badge-diff.diff-advanced { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+.rec-badge-diff.diff-easy, .rec-badge-diff.diff-beginner { background: color-mix(in srgb, var(--tm-color-success) 12%, transparent); color: var(--tm-color-success); }
+.rec-badge-diff.diff-medium, .rec-badge-diff.diff-intermediate { background: color-mix(in srgb, var(--tm-color-warning) 12%, transparent); color: var(--tm-color-warning); }
+.rec-badge-diff.diff-hard, .rec-badge-diff.diff-advanced { background: color-mix(in srgb, var(--tm-color-danger) 12%, transparent); color: var(--tm-color-danger); }
 
 .rec-subject { font-size: 11px; color: var(--tm-text-secondary); }
 
@@ -1978,18 +1977,18 @@ const showHintDialog = () => {
 }
 
 .choice-option-card.correct-answer {
-  border-color: #34d399 !important;
-  background: rgba(52, 211, 153, 0.08) !important;
+  border-color: var(--tm-color-success) !important;
+  background: color-mix(in srgb, var(--tm-color-success) 8%, transparent) !important;
 }
 
 .choice-option-card.wrong-answer {
-  border-color: #f87171 !important;
-  background: rgba(248, 113, 113, 0.08) !important;
+  border-color: var(--tm-color-danger) !important;
+  background: color-mix(in srgb, var(--tm-color-danger) 8%, transparent) !important;
 }
 
 .choice-option-card.my-correct {
-  border-color: #34d399 !important;
-  background: rgba(52, 211, 153, 0.08) !important;
+  border-color: var(--tm-color-success) !important;
+  background: color-mix(in srgb, var(--tm-color-success) 8%, transparent) !important;
 }
 
 .choice-option-card.disabled {
@@ -2017,12 +2016,12 @@ const showHintDialog = () => {
 }
 
 .choice-option-card.correct-answer .option-label {
-  background: #34d399 !important;
+  background: var(--tm-color-success) !important;
   color: #fff !important;
 }
 
 .choice-option-card.wrong-answer .option-label {
-  background: #f87171 !important;
+  background: var(--tm-color-danger) !important;
   color: #fff !important;
 }
 
@@ -2050,11 +2049,11 @@ const showHintDialog = () => {
 }
 
 .choice-option-card.correct-answer .option-check {
-  color: #34d399;
+  color: var(--tm-color-success);
 }
 
 .choice-option-card.wrong-answer .option-check {
-  color: #f87171;
+  color: var(--tm-color-danger);
 }
 
 .choice-actions,
@@ -2083,18 +2082,18 @@ const showHintDialog = () => {
 
 .btn-green-glow {
   padding: 10px 28px;
-  background: linear-gradient(135deg, #34d399, #059669);
+  background: linear-gradient(135deg, var(--tm-color-success), var(--tm-color-success));
   border: none;
   border-radius: 8px;
   color: #fff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 14px rgba(52, 211, 153, 0.3);
+  box-shadow: 0 2px 14px color-mix(in srgb, var(--tm-color-success) 30%, transparent);
   transition: all 0.3s ease;
 }
 
-.btn-green-glow:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(52, 211, 153, 0.45); }
+.btn-green-glow:hover { transform: translateY(-2px); box-shadow: 0 6px 24px color-mix(in srgb, var(--tm-color-success) 45%, transparent); }
 .btn-green-glow:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .btn-outline {
@@ -2113,18 +2112,18 @@ const showHintDialog = () => {
 
 .btn-hint {
   padding: 10px 24px;
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  background: linear-gradient(135deg, var(--tm-color-warning), var(--tm-color-warning));
   border: none;
   border-radius: 8px;
-  color: #1a1a2e;
+  color: var(--tm-bg-card-solid);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 14px rgba(251, 191, 36, 0.3);
+  box-shadow: 0 2px 14px color-mix(in srgb, var(--tm-color-warning) 30%, transparent);
   transition: all 0.3s ease;
 }
 
-.btn-hint:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(251, 191, 36, 0.45); }
+.btn-hint:hover { transform: translateY(-2px); box-shadow: 0 6px 24px color-mix(in srgb, var(--tm-color-warning) 45%, transparent); }
 
 .choice-result {
   padding: 20px;
@@ -2139,13 +2138,13 @@ const showHintDialog = () => {
 }
 
 .choice-result.result-pass {
-  background: rgba(52, 211, 153, 0.06);
-  border: 1px solid rgba(52, 211, 153, 0.2);
+  background: color-mix(in srgb, var(--tm-color-success) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tm-color-success) 20%, transparent);
 }
 
 .choice-result.result-fail {
-  background: rgba(248, 113, 113, 0.06);
-  border: 1px solid rgba(248, 113, 113, 0.2);
+  background: color-mix(in srgb, var(--tm-color-danger) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tm-color-danger) 20%, transparent);
 }
 
 .result-status {
@@ -2161,8 +2160,8 @@ const showHintDialog = () => {
   font-weight: 700;
 }
 
-.result-pass .result-text { color: #34d399; }
-.result-fail .result-text { color: #f87171; }
+.result-pass .result-text { color: var(--tm-color-success); }
+.result-fail .result-text { color: var(--tm-color-danger); }
 
 .result-msg {
   font-size: 14px;
@@ -2172,14 +2171,14 @@ const showHintDialog = () => {
 .correct-answer-hint {
   margin-top: 10px;
   padding: 10px 14px;
-  background: rgba(52, 211, 153, 0.08);
+  background: color-mix(in srgb, var(--tm-color-success) 8%, transparent);
   border-radius: 6px;
   font-size: 14px;
   color: var(--tm-text-regular);
 }
 
 .correct-answer-hint strong {
-  color: #34d399;
+  color: var(--tm-color-success);
   font-size: 16px;
 }
 
@@ -2239,7 +2238,7 @@ const showHintDialog = () => {
 }
 
 .recommend-card.rec-done {
-  border-left: 3px solid #34d399;
+  border-left: 3px solid var(--tm-color-success);
   opacity: 0.7;
 }
 
@@ -2303,7 +2302,7 @@ const showHintDialog = () => {
 
 .ai-cost-hint {
   font-size: 11px;
-  color: #ffa502;
+  color: var(--tm-color-warning);
   margin-left: 8px;
   white-space: nowrap;
 }

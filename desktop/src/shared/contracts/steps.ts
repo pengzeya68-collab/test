@@ -66,6 +66,11 @@ export const STEP_TYPES = [
   'extract_value',
   'extract_attribute',
   'extract_url',
+  // Network intercept / mock
+  'intercept_request',
+  'remove_intercept',
+  // Protocol / visual extensions (executed when present)
+  'visual_assert',
   // Group
 ] as const;
 

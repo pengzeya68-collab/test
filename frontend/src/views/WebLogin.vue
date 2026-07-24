@@ -13,8 +13,8 @@
           <svg width="44" height="44" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="loginLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#6366F1" />
-                <stop offset="100%" stop-color="#8B5CF6" />
+                <stop offset="0%" stop-color="var(--tm-color-primary)" />
+                <stop offset="100%" stop-color="var(--tm-color-primary)" />
               </linearGradient>
             </defs>
             <path d="M14 22 L50 22 L50 28 L38 28 L38 50 L26 50 L26 28 L14 28 Z" fill="url(#loginLogoGrad)" />
@@ -32,7 +32,14 @@
         @submit.prevent="handleLogin"
       >
         <el-form-item prop="username" :rules="[{ required: true, message: '请输入用户名', trigger: 'blur' }]">
-          <el-input v-model="loginForm.username" data-testid="login-username-input" placeholder="用户名" size="large">
+          <el-input
+            v-model="loginForm.username"
+            data-testid="login-username-input"
+            placeholder="用户名"
+            size="large"
+            autocomplete="username"
+            aria-label="用户名"
+          >
             <template #prefix><el-icon><User /></el-icon></template>
           </el-input>
         </el-form-item>
@@ -42,8 +49,11 @@
             v-model="loginForm.password"
             data-testid="login-password-input"
             type="password"
+            show-password
             placeholder="密码"
             size="large"
+            autocomplete="current-password"
+            aria-label="密码"
             @keyup.enter="handleLogin"
           >
             <template #prefix><el-icon><Lock /></el-icon></template>
@@ -163,12 +173,12 @@ const handleLogin = async () => {
   width: 100%;
   max-width: 420px;
   padding: 44px 40px;
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  background: var(--tm-glass-bg, rgba(22, 30, 46, 0.88));
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.28);
+  border-radius: 14px;
+  box-shadow: var(--tm-shadow-card), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -178,7 +188,7 @@ const handleLogin = async () => {
   padding: 1px;
   pointer-events: none;
   content: '';
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.2));
+  background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb), 0.4), rgba(var(--tm-color-primary-rgb), 0.2));
   border-radius: inherit;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -186,7 +196,7 @@ const handleLogin = async () => {
 }
 
 .login-card:focus-within {
-  box-shadow: 0 28px 56px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 28px 56px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(var(--tm-color-primary-rgb), 0.25);
 }
 
 .login-header {
@@ -207,16 +217,18 @@ const handleLogin = async () => {
   -webkit-text-fill-color: transparent;
 }
 
-.subtitle { margin: 0; color: var(--tm-text-secondary, #a1a1aa); font-size: 13px; letter-spacing: 0; }
+.subtitle { margin: 0; color: var(--tm-text-secondary, var(--tm-text-secondary)); font-size: 13px; letter-spacing: 0; }
 .login-form { margin-bottom: 24px; }
 
 .login-form :deep(.el-input__wrapper) {
   padding: 4px 14px;
-  background: rgba(0, 0, 0, 0.3) !important;
+  background: var(--tm-input-bg) !important;
+  border: 1px solid var(--tm-input-border) !important;
   border-radius: 12px !important;
   transition: all 0.3s ease;
 }
 
+.login-form :deep(.el-input__wrapper:hover) { background: var(--tm-input-bg-hover) !important; }
 .login-form :deep(.el-input__wrapper.is-focus) { box-shadow: 0 0 0 1px var(--tm-color-primary) !important; }
 
 .login-btn {

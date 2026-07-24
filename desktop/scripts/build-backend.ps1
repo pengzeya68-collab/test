@@ -23,10 +23,20 @@ try {
         --collect-submodules fastapi_backend.deps `
         --collect-submodules fastapi_backend.middleware `
         --collect-submodules fastapi_backend.utils `
+        --collect-all alembic `
         --collect-submodules uvicorn `
         --collect-submodules sqlalchemy `
         --collect-submodules aiohttp `
+        --collect-submodules grpc_tools `
+        --collect-submodules grpc_reflection `
+        --collect-submodules paho `
+        --collect-submodules celery `
+        --collect-submodules kombu `
+        --collect-submodules billiard `
+        --collect-submodules vine `
         --hidden-import aiosqlite `
+        --add-data "$projectRoot\fastapi_backend\alembic;fastapi_backend\alembic" `
+        --add-data "$projectRoot\fastapi_backend\alembic.ini;fastapi_backend" `
         $entry
 } finally {
     Pop-Location

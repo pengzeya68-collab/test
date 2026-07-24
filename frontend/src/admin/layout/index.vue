@@ -44,9 +44,9 @@
         </div>
         <div class="nav-right">
           <el-dropdown trigger="click" @command="changeTheme">
-            <button class="nav-btn theme-btn">
-              <span class="btn-icon">馃帹</span>
-              <span class="btn-text">涓婚</span>
+            <button class="nav-btn theme-btn" type="button" aria-label="切换主题">
+              <span class="btn-icon">主题</span>
+              <span class="btn-text">主题</span>
             </button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -61,7 +61,7 @@
             <span class="user-avatar">{{ (adminInfo?.username || 'A')[0].toUpperCase() }}</span>
             <span class="user-name">{{ adminInfo?.username || 'Admin' }}</span>
           </div>
-          <button class="nav-btn logout-btn" @click="logout">閫€鍑</button>
+          <button class="nav-btn logout-btn" type="button" @click="logout">退出</button>
         </div>
       </header>
 
@@ -77,7 +77,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { themes, applyTheme, loadSavedTheme } from '@/utils/ThemeConfig'
+import { themes, applyTheme } from '@/utils/ThemeConfig'
 import { useAdminStore } from '@/stores/admin'
 
 const route = useRoute()
@@ -106,7 +106,7 @@ const isActive = (path) => route.path.startsWith(path)
 
 const currentTitle = computed(() => {
   const menu = menus.find(m => route.path.startsWith(m.path))
-  return menu ? menu.title : '鍚庡彴绠＄悊'
+  return menu ? menu.title : '后台管理'
 })
 
 const handleMenuClick = (path) => {
@@ -125,8 +125,6 @@ const changeTheme = (themeId) => {
 }
 
 onMounted(() => {
-  const savedThemeId = loadSavedTheme()
-  applyTheme(savedThemeId)
   const saved = localStorage.getItem('admin_sidebar_collapsed')
   if (saved === 'true') sidebarCollapsed.value = true
 })
@@ -361,12 +359,12 @@ const logout = async () => {
 }
 
 .logout-btn {
-  color: var(--tm-color-danger, #f56c6c);
+  color: var(--tm-color-danger, var(--tm-color-danger));
   border-color: transparent;
 }
 .logout-btn:hover {
-  background: rgba(245, 108, 108, 0.08);
-  border-color: rgba(245, 108, 108, 0.3);
+  background: color-mix(in srgb, var(--tm-color-danger) 8%, transparent);
+  border-color: color-mix(in srgb, var(--tm-color-danger) 30%, transparent);
 }
 
 .theme-dot {

@@ -725,13 +725,13 @@ const saveStepConfig = async (step, config) => {
   font-family: monospace;
 }
 
-.step-card.step-type-if_condition { border-left: 3px solid #e6a23c; }
-.step-card.step-type-for_loop { border-left: 3px solid #409eff; }
-.step-card.step-type-for_each { border-left: 3px solid #409eff; }
-.step-card.step-type-wait { border-left: 3px solid #909399; }
-.step-card.step-type-group { border-left: 3px solid #67c23a; }
-.step-card.step-type-scenario_ref { border-left: 3px solid #f56c6c; }
-.step-card.step-type-db_query { border-left: 3px solid #e6a23c; }
+.step-card.step-type-if_condition { border-left: 3px solid var(--tm-color-warning); }
+.step-card.step-type-for_loop { border-left: 3px solid var(--tm-color-primary); }
+.step-card.step-type-for_each { border-left: 3px solid var(--tm-color-primary); }
+.step-card.step-type-wait { border-left: 3px solid var(--tm-color-info); }
+.step-card.step-type-group { border-left: 3px solid var(--tm-color-success); }
+.step-card.step-type-scenario_ref { border-left: 3px solid var(--tm-color-danger); }
+.step-card.step-type-db_query { border-left: 3px solid var(--tm-color-warning); }
 
 .add-step-bar {
   margin-top: 16px;

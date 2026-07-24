@@ -200,6 +200,18 @@ testmaster_migration.sql.gz
 /desktop/.public-api-dev*/
 /desktop/.smoke-profile/
 /desktop/*.png
+/desktop/release-*/
+/desktop/release-fixed/
+
+# Acceptance/runtime output: source scripts are versioned, their generated data is not.
+/fastapi_backend/autotest_data/artifacts/
+/fastapi_backend/autotest_data/step_results/
+/fastapi_backend/autotest_data/temp_pytest_tests/
+/instance/tasks/
+/playwright-report/
+/test-results/
+/pytest_one.out
+/_patch_execution_project.py
 
 # Bundled browser/runtime caches
 /playwright-browsers/

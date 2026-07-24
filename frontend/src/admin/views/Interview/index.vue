@@ -399,14 +399,14 @@ const handleSubmit = async () => {
 }
 
 .btn-warning {
-  background: linear-gradient(135deg, #E6A23C, #F56C6C);
+  background: linear-gradient(135deg, var(--tm-color-warning), var(--tm-color-danger));
   border: none;
   color: #fff;
-  box-shadow: 0 2px 10px rgba(230, 162, 60, 0.3);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--tm-color-warning) 30%, transparent);
 }
 .btn-warning:hover {
-  background: linear-gradient(135deg, #F56C6C, #E6A23C);
-  box-shadow: 0 4px 15px rgba(245, 108, 108, 0.4);
+  background: linear-gradient(135deg, var(--tm-color-danger), var(--tm-color-warning));
+  box-shadow: 0 4px 15px color-mix(in srgb, var(--tm-color-danger) 40%, transparent);
 }
 
 .btn-search:hover {

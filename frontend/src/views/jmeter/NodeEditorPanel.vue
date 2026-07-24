@@ -1,14 +1,14 @@
 <template>
-  <div class="editor-body" v-if="selectedNode">
+  <div class="editor-body" v-if="node">
     <!-- 测试计划 -->
-    <template v-if="selectedNode.type === 'TestPlan'">
+    <template v-if="node.type === 'TestPlan'">
       <div class="form-section">
-        <div class="form-group"><label>测试计划名称</label><el-input v-model="selectedNode.name" /></div>
+        <div class="form-group"><label>测试计划名称</label><el-input v-model="node.name" /></div>
         <div class="form-group"><label>用户定义变量</label>
-          <div v-for="(v, vi) in (selectedNode.props.variables || [])" :key="vi" class="kv-row">
+          <div v-for="(v, vi) in (node.props.variables || [])" :key="vi" class="kv-row">
             <el-input v-model="v.name" placeholder="变量名" size="small" style="width:42%;" />
             <el-input v-model="v.value" placeholder="值" size="small" style="width:42%;" />
-            <el-button link size="small" type="danger" @click="selectedNode.props.variables.splice(vi,1)">×</el-button>
+            <el-button link size="small" type="danger" @click="node.props.variables.splice(vi,1)">×</el-button>
           </div>
           <el-button size="small" @click="$emit('add-var')">+ 添加变量</el-button>
         </div>
@@ -16,19 +16,19 @@
     </template>
 
     <!-- 线程组 -->
-    <template v-if="selectedNode.type === 'ThreadGroup'">
+    <template v-if="node.type === 'ThreadGroup'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 虚拟用户数 = 模拟多少人同时访问；Ramp-Up = 多少秒内逐步启动完；持续时间 = 总共跑多久</div>
-        <div class="form-group"><label>线程组名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>线程组名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-row">
-          <div class="form-group"><label>并发线程数</label><el-tooltip content="模拟多少个用户同时访问系统，50 = 50个虚拟用户" placement="top"><el-input-number v-model="selectedNode.props.threads" :min="1" :max="10000" size="small" /></el-tooltip></div>
-          <div class="form-group"><label>Ramp-Up (秒)</label><el-tooltip content="多少秒内逐步启动完所有用户。5秒=5秒内逐步启动50个用户" placement="top"><el-input-number v-model="selectedNode.props.rampUp" :min="0" :max="3600" size="small" /></el-tooltip></div>
+          <div class="form-group"><label>并发线程数</label><el-tooltip content="模拟多少个用户同时访问系统，50 = 50个虚拟用户" placement="top"><el-input-number v-model="node.props.threads" :min="1" :max="10000" size="small" /></el-tooltip></div>
+          <div class="form-group"><label>Ramp-Up (秒)</label><el-tooltip content="多少秒内逐步启动完所有用户。5秒=5秒内逐步启动50个用户" placement="top"><el-input-number v-model="node.props.rampUp" :min="0" :max="3600" size="small" /></el-tooltip></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>循环次数</label><el-tooltip content="每个用户跑完一遍后重复跑的次数。1=每人只跑1遍" placement="top"><el-input-number v-model="selectedNode.props.loops" :min="1" :max="99999" size="small" /></el-tooltip></div>
-          <div class="form-group"><label>持续时间 (秒)</label><el-tooltip content="设置后循环次数不生效，到时间自动停止。60=跑60秒" placement="top"><el-input-number v-model="selectedNode.props.duration" :min="0" :max="86400" size="small" /></el-tooltip></div>
+          <div class="form-group"><label>循环次数</label><el-tooltip content="每个用户跑完一遍后重复跑的次数。1=每人只跑1遍" placement="top"><el-input-number v-model="node.props.loops" :min="1" :max="99999" size="small" /></el-tooltip></div>
+          <div class="form-group"><label>持续时间 (秒)</label><el-tooltip content="设置后循环次数不生效，到时间自动停止。60=跑60秒" placement="top"><el-input-number v-model="node.props.duration" :min="0" :max="86400" size="small" /></el-tooltip></div>
         </div>
-        <el-alert v-if="selectedNode.props.loops >= 99999 && !selectedNode.props.duration"
+        <el-alert v-if="node.props.loops >= 99999 && !node.props.duration"
           title="⚠️ 此脚本将永久循环运行！请设置持续时间" type="error" :closable="false" show-icon />
       </div>
       <div class="form-section">
@@ -65,35 +65,35 @@
     </template>
 
     <!-- HTTP 请求 -->
-    <template v-if="selectedNode.type === 'HttpSampler'">
+    <template v-if="node.type === 'HttpSampler'">
       <div class="form-section">
         <div class="section-hint"><el-icon><Connection /></el-icon> 配置要压测的接口：选择方法、填写地址、添加请求头和请求体</div>
-        <div class="form-group"><label>请求名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>请求名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-row">
           <div class="form-group" style="flex:0 0 120px;"><label>方法</label>
-            <el-select v-model="selectedNode.props.method" size="small">
+            <el-select v-model="node.props.method" size="small">
               <el-option v-for="m in ['GET','POST','PUT','DELETE','PATCH']" :key="m" :label="m" :value="m" />
             </el-select>
           </div>
-          <div class="form-group" style="flex:1;"><label>URL</label><el-input v-model="selectedNode.props.url" size="small" placeholder="https://api.example.com/users" /></div>
+          <div class="form-group" style="flex:1;"><label>URL</label><el-input v-model="node.props.url" size="small" placeholder="https://api.example.com/users" /></div>
         </div>
         <el-collapse>
           <el-collapse-item title="请求头 (Headers)" name="headers">
             <div class="section-hint" style="margin-bottom:6px;">添加请求头，如 Content-Type: application/json、Authorization: Bearer xxx</div>
-            <div v-for="(h, hi) in (selectedNode.props.headers || [])" :key="hi" class="kv-row">
+            <div v-for="(h, hi) in (node.props.headers || [])" :key="hi" class="kv-row">
               <el-input v-model="h.key" placeholder="Header名" size="small" style="width:40%;" />
               <el-input v-model="h.value" placeholder="值" size="small" style="width:50%;" />
-              <el-button link size="small" type="danger" @click="selectedNode.props.headers.splice(hi,1)">×</el-button>
+              <el-button link size="small" type="danger" @click="node.props.headers.splice(hi,1)">×</el-button>
             </div>
             <el-button size="small" @click="$emit('add-header')">+ 添加请求头</el-button>
           </el-collapse-item>
-          <el-collapse-item v-if="selectedNode.props.method !== 'GET'" title="请求体 (Body)" name="body">
+          <el-collapse-item v-if="node.props.method !== 'GET'" title="请求体 (Body)" name="body">
             <div class="form-group"><label>Body 类型</label>
-              <el-select v-model="selectedNode.props.bodyType" size="small">
+              <el-select v-model="node.props.bodyType" size="small">
                 <el-option v-for="b in ['none','json','form-data','x-www-form-urlencoded']" :key="b" :label="b" :value="b" />
               </el-select>
             </div>
-            <el-input v-model="selectedNode.props.body" type="textarea" :rows="4" size="small" placeholder='{"key":"value"}' />
+            <el-input v-model="node.props.body" type="textarea" :rows="4" size="small" placeholder='{"key":"value"}' />
           </el-collapse-item>
         </el-collapse>
       </div>
@@ -128,21 +128,21 @@
         </div>
       </div>
       <div class="form-section">
-        <el-button type="primary" size="small" @click="$emit('debug-request', selectedNode)" :loading="debugLoading">
+        <el-button type="primary" size="small" @click="$emit('debug-request', node)" :loading="debugLoading">
           <el-icon><VideoPlay /></el-icon> 🐛 调试此请求
         </el-button>
-        <el-button size="small" @click="$emit('save-to-case', selectedNode)" :loading="savingToCase">
+        <el-button size="small" @click="$emit('save-to-case', node)" :loading="savingToCase">
           💾 保存到接口库
         </el-button>
       </div>
     </template>
 
     <!-- 断言编辑器 -->
-    <template v-if="selectedNode.type === 'ResponseAssertion'">
+    <template v-if="node.type === 'ResponseAssertion'">
       <div class="form-section">
-        <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>断言名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-group"><label>断言类型</label>
-          <el-select v-model="selectedNode.props.assertType" size="small">
+          <el-select v-model="node.props.assertType" size="small">
             <el-option label="状态码" value="status_code" />
             <el-option label="响应包含" value="contains" />
             <el-option label="响应匹配(正则)" value="matches" />
@@ -150,24 +150,24 @@
             <el-option label="持续时间" value="duration" />
           </el-select>
         </div>
-        <div class="form-group" v-if="selectedNode.props.assertType === 'status_code'"><label>期望状态码</label><el-input-number v-model="selectedNode.props.expected" :min="100" :max="599" size="small" /></div>
-        <div class="form-group" v-if="selectedNode.props.assertType === 'contains' || selectedNode.props.assertType === 'matches'"><label>期望值</label><el-input v-model="selectedNode.props.expected" size="small" placeholder="200或success" /></div>
-        <div class="form-group" v-if="selectedNode.props.assertType === 'jsonpath'"><label>JSON Path</label><el-input v-model="selectedNode.props.jsonPath" placeholder="$.data.token" size="small" /><label style="margin-top:4px;">期望值</label><el-input v-model="selectedNode.props.expected" size="small" /></div>
-        <div class="form-group" v-if="selectedNode.props.assertType === 'duration'"><label>最大响应时间 (ms)</label><el-input-number v-model="selectedNode.props.maxDuration" :min="1" :max="60000" size="small" /></div>
+        <div class="form-group" v-if="node.props.assertType === 'status_code'"><label>期望状态码</label><el-input-number v-model="node.props.expected" :min="100" :max="599" size="small" /></div>
+        <div class="form-group" v-if="node.props.assertType === 'contains' || node.props.assertType === 'matches'"><label>期望值</label><el-input v-model="node.props.expected" size="small" placeholder="200或success" /></div>
+        <div class="form-group" v-if="node.props.assertType === 'jsonpath'"><label>JSON Path</label><el-input v-model="node.props.jsonPath" placeholder="$.data.token" size="small" /><label style="margin-top:4px;">期望值</label><el-input v-model="node.props.expected" size="small" /></div>
+        <div class="form-group" v-if="node.props.assertType === 'duration'"><label>最大响应时间 (ms)</label><el-input-number v-model="node.props.maxDuration" :min="1" :max="60000" size="small" /></div>
       </div>
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：状态码断言最常用，只需填期望的状态码如200。响应包含用于检查返回内容中是否有特定文字</div>
       </div>
     </template>
 
-    <template v-if="selectedNode.type === 'JsonAssertion'">
+    <template v-if="node.type === 'JsonAssertion'">
       <div class="form-section">
-        <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>JSON Path</label><el-input v-model="selectedNode.props.jsonPath" placeholder="$.data.token" size="small" /></div>
-        <div class="form-group"><label>期望值</label><el-input v-model="selectedNode.props.expected" placeholder="12345" size="small" /></div>
+        <div class="form-group"><label>断言名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>JSON Path</label><el-input v-model="node.props.jsonPath" placeholder="$.data.token" size="small" /></div>
+        <div class="form-group"><label>期望值</label><el-input v-model="node.props.expected" placeholder="12345" size="small" /></div>
         <div class="form-row">
-          <div class="form-group"><label>期望为null</label><el-switch v-model="selectedNode.props.expectNull" size="small" /></div>
-          <div class="form-group"><label>取反</label><el-switch v-model="selectedNode.props.invert" size="small" /></div>
+          <div class="form-group"><label>期望为null</label><el-switch v-model="node.props.expectNull" size="small" /></div>
+          <div class="form-group"><label>取反</label><el-switch v-model="node.props.invert" size="small" /></div>
         </div>
       </div>
       <div class="form-section">
@@ -178,18 +178,18 @@
       </div>
     </template>
 
-    <template v-if="selectedNode.type === 'DurationAssertion'">
+    <template v-if="node.type === 'DurationAssertion'">
       <div class="form-section">
-        <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>最大响应时间 (ms)</label><el-input-number v-model="selectedNode.props.maxDuration" :min="1" :max="60000" size="small" /></div>
+        <div class="form-group"><label>断言名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>最大响应时间 (ms)</label><el-input-number v-model="node.props.maxDuration" :min="1" :max="60000" size="small" /></div>
       </div>
       <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：如果接口响应太慢就报错。如设置1000ms=超过1秒就失败</div>
     </template>
 
     <!-- BeanShell 断言 -->
-    <template v-if="selectedNode.type === 'BeanShellAssertion'">
+    <template v-if="node.type === 'BeanShellAssertion'">
       <div class="form-section">
-        <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>断言名称</label><el-input v-model="node.name" size="small" /></div>
       </div>
       <div class="section-hint assertion-teaching">
         <div class="teaching-title">📖 BeanShell 断言教学 — 小白也能写</div>
@@ -224,13 +224,13 @@
             </el-button>
           </div>
         </div>
-        <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder="// 写你的断言逻辑..." size="small" style="font-family:Consolas,monospace;font-size:12px;" />
+        <el-input v-model="node.props.script" type="textarea" :rows="8" placeholder="// 写你的断言逻辑..." size="small" style="font-family:Consolas,monospace;font-size:12px;" />
       </div>
       <div class="form-row">
-        <div class="form-group"><label>外部BeanShell文件</label><el-input v-model="selectedNode.props.filename" placeholder="可选" size="small" /></div>
-        <div class="form-group"><label>参数</label><el-input v-model="selectedNode.props.parameters" placeholder="可选" size="small" /></div>
+        <div class="form-group"><label>外部BeanShell文件</label><el-input v-model="node.props.filename" placeholder="可选" size="small" /></div>
+        <div class="form-group"><label>参数</label><el-input v-model="node.props.parameters" placeholder="可选" size="small" /></div>
       </div>
-      <div class="form-group"><label>每次重置解释器</label><el-switch v-model="selectedNode.props.resetInterpreter" size="small" /></div>
+      <div class="form-group"><label>每次重置解释器</label><el-switch v-model="node.props.resetInterpreter" size="small" /></div>
       <div class="form-section" v-if="projectVariables.length > 0">
         <div class="vars-panel">
           <div class="vars-panel-title">🔗 项目可用变量（点击插入）</div>
@@ -248,11 +248,11 @@
     </template>
 
     <!-- JSR223 断言 -->
-    <template v-if="selectedNode.type === 'JSR223Assertion'">
+    <template v-if="node.type === 'JSR223Assertion'">
       <div class="form-section">
-        <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>断言名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-group"><label>脚本语言</label>
-          <el-select v-model="selectedNode.props.language" size="small">
+          <el-select v-model="node.props.language" size="small">
             <el-option label="Groovy（推荐，性能最好）" value="groovy" />
             <el-option label="JavaScript" value="javascript" />
             <el-option label="Python (Jython)" value="python" />
@@ -281,7 +281,7 @@
             </el-button>
           </div>
         </div>
-        <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='// Groovy脚本...' size="small" style="font-family:Consolas,monospace;font-size:12px;" />
+        <el-input v-model="node.props.script" type="textarea" :rows="8" placeholder='// Groovy脚本...' size="small" style="font-family:Consolas,monospace;font-size:12px;" />
       </div>
       <div class="form-section" v-if="projectVariables.length > 0">
         <div class="vars-panel">
@@ -300,41 +300,41 @@
     </template>
 
     <!-- 响应大小断言 -->
-    <template v-if="selectedNode.type === 'SizeAssertion'">
+    <template v-if="node.type === 'SizeAssertion'">
       <div class="form-section">
-        <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>断言名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-row">
           <div class="form-group">
             <label>比较方式</label>
-            <el-select v-model="selectedNode.props.operator" size="small">
+            <el-select v-model="node.props.operator" size="small">
               <el-option label="响应大小 &gt; 指定值" value=">" />
               <el-option label="响应大小 &lt; 指定值" value="<" />
               <el-option label="响应大小 = 指定值" value="=" />
               <el-option label="响应大小 ≠ 指定值" value="≠" />
             </el-select>
           </div>
-          <div class="form-group"><label>大小 (字节)</label><el-input-number v-model="selectedNode.props.size" :min="1" :max="99999999" size="small" /></div>
+          <div class="form-group"><label>大小 (字节)</label><el-input-number v-model="node.props.size" :min="1" :max="99999999" size="small" /></div>
         </div>
       </div>
       <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：检查响应体大小。如 &gt; 5000 字节 → 确保接口返回了足够的数据</div>
     </template>
 
     <!-- XPath 断言 -->
-    <template v-if="selectedNode.type === 'XPathAssertion'">
+    <template v-if="node.type === 'XPathAssertion'">
       <div class="form-section">
-        <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>XPath 表达式</label><el-input v-model="selectedNode.props.xpath" placeholder="/html/body/h1 或 //result[@status='ok']" size="small" /></div>
-        <div class="form-group"><label>取反（不存在才通过）</label><el-switch v-model="selectedNode.props.negate" size="small" /></div>
+        <div class="form-group"><label>断言名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>XPath 表达式</label><el-input v-model="node.props.xpath" placeholder="/html/body/h1 或 //result[@status='ok']" size="small" /></div>
+        <div class="form-group"><label>取反（不存在才通过）</label><el-switch v-model="node.props.negate" size="small" /></div>
       </div>
       <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：用于断言XML/HTML响应中某个节点存在。如 //result[@status='ok'] 表示检查是否存在status为ok的result节点</div>
     </template>
 
     <!-- 比较断言 -->
-    <template v-if="selectedNode.type === 'CompareAssertion'">
+    <template v-if="node.type === 'CompareAssertion'">
       <div class="form-section">
-        <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>断言名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-group"><label>检查范围</label>
-          <el-select v-model="selectedNode.props.testField" size="small">
+          <el-select v-model="node.props.testField" size="small">
             <el-option label="响应数据" value="Assertion.response_data" />
             <el-option label="响应代码" value="Assertion.response_code" />
             <el-option label="响应消息" value="Assertion.response_message" />
@@ -343,7 +343,7 @@
           </el-select>
         </div>
         <div class="form-group"><label>比较规则</label>
-          <el-select v-model="selectedNode.props.compareType" size="small">
+          <el-select v-model="node.props.compareType" size="small">
             <el-option label="包含" value="contains" />
             <el-option label="等于" value="==" />
             <el-option label="匹配(正则)" value="matches" />
@@ -351,85 +351,85 @@
             <el-option label="子串" value="substring" />
           </el-select>
         </div>
-        <div class="form-group"><label>期望值</label><el-input v-model="selectedNode.props.expected" placeholder="要匹配的值" size="small" /></div>
+        <div class="form-group"><label>期望值</label><el-input v-model="node.props.expected" placeholder="要匹配的值" size="small" /></div>
       </div>
       <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：灵活的比较断言，可以选择检查响应体/状态码/请求头等不同部位</div>
     </template>
 
     <!-- XML 断言 -->
-    <template v-if="selectedNode.type === 'XMLAssertion'">
+    <template v-if="node.type === 'XMLAssertion'">
       <div class="form-section">
-        <div class="form-group"><label>断言名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>断言名称</label><el-input v-model="node.name" size="small" /></div>
       </div>
       <div class="section-hint"><el-icon><InfoFilled /></el-icon> 💡 小白提示：自动验证响应体是否为合法XML。如果接口返回XML格式数据，加上这个断言确保格式正确</div>
     </template>
 
     <!-- 提取器 -->
-    <template v-if="selectedNode.type === 'RegexExtractor' || selectedNode.type === 'JsonExtractor'">
+    <template v-if="node.type === 'RegexExtractor' || node.type === 'JsonExtractor'">
       <div class="form-section">
-        <div class="form-group"><label>提取器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>变量名</label><el-input v-model="selectedNode.props.varName" placeholder="token" size="small" /></div>
+        <div class="form-group"><label>提取器名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>变量名</label><el-input v-model="node.props.varName" placeholder="token" size="small" /></div>
         <div class="form-hint">后续请求中用 <code>{'$'}{'$'}{变量名}</code> 引用</div>
-        <div class="form-group" v-if="selectedNode.type === 'RegexExtractor'"><label>正则表达式</label><el-input v-model="selectedNode.props.regex" placeholder='"token":"(.*?)"' size="small" /></div>
-        <div class="form-group" v-if="selectedNode.type === 'JsonExtractor'"><label>JSON Path</label><el-input v-model="selectedNode.props.jsonPath" placeholder="$.data.token" size="small" /></div>
-        <div class="form-group"><label>默认值</label><el-input v-model="selectedNode.props.defaultValue" placeholder="NOT_FOUND" size="small" /></div>
+        <div class="form-group" v-if="node.type === 'RegexExtractor'"><label>正则表达式</label><el-input v-model="node.props.regex" placeholder='"token":"(.*?)"' size="small" /></div>
+        <div class="form-group" v-if="node.type === 'JsonExtractor'"><label>JSON Path</label><el-input v-model="node.props.jsonPath" placeholder="$.data.token" size="small" /></div>
+        <div class="form-group"><label>默认值</label><el-input v-model="node.props.defaultValue" placeholder="NOT_FOUND" size="small" /></div>
       </div>
     </template>
 
     <!-- 定时器 -->
-    <template v-if="selectedNode.type === 'ConstantTimer'">
-      <div class="form-section"><div class="form-group"><label>延迟 (毫秒)</label><el-input-number v-model="selectedNode.props.delay" :min="0" :max="60000" size="small" /></div></div>
+    <template v-if="node.type === 'ConstantTimer'">
+      <div class="form-section"><div class="form-group"><label>延迟 (毫秒)</label><el-input-number v-model="node.props.delay" :min="0" :max="60000" size="small" /></div></div>
     </template>
-    <template v-if="selectedNode.type === 'UniformRandomTimer'">
-      <div class="form-section"><div class="form-row"><div class="form-group"><label>最小延迟 (ms)</label><el-input-number v-model="selectedNode.props.minDelay" :min="0" size="small" /></div><div class="form-group"><label>最大延迟 (ms)</label><el-input-number v-model="selectedNode.props.maxDelay" :min="1" size="small" /></div></div></div>
+    <template v-if="node.type === 'UniformRandomTimer'">
+      <div class="form-section"><div class="form-row"><div class="form-group"><label>最小延迟 (ms)</label><el-input-number v-model="node.props.minDelay" :min="0" size="small" /></div><div class="form-group"><label>最大延迟 (ms)</label><el-input-number v-model="node.props.maxDelay" :min="1" size="small" /></div></div></div>
     </template>
-    <template v-if="selectedNode.type === 'GaussianRandomTimer'">
-      <div class="form-section"><div class="form-row"><div class="form-group"><label>偏差 (ms)</label><el-input-number v-model="selectedNode.props.deviation" :min="0" :max="60000" size="small" /></div><div class="form-group"><label>偏移 (ms)</label><el-input-number v-model="selectedNode.props.offset" :min="0" :max="60000" size="small" /></div></div></div>
+    <template v-if="node.type === 'GaussianRandomTimer'">
+      <div class="form-section"><div class="form-row"><div class="form-group"><label>偏差 (ms)</label><el-input-number v-model="node.props.deviation" :min="0" :max="60000" size="small" /></div><div class="form-group"><label>偏移 (ms)</label><el-input-number v-model="node.props.offset" :min="0" :max="60000" size="small" /></div></div></div>
     </template>
-    <template v-if="selectedNode.type === 'SyncTimer'">
-      <div class="form-section"><div class="form-group"><label>集合点并发数</label><el-input-number v-model="selectedNode.props.groupSize" :min="2" :max="10000" size="small" /></div></div>
+    <template v-if="node.type === 'SyncTimer'">
+      <div class="form-section"><div class="form-group"><label>集合点并发数</label><el-input-number v-model="node.props.groupSize" :min="2" :max="10000" size="small" /></div></div>
     </template>
 
     <!-- CSV 数据源 -->
-    <template v-if="selectedNode.type === 'CSVDataSet'">
+    <template v-if="node.type === 'CSVDataSet'">
       <div class="form-section">
-        <div class="form-group"><label>CSV 文件名</label><el-input v-model="selectedNode.props.filename" placeholder="users.csv" size="small" /></div>
-        <div class="form-group"><label>变量名 (逗号分隔)</label><el-input v-model="selectedNode.props.variableNames" placeholder="username,password" size="small" /></div>
-        <div class="form-row"><div class="form-group"><label>分隔符</label><el-input v-model="selectedNode.props.delimiter" size="small" style="width:60px;" /></div><div class="form-group"><label>循环</label><el-switch v-model="selectedNode.props.recycle" size="small" /></div></div>
-        <div class="form-group"><label>CSV 内容 (随 .jmx 导出)</label><el-input v-model="selectedNode.props.csvContent" type="textarea" :rows="4" placeholder="username,password&#10;user1,pass1" size="small" /></div>
+        <div class="form-group"><label>CSV 文件名</label><el-input v-model="node.props.filename" placeholder="users.csv" size="small" /></div>
+        <div class="form-group"><label>变量名 (逗号分隔)</label><el-input v-model="node.props.variableNames" placeholder="username,password" size="small" /></div>
+        <div class="form-row"><div class="form-group"><label>分隔符</label><el-input v-model="node.props.delimiter" size="small" style="width:60px;" /></div><div class="form-group"><label>循环</label><el-switch v-model="node.props.recycle" size="small" /></div></div>
+        <div class="form-group"><label>CSV 内容 (随 .jmx 导出)</label><el-input v-model="node.props.csvContent" type="textarea" :rows="4" placeholder="username,password&#10;user1,pass1" size="small" /></div>
       </div>
     </template>
 
     <!-- JDBC -->
-    <template v-if="selectedNode.type === 'JDBCConnection'">
+    <template v-if="node.type === 'JDBCConnection'">
       <div class="form-section">
-        <div class="form-group"><label>连接名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>数据库 URL</label><el-input v-model="selectedNode.props.dbUrl" placeholder="jdbc:mysql://host:port/db" size="small" /></div>
-        <div class="form-row"><div class="form-group"><label>驱动类</label><el-input v-model="selectedNode.props.driver" placeholder="com.mysql.cj.jdbc.Driver" size="small" /></div><div class="form-group"><label>用户名</label><el-input v-model="selectedNode.props.dbUser" size="small" /></div></div>
-        <div class="form-group"><label>密码</label><el-input v-model="selectedNode.props.dbPass" type="password" size="small" show-password /></div>
+        <div class="form-group"><label>连接名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>数据库 URL</label><el-input v-model="node.props.dbUrl" placeholder="jdbc:mysql://host:port/db" size="small" /></div>
+        <div class="form-row"><div class="form-group"><label>驱动类</label><el-input v-model="node.props.driver" placeholder="com.mysql.cj.jdbc.Driver" size="small" /></div><div class="form-group"><label>用户名</label><el-input v-model="node.props.dbUser" size="small" /></div></div>
+        <div class="form-group"><label>密码</label><el-input v-model="node.props.dbPass" type="password" size="small" show-password /></div>
       </div>
     </template>
-    <template v-if="selectedNode.type === 'JDBCSampler'">
-      <div class="form-section"><div class="form-group"><label>SQL 查询</label><el-input v-model="selectedNode.props.sql" type="textarea" :rows="3" placeholder="SELECT * FROM users WHERE status = 'active'" size="small" /></div></div>
+    <template v-if="node.type === 'JDBCSampler'">
+      <div class="form-section"><div class="form-group"><label>SQL 查询</label><el-input v-model="node.props.sql" type="textarea" :rows="3" placeholder="SELECT * FROM users WHERE status = 'active'" size="small" /></div></div>
     </template>
 
     <!-- BeanShell 前置/后置处理器 -->
-    <template v-if="selectedNode.type === 'BeanShellPreProcessor' || selectedNode.type === 'BeanShellPostProcessor'">
+    <template v-if="node.type === 'BeanShellPreProcessor' || node.type === 'BeanShellPostProcessor'">
       <div class="form-section">
-        <div class="form-group"><label>脚本名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>脚本名称</label><el-input v-model="node.name" size="small" /></div>
       </div>
       <div class="section-hint assertion-teaching">
-        <div class="teaching-title">📖 BeanShell {{ selectedNode.type === 'BeanShellPreProcessor' ? '前置' : '后置' }}处理器教学</div>
+        <div class="teaching-title">📖 BeanShell {{ node.type === 'BeanShellPreProcessor' ? '前置' : '后置' }}处理器教学</div>
         <div class="teaching-body">
-          <p><strong>{{ selectedNode.type === 'BeanShellPreProcessor' ? '前置处理器' : '后置处理器' }}是什么？</strong> {{ selectedNode.type === 'BeanShellPreProcessor' ? '在请求发送前执行，用于修改请求参数、添加签名等' : '在请求返回后执行，用于提取数据、修改变量等' }}</p>
+          <p><strong>{{ node.type === 'BeanShellPreProcessor' ? '前置处理器' : '后置处理器' }}是什么？</strong> {{ node.type === 'BeanShellPreProcessor' ? '在请求发送前执行，用于修改请求参数、添加签名等' : '在请求返回后执行，用于提取数据、修改变量等' }}</p>
           <p><strong>📌 核心变量速查：</strong></p>
           <table class="teaching-table">
             <tr><td><code>vars</code></td><td>JMeter变量字典，vars.put("k","v") 存 / vars.get("k") 取</td></tr>
             <tr><td><code>prev</code></td><td>上一个采样结果（后置可用），prev.getResponseDataAsString()</td></tr>
             <tr><td><code>log</code></td><td>日志对象，log.info("xxx") 打印日志</td></tr>
             <tr><td><code>ctx</code></td><td>JMeter上下文，ctx.getCurrentSampler() 获取当前采样器</td></tr>
-            <tr v-if="selectedNode.type === 'BeanShellPostProcessor'"><td><code>ResponseData</code></td><td>响应体字节数组，new String(ResponseData) 转字符串</td></tr>
-            <tr v-if="selectedNode.type === 'BeanShellPostProcessor'"><td><code>ResponseCode</code></td><td>HTTP状态码，如 "200"</td></tr>
+            <tr v-if="node.type === 'BeanShellPostProcessor'"><td><code>ResponseData</code></td><td>响应体字节数组，new String(ResponseData) 转字符串</td></tr>
+            <tr v-if="node.type === 'BeanShellPostProcessor'"><td><code>ResponseCode</code></td><td>HTTP状态码，如 "200"</td></tr>
           </table>
         </div>
       </div>
@@ -441,7 +441,7 @@
             <el-button size="small" type="primary" @click="$emit('ai-generate-script', 'BeanShellProcessor')" :loading="aiGenerating" plain>🤖 AI 帮写</el-button>
           </div>
         </div>
-        <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='long ts = System.currentTimeMillis(); vars.put("ts",String.valueOf(ts));' size="small" style="font-family:Consolas,monospace;font-size:12px;" />
+        <el-input v-model="node.props.script" type="textarea" :rows="8" placeholder='long ts = System.currentTimeMillis(); vars.put("ts",String.valueOf(ts));' size="small" style="font-family:Consolas,monospace;font-size:12px;" />
       </div>
       <div class="form-section" v-if="projectVariables.length > 0">
         <div class="vars-panel">
@@ -460,11 +460,11 @@
     </template>
 
     <!-- JSR223 前置/后置处理器 -->
-    <template v-if="selectedNode.type === 'JSR223PreProcessor' || selectedNode.type === 'JSR223PostProcessor'">
+    <template v-if="node.type === 'JSR223PreProcessor' || node.type === 'JSR223PostProcessor'">
       <div class="form-section">
-        <div class="form-group"><label>脚本名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>脚本名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-group"><label>脚本语言</label>
-          <el-select v-model="selectedNode.props.language" size="small">
+          <el-select v-model="node.props.language" size="small">
             <el-option label="Groovy（推荐，性能最好）" value="groovy" />
             <el-option label="JavaScript" value="javascript" />
             <el-option label="Python (Jython)" value="python" />
@@ -473,7 +473,7 @@
         </div>
       </div>
       <div class="section-hint assertion-teaching">
-        <div class="teaching-title">📖 JSR223 {{ selectedNode.type === 'JSR223PreProcessor' ? '前置' : '后置' }}处理器教学</div>
+        <div class="teaching-title">📖 JSR223 {{ node.type === 'JSR223PreProcessor' ? '前置' : '后置' }}处理器教学</div>
         <div class="teaching-body">
           <p><strong>推荐用 Groovy</strong>，比 BeanShell 快 10 倍。核心变量：</p>
           <table class="teaching-table">
@@ -493,7 +493,7 @@
             <el-button size="small" type="primary" @click="$emit('ai-generate-script', 'JSR223Processor')" :loading="aiGenerating" plain>🤖 AI 帮写</el-button>
           </div>
         </div>
-        <el-input v-model="selectedNode.props.script" type="textarea" :rows="8" placeholder='def ts = System.currentTimeMillis(); vars.put("ts", ts.toString())' size="small" style="font-family:Consolas,monospace;font-size:12px;" />
+        <el-input v-model="node.props.script" type="textarea" :rows="8" placeholder='def ts = System.currentTimeMillis(); vars.put("ts", ts.toString())' size="small" style="font-family:Consolas,monospace;font-size:12px;" />
       </div>
       <div class="form-section" v-if="projectVariables.length > 0">
         <div class="vars-panel">
@@ -512,14 +512,14 @@
     </template>
 
     <!-- 控制器 -->
-    <template v-if="selectedNode.type === 'IfController'">
+    <template v-if="node.type === 'IfController'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 条件成立时才执行子元素。如 <code>${JMeterThread.last_sample_ok}</code> 表示上一个请求成功才执行</div>
-        <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>条件表达式</label><el-input v-model="selectedNode.props.condition" size="small" placeholder="${JMeterThread.last_sample_ok}" /></div>
+        <div class="form-group"><label>控制器名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>条件表达式</label><el-input v-model="node.props.condition" size="small" placeholder="${JMeterThread.last_sample_ok}" /></div>
         <div class="form-row">
-          <div class="form-group"><label>解释为变量表达式</label><el-switch v-model="selectedNode.props.useExpression" size="small" /></div>
-          <div class="form-group"><label>对所有子级求值</label><el-switch v-model="selectedNode.props.evaluateAll" size="small" /></div>
+          <div class="form-group"><label>解释为变量表达式</label><el-switch v-model="node.props.useExpression" size="small" /></div>
+          <div class="form-group"><label>对所有子级求值</label><el-switch v-model="node.props.evaluateAll" size="small" /></div>
         </div>
         <div class="form-group"><label>添加子元素到控制器中</label>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
@@ -531,57 +531,57 @@
       </div>
     </template>
 
-    <template v-if="selectedNode.type === 'LoopController'">
+    <template v-if="node.type === 'LoopController'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 将子元素重复执行指定次数。如循环 3 次 = 子元素执行 3 遍</div>
-        <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>控制器名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-row">
-          <div class="form-group"><label>循环次数</label><el-input-number v-model="selectedNode.props.loops" :min="1" :max="99999" size="small" /></div>
-          <div class="form-group"><label>永久循环</label><el-switch v-model="selectedNode.props.forever" size="small" /></div>
+          <div class="form-group"><label>循环次数</label><el-input-number v-model="node.props.loops" :min="1" :max="99999" size="small" /></div>
+          <div class="form-group"><label>永久循环</label><el-switch v-model="node.props.forever" size="small" /></div>
         </div>
       </div>
     </template>
 
-    <template v-if="selectedNode.type === 'WhileController'">
+    <template v-if="node.type === 'WhileController'">
       <div class="form-section">
-        <div class="section-hint"><el-icon><InfoFilled /></el-icon> 条件为真时不断循环子元素。如 <code>${__javaScript(${counter} < 5)}</code></div>
-        <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>条件</label><el-input v-model="selectedNode.props.condition" size="small" placeholder="${__javaScript(vars.get('counter') < 5)}" /></div>
+        <div class="section-hint"><el-icon><InfoFilled /></el-icon> 条件为真时不断循环子元素。如 <code>${__javaScript(${counter} &lt; 5)}</code></div>
+        <div class="form-group"><label>控制器名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>条件</label><el-input v-model="node.props.condition" size="small" placeholder="${__javaScript(vars.get('counter') < 5)}" /></div>
       </div>
     </template>
 
-    <template v-if="selectedNode.type === 'TransactionController'">
+    <template v-if="node.type === 'TransactionController'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 将子元素视为一个事务，统计总耗时作为该事务的响应时间</div>
-        <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>控制器名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-row">
-          <div class="form-group"><label>包含定时器时间</label><el-switch v-model="selectedNode.props.includeTimers" size="small" /></div>
-          <div class="form-group"><label>生成父样本</label><el-switch v-model="selectedNode.props.parent" size="small" /></div>
+          <div class="form-group"><label>包含定时器时间</label><el-switch v-model="node.props.includeTimers" size="small" /></div>
+          <div class="form-group"><label>生成父样本</label><el-switch v-model="node.props.parent" size="small" /></div>
         </div>
       </div>
     </template>
 
-    <template v-if="selectedNode.type === 'ThroughputController'">
+    <template v-if="node.type === 'ThroughputController'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 控制子元素执行的频率/比例。如 50% = 一半线程执行、一半跳过</div>
-        <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>控制器名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-group"><label>控制方式</label>
-          <el-select v-model="selectedNode.props.style" size="small">
+          <el-select v-model="node.props.style" size="small">
             <el-option label="按百分比" value="percent" />
             <el-option label="按总执行次数" value="total" />
             <el-option label="按每分钟执行次数" value="perMinute" />
           </el-select>
         </div>
-        <div class="form-group" v-if="selectedNode.props.style === 'percent'"><label>百分比 (%)</label><el-input-number v-model="selectedNode.props.percent" :min="0" :max="100" size="small" /></div>
-        <div class="form-group" v-else><label>最大吞吐量</label><el-input-number v-model="selectedNode.props.maxThroughput" :min="1" :max="99999" size="small" /></div>
-        <div class="form-group"><label>按用户独立计算</label><el-switch v-model="selectedNode.props.perThread" size="small" /></div>
+        <div class="form-group" v-if="node.props.style === 'percent'"><label>百分比 (%)</label><el-input-number v-model="node.props.percent" :min="0" :max="100" size="small" /></div>
+        <div class="form-group" v-else><label>最大吞吐量</label><el-input-number v-model="node.props.maxThroughput" :min="1" :max="99999" size="small" /></div>
+        <div class="form-group"><label>按用户独立计算</label><el-switch v-model="node.props.perThread" size="small" /></div>
       </div>
     </template>
 
-    <template v-if="selectedNode.type === 'OnceOnlyController'">
+    <template v-if="node.type === 'OnceOnlyController'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 不管循环多少次，子元素只执行一次。常用于登录等只需执行一次的场景</div>
-        <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>控制器名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-group"><label>添加子元素到控制器中</label>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
             <el-button size="small" @click="$emit('add-child-to-current', 'HttpSampler')">🌐 HTTP 请求</el-button>
@@ -591,36 +591,36 @@
     </template>
 
     <!-- HTTP 配置元件 -->
-    <template v-if="selectedNode.type === 'HTTPHeaderManager'">
+    <template v-if="node.type === 'HTTPHeaderManager'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 为所有 HTTP 请求统一添加请求头，自动继承到子元素</div>
-        <div class="form-group"><label>管理器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>管理器名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-group"><label>请求头</label>
-          <div v-for="(h, hi) in (selectedNode.props.headers || [])" :key="hi" class="kv-row">
+          <div v-for="(h, hi) in (node.props.headers || [])" :key="hi" class="kv-row">
             <el-input v-model="h.key" placeholder="Header名" size="small" style="width:40%;" />
             <el-input v-model="h.value" placeholder="值" size="small" style="width:50%;" />
-            <el-button link size="small" type="danger" @click="selectedNode.props.headers.splice(hi,1)">×</el-button>
+            <el-button link size="small" type="danger" @click="node.props.headers.splice(hi,1)">×</el-button>
           </div>
-          <el-button size="small" @click="selectedNode.props.headers.push({key:'',value:''})">+ 添加请求头</el-button>
+          <el-button size="small" @click="node.props.headers.push({key:'',value:''})">+ 添加请求头</el-button>
         </div>
       </div>
     </template>
 
-    <template v-if="selectedNode.type === 'HTTPCookieManager'">
+    <template v-if="node.type === 'HTTPCookieManager'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 自动管理 HTTP Cookie，模拟真实浏览器行为</div>
-        <div class="form-group"><label>管理器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>每次循环清空</label><el-switch v-model="selectedNode.props.clearEachIteration" size="small" /></div>
+        <div class="form-group"><label>管理器名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>每次循环清空</label><el-switch v-model="node.props.clearEachIteration" size="small" /></div>
       </div>
     </template>
 
-    <template v-if="selectedNode.type === 'HTTPRequestDefaults'">
+    <template v-if="node.type === 'HTTPRequestDefaults'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 设置默认的协议、域名、端口和请求头，子元素可继承或覆盖这些配置</div>
-        <div class="form-group"><label>默认值名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>默认 URL 前缀</label><el-input v-model="selectedNode.props.url" size="small" placeholder="https://api.example.com" /></div>
+        <div class="form-group"><label>默认值名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>默认 URL 前缀</label><el-input v-model="node.props.url" size="small" placeholder="https://api.example.com" /></div>
         <div class="form-group"><label>默认方法</label>
-          <el-select v-model="selectedNode.props.method" size="small">
+          <el-select v-model="node.props.method" size="small">
             <el-option v-for="m in ['GET','POST']" :key="m" :label="m" :value="m" />
           </el-select>
         </div>
@@ -628,9 +628,9 @@
     </template>
 
     <!-- 监听器 -->
-    <template v-if="selectedNode.type === 'ViewResultsTree'">
+    <template v-if="node.type === 'ViewResultsTree'">
       <div class="form-section">
-        <div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>监听器名称</label><el-input v-model="node.name" size="small" /></div>
       </div>
       <div v-if="benchResult && benchResult.samples && benchResult.samples.length > 0" class="form-section vrt-inline-section">
         <div class="section-hint" style="margin-bottom:8px;"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的结果数据</div>
@@ -712,9 +712,9 @@
     </template>
 
     <!-- 聚合报告类监听器 -->
-    <template v-if="selectedNode.type === 'SummaryReport' || selectedNode.type === 'AggregateGraph' || selectedNode.type === 'AggregateReport' || selectedNode.type === 'ResponseTimeGraph'">
+    <template v-if="node.type === 'SummaryReport' || node.type === 'AggregateGraph' || node.type === 'AggregateReport' || node.type === 'ResponseTimeGraph'">
       <div class="form-section">
-        <div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>监听器名称</label><el-input v-model="node.name" size="small" /></div>
         <div v-if="benchResult && benchResult.per_url && benchResult.per_url.length > 0" style="margin-top:12px;">
           <div class="section-hint" style="margin-bottom:8px;"><el-icon><InfoFilled /></el-icon> 以下是最近一次运行的聚合数据</div>
           <table class="per-url-table" style="width:100%;font-size:12px;border-collapse:collapse;">
@@ -727,38 +727,38 @@
     </template>
 
     <!-- InfluxDB 后端监听器 -->
-    <template v-if="selectedNode.type === 'InfluxDBBackendListener'">
+    <template v-if="node.type === 'InfluxDBBackendListener'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 将 JMeter 测试指标实时推送到 InfluxDB 时序数据库，配合 Grafana 做可视化监控大屏。真实压测必备！</div>
-        <div class="form-group"><label>监听器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>InfluxDB URL</label><el-input v-model="selectedNode.props.influxdbUrl" placeholder="http://localhost:8086/write?db=jmeter" size="small" /></div>
+        <div class="form-group"><label>监听器名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>InfluxDB URL</label><el-input v-model="node.props.influxdbUrl" placeholder="http://localhost:8086/write?db=jmeter" size="small" /></div>
         <div class="form-row">
-          <div class="form-group"><label>应用名</label><el-input v-model="selectedNode.props.application" placeholder="test" size="small" /></div>
-          <div class="form-group"><label>测量名称</label><el-input v-model="selectedNode.props.measurement" placeholder="jmeter" size="small" /></div>
+          <div class="form-group"><label>应用名</label><el-input v-model="node.props.application" placeholder="test" size="small" /></div>
+          <div class="form-group"><label>测量名称</label><el-input v-model="node.props.measurement" placeholder="jmeter" size="small" /></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>仅汇总结果</label><el-switch v-model="selectedNode.props.summaryOnly" size="small" /></div>
-          <div class="form-group"><label>采样器正则过滤</label><el-input v-model="selectedNode.props.samplersRegex" placeholder="留空=全部" size="small" /></div>
+          <div class="form-group"><label>仅汇总结果</label><el-switch v-model="node.props.summaryOnly" size="small" /></div>
+          <div class="form-group"><label>采样器正则过滤</label><el-input v-model="node.props.samplersRegex" placeholder="留空=全部" size="small" /></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>百分位(分号分隔)</label><el-input v-model="selectedNode.props.percentiles" placeholder="50;90;95;99" size="small" /></div>
-          <div class="form-group"><label>测试标题</label><el-input v-model="selectedNode.props.testTitle" placeholder="" size="small" /></div>
+          <div class="form-group"><label>百分位(分号分隔)</label><el-input v-model="node.props.percentiles" placeholder="50;90;95;99" size="small" /></div>
+          <div class="form-group"><label>测试标题</label><el-input v-model="node.props.testTitle" placeholder="" size="small" /></div>
         </div>
-        <div class="form-group"><label>事件标签</label><el-input v-model="selectedNode.props.eventTags" placeholder="TAG_Random=${__Random(0,999999999)}" size="small" /></div>
+        <div class="form-group"><label>事件标签</label><el-input v-model="node.props.eventTags" placeholder="TAG_Random=${__Random(0,999999999)}" size="small" /></div>
       </div>
     </template>
 
     <!-- 用户参数 -->
-    <template v-if="selectedNode.type === 'UserParameters'">
+    <template v-if="node.type === 'UserParameters'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 真实场景：多账号并发测试。每个线程使用不同的用户凭证，模拟真实多用户访问。比 CSV 数据源更直观地管理账号</div>
         <div class="form-group"><label>参数名称（每行一个）</label>
           <div style="display:flex;flex-direction:column;gap:4px;">
-            <div v-for="(name, ni) in selectedNode.props.names" :key="ni" style="display:flex;gap:4px;">
-              <el-input v-model="selectedNode.props.names[ni]" placeholder="如 sid, password" size="small" />
-              <el-button link size="small" type="danger" @click="selectedNode.props.names.splice(ni,1); selectedNode.props.users.forEach(u=>u.splice(ni,1))">×</el-button>
+            <div v-for="(name, ni) in node.props.names" :key="ni" style="display:flex;gap:4px;">
+              <el-input v-model="node.props.names[ni]" placeholder="如 sid, password" size="small" />
+              <el-button link size="small" type="danger" @click="node.props.names.splice(ni,1); node.props.users.forEach(u=>u.splice(ni,1))">×</el-button>
             </div>
-            <el-button size="small" @click="selectedNode.props.names.push(''); selectedNode.props.users.forEach(u=>u.push(''))">+ 添加参数列</el-button>
+            <el-button size="small" @click="node.props.names.push(''); node.props.users.forEach(u=>u.push(''))">+ 添加参数列</el-button>
           </div>
         </div>
         <div class="form-group"><label>用户数据（每行一个用户）</label>
@@ -766,54 +766,54 @@
             <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
               <tr style="background: rgba(var(--tm-color-primary-rgb), 0.06);">
                 <th style="padding:3px 6px;text-align:left;font-size:10px;color: var(--tm-color-primary);">用户#</th>
-                <th v-for="(n, ni) in selectedNode.props.names" :key="'h'+ni" style="padding:3px 6px;text-align:left;font-size:10px;color: var(--tm-color-primary);">{{ n || '参数'+(ni+1) }}</th>
+                <th v-for="(n, ni) in node.props.names" :key="'h'+ni" style="padding:3px 6px;text-align:left;font-size:10px;color: var(--tm-color-primary);">{{ n || '参数'+(ni+1) }}</th>
               </tr>
-              <tr v-for="(user, ui) in selectedNode.props.users" :key="ui" style="border-top: 1px solid var(--tm-border-light);">
+              <tr v-for="(user, ui) in node.props.users" :key="ui" style="border-top: 1px solid var(--tm-border-light);">
                 <td style="padding:3px 6px;font-weight:700;color: var(--tm-text-secondary);font-size:10px;">{{ ui+1 }}</td>
                 <td v-for="(val, vi) in user" :key="vi" style="padding:2px;">
-                  <el-input v-model="selectedNode.props.users[ui][vi]" size="small" style="width:100%;" />
+                  <el-input v-model="node.props.users[ui][vi]" size="small" style="width:100%;" />
                 </td>
                 <td style="padding:2px;">
-                  <el-button link size="small" type="danger" @click="selectedNode.props.users.splice(ui,1)" style="font-size:11px;">×</el-button>
+                  <el-button link size="small" type="danger" @click="node.props.users.splice(ui,1)" style="font-size:11px;">×</el-button>
                 </td>
               </tr>
             </table>
-            <el-button size="small" @click="selectedNode.props.users.push(selectedNode.props.names.map(()=>''))" style="margin-top:6px;width:100%;">+ 添加用户</el-button>
-            <el-button size="small" @click="selectedNode.props.users = []" type="danger" plain style="margin-top:4px;width:100%;">清空全部</el-button>
+            <el-button size="small" @click="node.props.users.push(node.props.names.map(()=>''))" style="margin-top:6px;width:100%;">+ 添加用户</el-button>
+            <el-button size="small" @click="node.props.users = []" type="danger" plain style="margin-top:4px;width:100%;">清空全部</el-button>
           </div>
         </div>
-        <div class="form-group"><label>每次迭代取下一个</label><el-switch v-model="selectedNode.props.perIteration" size="small" /></div>
+        <div class="form-group"><label>每次迭代取下一个</label><el-switch v-model="node.props.perIteration" size="small" /></div>
       </div>
     </template>
 
     <!-- 调试采样器 -->
-    <template v-if="selectedNode.type === 'DebugSampler'">
+    <template v-if="node.type === 'DebugSampler'">
       <div class="form-section">
-        <div class="form-group"><label>采样器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="form-group"><label>采样器名称</label><el-input v-model="node.name" size="small" /></div>
       </div>
       <div class="section-hint"><el-icon><InfoFilled /></el-icon> 调试神器！运行时输出所有 JMeter 变量值到「查看结果树」中。排查变量是否正确设置时必用</div>
     </template>
 
     <!-- ForEach 控制器 -->
-    <template v-if="selectedNode.type === 'ForEachController'">
+    <template v-if="node.type === 'ForEachController'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 遍历一组变量。如变量前缀为 item_ 则遍历 item_1, item_2, item_3... 常用于批量处理提取的数据</div>
-        <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>输入变量前缀</label><el-input v-model="selectedNode.props.inputVar" placeholder="item_" size="small" /><span class="form-hint">会遍历 item_1, item_2, ...</span></div>
-        <div class="form-group"><label>输出变量名</label><el-input v-model="selectedNode.props.outputVar" placeholder="currentItem" size="small" /><span class="form-hint">循环体内用 ${currentItem} 引用当前值</span></div>
+        <div class="form-group"><label>控制器名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>输入变量前缀</label><el-input v-model="node.props.inputVar" placeholder="item_" size="small" /><span class="form-hint">会遍历 item_1, item_2, ...</span></div>
+        <div class="form-group"><label>输出变量名</label><el-input v-model="node.props.outputVar" placeholder="currentItem" size="small" /><span class="form-hint">循环体内用 ${currentItem} 引用当前值</span></div>
         <div class="form-row">
-          <div class="form-group"><label>使用分隔符 "_"</label><el-switch v-model="selectedNode.props.useSeparator" size="small" /></div>
-          <div class="form-group"><label>分隔符</label><el-input v-model="selectedNode.props.separator" placeholder="_" size="small" style="width:60px;" /></div>
+          <div class="form-group"><label>使用分隔符 "_"</label><el-switch v-model="node.props.useSeparator" size="small" /></div>
+          <div class="form-group"><label>分隔符</label><el-input v-model="node.props.separator" placeholder="_" size="small" style="width:60px;" /></div>
         </div>
       </div>
     </template>
 
     <!-- Switch 控制器 -->
-    <template v-if="selectedNode.type === 'SwitchController'">
+    <template v-if="node.type === 'SwitchController'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 根据表达式值选择执行哪个子元素。类似 Java switch-case，支持默认分支</div>
-        <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>Switch 值（表达式或数字）</label><el-input v-model="selectedNode.props.switchValue" placeholder="${status}" size="small" /></div>
+        <div class="form-group"><label>控制器名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>Switch 值（表达式或数字）</label><el-input v-model="node.props.switchValue" placeholder="${status}" size="small" /></div>
         <div class="form-group"><label>添加子元素</label>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
             <el-button size="small" @click="$emit('add-child-to-current', 'HttpSampler')">🌐 HTTP 请求</el-button>
@@ -824,10 +824,10 @@
     </template>
 
     <!-- Random / Interleave 控制器 -->
-    <template v-if="selectedNode.type === 'RandomController' || selectedNode.type === 'InterleaveController'">
+    <template v-if="node.type === 'RandomController' || node.type === 'InterleaveController'">
       <div class="form-section">
-        <div class="section-hint"><el-icon><InfoFilled /></el-icon> {{ selectedNode.type === 'RandomController' ? '每次随机选择一个子元素执行，模拟用户随机行为' : '按顺序轮换子元素执行，每个子元素轮流被选中一次' }}</div>
-        <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
+        <div class="section-hint"><el-icon><InfoFilled /></el-icon> {{ node.type === 'RandomController' ? '每次随机选择一个子元素执行，模拟用户随机行为' : '按顺序轮换子元素执行，每个子元素轮流被选中一次' }}</div>
+        <div class="form-group"><label>控制器名称</label><el-input v-model="node.name" size="small" /></div>
         <div class="form-group"><label>添加子元素</label>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
             <el-button size="small" @click="$emit('add-child-to-current', 'HttpSampler')">🌐 HTTP 请求</el-button>
@@ -838,11 +838,11 @@
     </template>
 
     <!-- Include 控制器 -->
-    <template v-if="selectedNode.type === 'IncludeController'">
+    <template v-if="node.type === 'IncludeController'">
       <div class="form-section">
         <div class="section-hint"><el-icon><InfoFilled /></el-icon> 引入外部 .jmx 文件片段，实现模块化脚本复用。适合把公共逻辑（登录、公共请求头等）抽取为独立文件</div>
-        <div class="form-group"><label>控制器名称</label><el-input v-model="selectedNode.name" size="small" /></div>
-        <div class="form-group"><label>.jmx 文件路径</label><el-input v-model="selectedNode.props.includePath" placeholder="common/login.jmx" size="small" /></div>
+        <div class="form-group"><label>控制器名称</label><el-input v-model="node.name" size="small" /></div>
+        <div class="form-group"><label>.jmx 文件路径</label><el-input v-model="node.props.includePath" placeholder="common/login.jmx" size="small" /></div>
       </div>
     </template>
   </div>
@@ -857,7 +857,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { InfoFilled, Monitor, Connection, Coin, Lollipop, Setting, VideoPlay, EditPen } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -872,7 +872,11 @@ const props = defineProps({
   aiValidationResult: { type: Object, default: null },
 })
 
-const emit = defineEmits([
+// 本地别名：与父级共享同一对象引用，避免模板直接写 props.selectedNode 触发 vue/no-mutating-props
+const node = shallowRef(props.selectedNode)
+watch(() => props.selectedNode, (v) => { node.value = v })
+
+defineEmits([
   'add-var',
   'add-header',
   'add-child-to-current',

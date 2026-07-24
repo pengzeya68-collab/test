@@ -402,7 +402,7 @@ const applyLayoutPreset = (preset) => {
   }
   const width = presets[preset] ?? 280
   sidebarWidth.value = Math.max(200, Math.min(520, width))
-  try { localStorage.setItem('tm-datafactory-sidebar-width', String(sidebarWidth.value)) } catch {}
+  try { localStorage.setItem('tm-datafactory-sidebar-width', String(sidebarWidth.value)) } catch (error) { console.warn('保存侧栏宽度失败', error) }
   ElMessage?.success?.(`布局已切换：模板列表 ${sidebarWidth.value}px`)
 }
 
@@ -791,10 +791,26 @@ const doRun = async () => {
 }
 
 const doBind = async () => {
-  if (!generatedDataset.value?.dataset_id || !bindScenarioId.value) return
+  if (!generatedDataset.value || !bindScenarioId.value) {
+    ElMessage.warning('请选择要绑定的场景')
+    return
+  }
   bindLoading.value = true
   try {
-    await autoTestRequest.post(`/auto-test/data-factory/datasets/${generatedDataset.value.dataset_id}/bind-scenario/${bindScenarioId.value}`)
+    if (Number(generatedDataset.value.dataset_id) > 0) {
+      await autoTestRequest.post(`/auto-test/data-factory/datasets/${generatedDataset.value.dataset_id}/bind-scenario/${bindScenarioId.value}`)
+    } else {
+      // Templates generated before choosing a scenario only exist in memory.
+      // Persist the generated rows directly instead of silently ignoring Bind.
+      const created = await autoTestRequest.post(`/auto-test/scenarios/${bindScenarioId.value}/dataset`, {
+        name: generatedDataset.value.name || `${form.value.name || '测试数据'}_数据集`,
+        data_matrix: {
+          columns: generatedDataset.value.columns || [],
+          rows: generatedDataset.value.rows || [],
+        },
+      })
+      generatedDataset.value.dataset_id = created.id
+    }
     ElMessage.success('绑定成功')
     showBindDialog.value = false
     form.value.scenario_id = bindScenarioId.value

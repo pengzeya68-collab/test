@@ -11,6 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.deps.auth import get_current_active_user
+from fastapi_backend.deps.project_context import (
+    get_active_project_id,
+    get_active_project_id_member,
+    is_personal_project,
+    project_scope_with_legacy_null,
+)
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestHistory, AutoTestScenarioStep
 from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import (
@@ -54,8 +60,20 @@ def _case_to_dict(case, include_secrets=False):
             ).mask_request_config(getattr(case, "request_config", None))
         ),
         "current_version": getattr(case, "current_version", None),
+        "project_id": getattr(case, "project_id", None),
         "updated_at": case.updated_at.isoformat() if case.updated_at else None,
     }
+
+
+async def _case_project_filter(db, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestCase.project_id,
+        project_id,
+        user_id_column=AutoTestCase.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
 
 
 @router.get("")
@@ -66,9 +84,11 @@ async def list_cases(
     keyword: str = Query(None, description="搜索关键词"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
-    """获取接口用例列表，支持分页、搜索、筛选"""
-    query = select(AutoTestCase).where(AutoTestCase.user_id == current_user.id)
+    """获取接口用例列表，支持分页、搜索、筛选（按当前工作区项目隔离，成员共享）"""
+    scope = await _case_project_filter(db, current_user.id, project_id)
+    query = select(AutoTestCase).where(scope)
 
     if group_id is not None:
         query = query.where(AutoTestCase.group_id == group_id)
@@ -131,9 +151,15 @@ async def get_all_cases(
     group_id: int = Query(None, description="按分组筛选"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
-    """获取所有用例（用于选择）"""
-    query = select(AutoTestCase).where(AutoTestCase.user_id == current_user.id).order_by(AutoTestCase.updated_at.desc())
+    """获取所有用例（用于选择，按当前工作区项目隔离，成员共享）"""
+    scope = await _case_project_filter(db, current_user.id, project_id)
+    query = (
+        select(AutoTestCase)
+        .where(scope)
+        .order_by(AutoTestCase.updated_at.desc())
+    )
     if group_id is not None:
         query = query.where(AutoTestCase.group_id == group_id)
     result = await db.execute(query)
@@ -173,10 +199,12 @@ async def get_case(
     case_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
     """获取单个用例详情"""
+    scope = await _case_project_filter(db, current_user.id, project_id)
     result = await db.execute(
-        select(AutoTestCase).filter(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id)
+        select(AutoTestCase).filter(AutoTestCase.id == case_id, scope)
     )
     case = result.scalar_one_or_none()
     if not case:
@@ -203,8 +231,9 @@ async def create_case(
     case_in: AutoTestCaseCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
-    """创建新用例"""
+    """创建新用例（强制写入当前工作区 project_id）"""
     # URL格式校验
     if case_in.url and not case_in.url.startswith(("/", "http://", "https://")):
         raise HTTPException(status_code=400, detail="URL格式不正确，必须以/或http://或https://开头")
@@ -225,8 +254,9 @@ async def create_case(
         data.pop("folder_id", None)
     if data.get("group_id") in ("", None):
         data.pop("group_id", None)
-    # 设置用户归属
+    # 设置用户归属 + 工作区项目（禁止 client 伪造 project_id）
     data["user_id"] = current_user.id
+    data["project_id"] = int(project_id)
     case = AutoTestCase(**data)
     db.add(case)
     await db.commit()
@@ -240,20 +270,26 @@ async def update_case(
     case_in: AutoTestCaseUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """更新用例"""
     # URL格式校验
     if case_in.url is not None and case_in.url != "" and not case_in.url.startswith(("/", "http://", "https://")):
         raise HTTPException(status_code=400, detail="URL格式不正确，必须以/或http://或https://开头")
 
+    scope = await _case_project_filter(db, current_user.id, project_id)
     result = await db.execute(
-        select(AutoTestCase).filter(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id)
+        select(AutoTestCase).filter(AutoTestCase.id == case_id, scope)
     )
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
 
     update_data = case_in.model_dump(exclude_unset=True)
+    update_data.pop("project_id", None)
+    update_data.pop("user_id", None)
+    if getattr(case, "project_id", None) is None:
+        case.project_id = int(project_id)
     if update_data.get("request_config") is not None:
         from fastapi_backend.services.autotest_request_config import merge_request_config
 
@@ -287,10 +323,12 @@ async def delete_case(
     case_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """删除用例（自动解除场景步骤引用）"""
+    scope = await _case_project_filter(db, current_user.id, project_id)
     result = await db.execute(
-        select(AutoTestCase).filter(AutoTestCase.id == case_id, AutoTestCase.user_id == current_user.id)
+        select(AutoTestCase).filter(AutoTestCase.id == case_id, scope)
     )
     case = result.scalar_one_or_none()
     if not case:

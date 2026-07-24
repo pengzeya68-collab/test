@@ -805,12 +805,12 @@ onUnmounted(() => {
 }
 
 .text-success {
-  color: #67c23a;
+  color: var(--tm-color-success);
   font-weight: bold;
 }
 
 .text-danger {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
   font-weight: bold;
 }
 </style>

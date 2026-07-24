@@ -13,7 +13,7 @@
  */
 
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
-import { bundledChromiumExecutable } from './browser-runtime';
+import { chromiumLaunchTarget } from './browser-runtime';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -63,35 +63,59 @@ export async function launchBrowser(opts: LaunchOptions): Promise<{
     throw new Error('Browser is already running. Call closeBrowser() first.');
   }
 
-  browser = await chromium.launch({
-    headless: opts.headless,
-    slowMo: opts.slowMo ?? 0,
-    executablePath: bundledChromiumExecutable(),
-  });
+  const target = chromiumLaunchTarget();
+  let launchedBrowser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
+  try {
+    launchedBrowser = await chromium.launch({
+      headless: opts.headless,
+      slowMo: opts.slowMo ?? 0,
+      ...('executablePath' in target
+        ? { executablePath: target.executablePath }
+        : 'channel' in target
+          ? { channel: target.channel }
+          : {}),
+    });
+    browser = launchedBrowser;
 
-  context = await browser.newContext({
-    viewport: opts.viewport ?? undefined,
-    locale: opts.locale ?? undefined,
-    timezoneId: opts.timezoneId ?? undefined,
-    colorScheme: opts.colorScheme ?? undefined,
-  });
+    context = await browser.newContext({
+      viewport: opts.viewport ?? undefined,
+      locale: opts.locale ?? undefined,
+      timezoneId: opts.timezoneId ?? undefined,
+      colorScheme: opts.colorScheme ?? undefined,
+    });
 
-  page = await context.newPage();
+    page = await context.newPage();
 
-  // Listen for unexpected disconnect
-  browser.on('disconnected', () => {
-    if (!_closing) {
-      console.warn('[Playwright] Browser disconnected unexpectedly');
-    }
+    // Listen for unexpected disconnect
+    browser.on('disconnected', () => {
+      if (!_closing) {
+        console.warn('[Playwright] Browser disconnected unexpectedly');
+      }
+      browser = null;
+      context = null;
+      page = null;
+    });
+
+    return {
+      browserVersion: browser.version(),
+      chromiumPath: 'executablePath' in target ? target.executablePath : 'Google Chrome channel',
+    };
+  } catch (error) {
+    // Partial launch must not leak browser processes.
+    try {
+      if (page && !page.isClosed()) await page.close().catch(() => {});
+    } catch { /* ignore */ }
+    try {
+      if (context) await context.close().catch(() => {});
+    } catch { /* ignore */ }
+    try {
+      if (launchedBrowser && launchedBrowser.isConnected()) await launchedBrowser.close().catch(() => {});
+    } catch { /* ignore */ }
     browser = null;
     context = null;
     page = null;
-  });
-
-  return {
-    browserVersion: browser.version(),
-    chromiumPath: chromium.executablePath(),
-  };
+    throw error;
+  }
 }
 
 /**

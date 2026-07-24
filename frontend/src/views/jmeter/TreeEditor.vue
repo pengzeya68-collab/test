@@ -20,7 +20,7 @@
         </el-button>
       </div>
       <jmeter-tree-node
-        v-for="(node, idx) in filteredTreeChildren"
+        v-for="node in filteredTreeChildren"
         :key="node.uid"
         :node="node"
         :depth="0"
@@ -38,6 +38,7 @@
         @toggle-enabled="(uid) => $emit('toggle-enabled', uid)"
         @move-node="(movedUid, parentUid, idx) => $emit('move-node', movedUid, parentUid, idx)"
         @tree-changed="() => $emit('tree-changed')"
+        @replace-children="(uid, children) => $emit('replace-children', uid, children)"
       />
       <div v-if="modelValue.children.length === 0" class="tree-empty">
         还没有线程组，点击上方「添加线程组」或返回第1步导入接口
@@ -60,11 +61,11 @@ const props = defineProps({
   clipboardNode: { type: Object, default: null },
 })
 
-const emit = defineEmits([
+defineEmits([
   'update:modelValue', 'select-node', 'add-root-element', 'add-child',
   'remove-node', 'duplicate-node',
   'cut-node', 'copy-node', 'paste-node', 'move-to', 'toggle-enabled',
-  'move-node', 'tree-changed',
+  'move-node', 'tree-changed', 'replace-children',
 ])
 
 const treeSearchQuery = ref('')
@@ -124,7 +125,7 @@ const collapseAllNodes = () => {
   border-radius: 9px; font-weight: 700; font-size: 13px; cursor: pointer;
   transition: all .2s; color: var(--tm-text-primary);
 }
-.tree-root-label:hover { background: linear-gradient(90deg, rgba(99,102,241,0.07), transparent); }
+.tree-root-label:hover { background: linear-gradient(90deg, rgba(var(--tm-color-primary-rgb),0.07), transparent); }
 .root-icon { font-size: 17px; }
 .tree-empty {
   padding: 32px 16px; text-align: center; font-size: 12.5px; color: var(--tm-text-secondary);

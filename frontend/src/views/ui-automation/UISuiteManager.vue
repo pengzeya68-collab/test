@@ -29,7 +29,7 @@ async function save(){if(!form.name.trim()){ElMessage.warning('请输入套件�
 async function remove(row){try{await ElMessageBox.confirm('确认删除套件“'+row.name+'”？','删除套件',{type:'warning'});await api.deleteSuite(row.id);await load()}catch(e){if(e!=='cancel')ElMessage.error(e.message)}}
 function prepareRun(row){selected.value=row;Object.assign(progress,{total:0,done:0,message:''});runVisible.value=true}
 async function upload(runRecord,result){const paths=[...(result.stepResults||[]).map(x=>x.screenshotPath).filter(Boolean),result.tracePath,result.videoPath].filter(Boolean);for(const p of[...new Set(paths)]){const f=await window.testmaster.artifacts.read(p),type=p.endsWith('.zip')?'trace':p.endsWith('.webm')?'video':'screenshot',mime=type==='trace'?'application/zip':type==='video'?'video/webm':'image/png';await api.uploadSharedArtifact(runRecord,f,type,mime)}}
-function authValidationUrl(snapshot){const first=(snapshot.steps||[]).find(step=>step.enabled!==false&&step.type==='goto')?.input?.url||'';if(/^https?:\/\//i.test(first))return first;if(snapshot.base_url&&first){try{return new URL(first,snapshot.base_url).toString()}catch{}}return /^https?:\/\//i.test(snapshot.base_url||'')?snapshot.base_url:''}
+function authValidationUrl(snapshot){const first=(snapshot.steps||[]).find(step=>step.enabled!==false&&step.type==='goto')?.input?.url||'';if(/^https?:\/\//i.test(first))return first;if(snapshot.base_url&&first){try{return new URL(first,snapshot.base_url).toString()}catch(error){console.warn('无法拼接登录态校验地址',error)}}return /^https?:\/\//i.test(snapshot.base_url||'')?snapshot.base_url:''}
 async function validateSuiteAuth(plan){if(!run.authStateId)return;const checked=new Set();for(const entry of plan.entries){const url=authValidationUrl(entry.snapshot);if(!url||checked.has(url))continue;checked.add(url);const result=await window.testmaster.authStates.validate(run.authStateId,url);if(result.valid===false)throw Error('用例“'+entry.case_name+'”登录态不可用：'+result.reason+'。请先更新登录态')}}
 async function execute(){
   if(!selected.value||runningId.value!==null)return
@@ -92,6 +92,21 @@ async function history(row){historyVisible.value=true;historyLoading.value=true;
 onMounted(load)
 </script>
 <style scoped>
-.suite-page{padding:20px}header,.title,.items-head,.item-line{display:flex;align-items:center}header{justify-content:space-between;margin-bottom:20px}.title{gap:12px}.title h1{margin:0;font-size:20px}.title span{font-size:12px;color:#69756e}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.items-head{justify-content:space-between;margin:10px 0}.suite-item{padding:12px;margin-bottom:10px;border:1px solid #dbe3de;border-radius:6px;background:#f8faf9}.item-line{gap:8px}.item-line b{width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:#e8f3ec;color:#28724f}.case-select{flex:1}.data{margin:10px 34px 0}.progress{padding:12px;border:1px solid #dbe3de;border-radius:6px;background:#f8faf9}.progress p{margin:8px 0 0}
+.suite-page{padding:var(--tm-space-lg,20px);color:var(--tm-text-primary)}
+header,.title,.items-head,.item-line{display:flex;align-items:center}
+header{justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.title{gap:12px}
+.title h1{margin:0;font-size:20px;color:var(--tm-text-primary);font-weight:700}
+.title span{font-size:12px;color:var(--tm-text-secondary)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.items-head{justify-content:space-between;margin:10px 0}
+.suite-item{padding:12px;margin-bottom:10px;border:1px solid var(--border-subtle);border-radius:var(--tm-radius-small,8px);background:var(--tm-bg-card)}
+.item-line{gap:8px}
+.item-line b{width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:rgba(var(--tm-color-primary-rgb),0.14);color:var(--tm-color-primary)}
+.case-select{flex:1}
+.data{margin:10px 34px 0}
+.progress{padding:12px;border:1px solid var(--border-subtle);border-radius:var(--tm-radius-small,8px);background:var(--tm-bg-elevated)}
+.progress p{margin:8px 0 0;color:var(--tm-text-secondary)}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
 </style>
 

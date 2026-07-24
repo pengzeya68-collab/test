@@ -11,13 +11,19 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import delete, select, func
 from sqlalchemy.orm import selectinload
 
 from fastapi_backend.core.autotest_database import get_autotest_db as get_db
 from fastapi_backend.core.audit_decorator import audit_log
 from fastapi_backend.core.rbac import require_permissions
 from fastapi_backend.deps.auth import get_current_active_user
+from fastapi_backend.deps.project_context import (
+    get_active_project_id,
+    get_active_project_id_member,
+    is_personal_project,
+    project_scope_with_legacy_null,
+)
 from fastapi_backend.services.audit_service import AuditService
 from fastapi_backend.models.autotest import (
     AutoTestScenario,
@@ -25,6 +31,7 @@ from fastapi_backend.models.autotest import (
     AutoTestCase,
     AutoTestDataset,
     AutoTestScenarioExecutionRecord,
+    TestSuiteScenario,
 )
 from fastapi_backend.models.models import User
 from fastapi_backend.schemas.autotest import (
@@ -44,6 +51,51 @@ router = APIRouter(prefix="/api/auto-test/scenarios", tags=["AutoTest-场景"])
 _logger = logging.getLogger(__name__)
 
 
+async def _scenario_scope(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestScenario.workspace_project_id,
+        project_id,
+        user_id_column=AutoTestScenario.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
+
+
+async def _case_scope_for_scenario(db: AsyncSession, user_id: int, project_id: int):
+    personal = await is_personal_project(db, project_id)
+    return project_scope_with_legacy_null(
+        AutoTestCase.project_id,
+        project_id,
+        user_id_column=AutoTestCase.user_id,
+        user_id=user_id,
+        is_personal_active=personal,
+    )
+
+
+
+
+async def _load_scenario(
+    db: AsyncSession,
+    scenario_id: int,
+    user_id: int,
+    *,
+    project_id: int | None = None,
+    with_steps: bool = False,
+):
+    """按项目可见范围加载场景（成员共享）；无 project_id 时回退本人。"""
+    filters = [AutoTestScenario.id == scenario_id]
+    if project_id is not None:
+        filters.append(await _scenario_scope(db, user_id, project_id))
+    else:
+        filters.append(AutoTestScenario.user_id == user_id)
+    q = select(AutoTestScenario).where(*filters)
+    if with_steps:
+        q = q.options(selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case))
+    result = await db.execute(q)
+    return result.scalar_one_or_none()
+
+
 # ========== 场景 CRUD ==========
 
 
@@ -55,10 +107,12 @@ async def list_scenarios(
     is_active: Optional[bool] = None,
     current_user: User = Depends(require_permissions("scenario:read")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
-    """获取场景列表（分页 + 搜索 + 筛选）"""
-    query = select(AutoTestScenario).where(AutoTestScenario.user_id == current_user.id)
-    count_query = select(func.count(AutoTestScenario.id)).where(AutoTestScenario.user_id == current_user.id)
+    """获取场景列表（分页 + 搜索 + 筛选，按工作区项目隔离）"""
+    scope = await _scenario_scope(db, current_user.id, project_id)
+    query = select(AutoTestScenario).where(scope)
+    count_query = select(func.count(AutoTestScenario.id)).where(scope)
 
     if keyword:
         keyword_escaped = keyword.replace("%", "\\%").replace("_", "\\_")
@@ -119,9 +173,11 @@ async def get_available_cases(
     group_id: int = None,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
-    """获取可用的接口列表（用于添加步骤时选择）"""
-    query = select(AutoTestCase).where(AutoTestCase.user_id == current_user.id)
+    """获取可用的接口列表（用于添加步骤时选择，按项目隔离）"""
+    case_scope = await _case_scope_for_scenario(db, current_user.id, project_id)
+    query = select(AutoTestCase).where(case_scope)
     if keyword:
         keyword_escaped = keyword.replace("%", "\\%").replace("_", "\\_")
         query = query.where(AutoTestCase.name.like(f"%{keyword_escaped}%", escape="\\"))
@@ -147,14 +203,12 @@ async def get_scenario(
     scenario_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id),
 ):
-    """获取场景详情"""
-    result = await db.execute(
-        select(AutoTestScenario)
-        .options(selectinload(AutoTestScenario.steps).selectinload(AutoTestScenarioStep.api_case))
-        .where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+    """获取场景详情（项目成员共享）"""
+    scenario = await _load_scenario(
+        db, scenario_id, current_user.id, project_id=project_id, with_steps=True
     )
-    scenario = result.scalar_one_or_none()
     if not scenario:
         raise HTTPException(status_code=404, detail="场景不存在")
     return scenario
@@ -167,11 +221,13 @@ async def create_scenario(
     request: Request,
     current_user: User = Depends(require_permissions("scenario:create")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """创建场景"""
     data = scenario.model_dump()
     data["webhook_token"] = str(uuid.uuid4())
     data["user_id"] = current_user.id
+    data["workspace_project_id"] = int(project_id)
     db_scenario = AutoTestScenario(**data)
     db.add(db_scenario)
     await db.commit()
@@ -192,10 +248,14 @@ async def update_scenario(
     request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
-    """更新场景"""
+    """更新场景（项目成员共享）"""
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id,
+            await _scenario_scope(db, current_user.id, project_id),
+        )
     )
     db_scenario = result.scalar_one_or_none()
     if not db_scenario:
@@ -251,7 +311,7 @@ async def update_scenario_status(
 ):
     """更新场景启用/停用状态"""
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
     )
     db_scenario = result.scalar_one_or_none()
     if not db_scenario:
@@ -274,9 +334,10 @@ async def delete_scenario(
     request: Request,
     current_user: User = Depends(require_permissions("scenario:delete")),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
     )
     db_scenario = result.scalar_one_or_none()
     if not db_scenario:
@@ -303,6 +364,10 @@ async def delete_scenario(
     for dataset in dataset_result.scalars().all():
         await db.delete(dataset)
 
+    # Regression suites are database-backed. Remove memberships explicitly so
+    # this remains correct on databases where FK cascade is not enabled.
+    await db.execute(delete(TestSuiteScenario).where(TestSuiteScenario.scenario_id == scenario_id))
+
     await db.delete(db_scenario)
     try:
         await db.commit()
@@ -313,23 +378,12 @@ async def delete_scenario(
         logging.getLogger(__name__).error(f"删除场景失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="删除失败，事务已回滚")
 
-    # 清理 JSON 套件中的 scenario_ids 引用
-    try:
-        from fastapi_backend.routers.autotest_suites import _suites, _suites_lock, _save_suites
-
-        async with _suites_lock:
-            for suite in _suites.values():
-                if scenario_id in suite.get("scenario_ids", []):
-                    suite["scenario_ids"] = [sid for sid in suite["scenario_ids"] if sid != scenario_id]
-            _save_suites(_suites)
-    except Exception as e:
-        _logger.warning(f"清理JSON套件引用失败: {e}")
     return {"message": "删除成功"}
 
 
 # ========== 场景步骤 CRUD ==========
 
-_CONTROL_TYPES = {"if_condition", "for_loop", "for_each", "wait", "group", "scenario_ref", "db_query"}
+_CONTROL_TYPES = {"if_condition", "for_loop", "for_each", "wait", "group", "scenario_ref", "db_query", "protocol"}
 
 
 async def _validate_step_definition(step_type, config, scenario_id, db, user_id, allow_incomplete=False):
@@ -337,6 +391,10 @@ async def _validate_step_definition(step_type, config, scenario_id, db, user_id,
     config = config or {}
     if step_type != "api_request" and step_type not in _CONTROL_TYPES:
         raise HTTPException(status_code=400, detail=f"不支持的步骤类型: {step_type}")
+    if step_type == "protocol":
+        protocol = str(config.get("protocol") or "").lower()
+        if protocol not in {"grpc", "websocket", "ws", "sse"}:
+            raise HTTPException(status_code=400, detail="协议步骤仅支持 gRPC、WebSocket 或 SSE")
     if not allow_incomplete and step_type == "if_condition" and not (config.get("condition") or config.get("field")):
         raise HTTPException(status_code=400, detail="If 条件步骤必须配置判断条件")
     if step_type == "for_loop":
@@ -404,10 +462,11 @@ async def add_step(
     step: ScenarioStepCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """添加步骤"""
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="场景不存在")
@@ -416,7 +475,7 @@ async def add_step(
     if step.step_type == "api_request" or not step.step_type:
         if step.api_case_id:
             result = await db.execute(
-                select(AutoTestCase).where(AutoTestCase.id == step.api_case_id, AutoTestCase.user_id == current_user.id)
+                select(AutoTestCase).where(AutoTestCase.id == step.api_case_id, await _case_scope_for_scenario(db, current_user.id, project_id))
             )
             if not result.scalar_one_or_none():
                 raise HTTPException(status_code=404, detail="指定的接口不存在")
@@ -473,13 +532,14 @@ async def reorder_steps(
     step_orders: List[StepOrderItem],
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """批量更新步骤顺序"""
     # 先校验场景归属
     scenario_result = await db.execute(
         select(AutoTestScenario).where(
             AutoTestScenario.id == scenario_id,
-            AutoTestScenario.user_id == current_user.id,
+            await _scenario_scope(db, current_user.id, project_id),
         )
     )
     if not scenario_result.scalar_one_or_none():
@@ -521,13 +581,14 @@ async def update_step(
     step: ScenarioStepUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """更新步骤"""
     # 先校验场景归属
     scenario_result = await db.execute(
         select(AutoTestScenario).where(
             AutoTestScenario.id == scenario_id,
-            AutoTestScenario.user_id == current_user.id,
+            await _scenario_scope(db, current_user.id, project_id),
         )
     )
     if not scenario_result.scalar_one_or_none():
@@ -548,7 +609,7 @@ async def update_step(
         case_result = await db.execute(
             select(AutoTestCase).where(
                 AutoTestCase.id == update_data["api_case_id"],
-                AutoTestCase.user_id == current_user.id,
+                await _case_scope_for_scenario(db, current_user.id, project_id),
             )
         )
         if not case_result.scalar_one_or_none():
@@ -571,13 +632,14 @@ async def delete_step(
     step_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """删除步骤"""
     # 先校验场景归属
     scenario_result = await db.execute(
         select(AutoTestScenario).where(
             AutoTestScenario.id == scenario_id,
-            AutoTestScenario.user_id == current_user.id,
+            await _scenario_scope(db, current_user.id, project_id),
         )
     )
     if not scenario_result.scalar_one_or_none():
@@ -614,13 +676,14 @@ async def get_scenario_dataset(
     scenario_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """获取场景的数据集"""
     # 先校验场景归属
     scenario_result = await db.execute(
         select(AutoTestScenario).where(
             AutoTestScenario.id == scenario_id,
-            AutoTestScenario.user_id == current_user.id,
+            await _scenario_scope(db, current_user.id, project_id),
         )
     )
     if not scenario_result.scalar_one_or_none():
@@ -637,10 +700,11 @@ async def create_or_update_dataset(
     dataset_data: AutoTestDatasetBase,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """创建或更新场景的数据集（Upsert）"""
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
     )
     scenario = result.scalar_one_or_none()
     if not scenario:
@@ -679,13 +743,14 @@ async def delete_dataset(
     scenario_id: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """删除场景的数据集"""
     # 先校验场景归属
     scenario_result = await db.execute(
         select(AutoTestScenario).where(
             AutoTestScenario.id == scenario_id,
-            AutoTestScenario.user_id == current_user.id,
+            await _scenario_scope(db, current_user.id, project_id),
         )
     )
     if not scenario_result.scalar_one_or_none():
@@ -707,6 +772,7 @@ async def parse_dataset_file(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """解析上传的 CSV/Excel 文件，返回数据矩阵"""
     import csv
@@ -716,7 +782,7 @@ async def parse_dataset_file(
     scenario_result = await db.execute(
         select(AutoTestScenario).where(
             AutoTestScenario.id == scenario_id,
-            AutoTestScenario.user_id == current_user.id,
+            await _scenario_scope(db, current_user.id, project_id),
         )
     )
     if not scenario_result.scalar_one_or_none():
@@ -768,11 +834,12 @@ async def debug_scenario(
     request: ScenarioDebugRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     result = await db.execute(
         select(AutoTestScenario)
         .options(selectinload(AutoTestScenario.steps))
-        .where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+        .where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
     )
     scenario = result.scalar_one_or_none()
     if not scenario:
@@ -813,11 +880,12 @@ async def run_scenario_with_pytest(
     request: InlineScenarioExecutionRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    project_id: int = Depends(get_active_project_id_member),
 ):
     """使用 Pytest 引擎执行数据驱动测试"""
     # 检查场景是否存在
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, AutoTestScenario.user_id == current_user.id)
+        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
     )
     scenario = result.scalar_one_or_none()
     if not scenario:

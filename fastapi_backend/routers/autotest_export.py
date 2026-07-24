@@ -220,9 +220,6 @@ async def generate_enhanced_api_doc(
         result = await db.execute(query)
         cases = result.scalars().all()
 
-        if not cases:
-            raise HTTPException(status_code=400, detail="没有找到用例")
-
         # 获取分组名
         group_ids = list({c.group_id for c in cases if c.group_id is not None})
         group_map = {}
@@ -412,6 +409,9 @@ async def generate_enhanced_api_doc(
             # D7: 返回当前文档涵盖的用例 ID 列表，供前端分享时显式传参
             "case_ids": case_ids,
             "stats": {
+                # The desktop document view consumes `total`; retain
+                # `total_cases` for older callers during the transition.
+                "total": len(cases_data),
                 "total_cases": len(cases_data),
                 "cases_with_history": len(execution_history),
                 "cases_with_mock": sum(1 for c in cases_data if f"{c['method'].upper()} {c['path']}" in mock_rules),

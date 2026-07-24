@@ -222,7 +222,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
@@ -267,7 +267,9 @@ const fetchLearningPaths = async () => {
   try {
     const res = await request.get('/learning-paths', { params: { _t: Date.now() } })
     learningPaths.value = Array.isArray(res) ? res : (res.data || res.list || [])
-  } catch {}
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error.message || '操作失败')
+  }
 }
 
 const openGenerateDialog = () => {

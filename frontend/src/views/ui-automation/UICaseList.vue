@@ -501,14 +501,18 @@ async function addArtifactAnnotation(event) {
   try {
     const answer = await ElMessageBox.prompt('请输入标注说明', '添加截图标注', { inputPattern: /\S+/, inputErrorMessage: '请输入说明' })
     artifactAnnotations.value.push({ id: crypto.randomUUID(), x_percent: Number(x.toFixed(3)), y_percent: Number(y.toFixed(3)), note: answer.value.trim() })
-  } catch {}
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error.message || '添加标注失败')
+  }
 }
 
 async function removeArtifactAnnotation(index) {
   try {
     await ElMessageBox.confirm(`删除标注 ${index + 1}？`, '删除标注', { type: 'warning' })
     artifactAnnotations.value.splice(index, 1)
-  } catch {}
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error.message || '删除标注失败')
+  }
 }
 
 async function saveArtifactAnnotations() {
@@ -700,34 +704,50 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .ui-case-list {
-  padding: 20px;
+  padding: var(--tm-space-lg, 20px);
+  color: var(--tm-text-primary);
+  background: transparent;
 
   .page-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: var(--tm-space-lg, 20px);
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-subtle);
 
     .header-left {
       display: flex;
-      align-items: center;
-      gap: 12px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
 
       h2 {
         margin: 0;
-        font-size: 20px;
+        color: var(--tm-text-primary);
+        font-size: var(--tm-font-xl, 20px);
+        font-weight: 700;
       }
+    }
+
+    .page-subtitle {
+      color: var(--tm-text-secondary);
+      font-size: 12px;
     }
 
     .header-right {
       display: flex;
-      gap: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
     }
   }
 
   .case-name {
     cursor: pointer;
-    color: var(--el-color-primary);
+    color: var(--tm-color-primary);
     font-weight: 500;
 
     &:hover {

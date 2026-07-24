@@ -12,7 +12,7 @@
  *   - Force-kill is permitted after a bounded graceful shutdown period.
  */
 
-import { app, BrowserWindow, Menu, nativeImage, Tray } from 'electron';
+import { app, BrowserWindow, Menu, nativeImage, NativeImage, Tray } from 'electron';
 import { createMainWindow, getMainWindow } from './window';
 import {
   initializeDesktopAgent,
@@ -49,6 +49,30 @@ let tray: Tray | null = null;
 let forceQuitRequested = false;
 let shutdownStarted = false;
 
+function createTrayIcon(): NativeImage {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="6" fill="#2563eb"/><text x="16" y="21" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="white">TM</text></svg>';
+  const svgIcon = nativeImage
+    .createFromDataURL(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`)
+    .resize({ width: 16, height: 16 });
+  if (!svgIcon.isEmpty()) return svgIcon;
+
+  // Windows cannot use an executable as a Tray image. Some Electron builds do
+  // not decode SVG data URLs, so create a small BGRA bitmap that is guaranteed
+  // to be valid instead of falling back to process.execPath.
+  const size = 16;
+  const pixels = Buffer.alloc(size * size * 4);
+  for (let y = 1; y < size - 1; y += 1) {
+    for (let x = 1; x < size - 1; x += 1) {
+      const offset = (y * size + x) * 4;
+      pixels[offset] = 235; // B
+      pixels[offset + 1] = 99; // G
+      pixels[offset + 2] = 37; // R
+      pixels[offset + 3] = 255; // A
+    }
+  }
+  return nativeImage.createFromBitmap(pixels, { width: size, height: size, scaleFactor: 1 });
+}
+
 function createManagedMainWindow(): BrowserWindow {
   const win = createMainWindow();
   win.on('close', (event) => {
@@ -62,9 +86,17 @@ function createManagedMainWindow(): BrowserWindow {
 
 function createTray(): void {
   if (tray) return;
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="6" fill="#2563eb"/><text x="16" y="21" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="white">TM</text></svg>';
-  const icon = nativeImage.createFromDataURL(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`).resize({ width: 16, height: 16 });
-  tray = new Tray(icon.isEmpty() ? process.execPath : icon);
+  const icon = createTrayIcon();
+  if (icon.isEmpty()) {
+    console.error('[Main] Unable to create the TestMaster tray icon.');
+    return;
+  }
+  try {
+    tray = new Tray(icon);
+  } catch (error) {
+    console.error('[Main] Unable to create the TestMaster tray:', error);
+    return;
+  }
   tray.setToolTip('TestMaster Desktop');
   tray.setContextMenu(Menu.buildFromTemplate([
     {
@@ -106,7 +138,18 @@ app.whenReady().then(() => {
   // Create the main window
   createManagedMainWindow();
   createTray();
-  void ensureLocalBackend().finally(() => initializeDesktopAgent());
+  void ensureLocalBackend()
+    .catch((error) => {
+      console.error('[Main] Local backend startup failed:', error);
+      return { ready: false, managed: false, error: String(error) };
+    })
+    .finally(() => {
+      try {
+        initializeDesktopAgent();
+      } catch (error) {
+        console.error('[Main] Desktop agent init failed:', error);
+      }
+    });
 
   // macOS: re-create window when dock icon is clicked
   app.on('activate', () => {
@@ -140,24 +183,35 @@ app.on('before-quit', async (event) => {
   // Unregister IPC handlers
   unregisterIpcHandlers();
 
-  // Gracefully close browser with a bounded timeout (5 seconds)
-  const GRACEFUL_SHUTDOWN_MS = 5000;
+  // Parallel workers may need ~20s to finish run:finish; keep headroom.
+  const GRACEFUL_SHUTDOWN_MS = 25_000;
   try {
     await Promise.race([
-      Promise.all([forceCleanup(), stopActiveRecorder(), stopDesktopAgent()]),
+      Promise.all([
+        forceCleanup().catch((e) => console.error('[Main] forceCleanup failed:', e)),
+        stopActiveRecorder().catch((e) => console.error('[Main] stopActiveRecorder failed:', e)),
+        stopDesktopAgent().catch((e) => console.error('[Main] stopDesktopAgent failed:', e)),
+      ]),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Graceful shutdown timeout')), GRACEFUL_SHUTDOWN_MS)
       ),
     ]);
   } catch (e) {
     console.error('[Main] Browser cleanup failed or timed out:', e);
-    // Force kill happens automatically when the process exits
   }
-  stopLocalBackend();
-  tray?.destroy();
+
+  try {
+    stopLocalBackend();
+  } catch (e) {
+    console.error('[Main] stopLocalBackend failed:', e);
+  }
+  try {
+    tray?.destroy();
+  } catch (e) {
+    console.error('[Main] tray destroy failed:', e);
+  }
   tray = null;
 
-  // Allow the quit to proceed
   app.exit(0);
 });
 

@@ -32,6 +32,7 @@ class AutoTestGroup(Base):
         Index("idx_api_groups_parent_id", "parent_id"),
         Index("idx_api_groups_user_id", "user_id"),
         Index("idx_api_groups_sort_order", "sort_order"),
+        Index("idx_api_groups_workspace_project_id", "project_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -42,6 +43,7 @@ class AutoTestGroup(Base):
     description = Column(Text, nullable=True, comment="分组描述")
     sort_order = Column(Integer, nullable=False, default=0, comment="同级排序(越小越靠前)")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
+    project_id = Column(Integer, nullable=True, index=True, comment="工作区项目ID(workspace_projects)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(
         DateTime(timezone=True),
@@ -61,6 +63,7 @@ class AutoTestCase(Base):
     __table_args__ = (
         Index("idx_api_cases_group_id", "group_id"),
         Index("idx_api_cases_user_id", "user_id"),
+        Index("idx_api_cases_workspace_project_id", "project_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -89,6 +92,7 @@ class AutoTestCase(Base):
     # 当前版本号（冗余字段，方便查询，与最新一条 is_current=True 的 CaseVersion.version_number 同步）
     current_version = Column(String(50), nullable=True, comment="当前版本号(冗余,与最新版本快照同步)")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
+    project_id = Column(Integer, nullable=True, index=True, comment="工作区项目ID(workspace_projects)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(
         DateTime(timezone=True),
@@ -145,6 +149,7 @@ class AutoTestGlobalVariable(Base):
     __table_args__ = (
         Index("idx_global_variables_user_id", "user_id"),
         Index("idx_global_variables_name_user", "name", "user_id", unique=True),
+        Index("idx_global_variables_workspace_project_id", "project_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -153,6 +158,7 @@ class AutoTestGlobalVariable(Base):
     description = Column(Text, nullable=True, comment="变量描述")
     is_encrypted = Column(Boolean, default=False, comment="是否加密")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
+    project_id = Column(Integer, nullable=True, index=True, comment="工作区项目ID(workspace_projects)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
     updated_at = Column(
         DateTime(timezone=True),
@@ -170,6 +176,7 @@ class AutoTestEnvironment(Base):
         Index("idx_environments_is_default", "is_default"),
         Index("idx_environments_user_id", "user_id"),
         Index("idx_environments_parent_id", "parent_id"),
+        Index("idx_environments_workspace_project_id", "project_id"),
         UniqueConstraint("env_name", "user_id", name="uq_env_name_user"),
     )
 
@@ -187,6 +194,7 @@ class AutoTestEnvironment(Base):
         comment="父环境ID(用于变量继承，最大深度5层)",
     )
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
+    project_id = Column(Integer, nullable=True, index=True, comment="工作区项目ID(workspace_projects)")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
 
     # 自引用关系：parent 指向父环境，children 为直接子环境列表
@@ -243,6 +251,9 @@ class AutoTestScenario(Base):
     schedule_task_name = Column(String(200), nullable=True, comment="定时任务显示名称")
     schedule_is_active = Column(Boolean, default=True, comment="定时任务是否启用（未暂停）")
     project_id = Column(Integer, nullable=True, comment="关联的项目实战ID（NULL表示不限项目）")
+    workspace_project_id = Column(
+        Integer, nullable=True, index=True, comment="工作区项目ID(workspace_projects，与学习 project_id 分离)"
+    )
     webhook_token = Column(String(64), nullable=True, comment="CI/CD Webhook 触发令牌", index=True, unique=True)
     fail_fast = Column(Boolean, default=False, comment="步骤失败时是否立即停止后续步骤")
 
@@ -652,6 +663,7 @@ class TestSuite(Base):
     """测试套件表"""
 
     __tablename__ = "test_suites"
+    __table_args__ = (Index("idx_test_suites_workspace_project_id", "project_id"),)
 
     kind = Column(String(20), nullable=False, default="scenario")
     is_active = Column(Boolean, nullable=False, default=True)
@@ -662,6 +674,7 @@ class TestSuite(Base):
     description = Column(Text, nullable=True, comment="套件描述")
     env_id = Column(Integer, nullable=True, comment="默认执行环境ID")
     user_id = Column(Integer, nullable=True, index=True, comment="所属用户ID(跨库引用，非FK)")
+    project_id = Column(Integer, nullable=True, index=True, comment="工作区项目ID(workspace_projects)")
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -786,6 +799,7 @@ class AutomationExecution(Base):
     __table_args__ = (
         Index("idx_automation_execution_target", "target_type", "target_id"),
         Index("idx_automation_execution_user_created", "user_id", "created_at"),
+        Index("idx_automation_executions_workspace_project_id", "project_id"),
         UniqueConstraint("idempotency_key", name="uq_automation_execution_idempotency"),
     )
 
@@ -795,6 +809,9 @@ class AutomationExecution(Base):
     target_type = Column(String(30), nullable=False, default="suite")
     target_id = Column(Integer, nullable=False)
     user_id = Column(Integer, nullable=True, index=True)
+    project_id = Column(Integer, nullable=True, index=True, comment="工作区项目ID(workspace_projects)")
+    parent_execution_id = Column(Integer, nullable=True, index=True)
+    notify_on_terminal = Column(Boolean, nullable=False, default=True)
     env_id = Column(Integer, nullable=True)
     status = Column(String(30), nullable=False, default="queued")
     attempt = Column(Integer, nullable=False, default=1)
@@ -885,6 +902,66 @@ class ExecutionEvent(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+class AutomationNotificationChannel(Base):
+    """A user-owned, encrypted external delivery destination.
+
+    The configuration itself is never returned by the API.  Keeping a channel
+    independent from a schedule lets manual, CI and scheduled executions share
+    one auditable notification policy.
+    """
+
+    __tablename__ = "automation_notification_channels"
+    __table_args__ = (
+        UniqueConstraint("project_id", "name", name="uq_automation_notification_channel_project_name"),
+        Index("idx_automation_notification_channels_project_active", "project_id", "is_active"),
+    )
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    user_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(Integer, nullable=True, index=True)
+    name = Column(String(120), nullable=False)
+    channel_type = Column(String(30), nullable=False)
+    config_encrypted = Column(Text, nullable=False)
+    notify_on = Column(JSON, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
+    )
+
+
+class AutomationNotificationDelivery(Base):
+    """Transactional outbox record for one execution/channel/result event."""
+
+    __tablename__ = "automation_notification_deliveries"
+    __table_args__ = (
+        UniqueConstraint("event_key", name="uq_automation_notification_delivery_event"),
+        Index("idx_automation_notification_delivery_due", "status", "next_attempt_at"),
+        Index("idx_automation_notification_delivery_execution", "execution_id"),
+        Index("idx_automation_notification_delivery_project", "project_id", "created_at"),
+    )
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    execution_id = Column(Integer, ForeignKey("automation_executions.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(Integer, nullable=True, index=True)
+    channel_id = Column(
+        String(32), ForeignKey("automation_notification_channels.id", ondelete="SET NULL"), nullable=True
+    )
+    event_key = Column(String(180), nullable=False)
+    channel_type = Column(String(30), nullable=False)
+    payload_redacted = Column(JSON, nullable=False)
+    status = Column(String(20), nullable=False, default="queued")
+    attempts = Column(Integer, nullable=False, default=0)
+    next_attempt_at = Column(DateTime(timezone=True), nullable=True)
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
+    )
+
+
 class ArtifactManifest(Base):
     __tablename__ = "artifact_manifests"
     __table_args__ = (
@@ -929,10 +1006,14 @@ class CaptureSession(Base):
     """Redacted browser/HAR capture session, kept separate from executable assets."""
 
     __tablename__ = "capture_sessions"
-    __table_args__ = (Index("idx_capture_sessions_user_created", "user_id", "created_at"),)
+    __table_args__ = (
+        Index("idx_capture_sessions_user_created", "user_id", "created_at"),
+        Index("idx_capture_sessions_project_created", "project_id", "created_at"),
+    )
 
     id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
     user_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(Integer, nullable=True, index=True)
     origin = Column(String(40), nullable=False, default="desktop_browser")
     status = Column(String(20), nullable=False, default="capturing")
     policy_version = Column(String(40), nullable=False, default="v1")
@@ -966,6 +1047,7 @@ class CapturedExchange(Base):
     resource_type = Column(String(30), nullable=True)
     timing_ms = Column(Integer, nullable=True)
     failure_reason = Column(Text, nullable=True)
+    source_event_id = Column(String(64), nullable=True, index=True)
     selected = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -978,6 +1060,7 @@ class ImportJob(Base):
 
     id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
     user_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(Integer, nullable=True, index=True)
     source_type = Column(String(30), nullable=False)
     status = Column(String(20), nullable=False, default="previewed")
     summary = Column(JSON, nullable=True)

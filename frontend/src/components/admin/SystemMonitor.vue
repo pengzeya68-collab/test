@@ -53,10 +53,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import request from '../../utils/request'
 
-const loading = ref(false)
 const systemInfo = ref({})
 const processInfo = ref({})
 const autoRefresh = ref(false)

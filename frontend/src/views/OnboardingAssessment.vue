@@ -166,7 +166,7 @@
                 <h4 class="rec-title">{{ rec.title }}</h4>
                 <p class="rec-reason">{{ rec.reason }}</p>
               </div>
-              <el-icon size="20" color="#8b5cf6"><ArrowRight /></el-icon>
+              <el-icon size="20" color="var(--tm-color-primary)"><ArrowRight /></el-icon>
             </div>
           </div>
         </div>
@@ -309,9 +309,9 @@ const getScoreClass = (score) => {
 }
 
 const getBarGradient = (score) => {
-  if (score >= 80) return 'linear-gradient(90deg, #8b5cf6, #d946ef)'
-  if (score >= 60) return 'linear-gradient(90deg, #7c3aed, #a855f7)'
-  return 'linear-gradient(90deg, #64748b, #8b5cf6)'
+  if (score >= 80) return 'linear-gradient(90deg, var(--tm-color-primary), var(--tm-neon-pink))'
+  if (score >= 60) return 'linear-gradient(90deg, var(--tm-color-primary), #a855f7)'
+  return 'linear-gradient(90deg, var(--tm-text-muted), var(--tm-color-primary))'
 }
 
 const goToPath = (id) => {
@@ -341,7 +341,7 @@ const skipAssessment = () => {
 .assessment-page {
   min-height: 100vh;
   background: var(--tm-bg-page);
-  background-image: radial-gradient(ellipse at 30% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+  background-image: radial-gradient(ellipse at 30% 20%, rgba(var(--tm-color-primary-rgb), 0.08) 0%, transparent 50%),
                     radial-gradient(ellipse at 70% 80%, rgba(217, 70, 239, 0.05) 0%, transparent 50%);
   display: flex;
   align-items: center;
@@ -359,8 +359,8 @@ const skipAssessment = () => {
   padding: 60px 40px;
   background: rgba(18, 18, 31, 0.8);
   border-radius: 20px;
-  border: 1px solid rgba(139, 92, 246, 0.15);
-  box-shadow: 0 4px 30px rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.15);
+  box-shadow: 0 4px 30px rgba(var(--tm-color-primary-rgb), 0.1);
   backdrop-filter: blur(20px);
 }
 
@@ -372,7 +372,7 @@ const skipAssessment = () => {
 .intro-title {
   font-size: 36px;
   font-weight: 800;
-  background: linear-gradient(135deg, #8b5cf6, #d946ef);
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-neon-pink));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -381,7 +381,7 @@ const skipAssessment = () => {
 
 .intro-desc {
   font-size: 16px;
-  color: #94a3b8;
+  color: var(--tm-text-secondary);
   line-height: 1.8;
   margin-bottom: 40px;
 }
@@ -398,7 +398,7 @@ const skipAssessment = () => {
   align-items: center;
   gap: 8px;
   font-size: 15px;
-  color: #c084fc;
+  color: var(--tm-color-primary-light);
 }
 
 .info-icon {
@@ -411,13 +411,13 @@ const skipAssessment = () => {
   font-size: 18px;
   font-weight: 600;
   border-radius: 12px;
-  background: linear-gradient(135deg, #8b5cf6, #d946ef);
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-neon-pink));
   border: none;
-  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 4px 20px rgba(var(--tm-color-primary-rgb), 0.4);
 }
 
 .start-btn:hover {
-  box-shadow: 0 6px 30px rgba(139, 92, 246, 0.5);
+  box-shadow: 0 6px 30px rgba(var(--tm-color-primary-rgb), 0.5);
   transform: translateY(-2px);
 }
 
@@ -427,22 +427,22 @@ const skipAssessment = () => {
   font-size: 16px;
   border-radius: 12px;
   background: transparent;
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  color: #94a3b8;
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.3);
+  color: var(--tm-text-secondary);
   margin-top: 12px;
 }
 
 .skip-btn:hover {
-  border-color: rgba(139, 92, 246, 0.5);
-  color: #c084fc;
+  border-color: rgba(var(--tm-color-primary-rgb), 0.5);
+  color: var(--tm-color-primary-light);
 }
 
 .step-quiz {
   padding: 40px;
   background: rgba(18, 18, 31, 0.8);
   border-radius: 20px;
-  border: 1px solid rgba(139, 92, 246, 0.15);
-  box-shadow: 0 4px 30px rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.15);
+  box-shadow: 0 4px 30px rgba(var(--tm-color-primary-rgb), 0.1);
   backdrop-filter: blur(20px);
 }
 
@@ -452,7 +452,7 @@ const skipAssessment = () => {
 
 .progress-bar {
   height: 4px;
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
   border-radius: 2px;
   overflow: hidden;
   margin-bottom: 16px;
@@ -460,10 +460,10 @@ const skipAssessment = () => {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #8b5cf6, #d946ef);
+  background: linear-gradient(90deg, var(--tm-color-primary), var(--tm-neon-pink));
   border-radius: 2px;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 10px rgba(var(--tm-color-primary-rgb), 0.4);
 }
 
 .quiz-meta {
@@ -474,17 +474,17 @@ const skipAssessment = () => {
 
 .meta-dimension {
   font-size: 14px;
-  color: #c084fc;
+  color: var(--tm-color-primary-light);
   font-weight: 500;
   padding: 4px 12px;
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
   border-radius: 20px;
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.2);
 }
 
 .meta-count {
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--tm-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -511,22 +511,22 @@ const skipAssessment = () => {
   align-items: center;
   gap: 14px;
   padding: 16px 20px;
-  background: rgba(139, 92, 246, 0.04);
-  border: 1px solid rgba(139, 92, 246, 0.08);
+  background: rgba(var(--tm-color-primary-rgb), 0.04);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.08);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s ease;
 }
 
 .option-item:hover {
-  background: rgba(139, 92, 246, 0.08);
-  border-color: rgba(139, 92, 246, 0.2);
+  background: rgba(var(--tm-color-primary-rgb), 0.08);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.2);
 }
 
 .option-item.selected {
-  background: rgba(139, 92, 246, 0.12);
-  border-color: rgba(139, 92, 246, 0.4);
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.15);
+  background: rgba(var(--tm-color-primary-rgb), 0.12);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.4);
+  box-shadow: 0 0 16px rgba(var(--tm-color-primary-rgb), 0.15);
 }
 
 .option-label {
@@ -539,19 +539,19 @@ const skipAssessment = () => {
   font-size: 14px;
   font-weight: 700;
   flex-shrink: 0;
-  background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
+  color: var(--tm-color-primary);
   transition: all 0.25s ease;
 }
 
 .option-item.selected .option-label {
-  background: linear-gradient(135deg, #8b5cf6, #d946ef);
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-neon-pink));
   color: var(--tm-text-primary);
 }
 
 .option-text {
   font-size: 15px;
-  color: #cbd5e1;
+  color: var(--tm-text-regular);
   line-height: 1.5;
 }
 
@@ -560,15 +560,15 @@ const skipAssessment = () => {
   justify-content: flex-end;
   gap: 12px;
   padding-top: 20px;
-  border-top: 1px solid rgba(139, 92, 246, 0.1);
+  border-top: 1px solid rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .step-result {
   padding: 48px 40px;
   background: rgba(18, 18, 31, 0.8);
   border-radius: 20px;
-  border: 1px solid rgba(139, 92, 246, 0.15);
-  box-shadow: 0 4px 30px rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.15);
+  box-shadow: 0 4px 30px rgba(var(--tm-color-primary-rgb), 0.1);
   backdrop-filter: blur(20px);
 }
 
@@ -585,7 +585,7 @@ const skipAssessment = () => {
 .result-title {
   font-size: 32px;
   font-weight: 800;
-  background: linear-gradient(135deg, #8b5cf6, #d946ef);
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-neon-pink));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -594,7 +594,7 @@ const skipAssessment = () => {
 
 .result-subtitle {
   font-size: 16px;
-  color: #94a3b8;
+  color: var(--tm-text-secondary);
   margin: 0;
 }
 
@@ -619,14 +619,14 @@ const skipAssessment = () => {
 }
 
 .circle-bg {
-  stroke: rgba(139, 92, 246, 0.1);
+  stroke: rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .circle-progress {
-  stroke: #8b5cf6;
+  stroke: var(--tm-color-primary);
   stroke-linecap: round;
   transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.6));
+  filter: drop-shadow(0 0 6px rgba(var(--tm-color-primary-rgb), 0.6));
 }
 
 .score-inner {
@@ -640,7 +640,7 @@ const skipAssessment = () => {
 .score-value {
   font-size: 44px;
   font-weight: 900;
-  background: linear-gradient(135deg, #8b5cf6, #d946ef);
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-neon-pink));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -650,7 +650,7 @@ const skipAssessment = () => {
 
 .score-label {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--tm-text-secondary);
   letter-spacing: 2px;
   margin-top: 4px;
 }
@@ -663,19 +663,19 @@ const skipAssessment = () => {
 }
 
 .level-high {
-  color: #d946ef;
+  color: var(--tm-neon-pink);
   background: rgba(217, 70, 239, 0.1);
   border: 1px solid rgba(217, 70, 239, 0.2);
 }
 
 .level-mid {
-  color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.1);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  color: var(--tm-color-primary);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.2);
 }
 
 .level-low {
-  color: #64748b;
+  color: var(--tm-text-muted);
   background: rgba(100, 116, 139, 0.1);
   border: 1px solid rgba(100, 116, 139, 0.2);
 }
@@ -699,9 +699,9 @@ const skipAssessment = () => {
 
 .dimension-item {
   padding: 14px 16px;
-  background: rgba(139, 92, 246, 0.04);
+  background: rgba(var(--tm-color-primary-rgb), 0.04);
   border-radius: 10px;
-  border: 1px solid rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.08);
 }
 
 .dim-header {
@@ -723,20 +723,20 @@ const skipAssessment = () => {
 }
 
 .score-high {
-  color: #d946ef;
+  color: var(--tm-neon-pink);
 }
 
 .score-mid {
-  color: #8b5cf6;
+  color: var(--tm-color-primary);
 }
 
 .score-low {
-  color: #64748b;
+  color: var(--tm-text-muted);
 }
 
 .dim-bar {
   height: 4px;
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
   border-radius: 2px;
   overflow: hidden;
   margin-bottom: 6px;
@@ -746,12 +746,12 @@ const skipAssessment = () => {
   height: 100%;
   border-radius: 2px;
   transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 8px rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
 .dim-level {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--tm-text-secondary);
 }
 
 .result-recommendations {
@@ -769,23 +769,23 @@ const skipAssessment = () => {
   align-items: center;
   gap: 16px;
   padding: 16px 20px;
-  background: rgba(139, 92, 246, 0.06);
-  border: 1px solid rgba(139, 92, 246, 0.12);
+  background: rgba(var(--tm-color-primary-rgb), 0.06);
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.12);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s ease;
 }
 
 .rec-item:hover {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: rgba(139, 92, 246, 0.25);
+  background: rgba(var(--tm-color-primary-rgb), 0.1);
+  border-color: rgba(var(--tm-color-primary-rgb), 0.25);
   transform: translateX(4px);
 }
 
 .rec-priority {
   font-size: 12px;
   font-weight: 800;
-  color: #d946ef;
+  color: var(--tm-neon-pink);
   background: rgba(217, 70, 239, 0.1);
   padding: 4px 10px;
   border-radius: 6px;
@@ -805,7 +805,7 @@ const skipAssessment = () => {
 
 .rec-reason {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--tm-text-secondary);
   margin: 0;
   line-height: 1.5;
 }
@@ -815,7 +815,7 @@ const skipAssessment = () => {
   gap: 16px;
   justify-content: center;
   padding-top: 20px;
-  border-top: 1px solid rgba(139, 92, 246, 0.1);
+  border-top: 1px solid rgba(var(--tm-color-primary-rgb), 0.1);
 }
 
 .action-btn {
@@ -824,9 +824,9 @@ const skipAssessment = () => {
   font-size: 16px;
   font-weight: 600;
   border-radius: 12px;
-  background: linear-gradient(135deg, #8b5cf6, #d946ef);
+  background: linear-gradient(135deg, var(--tm-color-primary), var(--tm-neon-pink));
   border: none;
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 16px rgba(var(--tm-color-primary-rgb), 0.3);
 }
 
 .action-btn-secondary {
@@ -836,8 +836,8 @@ const skipAssessment = () => {
   font-weight: 600;
   border-radius: 12px;
   background: transparent;
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  color: #c084fc;
+  border: 1px solid rgba(var(--tm-color-primary-rgb), 0.3);
+  color: var(--tm-color-primary-light);
 }
 </style>
 

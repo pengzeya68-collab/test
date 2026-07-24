@@ -442,6 +442,7 @@ class DesktopAgentOut(AppBaseModel):
     agent_key: str
     name: str
     owner_id: int
+    project_id: Optional[int] = None
     team_id: Optional[int] = None
     hostname: Optional[str] = None
     os_version: Optional[str] = None

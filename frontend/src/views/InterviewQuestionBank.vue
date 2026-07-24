@@ -2,7 +2,7 @@
   <div class="interview-question-bank" style="position: relative; z-index: 1;">
     <!-- 鑳屾櫙鐗规晥 -->
     <div class="cyber-grid-bg" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;"></div>
-    <div class="glow-orb" style="position: absolute; top: 10%; right: 10%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(236,72,153,0.15), transparent 70%); border-radius: 50%; z-index: -1; pointer-events: none;"></div>
+    <div class="glow-orb" style="position: absolute; top: 10%; right: 10%; width: 300px; height: 300px; background: radial-gradient(circle, color-mix(in srgb, var(--tm-neon-pink) 15%, transparent), transparent 70%); border-radius: 50%; z-index: -1; pointer-events: none;"></div>
 
     <!-- 鍘熷缁撴瀯鎭㈠ -->
     <div class="page-header">
@@ -175,7 +175,6 @@ import request from '@/utils/request'
 import { renderMarkdown } from '@/utils/markdown'
 
 const questions = ref([])
-const categories = ref([])
 const filters = reactive({
   category: '',
   difficulty: '',
@@ -193,10 +192,6 @@ const currentQuestion = ref(null)
 onMounted(() => {
   fetchQuestions()
 })
-
-const fetchCategories = async () => {
-  categories.value = []
-}
 
 const fetchQuestions = async () => {
   loading.value = true
@@ -271,7 +266,7 @@ const viewQuestion = async (question) => {
   }
 }
 
-const toggleCollect = (question) => {
+const toggleCollect = () => {
   ElMessage.info('鏀惰棌鍔熻兘鏆傛湭寮€鏀撅紝鏁鏈熷緟')
   return
 }
@@ -492,7 +487,7 @@ const parseTags = (tags) => {
   background: rgba(var(--tm-bg-page-rgb), 0.5);
   padding: 20px;
   border-radius: 8px;
-  border-left: 4px solid #67c23a;
+  border-left: 4px solid var(--tm-color-success);
 }
 
 .detail-content p {
@@ -518,7 +513,7 @@ const parseTags = (tags) => {
   border-radius: 4px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
-  color: #e6a23c;
+  color: var(--tm-color-warning);
 }
 
 .detail-content pre {

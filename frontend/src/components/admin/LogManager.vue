@@ -91,16 +91,6 @@ const logStats = reactive({
   level_counts: {},
 })
 
-function getLevelType(level) {
-  const types = {
-    'DEBUG': 'info',
-    'INFO': '',
-    'WARNING': 'warning',
-    'ERROR': 'danger',
-  }
-  return types[level] || ''
-}
-
 async function loadLogStats() {
   try {
     const res = await request.get('/admin/system/logs/stats')

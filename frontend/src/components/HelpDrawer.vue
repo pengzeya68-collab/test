@@ -173,7 +173,7 @@ const renderRich = (text) => {
   margin: 0 0 12px 0;
   font-size: 15px;
   font-weight: 600;
-  color: var(--tm-text-primary, #e0e0e0);
+  color: var(--tm-text-primary, var(--tm-border-light));
 }
 
 .section-icon {
@@ -255,7 +255,7 @@ const renderRich = (text) => {
 }
 
 :deep(.help-drawer) {
-  background: var(--tm-bg-color, #1a1a2e) !important;
+  background: var(--tm-bg-color, var(--tm-bg-card-solid)) !important;
 }
 
 :deep(.help-drawer .el-drawer__header) {
@@ -264,7 +264,7 @@ const renderRich = (text) => {
   border-bottom: 1px solid var(--tm-border-light, rgba(255, 255, 255, 0.08));
   font-size: 16px;
   font-weight: 600;
-  color: var(--tm-text-primary, #e0e0e0);
+  color: var(--tm-text-primary, var(--tm-border-light));
 }
 
 :deep(.help-drawer .el-drawer__body) {

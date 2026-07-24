@@ -129,7 +129,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Delete, Download, Plus, Promotion, Refresh, Upload } from '@element-plus/icons-vue'
@@ -165,6 +165,8 @@ const loadingImport = ref(false)
 const committingImport = ref(false)
 const previewingScenario = ref(false)
 const previewStatus = ref('')
+let disposed = false
+let captureCandidatesRequest = 0
 
 const captureLabel = item => `${item.source_url || '未命名地址'} · ${item.status === 'completed' ? '已完成' : '采集中'} · ${new Date(item.started_at).toLocaleString('zh-CN')}`
 
@@ -195,7 +197,10 @@ async function loadCaptureSessions () {
   try {
     const response = await autoTestRequest.get('/auto-test/import/captures')
     captureSessions.value = response.captures || []
-    if (!selectedCaptureId.value) selectedCaptureId.value = captureSessions.value.find(item => item.status === 'completed')?.id || ''
+    const selectedStillAvailable = captureSessions.value.some(item => item.id === selectedCaptureId.value && item.status === 'completed')
+    if (!selectedStillAvailable) {
+      selectedCaptureId.value = captureSessions.value.find(item => item.status === 'completed')?.id || ''
+    }
   } catch (error) {
     ElMessage.error(error.response?.data?.detail || '加载抓包会话失败')
   } finally {
@@ -204,20 +209,35 @@ async function loadCaptureSessions () {
 }
 
 async function loadCaptureCandidates () {
-  if (!selectedCaptureId.value) { captureCandidates.value = []; return }
+  const captureId = selectedCaptureId.value
+  const request = ++captureCandidatesRequest
+  if (!captureId) { captureCandidates.value = []; return }
   loadingCandidates.value = true
+  let response
   try {
-    const response = await autoTestRequest.get(`/auto-test/import/captures/${selectedCaptureId.value}`)
-    captureCandidates.value = response.candidates || []
-    captureAssertions.value = Object.fromEntries(captureCandidates.value.map(row => [row.id, structuredClone(row.assert_rules || [])]))
-    captureSelectedRows.value = captureCandidates.value.filter(item => item.selected)
-    scenarioName.value = scenarioName.value || `抓包场景 ${selectedCaptureId.value.slice(0, 8)}`
-    await nextTick()
-    captureSelectedRows.value.forEach(row => captureTable.value?.toggleRowSelection(row, true))
+    response = await autoTestRequest.get(`/auto-test/import/captures/${captureId}`)
   } catch (error) {
-    ElMessage.error(error.response?.data?.detail || '加载抓包候选失败')
+    if (!disposed && request === captureCandidatesRequest && captureId === selectedCaptureId.value) {
+      ElMessage.error(error.response?.data?.detail || '加载抓包候选失败')
+    }
+    return
+  }
+  if (disposed || request !== captureCandidatesRequest || captureId !== selectedCaptureId.value) return
+  // 页面加载与失败诊断流量属于工作台证据，不应被误生成为可执行 API 用例。
+  captureCandidates.value = (response.candidates || []).filter(item => item.convertible !== false)
+  // Axios/Vue may wrap nested response arrays in reactive proxies.  Browser
+  // structuredClone rejects proxies, while assertion rules are JSON data by
+  // contract, so a JSON copy is both sufficient and portable.
+  captureAssertions.value = Object.fromEntries(captureCandidates.value.map(row => [row.id, JSON.parse(JSON.stringify(row.assert_rules || []))]))
+  captureSelectedRows.value = captureCandidates.value.filter(item => item.selected)
+  scenarioName.value = scenarioName.value || `抓包场景 ${captureId.slice(0, 8)}`
+  try {
+    await nextTick()
+    if (!disposed && request === captureCandidatesRequest) {
+      captureSelectedRows.value.forEach(row => captureTable.value?.toggleRowSelection(row, true))
+    }
   } finally {
-    loadingCandidates.value = false
+    if (!disposed && request === captureCandidatesRequest) loadingCandidates.value = false
   }
 }
 
@@ -379,8 +399,27 @@ function openScenario () {
   router.push({ path: '/auto-test', query: { tab: 'scenarios', scenarioId: String(result.value.scenario_id) } })
 }
 
-watch(selectedCaptureId, loadCaptureCandidates)
-onMounted(loadCaptureSessions)
+watch(selectedCaptureId, () => { void loadCaptureCandidates() })
+function invalidateCaptureCandidateLoad () {
+  disposed = true
+  captureCandidatesRequest += 1
+}
+onDeactivated(invalidateCaptureCandidateLoad)
+onBeforeUnmount(invalidateCaptureCandidateLoad)
+onActivated(() => {
+  disposed = false
+  void loadCaptureCandidates()
+})
+onMounted(async () => {
+  await loadCaptureSessions()
+  // A capture ID passed by the recorder is already available before this
+  // component mounts, so the watcher has not observed it changing.  Only
+  // load it explicitly in that case; selections made by the refresh above
+  // are loaded by the watcher exactly once.
+  if (route.query.captureId && selectedCaptureId.value === route.query.captureId) {
+    await loadCaptureCandidates()
+  }
+})
 </script>
 
 <style scoped>

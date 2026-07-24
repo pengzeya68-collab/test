@@ -499,6 +499,7 @@ class AutoTestScenarioBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="场景名称")
     description: Optional[str] = Field(None, description="场景描述")
     is_active: bool = Field(True, description="是否启用")
+    fail_fast: bool = Field(False, description="步骤失败时是否停止执行后续步骤")
 
 
 class AutoTestScenarioCreate(AutoTestScenarioBase):
@@ -509,6 +510,7 @@ class AutoTestScenarioUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
     is_active: Optional[bool] = None
+    fail_fast: Optional[bool] = None
 
 
 class AutoTestScenarioResponse(AutoTestScenarioBase):

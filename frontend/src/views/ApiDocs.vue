@@ -364,7 +364,7 @@ import { ElMessage } from 'element-plus'
 import {
   ArrowLeft, Refresh, Share, Download, ArrowDown, Document,
   Folder, Link, Tools, CopyDocument, Timer, Connection,
-  TrendCharts, Key, Search
+  TrendCharts, Key
 } from '@element-plus/icons-vue'
 import JsonEditor from '@/views/JsonEditor.vue'
 import { autoTestRequest } from '@/utils/request'
@@ -955,7 +955,7 @@ onMounted(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f7fa;
+  background: var(--tm-bg-elevated);
 }
 
 .doc-header {
@@ -964,7 +964,7 @@ onMounted(() => {
   align-items: center;
   padding: 12px 20px;
   background: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--tm-border-light);
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
@@ -977,17 +977,17 @@ onMounted(() => {
 .back-icon {
   font-size: 20px;
   cursor: pointer;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .back-icon:hover {
-  color: #409eff;
+  color: var(--tm-color-primary);
 }
 
 .header-left h2 {
   margin: 0;
   font-size: 18px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .header-right {
@@ -1010,7 +1010,7 @@ onMounted(() => {
 .doc-nav {
   width: 280px;
   background: #fff;
-  border-right: 1px solid #e4e7ed;
+  border-right: 1px solid var(--tm-border-light);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1021,9 +1021,9 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--tm-border-light);
   font-weight: 500;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .nav-stats {
@@ -1031,8 +1031,8 @@ onMounted(() => {
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   padding: 12px;
-  background: #f5f7fa;
-  border-bottom: 1px solid #ebeef5;
+  background: var(--tm-bg-elevated);
+  border-bottom: 1px solid var(--tm-border-light);
 }
 
 .stat-item {
@@ -1043,16 +1043,16 @@ onMounted(() => {
 }
 
 .stat-label {
-  color: #909399;
+  color: var(--tm-color-info);
 }
 
 .stat-value {
   font-weight: 500;
 }
 
-.stat-value.success { color: #67c23a; }
-.stat-value.warning { color: #e6a23c; }
-.stat-value.info { color: #909399; }
+.stat-value.success { color: var(--tm-color-success); }
+.stat-value.warning { color: var(--tm-color-warning); }
+.stat-value.info { color: var(--tm-color-info); }
 
 .group-tree {
   flex: 1;
@@ -1100,7 +1100,7 @@ onMounted(() => {
 .api-title h3 {
   margin: 0;
   font-size: 20px;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .api-actions {
@@ -1123,13 +1123,13 @@ onMounted(() => {
 
 .param-section h4, .body-section h4 {
   margin: 0 0 12px 0;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .content-type-label {
   padding: 8px 12px;
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
+  background: var(--tm-bg-elevated);
+  border: 1px solid var(--tm-border-light);
   border-radius: 4px;
   font-family: monospace;
   margin-bottom: 12px;
@@ -1142,7 +1142,7 @@ onMounted(() => {
 
 .response-example {
   margin-bottom: 20px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--tm-border-light);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -1152,20 +1152,20 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: #f5f7fa;
-  border-bottom: 1px solid #e4e7ed;
+  background: var(--tm-bg-elevated);
+  border-bottom: 1px solid var(--tm-border-light);
 }
 
 .example-status {
   flex: 1;
-  color: #606266;
+  color: var(--tm-text-regular);
 }
 
 .example-time {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #909399;
+  color: var(--tm-color-info);
   font-size: 12px;
 }
 
@@ -1175,7 +1175,7 @@ onMounted(() => {
 }
 
 .code-block {
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--tm-border-light);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -1185,15 +1185,15 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background: #f5f7fa;
-  border-bottom: 1px solid #e4e7ed;
+  background: var(--tm-bg-elevated);
+  border-bottom: 1px solid var(--tm-border-light);
   font-weight: 500;
 }
 
 .code-block pre {
   margin: 0;
   padding: 16px;
-  background: #fafafa;
+  background: var(--tm-text-primary);
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;
   line-height: 1.5;
@@ -1210,7 +1210,7 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   margin: 0 0 12px 0;
-  color: #303133;
+  color: var(--tm-text-primary);
 }
 
 .mock-info p {
@@ -1220,8 +1220,8 @@ onMounted(() => {
 .mock-url {
   display: block;
   padding: 8px 12px;
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
+  background: var(--tm-bg-elevated);
+  border: 1px solid var(--tm-border-light);
   border-radius: 4px;
   margin-top: 8px;
   font-family: monospace;
@@ -1246,12 +1246,12 @@ onMounted(() => {
 .metric-value {
   font-size: 24px;
   font-weight: 500;
-  color: #409eff;
+  color: var(--tm-color-primary);
 }
 
 .metric-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--tm-color-info);
   margin-top: 4px;
 }
 
@@ -1259,14 +1259,14 @@ onMounted(() => {
 .doc-toc {
   width: 160px;
   background: #fff;
-  border-left: 1px solid #e4e7ed;
+  border-left: 1px solid var(--tm-border-light);
   padding: 16px;
   overflow-y: auto;
 }
 
 .toc-title {
   font-weight: 500;
-  color: #303133;
+  color: var(--tm-text-primary);
   margin-bottom: 16px;
 }
 
@@ -1279,19 +1279,19 @@ onMounted(() => {
 .toc-list li {
   padding: 8px 12px;
   cursor: pointer;
-  color: #606266;
+  color: var(--tm-text-regular);
   border-left: 2px solid transparent;
   transition: all 0.2s;
 }
 
 .toc-list li:hover {
-  color: #409eff;
+  color: var(--tm-color-primary);
   background: #ecf5ff;
 }
 
 .toc-list li.active {
-  color: #409eff;
-  border-left-color: #409eff;
+  color: var(--tm-color-primary);
+  border-left-color: var(--tm-color-primary);
   background: #ecf5ff;
 }
 
@@ -1301,12 +1301,12 @@ onMounted(() => {
 }
 
 .expire-info {
-  color: #909399;
+  color: var(--tm-color-info);
   font-size: 12px;
 }
 
 .form-tip {
-  color: #909399;
+  color: var(--tm-color-info);
   font-size: 12px;
   line-height: 1.4;
   margin-top: 4px;

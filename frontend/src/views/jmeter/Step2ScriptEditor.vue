@@ -38,7 +38,7 @@
     <div class="step2-editor-layout">
       <!-- 左：树 -->
       <TreeEditor
-        v-model="scriptTree"
+        :model-value="scriptTree" @update:model-value="onScriptTreeUpdate"
         :selected-uid="selectedUid"
         :total-samplers="totalSamplers"
         :total-nodes="totalNodes"
@@ -107,7 +107,7 @@ const props = defineProps({
   aiValidationResult: { type: Object, default: null },
 })
 
-const emit = defineEmits([
+defineEmits([
   'select-node',
   'add-root-element',
   'add-child',
@@ -150,7 +150,7 @@ const allSamplers = computed(() => {
         url: node.props?.url || node.props?.path || ''
       })
     }
-    ;(node.children || []).forEach(walk)
+    (node.children || []).forEach(walk)
   }
   walk(props.scriptTree)
   return list
@@ -375,8 +375,8 @@ defineExpose({
   transform: translate(-50%, -50%); width: 2px; height: 32px;
   background: rgba(148,163,184,0.2); border-radius: 2px; transition: background .2s;
 }
-.drag-handle:hover, .drag-handle.active { background: rgba(99,102,241,0.06); }
-.drag-handle:hover::after, .drag-handle.active::after { background: rgba(99,102,241,0.5); height: 48px; }
+.drag-handle:hover, .drag-handle.active { background: rgba(var(--tm-color-primary-rgb),0.06); }
+.drag-handle:hover::after, .drag-handle.active::after { background: rgba(var(--tm-color-primary-rgb),0.5); height: 48px; }
 .editor-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
 .panel {
@@ -400,16 +400,16 @@ defineExpose({
   display: flex; align-items: flex-start; gap: 14px;
   padding: 12px 16px; margin: 0 18px 8px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.09) 0%, rgba(139,92,246,0.06) 40%, rgba(168,85,247,0.04) 100%);
-  border: 1px solid rgba(99,102,241,0.18);
-  box-shadow: 0 4px 16px rgba(99,102,241,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
+  background: linear-gradient(135deg, rgba(var(--tm-color-primary-rgb),0.09) 0%, rgba(var(--tm-color-primary-rgb),0.06) 40%, rgba(168,85,247,0.04) 100%);
+  border: 1px solid rgba(var(--tm-color-primary-rgb),0.18);
+  box-shadow: 0 4px 16px rgba(var(--tm-color-primary-rgb),0.06), inset 0 1px 0 rgba(255,255,255,0.5);
   position: relative; overflow: hidden;
   flex-shrink: 0;
 }
 .summary-banner::before {
   content: ''; position: absolute; top: -30px; right: -30px;
   width: 120px; height: 120px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--tm-color-primary-rgb),0.1) 0%, transparent 70%);
 }
 .summary-banner-empty {
   background: linear-gradient(135deg, rgba(241,245,249,0.9), rgba(248,250,252,0.8));
@@ -419,13 +419,13 @@ defineExpose({
 .summary-banner-empty::before { display: none; }
 .summary-banner-icon { font-size: 28px; line-height: 1; flex-shrink: 0; margin-top: 2px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08)); z-index: 1; }
 .summary-banner-body { flex: 1; min-width: 0; z-index: 1; }
-.summary-banner-title { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 3px; }
+.summary-banner-title { font-size: 13px; font-weight: 700; color: var(--tm-bg-elevated); margin-bottom: 3px; }
 .summary-banner-text { font-size: 12.5px; line-height: 1.55; color: #475569; font-weight: 500; }
-.summary-banner-empty .summary-banner-text { font-size: 12.5px; font-weight: 400; color: #64748b; }
+.summary-banner-empty .summary-banner-text { font-size: 12.5px; font-weight: 400; color: var(--tm-text-muted); }
 .summary-banner-stats { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .summary-banner-stats :deep(.el-tag) {
   font-size: 11.5px; padding: 3px 10px; border-radius: 7px;
-  font-weight: 600; border: 1px solid rgba(99,102,241,0.15);
+  font-weight: 600; border: 1px solid rgba(var(--tm-color-primary-rgb),0.15);
   background: rgba(255,255,255,0.7);
 }
 </style>

@@ -61,11 +61,11 @@
             <div class="stat-label">鎬婚鏁</div>
           </div>
           <div class="stat-card">
-            <div class="stat-number" style="color: #67c23a;">{{ result.statistics.correct_count }}</div>
+            <div class="stat-number" style="color: var(--tm-color-success);">{{ result.statistics.correct_count }}</div>
             <div class="stat-label">鍋氬</div>
           </div>
           <div class="stat-card">
-            <div class="stat-number" style="color: #f56c6c;">{{ result.statistics.wrong_count }}</div>
+            <div class="stat-number" style="color: var(--tm-color-danger);">{{ result.statistics.wrong_count }}</div>
             <div class="stat-label">鍋氶敊</div>
           </div>
           <div class="stat-card">
@@ -141,8 +141,8 @@
                 >
                   <span class="option-letter">{{ String.fromCharCode(65 + optIndex) }}.</span>
                   <span class="option-text">{{ option }}</span>
-                  <el-icon v-if="(item.question.correct_answer || '').includes(String.fromCharCode(65 + optIndex))" class="correct-icon" color="#67c23a"><Check /></el-icon>
-                  <el-icon v-if="(item.user_answer || '').includes(String.fromCharCode(65 + optIndex)) && !(item.question.correct_answer || '').includes(String.fromCharCode(65 + optIndex))" class="wrong-icon" color="#f56c6c"><Close /></el-icon>
+                  <el-icon v-if="(item.question.correct_answer || '').includes(String.fromCharCode(65 + optIndex))" class="correct-icon" color="var(--tm-color-success)"><Check /></el-icon>
+                  <el-icon v-if="(item.user_answer || '').includes(String.fromCharCode(65 + optIndex)) && !(item.question.correct_answer || '').includes(String.fromCharCode(65 + optIndex))" class="wrong-icon" color="var(--tm-color-danger)"><Close /></el-icon>
                 </div>
               </div>
               
@@ -249,11 +249,11 @@ const getQuestionTypeText = (type) => {
 }
 
 const getScoreColor = (score, total) => {
-  if (!total) return '#f56c6c'
+  if (!total) return 'var(--tm-color-danger)'
   const rate = score / total
-  if (rate >= 0.8) return '#67c23a'
-  if (rate >= 0.6) return '#e6a23c'
-  return '#f56c6c'
+  if (rate >= 0.8) return 'var(--tm-color-success)'
+  if (rate >= 0.6) return 'var(--tm-color-warning)'
+  return 'var(--tm-color-danger)'
 }
 
 </script>
@@ -289,7 +289,7 @@ const getScoreColor = (score, total) => {
 }
 
 .back-btn:hover {
-  color: #409eff;
+  color: var(--tm-color-primary);
   transform: translateX(-4px);
 }
 
@@ -326,21 +326,21 @@ const getScoreColor = (score, total) => {
 }
 
 .circle-bg {
-  stroke: #f0f2f5;
+  stroke: var(--tm-bg-page);
 }
 
 .circle-progress {
-  stroke: #409eff;
+  stroke: var(--tm-color-primary);
   stroke-linecap: round;
   transition: stroke-dashoffset 1s ease;
 }
 
 .score-circle.passed .circle-progress {
-  stroke: #67c23a;
+  stroke: var(--tm-color-success);
 }
 
 .score-circle.failed .circle-progress {
-  stroke: #f56c6c;
+  stroke: var(--tm-color-danger);
 }
 
 .score-content {
@@ -359,11 +359,11 @@ const getScoreColor = (score, total) => {
 }
 
 .score-circle.passed .score-number {
-  color: #67c23a;
+  color: var(--tm-color-success);
 }
 
 .score-circle.failed .score-number {
-  color: #f56c6c;
+  color: var(--tm-color-danger);
 }
 
 .score-total {
@@ -414,7 +414,7 @@ const getScoreColor = (score, total) => {
 .stat-number {
   font-size: 32px;
   font-weight: bold;
-  color: #409eff;
+  color: var(--tm-color-primary);
   margin-bottom: 8px;
 }
 
@@ -436,7 +436,7 @@ const getScoreColor = (score, total) => {
   color: var(--tm-text-primary);
   margin: 0 0 24px 0;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tm-bg-page);
 }
 
 .type-stats {
@@ -484,7 +484,7 @@ const getScoreColor = (score, total) => {
 
 .question-item {
   padding-bottom: 32px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tm-bg-page);
 }
 
 .question-item:last-child {
@@ -551,12 +551,12 @@ const getScoreColor = (score, total) => {
 
 .option-item.correct {
   background: #f0f9ff;
-  border: 1px solid #67c23a;
+  border: 1px solid var(--tm-color-success);
 }
 
 .option-item.wrong {
   background: #fef0f0;
-  border: 1px solid #f56c6c;
+  border: 1px solid var(--tm-color-danger);
 }
 
 .option-letter {
@@ -598,27 +598,27 @@ const getScoreColor = (score, total) => {
 
 .answer-content.correct {
   background: #f0f9ff;
-  color: #67c23a;
-  border-left: 4px solid #67c23a;
+  color: var(--tm-color-success);
+  border-left: 4px solid var(--tm-color-success);
 }
 
 .answer-content.wrong {
   background: #fef0f0;
-  color: #f56c6c;
-  border-left: 4px solid #f56c6c;
+  color: var(--tm-color-danger);
+  border-left: 4px solid var(--tm-color-danger);
 }
 
 .analysis-section {
   padding: 16px;
   background: #ecf5ff;
   border-radius: 8px;
-  border-left: 4px solid #409eff;
+  border-left: 4px solid var(--tm-color-primary);
 }
 
 .analysis-label {
   font-size: 14px;
   font-weight: 500;
-  color: #409eff;
+  color: var(--tm-color-primary);
   margin-bottom: 8px;
 }
 

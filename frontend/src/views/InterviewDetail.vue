@@ -376,11 +376,11 @@ const formatDateTime = (dateTimeStr) => {
 }
 
 .score-badge.passed {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+  background: linear-gradient(135deg, var(--tm-color-success) 0%, #85ce61 100%);
 }
 
 .score-badge.failed {
-  background: linear-gradient(135deg, #f56c6c 0%, #f78989 100%);
+  background: linear-gradient(135deg, var(--tm-color-danger) 0%, #f78989 100%);
 }
 
 .score-number {
@@ -425,9 +425,9 @@ const formatDateTime = (dateTimeStr) => {
 
 .suggestions-text {
   padding: 16px;
-  background: rgba(230, 162, 60, 0.1);
+  background: color-mix(in srgb, var(--tm-color-warning) 10%, transparent);
   border-radius: 8px;
-  border-left: 4px solid #e6a23c;
+  border-left: 4px solid var(--tm-color-warning);
   font-size: 15px;
   line-height: 2;
   color: var(--tm-text-primary);
@@ -542,9 +542,9 @@ const formatDateTime = (dateTimeStr) => {
 }
 
 .correct-answer {
-  background: rgba(103, 194, 58, 0.1);
-  border-left: 4px solid #67c23a;
-  color: #67c23a;
+  background: color-mix(in srgb, var(--tm-color-success) 10%, transparent);
+  border-left: 4px solid var(--tm-color-success);
+  color: var(--tm-color-success);
 }
 
 .action-buttons {
@@ -595,7 +595,7 @@ const formatDateTime = (dateTimeStr) => {
   border-radius: 4px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
-  color: #e6a23c;
+  color: var(--tm-color-warning);
 }
 
 @media (max-width: 768px) {

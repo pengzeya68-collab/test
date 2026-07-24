@@ -41,6 +41,12 @@ TestingSessionLocal = async_sessionmaker(
 @pytest_asyncio.fixture(scope="session")
 async def _init_db():
     """整个测试 session 只建一次表"""
+    # Ensure workspace / autotest / ui models register on Base.metadata
+    import fastapi_backend.models.workspace  # noqa: F401
+    import fastapi_backend.models.autotest  # noqa: F401
+    import fastapi_backend.models.ui_automation  # noqa: F401
+    import fastapi_backend.models.feature_upgrades  # noqa: F401
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
