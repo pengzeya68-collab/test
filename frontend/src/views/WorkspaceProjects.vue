@@ -105,7 +105,8 @@ async function deleteProject(row) {
     window.dispatchEvent(new Event('testmaster-projects-changed'))
   } catch (error) {
     if (error === 'cancel' || error === 'close') return
-    ElMessage.error(error?.response?.data?.detail?.message || error.message || '删除项目失败')
+    const detail = error?.response?.data?.detail
+    ElMessage.error((typeof detail === 'string' ? detail : detail?.message) || error.message || '删除项目失败')
   } finally {
     deletingId.value = null
   }

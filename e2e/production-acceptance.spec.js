@@ -120,6 +120,13 @@ test.describe('公网生产闭环验收', () => {
 
       // A production fixture is only acceptable when its full deletion path
       // succeeds and the project is no longer discoverable afterwards.
+      const blockedDeletion = await request.delete(api(`/api/workspace/projects/${projectId}`), {
+        headers: authHeaders(),
+      });
+      const blockedDetail = (await blockedDeletion.json()).detail;
+      const blockers = JSON.parse(blockedDeletion.headers()['x-testmaster-blockers'] || '{}');
+      expect(blockedDeletion.status(), blockedDetail).toBe(409);
+      expect(Object.keys(blockers)).not.toHaveLength(0);
       await expectDeleted(
         await request.delete(api(`/api/auto-test/scenarios/${scenarioId}`), { headers: projectHeaders }),
         'delete scenario fixture',

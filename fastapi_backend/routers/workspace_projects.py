@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
@@ -137,9 +138,13 @@ async def delete_project(
     except project_service.ProjectDeletionForbiddenError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except project_service.ProjectDeletionConflictError as exc:
+        blocker_summary = "、".join(
+            f"{label} {count} 项" for label, count in exc.blockers.items()
+        )
         raise HTTPException(
             status_code=409,
-            detail={"message": "请先清理项目成员和资产后再删除", "blockers": exc.blockers},
+            detail=f"请先清理项目成员和资产后再删除：{blocker_summary}",
+            headers={"X-TestMaster-Blockers": json.dumps(exc.blockers, ensure_ascii=True)},
         ) from exc
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
