@@ -140,9 +140,7 @@ async def test_empty_team_project_can_be_deleted_by_its_owner(db_session):
     project = await project_service.create_project(db_session, owner_id=81, name="Disposable")
     await db_session.flush()
 
-    await project_service.delete_empty_project(
-        db_session, user_id=81, project_id=project.id
-    )
+    await project_service.delete_empty_project(db_session, user_id=81, project_id=project.id)
 
     assert await db_session.get(WorkspaceProject, project.id) is None
 
@@ -163,9 +161,7 @@ async def test_project_deletion_is_blocked_by_assets_and_members(db_session):
     await db_session.flush()
 
     with pytest.raises(project_service.ProjectDeletionConflictError) as exc_info:
-        await project_service.delete_empty_project(
-            db_session, user_id=82, project_id=project.id
-        )
+        await project_service.delete_empty_project(db_session, user_id=82, project_id=project.id)
 
     assert exc_info.value.blockers["接口用例"] == 1
     assert exc_info.value.blockers["项目成员"] == 2
@@ -177,33 +173,33 @@ async def test_personal_project_cannot_be_deleted(db_session):
     await db_session.flush()
 
     with pytest.raises(project_service.ProjectDeletionForbiddenError):
-        await project_service.delete_empty_project(
-            db_session, user_id=84, project_id=personal.id
-        )
+        await project_service.delete_empty_project(db_session, user_id=84, project_id=personal.id)
 
 
 @pytest.mark.asyncio
 async def test_project_purge_removes_completed_assets_and_project(db_session):
     """The explicit destructive lifecycle must not leave project-bound records behind."""
     project = await project_service.create_project(db_session, owner_id=85, name="Purge me")
-    db_session.add_all([
-        AutoTestCase(name="purge case", method="GET", url="/health", user_id=85, project_id=project.id),
-        CaptureSession(user_id=85, project_id=project.id, origin="desktop_browser"),
-        UICase(name="purge ui", user_id=85, project_id=project.id),
-        UIRun(run_key="purge-ui-run", user_id=85, project_id=project.id, status="passed"),
-        FlakyTestRecord(project_id=project.id, case_type="ui", case_id=1, case_name="purge ui"),
-        FlakyDetectionConfig(project_id=project.id),
-        AutomationExecution(
-            public_id="purge-execution",
-            execution_type="scenario",
-            target_type="scenario",
-            target_id=1,
-            user_id=85,
-            project_id=project.id,
-            idempotency_key="purge-execution-key",
-            status="passed",
-        ),
-    ])
+    db_session.add_all(
+        [
+            AutoTestCase(name="purge case", method="GET", url="/health", user_id=85, project_id=project.id),
+            CaptureSession(user_id=85, project_id=project.id, origin="desktop_browser"),
+            UICase(name="purge ui", user_id=85, project_id=project.id),
+            UIRun(run_key="purge-ui-run", user_id=85, project_id=project.id, status="passed"),
+            FlakyTestRecord(project_id=project.id, case_type="ui", case_id=1, case_name="purge ui"),
+            FlakyDetectionConfig(project_id=project.id),
+            AutomationExecution(
+                public_id="purge-execution",
+                execution_type="scenario",
+                target_type="scenario",
+                target_id=1,
+                user_id=85,
+                project_id=project.id,
+                idempotency_key="purge-execution-key",
+                status="passed",
+            ),
+        ]
+    )
     await db_session.flush()
 
     deleted = await project_service.purge_project(db_session, user_id=85, project_id=project.id)
@@ -453,36 +449,55 @@ async def test_capture_agents_and_notifications_are_project_scoped(db_session):
     user_id = 4004
     p1 = await project_service.create_project(db_session, owner_id=user_id, name="Operations")
     p2 = await project_service.create_project(db_session, owner_id=user_id, name="Mobile")
-    agent_p1, _ = await agent_service.register_agent(
-        db_session, user_id, {"name": "ops-agent"}, project_id=p1.id
+    agent_p1, _ = await agent_service.register_agent(db_session, user_id, {"name": "ops-agent"}, project_id=p1.id)
+    agent_p2, _ = await agent_service.register_agent(db_session, user_id, {"name": "mobile-agent"}, project_id=p2.id)
+    db_session.add_all(
+        [
+            CaptureSession(user_id=user_id, project_id=p1.id, source_url="https://ops.example.test"),
+            CaptureSession(user_id=user_id, project_id=p2.id, source_url="https://mobile.example.test"),
+            AutomationNotificationChannel(
+                user_id=user_id,
+                project_id=p1.id,
+                name="ops",
+                channel_type="email",
+                config_encrypted="encrypted",
+                notify_on=["failed"],
+                is_active=True,
+            ),
+            AutomationNotificationChannel(
+                user_id=user_id,
+                project_id=p2.id,
+                name="mobile",
+                channel_type="email",
+                config_encrypted="encrypted",
+                notify_on=["failed"],
+                is_active=True,
+            ),
+        ]
     )
-    agent_p2, _ = await agent_service.register_agent(
-        db_session, user_id, {"name": "mobile-agent"}, project_id=p2.id
-    )
-    db_session.add_all([
-        CaptureSession(user_id=user_id, project_id=p1.id, source_url="https://ops.example.test"),
-        CaptureSession(user_id=user_id, project_id=p2.id, source_url="https://mobile.example.test"),
-        AutomationNotificationChannel(
-            user_id=user_id, project_id=p1.id, name="ops", channel_type="email",
-            config_encrypted="encrypted", notify_on=["failed"], is_active=True,
-        ),
-        AutomationNotificationChannel(
-            user_id=user_id, project_id=p2.id, name="mobile", channel_type="email",
-            config_encrypted="encrypted", notify_on=["failed"], is_active=True,
-        ),
-    ])
     execution = AutomationExecution(
-        execution_type="suite", target_type="suite", target_id=1, user_id=user_id,
-        project_id=p1.id, status="failed", idempotency_key="project-scope-execution",
+        execution_type="suite",
+        target_type="suite",
+        target_id=1,
+        user_id=user_id,
+        project_id=p1.id,
+        status="failed",
+        idempotency_key="project-scope-execution",
     )
     db_session.add(execution)
     await db_session.flush()
 
-    assert [agent.id for agent in await agent_service.list_agents(db_session, user_id, project_id=p1.id)] == [agent_p1.id]
-    assert [agent.id for agent in await agent_service.list_agents(db_session, user_id, project_id=p2.id)] == [agent_p2.id]
-    captures = (await db_session.scalars(
-        select(CaptureSession).where(CaptureSession.user_id == user_id, CaptureSession.project_id == p1.id)
-    )).all()
+    assert [agent.id for agent in await agent_service.list_agents(db_session, user_id, project_id=p1.id)] == [
+        agent_p1.id
+    ]
+    assert [agent.id for agent in await agent_service.list_agents(db_session, user_id, project_id=p2.id)] == [
+        agent_p2.id
+    ]
+    captures = (
+        await db_session.scalars(
+            select(CaptureSession).where(CaptureSession.user_id == user_id, CaptureSession.project_id == p1.id)
+        )
+    ).all()
     assert [capture.source_url for capture in captures] == ["https://ops.example.test"]
 
     assert await queue_execution_notifications(db_session, execution, {"status": "failed"}) == 1

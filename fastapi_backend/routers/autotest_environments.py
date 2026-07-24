@@ -104,9 +104,7 @@ async def _load_env_with_parent(
     else:
         filters.append(AutoTestEnvironment.user_id == user_id)
     result = await db.execute(
-        select(AutoTestEnvironment)
-        .options(selectinload(AutoTestEnvironment.parent))
-        .filter(*filters)
+        select(AutoTestEnvironment).options(selectinload(AutoTestEnvironment.parent)).filter(*filters)
     )
     return result.scalar_one_or_none()
 
@@ -163,11 +161,7 @@ async def create_environment(
 
     scope = await _env_scope(db, current_user.id, project_id)
     if data.get("is_default"):
-        await db.execute(
-            update(AutoTestEnvironment)
-            .where(scope)
-            .values(is_default=False)
-        )
+        await db.execute(update(AutoTestEnvironment).where(scope).values(is_default=False))
 
     data["user_id"] = current_user.id
     data["project_id"] = int(project_id)

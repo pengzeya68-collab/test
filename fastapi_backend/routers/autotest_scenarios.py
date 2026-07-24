@@ -73,8 +73,6 @@ async def _case_scope_for_scenario(db: AsyncSession, user_id: int, project_id: i
     )
 
 
-
-
 async def _load_scenario(
     db: AsyncSession,
     scenario_id: int,
@@ -206,9 +204,7 @@ async def get_scenario(
     project_id: int = Depends(get_active_project_id),
 ):
     """获取场景详情（项目成员共享）"""
-    scenario = await _load_scenario(
-        db, scenario_id, current_user.id, project_id=project_id, with_steps=True
-    )
+    scenario = await _load_scenario(db, scenario_id, current_user.id, project_id=project_id, with_steps=True)
     if not scenario:
         raise HTTPException(status_code=404, detail="场景不存在")
     return scenario
@@ -311,7 +307,9 @@ async def update_scenario_status(
 ):
     """更新场景启用/停用状态"""
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id)
+        )
     )
     db_scenario = result.scalar_one_or_none()
     if not db_scenario:
@@ -337,7 +335,9 @@ async def delete_scenario(
     project_id: int = Depends(get_active_project_id_member),
 ):
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id)
+        )
     )
     db_scenario = result.scalar_one_or_none()
     if not db_scenario:
@@ -466,7 +466,9 @@ async def add_step(
 ):
     """添加步骤"""
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id)
+        )
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="场景不存在")
@@ -475,7 +477,9 @@ async def add_step(
     if step.step_type == "api_request" or not step.step_type:
         if step.api_case_id:
             result = await db.execute(
-                select(AutoTestCase).where(AutoTestCase.id == step.api_case_id, await _case_scope_for_scenario(db, current_user.id, project_id))
+                select(AutoTestCase).where(
+                    AutoTestCase.id == step.api_case_id, await _case_scope_for_scenario(db, current_user.id, project_id)
+                )
             )
             if not result.scalar_one_or_none():
                 raise HTTPException(status_code=404, detail="指定的接口不存在")
@@ -704,7 +708,9 @@ async def create_or_update_dataset(
 ):
     """创建或更新场景的数据集（Upsert）"""
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id)
+        )
     )
     scenario = result.scalar_one_or_none()
     if not scenario:
@@ -885,7 +891,9 @@ async def run_scenario_with_pytest(
     """使用 Pytest 引擎执行数据驱动测试"""
     # 检查场景是否存在
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id)
+        )
     )
     scenario = result.scalar_one_or_none()
     if not scenario:

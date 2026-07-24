@@ -736,9 +736,7 @@ async def agent_heal_locator(
         "confidence": result.confidence,
         "strategy_used": result.strategy_used,
         "healed_locator": result.healed_locator,
-        "candidates": [
-            {"locator": c.locator, "score": c.score, "reason": c.reason} for c in result.candidates
-        ],
+        "candidates": [{"locator": c.locator, "score": c.score, "reason": c.reason} for c in result.candidates],
     }
 
 

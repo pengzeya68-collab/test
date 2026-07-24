@@ -123,10 +123,7 @@ def _normalize_request_body(raw_body: Any, content_type: str) -> Any:
         return None
     lowered = content_type.lower()
     if "application/x-www-form-urlencoded" in lowered and isinstance(raw_body, str):
-        return {
-            key: _redact_value(value, key)
-            for key, value in parse_qsl(raw_body, keep_blank_values=True)
-        }
+        return {key: _redact_value(value, key) for key, value in parse_qsl(raw_body, keep_blank_values=True)}
     if "multipart/form-data" in lowered:
         # Browser APIs do not expose a reliable, safe reconstruction of file
         # bytes.  Keep the request visible but require an explicit test file
@@ -174,7 +171,9 @@ def normalize_captured_exchange(value: Any) -> dict[str, Any]:
     except (TypeError, ValueError):
         timing_ms = 0
     response_body = _safe_json(value.get("responseBody", value.get("response_body")), "response_body")
-    raw_failure_reason = str(value.get("failureReason") or value.get("failure_reason") or value.get("error") or "").strip()
+    raw_failure_reason = str(
+        value.get("failureReason") or value.get("failure_reason") or value.get("error") or ""
+    ).strip()
     failure_reason = str(_redact_value(raw_failure_reason, "failure_reason"))[:1000] or None
     fingerprint = _fingerprint(method, url, body_type, payload)
     return {

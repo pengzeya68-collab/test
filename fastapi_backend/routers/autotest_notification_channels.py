@@ -53,10 +53,18 @@ async def list_channels(
     db: AsyncSession = Depends(get_autotest_db),
     project_id: int = Depends(get_active_project_id),
 ):
-    channels = list((await db.scalars(select(AutomationNotificationChannel).where(
-        AutomationNotificationChannel.user_id == current_user.id,
-        AutomationNotificationChannel.project_id == project_id,
-    ).order_by(AutomationNotificationChannel.updated_at.desc()))).all())
+    channels = list(
+        (
+            await db.scalars(
+                select(AutomationNotificationChannel)
+                .where(
+                    AutomationNotificationChannel.user_id == current_user.id,
+                    AutomationNotificationChannel.project_id == project_id,
+                )
+                .order_by(AutomationNotificationChannel.updated_at.desc())
+            )
+        ).all()
+    )
     return {"channels": [public_channel(channel) for channel in channels]}
 
 
@@ -68,16 +76,23 @@ async def create_channel(
     project_id: int = Depends(get_active_project_id_member),
 ):
     name, channel_type, config, notify_on, active = _channel_body(body)
-    duplicate = await db.scalar(select(AutomationNotificationChannel).where(
-        AutomationNotificationChannel.user_id == current_user.id,
-        AutomationNotificationChannel.project_id == project_id,
-        AutomationNotificationChannel.name == name,
-    ))
+    duplicate = await db.scalar(
+        select(AutomationNotificationChannel).where(
+            AutomationNotificationChannel.user_id == current_user.id,
+            AutomationNotificationChannel.project_id == project_id,
+            AutomationNotificationChannel.name == name,
+        )
+    )
     if duplicate is not None:
         raise HTTPException(status_code=409, detail="同名通知渠道已存在")
     channel = AutomationNotificationChannel(
-        user_id=current_user.id, project_id=project_id, name=name, channel_type=channel_type,
-        config_encrypted=encrypt(json.dumps(config, ensure_ascii=False)), notify_on=notify_on, is_active=active,
+        user_id=current_user.id,
+        project_id=project_id,
+        name=name,
+        channel_type=channel_type,
+        config_encrypted=encrypt(json.dumps(config, ensure_ascii=False)),
+        notify_on=notify_on,
+        is_active=active,
     )
     db.add(channel)
     await db.commit()
@@ -87,16 +102,19 @@ async def create_channel(
 
 @router.put("/{channel_id}")
 async def update_channel(
-    channel_id: str, body: dict[str, Any] = Body(default_factory=dict),
+    channel_id: str,
+    body: dict[str, Any] = Body(default_factory=dict),
     current_user: User = Depends(_require_user),
     db: AsyncSession = Depends(get_autotest_db),
     project_id: int = Depends(get_active_project_id_member),
 ):
-    channel = await db.scalar(select(AutomationNotificationChannel).where(
-        AutomationNotificationChannel.id == channel_id,
-        AutomationNotificationChannel.user_id == current_user.id,
-        AutomationNotificationChannel.project_id == project_id,
-    ))
+    channel = await db.scalar(
+        select(AutomationNotificationChannel).where(
+            AutomationNotificationChannel.id == channel_id,
+            AutomationNotificationChannel.user_id == current_user.id,
+            AutomationNotificationChannel.project_id == project_id,
+        )
+    )
     if channel is None:
         raise HTTPException(status_code=404, detail="通知渠道不存在")
     # UI never receives encrypted robot addresses.  An empty URL therefore
@@ -131,11 +149,13 @@ async def delete_channel(
     db: AsyncSession = Depends(get_autotest_db),
     project_id: int = Depends(get_active_project_id_member),
 ):
-    channel = await db.scalar(select(AutomationNotificationChannel).where(
-        AutomationNotificationChannel.id == channel_id,
-        AutomationNotificationChannel.user_id == current_user.id,
-        AutomationNotificationChannel.project_id == project_id,
-    ))
+    channel = await db.scalar(
+        select(AutomationNotificationChannel).where(
+            AutomationNotificationChannel.id == channel_id,
+            AutomationNotificationChannel.user_id == current_user.id,
+            AutomationNotificationChannel.project_id == project_id,
+        )
+    )
     if channel is None:
         raise HTTPException(status_code=404, detail="通知渠道不存在")
     await db.delete(channel)
@@ -150,18 +170,34 @@ async def test_channel(
     db: AsyncSession = Depends(get_autotest_db),
     project_id: int = Depends(get_active_project_id_member),
 ):
-    channel = await db.scalar(select(AutomationNotificationChannel).where(
-        AutomationNotificationChannel.id == channel_id,
-        AutomationNotificationChannel.user_id == current_user.id,
-        AutomationNotificationChannel.project_id == project_id,
-    ))
+    channel = await db.scalar(
+        select(AutomationNotificationChannel).where(
+            AutomationNotificationChannel.id == channel_id,
+            AutomationNotificationChannel.user_id == current_user.id,
+            AutomationNotificationChannel.project_id == project_id,
+        )
+    )
     if channel is None:
         raise HTTPException(status_code=404, detail="通知渠道不存在")
-    ok, detail = await _deliver(channel, {
-        "execution_id": "TEST-NOTIFICATION", "execution_type": "test", "target_type": "notification",
-        "target_id": 0, "status": "passed", "attempt": 1, "passed": 1, "failed": 0,
-        "timed_out": 0, "cancelled": 0, "total": 1, "duration_ms": 0, "error_code": "", "error_message": "",
-    })
+    ok, detail = await _deliver(
+        channel,
+        {
+            "execution_id": "TEST-NOTIFICATION",
+            "execution_type": "test",
+            "target_type": "notification",
+            "target_id": 0,
+            "status": "passed",
+            "attempt": 1,
+            "passed": 1,
+            "failed": 0,
+            "timed_out": 0,
+            "cancelled": 0,
+            "total": 1,
+            "duration_ms": 0,
+            "error_code": "",
+            "error_message": "",
+        },
+    )
     if not ok:
         raise HTTPException(status_code=502, detail=f"测试通知发送失败：{detail}")
     return {"message": "测试通知已发送", "detail": detail}
@@ -174,13 +210,34 @@ async def list_delivery_history(
     db: AsyncSession = Depends(get_autotest_db),
     project_id: int = Depends(get_active_project_id),
 ):
-    deliveries = list((await db.scalars(select(AutomationNotificationDelivery).where(
-        AutomationNotificationDelivery.user_id == current_user.id,
-        AutomationNotificationDelivery.project_id == project_id,
-    ).order_by(AutomationNotificationDelivery.created_at.desc()).limit(min(max(limit, 1), 200)))).all())
-    return {"deliveries": [{
-        "id": row.id, "execution_id": row.execution_id, "channel_id": row.channel_id,
-        "channel_type": row.channel_type, "status": row.status, "attempts": row.attempts,
-        "next_attempt_at": row.next_attempt_at, "delivered_at": row.delivered_at,
-        "last_error": row.last_error, "payload": row.payload_redacted, "created_at": row.created_at,
-    } for row in deliveries]}
+    deliveries = list(
+        (
+            await db.scalars(
+                select(AutomationNotificationDelivery)
+                .where(
+                    AutomationNotificationDelivery.user_id == current_user.id,
+                    AutomationNotificationDelivery.project_id == project_id,
+                )
+                .order_by(AutomationNotificationDelivery.created_at.desc())
+                .limit(min(max(limit, 1), 200))
+            )
+        ).all()
+    )
+    return {
+        "deliveries": [
+            {
+                "id": row.id,
+                "execution_id": row.execution_id,
+                "channel_id": row.channel_id,
+                "channel_type": row.channel_type,
+                "status": row.status,
+                "attempts": row.attempts,
+                "next_attempt_at": row.next_attempt_at,
+                "delivered_at": row.delivered_at,
+                "last_error": row.last_error,
+                "payload": row.payload_redacted,
+                "created_at": row.created_at,
+            }
+            for row in deliveries
+        ]
+    }

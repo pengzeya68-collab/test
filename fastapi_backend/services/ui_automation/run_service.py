@@ -366,9 +366,7 @@ async def create_run(
     if suite_id is not None:
         from fastapi_backend.services.ui_automation import suite_service
 
-        plan = await suite_service.build_execution_plan(
-            db, user_id, suite_id, project_id=active_project_id
-        )
+        plan = await suite_service.build_execution_plan(db, user_id, suite_id, project_id=active_project_id)
         total_steps = sum(len(entry.get("snapshot", {}).get("steps", [])) for entry in plan["entries"])
         suite_project_id = active_project_id
         if suite_project_id is None:
@@ -655,9 +653,7 @@ async def link_artifact_manifest(
     try:
         from fastapi_backend.services.upgrade_pipeline_service import upgrade_pipeline_service
 
-        await upgrade_pipeline_service.process_linked_artifact(
-            db, run=run, artifact=artifact, manifest=manifest
-        )
+        await upgrade_pipeline_service.process_linked_artifact(db, run=run, artifact=artifact, manifest=manifest)
     except Exception:
         logging.getLogger(__name__).exception(
             "upgrade pipeline on link_artifact failed run=%s manifest=%s", run.id, manifest.id
@@ -1059,7 +1055,9 @@ async def _maybe_aggregate_parent_suite_run(
     shards = list(
         (
             await db.scalars(
-                select(SuiteShard).where(SuiteShard.suite_execution_id == suite_execution_id).order_by(SuiteShard.shard_index)
+                select(SuiteShard)
+                .where(SuiteShard.suite_execution_id == suite_execution_id)
+                .order_by(SuiteShard.shard_index)
             )
         ).all()
     )

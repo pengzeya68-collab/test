@@ -239,8 +239,7 @@ async def _filter_suite_plan_for_shard(
         shard = await db.get(SuiteShard, int(preferred_shard_id))
         if shard is not None and int(shard.suite_execution_id) == suite_execution_id:
             if shard.status == "pending" or (
-                shard.assigned_agent_id in (None, agent.id)
-                and shard.status in ("pending", "assigned", "running")
+                shard.assigned_agent_id in (None, agent.id) and shard.status in ("pending", "assigned", "running")
             ):
                 shard.assigned_agent_id = agent.id
                 if shard.status == "pending":

@@ -259,11 +259,7 @@ class ContractTestingService:
             req = result.get("request") if isinstance(result.get("request"), dict) else {}
             resolved_url = url or req.get("url") or result.get("request_url") or ""
             resolved_method = (
-                method
-                or req.get("method")
-                or result.get("request_method")
-                or result.get("method")
-                or "GET"
+                method or req.get("method") or result.get("request_method") or result.get("method") or "GET"
             )
             resolved_status = status_code
             if resolved_status is None:
@@ -349,11 +345,8 @@ class ContractTestingService:
                         schema = (((resp or {}).get("content") or {}).get("application/json") or {}).get("schema") or {}
                         responses[str(code)] = schema if isinstance(schema, dict) else {"type": "object"}
                     req_schema = (
-                        (((op.get("requestBody") or {}).get("content") or {}).get("application/json") or {}).get(
-                            "schema"
-                        )
-                        or {}
-                    )
+                        ((op.get("requestBody") or {}).get("content") or {}).get("application/json") or {}
+                    ).get("schema") or {}
                     endpoints.append(
                         {
                             "method": method.upper(),
@@ -375,8 +368,7 @@ class ContractTestingService:
         # first hides `{id}` behind backslashes and makes path parameters never
         # match a concrete request such as `/users/123`.
         pattern = "/".join(
-            r"[^/]+" if re.fullmatch(r"\{[^/{}]+\}", segment) else re.escape(segment)
-            for segment in template.split("/")
+            r"[^/]+" if re.fullmatch(r"\{[^/{}]+\}", segment) else re.escape(segment) for segment in template.split("/")
         )
         try:
             return re.fullmatch(pattern, actual_path) is not None

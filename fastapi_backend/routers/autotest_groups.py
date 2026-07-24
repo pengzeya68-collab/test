@@ -147,18 +147,14 @@ async def get_group_tree(
     scope = await _group_scope(db, current_user.id, project_id)
     case_scope = await _case_scope(db, current_user.id, project_id)
     result = await db.execute(
-        select(AutoTestGroup)
-        .where(scope)
-        .order_by(AutoTestGroup.parent_id, AutoTestGroup.sort_order, AutoTestGroup.id)
+        select(AutoTestGroup).where(scope).order_by(AutoTestGroup.parent_id, AutoTestGroup.sort_order, AutoTestGroup.id)
     )
     groups = result.scalars().all()
 
     # 计算每个分组的用例数（项目成员共享）
     case_counts: Dict[Optional[int], int] = {}
     count_result = await db.execute(
-        select(AutoTestCase.group_id, func.count(AutoTestCase.id))
-        .where(case_scope)
-        .group_by(AutoTestCase.group_id)
+        select(AutoTestCase.group_id, func.count(AutoTestCase.id)).where(case_scope).group_by(AutoTestCase.group_id)
     )
     for group_id, count in count_result.all():
         case_counts[group_id] = count

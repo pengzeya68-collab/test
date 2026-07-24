@@ -155,11 +155,7 @@ async def get_all_cases(
 ):
     """获取所有用例（用于选择，按当前工作区项目隔离，成员共享）"""
     scope = await _case_project_filter(db, current_user.id, project_id)
-    query = (
-        select(AutoTestCase)
-        .where(scope)
-        .order_by(AutoTestCase.updated_at.desc())
-    )
+    query = select(AutoTestCase).where(scope).order_by(AutoTestCase.updated_at.desc())
     if group_id is not None:
         query = query.where(AutoTestCase.group_id == group_id)
     result = await db.execute(query)
@@ -203,9 +199,7 @@ async def get_case(
 ):
     """获取单个用例详情"""
     scope = await _case_project_filter(db, current_user.id, project_id)
-    result = await db.execute(
-        select(AutoTestCase).filter(AutoTestCase.id == case_id, scope)
-    )
+    result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id, scope))
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
@@ -278,9 +272,7 @@ async def update_case(
         raise HTTPException(status_code=400, detail="URL格式不正确，必须以/或http://或https://开头")
 
     scope = await _case_project_filter(db, current_user.id, project_id)
-    result = await db.execute(
-        select(AutoTestCase).filter(AutoTestCase.id == case_id, scope)
-    )
+    result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id, scope))
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
@@ -327,9 +319,7 @@ async def delete_case(
 ):
     """删除用例（自动解除场景步骤引用）"""
     scope = await _case_project_filter(db, current_user.id, project_id)
-    result = await db.execute(
-        select(AutoTestCase).filter(AutoTestCase.id == case_id, scope)
-    )
+    result = await db.execute(select(AutoTestCase).filter(AutoTestCase.id == case_id, scope))
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")

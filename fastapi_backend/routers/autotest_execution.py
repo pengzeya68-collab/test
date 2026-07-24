@@ -601,7 +601,9 @@ async def run_case(
         )
         env = result.scalars().first()
         if not env:
-            result = await db.execute(select(AutoTestEnvironment).where(await _env_scope(db, current_user.id, project_id)))
+            result = await db.execute(
+                select(AutoTestEnvironment).where(await _env_scope(db, current_user.id, project_id))
+            )
             env = result.scalars().first()
 
     from fastapi_backend.services.autotest_execution import quick_run_case
@@ -664,7 +666,9 @@ async def quick_run(
         )
         env = result.scalars().first()
         if not env:
-            result = await db.execute(select(AutoTestEnvironment).where(await _env_scope(db, current_user.id, project_id)))
+            result = await db.execute(
+                select(AutoTestEnvironment).where(await _env_scope(db, current_user.id, project_id))
+            )
             env = result.scalars().first()
 
     # 🔥 解析前端传来的 p（已替换变量的请求参数字符串）
@@ -723,7 +727,9 @@ async def _run_case_batch_task(task_id: str, body: BatchRunRequest, user_id: int
     try:
         async with AsyncSessionLocal() as session:
             case_result = await session.execute(
-                select(AutoTestCase).where(AutoTestCase.id.in_(body.case_ids), await _case_scope(db, user_id, project_id))
+                select(AutoTestCase).where(
+                    AutoTestCase.id.in_(body.case_ids), await _case_scope(db, user_id, project_id)
+                )
             )
             case_map = {case.id: case for case in case_result.scalars().all()}
             cases = [case_map[case_id] for case_id in body.case_ids if case_id in case_map]
@@ -878,7 +884,9 @@ async def batch_run(
         )
         env = result.scalars().first()
         if not env:
-            result = await db.execute(select(AutoTestEnvironment).where(await _env_scope(db, current_user.id, project_id)))
+            result = await db.execute(
+                select(AutoTestEnvironment).where(await _env_scope(db, current_user.id, project_id))
+            )
             env = result.scalars().first()
 
     from fastapi_backend.services.autotest_execution import quick_run_case
@@ -1136,7 +1144,9 @@ async def get_scenario_execution_history(
 ):
     """获取某个场景的执行历史记录列表"""
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id)
+        )
     )
     scenario = result.scalar_one_or_none()
     if not scenario:
@@ -1242,7 +1252,9 @@ async def delete_scenario_execution_history(
     """删除场景执行历史记录"""
     # 验证场景存在
     result = await db.execute(
-        select(AutoTestScenario).where(AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id))
+        select(AutoTestScenario).where(
+            AutoTestScenario.id == scenario_id, await _scenario_scope(db, current_user.id, project_id)
+        )
     )
     scenario = result.scalar_one_or_none()
     if not scenario:
@@ -1800,7 +1812,9 @@ async def import_postman(
 
     if target_group_id is not None:
         group_result = await db.execute(
-            select(AutoTestGroup).where(AutoTestGroup.id == target_group_id, await _group_scope(db, current_user.id, project_id))
+            select(AutoTestGroup).where(
+                AutoTestGroup.id == target_group_id, await _group_scope(db, current_user.id, project_id)
+            )
         )
         root_group = group_result.scalar_one_or_none()
         if not root_group:

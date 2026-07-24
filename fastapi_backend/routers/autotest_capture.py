@@ -190,7 +190,14 @@ def _json_diff(expected: Any, actual: Any, path: str = "$") -> list[dict[str, An
             differences.extend(_json_diff(value, actual[index], f"{path}[{index}]"))
         return differences[:100]
     if expected != actual:
-        return [{"path": path, "kind": "changed", "expected": redact_capture_value(expected), "actual": redact_capture_value(actual)}]
+        return [
+            {
+                "path": path,
+                "kind": "changed",
+                "expected": redact_capture_value(expected),
+                "actual": redact_capture_value(actual),
+            }
+        ]
     return []
 
 
@@ -804,7 +811,16 @@ async def replay_capture_exchange(
         raise HTTPException(status_code=422, detail="replay URL is invalid")
     replay_body = overrides.get("payload", request.get("payload"))
     replay_body_type = str(overrides.get("body_type") or request.get("body_type") or "none").lower()
-    if replay_body_type not in {"none", "json", "raw", "form", "form-data", "x-www-form-urlencoded", "binary", "graphql"}:
+    if replay_body_type not in {
+        "none",
+        "json",
+        "raw",
+        "form",
+        "form-data",
+        "x-www-form-urlencoded",
+        "binary",
+        "graphql",
+    }:
         raise HTTPException(status_code=422, detail="replay body_type is invalid")
 
     from fastapi_backend.services.autotest_request_service import execute_http_request
@@ -863,9 +879,15 @@ async def analyze_capture_session(
     reviews candidates, variable mappings and assertions before conversion.
     """
     capture = await _session_or_404(db, session_id, current_user.id, project_id)
-    exchanges = list((await db.scalars(
-        select(CapturedExchange).where(CapturedExchange.session_id == capture.id).order_by(CapturedExchange.sequence)
-    )).all())
+    exchanges = list(
+        (
+            await db.scalars(
+                select(CapturedExchange)
+                .where(CapturedExchange.session_id == capture.id)
+                .order_by(CapturedExchange.sequence)
+            )
+        ).all()
+    )
     status_codes = Counter()
     methods = Counter()
     hosts = Counter()
@@ -885,20 +907,58 @@ async def analyze_capture_session(
         if item.timing_ms is not None and p95 is not None and item.timing_ms >= p95 and len(timings) >= 3:
             slow.append({"id": item.id, "sequence": item.sequence, "url": item.url, "timing_ms": item.timing_ms})
         if status_code >= 400 or item.failure_reason:
-            failed.append({"id": item.id, "sequence": item.sequence, "url": item.url, "status": status_code, "reason": item.failure_reason})
+            failed.append(
+                {
+                    "id": item.id,
+                    "sequence": item.sequence,
+                    "url": item.url,
+                    "status": status_code,
+                    "reason": item.failure_reason,
+                }
+            )
         serialized = json.dumps({"request": item.request_redacted, "response": response}, ensure_ascii=False)
         redacted_fields += serialized.count("******")
     suggestions = []
     if failed:
-        suggestions.append({"type": "failure", "title": "先处理异常请求", "detail": f"发现 {len(failed)} 条 HTTP 异常或网络失败记录；不要直接把它们作为成功断言导入。"})
+        suggestions.append(
+            {
+                "type": "failure",
+                "title": "先处理异常请求",
+                "detail": f"发现 {len(failed)} 条 HTTP 异常或网络失败记录；不要直接把它们作为成功断言导入。",
+            }
+        )
     if len(fingerprints) < len(exchanges):
-        suggestions.append({"type": "deduplicate", "title": "合并重复调用", "detail": f"检测到 {len(exchanges) - len(fingerprints)} 条重复流量；转换时保留有业务意义的一次调用即可。"})
+        suggestions.append(
+            {
+                "type": "deduplicate",
+                "title": "合并重复调用",
+                "detail": f"检测到 {len(exchanges) - len(fingerprints)} 条重复流量；转换时保留有业务意义的一次调用即可。",
+            }
+        )
     if p95 is not None:
-        suggestions.append({"type": "performance", "title": "设置性能断言", "detail": f"本次流量 P95 为 {p95} ms；可为关键接口添加小于等于该阈值或团队 SLA 的响应时间断言。"})
+        suggestions.append(
+            {
+                "type": "performance",
+                "title": "设置性能断言",
+                "detail": f"本次流量 P95 为 {p95} ms；可为关键接口添加小于等于该阈值或团队 SLA 的响应时间断言。",
+            }
+        )
     if redacted_fields:
-        suggestions.append({"type": "security", "title": "敏感数据已脱敏", "detail": f"检测到 {redacted_fields} 处令牌、Cookie 或敏感字段已遮蔽；请通过环境变量或登录态配置恢复执行所需凭据。"})
+        suggestions.append(
+            {
+                "type": "security",
+                "title": "敏感数据已脱敏",
+                "detail": f"检测到 {redacted_fields} 处令牌、Cookie 或敏感字段已遮蔽；请通过环境变量或登录态配置恢复执行所需凭据。",
+            }
+        )
     if capture.origin == "har_import":
-        suggestions.append({"type": "mobile", "title": "移动端流量导入", "detail": "HAR 可以来自移动设备代理工具；TLS 证书固定的应用无法通过常规代理解密，应使用应用提供的测试开关或导入可用 HAR。"})
+        suggestions.append(
+            {
+                "type": "mobile",
+                "title": "移动端流量导入",
+                "detail": "HAR 可以来自移动设备代理工具；TLS 证书固定的应用无法通过常规代理解密，应使用应用提供的测试开关或导入可用 HAR。",
+            }
+        )
     return {
         "session_id": capture.id,
         "total": len(exchanges),
@@ -951,7 +1011,9 @@ async def export_capture_har(
         if request_payload is not None:
             request_entry["postData"] = {
                 "mimeType": request.get("content_type") or "application/octet-stream",
-                "text": request_payload if isinstance(request_payload, str) else json.dumps(request_payload, ensure_ascii=False),
+                "text": request_payload
+                if isinstance(request_payload, str)
+                else json.dumps(request_payload, ensure_ascii=False),
             }
         response_body = response.get("body")
         response_entry: dict[str, Any] = {
@@ -976,7 +1038,15 @@ async def export_capture_har(
                 "request": request_entry,
                 "response": response_entry,
                 "cache": {},
-                "timings": {"blocked": -1, "dns": -1, "connect": -1, "send": 0, "wait": exchange.timing_ms or 0, "receive": 0, "ssl": -1},
+                "timings": {
+                    "blocked": -1,
+                    "dns": -1,
+                    "connect": -1,
+                    "send": 0,
+                    "wait": exchange.timing_ms or 0,
+                    "receive": 0,
+                    "ssl": -1,
+                },
                 "_resourceType": exchange.resource_type,
                 "_failureReason": exchange.failure_reason,
             }

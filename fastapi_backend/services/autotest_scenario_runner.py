@@ -739,9 +739,7 @@ class TestScenario{scenario_id}:
         import os
 
         if getattr(sys, "frozen", False):
-            _logger.info(
-                "[AllureReport] 检测到桌面冻结运行时，跳过 pytest/Allure 子进程，使用内置静态报告"
-            )
+            _logger.info("[AllureReport] 检测到桌面冻结运行时，跳过 pytest/Allure 子进程，使用内置静态报告")
             return False
 
         allure_results_dir_abs = str(Path(allure_results_dir).absolute())
@@ -992,9 +990,12 @@ class TestScenario{scenario_id}:
         started = time.time()
         if protocol not in {"grpc", "websocket", "ws", "sse"}:
             return {
-                "step_id": step_info["id"], "step_order": step_info["step_order"],
-                "step_type": "protocol", "success": False,
-                "error": "协议步骤缺少受支持的 protocol 配置", "response_time": 0,
+                "step_id": step_info["id"],
+                "step_order": step_info["step_order"],
+                "step_type": "protocol",
+                "success": False,
+                "error": "协议步骤缺少受支持的 protocol 配置",
+                "response_time": 0,
             }
         variables = {**self.session_vars, **self.context_vars}
         result = await protocol_executor_service.execute(protocol, config, variables)
@@ -1022,8 +1023,10 @@ class TestScenario{scenario_id}:
         if extractor_errors:
             successful = False
         return {
-            "step_id": step_info["id"], "step_order": step_info["step_order"],
-            "step_type": "protocol", "protocol": result.protocol,
+            "step_id": step_info["id"],
+            "step_order": step_info["step_order"],
+            "step_type": "protocol",
+            "protocol": result.protocol,
             "success": successful,
             "response_time": int(result.duration_ms or ((time.time() - started) * 1000)),
             "response": {"body": body, "messages": result.messages, "events": result.events, "meta": result.meta},

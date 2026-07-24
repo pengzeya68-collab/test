@@ -325,7 +325,9 @@ class GrpcExecutor:
             except KeyError as exc:
                 raise RuntimeError(f"method not found in proto service: {method_name}") from exc
             if method_desc.client_streaming:
-                raise RuntimeError("client-streaming gRPC calls require a message stream and are not supported by the request editor")
+                raise RuntimeError(
+                    "client-streaming gRPC calls require a message stream and are not supported by the request editor"
+                )
 
             request_class = message_factory.GetMessageClass(method_desc.input_type)
             response_class = message_factory.GetMessageClass(method_desc.output_type)
@@ -333,7 +335,9 @@ class GrpcExecutor:
             json_format.ParseDict(request_obj, request_message, ignore_unknown_fields=False)
             request_metadata = [(str(key), str(value)) for key, value in metadata.items()]
             method_path = f"/{service_desc.full_name}/{method_desc.name}"
-            channel = grpc.secure_channel(target, grpc.ssl_channel_credentials()) if tls else grpc.insecure_channel(target)
+            channel = (
+                grpc.secure_channel(target, grpc.ssl_channel_credentials()) if tls else grpc.insecure_channel(target)
+            )
             try:
                 if method_desc.server_streaming:
                     invoke_stream = channel.unary_stream(
@@ -388,11 +392,7 @@ class WebSocketExecutor:
                 for item in raw_headers
                 if isinstance(item, dict) and item.get("key")
             }
-        timeout = int(
-            config.get("ws_connect_timeout_ms")
-            or config.get("timeout_ms")
-            or 10000
-        ) / 1000
+        timeout = int(config.get("ws_connect_timeout_ms") or config.get("timeout_ms") or 10000) / 1000
         receive_count = int(config.get("receive_count") or config.get("ws_receive_count") or 1)
         logs: list[dict[str, Any]] = []
         if not url:
@@ -550,7 +550,9 @@ class MqttExecutor:
         resolved = resolve_variables(config, variables)
         host = str(resolved.get("mqtt_host") or resolved.get("host") or "").strip()
         port = int(resolved.get("mqtt_port") or resolved.get("port") or 1883)
-        publish_topic = str(resolved.get("mqtt_publish_topic") or resolved.get("publish_topic") or resolved.get("topic") or "").strip()
+        publish_topic = str(
+            resolved.get("mqtt_publish_topic") or resolved.get("publish_topic") or resolved.get("topic") or ""
+        ).strip()
         subscriptions = resolved.get("mqtt_subscribe_topics") or resolved.get("subscribe_topics") or []
         if isinstance(subscriptions, str):
             subscriptions = [subscriptions]
@@ -647,7 +649,11 @@ class MqttExecutor:
             connected.set()
 
         def on_message(_client: Any, _userdata: Any, message: Any) -> None:
-            payload = message.payload.decode("utf-8", errors="replace") if isinstance(message.payload, bytes) else str(message.payload)
+            payload = (
+                message.payload.decode("utf-8", errors="replace")
+                if isinstance(message.payload, bytes)
+                else str(message.payload)
+            )
             messages.append(
                 {
                     "direction": "received",
@@ -681,7 +687,9 @@ class MqttExecutor:
                     qos=qos,
                     retain=bool(config.get("mqtt_retain") or config.get("retain")),
                 )
-                if getattr(published, "rc", getattr(mqtt, "MQTT_ERR_SUCCESS", 0)) != getattr(mqtt, "MQTT_ERR_SUCCESS", 0):
+                if getattr(published, "rc", getattr(mqtt, "MQTT_ERR_SUCCESS", 0)) != getattr(
+                    mqtt, "MQTT_ERR_SUCCESS", 0
+                ):
                     raise RuntimeError(f"MQTT publish failed: {getattr(published, 'rc', 'unknown')}")
             if subscriptions and not received_enough.wait(timeout_ms / 1000):
                 raise TimeoutError(f"MQTT timed out waiting for {receive_count} message(s)")
@@ -700,7 +708,9 @@ class ProtocolExecutorService:
         self.sse = SseExecutor()
         self.mqtt = MqttExecutor()
 
-    async def execute(self, protocol: str, config: dict[str, Any], variables: dict[str, Any] | None = None) -> ProtocolResult:
+    async def execute(
+        self, protocol: str, config: dict[str, Any], variables: dict[str, Any] | None = None
+    ) -> ProtocolResult:
         protocol = (protocol or "").lower()
         if protocol == "grpc":
             return await self.grpc.execute(config, variables)

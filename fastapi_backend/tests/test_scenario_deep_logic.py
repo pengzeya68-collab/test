@@ -117,10 +117,15 @@ async def test_protocol_step_uses_shared_executor_and_exposes_extracted_variable
 
     monkeypatch.setattr(protocol_executor_service, "execute", execute)
     result = await engine._execute_protocol(
-        make_step(3, 30, "protocol", {
-            "protocol": "grpc",
-            "extractors": [{"variableName": "order_id", "expression": "$.data.orderId"}],
-        }),
+        make_step(
+            3,
+            30,
+            "protocol",
+            {
+                "protocol": "grpc",
+                "extractors": [{"variableName": "order_id", "expression": "$.data.orderId"}],
+            },
+        ),
         [],
         0,
     )

@@ -94,9 +94,7 @@ async def _validate_project_reference(db: AsyncSession, user_id: int, project_id
     if project_id is None:
         return await project_service.project_id_for_asset_owner(db, user_id)
     try:
-        project = await project_service.require_project_access(
-            db, int(user_id), int(project_id), min_role="member"
-        )
+        project = await project_service.require_project_access(db, int(user_id), int(project_id), min_role="member")
     except project_service.ProjectNotFoundError as exc:
         raise ValidationException("Invalid project_id") from exc
     except project_service.ProjectAccessError as exc:
@@ -234,9 +232,7 @@ async def update_case(
 ) -> UICase:
     case = await get_case(db, user_id, case_id, project_id=project_id)
     if "group_id" in data:
-        await _validate_group_ownership(
-            db, user_id, data.get("group_id"), project_id=project_id or case.project_id
-        )
+        await _validate_group_ownership(db, user_id, data.get("group_id"), project_id=project_id or case.project_id)
     # project_id is controlled by workspace context, not free client reassignment
     data = {k: v for k, v in data.items() if k not in {"project_id", "user_id", "owner_id"}}
     if case.project_id is None and project_id is not None:

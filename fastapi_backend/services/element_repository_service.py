@@ -131,7 +131,9 @@ class ElementRepositoryService:
         override_locators: list[dict[str, Any]] | None = None,
     ) -> UIStepElementRef:
         existing = await db.scalar(
-            select(UIStepElementRef).where(UIStepElementRef.step_id == step_id, UIStepElementRef.element_id == element_id)
+            select(UIStepElementRef).where(
+                UIStepElementRef.step_id == step_id, UIStepElementRef.element_id == element_id
+            )
         )
         if existing:
             existing.override_locators = override_locators
@@ -180,7 +182,9 @@ class ElementRepositoryService:
         if target_text:
             for match in self._find_by_text(page_dom, target_text)[: config.max_candidates]:
                 score = self._text_similarity(match["text"], target_text) * 0.95
-                candidates.append(HealingCandidate(locator=match["locator"], score=score, reason=f"文本匹配: {match['text'][:80]}"))
+                candidates.append(
+                    HealingCandidate(locator=match["locator"], score=score, reason=f"文本匹配: {match['text'][:80]}")
+                )
 
         for match in self._find_by_attributes(page_dom, locator)[: config.max_candidates]:
             candidates.append(
@@ -233,9 +237,7 @@ class ElementRepositoryService:
             healed_locator=result.healed_locator,
             confidence=result.confidence,
             strategy_used=result.strategy_used,
-            candidates=[
-                {"locator": c.locator, "score": c.score, "reason": c.reason} for c in result.candidates
-            ],
+            candidates=[{"locator": c.locator, "score": c.score, "reason": c.reason} for c in result.candidates],
             status=result.status,
         )
         db.add(record)
@@ -316,7 +318,12 @@ class ElementRepositoryService:
         pattern = re.compile(re.escape(target_text), re.I)
         if not pattern.search(dom_html):
             return []
-        return [{"text": target_text, "locator": {"strategy": "text", "value": target_text, "options": {}, "fallbacks": [], "framePath": []}}]
+        return [
+            {
+                "text": target_text,
+                "locator": {"strategy": "text", "value": target_text, "options": {}, "fallbacks": [], "framePath": []},
+            }
+        ]
 
     def _find_by_attributes(self, dom_html: str, locator: dict[str, Any]) -> list[dict[str, Any]]:
         try:
@@ -327,7 +334,9 @@ class ElementRepositoryService:
         wanted = {
             "data-testid": locator.get("value") if locator.get("strategy") == "test_id" else None,
             "aria-label": (locator.get("options") or {}).get("name"),
-            "placeholder": locator.get("value") if locator.get("strategy") == "placeholder" else (locator.get("options") or {}).get("name"),
+            "placeholder": locator.get("value")
+            if locator.get("strategy") == "placeholder"
+            else (locator.get("options") or {}).get("name"),
             "name": locator.get("value") if locator.get("strategy") in {"label", "css"} else None,
             "id": locator.get("value") if locator.get("strategy") == "css" else None,
         }
@@ -379,7 +388,13 @@ class ElementRepositoryService:
 
     def _generate_locator_for_element(self, el: Any) -> dict[str, Any]:
         if el.get("data-testid"):
-            return {"strategy": "test_id", "value": el.get("data-testid"), "options": {}, "fallbacks": [], "framePath": []}
+            return {
+                "strategy": "test_id",
+                "value": el.get("data-testid"),
+                "options": {},
+                "fallbacks": [],
+                "framePath": [],
+            }
         if el.get("aria-label"):
             return {"strategy": "label", "value": el.get("aria-label"), "options": {}, "fallbacks": [], "framePath": []}
         role = el.get("role")

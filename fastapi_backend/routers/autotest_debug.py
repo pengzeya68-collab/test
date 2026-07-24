@@ -208,9 +208,7 @@ async def debug_execute_from_case(
         is_personal_active=personal,
     )
 
-    result = await db.execute(
-        select(AutoTestCase).where(AutoTestCase.id == case_id, case_scope)
-    )
+    result = await db.execute(select(AutoTestCase).where(AutoTestCase.id == case_id, case_scope))
     case = result.scalar_one_or_none()
     if not case:
         raise HTTPException(status_code=404, detail="用例不存在")
@@ -220,17 +218,11 @@ async def debug_execute_from_case(
     base_url = ""
     env_vars = {}
     if env_id:
-        result = await db.execute(
-            select(AutoTestEnvironment).where(
-                AutoTestEnvironment.id == env_id, env_scope
-            )
-        )
+        result = await db.execute(select(AutoTestEnvironment).where(AutoTestEnvironment.id == env_id, env_scope))
         env = result.scalar_one_or_none()
     if env is None:
         result = await db.execute(
-            select(AutoTestEnvironment).where(
-                AutoTestEnvironment.is_default.is_(True), env_scope
-            )
+            select(AutoTestEnvironment).where(AutoTestEnvironment.is_default.is_(True), env_scope)
         )
         env = result.scalars().first()
 

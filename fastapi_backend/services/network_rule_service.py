@@ -22,7 +22,9 @@ class NetworkRuleService:
             stmt = stmt.where(UINetworkRule.is_active.is_(True))
         return list((await db.scalars(stmt)).all())
 
-    async def create_rule(self, db: AsyncSession, *, project_id: int, user_id: int, payload: dict[str, Any]) -> UINetworkRule:
+    async def create_rule(
+        self, db: AsyncSession, *, project_id: int, user_id: int, payload: dict[str, Any]
+    ) -> UINetworkRule:
         rule = UINetworkRule(
             project_id=project_id,
             name=str(payload["name"]).strip(),

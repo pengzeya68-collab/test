@@ -214,7 +214,7 @@ class CodegenService:
             "",
             f'  public {class_name}() {{ this("{base_url}", null); }}',
             f"  public {class_name}(String baseUrl, String token) {{",
-            "    this.baseUrl = baseUrl.replaceAll(\"/+$\", \"\");",
+            '    this.baseUrl = baseUrl.replaceAll("/+$", "");',
             "    this.token = token;",
             "  }",
             "",
@@ -227,9 +227,11 @@ class CodegenService:
             lines.append(f'    HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(baseUrl + "{path}"))')
             lines.append(f'        .method("{method}", HttpRequest.BodyPublishers.noBody())')
             lines.append('        .header("Accept", "application/json");')
-            lines.append("    if (token != null) b.header(\"Authorization\", \"Bearer \" + token);")
-            lines.append("    HttpResponse<String> resp = client.send(b.build(), HttpResponse.BodyHandlers.ofString());")
-            lines.append("    if (resp.statusCode() >= 400) throw new RuntimeException(\"HTTP \" + resp.statusCode());")
+            lines.append('    if (token != null) b.header("Authorization", "Bearer " + token);')
+            lines.append(
+                "    HttpResponse<String> resp = client.send(b.build(), HttpResponse.BodyHandlers.ofString());"
+            )
+            lines.append('    if (resp.statusCode() >= 400) throw new RuntimeException("HTTP " + resp.statusCode());')
             lines.append("    return resp.body();")
             lines.append("  }")
             lines.append("")
@@ -255,7 +257,7 @@ class CodegenService:
             "",
             f"func New{class_name}(baseURL, token string) *{class_name} {{",
             f'  if baseURL == "" {{ baseURL = "{base_url}" }}',
-            f"  return &{class_name}{{BaseURL: strings.TrimRight(baseURL, \"/\"), Token: token, Client: http.DefaultClient}}",
+            f'  return &{class_name}{{BaseURL: strings.TrimRight(baseURL, "/"), Token: token, Client: http.DefaultClient}}',
             "}",
             "",
         ]
@@ -274,7 +276,9 @@ class CodegenService:
             lines.append("  defer resp.Body.Close()")
             lines.append("  body, err := io.ReadAll(resp.Body)")
             lines.append("  if err != nil { return nil, err }")
-            lines.append("  if resp.StatusCode >= 400 { return nil, fmt.Errorf(\"HTTP %d: %s\", resp.StatusCode, string(body)) }")
+            lines.append(
+                '  if resp.StatusCode >= 400 { return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body)) }'
+            )
             lines.append("  return body, nil")
             lines.append("}")
             lines.append("")
@@ -319,9 +323,13 @@ class CodegenService:
             name = self._safe_name(method, path, ep.get("operation_id"))
             lines.append(f"    public async Task<string> {name}()")
             lines.append("    {")
-            lines.append(f'        using var req = new HttpRequestMessage(HttpMethod.{method.title() if method in {"GET","POST","PUT","DELETE","PATCH"} else "Get"}, _baseUrl + "{path}");')
+            lines.append(
+                f'        using var req = new HttpRequestMessage(HttpMethod.{method.title() if method in {"GET", "POST", "PUT", "DELETE", "PATCH"} else "Get"}, _baseUrl + "{path}");'
+            )
             lines.append('        req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));')
-            lines.append("        if (!string.IsNullOrEmpty(_token)) req.Headers.Authorization = new AuthenticationHeaderValue(\"Bearer\", _token);")
+            lines.append(
+                '        if (!string.IsNullOrEmpty(_token)) req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);'
+            )
             lines.append("        var resp = await _client.SendAsync(req);")
             lines.append("        resp.EnsureSuccessStatusCode();")
             lines.append("        return await resp.Content.ReadAsStringAsync();")
@@ -382,8 +390,10 @@ class CodegenService:
             lines.append(f"    req = Net::HTTP::{method.capitalize()}.new(uri)")
             lines.append("    req['Accept'] = 'application/json'")
             lines.append("    req['Authorization'] = \"Bearer #{@token}\" if @token")
-            lines.append("    res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') { |http| http.request(req) }")
-            lines.append("    raise \"HTTP #{res.code}\" unless res.is_a?(Net::HTTPSuccess)")
+            lines.append(
+                "    res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') { |http| http.request(req) }"
+            )
+            lines.append('    raise "HTTP #{res.code}" unless res.is_a?(Net::HTTPSuccess)')
             lines.append("    res.body")
             lines.append("  end")
             lines.append("")
@@ -406,11 +416,13 @@ class CodegenService:
             path = str(ep.get("path") or "/")
             name = self._safe_name(method, path, ep.get("operation_id"))
             lines.append(f"    fun {name}(): String {{")
-            lines.append("        val builder = Request.Builder().url(baseUrl.trimEnd('/') + \"$path\").method(\"$method\", null)")
-            lines.append("        builder.header(\"Accept\", \"application/json\")")
-            lines.append("        if (token != null) builder.header(\"Authorization\", \"Bearer $token\")")
+            lines.append(
+                '        val builder = Request.Builder().url(baseUrl.trimEnd(\'/\') + "$path").method("$method", null)'
+            )
+            lines.append('        builder.header("Accept", "application/json")')
+            lines.append('        if (token != null) builder.header("Authorization", "Bearer $token")')
             lines.append("        client.newCall(builder.build()).execute().use { resp ->")
-            lines.append("            if (!resp.isSuccessful) error(\"HTTP ${resp.code}\")")
+            lines.append('            if (!resp.isSuccessful) error("HTTP ${resp.code}")')
             lines.append("            return resp.body?.string().orEmpty()")
             lines.append("        }")
             lines.append("    }")
@@ -426,7 +438,7 @@ class CodegenService:
             "    let baseURL: String",
             "    let token: String?",
             f'    init(baseURL: String = "{base_url}", token: String? = nil) {{',
-            "        self.baseURL = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: \"/\"))",
+            '        self.baseURL = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))',
             "        self.token = token",
             "    }",
             "",
@@ -439,7 +451,9 @@ class CodegenService:
             lines.append(f'        var request = URLRequest(url: URL(string: baseURL + "{path}")!)')
             lines.append(f'        request.httpMethod = "{method}"')
             lines.append('        request.setValue("application/json", forHTTPHeaderField: "Accept")')
-            lines.append("        if let token = token { request.setValue(\"Bearer \\(token)\", forHTTPHeaderField: \"Authorization\") }")
+            lines.append(
+                '        if let token = token { request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization") }'
+            )
             lines.append("        URLSession.shared.dataTask(with: request) { data, response, error in")
             lines.append("            if let error = error { completion(.failure(error)); return }")
             lines.append("            completion(.success(data ?? Data()))")
@@ -461,9 +475,11 @@ class CodegenService:
             "}",
             "",
             f"impl {class_name} {{",
-            '    pub fn new(base_url: impl Into<String>, token: Option<String>) -> Self {',
-            '        let base = base_url.into().trim_end_matches(\'/\').to_string();',
-            "        Self { base_url: if base.is_empty() { \"" + base_url.rstrip('/') + "\".into() } else { base }, token, client: Client::new() }",
+            "    pub fn new(base_url: impl Into<String>, token: Option<String>) -> Self {",
+            "        let base = base_url.into().trim_end_matches('/').to_string();",
+            '        Self { base_url: if base.is_empty() { "'
+            + base_url.rstrip("/")
+            + '".into() } else { base }, token, client: Client::new() }',
             "    }",
             "",
         ]
@@ -475,7 +491,9 @@ class CodegenService:
             lines.append("        let mut headers = HeaderMap::new();")
             lines.append('        headers.insert(ACCEPT, HeaderValue::from_static("application/json"));')
             lines.append("        if let Some(token) = &self.token {")
-            lines.append('            headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", token)).unwrap());')
+            lines.append(
+                '            headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", token)).unwrap());'
+            )
             lines.append("        }")
             lines.append(
                 f'        let resp = self.client.request(reqwest::Method::{method}, format!("{{}}{path}", self.base_url)).headers(headers).send().await?;'

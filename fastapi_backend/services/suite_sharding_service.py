@@ -60,9 +60,7 @@ class SuiteShardingService:
         # Always honor concurrency tags when present: exclusive / limited tags constrain
         # cross-shard parallelism. Only truly untagged free cases may be rebalanced.
         has_tag_assignments = await db.scalar(
-            select(CaseConcurrencyTagAssignment.id)
-            .where(CaseConcurrencyTagAssignment.case_id.in_(case_ids))
-            .limit(1)
+            select(CaseConcurrencyTagAssignment.id).where(CaseConcurrencyTagAssignment.case_id.in_(case_ids)).limit(1)
         )
         if has_tag_assignments is not None or strategy == "by_tag":
             groups = await self._group_by_concurrency_tags(db, case_ids, shard_count)
@@ -203,7 +201,9 @@ class SuiteShardingService:
         existing = list(
             (
                 await db.scalars(
-                    select(AgentWorkerSlot).where(AgentWorkerSlot.agent_id == agent.id).order_by(AgentWorkerSlot.slot_index)
+                    select(AgentWorkerSlot)
+                    .where(AgentWorkerSlot.agent_id == agent.id)
+                    .order_by(AgentWorkerSlot.slot_index)
                 )
             ).all()
         )
@@ -315,7 +315,9 @@ class SuiteShardingService:
         _case_limit, _case_tags, _tag_limit, assigned = await self._load_case_tag_maps(db, case_ids)
         return assigned
 
-    async def _group_by_concurrency_tags(self, db: AsyncSession, case_ids: list[int], shard_count: int) -> list[list[int]]:
+    async def _group_by_concurrency_tags(
+        self, db: AsyncSession, case_ids: list[int], shard_count: int
+    ) -> list[list[int]]:
         """Partition cases honoring each case's strictest max_concurrent.
 
         Rules:
@@ -420,6 +422,7 @@ class SuiteShardingService:
             placed = False
             # Prefer existing non-locked buckets that already host related tags.
             candidate_indexes = [i for i in range(len(buckets)) if i not in locked_bucket_indexes]
+
             # Score: buckets that already contain one of this case's tags first.
             def _score(i: int) -> tuple[int, int]:
                 overlap = len(case_tags.get(cid, set()) & {t for t, idxs in tag_bucket_usage.items() if i in idxs})
@@ -502,10 +505,7 @@ class SuiteShardingService:
                 expandable = [
                     (i, b)
                     for i, b in enumerate(buckets)
-                    if b
-                    and i not in locked_bucket_indexes
-                    and not any(cid in tagged_set for cid in b)
-                    and len(b) > 1
+                    if b and i not in locked_bucket_indexes and not any(cid in tagged_set for cid in b) and len(b) > 1
                 ]
 
         order = {cid: index for index, cid in enumerate(case_ids)}

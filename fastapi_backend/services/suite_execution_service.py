@@ -378,13 +378,16 @@ async def _notify_execution_result(execution_id: int, context: dict) -> None:
     status = str(context.get("status") or "")
     if config.get("enabled", True) and status in (config.get("notify_on") or []):
         from fastapi_backend.services.webhook_notify import send_bot_webhook_async
+
         text = "\n".join(("【TestMaster】接口套件执行结果", f"执行编号：{context.get('public_id')}", f"结果：{status}"))
         ok, detail = await send_bot_webhook_async(config["webhook_url"], text)
         async with AsyncSessionLocal() as db:
             execution = await db.get(AutomationExecution, execution_id)
             if execution is not None:
                 await _append_event(
-                    db, execution_id, "notification_delivered" if ok else "notification_failed",
+                    db,
+                    execution_id,
+                    "notification_delivered" if ok else "notification_failed",
                     {"provider": "legacy_bot_webhook", "status": status, "detail": detail[:500]},
                     "info" if ok else "warning",
                 )

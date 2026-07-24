@@ -69,9 +69,7 @@ async def list_projects(
         m.project_id: m.role
         for m in (
             await db.scalars(
-                select(WorkspaceProjectMember).where(
-                    WorkspaceProjectMember.user_id == int(current_user.id)
-                )
+                select(WorkspaceProjectMember).where(WorkspaceProjectMember.user_id == int(current_user.id))
             )
         ).all()
     }
@@ -108,9 +106,7 @@ async def get_project(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        project = await project_service.require_project_access(
-            db, int(current_user.id), project_id, min_role="viewer"
-        )
+        project = await project_service.require_project_access(db, int(current_user.id), project_id, min_role="viewer")
     except project_service.ProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except project_service.ProjectAccessError as exc:
@@ -132,9 +128,7 @@ async def delete_project(
     only through the normal asset lifecycle rather than implicit data loss.
     """
     try:
-        await project_service.delete_empty_project(
-            db, user_id=int(current_user.id), project_id=int(project_id)
-        )
+        await project_service.delete_empty_project(db, user_id=int(current_user.id), project_id=int(project_id))
     except project_service.ProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except project_service.ProjectAccessError as exc:
@@ -142,9 +136,7 @@ async def delete_project(
     except project_service.ProjectDeletionForbiddenError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except project_service.ProjectDeletionConflictError as exc:
-        blocker_summary = "、".join(
-            f"{label} {count} 项" for label, count in exc.blockers.items()
-        )
+        blocker_summary = "、".join(f"{label} {count} 项" for label, count in exc.blockers.items())
         raise HTTPException(
             status_code=409,
             detail=f"请先清理项目成员和资产后再删除：{blocker_summary}",
@@ -168,9 +160,7 @@ async def purge_project(
     if body.confirmation_name.strip() != project.name:
         raise HTTPException(status_code=422, detail="确认名称与项目名称不一致")
     try:
-        deleted = await project_service.purge_project(
-            db, user_id=int(current_user.id), project_id=int(project_id)
-        )
+        deleted = await project_service.purge_project(db, user_id=int(current_user.id), project_id=int(project_id))
     except project_service.ProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except project_service.ProjectAccessError as exc:
@@ -191,28 +181,15 @@ async def list_members(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        await project_service.require_project_access(
-            db, int(current_user.id), project_id, min_role="viewer"
-        )
+        await project_service.require_project_access(db, int(current_user.id), project_id, min_role="viewer")
     except project_service.ProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except project_service.ProjectAccessError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     members = list(
-        (
-            await db.scalars(
-                select(WorkspaceProjectMember).where(
-                    WorkspaceProjectMember.project_id == project_id
-                )
-            )
-        ).all()
+        (await db.scalars(select(WorkspaceProjectMember).where(WorkspaceProjectMember.project_id == project_id))).all()
     )
-    return {
-        "items": [
-            {"id": m.id, "project_id": m.project_id, "user_id": m.user_id, "role": m.role}
-            for m in members
-        ]
-    }
+    return {"items": [{"id": m.id, "project_id": m.project_id, "user_id": m.user_id, "role": m.role} for m in members]}
 
 
 @router.post("/{project_id}/members")
@@ -223,12 +200,8 @@ async def add_member(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        await project_service.require_project_access(
-            db, int(current_user.id), project_id, min_role="admin"
-        )
-        member = await project_service.add_member(
-            db, project_id=project_id, user_id=body.user_id, role=body.role
-        )
+        await project_service.require_project_access(db, int(current_user.id), project_id, min_role="admin")
+        member = await project_service.add_member(db, project_id=project_id, user_id=body.user_id, role=body.role)
     except project_service.ProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except project_service.ProjectAccessError as exc:
@@ -245,9 +218,7 @@ async def delete_member(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        await project_service.require_project_access(
-            db, int(current_user.id), project_id, min_role="admin"
-        )
+        await project_service.require_project_access(db, int(current_user.id), project_id, min_role="admin")
         await project_service.remove_member(db, project_id=project_id, user_id=user_id)
     except project_service.ProjectNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

@@ -100,11 +100,7 @@ async def get_all_global_variables(
 ):
     """获取所有全局变量（按工作区项目隔离，成员共享）"""
     scope = await _var_scope(db, current_user.id, project_id)
-    result = await db.execute(
-        select(AutoTestGlobalVariable)
-        .where(scope)
-        .order_by(AutoTestGlobalVariable.name)
-    )
+    result = await db.execute(select(AutoTestGlobalVariable).where(scope).order_by(AutoTestGlobalVariable.name))
     variables = result.scalars().all()
     return [_variable_to_dict(v) for v in variables]
 
@@ -161,9 +157,7 @@ async def create_global_variable(
     scope = await _var_scope(db, current_user.id, project_id)
     # 检查变量名是否已存在（当前项目内成员共享唯一）
     result = await db.execute(
-        select(AutoTestGlobalVariable)
-        .where(AutoTestGlobalVariable.name == variable_in.name)
-        .where(scope)
+        select(AutoTestGlobalVariable).where(AutoTestGlobalVariable.name == variable_in.name).where(scope)
     )
     existing_variable = result.scalar_one_or_none()
     if existing_variable:

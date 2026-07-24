@@ -31,8 +31,7 @@ def _execution_failure_category(
     execution: AutomationExecution, failed_items: list[AutomationExecutionItem]
 ) -> tuple[str, float, list[str], list[str], list[str]]:
     messages = " ".join(
-        [str(execution.error_message or "")]
-        + [str(item.error_message or "") for item in failed_items]
+        [str(execution.error_message or "")] + [str(item.error_message or "") for item in failed_items]
     ).lower()
     error_code = str(execution.error_code or "").lower()
     if (
@@ -159,9 +158,7 @@ def _execution_failure_category(
     )
 
 
-async def analyze_execution_failure(
-    db: AsyncSession, user_id: int, execution: AutomationExecution
-) -> dict[str, Any]:
+async def analyze_execution_failure(db: AsyncSession, user_id: int, execution: AutomationExecution) -> dict[str, Any]:
     """Produce a redacted, audited, advisory attribution for a failed execution."""
     failed_items = list(
         (

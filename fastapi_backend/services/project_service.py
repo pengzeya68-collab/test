@@ -128,9 +128,7 @@ async def list_projects_for_user(db: AsyncSession, user_id: int) -> list[Workspa
     return list(rows)
 
 
-async def get_member(
-    db: AsyncSession, project_id: int, user_id: int
-) -> WorkspaceProjectMember | None:
+async def get_member(db: AsyncSession, project_id: int, user_id: int) -> WorkspaceProjectMember | None:
     return await db.scalar(
         select(WorkspaceProjectMember).where(
             WorkspaceProjectMember.project_id == int(project_id),
@@ -151,9 +149,7 @@ async def require_project_access(
     member = await get_member(db, project_id, user_id)
     if member is None and project.owner_id == int(user_id):
         # Repair missing owner membership
-        member = WorkspaceProjectMember(
-            project_id=project.id, user_id=int(user_id), role="owner"
-        )
+        member = WorkspaceProjectMember(project_id=project.id, user_id=int(user_id), role="owner")
         db.add(member)
         await db.flush()
     if member is None:
@@ -183,9 +179,7 @@ async def add_member(
         existing.role = role_norm
         await db.flush()
         return existing
-    member = WorkspaceProjectMember(
-        project_id=int(project_id), user_id=int(user_id), role=role_norm
-    )
+    member = WorkspaceProjectMember(project_id=int(project_id), user_id=int(user_id), role=role_norm)
     db.add(member)
     await db.flush()
     return member
@@ -321,9 +315,7 @@ async def project_deletion_blockers(db: AsyncSession, project_id: int) -> dict[s
     """Return non-empty project assets that make hard deletion unsafe."""
     blockers: dict[str, int] = {}
     for label, model, project_column in _workspace_project_assets():
-        count = await db.scalar(
-            select(func.count()).select_from(model).where(project_column == int(project_id))
-        )
+        count = await db.scalar(select(func.count()).select_from(model).where(project_column == int(project_id)))
         if count:
             blockers[label] = int(count)
     return blockers
@@ -414,9 +406,7 @@ async def purge_project(
 
     # Remove memberships explicitly instead of depending on the database
     # dialect's FK pragma. The project row is deleted last as the tenant root.
-    await db.execute(
-        delete(WorkspaceProjectMember).where(WorkspaceProjectMember.project_id == int(project_id))
-    )
+    await db.execute(delete(WorkspaceProjectMember).where(WorkspaceProjectMember.project_id == int(project_id)))
     await db.delete(project)
     await db.flush()
     return deleted

@@ -49,9 +49,7 @@ class WorkspaceProjectMember(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(
-        Integer, ForeignKey("workspace_projects.id", ondelete="CASCADE"), nullable=False
-    )
+    project_id = Column(Integer, ForeignKey("workspace_projects.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, nullable=False, index=True)
     role = Column(String(20), nullable=False, default="member")  # owner|admin|member|viewer
     created_at = Column(DateTime(timezone=True), default=_utcnow)

@@ -138,7 +138,9 @@ class TraceViewerService:
             metadata.parse_errors.append(str(exc))
         return metadata
 
-    def _ingest_event(self, event: dict[str, Any], actions_by_id: dict[str, dict[str, Any]], metadata: TraceMetadata) -> None:
+    def _ingest_event(
+        self, event: dict[str, Any], actions_by_id: dict[str, dict[str, Any]], metadata: TraceMetadata
+    ) -> None:
         event_type = event.get("type")
         if event_type == "before-call":
             call_id = str(event.get("callId") or event.get("id") or len(actions_by_id))
@@ -186,7 +188,9 @@ class TraceViewerService:
                 }
             )
         if not metadata.browser_version:
-            browser = event.get("browserName") or event.get("browser") or (event.get("contextOptions") or {}).get("userAgent")
+            browser = (
+                event.get("browserName") or event.get("browser") or (event.get("contextOptions") or {}).get("userAgent")
+            )
             if browser:
                 metadata.browser_version = str(browser)[:50]
 
@@ -205,7 +209,9 @@ class TraceViewerService:
         if isinstance(params, dict):
             redacted = {}
             for key, value in params.items():
-                if any(token in str(key).lower() for token in ("password", "token", "secret", "authorization", "cookie")):
+                if any(
+                    token in str(key).lower() for token in ("password", "token", "secret", "authorization", "cookie")
+                ):
                     redacted[key] = "[REDACTED]"
                 else:
                     redacted[key] = self._redact_params(value)

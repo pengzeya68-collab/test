@@ -440,9 +440,7 @@ async def list_suites(
     size = min(max(size, 1), 100)
     scope = await _suite_scope(db, current_user.id, project_id)
     total = (
-        await db.scalar(
-            select(func.count()).select_from(TestSuite).where(TestSuite.user_id == current_user.id, scope)
-        )
+        await db.scalar(select(func.count()).select_from(TestSuite).where(TestSuite.user_id == current_user.id, scope))
         or 0
     )
     suites = list(

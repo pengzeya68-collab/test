@@ -52,7 +52,11 @@ async def test_health_resolve_rejects_placeholder_style_relative_without_base():
     db = AsyncMock()
 
     async def _get(model, pk):
-        return case if pk == 1 and "Case" in getattr(model, "__name__", "") or pk == 1 and hasattr(model, "__tablename__") else env
+        return (
+            case
+            if pk == 1 and "Case" in getattr(model, "__name__", "") or pk == 1 and hasattr(model, "__tablename__")
+            else env
+        )
 
     # simpler: return by call order
     values = [case, env]

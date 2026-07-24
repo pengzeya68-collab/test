@@ -72,7 +72,9 @@ async def create_backup(
 ):
     response = await backup_management.create_new_backup(current_user)
     backup_name = response["backup_name"]
-    await _write_audit_log(db, user_id=current_user.id, action="创建数据库备份", action_type="backup", detail=f"备份文件: {backup_name}")
+    await _write_audit_log(
+        db, user_id=current_user.id, action="创建数据库备份", action_type="backup", detail=f"备份文件: {backup_name}"
+    )
     return {"message": "备份创建成功", "name": backup_name}
 
 
@@ -82,7 +84,9 @@ async def delete_old_backups(
     db: AsyncSession = Depends(get_db),
 ):
     response = await backup_management.clean_old(current_user)
-    await _write_audit_log(db, user_id=current_user.id, action="清理旧备份", action_type="backup", detail=response["message"])
+    await _write_audit_log(
+        db, user_id=current_user.id, action="清理旧备份", action_type="backup", detail=response["message"]
+    )
     return response
 
 
@@ -108,7 +112,9 @@ async def restore_backup(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    await _write_audit_log(db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name}")
+    await _write_audit_log(
+        db, user_id=current_user.id, action="恢复数据库备份", action_type="backup", detail=f"恢复文件: {name}"
+    )
     return await backup_management.restore_backup(name, current_user)
 
 
@@ -119,7 +125,9 @@ async def delete_backup(
     db: AsyncSession = Depends(get_db),
 ):
     response = await backup_management.delete_backup(name, current_user)
-    await _write_audit_log(db, user_id=current_user.id, action="删除备份文件", action_type="backup", detail=f"删除文件: {name}")
+    await _write_audit_log(
+        db, user_id=current_user.id, action="删除备份文件", action_type="backup", detail=f"删除文件: {name}"
+    )
     return response
 
 

@@ -88,13 +88,20 @@ class FlakyDetectionService:
             )
             db.add(record)
 
-        normalized = "passed" if status in {"passed", "pass", "success"} else "failed" if status in {
-            "failed",
-            "fail",
-            "error",
-            "infra_error",
-            "timed_out",
-        } else status
+        normalized = (
+            "passed"
+            if status in {"passed", "pass", "success"}
+            else "failed"
+            if status
+            in {
+                "failed",
+                "fail",
+                "error",
+                "infra_error",
+                "timed_out",
+            }
+            else status
+        )
         history = list(record.recent_results or [])
         previous = history[-1]["status"] if history else None
         history.append({"run_id": run_id, "status": normalized, "at": _utcnow().isoformat()})

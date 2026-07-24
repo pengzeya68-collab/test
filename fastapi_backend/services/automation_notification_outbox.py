@@ -73,8 +73,11 @@ def _redacted_payload(execution: AutomationExecution, context: dict[str, Any]) -
 
 def _message(payload: dict[str, Any]) -> str:
     label = {
-        "passed": "通过", "failed": "失败", "timed_out": "超时",
-        "infra_error": "执行器异常", "cancelled": "已取消",
+        "passed": "通过",
+        "failed": "失败",
+        "timed_out": "超时",
+        "infra_error": "执行器异常",
+        "cancelled": "已取消",
     }.get(payload["status"], payload["status"])
     lines = [
         "【TestMaster】自动化任务结果",
@@ -142,11 +145,16 @@ def public_channel(channel: AutomationNotificationChannel) -> dict[str, Any]:
     else:
         destination = urlsplit(str(config.get("webhook_url") or "")).hostname or ""
     return {
-        "id": channel.id, "name": channel.name, "channel_type": channel.channel_type,
+        "id": channel.id,
+        "name": channel.name,
+        "channel_type": channel.channel_type,
         "project_id": channel.project_id,
-        "notify_on": channel.notify_on or [], "is_active": channel.is_active,
-        "destination": destination, "configured": bool(config),
-        "created_at": channel.created_at, "updated_at": channel.updated_at,
+        "notify_on": channel.notify_on or [],
+        "is_active": channel.is_active,
+        "destination": destination,
+        "configured": bool(config),
+        "created_at": channel.created_at,
+        "updated_at": channel.updated_at,
     }
 
 
@@ -158,27 +166,40 @@ async def queue_execution_notifications(
     payload = _redacted_payload(execution, context)
     if payload["status"] not in _VALID_STATUSES or execution.user_id is None:
         return 0
-    channels = list((await db.scalars(select(AutomationNotificationChannel).where(
-        AutomationNotificationChannel.user_id == execution.user_id,
-        AutomationNotificationChannel.project_id == execution.project_id,
-        AutomationNotificationChannel.is_active.is_(True),
-    ))).all())
+    channels = list(
+        (
+            await db.scalars(
+                select(AutomationNotificationChannel).where(
+                    AutomationNotificationChannel.user_id == execution.user_id,
+                    AutomationNotificationChannel.project_id == execution.project_id,
+                    AutomationNotificationChannel.is_active.is_(True),
+                )
+            )
+        ).all()
+    )
     queued = 0
     for channel in channels:
         if payload["status"] not in (channel.notify_on or ["failed", "timed_out", "infra_error"]):
             continue
         event_key = f"execution:{execution.public_id}:result:{channel.id}:{payload['status']}"
-        existing = await db.scalar(select(AutomationNotificationDelivery.id).where(
-            AutomationNotificationDelivery.event_key == event_key
-        ))
+        existing = await db.scalar(
+            select(AutomationNotificationDelivery.id).where(AutomationNotificationDelivery.event_key == event_key)
+        )
         if existing is not None:
             continue
-        db.add(AutomationNotificationDelivery(
-            execution_id=execution.id, user_id=execution.user_id,
-            project_id=execution.project_id, channel_id=channel.id,
-            event_key=event_key, channel_type=channel.channel_type, payload_redacted=payload,
-            status="queued", next_attempt_at=_utcnow(),
-        ))
+        db.add(
+            AutomationNotificationDelivery(
+                execution_id=execution.id,
+                user_id=execution.user_id,
+                project_id=execution.project_id,
+                channel_id=channel.id,
+                event_key=event_key,
+                channel_type=channel.channel_type,
+                payload_redacted=payload,
+                status="queued",
+                next_attempt_at=_utcnow(),
+            )
+        )
         queued += 1
     return queued
 
@@ -187,7 +208,9 @@ def _dingtalk_url(url: str, secret: str | None) -> str:
     if not secret:
         return url
     timestamp = str(int(time.time() * 1000))
-    signature = base64.b64encode(hmac.new(secret.encode(), f"{timestamp}\n{secret}".encode(), hashlib.sha256).digest()).decode()
+    signature = base64.b64encode(
+        hmac.new(secret.encode(), f"{timestamp}\n{secret}".encode(), hashlib.sha256).digest()
+    ).decode()
     parts = urlsplit(url)
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     query.update({"timestamp": timestamp, "sign": signature})
@@ -202,7 +225,10 @@ async def _deliver(channel: AutomationNotificationChannel, payload: dict[str, An
     text = _message(payload)
     if channel.channel_type == "email":
         notifier = get_email_notifier()
-        results = [await notifier.send_plain_result(address, "TestMaster 自动化任务结果", text) for address in config.get("recipients") or []]
+        results = [
+            await notifier.send_plain_result(address, "TestMaster 自动化任务结果", text)
+            for address in config.get("recipients") or []
+        ]
         return all(results), "邮件已投递" if all(results) else "SMTP 投递失败，请检查邮件服务配置"
     url = str(config.get("webhook_url") or "")
     if channel.channel_type == "dingtalk":
@@ -234,10 +260,19 @@ async def deliver_due_notifications(limit: int = 30) -> int:
     """Attempt due rows once.  A restart simply picks up rows left queued."""
     now = _utcnow()
     async with AsyncSessionLocal() as db:
-        rows = list((await db.scalars(select(AutomationNotificationDelivery).where(
-            AutomationNotificationDelivery.status.in_(("queued", "retrying")),
-            AutomationNotificationDelivery.next_attempt_at <= now,
-        ).order_by(AutomationNotificationDelivery.created_at).limit(limit))).all())
+        rows = list(
+            (
+                await db.scalars(
+                    select(AutomationNotificationDelivery)
+                    .where(
+                        AutomationNotificationDelivery.status.in_(("queued", "retrying")),
+                        AutomationNotificationDelivery.next_attempt_at <= now,
+                    )
+                    .order_by(AutomationNotificationDelivery.created_at)
+                    .limit(limit)
+                )
+            ).all()
+        )
         identities = [row.id for row in rows]
     delivered = 0
     for delivery_id in identities:
@@ -264,18 +299,36 @@ async def deliver_due_notifications(limit: int = 30) -> int:
             else:
                 delivery.status = "retrying"
                 delivery.last_error = detail
-                delivery.next_attempt_at = _utcnow() + timedelta(seconds=min(900, 2 ** delivery.attempts * 30))
+                delivery.next_attempt_at = _utcnow() + timedelta(seconds=min(900, 2**delivery.attempts * 30))
             execution = await db.get(AutomationExecution, delivery.execution_id)
             if execution is not None:
-                sequence = (await db.scalar(select(ExecutionEvent.sequence).where(
-                    ExecutionEvent.execution_id == execution.id
-                ).order_by(ExecutionEvent.sequence.desc()).limit(1)) or 0) + 1
-                db.add(ExecutionEvent(
-                    execution_id=execution.id, sequence=sequence,
-                    event_type="notification_delivered" if ok else "notification_retry_scheduled" if delivery.status == "retrying" else "notification_failed",
-                    level="info" if ok else "warning",
-                    payload_redacted={"channel": channel.name, "channel_type": channel.channel_type, "attempt": delivery.attempts, "detail": detail[:300]},
-                ))
+                sequence = (
+                    await db.scalar(
+                        select(ExecutionEvent.sequence)
+                        .where(ExecutionEvent.execution_id == execution.id)
+                        .order_by(ExecutionEvent.sequence.desc())
+                        .limit(1)
+                    )
+                    or 0
+                ) + 1
+                db.add(
+                    ExecutionEvent(
+                        execution_id=execution.id,
+                        sequence=sequence,
+                        event_type="notification_delivered"
+                        if ok
+                        else "notification_retry_scheduled"
+                        if delivery.status == "retrying"
+                        else "notification_failed",
+                        level="info" if ok else "warning",
+                        payload_redacted={
+                            "channel": channel.name,
+                            "channel_type": channel.channel_type,
+                            "attempt": delivery.attempts,
+                            "detail": detail[:300],
+                        },
+                    )
+                )
             await db.commit()
     return delivered
 

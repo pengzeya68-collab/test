@@ -310,7 +310,9 @@ class TestManagementService:
             f"<tr><td>{item.get('name')}</td><td>{item.get('status')}</td><td>{item.get('duration_ms', '-')}</td></tr>"
             for item in (context.get("cases") or [])
         )
-        failures = "".join(f"<li><strong>{f.get('name')}</strong>: {f.get('error')}</li>" for f in (context.get("failures") or []))
+        failures = "".join(
+            f"<li><strong>{f.get('name')}</strong>: {f.get('error')}</li>" for f in (context.get("failures") or [])
+        )
         body_parts = []
         if "summary" in sections:
             body_parts.append(
@@ -336,7 +338,7 @@ footer{{margin-top:32px;color:#64748b;font-size:12px}}
 </style></head>
 <body>
 <header><h1>{title}</h1><div>{company}</div></header>
-{''.join(body_parts)}
+{"".join(body_parts)}
 <footer>{footer}</footer>
 </body></html>"""
 

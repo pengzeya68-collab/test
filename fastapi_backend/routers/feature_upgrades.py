@@ -346,9 +346,7 @@ async def heal_locator(
         "confidence": result.confidence,
         "strategy_used": result.strategy_used,
         "healed_locator": result.healed_locator,
-        "candidates": [
-            {"locator": c.locator, "score": c.score, "reason": c.reason} for c in result.candidates
-        ],
+        "candidates": [{"locator": c.locator, "score": c.score, "reason": c.reason} for c in result.candidates],
     }
 
 
@@ -1088,9 +1086,7 @@ async def list_visual_comparisons(
     current_user: User = Depends(require_permissions("ui:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    items = await visual_regression_service.list_comparisons(
-        db, project_id=project_id, run_id=run_id, verdict=verdict
-    )
+    items = await visual_regression_service.list_comparisons(db, project_id=project_id, run_id=run_id, verdict=verdict)
     return {"items": _serialize(items)}
 
 

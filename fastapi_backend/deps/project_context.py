@@ -51,9 +51,7 @@ async def get_active_project_id_member(
     x_project_id: Optional[int] = Header(default=None, alias="X-Project-Id"),
 ) -> int:
     """Same as get_active_project_id but requires member role for writes."""
-    return await resolve_active_project_id(
-        db, int(current_user.id), x_project_id, min_role="member"
-    )
+    return await resolve_active_project_id(db, int(current_user.id), x_project_id, min_role="member")
 
 
 def project_scope_clause(column, project_id: int):

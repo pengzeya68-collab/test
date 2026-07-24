@@ -21,11 +21,7 @@ async def get_suite(
     with_items: bool = True,
     project_id: Optional[int] = None,
 ) -> UISuite:
-    query = (
-        select(UISuite)
-        .where(UISuite.id == suite_id)
-        .execution_options(populate_existing=True)
-    )
+    query = select(UISuite).where(UISuite.id == suite_id).execution_options(populate_existing=True)
     if with_items:
         query = query.options(selectinload(UISuite.items))
     suite = (await db.execute(query)).scalar_one_or_none()
@@ -49,11 +45,7 @@ async def list_suites(
     *,
     project_id: Optional[int] = None,
 ) -> list[UISuite]:
-    query = (
-        select(UISuite)
-        .options(selectinload(UISuite.items))
-        .order_by(UISuite.updated_at.desc(), UISuite.id.desc())
-    )
+    query = select(UISuite).options(selectinload(UISuite.items)).order_by(UISuite.updated_at.desc(), UISuite.id.desc())
     if project_id is not None:
         project = await db.get(WorkspaceProject, int(project_id))
         is_personal = bool(project and project.is_personal)

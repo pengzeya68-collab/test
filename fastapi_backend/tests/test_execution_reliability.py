@@ -56,7 +56,9 @@ async def test_manual_scheduler_run_reads_the_owned_task_before_dispatch(monkeyp
     monkeypatch.setattr(
         task_run_scenario,
         "delay",
-        lambda scenario_id, env_id, user_id: dispatched.append((scenario_id, env_id, user_id)) or SimpleNamespace(id="run-1"),
+        lambda scenario_id, env_id, user_id: (
+            dispatched.append((scenario_id, env_id, user_id)) or SimpleNamespace(id="run-1")
+        ),
     )
 
     response = await execution_router.run_scheduler_task_now("schedule-1", SimpleNamespace(id=7), project_id=1)

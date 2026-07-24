@@ -146,7 +146,9 @@ class DefectIntegrationService:
         return record
 
     async def list_defects(self, db: AsyncSession, project_id: int, status: str | None = None) -> list[DefectRecord]:
-        stmt = select(DefectRecord).where(DefectRecord.project_id == project_id).order_by(DefectRecord.created_at.desc())
+        stmt = (
+            select(DefectRecord).where(DefectRecord.project_id == project_id).order_by(DefectRecord.created_at.desc())
+        )
         if status:
             stmt = stmt.where(DefectRecord.status == status)
         return list((await db.scalars(stmt)).all())
@@ -189,7 +191,9 @@ class DefectIntegrationService:
                 )
                 resp.raise_for_status()
                 data = resp.json() if resp.content else {}
-                return str(data.get("id") or data.get("key") or f"WH-{int(_utcnow().timestamp())}"), data.get("url") or tracker.base_url
+                return str(data.get("id") or data.get("key") or f"WH-{int(_utcnow().timestamp())}"), data.get(
+                    "url"
+                ) or tracker.base_url
         if tracker_type == "jira":
             return await self._push_jira(tracker, creds, title, description, priority)
         if tracker_type == "github":
@@ -293,7 +297,11 @@ class DefectIntegrationService:
             if resp.status_code >= 400:
                 raise RuntimeError(f"ZenTao create failed: {resp.status_code} {resp.text[:500]}")
             data = resp.json() if resp.content else {}
-        bug_id = str((data.get("id") if isinstance(data, dict) else None) or data.get("data", {}).get("id") or f"ZT-{int(_utcnow().timestamp())}")
+        bug_id = str(
+            (data.get("id") if isinstance(data, dict) else None)
+            or data.get("data", {}).get("id")
+            or f"ZT-{int(_utcnow().timestamp())}"
+        )
         return bug_id, f"{tracker.base_url.rstrip('/')}/bug-view-{bug_id}.html"
 
     def _build_description(self, **kwargs: Any) -> str:

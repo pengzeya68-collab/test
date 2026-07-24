@@ -125,7 +125,13 @@ class EmailNotifier:
         msg["Subject"] = subject[:200]
         msg["From"] = self.from_email
         msg["To"] = to_email
-        msg.attach(MIMEText(f"<html><body><pre style=\"font-family:Arial,sans-serif;white-space:pre-wrap\">{safe_content}</pre></body></html>", "html", "utf-8"))
+        msg.attach(
+            MIMEText(
+                f'<html><body><pre style="font-family:Arial,sans-serif;white-space:pre-wrap">{safe_content}</pre></body></html>',
+                "html",
+                "utf-8",
+            )
+        )
         return await asyncio.to_thread(self._send_smtp, to_email, msg)
 
     async def send_scenario_result(

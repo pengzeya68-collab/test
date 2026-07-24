@@ -192,9 +192,7 @@ class APIHealthService:
                         kwargs["json"] = request["body"]
                     else:
                         kwargs["content"] = (
-                            request["body"]
-                            if isinstance(request["body"], (bytes, str))
-                            else str(request["body"])
+                            request["body"] if isinstance(request["body"], (bytes, str)) else str(request["body"])
                         )
                 response = await client.request(request["method"], target, **kwargs)
             status_code = response.status_code

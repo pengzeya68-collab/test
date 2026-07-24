@@ -18,7 +18,9 @@ async def test_visual_compare_images_detects_diff(tmp_path: Path):
     Image.new("RGB", (40, 20), color=(255, 0, 0)).save(actual)
 
     service = VisualRegressionService(artifact_root=tmp_path / "artifacts")
-    result = await service.compare_images(str(baseline), str(actual), config={"threshold": 0.1, "auto_approve_below": 0.0, "auto_reject_above": 50.0})
+    result = await service.compare_images(
+        str(baseline), str(actual), config={"threshold": 0.1, "auto_approve_below": 0.0, "auto_reject_above": 50.0}
+    )
     assert result.diff_percentage > 0
     assert result.mismatched_pixels > 0
     assert result.diff_image_path is not None
@@ -54,10 +56,27 @@ def test_trace_parse_zip_with_actions(tmp_path: Path):
     trace_zip = tmp_path / "sample.trace.zip"
     with zipfile.ZipFile(trace_zip, "w") as zf:
         events = [
-            json.dumps({"type": "before-call", "callId": "1", "method": "click", "startTime": 1000, "params": {"selector": "#btn"}}),
+            json.dumps(
+                {
+                    "type": "before-call",
+                    "callId": "1",
+                    "method": "click",
+                    "startTime": 1000,
+                    "params": {"selector": "#btn"},
+                }
+            ),
             json.dumps({"type": "after-call", "callId": "1", "endTime": 1100}),
             json.dumps({"type": "console", "level": "info", "text": "hello", "time": 1050}),
-            json.dumps({"type": "request", "method": "GET", "url": "https://example.com", "status": 200, "time": 1020, "duration": 12}),
+            json.dumps(
+                {
+                    "type": "request",
+                    "method": "GET",
+                    "url": "https://example.com",
+                    "status": 200,
+                    "time": 1020,
+                    "duration": 12,
+                }
+            ),
         ]
         zf.writestr("test.trace", "\n".join(events))
         zf.writestr("resources/shot.png", b"\x89PNG\r\n\x1a\n")
@@ -115,12 +134,12 @@ def test_proto_executor_compiles_and_invokes_unary_rpc(tmp_path: Path, monkeypat
 
     proto = tmp_path / "greeter.proto"
     proto.write_text(
-        '''syntax = "proto3";
+        """syntax = "proto3";
         package demo;
         service Greeter { rpc SayHello (HelloRequest) returns (HelloReply); }
         message HelloRequest { string name = 1; }
         message HelloReply { string message = 1; }
-        ''',
+        """,
         encoding="utf-8",
     )
 

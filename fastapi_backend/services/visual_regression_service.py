@@ -218,9 +218,9 @@ class VisualRegressionService:
         diff_percentage = (mismatched_pixels / total_pixels) * 100.0
 
         heat = baseline_arr.copy()
-        heat[mismatched] = (
-            0.7 * baseline_arr[mismatched] + 0.3 * np.array([255, 0, 0], dtype="float32")
-        ).astype("uint8")
+        heat[mismatched] = (0.7 * baseline_arr[mismatched] + 0.3 * np.array([255, 0, 0], dtype="float32")).astype(
+            "uint8"
+        )
         out_dir = output_dir or (self.artifact_root / "visual-diff")
         out_dir.mkdir(parents=True, exist_ok=True)
         diff_path = out_dir / f"diff-{actual_hash[:12]}-{int(_utcnow().timestamp())}.png"
@@ -340,9 +340,7 @@ class VisualRegressionService:
         result = await self.compare_images(
             baseline.image_path,
             actual_image_path,
-            mask_regions=[
-                {"x": m.x, "y": m.y, "width": m.width, "height": m.height, "shape": m.shape} for m in masks
-            ],
+            mask_regions=[{"x": m.x, "y": m.y, "width": m.width, "height": m.height, "shape": m.shape} for m in masks],
             config={
                 "threshold": config.default_threshold,
                 "auto_approve_below": config.auto_approve_below,

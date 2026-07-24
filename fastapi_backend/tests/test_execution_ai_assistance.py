@@ -102,9 +102,7 @@ async def test_execution_failure_analysis_covers_all_categories(client, db_sessi
     )
     assert _analyze(client, script_run)["category"] == "script"
 
-    assertion_run = await _make_execution(
-        db_session, items=["assert failed: expected 200 but got 409, value mismatch"]
-    )
+    assertion_run = await _make_execution(db_session, items=["assert failed: expected 200 but got 409, value mismatch"])
     result = _analyze(client, assertion_run)
     assert result["category"] == "product_defect"
     assert result["confidence"] < 0.7

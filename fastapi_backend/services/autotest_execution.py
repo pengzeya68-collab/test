@@ -532,9 +532,9 @@ async def quick_run_case(
             "response": response_data,
             "response_headers": public_response_headers,
             "execution_time": execution_time,
-            "error": None if (isinstance(assert_result, dict) and assert_result.get("passed")) else (
-                assert_result.get("message") if isinstance(assert_result, dict) else "assert failed"
-            ),
+            "error": None
+            if (isinstance(assert_result, dict) and assert_result.get("passed"))
+            else (assert_result.get("message") if isinstance(assert_result, dict) else "assert failed"),
             "assert_result": assert_result,
             "contract_result": contract_result,
             "request_body": payload,
