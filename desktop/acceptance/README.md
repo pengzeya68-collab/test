@@ -28,6 +28,21 @@
 .\desktop\acceptance\run.ps1 -Group core -ReleasePath 'D:\Release\TestMaster Desktop.exe'
 ```
 
+## 公网真实项目验收
+
+本验收将公网 TestMaster 视为被测系统，并由桌面安装包完成登录、接口调试、项目隔离、接口场景、真实网页登录 UI 用例，以及真实接口流量的脱敏、转换和失败预览门禁。它会创建独立账号和项目数据，并验证可删除资产能被清理；若服务端报告项目删除 blocker，验收必须失败，不能把残留数据当作成功。不要把它与默认的本地隔离验收混用。
+
+```powershell
+$env:PRODUCTION_BASE_URL = 'http://35.194.164.151'
+$env:TESTMASTER_PACKAGED_EXE = 'D:\TestMasterReleases\release-public-acceptance-29\win-unpacked\TestMaster Desktop.exe'
+$env:TESTMASTER_PRODUCTION_DESKTOP_DATA_DIR = 'D:\TestMasterAcceptance\production-desktop-real-project'
+Push-Location .\desktop
+node .\scripts\test-production-desktop-e2e.mjs
+Pop-Location
+```
+
+通过标准为输出 JSON 的 `passed: true`，并且包含 `public-login-page-browser-run`、`desktop-capture-to-assets` 与 `redacted-capture-preview-gate` 三项。失败现场会保存到 `D:\TestMasterAcceptance\production-desktop-artifacts`。
+
 ## 结果与准则
 
 - 调度结果写入 `../test-artifacts/business-acceptance.json`。

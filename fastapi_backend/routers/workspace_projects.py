@@ -30,6 +30,10 @@ class MemberBody(BaseModel):
     role: str = "member"
 
 
+class ProjectPurgeBody(BaseModel):
+    confirmation_name: str = Field(..., min_length=1, max_length=200)
+
+
 def _project_dict(p, role: str | None = None) -> dict[str, Any]:
     return {
         "id": p.id,
@@ -148,6 +152,36 @@ async def delete_project(
         ) from exc
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{project_id}/purge")
+async def purge_project(
+    project_id: int,
+    body: ProjectPurgeBody,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Explicitly and permanently delete all assets in a team project."""
+    project = await db.get(project_service.WorkspaceProject, int(project_id))
+    if project is None:
+        raise HTTPException(status_code=404, detail=f"project {project_id} not found")
+    if body.confirmation_name.strip() != project.name:
+        raise HTTPException(status_code=422, detail="确认名称与项目名称不一致")
+    try:
+        deleted = await project_service.purge_project(
+            db, user_id=int(current_user.id), project_id=int(project_id)
+        )
+    except project_service.ProjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except project_service.ProjectAccessError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except project_service.ProjectDeletionForbiddenError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except project_service.ProjectPurgeConflictError as exc:
+        blocker_summary = "、".join(f"{label} {count} 项" for label, count in exc.blockers.items())
+        raise HTTPException(status_code=409, detail=f"请先停止执行后再清理项目：{blocker_summary}") from exc
+    await db.commit()
+    return {"ok": True, "deleted": deleted}
 
 
 @router.get("/{project_id}/members")

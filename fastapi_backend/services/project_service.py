@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Iterable
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.models.workspace import WorkspaceProject, WorkspaceProjectMember
@@ -31,6 +31,14 @@ class ProjectDeletionConflictError(RuntimeError):
 
 class ProjectDeletionForbiddenError(PermissionError):
     pass
+
+
+class ProjectPurgeConflictError(RuntimeError):
+    """Raised when a destructive project cleanup would interrupt a live run."""
+
+    def __init__(self, blockers: dict[str, int]):
+        self.blockers = blockers
+        super().__init__("project has active executions")
 
 
 def _slugify(name: str, owner_id: int) -> str:
@@ -347,6 +355,71 @@ async def delete_empty_project(
 
     await db.delete(project)
     await db.flush()
+
+
+async def purge_project(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    project_id: int,
+) -> dict[str, int]:
+    """Permanently remove a non-personal project and every scoped asset.
+
+    Normal deletion deliberately rejects non-empty projects so users cannot lose
+    test evidence by accident. This path is the explicit lifecycle escape hatch
+    used only after a UI confirmation that names the project. It refuses to
+    race a queued/running execution, then deletes project-scoped roots in
+    child-first order. Database cascades remove their dependent records.
+    """
+    project = await require_project_access(db, user_id, project_id, min_role="owner")
+    if int(project.owner_id) != int(user_id):
+        raise ProjectDeletionForbiddenError("only the project owner can purge a project")
+    if project.is_personal:
+        raise ProjectDeletionForbiddenError("personal projects cannot be deleted")
+
+    # Deleting a live run would leave an agent writing into a deleted project.
+    # Keep this check separate from completed history, which is safe to purge.
+    from fastapi_backend.models.autotest import AutomationExecution
+    from fastapi_backend.models.ui_automation import UIRun
+
+    active_statuses = ("queued", "running", "cancel_requested")
+    active_automation = await db.scalar(
+        select(func.count())
+        .select_from(AutomationExecution)
+        .where(
+            AutomationExecution.project_id == int(project_id),
+            AutomationExecution.status.in_(active_statuses),
+        )
+    )
+    active_ui = await db.scalar(
+        select(func.count())
+        .select_from(UIRun)
+        .where(UIRun.project_id == int(project_id), UIRun.status.in_(active_statuses))
+    )
+    active_blockers = {
+        label: int(count)
+        for label, count in (("运行中的自动化执行", active_automation), ("运行中的 UI 执行", active_ui))
+        if int(count or 0) > 0
+    }
+    if active_blockers:
+        raise ProjectPurgeConflictError(active_blockers)
+
+    deleted: dict[str, int] = {}
+    # The asset inventory is parent-first for diagnostics. Deleting it in
+    # reverse makes dependent records disappear before their root assets.
+    for label, model, project_column in reversed(_workspace_project_assets()):
+        result = await db.execute(delete(model).where(project_column == int(project_id)))
+        if result.rowcount and result.rowcount > 0:
+            deleted[label] = int(result.rowcount)
+
+    # Remove memberships explicitly instead of depending on the database
+    # dialect's FK pragma. The project row is deleted last as the tenant root.
+    await db.execute(
+        delete(WorkspaceProjectMember).where(WorkspaceProjectMember.project_id == int(project_id))
+    )
+    await db.delete(project)
+    await db.flush()
+    return deleted
 
 
 def is_masqueraded_user_id(project_id: int | None, known_user_ids: Iterable[int]) -> bool:

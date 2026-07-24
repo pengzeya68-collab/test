@@ -19,7 +19,8 @@ from fastapi_backend.models.autotest import (
     AutomationNotificationDelivery,
     CaptureSession,
 )
-from fastapi_backend.models.ui_automation import DesktopAgent, UICase
+from fastapi_backend.models.feature_upgrades import FlakyDetectionConfig, FlakyTestRecord
+from fastapi_backend.models.ui_automation import DesktopAgent, UICase, UIRun
 from fastapi_backend.models.workspace import WorkspaceProject, WorkspaceProjectMember
 from fastapi_backend.services import project_service
 from fastapi_backend.services.project_service import ProjectAccessError
@@ -181,6 +182,62 @@ async def test_personal_project_cannot_be_deleted(db_session):
         )
 
 
+@pytest.mark.asyncio
+async def test_project_purge_removes_completed_assets_and_project(db_session):
+    """The explicit destructive lifecycle must not leave project-bound records behind."""
+    project = await project_service.create_project(db_session, owner_id=85, name="Purge me")
+    db_session.add_all([
+        AutoTestCase(name="purge case", method="GET", url="/health", user_id=85, project_id=project.id),
+        CaptureSession(user_id=85, project_id=project.id, origin="desktop_browser"),
+        UICase(name="purge ui", user_id=85, project_id=project.id),
+        UIRun(run_key="purge-ui-run", user_id=85, project_id=project.id, status="passed"),
+        FlakyTestRecord(project_id=project.id, case_type="ui", case_id=1, case_name="purge ui"),
+        FlakyDetectionConfig(project_id=project.id),
+        AutomationExecution(
+            public_id="purge-execution",
+            execution_type="scenario",
+            target_type="scenario",
+            target_id=1,
+            user_id=85,
+            project_id=project.id,
+            idempotency_key="purge-execution-key",
+            status="passed",
+        ),
+    ])
+    await db_session.flush()
+
+    deleted = await project_service.purge_project(db_session, user_id=85, project_id=project.id)
+
+    assert deleted["接口用例"] == 1
+    assert deleted["抓包会话"] == 1
+    assert deleted["UI 用例"] == 1
+    assert deleted["UI 执行"] == 1
+    assert deleted["Flaky 记录"] == 1
+    assert await db_session.get(WorkspaceProject, project.id) is None
+    assert await project_service.project_deletion_blockers(db_session, project.id) == {}
+
+
+@pytest.mark.asyncio
+async def test_project_purge_refuses_running_execution(db_session):
+    project = await project_service.create_project(db_session, owner_id=86, name="Busy project")
+    db_session.add(
+        AutomationExecution(
+            public_id="busy-execution",
+            execution_type="scenario",
+            target_type="scenario",
+            target_id=1,
+            user_id=86,
+            project_id=project.id,
+            idempotency_key="busy-execution-key",
+            status="running",
+        )
+    )
+    await db_session.flush()
+
+    with pytest.raises(project_service.ProjectPurgeConflictError):
+        await project_service.purge_project(db_session, user_id=86, project_id=project.id)
+
+
 def test_desktop_navigation_has_at_most_seven_workspaces():
     from pathlib import Path
     import re
@@ -207,6 +264,13 @@ def test_workspace_project_router_is_registered_in_application():
         for method in route.methods
     }
     assert {"GET", "DELETE"}.issubset(project_route_methods)
+    purge_route_methods = {
+        method
+        for route in app.routes
+        if route.path == "/api/workspace/projects/{project_id}/purge"
+        for method in route.methods
+    }
+    assert "POST" in purge_route_methods
 
 
 @pytest.mark.asyncio

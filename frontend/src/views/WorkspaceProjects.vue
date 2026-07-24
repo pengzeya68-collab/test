@@ -25,7 +25,7 @@
             type="danger"
             :loading="deletingId === row.id"
             @click="deleteProject(row)"
-          >删除</el-button>
+          >清理并删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -89,13 +89,19 @@ async function createProject() {
 
 async function deleteProject(row) {
   try {
-    await ElMessageBox.confirm(
-      `删除“${row.name}”前必须先清理该项目的成员和所有测试资产。确认继续？`,
-      '删除团队项目',
-      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
+    const { value } = await ElMessageBox.prompt(
+      `该操作会永久删除“${row.name}”中的成员、用例、场景、执行记录、抓包、导入记录和 UI 资产，且不可恢复。请输入项目名称确认。`,
+      '清理并删除团队项目',
+      {
+        confirmButtonText: '永久删除',
+        cancelButtonText: '取消',
+        inputPlaceholder: row.name,
+        inputValidator: value => value?.trim() === row.name || '请输入完整项目名称确认',
+        type: 'warning',
+      },
     )
     deletingId.value = row.id
-    await workspaceApi.deleteProject(row.id)
+    await workspaceApi.purgeProject(row.id, value.trim())
     if (Number(activeId.value) === Number(row.id)) {
       activeId.value = null
       projectStore.resetToUserWorkspace()
