@@ -191,3 +191,15 @@ def test_partial_unversioned_schema_is_rejected_without_ddl(tmp_path):
     with sqlite3.connect(database) as connection:
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert tables == {"users"}
+
+
+def test_workspace_migrations_use_cross_database_boolean_literals():
+    """PostgreSQL rejects SQLite-style integer comparisons against boolean columns."""
+    migration_dir = PROJECT_ROOT / "fastapi_backend" / "alembic" / "versions"
+    offenders: list[str] = []
+    for migration in migration_dir.glob("*.py"):
+        content = migration.read_text(encoding="utf-8")
+        for token in ("is_personal = 1", "is_personal) VALUES", "is_personal, 1"):
+            if token in content:
+                offenders.append(f"{migration.name}: {token}")
+    assert offenders == []

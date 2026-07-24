@@ -54,7 +54,7 @@ def _backfill_personal_project(bind, table: str, owner_column: str = "user_id") 
         sa.text(
             f"UPDATE {table} SET project_id = ("
             "SELECT id FROM workspace_projects "
-            f"WHERE owner_id = {table}.{owner_column} AND is_personal = 1 LIMIT 1"
+            f"WHERE owner_id = {table}.{owner_column} AND is_personal = TRUE LIMIT 1"
             ") WHERE project_id IS NULL"
         )
     )
