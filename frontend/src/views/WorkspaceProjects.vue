@@ -16,9 +16,16 @@
       <el-table-column label="类型" width="120">
         <template #default="{ row }">{{ row.is_personal ? '个人项目' : '团队项目' }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="160">
+      <el-table-column label="操作" width="190">
         <template #default="{ row }">
           <el-button link type="primary" @click="activate(row)">设为当前</el-button>
+          <el-button
+            v-if="!row.is_personal"
+            link
+            type="danger"
+            :loading="deletingId === row.id"
+            @click="deleteProject(row)"
+          >删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -34,6 +41,7 @@ import { useProjectStore } from '@/stores/project'
 const projectStore = useProjectStore()
 const loading = ref(false)
 const creating = ref(false)
+const deletingId = ref(null)
 const projects = ref([])
 const activeId = ref(getActiveProjectId())
 
@@ -76,6 +84,30 @@ async function createProject() {
     ElMessage.error(error.message || '创建失败')
   } finally {
     creating.value = false
+  }
+}
+
+async function deleteProject(row) {
+  try {
+    await ElMessageBox.confirm(
+      `删除“${row.name}”前必须先清理该项目的成员和所有测试资产。确认继续？`,
+      '删除团队项目',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
+    )
+    deletingId.value = row.id
+    await workspaceApi.deleteProject(row.id)
+    if (Number(activeId.value) === Number(row.id)) {
+      activeId.value = null
+      projectStore.resetToUserWorkspace()
+    }
+    ElMessage.success('项目已删除')
+    await load()
+    window.dispatchEvent(new Event('testmaster-projects-changed'))
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(error?.response?.data?.detail?.message || error.message || '删除项目失败')
+  } finally {
+    deletingId.value = null
   }
 }
 

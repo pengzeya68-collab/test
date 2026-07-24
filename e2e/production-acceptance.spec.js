@@ -22,6 +22,9 @@ test.describe('公网生产闭环验收', () => {
       if (!response.ok()) throw new Error(`${label} failed: ${response.status()} ${await response.text()}`);
       return response.json();
     };
+    const expectDeleted = async (response, label) => {
+      if (!response.ok()) throw new Error(`${label} failed: ${response.status()} ${await response.text()}`);
+    };
 
     try {
       const health = await request.get(api('/api/health'));
@@ -114,6 +117,38 @@ test.describe('公网生产闭环验收', () => {
       const caseList = await expectOk(visibleCases, 'list scoped cases');
       const cases = Array.isArray(caseList) ? caseList : (caseList.items || caseList.cases || []);
       expect(cases.some(item => item.id === caseId)).toBeTruthy();
+
+      // A production fixture is only acceptable when its full deletion path
+      // succeeds and the project is no longer discoverable afterwards.
+      await expectDeleted(
+        await request.delete(api(`/api/auto-test/scenarios/${scenarioId}`), { headers: projectHeaders }),
+        'delete scenario fixture',
+      );
+      scenarioId = null;
+      await expectDeleted(
+        await request.delete(api(`/api/auto-test/cases/${caseId}`), { headers: projectHeaders }),
+        'delete api case fixture',
+      );
+      caseId = null;
+      await expectDeleted(
+        await request.delete(api(`/api/auto-test/groups/${groupId}`), { headers: projectHeaders }),
+        'delete api group fixture',
+      );
+      groupId = null;
+      await expectDeleted(
+        await request.delete(api(`/api/workspace/projects/${projectId}`), { headers: authHeaders() }),
+        'delete workspace fixture',
+      );
+      const removedProjectId = projectId;
+      projectId = null;
+      const remainingProjects = await expectOk(
+        await request.get(api('/api/workspace/projects'), { headers: authHeaders() }),
+        'list projects after cleanup',
+      );
+      const projectItems = Array.isArray(remainingProjects)
+        ? remainingProjects
+        : (remainingProjects.items || remainingProjects.projects || []);
+      expect(projectItems.some(item => item.id === removedProjectId)).toBeFalsy();
     } finally {
       const cleanupHeaders = token && projectId ? { ...authHeaders(), 'X-Project-Id': String(projectId) } : null;
       if (cleanupHeaders && scenarioId) await request.delete(api(`/api/auto-test/scenarios/${scenarioId}`), { headers: cleanupHeaders }).catch(() => {});

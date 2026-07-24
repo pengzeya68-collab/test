@@ -4,6 +4,7 @@ export const workspaceApi = {
   listProjects: () => autoTestRequest.get('/workspace/projects'),
   createProject: (data) => autoTestRequest.post('/workspace/projects', data),
   getProject: (id) => autoTestRequest.get(`/workspace/projects/${id}`),
+  deleteProject: (id) => autoTestRequest.delete(`/workspace/projects/${id}`),
   listMembers: (id) => autoTestRequest.get(`/workspace/projects/${id}/members`),
   addMember: (id, data) => autoTestRequest.post(`/workspace/projects/${id}/members`, data),
   removeMember: (id, userId) => autoTestRequest.delete(`/workspace/projects/${id}/members/${userId}`),

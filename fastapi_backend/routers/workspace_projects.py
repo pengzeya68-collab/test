@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -112,6 +112,37 @@ async def get_project(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     member = await project_service.get_member(db, project_id, int(current_user.id))
     return _project_dict(project, role=member.role if member else None)
+
+
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_project(
+    project_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an empty team project owned by the current user.
+
+    Personal workspaces are permanent.  Team projects must have no extra
+    members or project-scoped assets, making deletion explicit and reversible
+    only through the normal asset lifecycle rather than implicit data loss.
+    """
+    try:
+        await project_service.delete_empty_project(
+            db, user_id=int(current_user.id), project_id=int(project_id)
+        )
+    except project_service.ProjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except project_service.ProjectAccessError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except project_service.ProjectDeletionForbiddenError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except project_service.ProjectDeletionConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "请先清理项目成员和资产后再删除", "blockers": exc.blockers},
+        ) from exc
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{project_id}/members")

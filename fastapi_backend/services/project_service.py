@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Iterable
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_backend.models.workspace import WorkspaceProject, WorkspaceProjectMember
@@ -18,6 +18,18 @@ class ProjectAccessError(PermissionError):
 
 
 class ProjectNotFoundError(LookupError):
+    pass
+
+
+class ProjectDeletionConflictError(RuntimeError):
+    """Raised when a workspace still contains members or project-scoped assets."""
+
+    def __init__(self, blockers: dict[str, int]):
+        self.blockers = blockers
+        super().__init__("project is not empty")
+
+
+class ProjectDeletionForbiddenError(PermissionError):
     pass
 
 
@@ -201,6 +213,140 @@ async def project_id_for_asset_owner(db: AsyncSession, owner_user_id: int | None
         uid = 1
     personal = await ensure_personal_project(db, uid)
     return int(personal.id)
+
+
+def _workspace_project_assets():
+    """Return every model directly scoped to a WorkspaceProject.
+
+    This explicit inventory intentionally excludes learning ``ProjectSpace`` models.
+    A project can only be deleted after each of these user-facing assets is gone,
+    preventing records from silently becoming inaccessible or cross-tenant orphans.
+    """
+    from fastapi_backend.models.autotest import (
+        AutoTestCase,
+        AutoTestEnvironment,
+        AutoTestGlobalVariable,
+        AutoTestGroup,
+        AutoTestScenario,
+        AutomationExecution,
+        AutomationNotificationChannel,
+        AutomationNotificationDelivery,
+        CaptureSession,
+        ImportJob,
+        TestSuite,
+    )
+    from fastapi_backend.models.feature_upgrades import (
+        APIContractRule,
+        APIHealthMonitor,
+        CaseConcurrencyTag,
+        CaseReview,
+        DefectRecord,
+        DefectTrackerConfig,
+        FlakyDetectionConfig,
+        FlakyTestRecord,
+        HealingConfig,
+        HealingRecord,
+        OpenAPISnapshot,
+        ProtoFile,
+        ReportTemplate,
+        Requirement,
+        SchemaChangeRecord,
+        TraceSession,
+        UIElement,
+        UINetworkRule,
+        UIPage,
+        VisualBaseline,
+        VisualComparison,
+        VisualComparisonConfig,
+    )
+    from fastapi_backend.models.ui_automation import (
+        DesktopAgent,
+        UICase,
+        UICaseGroup,
+        UIRun,
+        UISuite,
+    )
+
+    return (
+        ("接口分组", AutoTestGroup, AutoTestGroup.project_id),
+        ("接口用例", AutoTestCase, AutoTestCase.project_id),
+        ("环境", AutoTestEnvironment, AutoTestEnvironment.project_id),
+        ("全局变量", AutoTestGlobalVariable, AutoTestGlobalVariable.project_id),
+        ("测试场景", AutoTestScenario, AutoTestScenario.workspace_project_id),
+        ("接口套件", TestSuite, TestSuite.project_id),
+        ("自动化执行", AutomationExecution, AutomationExecution.project_id),
+        ("通知渠道", AutomationNotificationChannel, AutomationNotificationChannel.project_id),
+        ("通知投递", AutomationNotificationDelivery, AutomationNotificationDelivery.project_id),
+        ("抓包会话", CaptureSession, CaptureSession.project_id),
+        ("导入任务", ImportJob, ImportJob.project_id),
+        ("UI 用例", UICase, UICase.project_id),
+        ("UI 分组", UICaseGroup, UICaseGroup.project_id),
+        ("UI 套件", UISuite, UISuite.project_id),
+        ("UI 执行", UIRun, UIRun.project_id),
+        ("桌面 Agent", DesktopAgent, DesktopAgent.project_id),
+        ("视觉基线", VisualBaseline, VisualBaseline.project_id),
+        ("视觉对比", VisualComparison, VisualComparison.project_id),
+        ("视觉配置", VisualComparisonConfig, VisualComparisonConfig.project_id),
+        ("Trace 会话", TraceSession, TraceSession.project_id),
+        ("协议文件", ProtoFile, ProtoFile.project_id),
+        ("页面对象", UIPage, UIPage.project_id),
+        ("元素对象", UIElement, UIElement.project_id),
+        ("自愈记录", HealingRecord, HealingRecord.project_id),
+        ("自愈配置", HealingConfig, HealingConfig.project_id),
+        ("并发标签", CaseConcurrencyTag, CaseConcurrencyTag.project_id),
+        ("缺陷平台", DefectTrackerConfig, DefectTrackerConfig.project_id),
+        ("缺陷记录", DefectRecord, DefectRecord.project_id),
+        ("Flaky 记录", FlakyTestRecord, FlakyTestRecord.project_id),
+        ("Flaky 配置", FlakyDetectionConfig, FlakyDetectionConfig.project_id),
+        ("网络拦截规则", UINetworkRule, UINetworkRule.project_id),
+        ("OpenAPI 快照", OpenAPISnapshot, OpenAPISnapshot.project_id),
+        ("Schema 变更", SchemaChangeRecord, SchemaChangeRecord.project_id),
+        ("契约规则", APIContractRule, APIContractRule.project_id),
+        ("API 健康监控", APIHealthMonitor, APIHealthMonitor.project_id),
+        ("用例评审", CaseReview, CaseReview.project_id),
+        ("需求", Requirement, Requirement.project_id),
+        ("报告模板", ReportTemplate, ReportTemplate.project_id),
+    )
+
+
+async def project_deletion_blockers(db: AsyncSession, project_id: int) -> dict[str, int]:
+    """Return non-empty project assets that make hard deletion unsafe."""
+    blockers: dict[str, int] = {}
+    for label, model, project_column in _workspace_project_assets():
+        count = await db.scalar(
+            select(func.count()).select_from(model).where(project_column == int(project_id))
+        )
+        if count:
+            blockers[label] = int(count)
+    return blockers
+
+
+async def delete_empty_project(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    project_id: int,
+) -> None:
+    """Delete an empty non-personal workspace owned by the current user."""
+    project = await require_project_access(db, user_id, project_id, min_role="owner")
+    if int(project.owner_id) != int(user_id):
+        raise ProjectDeletionForbiddenError("only the project owner can delete a project")
+    if project.is_personal:
+        raise ProjectDeletionForbiddenError("personal projects cannot be deleted")
+
+    member_count = await db.scalar(
+        select(func.count())
+        .select_from(WorkspaceProjectMember)
+        .where(WorkspaceProjectMember.project_id == int(project_id))
+    )
+    blockers = await project_deletion_blockers(db, int(project_id))
+    if int(member_count or 0) > 1:
+        blockers["项目成员"] = int(member_count)
+    if blockers:
+        raise ProjectDeletionConflictError(blockers)
+
+    await db.delete(project)
+    await db.flush()
 
 
 def is_masqueraded_user_id(project_id: int | None, known_user_ids: Iterable[int]) -> bool:

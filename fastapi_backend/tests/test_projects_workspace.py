@@ -132,6 +132,53 @@ async def test_personal_project_backfill_from_user_id():
     assert db._store["projects"][0].key == "personal-5"
 
 
+@pytest.mark.asyncio
+async def test_empty_team_project_can_be_deleted_by_its_owner(db_session):
+    project = await project_service.create_project(db_session, owner_id=81, name="Disposable")
+    await db_session.flush()
+
+    await project_service.delete_empty_project(
+        db_session, user_id=81, project_id=project.id
+    )
+
+    assert await db_session.get(WorkspaceProject, project.id) is None
+
+
+@pytest.mark.asyncio
+async def test_project_deletion_is_blocked_by_assets_and_members(db_session):
+    project = await project_service.create_project(db_session, owner_id=82, name="Not Empty")
+    db_session.add(
+        AutoTestCase(
+            name="asset blocks deletion",
+            method="GET",
+            url="/health",
+            user_id=82,
+            project_id=project.id,
+        )
+    )
+    await project_service.add_member(db_session, project_id=project.id, user_id=83)
+    await db_session.flush()
+
+    with pytest.raises(project_service.ProjectDeletionConflictError) as exc_info:
+        await project_service.delete_empty_project(
+            db_session, user_id=82, project_id=project.id
+        )
+
+    assert exc_info.value.blockers["接口用例"] == 1
+    assert exc_info.value.blockers["项目成员"] == 2
+
+
+@pytest.mark.asyncio
+async def test_personal_project_cannot_be_deleted(db_session):
+    personal = await project_service.ensure_personal_project(db_session, 84)
+    await db_session.flush()
+
+    with pytest.raises(project_service.ProjectDeletionForbiddenError):
+        await project_service.delete_empty_project(
+            db_session, user_id=84, project_id=personal.id
+        )
+
+
 def test_desktop_navigation_has_at_most_seven_workspaces():
     from pathlib import Path
     import re
@@ -151,6 +198,13 @@ def test_workspace_project_router_is_registered_in_application():
 
     paths = {route.path for route in app.routes}
     assert "/api/workspace/projects" in paths
+    project_route_methods = {
+        method
+        for route in app.routes
+        if route.path == "/api/workspace/projects/{project_id}"
+        for method in route.methods
+    }
+    assert {"GET", "DELETE"}.issubset(project_route_methods)
 
 
 def test_frontend_project_context_uses_single_storage_key():
