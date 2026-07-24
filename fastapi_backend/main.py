@@ -291,7 +291,13 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
         code=f"HTTP_{exc.status_code}",
         trace_id=get_trace_id(request),
     )
-    return JSONResponse(status_code=exc.status_code, content=payload.model_dump(mode="json"))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=payload.model_dump(mode="json"),
+        # Routers may attach safe machine-readable context (for example the
+        # resources blocking a project deletion) to an HTTPException.
+        headers=exc.headers,
+    )
 
 
 async def validation_exception_handler(

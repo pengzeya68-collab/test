@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
+from starlette.requests import Request
 
 from fastapi_backend.models.autotest import (
     AutoTestCase,
@@ -205,6 +207,38 @@ def test_workspace_project_router_is_registered_in_application():
         for method in route.methods
     }
     assert {"GET", "DELETE"}.issubset(project_route_methods)
+
+
+@pytest.mark.asyncio
+async def test_http_exception_handler_preserves_router_response_headers():
+    """Structured business context attached by a router must reach the client."""
+    from fastapi_backend.main import http_exception_handler
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "DELETE",
+            "scheme": "http",
+            "path": "/api/workspace/projects/1",
+            "headers": [],
+            "server": ("testserver", 80),
+            "client": ("testclient", 50000),
+        }
+    )
+    response = await http_exception_handler(
+        request,
+        HTTPException(
+            status_code=409,
+            detail="项目仍有关联资产，无法删除",
+            # HTTP headers must remain ASCII; the router serializes its
+            # Chinese resource names with json.dumps(..., ensure_ascii=True).
+            headers={"X-TestMaster-Blockers": '{"api_cases": 1}'},
+        ),
+    )
+
+    assert response.status_code == 409
+    assert response.headers["x-testmaster-blockers"] == '{"api_cases": 1}'
+    assert b'"code":"HTTP_409"' in response.body
 
 
 def test_frontend_project_context_uses_single_storage_key():
