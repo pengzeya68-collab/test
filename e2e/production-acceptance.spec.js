@@ -12,6 +12,7 @@ test.describe('公网生产闭环验收', () => {
     const email = `${username}@example.test`;
     let token = '';
     let projectId = null;
+    let groupId = null;
     let caseId = null;
     let scenarioId = null;
 
@@ -55,9 +56,22 @@ test.describe('公网生产闭环验收', () => {
       expect(Number(projectId)).toBeGreaterThan(0);
       const projectHeaders = { ...authHeaders(), 'X-Project-Id': String(projectId) };
 
+      const createdGroup = await request.post(api('/api/auto-test/groups'), {
+        headers: projectHeaders,
+        data: {
+          name: `公网验收分组-${stamp}`,
+          description: 'Fixture group required by the API case workflow',
+          sort_order: 0,
+        },
+      });
+      const groupBody = await expectOk(createdGroup, 'create api group');
+      groupId = groupBody.id;
+      expect(Number(groupId)).toBeGreaterThan(0);
+
       const createdCase = await request.post(api('/api/auto-test/cases'), {
         headers: projectHeaders,
         data: {
+          group_id: groupId,
           name: `公网自检健康接口-${stamp}`,
           method: 'GET',
           url: `${productionBaseUrl}/api/health`,
@@ -104,6 +118,7 @@ test.describe('公网生产闭环验收', () => {
       const cleanupHeaders = token && projectId ? { ...authHeaders(), 'X-Project-Id': String(projectId) } : null;
       if (cleanupHeaders && scenarioId) await request.delete(api(`/api/auto-test/scenarios/${scenarioId}`), { headers: cleanupHeaders }).catch(() => {});
       if (cleanupHeaders && caseId) await request.delete(api(`/api/auto-test/cases/${caseId}`), { headers: cleanupHeaders }).catch(() => {});
+      if (cleanupHeaders && groupId) await request.delete(api(`/api/auto-test/groups/${groupId}`), { headers: cleanupHeaders }).catch(() => {});
       if (token && projectId) await request.delete(api(`/api/workspace/projects/${projectId}`), { headers: authHeaders() }).catch(() => {});
     }
   });
