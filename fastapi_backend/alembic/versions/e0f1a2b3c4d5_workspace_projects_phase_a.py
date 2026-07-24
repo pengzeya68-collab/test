@@ -182,7 +182,7 @@ def upgrade() -> None:
             bind.execute(
                 sa.text(
                     "INSERT INTO workspace_projects (name, key, description, owner_id, is_personal) "
-                    "VALUES (:name, :key, :desc, :owner_id, 1)"
+                    "VALUES (:name, :key, :desc, :owner_id, TRUE)"
                 ),
                 {
                     "name": "个人项目",
