@@ -113,7 +113,19 @@ jobs:
           TEST_POSTGRES_URL: ""
         run: |
           rm -f testmaster_ci.sqlite3
-          python -m pytest fastapi_backend/tests -q
+          set -o pipefail
+          python -m pytest fastapi_backend/tests -q 2>&1 | tee pytest-ci.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            while IFS= read -r failure; do
+              echo "::error file=fastapi_backend/tests::$failure"
+            done < <(grep -E '^FAILED ' pytest-ci.log || true)
+            {
+              echo '### Backend test failure diagnostics'
+              tail -n 120 pytest-ci.log
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
 
   security-scan:
     name: Security Scan
