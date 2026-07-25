@@ -18,8 +18,12 @@ from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment, A
 @pytest.fixture(autouse=True)
 def allow_synthetic_scenario_urls(monkeypatch):
     """Use mocked transports without weakening the production SSRF policy."""
+    import fastapi_backend.core.ssrf_guard as ssrf_guard
+
+    monkeypatch.setattr(ssrf_guard, "_is_ssrf_guard_disabled", lambda: True)
     monkeypatch.setattr(
-        "fastapi_backend.core.ssrf_guard.validate_url_safety",
+        ssrf_guard,
+        "validate_url_safety",
         lambda _url: (True, ""),
     )
 

@@ -27,14 +27,15 @@ def _build_jmeter_runtime_env() -> dict[str, str]:
     configured_path = str(JMETER_BIN or "")
     # Shared configuration can contain Windows paths even when lint/tests run
     # on Linux or macOS.  ``os.path`` treats those backslashes as plain text.
-    if "\\" in configured_path and os.sep != "\\":
+    windows_style_path = "\\" in configured_path and os.sep != "\\"
+    if windows_style_path:
         jmeter_bin_dir = ntpath.dirname(configured_path) or "."
     else:
         jmeter_bin_dir = os.path.dirname(os.path.abspath(configured_path))
     # jmeter.bat interprets JMETER_BIN as a directory and concatenates
     # ApacheJMeter.jar to it. The application setting is an executable path.
     env["JMETER_BIN"] = jmeter_bin_dir + os.sep
-    env["JMETER_HOME"] = os.path.dirname(jmeter_bin_dir)
+    env["JMETER_HOME"] = ntpath.dirname(jmeter_bin_dir) if windows_style_path else os.path.dirname(jmeter_bin_dir)
 
     java_executable = "java.exe" if os.name == "nt" else "java"
     configured_java = os.path.join(JAVA_HOME, "bin", java_executable) if JAVA_HOME else ""

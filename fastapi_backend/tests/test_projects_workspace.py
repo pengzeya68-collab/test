@@ -254,17 +254,11 @@ def test_workspace_project_router_is_registered_in_application():
     paths = set(app.openapi().get("paths", {}))
     assert "/api/workspace/projects" in paths
     project_route_methods = {
-        method
-        for route in app.routes
-        if getattr(route, "path", None) == "/api/workspace/projects/{project_id}"
-        for method in getattr(route, "methods", set())
+        method.upper() for method in app.openapi()["paths"]["/api/workspace/projects/{project_id}"]
     }
     assert {"GET", "DELETE"}.issubset(project_route_methods)
     purge_route_methods = {
-        method
-        for route in app.routes
-        if getattr(route, "path", None) == "/api/workspace/projects/{project_id}/purge"
-        for method in getattr(route, "methods", set())
+        method.upper() for method in app.openapi()["paths"]["/api/workspace/projects/{project_id}/purge"]
     }
     assert "POST" in purge_route_methods
 
