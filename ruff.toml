@@ -7,6 +7,7 @@ exclude = [
 ]
 
 [lint]
+select = ["E4", "E7", "E9", "F"]
 ignore = ["E402", "E701", "E712", "E721", "E722", "E741", "F821"]
 
 [lint.per-file-ignores]
