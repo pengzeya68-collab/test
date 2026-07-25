@@ -251,20 +251,20 @@ def test_workspace_project_router_is_registered_in_application():
     """The UI has a project page, so its backend boundary must not be omitted by the registry loop."""
     from fastapi_backend.main import app
 
-    paths = {route.path for route in app.routes}
+    paths = set(app.openapi().get("paths", {}))
     assert "/api/workspace/projects" in paths
     project_route_methods = {
         method
         for route in app.routes
-        if route.path == "/api/workspace/projects/{project_id}"
-        for method in route.methods
+        if getattr(route, "path", None) == "/api/workspace/projects/{project_id}"
+        for method in getattr(route, "methods", set())
     }
     assert {"GET", "DELETE"}.issubset(project_route_methods)
     purge_route_methods = {
         method
         for route in app.routes
-        if route.path == "/api/workspace/projects/{project_id}/purge"
-        for method in route.methods
+        if getattr(route, "path", None) == "/api/workspace/projects/{project_id}/purge"
+        for method in getattr(route, "methods", set())
     }
     assert "POST" in purge_route_methods
 

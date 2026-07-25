@@ -6,6 +6,7 @@ JMeter engine - 通过 subprocess 调用真实 JMeter 5.6.3 执行 .jmx 脚本�
 import asyncio
 import csv
 import logging
+import ntpath
 import os
 import xml.etree.ElementTree as ET
 from typing import Optional
@@ -23,7 +24,13 @@ _logger = logging.getLogger(__name__)
 def _build_jmeter_runtime_env() -> dict[str, str]:
     """Prepare a process environment compatible with JMeter's shell launchers."""
     env = os.environ.copy()
-    jmeter_bin_dir = os.path.dirname(os.path.abspath(JMETER_BIN))
+    configured_path = str(JMETER_BIN or "")
+    # Shared configuration can contain Windows paths even when lint/tests run
+    # on Linux or macOS.  ``os.path`` treats those backslashes as plain text.
+    if "\\" in configured_path and os.sep != "\\":
+        jmeter_bin_dir = ntpath.dirname(configured_path) or "."
+    else:
+        jmeter_bin_dir = os.path.dirname(os.path.abspath(configured_path))
     # jmeter.bat interprets JMETER_BIN as a directory and concatenates
     # ApacheJMeter.jar to it. The application setting is an executable path.
     env["JMETER_BIN"] = jmeter_bin_dir + os.sep

@@ -15,6 +15,15 @@ from fastapi_backend.core.database import Base
 from fastapi_backend.models.autotest import AutoTestCase, AutoTestEnvironment, AutoTestScenario, AutoTestScenarioStep
 
 
+@pytest.fixture(autouse=True)
+def allow_synthetic_scenario_urls(monkeypatch):
+    """Use mocked transports without weakening the production SSRF policy."""
+    monkeypatch.setattr(
+        "fastapi_backend.core.ssrf_guard.validate_url_safety",
+        lambda _url: (True, ""),
+    )
+
+
 def make_step(step_id, order, step_type="api_request", config=None):
     return {
         "id": step_id,
