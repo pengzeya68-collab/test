@@ -36,7 +36,10 @@ from fastapi_backend.services.autotest_variable_service import (
 router = APIRouter(prefix="/api/auto-test/environments", tags=["AutoTest-环境"])
 
 
-_SENSITIVE_PATTERN = re.compile(r"(password|secret|key|token)", re.IGNORECASE)
+_SENSITIVE_PATTERN = re.compile(
+    r"(password|passwd|secret|key|token|authorization|cookie|session|account|username|phone|mobile|email)",
+    re.IGNORECASE,
+)
 
 
 def _mask_variables(variables):

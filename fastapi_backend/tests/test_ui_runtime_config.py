@@ -5,6 +5,7 @@ from fastapi import Response
 from fastapi_backend.core.exceptions import BusinessException
 
 from fastapi_backend.routers import ui_automation as module
+from fastapi_backend.routers.autotest_environments import _mask_variables
 
 
 class FakeScalars:
@@ -33,6 +34,22 @@ class FakeSession:
 
     async def execute(self, _query):
         return self.results.pop(0)
+
+
+def test_environment_metadata_masks_login_identity_and_password():
+    masked = _mask_variables(
+        {
+            "store_account": "test-account",
+            "store_phone": "13800000000",
+            "store_password": "test-password",
+            "base_url": "https://app.example",
+        }
+    )
+
+    assert masked["store_account"] == "****"
+    assert masked["store_phone"] == "****"
+    assert masked["store_password"] == "****"
+    assert masked["base_url"] == "https://app.example"
 
 
 @pytest.mark.asyncio
