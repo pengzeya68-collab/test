@@ -725,18 +725,22 @@ class TestScenario{scenario_id}:
     async def _run_pytest_and_generate_report(
         self, test_file_path: Path, allure_results_dir: str, report_dir: str
     ) -> bool:
-        """Generate an Allure report when a real Python runtime is available.
+        """Optionally generate an Allure report when it is explicitly enabled.
 
-        The packaged desktop backend is a frozen executable, not a Python
-        interpreter.  Invoking ``sys.executable -m pytest`` there launches a
-        second backend process with arbitrary command-line arguments instead
-        of pytest, which can leave an orphan service on port 5001.  The caller
-        already writes a complete built-in HTML report when this returns
-        ``False``, so frozen builds deliberately use that deterministic path.
+        Scenario execution already has complete step results and must not be
+        delayed by an optional report toolchain. The built-in HTML report is
+        the reliable default for desktop and server deployments. Allure is an
+        opt-in integration for environments where pytest, allure-pytest and
+        the Allure CLI are provisioned ahead of time. Never install packages
+        from a user-triggered execution path.
         """
         import shutil
         import sys
         import os
+
+        if str(os.environ.get("TESTMASTER_ENABLE_ALLURE_REPORTS", "false")).lower() not in {"1", "true", "yes"}:
+            _logger.info("[AllureReport] 使用内置静态报告；未显式启用 Allure 集成")
+            return False
 
         if getattr(sys, "frozen", False):
             _logger.info("[AllureReport] 检测到桌面冻结运行时，跳过 pytest/Allure 子进程，使用内置静态报告")
@@ -816,29 +820,7 @@ class TestScenario{scenario_id}:
                     result_files = list(Path(allure_results_dir_abs).glob("*.json"))
 
             if len(result_files) == 0:
-                install_cmd = [sys.executable, "-m", "pip", "install", "pytest", "allure-pytest"]
-                install_result = await asyncio.to_thread(subprocess.run, install_cmd, capture_output=True, text=True)
-                if install_result.returncode == 0:
-                    cmd_retry = [
-                        sys.executable,
-                        "-m",
-                        "pytest",
-                        str(test_file_path.absolute()),
-                        f"--alluredir={allure_results_dir_abs}",
-                        "-v",
-                        "--tb=short",
-                    ]
-                    result = await asyncio.to_thread(
-                        subprocess.run,
-                        cmd_retry,
-                        capture_output=True,
-                        text=True,
-                        timeout=300,
-                        cwd=str(test_file_path.parent),
-                    )
-                    result_files = list(Path(allure_results_dir_abs).glob("*.json"))
-
-            if len(result_files) == 0:
+                _logger.warning("[AllureReport] 未找到预置的 pytest/Allure 结果，回退到内置静态报告")
                 return False
 
             old_report_history = Path(report_dir_abs) / "history"

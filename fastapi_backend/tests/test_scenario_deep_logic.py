@@ -63,6 +63,28 @@ async def test_frozen_desktop_never_treats_backend_executable_as_python(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_scenario_execution_uses_builtin_report_without_opt_in_allure(monkeypatch, tmp_path):
+    """A missing optional report stack must never keep a scenario task running."""
+    engine = ScenarioExecutionEngine(1)
+    invoked = False
+
+    def unexpected_subprocess(*_args, **_kwargs):
+        nonlocal invoked
+        invoked = True
+        raise AssertionError("default scenario execution must not spawn pytest, allure or pip")
+
+    monkeypatch.delenv("TESTMASTER_ENABLE_ALLURE_REPORTS", raising=False)
+    monkeypatch.setattr(scenario_runner.subprocess, "run", unexpected_subprocess)
+
+    generated = await engine._run_pytest_and_generate_report(
+        tmp_path / "scenario.py", str(tmp_path / "results"), str(tmp_path / "report")
+    )
+
+    assert generated is False
+    assert invoked is False
+
+
+@pytest.mark.asyncio
 async def test_group_failure_propagates_to_parent(monkeypatch):
     engine = ScenarioExecutionEngine(1)
     engine.fail_fast = False
