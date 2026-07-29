@@ -522,25 +522,32 @@ const stopPolling = () => {
 }
 
 const handleRun = async () => {
-  if (!steps.value.length) {
-    ElMessage.warning('当前场景没有可执行步骤。请先添加接口用例或流程控制步骤。')
-    return
-  }
-  if (scenarioForm.value && !scenarioForm.value.is_active) {
-    ElMessage.warning('该场景已停用，无法运行！')
-    return
-  }
-  isRunning.value = true
   try {
-    const stepCount = steps.value ? steps.value.length : 0
+    // The editor can be reached through a route change while its child list is
+    // still rendering. Read the authoritative scenario snapshot at the point
+    // of execution instead of relying on a potentially stale local array.
+    const latestScenario = await autoTestRequest.get(`/auto-test/scenarios/${props.scenarioId}`)
+    const latestSteps = Array.isArray(latestScenario?.steps) ? latestScenario.steps : []
+    steps.value = latestSteps
+    if (!latestSteps.some(step => step.is_active)) {
+      ElMessage.warning('当前场景没有可执行步骤。请先添加并启用至少一个步骤。')
+      return
+    }
+    if (!latestScenario.is_active) {
+      ElMessage.warning('该场景已停用，无法运行！')
+      return
+    }
+    isRunning.value = true
+    const stepCount = latestSteps.filter(step => step.is_active).length
     // The execution dialog owns task polling, but its v-model belongs here.
     // Open it first so an asynchronous task cannot complete before the parent
     // has rendered the dialog shell.
     resultDialogVisible.value = true
     await nextTick()
     await executionDialogRef.value?.startExecution(props.scenarioId, selectedEnvId.value, stepCount)
-  } catch {
+  } catch (error) {
     isRunning.value = false
+    ElMessage.error('读取场景或提交任务失败: ' + (error.response?.data?.detail || error.message || '未知错误'))
   }
 }
 
