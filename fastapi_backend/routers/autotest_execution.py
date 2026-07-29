@@ -7,6 +7,7 @@ AutoTest 统一路由 - 执行、历史、调度、邮件、导入导出
 
 import json
 import logging
+import os
 import subprocess
 import uuid
 import asyncio
@@ -136,7 +137,22 @@ def _build_stored_task_result(stored: dict) -> Optional[dict]:
 
 
 def _should_run_scenario_locally() -> bool:
-    """开发环境兜底：没有可用 Celery worker 时，回退到当前 FastAPI 进程异步执行。"""
+    """Return whether a scenario must use the in-process async runner.
+
+    Scenario execution is user-facing and must not rely on an optionally
+    deployed Celery worker. A worker can answer ``inspect.ping`` while not
+    consuming this queue, which previously left desktop executions at 0%.
+    Celery is therefore opt-in for this path; deployments that have a
+    monitored, dedicated worker may set ``TESTMASTER_SCENARIO_EXECUTION_MODE``
+    to ``celery``.
+    """
+    execution_mode = os.getenv("TESTMASTER_SCENARIO_EXECUTION_MODE", "local").strip().lower()
+    if execution_mode == "local":
+        return True
+    if execution_mode != "celery":
+        logging.getLogger(__name__).warning("未知场景执行模式 %r，已回退为本地异步执行", execution_mode)
+        return True
+
     try:
         from fastapi_backend.tasks import celery_app
 
@@ -147,7 +163,8 @@ def _should_run_scenario_locally() -> bool:
         inspect = celery_app.control.inspect(timeout=0.5)
         active_workers = inspect.ping() or {}
         return not bool(active_workers)
-    except Exception:
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Celery 场景执行不可用，已回退为本地异步执行: %s", exc)
         return True
 
 

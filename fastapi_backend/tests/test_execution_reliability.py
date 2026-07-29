@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -39,6 +40,65 @@ from fastapi_backend.services.capture_import import normalize_captured_exchange
 from fastapi_backend.services.mock_service import mock_engine
 from fastapi_backend.routers.mock_api import _validate_fault_config
 from fastapi_backend.tests.test_autotest_compat import autotest_client, autotest_engine, autotest_session_factory
+
+
+def test_scenario_execution_defaults_to_local_even_when_celery_answers_ping(monkeypatch):
+    """A responding worker is not proof that it consumes scenario tasks."""
+    from fastapi_backend.routers import autotest_execution as execution_router
+
+    monkeypatch.delenv("TESTMASTER_SCENARIO_EXECUTION_MODE", raising=False)
+    monkeypatch.setitem(
+        sys.modules,
+        "fastapi_backend.tasks",
+        SimpleNamespace(
+            celery_app=SimpleNamespace(
+                conf=SimpleNamespace(broker_url="amqp://broker"),
+                control=SimpleNamespace(
+                    inspect=lambda timeout: SimpleNamespace(ping=lambda: {"worker@host": {"ok": "pong"}})
+                ),
+            )
+        ),
+    )
+
+    assert execution_router._should_run_scenario_locally() is True
+
+
+def test_scenario_execution_uses_celery_only_when_explicitly_enabled(monkeypatch):
+    from fastapi_backend.routers import autotest_execution as execution_router
+
+    monkeypatch.setenv("TESTMASTER_SCENARIO_EXECUTION_MODE", "celery")
+    monkeypatch.setitem(
+        sys.modules,
+        "fastapi_backend.tasks",
+        SimpleNamespace(
+            celery_app=SimpleNamespace(
+                conf=SimpleNamespace(broker_url="amqp://broker"),
+                control=SimpleNamespace(
+                    inspect=lambda timeout: SimpleNamespace(ping=lambda: {"worker@host": {"ok": "pong"}})
+                ),
+            )
+        ),
+    )
+
+    assert execution_router._should_run_scenario_locally() is False
+
+
+def test_scenario_execution_falls_back_to_local_when_explicit_celery_has_no_worker(monkeypatch):
+    from fastapi_backend.routers import autotest_execution as execution_router
+
+    monkeypatch.setenv("TESTMASTER_SCENARIO_EXECUTION_MODE", "celery")
+    monkeypatch.setitem(
+        sys.modules,
+        "fastapi_backend.tasks",
+        SimpleNamespace(
+            celery_app=SimpleNamespace(
+                conf=SimpleNamespace(broker_url="amqp://broker"),
+                control=SimpleNamespace(inspect=lambda timeout: SimpleNamespace(ping=lambda: {})),
+            )
+        ),
+    )
+
+    assert execution_router._should_run_scenario_locally() is True
 
 
 @pytest.mark.asyncio
