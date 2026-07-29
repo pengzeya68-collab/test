@@ -216,7 +216,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { nextTick, ref, watch, onMounted, onUnmounted } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, VideoPlay, Back, Search, Refresh, DocumentCopy } from '@element-plus/icons-vue'
@@ -533,6 +533,11 @@ const handleRun = async () => {
   isRunning.value = true
   try {
     const stepCount = steps.value ? steps.value.length : 0
+    // The execution dialog owns task polling, but its v-model belongs here.
+    // Open it first so an asynchronous task cannot complete before the parent
+    // has rendered the dialog shell.
+    resultDialogVisible.value = true
+    await nextTick()
     await executionDialogRef.value?.startExecution(props.scenarioId, selectedEnvId.value, stepCount)
   } catch {
     isRunning.value = false
