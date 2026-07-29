@@ -17,7 +17,7 @@
       <div class="header-right">
         <el-select
           v-model="selectedEnvId"
-          placeholder="选择执行环境"
+          placeholder="执行环境（可选）"
           clearable
           style="width: 160px; margin-right: 12px;"
         >
@@ -202,7 +202,7 @@
           <el-table-column prop="error" label="错误" min-width="200" show-overflow-tooltip />
         </el-table>
         <el-divider>运行时变量快照</el-divider>
-        <pre class="debug-context">{{ JSON.stringify(debugResult.context_vars || {}, null, 2) }}</pre>
+        <pre class="debug-context">{{ formatDebugContext(debugResult.context_vars) }}</pre>
       </div>
     </el-drawer>
 
@@ -285,6 +285,12 @@ const getMethodType = (method) => {
   const types = { GET: 'success', POST: 'warning', PUT: 'primary', DELETE: 'danger', PATCH: 'info' }
   return types[method] || 'info'
 }
+
+const isSensitiveContextKey = key => /(password|passwd|secret|token|api[_-]?key|authorization|cookie|session)/i.test(String(key))
+const redactDebugContext = context => Object.fromEntries(
+  Object.entries(context || {}).map(([key, value]) => [key, isSensitiveContextKey(key) ? '******' : value])
+)
+const formatDebugContext = context => JSON.stringify(redactDebugContext(context), null, 2)
 
 const resetEditorState = () => {
   scenarioForm.value = {
@@ -371,7 +377,6 @@ const loadAvailableCases = async () => {
 }
 
 let searchDebounceTimer = null
-let isRunningFallbackTimer = null
 
 const handleSearchCases = () => {
   clearTimeout(searchDebounceTimer)
@@ -521,10 +526,6 @@ const handleRun = async () => {
     ElMessage.warning('当前场景没有可执行步骤。请先添加接口用例或流程控制步骤。')
     return
   }
-  if (!selectedEnvId.value) {
-    ElMessage.warning('请先选择执行环境；环境为空时请先在环境管理中创建。')
-    return
-  }
   if (scenarioForm.value && !scenarioForm.value.is_active) {
     ElMessage.warning('该场景已停用，无法运行！')
     return
@@ -536,9 +537,6 @@ const handleRun = async () => {
   } catch {
     isRunning.value = false
   }
-  // 安全兜底：3分钟后自动重置isRunning，防止对话框未触发completed事件
-  if (isRunningFallbackTimer) clearTimeout(isRunningFallbackTimer)
-  isRunningFallbackTimer = setTimeout(() => { isRunning.value = false }, 180000)
 }
 
 const handleDebugStep = async (step, singleStep) => {
@@ -547,7 +545,7 @@ const handleDebugStep = async (step, singleStep) => {
     return
   }
   try {
-    const previousContext = debugResult.value?.context_vars || {}
+    const previousContext = redactDebugContext(debugResult.value?.context_vars)
     const { value: contextText } = await ElMessageBox.prompt(
       '可填写前序登录 Token、订单号等运行时变量；留空使用空上下文。',
       singleStep ? '单步调试上下文' : '从此步骤运行的初始上下文',
@@ -642,14 +640,10 @@ const loadEnvironments = async () => {
   try {
     const res = await autoTestRequest.get('/auto-test/environments')
     environments.value = res || []
-    if (environments.value.length > 0) {
-      const defaultEnv = environments.value.find(e => e.is_default)
-      if (defaultEnv) {
-        selectedEnvId.value = defaultEnv.id
-      } else {
-        selectedEnvId.value = environments.value[0].id
-      }
-    }
+    const defaultEnv = environments.value.find(e => e.is_default)
+    // Full URLs captured from browser traffic are independently runnable.
+    // Do not silently bind them to an unrelated first environment.
+    selectedEnvId.value = defaultEnv ? defaultEnv.id : null
   } catch (error) {
     console.error('加载环境列表失败:', error)
   }
@@ -675,7 +669,6 @@ watch(
 onUnmounted(() => {
   stopPolling()
   if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
-  if (isRunningFallbackTimer) { clearTimeout(isRunningFallbackTimer); isRunningFallbackTimer = null }
 })
 
 onBeforeRouteLeave(async () => {

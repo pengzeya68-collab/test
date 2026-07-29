@@ -55,8 +55,8 @@
             总耗时: {{ formatTotalTime(runResult.total_time) }}
           </span>
           <div class="header-actions">
-            <el-button type="primary" size="small" @click="openAllureReport" v-if="runResult.report_url">
-              📊 查看 Allure 详细报告
+            <el-button type="primary" size="small" @click="openExecutionReport" v-if="runResult.report_url">
+              查看执行报告
             </el-button>
             <el-button size="small" @click="dialogVisible = false">关闭</el-button>
           </div>
@@ -223,6 +223,9 @@ const submitError = ref('')
 let pollingTimer = null
 let pollingAbortController = null
 let currentTaskId = null
+let pollingInFlight = false
+let pollingStartedAt = 0
+const MAX_TASK_POLL_MS = 30 * 60 * 1000
 
 const getMethodType = (method) => {
   const types = { GET: 'success', POST: 'warning', PUT: 'primary', DELETE: 'danger', PATCH: 'info' }
@@ -286,7 +289,7 @@ const resolveReportUrl = (reportUrl) => {
   return normalizedPath
 }
 
-const openAllureReport = () => {
+const openExecutionReport = () => {
   const resultData = runResult.value || {}
   const url = resultData.report_url
   if (url) {
@@ -299,13 +302,28 @@ const openAllureReport = () => {
 const stopPolling = () => {
   if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null }
   if (pollingAbortController) { pollingAbortController.abort(); pollingAbortController = null }
+  pollingInFlight = false
+  pollingStartedAt = 0
 }
 
 const pollTaskStatus = (taskId) => {
   stopPolling()
   pollingAbortController = new AbortController()
   const signal = pollingAbortController.signal
+  pollingStartedAt = Date.now()
   pollingTimer = setInterval(async () => {
+    // setInterval does not wait for an async callback. Without this guard a
+    // slow server creates overlapping requests and can overwrite a terminal
+    // result with an older "running" response.
+    if (pollingInFlight || signal.aborted) return
+    if (Date.now() - pollingStartedAt > MAX_TASK_POLL_MS) {
+      stopPolling()
+      isRunning.value = false
+      submitError.value = '等待任务结果超过 30 分钟。任务可能仍在后台执行，请刷新执行历史查看最终结果。'
+      ElMessage.warning(submitError.value)
+      return
+    }
+    pollingInFlight = true
     try {
       const res = await autoTestRequest.get(`/auto-test/tasks/${taskId}`, { signal })
       const state = res.status
@@ -376,6 +394,7 @@ const pollTaskStatus = (taskId) => {
           submitError.value = '执行失败: ' + (res.error || '未知错误')
           ElMessage.error(submitError.value)
         }
+        emit('completed', res.result || res)
       }
     } catch (error) {
       if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return
@@ -383,6 +402,8 @@ const pollTaskStatus = (taskId) => {
       isRunning.value = false
       submitError.value = '查询任务状态失败: ' + (error.response?.data?.detail || error.message)
       ElMessage.error(submitError.value)
+    } finally {
+      pollingInFlight = false
     }
   }, 2000)
 }
